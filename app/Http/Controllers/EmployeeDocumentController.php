@@ -1,0 +1,91 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\DocumentTypeModal;
+use App\Models\EmployeeDocumentModal;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+
+class EmployeeDocumentController extends Controller
+{
+    public function index()
+    {
+        $user = auth()->user();
+
+        $documents = EmployeeDocumentModal::where('user_id', $user->id)
+            ->with('type')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $types = DocumentTypeModal::where('scope', 'employee')->get();
+
+        $allEmployees = \App\Models\Employee::with(['user', 'employeeDetail'])->orderBy('name')->get();
+
+        $accesses = \App\Models\Access::where('role_id', $user->role_id)->get();
+
+        return view('employee.documents-index', compact('documents', 'types', 'user', 'accesses', 'allEmployees'));
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'user_id'          => 'required|exists:users,id',
+            'document_type_id' => 'required|exists:document_types,id',
+            'file'             => 'required|mimes:pdf,jpg,jpeg,png,docx|max:5120',
+        ]);
+
+        $type = DocumentTypeModal::findOrFail($request->document_type_id);
+
+        $exists = EmployeeDocumentModal::where('user_id', $request->user_id)
+            ->where('document_type_id', $request->document_type_id)
+            ->whereIn('status', ['pending', 'verified', 'approved'])
+            ->exists();
+
+        if ($exists) {
+            return back()->with('error', 'This document type is already submitted and active for the selected employee.');
+        }
+
+        $file = $request->file('file');
+        $fileName = 'doc_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+        $destination = public_path('uploads/employee_docs');
+
+        if (!file_exists($destination)) {
+            mkdir($destination, 0777, true);
+        }
+
+        $file->move($destination, $fileName);
+        $path = 'uploads/employee_docs/' . $fileName;
+
+        EmployeeDocumentModal::create([
+            'user_id'          => $request->user_id,
+            'document_type_id' => $request->document_type_id,
+            'document_type'    => $type->name,
+            'file_path'        => $path,
+            'uploaded_by'      => auth()->id(),
+            'status'           => 'pending',
+        ]);
+
+        return back()->with('success', 'Document uploaded successfully! It is now pending HR verification.');
+    }
+
+    public function destroy($id)
+    {
+        $doc = EmployeeDocumentModal::findOrFail($id);
+
+        if (in_array($doc->status, ['verified', 'approved'])) {
+            return back()->with('error', 'Approved documents cannot be deleted. Contact HR to revoke first.');
+        }
+
+        if ($doc->file_path) {
+            $fullPath = public_path($doc->file_path);
+            if (file_exists($fullPath) && is_file($fullPath)) {
+                unlink($fullPath);
+            }
+        }
+
+        $doc->delete();
+
+        return back()->with('success', 'Document removed successfully.');
+    }
+}

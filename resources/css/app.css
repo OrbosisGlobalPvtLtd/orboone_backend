@@ -1,0 +1,7 @@
+html body .wrapper #sidebar {
+    min-width: 300px;
+    max-width: 300px;
+    background: #1d2ca2;
+    color: white;
+    transition: all 0.3s;
+}

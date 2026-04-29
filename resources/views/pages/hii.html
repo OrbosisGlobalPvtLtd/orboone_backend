@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GST Login Auto-Fill</title>
+    <!-- Add Bootstrap for styling -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+
+<div class="container mt-5">
+    <!-- GST Login Details Form -->
+    <div class="row">
+        <div class="col-sm-12 col-lg-6">
+            <div class="form-group">
+                <label for="gst_login_id">GST Login ID:</label>
+                <input type="text" name="gst_login_id" id="gst_login_id" class="form-control" placeholder="Enter GST login ID" autocomplete="on" required>
+            </div>
+        </div>
+
+        <div class="col-sm-12 col-lg-6">
+            <div class="form-group">
+                <label for="gst_login_password">GST Login Password:</label>
+                <input type="password" name="gst_login_password" id="gst_login_password" class="form-control" placeholder="Enter GST login password" autocomplete="current-password" required>
+            </div>
+        </div>
+    </div>
+
+    <!-- "Login With GST" Button -->
+    <div class="form-group">
+        <button type="button" id="loginWithGST" class="btn btn-primary">Login With GST</button>
+    </div>
+
+    <!-- Link to GST Login Page -->
+    <div class="form-group">
+        <p>For GST Login, visit the <a href="https://services.gst.gov.in/services/login" target="_blank" class="btn btn-link">Login With GST</a>.</p>
+    </div>
+</div>
+
+<!-- JavaScript to handle auto-fill of login credentials -->
+<script>
+    // Simulate fetching login credentials from an API
+    document.getElementById('loginWithGST').addEventListener('click', function () {
+        fetchLoginDetails();
+    });
+
+    // Fetch login details (mock API or static data in this case)
+    function fetchLoginDetails() {
+        // Simulated API response (replace with actual API call)
+        const data = {
+            gstLoginId: "user12345",  // Example GST Login ID
+            gstLoginPassword: "password123"  // Example GST Login Password
+        };
+
+        // Automatically fill the fields with the retrieved data
+        document.getElementById('gst_login_id').value = data.gstLoginId;
+        document.getElementById('gst_login_password').value = data.gstLoginPassword;
+    }
+</script>
+
+<!-- Add Bootstrap JS and jQuery for functionality -->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+</body>
+</html>

@@ -43,7 +43,7 @@ You can log into the application with this credentials (if you did the database 
 
 
 **Recruitment Screen**
-![Recruitment Screen](./documentation-images/Recruitment.png)
+
 
 **Recruitment Detail Screen**
-![Recruitment Detail Screen](./documentation-images/Recruitment%20Detail.png)
+

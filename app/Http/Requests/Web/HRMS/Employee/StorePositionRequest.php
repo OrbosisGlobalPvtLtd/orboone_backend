@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Requests;
+namespace App\Http\Requests\Web\HRMS\Employee;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreEmployeeScoreRequest extends FormRequest
+class StorePositionRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -24,8 +24,11 @@ class StoreEmployeeScoreRequest extends FormRequest
     public function rules()
     {
         return [
-            'employee_id' => 'required',
-            'categoryAndScore' => 'required'
+            'name' => 'required',
+            'description' => 'required',
+            'min_year_exp_required' => 'required',
+            'salary' => 'required',
+            'open_for_recruitment' => 'boolean'
         ];
     }
 }

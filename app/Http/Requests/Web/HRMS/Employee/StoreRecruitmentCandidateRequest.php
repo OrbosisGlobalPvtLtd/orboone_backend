@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Requests;
+namespace App\Http\Requests\Web\HRMS\Employee;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreProfileRequest extends FormRequest
+class StoreRecruitmentCandidateRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -13,7 +13,7 @@ class StoreProfileRequest extends FormRequest
      */
     public function authorize()
     {
-        return auth()->check();
+        return true;
     }
 
     /**
@@ -24,11 +24,13 @@ class StoreProfileRequest extends FormRequest
     public function rules()
     {
         return [
-            'profile' => 'image|mimes:jpg,png,jpeg|max:2000',
             'name' => 'required',
-            'email' => 'required',
+            'email' => 'required|email:rfc,dns',
             'phone' => 'required|min:11|max:13',
-            'address' => 'required'
+            'address' => 'required',
+            'message' => 'nullable',
+            'photo' => 'required|max:2000|image|mimes:jpeg,jpg,png',
+            'cv' => 'required|max:2000|file|mimetypes:application/pdf',
         ];
     }
 }

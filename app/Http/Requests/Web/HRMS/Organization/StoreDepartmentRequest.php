@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Requests;
+namespace App\Http\Requests\Web\HRMS\Organization;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreScoreCategoryRequest extends FormRequest
+class StoreDepartmentRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -24,7 +24,9 @@ class StoreScoreCategoryRequest extends FormRequest
     public function rules()
     {
         return [
-            'name' => 'required'
+            'name' => 'required|unique:departments,name',
+            'code' => 'required|unique:departments,code|size:3',
+            'address' => 'required'
         ];
     }
 }

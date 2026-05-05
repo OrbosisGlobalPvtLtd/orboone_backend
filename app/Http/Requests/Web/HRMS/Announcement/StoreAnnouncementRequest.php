@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Requests;
+namespace App\Http\Requests\Web\HRMS\Announcement;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreRoleRequest extends FormRequest
+class StoreAnnouncementRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -24,9 +24,10 @@ class StoreRoleRequest extends FormRequest
     public function rules()
     {
         return [
-            'name' => 'required',
-            'is_super_user' => 'required|boolean',
-            'menuAndAccessLevel' => 'required'
+            'title' => 'required|max:255',
+            'description' => 'required',
+            'department_id' => 'nullable|exists:departments,id',
+            'attachment' => 'nullable|max:10000'
         ];
     }
 }

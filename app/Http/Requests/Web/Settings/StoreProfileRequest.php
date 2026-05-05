@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Requests;
+namespace App\Http\Requests\Web\Settings;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreRecruitmentCandidateRequest extends FormRequest
+class StoreProfileRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -13,7 +13,7 @@ class StoreRecruitmentCandidateRequest extends FormRequest
      */
     public function authorize()
     {
-        return true;
+        return auth()->check();
     }
 
     /**
@@ -24,13 +24,11 @@ class StoreRecruitmentCandidateRequest extends FormRequest
     public function rules()
     {
         return [
+            'profile' => 'image|mimes:jpg,png,jpeg|max:2000',
             'name' => 'required',
-            'email' => 'required|email:rfc,dns',
+            'email' => 'required',
             'phone' => 'required|min:11|max:13',
-            'address' => 'required',
-            'message' => 'nullable',
-            'photo' => 'required|max:2000|image|mimes:jpeg,jpg,png',
-            'cv' => 'required|max:2000|file|mimetypes:application/pdf',
+            'address' => 'required'
         ];
     }
 }

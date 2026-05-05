@@ -1,10 +1,11 @@
 <?php
 
-namespace App\Models;
+namespace App\Models\HRMS\Payroll;
 
+use App\Models\HRMS\Employee\EmployeeM as Employee;
 use Illuminate\Database\Eloquent\Model;
 
-class FnF extends Model
+class FnFM extends Model
 {
     protected $table = 'fnf_settlements';
 

@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Web\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Providers\RouteServiceProvider;
+use App\Services\HRMS\Employee\EmployeeProfileS;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 
 class LoginC extends Controller
 {
@@ -86,7 +88,7 @@ class LoginC extends Controller
         }
 
         // Allowed roles for temporary web login
-        $allowedRoles = [
+        $allowedRoles = config('hrms_access.roles.web_login_allowed', [
             'super_admin',
             'admin',
             'hr_admin',
@@ -95,7 +97,7 @@ class LoginC extends Controller
             'operations_admin',
             'custom_admin',
             'employee',
-        ];
+        ]);
 
         $hasAllowedRole = false;
 
@@ -135,7 +137,23 @@ class LoginC extends Controller
             return redirect('/login')->with('fail', 'Access denied. You do not have permission to login here.');
         }
 
-        // Temporary same dashboard route for both admin and employee
+        $profileService = app(EmployeeProfileS::class);
+        $incompleteEmployeeId = $profileService->getIncompleteEmployeeIdForUser((int) $user->id);
+
+        // if ($incompleteEmployeeId) {
+        //     if (Route::has('profile')) {
+        //         return redirect()
+        //             ->route('profile')
+        //             ->with('warning', 'Please complete your profile before continuing.');
+        //     }
+
+        //     if (Route::has('hrms.employees.profile.complete')) {
+        //         return redirect()
+        //             ->route('hrms.employees.profile.complete', $incompleteEmployeeId)
+        //             ->with('warning', 'Please complete your profile before continuing.');
+        //     }
+        // }
+
         return redirect()->route('dashboard');
     }
 }

@@ -28,16 +28,9 @@
             --border:#e5e7eb;
             --input-bg:#f8fafc;
             --white:#ffffff;
-
-            --desktop-shell-max:1280px;
-            --desktop-height: min(760px, calc(100vh - 32px));
         }
 
-        *{
-            margin:0;
-            padding:0;
-            box-sizing:border-box;
-        }
+        *{margin:0;padding:0;box-sizing:border-box;}
 
         html,body{
             width:100%;
@@ -50,18 +43,9 @@
                 linear-gradient(135deg, #f8faff 0%, #f4f6ff 45%, #fcf7ff 100%);
         }
 
-        body{
-            color:var(--text-dark);
-        }
-
-        a{
-            text-decoration:none;
-        }
-
-        img{
-            display:block;
-            max-width:100%;
-        }
+        body{color:var(--text-dark);}
+        a{text-decoration:none;}
+        img{display:block;max-width:100%;}
 
         .page-wrap{
             width:100%;
@@ -128,14 +112,6 @@
             object-fit:contain;
         }
 
-        .mobile-brand-block h2{
-            color:#fff;
-            font-size:clamp(28px, 7vw, 36px);
-            line-height:1.1;
-            font-weight:900;
-            letter-spacing:-0.8px;
-        }
-
         .mobile-main-title{
             color:#fff;
             font-size:clamp(25px, 6.4vw, 32px);
@@ -175,19 +151,12 @@
             z-index:2;
         }
 
-        .mobile-phone-shell{
-            width:100%;
-            position:relative;
-        }
-
         .phone-back-device{
             width:100%;
             background:#efeff1;
             border-radius:38px;
             padding:14px;
-            box-shadow:
-                0 18px 46px rgba(15,23,42,.18),
-                inset 0 2px 0 rgba(255,255,255,.65);
+            box-shadow:0 18px 46px rgba(15,23,42,.18), inset 0 2px 0 rgba(255,255,255,.65);
             position:relative;
         }
 
@@ -363,9 +332,7 @@
             border-top:1px solid #f1f5f9;
         }
 
-        .mock-task-row:first-child{
-            border-top:none;
-        }
+        .mock-task-row:first-child{border-top:none;}
 
         .mock-task-dot{
             width:8px;
@@ -400,9 +367,7 @@
             background:#f2f2f5;
             border-radius:24px;
             padding:8px;
-            box-shadow:
-                0 18px 34px rgba(15,23,42,.10),
-                0 4px 10px rgba(15,23,42,.05);
+            box-shadow:0 18px 34px rgba(15,23,42,.10), 0 4px 10px rgba(15,23,42,.05);
         }
 
         .mock-overlay-inner{
@@ -538,9 +503,7 @@
             padding:0 18px;
         }
 
-        .mobile-cta-btn:hover{
-            color:#fff;
-        }
+        .mobile-cta-btn:hover{color:#fff;}
 
         .mobile-continue-link{
             position:relative;
@@ -585,7 +548,7 @@
         .desktop-page{
             width:100%;
             min-height:100vh;
-            padding:16px;
+            padding:clamp(10px, 1.3vw, 22px);
             display:flex;
             align-items:center;
             justify-content:center;
@@ -593,17 +556,17 @@
 
         .desktop-shell{
             width:100%;
-            max-width:var(--desktop-shell-max);
-            height:var(--desktop-height);
-            min-height:680px;
-            max-height:760px;
+            max-width:min(1280px, calc(100vw - 24px));
+            height:auto;
+            min-height:0;
+            max-height:none;
         }
 
         .desktop-layout{
             width:100%;
-            height:100%;
+            min-height:clamp(620px, calc(100vh - 32px), 760px);
             display:grid;
-            grid-template-columns:1.02fr .98fr;
+            grid-template-columns:minmax(0, 1.08fr) minmax(380px, .92fr);
             border-radius:32px;
             overflow:hidden;
             background:rgba(255,255,255,.72);
@@ -620,7 +583,7 @@
                 linear-gradient(155deg, #4b00e8 0%, #6e1cf0 34%, #a112e6 68%, #ec4e74 100%);
             color:#fff;
             overflow:hidden;
-            padding:30px 32px 24px;
+            padding:clamp(18px, 2.1vw, 32px);
             display:flex;
             flex-direction:column;
             justify-content:space-between;
@@ -661,8 +624,9 @@
             display:flex;
             flex-direction:column;
             justify-content:space-between;
-            height:100%;
-            gap:18px;
+            height:auto;
+            min-height:100%;
+            gap:clamp(12px, 1.5vw, 18px);
         }
 
         .desk-badge{
@@ -682,7 +646,7 @@
 
         .desk-hero-card{
             position:relative;
-            padding:24px;
+            padding:clamp(18px, 2vw, 24px);
             border-radius:28px;
             background:rgba(255,255,255,.09);
             border:1px solid rgba(255,255,255,.14);
@@ -705,41 +669,28 @@
             display:flex;
             align-items:center;
             gap:14px;
-            margin-bottom:18px;
+            margin-bottom:clamp(10px, 1.4vw, 16px);
             min-width:0;
-        }
-
-        .desk-logo-box{
-            width:198px;
-            height:98px;
-            /* border-radius:18px; */
-            /* background:rgba(255,255,255,.15); */
-            /* border:1px solid rgba(255,255,255,.18); */
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            /* backdrop-filter:blur(6px); */
-            flex-shrink:0;
-            /* box-shadow:inset 0 1px 0 rgba(255,255,255,.20); */
-        }
-
-        .desk-logo-box img{
-            /* width:34px;
-            height:34px; */
-            object-fit:contain;
-            /* filter:brightness(0) invert(1); */
         }
 
         .desk-logo-text{
             min-width:0;
         }
 
-        .desk-logo-text h3{
-            font-size:clamp(24px, 2vw, 30px);
-            font-weight:900;
-            line-height:1.05;
-            letter-spacing:-.6px;
-            margin:0;
+        .desk-logo-box{
+            width:clamp(142px, 16vw, 198px);
+            height:auto;
+            min-height:62px;
+            display:flex;
+            align-items:center;
+            justify-content:flex-start;
+            flex-shrink:0;
+        }
+
+        .desk-logo-box img{
+            width:100%;
+            height:auto;
+            object-fit:contain;
         }
 
         .desk-logo-text span{
@@ -752,33 +703,33 @@
         .desktop-title{
             position:relative;
             z-index:2;
-            font-size:clamp(30px, 2.45vw, 38px);
-            line-height:1.16;
+            font-size:clamp(24px, 2.35vw, 38px);
+            line-height:1.14;
             font-weight:900;
             letter-spacing:-.9px;
-            max-width:500px;
-            margin:0 0 12px;
+            max-width:100%;
+            margin:0 0 10px;
         }
 
         .desktop-desc{
             position:relative;
             z-index:2;
-            font-size:14px;
-            line-height:1.72;
+            font-size:clamp(12px, 1.05vw, 14px);
+            line-height:1.6;
             color:rgba(255,255,255,.90);
-            max-width:470px;
+            max-width:100%;
             margin:0;
         }
 
         .desk-info-grid{
             display:grid;
             grid-template-columns:repeat(3, minmax(0, 1fr));
-            gap:12px;
+            gap:clamp(8px, 1vw, 12px);
         }
 
         .desk-info-card{
-            padding:16px 14px;
-            border-radius:20px;
+            padding:clamp(11px, 1.25vw, 16px);
+            border-radius:clamp(14px, 1.5vw, 20px);
             background:rgba(255,255,255,.11);
             border:1px solid rgba(255,255,255,.14);
             backdrop-filter:blur(10px);
@@ -805,7 +756,7 @@
         }
 
         .desk-section-card{
-            padding:20px;
+            padding:clamp(14px, 1.5vw, 20px);
             border-radius:24px;
             background:rgba(255,255,255,.10);
             border:1px solid rgba(255,255,255,.14);
@@ -839,14 +790,14 @@
         .desk-points{
             display:flex;
             flex-direction:column;
-            gap:12px;
+            gap:0;
         }
 
         .desk-point{
             display:flex;
             align-items:flex-start;
             gap:12px;
-            padding:12px 0;
+            padding:clamp(8px, 1vw, 12px) 0;
             border-top:1px solid rgba(255,255,255,.10);
         }
 
@@ -900,17 +851,13 @@
             flex-wrap:wrap;
         }
 
-        .desktop-left-bottom .left-foot-note i{
-            color:rgba(255,255,255,.94);
-        }
-
         .desktop-right{
             background:rgba(255,255,255,.92);
             backdrop-filter:blur(16px);
             display:flex;
             align-items:center;
             justify-content:center;
-            padding:28px;
+            padding:clamp(18px, 2.2vw, 34px);
             min-width:0;
             position:relative;
         }
@@ -969,7 +916,7 @@
 
         .login-title{
             text-align:center;
-            font-size:clamp(26px, 2.2vw, 30px);
+            font-size:clamp(26px, 2vw, 32px);
             font-weight:900;
             color:var(--text-dark);
             line-height:1.15;
@@ -982,7 +929,7 @@
             font-size:14px;
             line-height:1.65;
             color:var(--text-soft);
-            margin-bottom:18px;
+            margin-bottom:clamp(16px, 1.7vw, 22px);
         }
 
         .alert{
@@ -1039,9 +986,7 @@
             transition:all .25s ease;
         }
 
-        .form-control::placeholder{
-            color:var(--text-muted);
-        }
+        .form-control::placeholder{color:var(--text-muted);}
 
         .form-control:focus{
             border-color:rgba(75,0,232,.34);
@@ -1060,9 +1005,7 @@
             transition:color .2s ease;
         }
 
-        .eye-icon:hover{
-            color:var(--orb-primary);
-        }
+        .eye-icon:hover{color:var(--orb-primary);}
 
         .helper-row{
             display:flex;
@@ -1087,9 +1030,7 @@
             color:var(--orb-primary);
         }
 
-        .helper-link:hover{
-            color:var(--orb-accent);
-        }
+        .helper-link:hover{color:var(--orb-accent);}
 
         .btn-login{
             width:100%;
@@ -1125,9 +1066,7 @@
             font-weight:700;
         }
 
-        .signin-footer a:hover{
-            color:var(--orb-accent);
-        }
+        .signin-footer a:hover{color:var(--orb-accent);}
 
         .copyright-text{
             text-align:center;
@@ -1170,89 +1109,143 @@
             }
         }
 
-        /* =========================================================
-           iPad / Tablet Landscape / Small Laptops
-        ========================================================= */
-        @media (min-width: 992px) and (max-width: 1199.98px){
-            :root{
-                --desktop-height: min(740px, calc(100vh - 24px));
-            }
-
-            .desktop-page{
-                padding:12px;
-            }
-
-            .desktop-shell{
-                min-height:650px;
-                max-height:none;
-            }
-
+        /* 992px - 1100px laptop/tablet landscape */
+        @media (min-width: 992px) and (max-width: 1100px){
             .desktop-layout{
-                grid-template-columns:1fr 1fr;
-                border-radius:28px;
+                grid-template-columns:minmax(0, 1fr) minmax(350px, .9fr);
+                border-radius:24px;
             }
 
             .desktop-left{
-                padding:22px 22px 18px;
-            }
-
-            .desktop-right{
-                padding:22px;
-            }
-
-            .desk-hero-card{
-                padding:20px;
-            }
-
-            .desktop-title{
-                max-width:420px;
-                font-size:30px;
-            }
-
-            .desktop-desc{
-                max-width:420px;
-            }
-
-            .desk-info-grid{
-                gap:10px;
-            }
-
-            .desk-info-card{
-                padding:14px 12px;
-            }
-
-            .desk-section-card{
                 padding:18px;
             }
 
-            .login-panel{
-                max-width:395px;
+            .desktop-right{
+                padding:18px;
             }
 
-            .login-logo img{
-                width:160px;
+            .desk-info-grid{
+                grid-template-columns:1fr;
+            }
+
+            .desk-info-card{
+                display:flex;
+                align-items:flex-start;
+                gap:12px;
+            }
+
+            .desk-info-card i{
+                margin-bottom:0;
+                margin-top:2px;
+            }
+
+            .desktop-title{
+                font-size:24px;
+            }
+
+            .desktop-desc{
+                font-size:12px;
+            }
+
+            .desk-section-head h5{
+                font-size:14px;
+            }
+
+            .desk-point-text h6{
+                font-size:12px;
+            }
+
+            .desk-point-text p{
+                font-size:10.5px;
+            }
+
+            .login-panel{
+                max-width:360px;
             }
         }
 
-        /* =========================================================
-           Larger desktops
-        ========================================================= */
+        /* Large desktop */
         @media (min-width: 1400px){
-            :root{
-                --desktop-height: min(790px, calc(100vh - 36px));
-            }
-
             .desktop-shell{
                 max-width:1340px;
             }
 
+            .desktop-layout{
+                min-height:790px;
+            }
+
             .desktop-title{
                 font-size:38px;
-                max-width:540px;
+            }
+        }
+
+        /* Short laptop height fix */
+        @media (min-width: 992px) and (max-height: 720px){
+            .desktop-layout{
+                min-height:calc(100vh - 20px);
+            }
+
+            .desk-hero-card{
+                padding:14px 16px;
+            }
+
+            .desk-logo-box{
+                width:130px;
+                min-height:50px;
+            }
+
+            .desktop-title{
+                font-size:23px;
+                margin-bottom:6px;
             }
 
             .desktop-desc{
-                max-width:510px;
+                font-size:12px;
+                line-height:1.45;
+            }
+
+            .desk-info-card{
+                padding:10px 12px;
+            }
+
+            .desk-info-card p{
+                display:none;
+            }
+
+            .desk-section-card{
+                padding:12px 14px;
+            }
+
+            .desk-point{
+                padding:8px 0;
+            }
+
+            .desk-point-icon{
+                width:30px;
+                height:30px;
+                min-width:30px;
+            }
+
+            .desk-point-text p{
+                line-height:1.4;
+            }
+
+            .desktop-left-bottom{
+                margin-top:8px;
+            }
+
+            .form-control,
+            .btn-login{
+                height:48px;
+            }
+
+            .input-group-custom{
+                margin-bottom:12px;
+            }
+
+            .signin-footer{
+                margin-top:12px;
+                padding-top:12px;
             }
         }
 
@@ -1415,9 +1408,6 @@
             }
         }
 
-        /* =========================================================
-           Small height mobile
-        ========================================================= */
         @media (max-height: 760px) and (max-width: 991.98px){
             .mobile-scroll-area{
                 padding-bottom:185px;
@@ -1504,245 +1494,9 @@
                 margin-top:12px;
             }
         }
-
-        /* =========================================================
-           Desktop short height - keep in one screen
-        ========================================================= */
-        @media (max-height: 760px) and (min-width: 992px){
-            :root{
-                --desktop-height: calc(100vh - 20px);
-            }
-
-            .desktop-page{
-                padding:10px;
-            }
-
-            .desktop-left{
-                padding:20px 20px 16px;
-            }
-
-            .desktop-right{
-                padding:18px;
-            }
-
-            .desk-hero-card{
-                padding:18px;
-            }
-
-            .desktop-title{
-                font-size:28px;
-                margin-bottom:8px;
-            }
-
-            .desktop-desc{
-                font-size:13px;
-                line-height:1.6;
-            }
-
-            .desk-info-card{
-                padding:12px;
-                border-radius:18px;
-            }
-
-            .desk-info-card i{
-                margin-bottom:10px;
-            }
-
-            .desk-info-card h6{
-                font-size:13px;
-            }
-
-            .desk-info-card p{
-                font-size:11px;
-            }
-
-            .desk-section-card{
-                padding:16px;
-            }
-
-            .desk-point{
-                gap:10px;
-            }
-
-            .desk-point-icon{
-                width:34px;
-                height:34px;
-                min-width:34px;
-                font-size:13px;
-            }
-
-            .desk-point-text h6{
-                font-size:13px;
-            }
-
-            .desk-point-text p{
-                font-size:11px;
-            }
-
-            .login-logo img{
-                width:156px;
-            }
-
-            .login-title{
-                font-size:26px;
-            }
-
-            .login-subtitle{
-                margin-bottom:14px;
-            }
-
-            .input-group-custom{
-                margin-bottom:14px;
-            }
-
-            .helper-row{
-                margin-bottom:14px;
-            }
-
-            .signin-footer{
-                margin-top:14px;
-                padding-top:12px;
-            }
-
-            .copyright-text{
-                margin-top:10px;
-            }
-        }
-
-        @media (max-height: 680px) and (min-width: 992px){
-            :root{
-                --desktop-height: calc(100vh - 12px);
-            }
-
-            .desktop-page{
-                padding:6px;
-            }
-
-            .desktop-layout{
-                border-radius:24px;
-            }
-
-            .desktop-left{
-                padding:16px 16px 12px;
-            }
-
-            .desktop-right{
-                padding:14px;
-            }
-
-            .desk-badge{
-                padding:7px 12px;
-                font-size:10px;
-            }
-
-            .desk-hero-card{
-                padding:16px;
-                border-radius:20px;
-            }
-
-            .desk-logo-box{
-                width:48px;
-                height:48px;
-                border-radius:14px;
-            }
-
-            .desk-logo-box img{
-                width:28px;
-                height:28px;
-            }
-
-            .desktop-title{
-                font-size:24px;
-                max-width:380px;
-            }
-
-            .desktop-desc{
-                font-size:12px;
-                max-width:390px;
-            }
-
-            .desk-info-grid{
-                gap:8px;
-            }
-
-            .desk-info-card{
-                padding:10px;
-                border-radius:14px;
-            }
-
-            .desk-info-card h6{
-                font-size:12px;
-            }
-
-            .desk-info-card p{
-                font-size:10px;
-            }
-
-            .desk-section-card{
-                padding:14px;
-                border-radius:18px;
-            }
-
-            .desk-section-head{
-                margin-bottom:12px;
-            }
-
-            .desk-section-head h5{
-                font-size:14px;
-            }
-
-            .desk-point{
-                padding:10px 0;
-            }
-
-            .desk-point-icon{
-                width:30px;
-                height:30px;
-                min-width:30px;
-                border-radius:10px;
-                font-size:12px;
-            }
-
-            .desk-point-text h6{
-                font-size:12px;
-            }
-
-            .desk-point-text p{
-                font-size:10px;
-                line-height:1.45;
-            }
-
-            .login-panel{
-                max-width:380px;
-            }
-
-            .login-logo img{
-                width:142px;
-            }
-
-            .login-title{
-                font-size:24px;
-            }
-
-            .login-subtitle{
-                font-size:13px;
-            }
-
-            .form-control,
-            .btn-login{
-                height:48px;
-            }
-
-            .signin-footer{
-                font-size:12px;
-            }
-
-            .copyright-text{
-                font-size:10px;
-            }
-        }
     </style>
 </head>
+
 <body>
 <div class="page-wrap">
 
@@ -1979,7 +1733,7 @@
                             <i class="fa-solid fa-shield-heart"></i>
                             Protected company access
                         </div>
-                        <a href="#" class="helper-link">Need help?</a>
+                        <a href="{{ route('password.forgot') }}" class="helper-link">Forgot password?</a>
                     </div>
 
                     <button type="submit" class="btn-login">
@@ -2004,6 +1758,8 @@
         </div>
     </div>
 
+<!-- DESKTOP PART ONLY UPDATED -->
+
 @else
     <div class="desktop-page">
         <div class="desktop-shell">
@@ -2018,18 +1774,6 @@
                         </div>
 
                         <div class="desk-hero-card">
-                            <div class="desk-logo-row">
-                                <!-- <div class="desk-logo-box">
-                                    <img src="{{ asset('images/Picsart_26-04-02_12-19-10-396.png') }}" alt="OrboOne Logo">
-                                </div> -->
-                                <div class="desk-logo-text">
-                                   <div class="desk-logo-box">
-                                    <img src="{{ asset('images/Picsart_26-04-02_12-19-10-396.png') }}" alt="OrboOne Logo">
-                                </div>
-                                    <span>Human Resource Management System</span>
-                                </div>
-                            </div>
-
                             <h2 class="desktop-title">
                                 Professional workforce management for modern teams.
                             </h2>
@@ -2042,20 +1786,26 @@
                         <div class="desk-info-grid">
                             <div class="desk-info-card">
                                 <i class="fa-regular fa-clock"></i>
-                                <h6>Attendance</h6>
-                                <p>Track daily check-in, check-out and work status with clarity.</p>
+                                <div>
+                                    <h6>Attendance</h6>
+                                    <p>Track daily check-in, check-out and work status with clarity.</p>
+                                </div>
                             </div>
 
                             <div class="desk-info-card">
                                 <i class="fa-regular fa-calendar-check"></i>
-                                <h6>Leave</h6>
-                                <p>Handle approvals, balances and request flows in one place.</p>
+                                <div>
+                                    <h6>Leave</h6>
+                                    <p>Handle approvals, balances and request flows in one place.</p>
+                                </div>
                             </div>
 
                             <div class="desk-info-card">
                                 <i class="fa-solid fa-users-gear"></i>
-                                <h6>Employees</h6>
-                                <p>Maintain profiles, onboarding progress and workforce updates.</p>
+                                <div>
+                                    <h6>Employees</h6>
+                                    <p>Maintain profiles, onboarding progress and workforce updates.</p>
+                                </div>
                             </div>
                         </div>
 
@@ -2193,7 +1943,7 @@
                                     <i class="fa-solid fa-shield-heart"></i>
                                     Protected company access
                                 </div>
-                                <a href="#" class="helper-link">Need help?</a>
+                                <a href="{{ route('password.forgot') }}" class="helper-link">Forgot password?</a>
                             </div>
 
                             <button type="submit" class="btn-login">

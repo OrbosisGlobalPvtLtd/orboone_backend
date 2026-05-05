@@ -20,13 +20,15 @@ class EmployeeCredentialMail extends Mailable
     public $email;
     public $empid;
     public $password;
+    public $passwordSetupUrl;
 
-    public function __construct($name,$email,$empid,$password)
+    public function __construct($name,$email,$empid,$password,$passwordSetupUrl = null)
     {
         $this->name=$name;
         $this->email=$email;
         $this->empid=$empid;
         $this->password=$password;
+        $this->passwordSetupUrl=$passwordSetupUrl;
     }
 
     public function build()

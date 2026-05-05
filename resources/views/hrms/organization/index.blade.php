@@ -8,22 +8,19 @@
     --orb-primary:#4B00E8;
     --orb-secondary:#8600EE;
     --orb-pink:#D400D5;
-    --orb-bg:#F7F8FC;
-    --orb-card:#fff;
+    --orb-bg:#F6F7FB;
+    --orb-card:#FFFFFF;
     --orb-border:#E7EAF3;
     --orb-text:#101828;
     --orb-muted:#667085;
     --orb-soft:#F4F2FF;
-    --orb-shadow:0 14px 34px rgba(16,24,40,.07);
+    --orb-shadow:0 10px 28px rgba(16,24,40,.06);
 }
 
 .org-page{
     min-height:calc(100vh - 90px);
-    padding:16px 10px 32px;
-    background:
-        radial-gradient(circle at top left, rgba(75,0,232,.07), transparent 28%),
-        radial-gradient(circle at top right, rgba(212,0,213,.06), transparent 28%),
-        var(--orb-bg);
+    padding:16px 10px 30px;
+    background:var(--orb-bg);
 }
 
 .org-container{
@@ -31,128 +28,136 @@
     margin:0 auto;
 }
 
-.org-hero{
-    border-radius:24px;
-    padding:22px;
-    color:#fff;
-    margin-bottom:16px;
-    background:linear-gradient(135deg,#4B00E8,#8600EE,#D400D5);
-    box-shadow:0 18px 42px rgba(75,0,232,.18);
+.org-header{
+    background:#fff;
+    border:1px solid var(--orb-border);
+    border-radius:18px;
+    box-shadow:var(--orb-shadow);
+    padding:16px;
     display:flex;
     align-items:center;
     justify-content:space-between;
     gap:16px;
+    margin-bottom:14px;
 }
 
-.org-hero h3{
+.org-header h3{
     margin:0;
-    font-size:1.45rem;
-    font-weight:950;
+    color:var(--orb-text);
+    font-size:24px;
+    font-weight:900;
+    letter-spacing:-.4px;
 }
 
-.org-hero p{
-    margin:7px 0 0;
-    color:rgba(255,255,255,.82);
-    font-size:.88rem;
-    font-weight:650;
+.org-header p{
+    margin:4px 0 0;
+    color:var(--orb-muted);
+    font-size:13px;
+    font-weight:600;
 }
 
 .org-layout{
     display:grid;
-    grid-template-columns:390px minmax(0,1fr);
-    gap:16px;
+    grid-template-columns:360px minmax(0,1fr);
+    gap:14px;
 }
 
 .org-card{
     background:#fff;
     border:1px solid var(--orb-border);
-    border-radius:22px;
+    border-radius:18px;
     box-shadow:var(--orb-shadow);
     overflow:hidden;
 }
 
 .org-card-head{
-    padding:16px 18px;
+    padding:14px 16px;
     border-bottom:1px solid #EEF1F6;
     display:flex;
     align-items:center;
     justify-content:space-between;
     gap:12px;
-    background:linear-gradient(180deg,#fff,#FCFCFF);
+    background:#fff;
 }
 
 .org-title{
     display:flex;
     align-items:center;
-    gap:11px;
+    gap:10px;
+    min-width:0;
 }
 
 .org-icon{
-    width:42px;
-    height:42px;
-    border-radius:15px;
+    width:36px;
+    height:36px;
+    border-radius:12px;
     display:flex;
     align-items:center;
     justify-content:center;
     background:var(--orb-soft);
     color:var(--orb-primary);
+    flex:0 0 auto;
 }
 
 .org-title h5{
     margin:0;
-    font-size:1rem;
-    font-weight:950;
+    font-size:15px;
+    font-weight:900;
     color:var(--orb-text);
 }
 
 .org-title p{
-    margin:3px 0 0;
-    font-size:.75rem;
-    font-weight:650;
+    margin:2px 0 0;
+    font-size:12px;
+    font-weight:600;
     color:var(--orb-muted);
 }
 
 .org-body{
-    padding:16px;
+    padding:14px;
 }
 
 .btn-orb{
     border:0;
-    border-radius:13px;
-    padding:9px 13px;
-    font-size:.82rem;
-    font-weight:950;
+    border-radius:12px;
+    padding:9px 14px;
+    font-size:13px;
+    font-weight:900;
     background:linear-gradient(135deg,#4B00E8,#8600EE);
     color:#fff!important;
     box-shadow:0 8px 18px rgba(75,0,232,.16);
+    white-space:nowrap;
 }
 
 .btn-soft{
-    border-radius:11px;
-    padding:8px 11px;
-    font-size:.76rem;
+    border-radius:12px;
+    padding:9px 13px;
+    font-size:13px;
     font-weight:900;
     background:#F4F6FB;
     border:1px solid #E5E7EB;
     color:#111827!important;
 }
 
-.btn-edit{
+.btn-edit,
+.btn-delete{
     border:0;
     border-radius:11px;
-    padding:8px 11px;
-    font-size:.76rem;
+    width:34px;
+    height:34px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    font-size:13px;
     font-weight:900;
+}
+
+.btn-edit{
     background:#FFF7E6;
     color:#B54708!important;
 }
 
 .btn-delete{
-    border:0;
-    border-radius:11px;
-    padding:8px 11px;
-    font-size:.76rem;
-    font-weight:900;
     background:#FEE2E2;
     color:#991B1B!important;
 }
@@ -161,53 +166,65 @@
     display:flex;
     flex-direction:column;
     gap:10px;
+    max-height:calc(100vh - 245px);
+    overflow-y:auto;
+    padding-right:2px;
+}
+
+.dept-list::-webkit-scrollbar{
+    width:5px;
+}
+
+.dept-list::-webkit-scrollbar-thumb{
+    background:#D9DDE8;
+    border-radius:999px;
 }
 
 .dept-item{
     width:100%;
     border:1px solid #EEF1F6;
     background:#fff;
-    border-radius:17px;
-    padding:13px;
+    border-radius:16px;
+    padding:12px;
     display:flex;
     align-items:center;
     justify-content:space-between;
-    gap:12px;
+    gap:10px;
     cursor:pointer;
-    transition:.2s ease;
+    transition:.18s ease;
     text-align:left;
 }
 
 .dept-item:hover,
 .dept-item.active{
-    border-color:rgba(75,0,232,.22);
-    background:linear-gradient(135deg,#F7F4FF,#FFF9FD);
-    transform:translateY(-1px);
+    border-color:rgba(75,0,232,.25);
+    background:#FBFAFF;
+    box-shadow:0 8px 20px rgba(16,24,40,.05);
 }
 
 .dept-main{
     display:flex;
     align-items:center;
-    gap:11px;
+    gap:10px;
     min-width:0;
 }
 
 .dept-avatar{
-    width:42px;
-    height:42px;
-    border-radius:15px;
-    background:linear-gradient(135deg,#4B00E8,#8600EE);
-    color:#fff;
+    width:38px;
+    height:38px;
+    border-radius:13px;
+    background:#F4F2FF;
+    color:var(--orb-primary);
     display:flex;
     align-items:center;
     justify-content:center;
-    font-weight:950;
+    font-weight:900;
     flex:0 0 auto;
 }
 
 .dept-name{
-    font-size:.9rem;
-    font-weight:950;
+    font-size:13px;
+    font-weight:900;
     color:var(--orb-text);
     white-space:nowrap;
     overflow:hidden;
@@ -216,9 +233,13 @@
 
 .dept-meta{
     margin-top:2px;
-    font-size:.72rem;
+    font-size:11px;
     font-weight:700;
     color:var(--orb-muted);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    max-width:210px;
 }
 
 .dept-code{
@@ -226,15 +247,15 @@
     padding:6px 9px;
     background:#F4F2FF;
     color:var(--orb-primary);
-    font-size:.72rem;
-    font-weight:950;
+    font-size:11px;
+    font-weight:900;
     flex:0 0 auto;
 }
 
 .selected-box{
-    border-radius:18px;
-    padding:15px;
-    background:linear-gradient(135deg,#F4F2FF,#FFF7FB);
+    border-radius:16px;
+    padding:14px;
+    background:#FBFAFF;
     border:1px solid rgba(75,0,232,.12);
     margin-bottom:14px;
     display:flex;
@@ -246,51 +267,60 @@
 .selected-box h4{
     margin:0;
     color:var(--orb-text);
-    font-size:1.1rem;
-    font-weight:950;
+    font-size:17px;
+    font-weight:900;
 }
 
 .selected-box p{
     margin:4px 0 0;
     color:var(--orb-muted);
-    font-size:.78rem;
+    font-size:12px;
     font-weight:650;
 }
 
 .table-wrap{
     border:1px solid #EEF1F6;
-    border-radius:18px;
-    overflow:hidden;
+    border-radius:16px;
+    overflow:auto;
 }
 
 .org-table{
     margin:0;
+    min-width:760px;
 }
 
 .org-table thead th{
     border-top:0;
-    background:#FBFCFF;
+    background:#F8FAFC;
     color:#667085;
-    font-size:.72rem;
-    font-weight:950;
+    font-size:11px;
+    font-weight:900;
     text-transform:uppercase;
-    padding:13px 15px;
+    letter-spacing:.4px;
+    padding:12px 14px;
+    white-space:nowrap;
 }
 
 .org-table tbody td{
     border-top:1px solid #F0F2F7;
-    padding:14px 15px;
+    padding:12px 14px;
     vertical-align:middle;
-    font-size:.84rem;
-    font-weight:700;
+    font-size:13px;
+    font-weight:650;
+    color:#344054;
+}
+
+.org-table tbody tr:hover{
+    background:#FCFAFF;
 }
 
 .status-pill{
     display:inline-flex;
     border-radius:999px;
-    padding:7px 10px;
-    font-size:.72rem;
-    font-weight:950;
+    padding:6px 9px;
+    font-size:11px;
+    font-weight:900;
+    white-space:nowrap;
 }
 
 .status-active{
@@ -304,49 +334,52 @@
 }
 
 .empty-state{
-    padding:44px 18px;
+    padding:40px 18px;
     text-align:center;
 }
 
 .empty-icon{
-    width:68px;
-    height:68px;
-    border-radius:24px;
+    width:64px;
+    height:64px;
+    border-radius:22px;
     background:#F4F2FF;
     color:var(--orb-primary);
     display:flex;
     align-items:center;
     justify-content:center;
-    margin:0 auto 13px;
-    font-size:1.55rem;
+    margin:0 auto 12px;
+    font-size:24px;
 }
 
 .empty-state h4{
     margin:0;
     color:var(--orb-text);
-    font-weight:950;
+    font-weight:900;
+    font-size:18px;
 }
 
 .empty-state p{
     margin:7px 0 0;
     color:var(--orb-muted);
-    font-size:.86rem;
+    font-size:13px;
     font-weight:650;
 }
 
 .modal-content{
     border:0;
-    border-radius:22px;
+    border-radius:20px;
     box-shadow:0 25px 70px rgba(15,23,42,.18);
+    overflow:hidden;
 }
 
 .modal-header{
     border-bottom:1px solid #EEF1F6;
     padding:16px 18px;
+    background:#fff;
 }
 
 .modal-title{
-    font-weight:950;
+    font-weight:900;
     color:var(--orb-text);
 }
 
@@ -354,19 +387,29 @@
     padding:18px;
 }
 
+.modal-footer{
+    border-top:1px solid #EEF1F6;
+    padding:14px 18px;
+    background:#FCFCFD;
+}
+
 .form-label{
-    font-size:.78rem;
+    font-size:12px;
     font-weight:900;
     color:#344054;
 }
 
 .form-control,
 .form-select{
-    min-height:44px;
-    border-radius:13px;
+    min-height:42px;
+    border-radius:12px;
     border:1px solid #DDE3EE;
-    font-size:.86rem;
+    font-size:13px;
     font-weight:650;
+}
+
+textarea.form-control{
+    min-height:86px;
 }
 
 .form-control:focus,
@@ -375,13 +418,84 @@
     box-shadow:0 0 0 .16rem rgba(134,0,238,.10);
 }
 
+.readonly-field{
+    background:#F8F5FF!important;
+    border-color:rgba(75,0,232,.14)!important;
+    color:var(--orb-primary)!important;
+    font-weight:900!important;
+}
+
+.alert{
+    border:0;
+    border-radius:16px;
+    box-shadow:var(--orb-shadow);
+    font-weight:650;
+}
+
 @media(max-width:991px){
     .org-layout{
         grid-template-columns:1fr;
     }
-    .org-hero{
+
+    .dept-list{
+        max-height:none;
+    }
+
+    .org-header{
         flex-direction:column;
         align-items:flex-start;
+    }
+
+    .org-header .btn-orb{
+        width:auto;
+    }
+}
+
+@media(max-width:575px){
+    .org-page{
+        padding:10px 8px 24px;
+    }
+
+    .org-header,
+    .org-card{
+        border-radius:16px;
+    }
+
+    .org-header h3{
+        font-size:21px;
+    }
+
+    .org-card-head{
+        flex-direction:column;
+        align-items:flex-start;
+    }
+
+    .org-card-head .btn-orb,
+    .org-header .btn-orb{
+        width:100%;
+    }
+
+    .selected-box{
+        flex-direction:column;
+        align-items:flex-start;
+    }
+
+    .selected-box .d-flex{
+        width:100%;
+    }
+
+    .selected-box .btn-edit,
+    .selected-box .btn-delete{
+        flex:1;
+        width:auto;
+    }
+
+    .dept-meta{
+        max-width:190px;
+    }
+
+    .modal-dialog{
+        margin:10px;
     }
 }
 </style>
@@ -390,11 +504,15 @@
     <div class="org-container">
 
         @if(session('success'))
-            <div class="alert alert-success rounded-4">{{ session('success') }}</div>
+            <div class="alert alert-success">{{ session('success') }}</div>
+        @endif
+
+        @if(session('error'))
+            <div class="alert alert-danger">{{ session('error') }}</div>
         @endif
 
         @if($errors->any())
-            <div class="alert alert-danger rounded-4">
+            <div class="alert alert-danger">
                 <strong>Please fix these errors:</strong>
                 <ul class="mb-0 mt-2">
                     @foreach($errors->all() as $error)
@@ -404,34 +522,33 @@
             </div>
         @endif
 
-        <div class="org-hero">
+        <div class="org-header">
             <div>
-                <h3>Department & Designation Setup</h3>
-                <p>Manage company departments and map designations department-wise for clean employee onboarding.</p>
+                <h3>Department & Designation</h3>
+                <p>Manage departments and designation mapping for employee onboarding.</p>
             </div>
 
-            <button class="btn btn-light fw-bold rounded-pill px-4" onclick="openDeptModal()">
+            <button type="button" class="btn btn-orb" onclick="openDeptModal()">
                 <i class="fas fa-plus mr-1"></i> Add Department
             </button>
         </div>
 
         <div class="org-layout">
 
-            {{-- LEFT: DEPARTMENTS --}}
             <div class="org-card">
                 <div class="org-card-head">
                     <div class="org-title">
                         <div class="org-icon"><i class="fas fa-building"></i></div>
                         <div>
                             <h5>Departments</h5>
-                            <p>Select department to manage designations</p>
+                            <p>Select department</p>
                         </div>
                     </div>
                 </div>
 
                 <div class="org-body">
                     <div class="dept-list">
-                        @foreach($departments as $dept)
+                        @forelse($departments as $dept)
                             @php
                                 $count = $designations->where('department_id', $dept->id)->count();
                                 $initial = strtoupper(substr($dept->name ?? 'D', 0, 1));
@@ -450,23 +567,28 @@
 
                                 <span class="dept-code">{{ $dept->code }}</span>
                             </div>
-                        @endforeach
+                        @empty
+                            <div class="empty-state">
+                                <div class="empty-icon"><i class="fas fa-building"></i></div>
+                                <h4>No departments</h4>
+                                <p>Add first department to start.</p>
+                            </div>
+                        @endforelse
                     </div>
                 </div>
             </div>
 
-            {{-- RIGHT: DESIGNATIONS --}}
             <div class="org-card">
                 <div class="org-card-head">
                     <div class="org-title">
                         <div class="org-icon"><i class="fas fa-id-badge"></i></div>
                         <div>
                             <h5>Designations</h5>
-                            <p id="designationSubTitle">Select department from left side</p>
+                            <p id="designationSubTitle">Select department first</p>
                         </div>
                     </div>
 
-                    <button class="btn-orb" id="addDesignationBtn" onclick="openDesModal()" disabled>
+                    <button type="button" class="btn-orb" id="addDesignationBtn" onclick="openDesModal()" disabled>
                         <i class="fas fa-plus mr-1"></i> Add Designation
                     </button>
                 </div>
@@ -475,7 +597,7 @@
                     <div id="noDeptState" class="empty-state">
                         <div class="empty-icon"><i class="fas fa-hand-pointer"></i></div>
                         <h4>Select a department</h4>
-                        <p>Click any department from left side to see related designations.</p>
+                        <p>Click any department to manage its designations.</p>
                     </div>
 
                     <div id="designationPanel" style="display:none;">
@@ -486,15 +608,15 @@
                             </div>
 
                             <div class="d-flex gap-2 flex-wrap">
-                                <button class="btn-edit" onclick="openSelectedDeptEdit()">
-                                    <i class="fas fa-edit mr-1"></i> Edit Dept
+                                <button type="button" class="btn-edit" onclick="openSelectedDeptEdit()" title="Edit Department">
+                                    <i class="fas fa-edit"></i>
                                 </button>
 
                                 <form id="deleteDeptForm" method="POST" style="display:inline;">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="button" class="btn-delete" onclick="confirmDelete(this.form)">
-                                        <i class="fas fa-trash mr-1"></i> Delete Dept
+                                    <button type="button" class="btn-delete" onclick="confirmDelete(this.form)" title="Delete Department">
+                                        <i class="fas fa-trash"></i>
                                     </button>
                                 </form>
                             </div>
@@ -508,7 +630,7 @@
                                         <th>Code</th>
                                         <th>Description</th>
                                         <th>Status</th>
-                                        <th width="150">Action</th>
+                                        <th width="110">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody id="designationList"></tbody>
@@ -517,7 +639,7 @@
 
                         <div id="noDesignationState" class="empty-state" style="display:none;">
                             <div class="empty-icon"><i class="fas fa-id-card"></i></div>
-                            <h4>No designations added</h4>
+                            <h4>No designations</h4>
                             <p>Add first designation for this department.</p>
                         </div>
                     </div>
@@ -528,7 +650,6 @@
     </div>
 </div>
 
-{{-- DEPARTMENT MODAL --}}
 <div class="modal fade" id="deptModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <form id="deptForm" method="POST" class="modal-content">
@@ -550,7 +671,8 @@
 
                 <div class="mb-3">
                     <label class="form-label">Code</label>
-                    <input type="text" name="code" id="dept_code" class="form-control" placeholder="HR" maxlength="3" required>
+                    <input type="text" id="dept_code" class="form-control readonly-field" value="Auto Generated" readonly>
+                    <div class="small text-muted mt-1">Auto generated like DEP-001.</div>
                 </div>
 
                 <div class="mb-0">
@@ -567,7 +689,6 @@
     </div>
 </div>
 
-{{-- DESIGNATION MODAL --}}
 <div class="modal fade" id="desModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <form id="desForm" method="POST" class="modal-content">
@@ -585,7 +706,7 @@
             <div class="modal-body">
                 <div class="mb-3">
                     <label class="form-label">Selected Department</label>
-                    <input type="text" id="des_dept_name" class="form-control" readonly>
+                    <input type="text" id="des_dept_name" class="form-control readonly-field" readonly>
                 </div>
 
                 <div class="mb-3">
@@ -595,7 +716,8 @@
 
                 <div class="mb-3">
                     <label class="form-label">Code</label>
-                    <input type="text" name="code" id="des_code" class="form-control" placeholder="Optional code">
+                    <input type="text" id="des_code" class="form-control readonly-field" value="Auto Generated" readonly>
+                    <div class="small text-muted mt-1">Auto generated based on department.</div>
                 </div>
 
                 <div class="mb-3">
@@ -629,36 +751,84 @@ let selectedDept = null;
 function showModal(id) {
     if (window.jQuery && typeof $('#' + id).modal === 'function') {
         $('#' + id).modal('show');
-    } else {
-        document.getElementById(id).classList.add('show');
-        document.getElementById(id).style.display = 'block';
-        document.body.classList.add('modal-open');
+        return;
     }
+
+    document.getElementById(id).classList.add('show');
+    document.getElementById(id).style.display = 'block';
+    document.body.classList.add('modal-open');
 }
 
-function hideModal(id) {
-    if (window.jQuery && typeof $('#' + id).modal === 'function') {
-        $('#' + id).modal('hide');
+function getNextDeptPreviewCode() {
+    const depCodes = departments
+        .map(d => d.code || '')
+        .filter(code => code.startsWith('DEP-'))
+        .map(code => parseInt(code.split('-').pop(), 10))
+        .filter(num => !isNaN(num));
+
+    const next = depCodes.length ? Math.max(...depCodes) + 1 : departments.length + 1;
+
+    return 'DEP-' + String(next).padStart(3, '0');
+}
+
+function getDeptPrefix(deptName) {
+    const name = (deptName || '').toLowerCase();
+
+    const map = [
+        ['engineering', 'ENG'], ['web', 'WEB'], ['mobile', 'APP'],
+        ['quality', 'QA'], ['ui', 'DES'], ['ux', 'DES'], ['design', 'DES'],
+        ['human', 'HR'], ['hr', 'HR'], ['finance', 'FIN'], ['accounts', 'ACC'],
+        ['sales', 'SAL'], ['business', 'BD'], ['marketing', 'MKT'],
+        ['product', 'PROD'], ['project', 'PM'], ['devops', 'DEV'], ['operations', 'OPS'],
+    ];
+
+    for (const item of map) {
+        if (name.includes(item[0])) return item[1];
     }
+
+    const clean = (deptName || 'DES').replace(/[^A-Za-z]/g, '').toUpperCase();
+
+    return clean.substring(0, 3) || 'DES';
+}
+
+function getNextDesPreviewCode() {
+    if (!selectedDept) return 'AUTO';
+
+    const prefix = getDeptPrefix(selectedDept.name);
+
+    const nums = allDesignations
+        .filter(d => Number(d.department_id) === Number(selectedDept.id))
+        .map(d => d.code || '')
+        .filter(code => code.startsWith(prefix + '-'))
+        .map(code => parseInt(code.split('-').pop(), 10))
+        .filter(num => !isNaN(num));
+
+    const next = nums.length ? Math.max(...nums) + 1 : 1;
+
+    return prefix + '-' + String(next).padStart(3, '0');
 }
 
 function openDeptModal(){
     document.getElementById('deptModalTitle').innerText = 'Add Department';
-    document.getElementById('deptForm').action = "{{ route('departments.store') }}";
+    document.getElementById('deptForm').action = "{{ route('hrms.organization.departments.store') }}";
     document.getElementById('deptMethodBox').innerHTML = '';
+
     document.getElementById('dept_name').value = '';
-    document.getElementById('dept_code').value = '';
+    document.getElementById('dept_code').value = getNextDeptPreviewCode();
     document.getElementById('dept_address').value = '';
+
     showModal('deptModal');
 }
 
 function editDept(dept){
     document.getElementById('deptModalTitle').innerText = 'Edit Department';
-    document.getElementById('deptForm').action = "{{ url('/hrms/departments') }}/" + dept.id;
+    document.getElementById('deptForm').action = "{{ url('/hrms/organization/departments') }}/" + dept.id;
     document.getElementById('deptMethodBox').innerHTML = '<input type="hidden" name="_method" value="PUT">';
+
     document.getElementById('dept_name').value = dept.name || '';
     document.getElementById('dept_code').value = dept.code || '';
     document.getElementById('dept_address').value = dept.address || '';
+
     showModal('deptModal');
 }
 
@@ -671,6 +841,7 @@ function selectDepartment(dept){
     selectedDept = dept;
 
     document.querySelectorAll('.dept-item').forEach(item => item.classList.remove('active'));
+
     const activeItem = document.getElementById('deptItem' + dept.id);
     if (activeItem) activeItem.classList.add('active');
 
@@ -681,7 +852,7 @@ function selectDepartment(dept){
     document.getElementById('selectedDeptName').innerText = dept.name || '-';
     document.getElementById('selectedDeptMeta').innerText = 'Code: ' + (dept.code || '-') + ' • ' + (dept.address || '-');
     document.getElementById('designationSubTitle').innerText = 'Managing designations for ' + (dept.name || '-');
-    document.getElementById('deleteDeptForm').action = "{{ url('/hrms/departments') }}/" + dept.id;
+    document.getElementById('deleteDeptForm').action = "{{ url('/hrms/organization/departments') }}/" + dept.id;
 
     renderDesignations();
 }
@@ -712,11 +883,11 @@ function renderDesignations(){
                 <td><span class="status-pill ${statusClass}">${statusText}</span></td>
                 <td>
                     <div class="d-flex gap-1 flex-wrap">
-                        <button type="button" class="btn-edit" onclick='editDes(${JSON.stringify(d)})'>
+                        <button type="button" class="btn-edit" onclick='editDes(${JSON.stringify(d).replace(/'/g, '&#039;')})'>
                             <i class="fas fa-edit"></i>
                         </button>
 
-                        <form method="POST" action="{{ url('/hrms/designations') }}/${d.id}">
+                        <form method="POST" action="{{ url('/hrms/organization/designations') }}/${d.id}">
                             @csrf
                             <input type="hidden" name="_method" value="DELETE">
                             <button type="button" class="btn-delete" onclick="confirmDelete(this.form)">
@@ -737,27 +908,31 @@ function openDesModal(){
     }
 
     document.getElementById('desModalTitle').innerText = 'Add Designation';
-    document.getElementById('desForm').action = "{{ route('designations.store') }}";
+    document.getElementById('desForm').action = "{{ route('hrms.organization.designations.store') }}";
     document.getElementById('desMethodBox').innerHTML = '';
+
     document.getElementById('des_dept').value = selectedDept.id;
     document.getElementById('des_dept_name').value = selectedDept.name || '';
     document.getElementById('des_name').value = '';
-    document.getElementById('des_code').value = '';
+    document.getElementById('des_code').value = getNextDesPreviewCode();
     document.getElementById('des_description').value = '';
     document.getElementById('des_is_active').value = '1';
+
     showModal('desModal');
 }
 
 function editDes(d){
     document.getElementById('desModalTitle').innerText = 'Edit Designation';
-    document.getElementById('desForm').action = "{{ url('/hrms/designations') }}/" + d.id;
+    document.getElementById('desForm').action = "{{ url('/hrms/organization/designations') }}/" + d.id;
     document.getElementById('desMethodBox').innerHTML = '<input type="hidden" name="_method" value="PUT">';
+
     document.getElementById('des_dept').value = d.department_id || selectedDept.id;
     document.getElementById('des_dept_name').value = selectedDept ? selectedDept.name : '';
     document.getElementById('des_name').value = d.name || '';
     document.getElementById('des_code').value = d.code || '';
     document.getElementById('des_description').value = d.description || '';
     document.getElementById('des_is_active').value = Number(d.is_active) === 1 ? '1' : '0';
+
     showModal('desModal');
 }
 

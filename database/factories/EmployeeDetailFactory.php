@@ -2,8 +2,8 @@
 
 namespace Database\Factories;
 
-use App\Models\Employee;
-use App\Models\EmployeeDetail;
+use App\Models\HRMS\Employee\EmployeeM as Employee;
+use App\Models\HRMS\Employee\EmployeeProfileM as EmployeeDetail;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class EmployeeDetailFactory extends Factory

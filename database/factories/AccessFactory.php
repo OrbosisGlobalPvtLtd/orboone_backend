@@ -2,9 +2,9 @@
 
 namespace Database\Factories;
 
-use App\Models\Access;
-use App\Models\Menu;
-use App\Models\Role;
+use App\Models\Core\AccessM as Access;
+use App\Models\Core\MenuM as Menu;
+use App\Models\Core\RoleM as Role;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class AccessFactory extends Factory

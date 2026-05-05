@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\ScoreCategory;
+use App\Models\HRMS\Employee\ScoreCategoryM as ScoreCategory;
 use Illuminate\Database\Seeder;
 
 class ScoreCategorySeeder extends Seeder

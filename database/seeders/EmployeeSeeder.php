@@ -2,12 +2,12 @@
 
 namespace Database\Seeders;
 
-use App\Models\Announcement;
-use App\Models\Employee;
-use App\Models\EmployeeDetail;
-use App\Models\EmployeeLeave;
-use App\Models\Recruitment;
-use App\Models\User;
+use App\Models\HRMS\Announcement\AnnouncementM as Announcement;
+use App\Models\HRMS\Employee\EmployeeM as Employee;
+use App\Models\HRMS\Employee\EmployeeProfileM as EmployeeDetail;
+use App\Models\HRMS\Leave\EmployeeLeaveM as EmployeeLeave;
+use App\Models\HRMS\Employee\RecruitmentM as Recruitment;
+use App\Models\Core\UserM as User;
 use Illuminate\Database\Seeder;
 
 class EmployeeSeeder extends Seeder

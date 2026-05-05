@@ -2,8 +2,8 @@
 
 namespace Database\Factories;
 
-use App\Models\Position;
-use App\Models\Recruitment;
+use App\Models\HRMS\Employee\PositionM as Position;
+use App\Models\HRMS\Employee\RecruitmentM as Recruitment;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class RecruitmentFactory extends Factory

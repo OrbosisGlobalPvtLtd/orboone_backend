@@ -3,11 +3,11 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use App\Models\Employee;
-use App\Models\Attendance;
-use App\Models\SalaryStructure;
-use App\Models\Payroll;
-use App\Models\Payslip;
+use App\Models\HRMS\Employee\EmployeeM as Employee;
+use App\Models\HRMS\Attendance\AttendanceM as Attendance;
+use App\Models\HRMS\Payroll\SalaryStructureM as SalaryStructure;
+use App\Models\HRMS\Payroll\PayrollM as Payroll;
+use App\Models\HRMS\Payroll\PayslipM as Payslip;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Barryvdh\DomPDF\Facade\Pdf;

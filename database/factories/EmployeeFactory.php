@@ -2,10 +2,10 @@
 
 namespace Database\Factories;
 
-use App\Models\Department;
-use App\Models\Employee;
-use App\Models\Position;
-use App\Models\User;
+use App\Models\HRMS\Department\DepartmentM as Department;
+use App\Models\HRMS\Employee\EmployeeM as Employee;
+use App\Models\HRMS\Employee\PositionM as Position;
+use App\Models\Core\UserM as User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class EmployeeFactory extends Factory

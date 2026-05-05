@@ -4,8 +4,8 @@ declare(strict_types = 1);
 
 namespace App\Charts;
 
-use App\Models\Attendance;
-use App\Models\AttendanceTime;
+use App\Models\HRMS\Attendance\AttendanceM as Attendance;
+use App\Models\HRMS\Attendance\AttendanceTimeM as AttendanceTime;
 use Carbon\Carbon;
 use Chartisan\PHP\Chartisan;
 use ConsoleTVs\Charts\BaseChart;

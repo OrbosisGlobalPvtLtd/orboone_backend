@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Shared;
 
-use App\Models\Attendance;
+use App\Models\HRMS\Attendance\AttendanceM as Attendance;
 use Carbon\Carbon;
-use App\Models\User;
+use App\Models\Core\UserM as User;
 
 class AttendanceService
 {

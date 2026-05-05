@@ -25,26 +25,35 @@ class MenuSeeder extends Seeder
 
             ['id'=>10, 'name'=>'Employee Management', 'route'=>null, 'icon'=>'fas fa-users-cog', 'module_key'=>'employees', 'parent_id'=>null, 'sort_order'=>10],
 
-            ['id'=>11, 'name'=>'Employee Directory', 'route'=>'employees.index', 'icon'=>'fas fa-address-book', 'module_key'=>'employees', 'parent_id'=>10, 'sort_order'=>1],
-            ['id'=>12, 'name'=>'Onboard Employee', 'route'=>'employees.create', 'icon'=>'fas fa-user-plus', 'module_key'=>'employees', 'parent_id'=>10, 'sort_order'=>2],
-            ['id'=>13, 'name'=>'Pending Profiles', 'route'=>'employees.pending-profiles', 'icon'=>'fas fa-user-clock', 'module_key'=>'employees', 'parent_id'=>10, 'sort_order'=>3],
-            ['id'=>15, 'name'=>'Probation / Internship', 'route'=>'employees.probation-internship', 'icon'=>'fas fa-hourglass-half', 'module_key'=>'employees', 'parent_id'=>10, 'sort_order'=>5],
-            ['id'=>16, 'name'=>'Exit Employees', 'route'=>'employees.exit', 'icon'=>'fas fa-user-times', 'module_key'=>'employees', 'parent_id'=>10, 'sort_order'=>6],
-            ['id'=>17, 'name'=>'Dept & Designation', 'route'=>'organization.index', 'icon'=>'fas fa-building', 'module_key'=>'employees', 'parent_id'=>10, 'sort_order'=>7],
-           ['id'=>18, 'name'=>'Reporting Structure', 'route'=>'employees.reporting-structure', 'icon'=>'fas fa-sitemap', 'module_key'=>'employees', 'parent_id'=>10, 'sort_order'=>8],
+            ['id'=>11, 'name'=>'Employee Directory', 'route'=>'hrms.employees.index', 'icon'=>'fas fa-address-book', 'module_key'=>'employees', 'parent_id'=>10, 'sort_order'=>1],
+            ['id'=>12, 'name'=>'Onboard Employee', 'route'=>'hrms.employees.create', 'icon'=>'fas fa-user-plus', 'module_key'=>'employees', 'parent_id'=>10, 'sort_order'=>2],
+            ['id'=>13, 'name'=>'Pending Profiles', 'route'=>'hrms.employees.pending_profiles', 'icon'=>'fas fa-user-clock', 'module_key'=>'employees', 'parent_id'=>10, 'sort_order'=>3],
+            ['id'=>15, 'name'=>'Probation / Internship', 'route'=>'hrms.employees.probation_internship', 'icon'=>'fas fa-hourglass-half', 'module_key'=>'employees', 'parent_id'=>10, 'sort_order'=>5],
+            ['id'=>16, 'name'=>'Exit Employees', 'route'=>'hrms.employees.exit', 'icon'=>'fas fa-user-times', 'module_key'=>'employees', 'parent_id'=>10, 'sort_order'=>6],
+            ['id'=>17, 'name'=>'Dept & Designation', 'route'=>'hrms.organization.index', 'icon'=>'fas fa-building', 'module_key'=>'employees', 'parent_id'=>10, 'sort_order'=>7],
+           ['id'=>18, 'name'=>'Reporting Structure', 'route'=>'hrms.employees.reporting_structure', 'icon'=>'fas fa-sitemap', 'module_key'=>'employees', 'parent_id'=>10, 'sort_order'=>8],
 
+        /*
+        |--------------------------------------------------------------------------
+        | Attendance
+        |--------------------------------------------------------------------------
+        */
 
-            /*
-            |--------------------------------------------------------------------------
-            | Attendance
-            |--------------------------------------------------------------------------
-            */
+        ['id'=>20, 'name'=>'Attendance & Tracking', 'route'=>null, 'icon'=>'fas fa-calendar-check', 'module_key'=>'attendance', 'parent_id'=>null, 'sort_order'=>20],
 
-            ['id'=>20, 'name'=>'Attendance & Tracking', 'route'=>null, 'icon'=>'fas fa-calendar-check', 'module_key'=>'attendance', 'parent_id'=>null, 'sort_order'=>20],
-            ['id'=>21, 'name'=>'Attendance Marking', 'route'=>'attendances', 'icon'=>'fas fa-fingerprint', 'module_key'=>'attendance', 'parent_id'=>20, 'sort_order'=>1],
-            ['id'=>22, 'name'=>'Task Tracking', 'route'=>'task_management', 'icon'=>'fas fa-tasks', 'module_key'=>'attendance', 'parent_id'=>20, 'sort_order'=>2],
-            ['id'=>23, 'name'=>'Attendance Rules', 'route'=>'attendances', 'icon'=>'fas fa-exclamation-triangle', 'module_key'=>'attendance', 'parent_id'=>20, 'sort_order'=>3],
-            ['id'=>24, 'name'=>'Generate Report', 'route'=>'attendances.export-pdf', 'icon'=>'fas fa-file-pdf', 'module_key'=>'attendance', 'parent_id'=>20, 'sort_order'=>4],
+        ['id'=>21, 'name'=>'Attendance Dashboard', 'route'=>'attendances.index', 'icon'=>'fas fa-chart-line', 'module_key'=>'attendance', 'parent_id'=>20, 'sort_order'=>1],
+
+        ['id'=>22, 'name'=>'Daily Attendance', 'route'=>'attendances.daily', 'icon'=>'fas fa-fingerprint', 'module_key'=>'attendance', 'parent_id'=>20, 'sort_order'=>2],
+
+        ['id'=>23, 'name'=>'Pending HR Approval', 'route'=>'attendances.pending-approval', 'icon'=>'fas fa-user-clock', 'module_key'=>'attendance', 'parent_id'=>20, 'sort_order'=>3],
+
+        ['id'=>24, 'name'=>'Attendance Rules', 'route'=>'attendance.rules.index', 'icon'=>'fas fa-business-time', 'module_key'=>'attendance', 'parent_id'=>20, 'sort_order'=>4],
+
+        ['id'=>25, 'name'=>'Attendance Types', 'route'=>'attendance.types.index', 'icon'=>'fas fa-tags', 'module_key'=>'attendance', 'parent_id'=>20, 'sort_order'=>5],
+
+        ['id'=>26, 'name'=>'Monthly Report', 'route'=>'attendances.monthly-report', 'icon'=>'fas fa-calendar-alt', 'module_key'=>'attendance', 'parent_id'=>20, 'sort_order'=>6],
+
+        ['id'=>27, 'name'=>'Export Report', 'route'=>'attendances.export-pdf', 'icon'=>'fas fa-file-pdf', 'module_key'=>'attendance', 'parent_id'=>20, 'sort_order'=>7],
 
 
             /*
@@ -82,9 +91,9 @@ class MenuSeeder extends Seeder
             */
 
             ['id'=>50, 'name'=>'Document Management', 'route'=>null, 'icon'=>'fas fa-folder-open', 'module_key'=>'documents', 'parent_id'=>null, 'sort_order'=>50],
-            ['id'=>51, 'name'=>'Compliance Management', 'route'=>'hr.documents.index', 'icon'=>'fas fa-shield-alt', 'module_key'=>'documents', 'parent_id'=>50, 'sort_order'=>1],
-            ['id'=>52, 'name'=>'Upload Documents', 'route'=>'employee.documents-index', 'icon'=>'fas fa-file-upload', 'module_key'=>'documents', 'parent_id'=>50, 'sort_order'=>2],
-            ['id'=>53, 'name'=>'Company Documents', 'route'=>'employee.hr-policies', 'icon'=>'fas fa-file-contract', 'module_key'=>'documents', 'parent_id'=>50, 'sort_order'=>3],
+            ['id'=>51, 'name'=>'Compliance Management', 'route'=>'hrms.documents.hr.index', 'icon'=>'fas fa-shield-alt', 'module_key'=>'documents', 'parent_id'=>50, 'sort_order'=>1],
+            ['id'=>52, 'name'=>'Upload Documents', 'route'=>'hrms.documents.self.index', 'icon'=>'fas fa-file-upload', 'module_key'=>'documents', 'parent_id'=>50, 'sort_order'=>2],
+            ['id'=>53, 'name'=>'Company Documents', 'route'=>'hrms.documents.policies.self', 'icon'=>'fas fa-file-contract', 'module_key'=>'documents', 'parent_id'=>50, 'sort_order'=>3],
 
 
             /*
@@ -101,6 +110,9 @@ class MenuSeeder extends Seeder
             ['id'=>73, 'name'=>'Admin Users', 'route'=>'admins.index', 'icon'=>'fas fa-user-cog', 'module_key'=>'access_control', 'parent_id'=>70, 'sort_order'=>3],
 
             ['id'=>80, 'name'=>'Settings', 'route'=>null, 'icon'=>'fas fa-cogs', 'module_key'=>'settings', 'parent_id'=>null, 'sort_order'=>80],
+            ['id'=>81, 'name'=>'System Settings', 'route'=>'settings.system.index', 'icon'=>'fas fa-sliders-h', 'module_key'=>'settings', 'parent_id'=>80, 'sort_order'=>1],
+            ['id'=>82, 'name'=>'Company Settings', 'route'=>'settings.company.index', 'icon'=>'fas fa-building', 'module_key'=>'settings', 'parent_id'=>80, 'sort_order'=>2],
+            ['id'=>83, 'name'=>'My Profile', 'route'=>'profile.index', 'icon'=>'fas fa-user-circle', 'module_key'=>'settings', 'parent_id'=>80, 'sort_order'=>3],
 
             ['id'=>90, 'name'=>'CRM', 'route'=>'module.crm', 'icon'=>'fas fa-handshake', 'module_key'=>'crm', 'parent_id'=>null, 'sort_order'=>90],
         ];

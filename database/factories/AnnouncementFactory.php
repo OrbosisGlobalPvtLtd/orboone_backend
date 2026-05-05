@@ -2,8 +2,8 @@
 
 namespace Database\Factories;
 
-use App\Models\Announcement;
-use App\Models\Employee;
+use App\Models\HRMS\Announcement\AnnouncementM as Announcement;
+use App\Models\HRMS\Employee\EmployeeM as Employee;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class AnnouncementFactory extends Factory

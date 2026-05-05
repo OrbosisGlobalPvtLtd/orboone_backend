@@ -3,8 +3,8 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use App\Models\EmployeeDocumentModal;
-use App\Models\Employee;
+use App\Models\HRMS\Document\EmployeeDocumentM as EmployeeDocumentModal;
+use App\Models\HRMS\Employee\EmployeeM as Employee;
 
 class AddEmployeeIdToEmployeeDocuments extends Migration
 {

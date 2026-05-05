@@ -2,158 +2,109 @@
 
 namespace App\Exceptions;
 
-use Throwable;
-use Illuminate\Auth\AuthenticationException;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
-use Illuminate\Http\Exceptions\ThrottleRequestsException;
-use Illuminate\Http\Exceptions\PostTooLargeException;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Database\QueryException;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Validation\ValidationException;
-use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
-use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
+use Throwable;
 
 class Handler extends ExceptionHandler
 {
-    /**
-     * A list of the exception types that are not reported.
-     *
-     * @var array<int, class-string<Throwable>>
-     */
-    protected $dontReport = [
-        //
-    ];
-
-    /**
-     * A list of the inputs that are never flashed for validation exceptions.
-     *
-     * @var array<int, string>
-     */
-    protected $dontFlash = [
-        'password',
-        'password_confirmation',
-        'current_password',
-    ];
-
-    /**
-     * Register the exception handling callbacks for the application.
-     */
-    public function register(): void
-    {
-        $this->reportable(function (Throwable $e) {
-            //
-        });
-    }
-
     /**
      * Render an exception into an HTTP response.
      */
     public function render($request, Throwable $exception)
     {
         if ($request->expectsJson() || $request->is('api/*')) {
-            return $this->handleApiException($request, $exception);
+
+            $statusCode = 500;
+            $message = $exception->getMessage();
+            $errors = null;
+
+            if ($exception instanceof ValidationException) {
+                $statusCode = 422;
+                $message = 'Validation failed';
+                $errors = $exception->errors();
+            }
+
+            if ($exception instanceof AuthenticationException) {
+                $statusCode = 401;
+                $message = 'Unauthenticated';
+            }
+
+            if ($exception instanceof ModelNotFoundException) {
+                $statusCode = 404;
+                $message = 'Record not found';
+            }
+
+            if ($exception instanceof NotFoundHttpException) {
+                $statusCode = 404;
+                $message = 'Route not found';
+            }
+
+            if ($exception instanceof QueryException) {
+                $statusCode = 500;
+                $message = 'Database Error';
+
+                if (config('app.debug')) {
+                    $errors = [
+                        'sql_message' => $exception->getMessage(),
+                        'sql_code' => $exception->getCode(),
+                    ];
+                }
+            }
+
+            if ($exception instanceof HttpException) {
+                $statusCode = $exception->getStatusCode();
+            }
+
+            $debugTrace = collect($exception->getTrace())
+                ->map(function ($trace) {
+                    return [
+                        'file' => $trace['file'] ?? null,
+                        'line' => $trace['line'] ?? null,
+                        'class' => $trace['class'] ?? null,
+                        'function' => $trace['function'] ?? null,
+                    ];
+                })
+                ->filter(function ($trace) {
+                    return !empty($trace['file']);
+                })
+                ->values();
+
+            $projectTrace = $debugTrace
+                ->filter(function ($trace) {
+                    return str_contains($trace['file'], base_path('app'))
+                        || str_contains($trace['file'], base_path('routes'))
+                        || str_contains($trace['file'], base_path('resources'));
+                })
+                ->values();
+
+            return response()->json([
+                'success' => false,
+                'message' => $message,
+
+                'errors' => $errors,
+
+                'debug' => config('app.debug') ? [
+                    'exception' => get_class($exception),
+                    'file' => $exception->getFile(),
+                    'line' => $exception->getLine(),
+
+                    // ✅ Tumhare project ki actual files
+                    'project_trace' => $projectTrace->take(15),
+
+                    // ✅ Full trace short
+                    'trace' => $debugTrace->take(20),
+                ] : null,
+
+                'data' => null,
+            ], $statusCode);
         }
 
         return parent::render($request, $exception);
-    }
-
-    /**
-     * Handle API exceptions in a clean JSON format.
-     */
-    protected function handleApiException($request, Throwable $exception): JsonResponse
-    {
-        if ($exception instanceof ValidationException) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed.',
-                'errors' => $exception->errors(),
-                'data' => null,
-            ], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
-
-        if ($exception instanceof AuthenticationException) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthenticated.',
-                'errors' => null,
-                'data' => null,
-            ], Response::HTTP_UNAUTHORIZED);
-        }
-
-        if ($exception instanceof ModelNotFoundException) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Requested record not found.',
-                'errors' => null,
-                'data' => null,
-            ], Response::HTTP_NOT_FOUND);
-        }
-
-        if ($exception instanceof NotFoundHttpException) {
-            return response()->json([
-                'success' => false,
-                'message' => 'API route not found.',
-                'errors' => null,
-                'data' => null,
-            ], Response::HTTP_NOT_FOUND);
-        }
-
-        if ($exception instanceof MethodNotAllowedHttpException) {
-            return response()->json([
-                'success' => false,
-                'message' => 'HTTP method not allowed for this endpoint.',
-                'errors' => null,
-                'data' => null,
-            ], Response::HTTP_METHOD_NOT_ALLOWED);
-        }
-
-        if ($exception instanceof ThrottleRequestsException) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Too many requests. Please try again later.',
-                'errors' => null,
-                'data' => null,
-            ], Response::HTTP_TOO_MANY_REQUESTS);
-        }
-
-        if ($exception instanceof PostTooLargeException) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Uploaded file is too large.',
-                'errors' => null,
-                'data' => null,
-            ], Response::HTTP_REQUEST_ENTITY_TOO_LARGE);
-        }
-
-        if ($exception instanceof HttpExceptionInterface) {
-            return response()->json([
-                'success' => false,
-                'message' => $exception->getMessage() ?: Response::$statusTexts[$exception->getStatusCode()] ?? 'HTTP error.',
-                'errors' => null,
-                'data' => null,
-            ], $exception->getStatusCode());
-        }
-
-        Log::error('API Exception', [
-            'message' => $exception->getMessage(),
-            'file' => $exception->getFile(),
-            'line' => $exception->getLine(),
-            'trace' => $exception->getTraceAsString(),
-        ]);
-
-        return response()->json([
-            'success' => false,
-            'message' => config('app.debug')
-                ? $exception->getMessage()
-                : 'Internal server error.',
-            'errors' => config('app.debug') ? [
-                'file' => $exception->getFile(),
-                'line' => $exception->getLine(),
-            ] : null,
-            'data' => null,
-        ], Response::HTTP_INTERNAL_SERVER_ERROR);
     }
 }

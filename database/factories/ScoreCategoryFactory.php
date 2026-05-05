@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Models\ScoreCategory;
+use App\Models\HRMS\Employee\ScoreCategoryM as ScoreCategory;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class ScoreCategoryFactory extends Factory

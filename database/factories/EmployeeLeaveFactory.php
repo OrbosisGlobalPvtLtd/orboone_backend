@@ -2,8 +2,8 @@
 
 namespace Database\Factories;
 
-use App\Models\Employee;
-use App\Models\EmployeeLeave;
+use App\Models\HRMS\Employee\EmployeeM as Employee;
+use App\Models\HRMS\Leave\EmployeeLeaveM as EmployeeLeave;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class EmployeeLeaveFactory extends Factory

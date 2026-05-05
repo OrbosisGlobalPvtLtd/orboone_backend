@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Models\AttendanceType;
+use App\Models\HRMS\Attendance\AttendanceTypeM as AttendanceType;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class AttendanceTypeFactory extends Factory

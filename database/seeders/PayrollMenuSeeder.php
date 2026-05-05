@@ -3,9 +3,9 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use App\Models\Menu;
-use App\Models\Role;
-use App\Models\Access;
+use App\Models\Core\MenuM as Menu;
+use App\Models\Core\RoleM as Role;
+use App\Models\Core\AccessM as Access;
 
 class PayrollMenuSeeder extends Seeder
 {

@@ -4,7 +4,7 @@ $app = require_once 'bootstrap/app.php';
 $app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
 
 use App\Models\Payroll;
-use App\Models\Employee;
+use App\Models\HRMS\Employee;
 use Carbon\Carbon;
 
 echo "=== MONTHLY PAYROLL FIX VERIFICATION ===\n\n";

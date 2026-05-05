@@ -4,8 +4,8 @@ declare(strict_types = 1);
 
 namespace App\Charts;
 
-use App\Models\EmployeeScore;
-use App\Models\ScoreCategory;
+use App\Models\HRMS\Employee\EmployeeScoreM as EmployeeScore;
+use App\Models\HRMS\Employee\ScoreCategoryM as ScoreCategory;
 use Carbon\Carbon;
 use Chartisan\PHP\Chartisan;
 use ConsoleTVs\Charts\BaseChart;

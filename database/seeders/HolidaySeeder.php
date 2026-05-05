@@ -14,7 +14,7 @@ class HolidaySeeder extends Seeder
     public function run()
     {
         // Clear existing holidays
-        \App\Models\Holiday::truncate();
+        \App\Models\HRMS\Leave\HolidayM::truncate();
 
         $holidays = [
             ['name' => 'Makar Sankrant', 'date' => '2026-01-14'],
@@ -31,7 +31,7 @@ class HolidaySeeder extends Seeder
         ];
 
         foreach ($holidays as $holiday) {
-            \App\Models\Holiday::create($holiday);
+            \App\Models\HRMS\Leave\HolidayM::create($holiday);
         }
     }
 }

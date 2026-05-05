@@ -2,10 +2,10 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Attendance;
-use App\Models\AttendanceTime;
-use App\Models\AttendanceType;
-use App\Models\EmployeeLeaveRequest;
+use App\Models\HRMS\Attendance\AttendanceM as Attendance;
+use App\Models\HRMS\Attendance\AttendanceTimeM as AttendanceTime;
+use App\Models\HRMS\Attendance\AttendanceTypeM as AttendanceType;
+use App\Models\HRMS\Leave\EmployeeLeaveRequestM as EmployeeLeaveRequest;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 

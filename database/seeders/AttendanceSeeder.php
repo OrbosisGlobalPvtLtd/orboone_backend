@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\AttendanceTime;
-use App\Models\AttendanceType;
+use App\Models\HRMS\Attendance\AttendanceTimeM as AttendanceTime;
+use App\Models\HRMS\Attendance\AttendanceTypeM as AttendanceType;
 use Illuminate\Database\Seeder;
 
 class AttendanceSeeder extends Seeder

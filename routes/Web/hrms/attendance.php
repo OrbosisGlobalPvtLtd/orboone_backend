@@ -1,24 +1,44 @@
 <?php
 
-use App\Http\Controllers\AttendancesController;
+use App\Http\Controllers\Web\HRMS\Attendance\AttendancesC;
 use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Attendance Routes
+| HRMS Attendance Routes
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth', 'check.access'])->group(function () {
-    Route::get('/attendances', [AttendancesController::class, 'index'])->name('attendances');
-    Route::get('/attendances/print', [AttendancesController::class, 'print'])->name('attendances_print');
-    Route::get('/attendances/export-pdf', [AttendancesController::class, 'exportPdf'])->name('attendances.export-pdf');
+Route::middleware(['auth', 'check.access', 'check.profile.complete'])
+    ->prefix('attendances')
+    ->name('attendances.')
+    ->group(function () {
+        Route::get('/', [AttendancesC::class, 'index'])->name('index');
 
-    Route::post('/attendances', [AttendancesController::class, 'store'])->name('attendances.store');
-    Route::put('/attendances', [AttendancesController::class, 'update'])->name('attendances.update');
-    Route::delete('/attendances/{attendance}', [AttendancesController::class, 'destroy'])->name('attendances.destroy');
+        Route::get('/daily', [AttendancesC::class, 'daily'])->name('daily');
+        Route::get('/pending-approval', [AttendancesC::class, 'pendingApproval'])->name('pending-approval');
+        Route::get('/monthly-report', [AttendancesC::class, 'monthlyReport'])->name('monthly-report');
 
-    Route::post('/attendances/unlock', [AttendancesController::class, 'unlock'])->name('attendances.unlock');
-    Route::post('/attendances/admin/punch-in', [AttendancesController::class, 'adminPunchIn'])->name('attendances.admin.punch-in');
-    Route::post('/attendances/admin/punch-out', [AttendancesController::class, 'adminPunchOut'])->name('attendances.admin.punch-out');
-});
+        Route::get('/print', [AttendancesC::class, 'print'])->name('print');
+        Route::get('/export-pdf', [AttendancesC::class, 'exportPdf'])->name('export-pdf');
+
+        Route::post('/', [AttendancesC::class, 'store'])->name('store');
+        Route::put('/', [AttendancesC::class, 'update'])->name('update');
+
+        Route::post('/unlock', [AttendancesC::class, 'unlock'])->name('unlock');
+        Route::post('/admin/punch-in', [AttendancesC::class, 'adminPunchIn'])->name('admin.punch-in');
+        Route::post('/admin/punch-out', [AttendancesC::class, 'adminPunchOut'])->name('admin.punch-out');
+    });
+
+Route::middleware(['auth', 'check.access'])
+    ->prefix('attendance-settings')
+    ->name('attendance.')
+    ->group(function () {
+        Route::get('/rules', [AttendancesC::class, 'rules'])->name('rules.index');
+        Route::put('/rules/{attendanceTime}', [AttendancesC::class, 'updateRule'])->name('rules.update');
+
+        Route::get('/types', [AttendancesC::class, 'types'])->name('types.index');
+        Route::post('/types', [AttendancesC::class, 'storeType'])->name('types.store');
+        Route::put('/types/{attendanceType}', [AttendancesC::class, 'updateType'])->name('types.update');
+        Route::delete('/types/{attendanceType}', [AttendancesC::class, 'destroyType'])->name('types.destroy');
+    });

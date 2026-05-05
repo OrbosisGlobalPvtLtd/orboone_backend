@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Models;
+namespace App\Models\ProjectManagement;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\User;
+use App\Models\Core\UserM as User;
 
 class TaskmanagementModel extends Model
 {

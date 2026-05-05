@@ -3,52 +3,34 @@
 use App\Http\Controllers\Web\Dashboard\DashboardC;
 use Illuminate\Support\Facades\Route;
 
-/*
-|--------------------------------------------------------------------------
-| Dashboard Routes
-|--------------------------------------------------------------------------
-*/
-
 Route::middleware(['auth'])->group(function () {
-
-    /*
-    |--------------------------------------------------------------------------
-    | Common Dashboard Redirect
-    |--------------------------------------------------------------------------
-    */
     Route::get('/dashboard', [DashboardC::class, 'redirectDashboard'])->name('dashboard');
 
-    /*
-    |--------------------------------------------------------------------------
-    | Admin Dashboard
-    |--------------------------------------------------------------------------
-    */
-    Route::middleware(['web.admin.access'])->group(function () {
-        Route::get('/admin/dashboard', [DashboardC::class, 'adminIndex'])->name('admin.dashboard');
-        Route::get('/generate-storage-link', [DashboardC::class, 'generateStorageLink']);
+    Route::prefix('dashboard')->name('dashboard.')->group(function () {
+        Route::get('/super-admin', [DashboardC::class, 'superAdmin'])->name('super_admin');
+        Route::get('/hr-admin', [DashboardC::class, 'hrAdmin'])->name('hr_admin');
+        Route::get('/finance-admin', [DashboardC::class, 'financeAdmin'])->name('finance_admin');
+        Route::get('/project-admin', [DashboardC::class, 'projectAdmin'])->name('project_admin');
+        Route::get('/operations-admin', [DashboardC::class, 'operationsAdmin'])->name('operations_admin');
+        Route::get('/custom-admin', [DashboardC::class, 'customAdmin'])->name('custom_admin');
+        Route::get('/employee', [DashboardC::class, 'employee'])->name('employee');
+    });
 
-        /*
-        |--------------------------------------------------------------------------
-        | Coming Soon Module Pages
-        |--------------------------------------------------------------------------
-        */
+    Route::get('/admin/dashboard', [DashboardC::class, 'adminIndex'])->name('admin.dashboard');
+    Route::get('/employee/dashboard', [DashboardC::class, 'employeeIndex'])->name('employee.dashboard');
+    Route::get('/generate-storage-link', [DashboardC::class, 'generateStorageLink']);
+
+    Route::middleware(['web.admin.access'])->group(function () {
         Route::get('/module/crm', function () {
-            return view('pages.coming-soon')->with('module', 'crm');
+            return view('settings.coming-soon')->with('module', 'crm');
         })->name('module.crm');
 
         Route::get('/module/project-mgmt', function () {
-            return view('pages.coming-soon')->with('module', 'project-mgmt');
+            return view('settings.coming-soon')->with('module', 'project-mgmt');
         })->name('module.project-mgmt');
 
         Route::get('/module/finance', function () {
-            return view('pages.coming-soon')->with('module', 'finance');
+            return view('settings.coming-soon')->with('module', 'finance');
         })->name('module.finance');
     });
-
-    /*
-    |--------------------------------------------------------------------------
-    | Employee Dashboard
-    |--------------------------------------------------------------------------
-    */
-    Route::get('/employee/dashboard', [DashboardC::class, 'employeeIndex'])->name('employee.dashboard');
 });

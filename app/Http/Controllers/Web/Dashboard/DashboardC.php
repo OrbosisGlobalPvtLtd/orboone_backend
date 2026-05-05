@@ -3,154 +3,72 @@
 namespace App\Http\Controllers\Web\Dashboard;
 
 use App\Http\Controllers\Controller;
-use App\Models\Announcement;
-use App\Models\Attendance;
-use App\Models\Employee;
-use App\Models\RecruitmentCandidate;
-use Illuminate\Http\Request;
+use App\Services\HRMS\Dashboard\DashboardResolverS;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 
 class DashboardC extends Controller
 {
-    private $announcements;
-    private $employees;
-    private $recruitmentCandidates;
+    private DashboardResolverS $dashboardResolver;
 
-    public function __construct()
+    public function __construct(DashboardResolverS $dashboardResolver)
     {
         $this->middleware('auth');
-
-        $this->announcements = resolve(Announcement::class);
-        $this->employees = resolve(Employee::class);
-        $this->recruitmentCandidates = resolve(RecruitmentCandidate::class);
+        $this->dashboardResolver = $dashboardResolver;
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | COMMON REDIRECT
-    |--------------------------------------------------------------------------
-    */
-    
     public function redirectDashboard()
     {
-        $user = auth()->user();
+        $role = $this->dashboardResolver->resolveRole(auth()->user());
 
-        if ($user->isAdmin()) {
-            return redirect()->route('admin.dashboard');
-        }
-
-        return redirect()->route('employee.dashboard');
+        return redirect()->route($this->dashboardResolver->routeNameFor($role));
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | ADMIN DASHBOARD
-    |--------------------------------------------------------------------------
-    */
+    public function superAdmin()
+    {
+        return $this->renderRoleDashboard('super_admin');
+    }
+
+    public function hrAdmin()
+    {
+        return $this->renderRoleDashboard('hr_admin');
+    }
+
+    public function financeAdmin()
+    {
+        return $this->renderRoleDashboard('finance_admin');
+    }
+
+    public function projectAdmin()
+    {
+        return $this->renderRoleDashboard('project_admin');
+    }
+
+    public function operationsAdmin()
+    {
+        return $this->renderRoleDashboard('operations_admin');
+    }
+
+    public function customAdmin()
+    {
+        return $this->renderRoleDashboard('custom_admin');
+    }
+
+    public function employee()
+    {
+        return $this->renderRoleDashboard('employee');
+    }
+
     public function adminIndex()
     {
-        $user = auth()->user();
-
-        $announcements = $this->announcements->paginate();
-        $employeesCount = $this->employees->getCount();
-        $recruitmentCandidatesCount = $this->recruitmentCandidates->getCount();
-        $endingEmployees = $this->employees->getEndingContractEmployees();
-
-        $todayStatus = $this->getTodayStatus();
-
-        return view(
-            'dashboard.admin',
-            compact(
-                'announcements',
-                'employeesCount',
-                'recruitmentCandidatesCount',
-                'endingEmployees',
-                'todayStatus'
-            )
-        );
+        return $this->redirectDashboard();
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | EMPLOYEE DASHBOARD
-    |--------------------------------------------------------------------------
-    */
     public function employeeIndex()
     {
-        $user = auth()->user();
-
-        $attendanceRecords = Attendance::where('user_id', $user->id)
-            ->orderBy('date', 'DESC')
-            ->paginate(5);
-
-        $todayStatus = $this->getTodayStatus();
-
-        return view(
-            'dashboard.employee',
-            compact(
-                'attendanceRecords',
-                'todayStatus'
-            )
-        );
+        return $this->redirectDashboard();
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | COMMON FUNCTION (REUSABLE)
-    |--------------------------------------------------------------------------
-    */
-    private function getTodayStatus()
-    {
-        $today = \Carbon\Carbon::now();
-
-        $holidays = \App\Models\Holiday::whereDate('date', $today->format('Y-m-d'))->get();
-        $nationalHolidays = \App\Models\NationalHoliday::whereDate('holiday_date', $today->format('Y-m-d'))->get();
-
-        $allHolidays = $holidays->pluck('name')->merge($nationalHolidays->pluck('name'));
-
-        $rawBirthdays = \App\Models\Employee::whereHas('employeeDetail', function ($query) use ($today) {
-            $query->whereMonth('date_of_birth', $today->month)
-                ->whereDay('date_of_birth', $today->day);
-        })
-        ->with(['user', 'employeeDetail', 'department'])
-        ->get();
-
-        $birthdays = $rawBirthdays->map(function ($emp) {
-
-            $empImageUrl = null;
-
-            if ($emp->employeeDetail && $emp->employeeDetail->image) {
-                $publicPath = public_path('uploads/employee/' . $emp->employeeDetail->image);
-                $storagePath = storage_path('app/public/' . $emp->employeeDetail->image);
-
-                if (file_exists($publicPath)) {
-                    $empImageUrl = asset('uploads/employee/' . $emp->employeeDetail->image);
-                } elseif (file_exists($storagePath)) {
-                    $empImageUrl = asset('storage/' . $emp->employeeDetail->image);
-                }
-            }
-
-            return (object) [
-                'employee_id' => $emp->employee_id,
-                'name' => $emp->user->name ?? 'Unknown',
-                'image_url' => $empImageUrl,
-                'department' => $emp->department->name ?? null,
-            ];
-        });
-
-        return (object) [
-            'is_holiday' => $allHolidays->isNotEmpty(),
-            'holidays' => $allHolidays,
-            'birthdays' => $birthdays,
-        ];
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | STORAGE LINK
-    |--------------------------------------------------------------------------
-    */
     public function generateStorageLink()
     {
         $link = public_path('storage');
@@ -158,7 +76,7 @@ class DashboardC extends Controller
         if (File::exists($link)) {
             return response()->json([
                 'status' => true,
-                'message' => 'Storage link already exists'
+                'message' => 'Storage link already exists',
             ]);
         }
 
@@ -167,14 +85,35 @@ class DashboardC extends Controller
 
             return response()->json([
                 'status' => true,
-                'message' => 'Storage link created successfully'
+                'message' => 'Storage link created successfully',
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'status' => false,
                 'message' => 'Failed to create storage link',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    private function renderRoleDashboard(string $requestedRole)
+    {
+        $user = auth()->user();
+
+        if (! $this->dashboardResolver->canViewRole($user, $requestedRole)) {
+            return redirect()->route('dashboard');
+        }
+
+        $role = $requestedRole === 'employee'
+            ? $this->dashboardResolver->resolveRole($user)
+            : $requestedRole;
+
+        if ($requestedRole === 'employee' && $role !== 'employee') {
+            return redirect()->route($this->dashboardResolver->routeNameFor($role));
+        }
+
+        $dashboard = $this->dashboardResolver->dashboardData($role, $user);
+
+        return view($this->dashboardResolver->viewFor($role), compact('dashboard'));
     }
 }

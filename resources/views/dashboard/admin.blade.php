@@ -746,7 +746,7 @@
 
         <div class="row">
             <div class="col-lg-3 col-md-6 mb-4">
-                <a href="{{ route('employees-data') }}" class="quick-action-card">
+                <a href="{{ route('hrms.employees.index') }}" class="quick-action-card">
                     <div class="quick-action-icon"><i class="fas fa-id-card"></i></div>
                     <h6>Employees</h6>
                     <p>View employee records, profile data and organization structure.</p>
@@ -754,7 +754,7 @@
             </div>
 
             <div class="col-lg-3 col-md-6 mb-4">
-                <a href="{{ route('attendances') }}" class="quick-action-card">
+                <a href="{{ route('attendances.index') }}" class="quick-action-card">
                     <div class="quick-action-icon" style="background:linear-gradient(135deg,#1cc88a,#16a36d);">
                         <i class="fas fa-clock"></i>
                     </div>
@@ -969,7 +969,7 @@
                                         <span class="status-pill {{ $bgClass }}">{{ $text }}</span>
                                     </td>
                                     <td>
-                                        <a href="{{ route('employees-data.edit', ['employee' => $employee->id]) }}" class="btn btn-orb">
+                                        <a href="{{ route('hrms.employees.edit', ['employee' => $employee->id]) }}" class="btn btn-orb">
                                             <i class="fas fa-sync-alt mr-1"></i> Renew
                                         </a>
                                     </td>

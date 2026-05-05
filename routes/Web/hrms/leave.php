@@ -1,6 +1,9 @@
 <?php
 
-use App\Http\Controllers\EmployeeLeaveRequestsController;
+use App\Http\Controllers\Web\HRMS\Leave\EmployeeLeaveRequestsC;
+use App\Http\Controllers\Web\HRMS\Leave\LeaveAllocationC;
+use App\Http\Controllers\Web\HRMS\Leave\LeaveApprovalC;
+use App\Http\Controllers\Web\HRMS\Leave\LeaveRequestC;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -15,31 +18,31 @@ Route::middleware(['auth', 'check.access'])->group(function () {
     | Employee Leave Request
     |--------------------------------------------------------------------------
     */
-    Route::get('/employees-leave-request/summary', [EmployeeLeaveRequestsController::class, 'summary'])
+    Route::get('/employees-leave-request/summary', [EmployeeLeaveRequestsC::class, 'summary'])
         ->name('employees-leave-request.summary');
 
-    Route::get('/employees-leave-request', [EmployeeLeaveRequestsController::class, 'index'])
+    Route::get('/employees-leave-request', [EmployeeLeaveRequestsC::class, 'index'])
         ->name('employees-leave-request');
 
-    Route::get('/employees-leave-request/create', [EmployeeLeaveRequestsController::class, 'create'])
+    Route::get('/employees-leave-request/create', [EmployeeLeaveRequestsC::class, 'create'])
         ->name('employees-leave-request.create');
 
-    Route::get('/employees-leave-request/print', [EmployeeLeaveRequestsController::class, 'print'])
+    Route::get('/employees-leave-request/print', [EmployeeLeaveRequestsC::class, 'print'])
         ->name('employees-leave-request.print');
 
-    Route::get('/employees-leave-request/{employeeLeaveRequest}', [EmployeeLeaveRequestsController::class, 'show'])
+    Route::get('/employees-leave-request/{employeeLeaveRequest}', [EmployeeLeaveRequestsC::class, 'show'])
         ->name('employees-leave-request.show');
 
-    Route::get('/employees-leave-request/{employeeLeaveRequest}/edit', [EmployeeLeaveRequestsController::class, 'edit'])
+    Route::get('/employees-leave-request/{employeeLeaveRequest}/edit', [EmployeeLeaveRequestsC::class, 'edit'])
         ->name('employees-leave-request.edit');
 
-    Route::post('/employees-leave-request', [EmployeeLeaveRequestsController::class, 'store'])
+    Route::post('/employees-leave-request', [EmployeeLeaveRequestsC::class, 'store'])
         ->name('employees-leave-request.store');
 
-    Route::put('/employees-leave-request/{employeeLeaveRequest}', [EmployeeLeaveRequestsController::class, 'update'])
+    Route::put('/employees-leave-request/{employeeLeaveRequest}', [EmployeeLeaveRequestsC::class, 'update'])
         ->name('employees-leave-request.update');
 
-    Route::delete('/employees-leave-request/{employeeLeaveRequest}', [EmployeeLeaveRequestsController::class, 'destroy'])
+    Route::delete('/employees-leave-request/{employeeLeaveRequest}', [EmployeeLeaveRequestsC::class, 'destroy'])
         ->name('employees-leave-request.destroy');
 
     /*
@@ -47,33 +50,33 @@ Route::middleware(['auth', 'check.access'])->group(function () {
     | New Leave Management
     |--------------------------------------------------------------------------
     */
-    Route::get('/leave-allocations', [\App\Http\Controllers\LeaveAllocationController::class, 'index'])
+    Route::get('/leave-allocations', [LeaveAllocationC::class, 'index'])
         ->name('leave-allocations.index');
 
-    Route::post('/leave-allocations/process', [\App\Http\Controllers\LeaveAllocationController::class, 'processAllocations'])
+    Route::post('/leave-allocations/process', [LeaveAllocationC::class, 'processAllocations'])
         ->name('leave-allocations.process');
 
-    Route::post('/leave-allocations/single', [\App\Http\Controllers\LeaveAllocationController::class, 'allocateSingle'])
+    Route::post('/leave-allocations/single', [LeaveAllocationC::class, 'allocateSingle'])
         ->name('leave-allocations.single');
 
-    Route::get('/leave-allocations/balance', [\App\Http\Controllers\LeaveAllocationController::class, 'getBalance'])
+    Route::get('/leave-allocations/balance', [LeaveAllocationC::class, 'getBalance'])
         ->name('leave-allocations.balance');
 
-    Route::get('/leave-requests', [\App\Http\Controllers\LeaveRequestController::class, 'index'])
+    Route::get('/leave-requests', [LeaveRequestC::class, 'index'])
         ->name('leave-requests.index');
 
-    Route::get('/leave-requests/create', [\App\Http\Controllers\LeaveRequestController::class, 'create'])
+    Route::get('/leave-requests/create', [LeaveRequestC::class, 'create'])
         ->name('leave-requests.create');
 
-    Route::post('/leave-requests', [\App\Http\Controllers\LeaveRequestController::class, 'store'])
+    Route::post('/leave-requests', [LeaveRequestC::class, 'store'])
         ->name('leave-requests.store');
 
-    Route::get('/leave-approvals', [\App\Http\Controllers\LeaveApprovalController::class, 'index'])
+    Route::get('/leave-approvals', [LeaveApprovalC::class, 'index'])
         ->name('leave-approvals.index');
 
-    Route::post('/leave-approvals/{id}/approve', [\App\Http\Controllers\LeaveApprovalController::class, 'approve'])
+    Route::post('/leave-approvals/{id}/approve', [LeaveApprovalC::class, 'approve'])
         ->name('leave-approvals.approve');
 
-    Route::post('/leave-approvals/{id}/reject', [\App\Http\Controllers\LeaveApprovalController::class, 'reject'])
+    Route::post('/leave-approvals/{id}/reject', [LeaveApprovalC::class, 'reject'])
         ->name('leave-approvals.reject');
 });

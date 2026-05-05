@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Models;
+namespace App\Models\HRMS\Document;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class DocumentTypeModal extends Model
+class DocumentTypeM extends Model
 {
 
         protected $table = 'document_types';

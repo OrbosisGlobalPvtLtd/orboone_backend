@@ -295,7 +295,7 @@
                             </div>
                         @endif
 
-                        <form method="POST" action="{{ route('employee.documents.upload') }}" enctype="multipart/form-data">
+                        <form method="POST" action="{{ route('hrms.documents.self.upload') }}" enctype="multipart/form-data">
                             @csrf
 
                             {{-- Employee Select --}}
@@ -434,7 +434,7 @@
                                                     @endif
 
                                                     @if(!in_array($doc->status, ['verified','approved']))
-                                                        <form action="{{ route('employee.documents.destroy', $doc->id) }}"
+                                                        <form action="{{ route('hrms.documents.self.destroy', $doc->id) }}"
                                                               method="POST"
                                                               onsubmit="return confirm('Remove this document? This cannot be undone.');">
                                                             @csrf @method('DELETE')

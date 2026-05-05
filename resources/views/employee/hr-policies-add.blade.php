@@ -21,7 +21,7 @@
 
         <h5 class="mb-3">Upload Policy</h5>
 
-        <form method="POST" enctype="multipart/form-data" action="{{ route('policies.store') }}">
+        <form method="POST" enctype="multipart/form-data" action="{{ route('hrms.documents.policies.store') }}">
             @csrf
 
             <div class="mb-3">

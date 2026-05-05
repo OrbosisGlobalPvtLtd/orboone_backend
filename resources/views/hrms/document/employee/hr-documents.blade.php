@@ -86,7 +86,7 @@
         <div class="container-fluid px-3 px-md-5">
             <div class="d-flex align-items-center justify-content-between flex-wrap gap-4">
                 <div>
-                    <a href="{{ route('hr.documents.index') }}" class="text-white small font-weight-bold mb-3 d-inline-block opacity-75 text-decoration-none">
+                    <a href="{{ route('hrms.documents.hr.index') }}" class="text-white small font-weight-bold mb-3 d-inline-block opacity-75 text-decoration-none">
                         <i class="fas fa-arrow-left mr-2"></i> Document Ledger
                     </a>
                     <h1 class="font-weight-bold mb-2">{{ $user->name }}</h1>
@@ -175,7 +175,7 @@
                                                 <i class="fas fa-eye"></i> View
                                             </a>
                                             @if($doc->status == 'pending')
-                                                <form action="{{ route('hr.documents.approve', $doc->id) }}" method="POST">
+                                                <form action="{{ route('hrms.documents.hr.approve', $doc->id) }}" method="POST">
                                                     @csrf
                                                     <button type="submit" class="btn-action btn-verify"><i class="fas fa-check"></i> Verify</button>
                                                 </form>
@@ -205,7 +205,7 @@
     <div class="modal fade" id="rejectModal{{ $doc->id }}" tabindex="-1" role="dialog">
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content border-0" style="border-radius:22px; box-shadow: 0 20px 50px rgba(0,0,0,0.2);">
-                <form action="{{ route('hr.documents.reject', $doc->id) }}" method="POST">
+                <form action="{{ route('hrms.documents.hr.reject', $doc->id) }}" method="POST">
                     @csrf
                     <div class="modal-body p-4 text-center">
                         <i class="fas fa-exclamation-circle text-danger fa-4x mb-4"></i>

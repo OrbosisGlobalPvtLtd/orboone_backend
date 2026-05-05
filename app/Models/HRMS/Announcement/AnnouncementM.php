@@ -1,16 +1,23 @@
 <?php
 
-namespace App\Models\Announcement;
+namespace App\Models\HRMS\Announcement;
 
+use App\Models\HRMS\Department\DepartmentM as Department;
+use App\Models\Core\UserM as User;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Announcement extends Model
+class AnnouncementM extends Model
 {
     use HasFactory;
-
+    protected $table = 'announcements';
     protected $guarded = [];
+
+    protected static function newFactory()
+    {
+        return \Database\Factories\AnnouncementFactory::new();
+    }
 
     public function creator() {
         return $this->belongsTo(User::class, 'created_by');

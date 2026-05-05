@@ -11,15 +11,16 @@
   
   <div class="row">
     <div class="col-12">
-        <h5 class="text-center font-weight-bold mb-3">Create A New Announcement</h5>
-        <form action="{{ route('announcements.store') }}" method="POST" enctype="multipart/form-data">
+        <h5 class="text-center font-weight-bold mb-3">Editing An Announcement</h5>
+        <form action="{{ route('announcements.update', ['announcement' => $announcement->id ]) }}" method="POST" enctype="multipart/form-data">
           @csrf
+          @method('PUT')
           <div class="mb-3">
             <div class="row">
               <div class="col-12">
                 <div class="form-group">
                   <label for="title">Title:</label>
-                  <input type="text" name="title" id="title" class="form-control @error('title') is-invalid @enderror" value="{{ old('title') }}" placeholder="Enter title" required>
+                  <input type="text" name="title" id="title" class="form-control @error('title') is-invalid @enderror" value="{{ $announcement->title }}" placeholder="Enter title" required>
                 </div>
                 @error('title')
                   <div class="alert alert-danger">{{ $message }}</div>
@@ -31,7 +32,7 @@
               <div class="col-12">
                 <div class="form-group">
                   <label for="description">Description:</label>
-                  <input type="text" name="description" id="description" class="form-control @error('description') is-invalid @enderror" value="{{ old('description') }}" placeholder="Enter description" required>
+                  <input type="text" name="description" id="description" class="form-control @error('description') is-invalid @enderror" value="{{ $announcement->description }}" placeholder="Enter description" required>
                 </div>
                 @error('description')
                   <div class="alert alert-danger">{{ $message }}</div>
@@ -44,9 +45,9 @@
                 <div class="form-group">
                   <label for="department_id">For:</label>
                   <select id="department_id" class="form-control @error('department_id') is-invalid @enderror" name="department_id">
-                    <option selected value="">All</option>
+                    <option value="">All</option>
                     @foreach ($departments as $department)
-                      <option value="{{ $department->id }}">{{ $department->name }}</option>
+                      <option value="{{ $department->id }}" {{ $department->id == $announcement->department_id ? 'selected' : '' }}>{{ $department->name }}</option>
                     @endforeach
                   </select>
                 </div>

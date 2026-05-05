@@ -1,13 +1,12 @@
 <?php
 
-use App\Http\Controllers\ClientController;
-
+use App\Http\Controllers\Web\CRM\ClientController;
+use App\Http\Controllers\Web\CRM\CustomerController;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
 | CRM / Client / Customer Routes
-|--------------------------------------------------------------------------
-| Agar future me CRM alag module banega to inko separate file me move kar dena.
 |--------------------------------------------------------------------------
 */
 

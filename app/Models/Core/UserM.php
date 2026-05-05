@@ -3,6 +3,7 @@
 namespace App\Models\Core;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -15,7 +16,7 @@ use App\Models\HRMS\Employee\EmployeeM;
 
 class UserM extends Authenticatable
 {
-    use HasApiTokens;
+    use HasApiTokens, HasFactory;
     protected $table = 'users';
      
 
@@ -76,6 +77,21 @@ class UserM extends Authenticatable
         return $this->hasOne(EmployeeM::class, 'user_id');
     }
 
+    protected static function newFactory()
+    {
+        return \Database\Factories\UserFactory::new();
+    }
+
+    public function paginate($count = 10)
+    {
+        return $this->with('role')->latest()->paginate($count);
+    }
+
+    public function getProfile()
+    {
+        return $this->with('employee')->where('id', auth()->id())->first();
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Role Helpers
@@ -111,6 +127,11 @@ class UserM extends Authenticatable
             'operations_admin',
             'custom_admin',
         ]);
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->hasRole('super_admin');
     }
 
     public function isEmployee(): bool

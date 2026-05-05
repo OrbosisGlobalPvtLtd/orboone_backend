@@ -2,10 +2,13 @@
 
 namespace App\Models\Core;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class MenuM extends Model
 {
+    use HasFactory;
+
     protected $table = 'menus';
 
     protected $fillable = [
@@ -26,5 +29,10 @@ class MenuM extends Model
     public function parent()
     {
         return $this->belongsTo(MenuM::class, 'parent_id');
+    }
+
+    protected static function newFactory()
+    {
+        return \Database\Factories\MenuFactory::new();
     }
 }

@@ -1,248 +1,147 @@
 <?php
 
-namespace App\Http\Controllers\Web\Access;
+namespace App\Http\Controllers\Web\AccessControl;
 
-use App\Http\Requests\StoreRoleRequest;
-use App\Models\Access;
-use App\Models\Log;
-use App\Models\Menu;
-use App\Models\Core\RoleM as Role;
-use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Web\AccessControl\StoreRoleRequest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
-class RolesController extends Controller
+class RoleC extends Controller
 {
-    private $roles;
-
-    public function __construct()
-    {
-        $this->middleware('auth');
-        $this->roles = resolve(Role::class);
-    }
-
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        $roles = $this->roles->paginate();
-        return view('pages.roles', compact('roles'));
+        $roles = DB::table('roles')
+            ->orderByDesc('is_system')
+            ->orderBy('name')
+            ->paginate(15);
+
+        return view('access_control.roles.index', compact('roles'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
-        $menus = Menu::all();
-        return view('pages.roles_create', compact('menus'));
+        return view('access_control.roles.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(StoreRoleRequest $request)
     {
-        DB::beginTransaction();
-
-        try {
-            $name = trim($request->input('name'));
-            $code = $request->filled('code')
-                ? Str::slug($request->input('code'), '_')
-                : Str::slug($name, '_');
-
-            // duplicate code avoid
-            $originalCode = $code;
-            $counter = 1;
-
-            while (Role::where('code', $code)->exists()) {
-                $code = $originalCode . '_' . $counter;
-                $counter++;
-            }
-
-            $role = Role::create([
-                'name'           => $name,
-                'code'           => $code,
-                'description'    => $request->input('description'),
-                'is_system'      => $request->boolean('is_system'),
-                'is_active'      => $request->has('is_active') ? $request->boolean('is_active') : true,
-                'is_super_admin' => $request->boolean('is_super_admin'),
-            ]);
-
-            if ($request->filled('menuAndAccessLevel') && is_array($request->menuAndAccessLevel)) {
-                foreach ($request->menuAndAccessLevel as $mna) {
-                    $key = key($mna);
-
-                    if ($key !== null) {
-                        Access::create([
-                            'role_id' => $role->id,
-                            'menu_id' => $key,
-                            'status'  => $mna[$key],
-                        ]);
-                    }
-                }
-            }
-
-            Log::create([
-                'description' => $this->actorName() . " created a role named '{$role->name}'",
-            ]);
-
-            DB::commit();
-
-            return redirect()->route('roles')->with('status', 'Successfully created a role.');
-        } catch (\Throwable $e) {
-            DB::rollBack();
-
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'Failed to create role. ' . $e->getMessage());
+        $slug = $this->normalizeSlug($request->slug ?: $request->name);
+        if ($this->slugExists($slug)) {
+            return back()->withErrors(['slug' => 'The role code has already been taken.'])->withInput();
         }
+
+        DB::table('roles')->insert([
+            'name' => $request->name,
+            'slug' => $slug,
+            'description' => $request->description,
+            'is_system' => $request->boolean('is_system'),
+            'status' => $request->boolean('status', true),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return redirect()
+            ->route('roles.index')
+            ->with('success', 'Role created successfully.');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Role $role)
+    public function show($role)
     {
-        $accessesForEditing = Access::where('role_id', $role->id)
-            ->with('menu', 'role')
-            ->orderBy('menu_id', 'ASC')
-            ->get();
+        $roleData = $this->findRole($role);
+        abort_if(! $roleData, 404);
 
-        return view('pages.roles_show', compact('accessesForEditing', 'role'));
+        return redirect()->route('roles.edit', $roleData->id);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Role $role)
+    public function edit($role)
     {
-        $accessesForEditing = Access::where('role_id', $role->id)
-            ->with('menu', 'role')
-            ->orderBy('menu_id', 'ASC')
-            ->get();
+        $roleData = $this->findRole($role);
+        abort_if(! $roleData, 404);
 
-        return view('pages.roles_edit', compact('accessesForEditing', 'role'));
+        return view('access_control.roles.edit', ['role' => $roleData]);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(StoreRoleRequest $request, Role $role)
+    public function update(StoreRoleRequest $request, $role)
     {
-        DB::beginTransaction();
+        $roleData = $this->findRole($role);
+        abort_if(! $roleData, 404);
 
-        try {
-            $name = trim($request->input('name'));
-            $code = $request->filled('code')
-                ? Str::slug($request->input('code'), '_')
-                : Str::slug($name, '_');
-
-            $originalCode = $code;
-            $counter = 1;
-
-            while (
-                Role::where('code', $code)
-                    ->where('id', '!=', $role->id)
-                    ->exists()
-            ) {
-                $code = $originalCode . '_' . $counter;
-                $counter++;
-            }
-
-            $role->update([
-                'name'           => $name,
-                'code'           => $code,
-                'description'    => $request->input('description'),
-                'is_system'      => $request->boolean('is_system'),
-                'is_active'      => $request->has('is_active') ? $request->boolean('is_active') : false,
-                'is_super_admin' => $request->boolean('is_super_admin'),
-            ]);
-
-            if ($request->filled('menuAndAccessLevel') && is_array($request->menuAndAccessLevel)) {
-                foreach ($request->menuAndAccessLevel as $mna) {
-                    $key = key($mna);
-
-                    if ($key !== null) {
-                        $access = Access::where([
-                            ['role_id', '=', $role->id],
-                            ['menu_id', '=', $key],
-                        ])->first();
-
-                        if ($access) {
-                            $access->update([
-                                'status' => $mna[$key],
-                            ]);
-                        } else {
-                            Access::create([
-                                'role_id' => $role->id,
-                                'menu_id' => $key,
-                                'status'  => $mna[$key],
-                            ]);
-                        }
-                    }
-                }
-            }
-
-            Log::create([
-                'description' => $this->actorName() . " updated role details named '{$role->name}'",
-            ]);
-
-            DB::commit();
-
-            return redirect()->route('roles')->with('status', 'Successfully updated role.');
-        } catch (\Throwable $e) {
-            DB::rollBack();
-
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'Failed to update role. ' . $e->getMessage());
+        $slug = $this->normalizeSlug($request->slug ?: $request->name);
+        if ($this->slugExists($slug, (int) $roleData->id)) {
+            return back()->withErrors(['slug' => 'The role code has already been taken.'])->withInput();
         }
+
+        DB::table('roles')->where('id', $roleData->id)->update([
+            'name' => $request->name,
+            'slug' => $slug,
+            'description' => $request->description,
+            'is_system' => $request->boolean('is_system'),
+            'status' => $request->boolean('status'),
+            'updated_at' => now(),
+        ]);
+
+        return redirect()
+            ->route('roles.index')
+            ->with('success', 'Role updated successfully.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Role $role)
+    public function destroy($role)
     {
-        DB::beginTransaction();
+        $roleData = $this->findRole($role);
+        abort_if(! $roleData, 404);
 
-        try {
-            if ((bool) $role->is_system) {
-                return redirect()->route('roles')->with('error', 'System roles cannot be deleted.');
+        if ($roleData->is_system || in_array($roleData->slug, ['super_admin'], true)) {
+            return back()->with('error', 'System roles cannot be deleted.');
+        }
+
+        $assignedUsers = DB::table('users')
+            ->where('system_role_id', $roleData->id)
+            ->count();
+
+        $assignedPivotUsers = DB::table('user_roles')
+            ->where('role_id', $roleData->id)
+            ->count();
+
+        if (($assignedUsers + $assignedPivotUsers) > 0) {
+            return back()->with('error', 'This role is assigned to users and cannot be deleted.');
+        }
+
+        DB::transaction(function () use ($roleData) {
+            DB::table('role_permissions')->where('role_id', $roleData->id)->delete();
+
+            if (DB::getSchemaBuilder()->hasTable('role_menu_access')) {
+                DB::table('role_menu_access')->where('role_id', $roleData->id)->delete();
             }
 
-            Access::where('role_id', $role->id)->delete();
-            $roleName = $role->name;
-            $role->delete();
+            DB::table('roles')->where('id', $roleData->id)->delete();
+        });
 
-            Log::create([
-                'description' => $this->actorName() . " deleted a role named '{$roleName}'",
-            ]);
-
-            DB::commit();
-
-            return redirect()->route('roles')->with('status', 'Successfully deleted role.');
-        } catch (\Throwable $e) {
-            DB::rollBack();
-
-            return redirect()->route('roles')->with('error', 'Failed to delete role. ' . $e->getMessage());
-        }
+        return redirect()
+            ->route('roles.index')
+            ->with('success', 'Role deleted successfully.');
     }
 
     public function print()
     {
-        $roles = $this->roles->all();
-        return view('pages.roles_print', compact('roles'));
+        return redirect()->route('roles.index');
     }
 
-    private function actorName(): string
+    private function findRole($role)
     {
-        $user = auth()->user();
+        return DB::table('roles')->where('id', $role)->first();
+    }
 
-        return $user->employee->name
-            ?? $user->name
-            ?? 'System User';
+    private function normalizeSlug(string $value): string
+    {
+        return Str::slug($value, '_');
+    }
+
+    private function slugExists(string $slug, ?int $ignoreId = null): bool
+    {
+        return DB::table('roles')
+            ->where('slug', $slug)
+            ->when($ignoreId, fn ($query) => $query->where('id', '!=', $ignoreId))
+            ->exists();
     }
 }

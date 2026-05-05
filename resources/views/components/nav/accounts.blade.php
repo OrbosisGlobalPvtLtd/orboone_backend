@@ -13,7 +13,7 @@
     </li>
 
     <li class="nav-item">
-        <a href="{{ route('roles') }}" class="nav-link">
+        <a href="{{ route('roles.index') }}" class="nav-link">
             <i class="fa-solid fa-user-shield mr-2"></i> Roles
         </a>
     </li>

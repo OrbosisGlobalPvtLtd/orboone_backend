@@ -11,10 +11,10 @@
         $canCompanyDocumentsView;
 
     $docOpen =
-        request()->routeIs('hr.documents*') ||
-        request()->routeIs('employee.documents-index') ||
-        request()->routeIs('employee.hr-documents') ||
-        request()->routeIs('employee.hr-policies');
+        request()->routeIs('hrms.documents.hr.*') ||
+        request()->routeIs('hrms.documents.self.index') ||
+        request()->routeIs('hrms.documents.self.index') ||
+        request()->routeIs('hrms.documents.policies.self');
 @endphp
 
 @if($showDocumentMenu)
@@ -35,24 +35,24 @@
     <div class="sidebar-submenu collapse {{ $docOpen ? 'show' : '' }}" id="docSubmenu" data-parent="#sidebarMenu">
 
         @if ($canComplianceManage)
-            <a href="{{ route('hr.documents.index') }}"
-               class="sub-link {{ request()->routeIs('hr.documents.index') ? 'active' : '' }}">
+            <a href="{{ route('hrms.documents.hr.index') }}"
+               class="sub-link {{ request()->routeIs('hrms.documents.hr.index') ? 'active' : '' }}">
                 <span class="sub-link-icon"><i class="fas fa-shield-alt"></i></span>
                 <span class="sub-link-text">Compliance Management</span>
             </a>
         @endif
 
         @if ($canDocumentUpload)
-            <a href="{{ route('employee.documents-index') }}"
-               class="sub-link {{ request()->routeIs('employee.documents-index') ? 'active' : '' }}">
+            <a href="{{ route('hrms.documents.self.index') }}"
+               class="sub-link {{ request()->routeIs('hrms.documents.self.index') ? 'active' : '' }}">
                 <span class="sub-link-icon"><i class="fas fa-file-upload"></i></span>
                 <span class="sub-link-text">Upload Documents</span>
             </a>
         @endif
 
         @if ($canCompanyDocumentsView)
-            <a href="{{ route('employee.hr-policies') }}"
-               class="sub-link {{ request()->routeIs('employee.hr-policies') ? 'active' : '' }}">
+            <a href="{{ route('hrms.documents.policies.self') }}"
+               class="sub-link {{ request()->routeIs('hrms.documents.policies.self') ? 'active' : '' }}">
                 <span class="sub-link-icon"><i class="fas fa-file-contract"></i></span>
                 <span class="sub-link-text">Company Documents</span>
             </a>

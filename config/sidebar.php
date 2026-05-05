@@ -34,7 +34,7 @@ return [
             [
                 'title' => 'Employees',
                 'icon' => 'fa-solid fa-users',
-                'route' => 'employees.index',
+                'route' => 'hrms.employees.index',
                 'permission' => 'employees.view',
                 'module' => 'hrms',
                 'roles' => ['super_admin', 'admin', 'hr_admin', 'custom_admin'],
@@ -42,7 +42,7 @@ return [
             [
                 'title' => 'Add Employee',
                 'icon' => 'fa-solid fa-user-plus',
-                'route' => 'employees.create',
+                'route' => 'hrms.employees.create',
                 'permission' => 'employees.create',
                 'module' => 'hrms',
                 'roles' => ['super_admin', 'admin', 'hr_admin', 'custom_admin'],
@@ -50,7 +50,7 @@ return [
             [
                 'title' => 'Departments',
                 'icon' => 'fa-solid fa-building',
-                'route' => 'departments.index',
+                'route' => 'hrms.departments.index',
                 'permission' => 'departments.manage',
                 'module' => 'hrms',
                 'roles' => ['super_admin', 'admin', 'hr_admin', 'custom_admin'],
@@ -58,7 +58,7 @@ return [
             [
                 'title' => 'Designations',
                 'icon' => 'fa-solid fa-id-badge',
-                'route' => 'designations.index',
+                'route' => 'hrms.designations.index',
                 'permission' => 'designations.manage',
                 'module' => 'hrms',
                 'roles' => ['super_admin', 'admin', 'hr_admin', 'custom_admin'],

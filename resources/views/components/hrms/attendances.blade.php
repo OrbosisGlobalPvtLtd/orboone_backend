@@ -13,8 +13,9 @@
         $canAttendanceReport;
 
     $attendanceOpen =
-        request()->routeIs('attendances*') ||
-        request()->routeIs('task_management*');
+        request()->routeIs('attendances.*') ||
+        request()->routeIs('attendance.*') ||
+        request()->routeIs('project_management.tasks.*');
 @endphp
 
 @if($showAttendanceMenu)
@@ -35,16 +36,16 @@
     <div class="sidebar-submenu collapse {{ $attendanceOpen ? 'show' : '' }}" id="attendanceSubmenu" data-parent="#sidebarMenu">
 
         @if ($canAttendanceMark)
-            <a href="{{ route('attendances') }}"
-               class="sub-link {{ request()->routeIs('attendances') ? 'active' : '' }}">
+            <a href="{{ route('attendances.index') }}"
+               class="sub-link {{ request()->routeIs('attendances.index') ? 'active' : '' }}">
                 <span class="sub-link-icon"><i class="fas fa-fingerprint"></i></span>
                 <span class="sub-link-text">Attendance Marking</span>
             </a>
         @endif
 
         @if ($canTaskTrack)
-            <a href="{{ route('task_management') }}"
-               class="sub-link {{ request()->routeIs('task_management') ? 'active' : '' }}">
+            <a href="{{ route('project_management.tasks.index') }}"
+               class="sub-link {{ request()->routeIs('project_management.tasks.index') ? 'active' : '' }}">
                 <span class="sub-link-icon"><i class="fas fa-tasks"></i></span>
                 <span class="sub-link-text">Task Tracking</span>
             </a>
@@ -55,8 +56,8 @@
         @endif
 
         @if ($canAttendanceRules)
-            <a href="{{ route('attendances') }}"
-               class="sub-link">
+            <a href="{{ route('attendance.rules.index') }}"
+               class="sub-link {{ request()->routeIs('attendance.rules.*') ? 'active' : '' }}">
                 <span class="sub-link-icon"><i class="fas fa-exclamation-triangle"></i></span>
                 <span class="sub-link-text">Attendance Rules</span>
             </a>

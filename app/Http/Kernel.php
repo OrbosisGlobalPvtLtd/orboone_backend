@@ -69,5 +69,6 @@ class Kernel extends HttpKernel
         'web.admin.access' => \App\Http\Middleware\EnsureWebAdminAccess::class,
         'permission' => \App\Http\Middleware\CheckPermission::class,
         'module' => \App\Http\Middleware\CheckModuleAccess::class,
+        'check.profile.complete' => \App\Http\Middleware\CheckProfileComplete::class,
     ];
 }

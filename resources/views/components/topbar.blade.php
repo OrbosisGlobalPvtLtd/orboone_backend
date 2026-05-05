@@ -82,6 +82,27 @@
 
                 <!-- PROFILE -->
                 @auth
+                @php
+                    $topbarUser = Auth::user();
+                    $topbarEmployee = $topbarUser?->employee;
+                    $topbarUserImage = trim((string) data_get($topbarUser, 'profile_image'));
+                    $topbarEmployeeImage = trim((string) data_get($topbarEmployee, 'profile.profile_image'));
+                    $topbarImage = $topbarUserImage !== '' ? $topbarUserImage : $topbarEmployeeImage;
+
+                    if ($topbarImage !== '' && preg_match('/^https?:\/\//i', $topbarImage)) {
+                        $topbarAvatar = $topbarImage;
+                    } elseif ($topbarImage !== '' && str_starts_with($topbarImage, '/')) {
+                        $topbarAvatar = $topbarImage;
+                    } elseif ($topbarImage !== '' && str_starts_with($topbarImage, 'storage/')) {
+                        $topbarAvatar = asset($topbarImage);
+                    } elseif ($topbarImage !== '') {
+                        $topbarAvatar = asset('storage/'.$topbarImage);
+                    } else {
+                        $topbarAvatar = null;
+                    }
+
+                    $topbarInitial = strtoupper(substr(trim($topbarUser?->name ?? ''), 0, 1));
+                @endphp
                 <div class="dropdown">
 
                     <div class="d-flex align-items-center"
@@ -97,18 +118,60 @@
                          onmouseover="this.style.background='#f9f9ff'"
                          onmouseout="this.style.background='#fff'">
 
-                        <img src="{{ asset('images/profile.png') }}"
-                             style="
-                                width: 36px;
-                                height: 36px;
-                                border-radius: 50%;
-                                object-fit: cover;
-                                margin-right: 8px;
-                             ">
+                        @if(!empty($topbarAvatar))
+                            <img src="{{ $topbarAvatar }}"
+                                 alt="{{ $topbarUser?->name ?? 'User' }}"
+                                 style="
+                                    width: 36px;
+                                    height: 36px;
+                                    border-radius: 50%;
+                                    object-fit: cover;
+                                    margin-right: 8px;
+                                 ">
+                            <div class="topbar-avatar-fallback" style="
+                                width:36px;
+                                height:36px;
+                                border-radius:50%;
+                                background:#F4F2FF;
+                                color:#4B00E8;
+                                display:none;
+                                align-items:center;
+                                justify-content:center;
+                                font-size:13px;
+                                font-weight:900;
+                                margin-right:8px;
+                            ">
+                                @if($topbarInitial)
+                                    {{ $topbarInitial }}
+                                @else
+                                    <i class="fas fa-user"></i>
+                                @endif
+                            </div>
+                        @else
+                            <div class="topbar-avatar-fallback" style="
+                                width:36px;
+                                height:36px;
+                                border-radius:50%;
+                                background:#F4F2FF;
+                                color:#4B00E8;
+                                display:flex;
+                                align-items:center;
+                                justify-content:center;
+                                font-size:13px;
+                                font-weight:900;
+                                margin-right:8px;
+                            ">
+                                @if($topbarInitial)
+                                    {{ $topbarInitial }}
+                                @else
+                                    <i class="fas fa-user"></i>
+                                @endif
+                            </div>
+                        @endif
 
                         <div class="d-none d-md-block" style="line-height:1.1;">
                             <div style="font-size: 14px; font-weight: 600; color:#111;">
-                                {{ Auth::user()->name }}
+                                {{ $topbarUser->name }}
                             </div>
                             <!-- <small style="color:#6b7280; font-size:11px;">
                                 HRMS User
@@ -122,8 +185,12 @@
                     <div class="dropdown-menu dropdown-menu-right shadow border-0"
                          style="border-radius: 12px; padding: 10px; min-width: 180px;">
 
-                        <a class="dropdown-item py-2 rounded" href="{{ route('profile') }}">
+                        <a class="dropdown-item py-2 rounded" href="{{ route('profile.index') }}">
                             <i class="fas fa-user mr-2 text-muted"></i> My Profile
+                        </a>
+
+                        <a class="dropdown-item py-2 rounded" href="{{ route('profile.index') }}#change-password">
+                            <i class="fas fa-lock mr-2 text-muted"></i> Change Password
                         </a>
 
                         <div class="dropdown-divider"></div>
@@ -146,3 +213,19 @@
         </div>
     </div>
 </nav>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.dropdown img').forEach(function (image) {
+            image.addEventListener('error', function () {
+                var fallback = image.nextElementSibling;
+
+                image.style.display = 'none';
+
+                if (fallback && fallback.classList.contains('topbar-avatar-fallback')) {
+                    fallback.style.display = 'flex';
+                }
+            });
+        });
+    });
+</script>

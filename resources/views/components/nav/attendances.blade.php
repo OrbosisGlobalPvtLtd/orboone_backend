@@ -1,6 +1,6 @@
 @php
     $isAdmin = auth()->user()->isAdmin();
-    $attendanceOpen = request()->routeIs('attendances*') || request()->routeIs('task_management*');
+    $attendanceOpen = request()->routeIs('attendances.*') || request()->routeIs('attendance.*') || request()->routeIs('project_management.tasks.*');
 @endphp
 
 {{-- ========== SECTION: 2. ATTENDANCE & TRACKING ========== --}}
@@ -15,14 +15,14 @@
     
     {{-- Sub-module: Attendance Marking (Employee/Both) --}}
     <li>
-        <a href="{{ route('attendances') }}" class="nav-link sub-nav-link {{ request()->routeIs('attendances') ? 'active' : '' }}">
+        <a href="{{ route('attendances.index') }}" class="nav-link sub-nav-link {{ request()->routeIs('attendances.index') ? 'active' : '' }}">
             <i class="fas fa-fingerprint small mr-2"></i> Attendance Marking
         </a>
     </li>
 
     {{-- Sub-module: Task Management (Linked here for tracking) --}}
     <li>
-        <a href="{{ route('task_management') }}" class="nav-link sub-nav-link {{ request()->routeIs('task_management') ? 'active' : '' }}">
+        <a href="{{ route('project_management.tasks.index') }}" class="nav-link sub-nav-link {{ request()->routeIs('project_management.tasks.index') ? 'active' : '' }}">
             <i class="fas fa-tasks small mr-2"></i> Task Tracking
         </a>
     </li>
@@ -32,7 +32,7 @@
     
     {{-- Sub-module: Late Coming Rules (Admin placeholder) --}}
     <li>
-        <a href="{{ route('attendances') }}" class="nav-link sub-nav-link">
+        <a href="{{ route('attendance.rules.index') }}" class="nav-link sub-nav-link {{ request()->routeIs('attendance.rules.*') ? 'active' : '' }}">
             <i class="fas fa-exclamation-triangle small mr-2 text-warning"></i> Attendance Rules
         </a>
     </li>

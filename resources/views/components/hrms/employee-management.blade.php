@@ -22,11 +22,11 @@
 
     $empOpen =
         request()->is('employees*') ||
-        request()->routeIs('employees-data*') ||
-        request()->routeIs('employees-performance-score*') ||
-        request()->routeIs('departments-data*') ||
-        request()->routeIs('positions-data*') ||
-        request()->routeIs('asset-allocations*');
+        request()->routeIs('hrms.employees.*') ||
+        request()->routeIs('hrms.employees.performance_scores.*') ||
+        request()->routeIs('hrms.departments.*') ||
+        request()->routeIs('hrms.designations.*') ||
+        request()->routeIs('hrms.assets.*');
 @endphp
 
 @if($showEmployeeMenu)
@@ -47,24 +47,24 @@
     <div class="sidebar-submenu collapse {{ $empOpen ? 'show' : '' }}" id="employeeMenu" data-parent="#sidebarMenu">
 
         @if ($canEmployeeCreate)
-            <a href="{{ route('employees-data.create') }}"
-               class="sub-link {{ request()->routeIs('employees-data.create') ? 'active' : '' }}">
+            <a href="{{ route('hrms.employees.create') }}"
+               class="sub-link {{ request()->routeIs('hrms.employees.create') ? 'active' : '' }}">
                 <span class="sub-link-icon"><i class="fas fa-user-plus"></i></span>
                 <span class="sub-link-text">Employee Onboarding</span>
             </a>
         @endif
 
         @if ($canEmployeeView)
-            <a href="{{ route('employees-data') }}"
-               class="sub-link {{ request()->routeIs('employees-data') ? 'active' : '' }}">
+            <a href="{{ route('hrms.employees.index') }}"
+               class="sub-link {{ request()->routeIs('hrms.employees.index') ? 'active' : '' }}">
                 <span class="sub-link-icon"><i class="fas fa-id-card"></i></span>
                 <span class="sub-link-text">Profile Management</span>
             </a>
         @endif
 
         @if ($canPerformanceView)
-            <a href="{{ route('employees-performance-score') }}"
-               class="sub-link {{ request()->routeIs('employees-performance-score') ? 'active' : '' }}">
+            <a href="{{ route('hrms.employees.performance_scores.index') }}"
+               class="sub-link {{ request()->routeIs('hrms.employees.performance_scores.index') ? 'active' : '' }}">
                 <span class="sub-link-icon"><i class="fas fa-chart-line"></i></span>
                 <span class="sub-link-text">Performance Score</span>
             </a>
@@ -75,15 +75,15 @@
         @endif
 
         @if ($canDepartmentManage)
-            <a href="{{ route('departments-data') }}"
-               class="sub-link {{ request()->routeIs('departments-data') ? 'active' : '' }}">
+            <a href="{{ route('hrms.departments.index') }}"
+               class="sub-link {{ request()->routeIs('hrms.departments.index') ? 'active' : '' }}">
                 <span class="sub-link-icon"><i class="fas fa-building"></i></span>
                 <span class="sub-link-text">Dept & Designation</span>
             </a>
         @endif
 
         @if ($canOrgHierarchyManage)
-            <a href="{{ route('employees-data') }}"
+            <a href="{{ route('hrms.employees.index') }}"
                class="sub-link">
                 <span class="sub-link-icon"><i class="fas fa-sitemap"></i></span>
                 <span class="sub-link-text">Org Hierarchy</span>
@@ -91,7 +91,7 @@
         @endif
 
         @if ($canProbationManage)
-            <a href="{{ route('employees-data') }}"
+            <a href="{{ route('hrms.employees.index') }}"
                class="sub-link">
                 <span class="sub-link-icon"><i class="fas fa-user-check"></i></span>
                 <span class="sub-link-text">Probation & Confirm</span>
@@ -99,15 +99,15 @@
         @endif
 
         @if ($canAssetManage)
-            <a href="{{ route('asset-allocations.index') }}"
-               class="sub-link {{ request()->routeIs('asset-allocations.index') ? 'active' : '' }}">
+            <a href="{{ route('hrms.assets.index') }}"
+               class="sub-link {{ request()->routeIs('hrms.assets.index') ? 'active' : '' }}">
                 <span class="sub-link-icon"><i class="fas fa-laptop-code"></i></span>
                 <span class="sub-link-text">Asset Allocation</span>
             </a>
         @endif
 
         @if ($canDirectoryView)
-            <a href="{{ route('employees-data') }}"
+            <a href="{{ route('hrms.employees.index') }}"
                class="sub-link">
                 <span class="sub-link-icon"><i class="fas fa-address-book"></i></span>
                 <span class="sub-link-text">Employee Directory</span>

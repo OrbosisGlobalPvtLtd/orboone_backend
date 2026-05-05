@@ -1,11 +1,12 @@
 <?php
 
-use App\Http\Controllers\AnnouncementsController;
-use App\Http\Controllers\LogsController;
-use App\Http\Controllers\ProfilesController;
-use App\Http\Controllers\RolesController;
-use App\Http\Controllers\ScoreCategoriesController;
-use App\Http\Controllers\UsersController;
+use App\Http\Controllers\Web\HRMS\Announcement\AnnouncementsC;
+use App\Http\Controllers\Web\Settings\CompanySettingsController;
+use App\Http\Controllers\Web\Settings\LogsController;
+use App\Http\Controllers\Web\Settings\ProfilesController;
+use App\Http\Controllers\Web\Settings\ScoreCategoriesController;
+use App\Http\Controllers\Web\Settings\SystemSettingsController;
+use App\Http\Controllers\Web\Settings\UsersController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -20,14 +21,14 @@ Route::middleware(['auth', 'check.access'])->group(function () {
     | Announcements
     |--------------------------------------------------------------------------
     */
-    Route::get('/announcements', [AnnouncementsController::class, 'index'])->name('announcements');
-    Route::get('/announcements/create', [AnnouncementsController::class, 'create'])->name('announcements.create');
-    Route::get('/announcements/print', [AnnouncementsController::class, 'print'])->name('announcements.print');
-    Route::get('/announcements/{announcement}', [AnnouncementsController::class, 'show'])->name('announcements.show');
-    Route::get('/announcements/{announcement}/edit', [AnnouncementsController::class, 'edit'])->name('announcements.edit');
-    Route::post('/announcements', [AnnouncementsController::class, 'store'])->name('announcements.store');
-    Route::put('/announcements/{announcement}', [AnnouncementsController::class, 'update'])->name('announcements.update');
-    Route::delete('/announcements/{announcement}', [AnnouncementsController::class, 'destroy'])->name('announcements.destroy');
+    Route::get('/announcements', [AnnouncementsC::class, 'index'])->name('announcements');
+    Route::get('/announcements/create', [AnnouncementsC::class, 'create'])->name('announcements.create');
+    Route::get('/announcements/print', [AnnouncementsC::class, 'print'])->name('announcements.print');
+    Route::get('/announcements/{announcement}', [AnnouncementsC::class, 'show'])->name('announcements.show');
+    Route::get('/announcements/{announcement}/edit', [AnnouncementsC::class, 'edit'])->name('announcements.edit');
+    Route::post('/announcements', [AnnouncementsC::class, 'store'])->name('announcements.store');
+    Route::put('/announcements/{announcement}', [AnnouncementsC::class, 'update'])->name('announcements.update');
+    Route::delete('/announcements/{announcement}', [AnnouncementsC::class, 'destroy'])->name('announcements.destroy');
 
     /*
     |--------------------------------------------------------------------------
@@ -60,23 +61,22 @@ Route::middleware(['auth', 'check.access'])->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | Roles
-    |--------------------------------------------------------------------------
-    */
-    Route::get('/roles', [RolesController::class, 'index'])->name('roles');
-    Route::get('/roles/create', [RolesController::class, 'create'])->name('roles.create');
-    Route::get('/roles/print', [RolesController::class, 'print'])->name('roles.print');
-    Route::get('/roles/{role}', [RolesController::class, 'show'])->name('roles.show');
-    Route::get('/roles/{role}/edit', [RolesController::class, 'edit'])->name('roles.edit');
-    Route::post('/roles', [RolesController::class, 'store'])->name('roles.store');
-    Route::put('/roles/{role}', [RolesController::class, 'update'])->name('roles.update');
-    Route::delete('/roles/{role}', [RolesController::class, 'destroy'])->name('roles.destroy');
-
-    /*
-    |--------------------------------------------------------------------------
     | Profile
     |--------------------------------------------------------------------------
     */
-    Route::get('/profile', [ProfilesController::class, 'index'])->name('profile');
-    Route::put('/profile/{user}', [ProfilesController::class, 'update'])->name('profile.update');
+    Route::get('/profile/view', function () {
+        return redirect()->route('profile.index');
+    })->name('profile');
+
+    Route::get('/profile', [ProfilesController::class, 'index'])->name('profile.index');
+    Route::put('/profile', [ProfilesController::class, 'update'])->name('profile.update');
+    Route::put('/profile/password', [ProfilesController::class, 'updatePassword'])->name('profile.password.update');
+});
+
+Route::middleware(['auth', 'web.admin.access'])->group(function () {
+    Route::get('/settings/system', [SystemSettingsController::class, 'index'])->name('settings.system.index');
+    Route::put('/settings/system', [SystemSettingsController::class, 'update'])->name('settings.system.update');
+
+    Route::get('/settings/company', [CompanySettingsController::class, 'index'])->name('settings.company.index');
+    Route::put('/settings/company', [CompanySettingsController::class, 'update'])->name('settings.company.update');
 });

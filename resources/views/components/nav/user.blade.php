@@ -12,18 +12,18 @@
 
       {{-- DATA MASTER --}}
     <li class="nav-item">
-        <a href="{{ route('departments-data') }}" class="nav-link">
+        <a href="{{ route('hrms.departments.index') }}" class="nav-link">
             <i class="fa-solid fa-building mr-2"></i> Departments
         </a>
     </li>
 
     <li class="nav-item">
-        <a href="{{ route('positions-data') }}" class="nav-link">
+        <a href="{{ route('hrms.designations.index') }}" class="nav-link">
             <i class="fa-solid fa-user-tie mr-2"></i> Designation
         </a>
     </li>
      <li class="nav-item">
-        <a href="{{ route('asset-allocations.index') }}" class="nav-link">
+        <a href="{{ route('hrms.assets.index') }}" class="nav-link">
             <i class="fa-solid fa-laptop-code mr-2"></i> Asset Allocation
         </a>
     </li>

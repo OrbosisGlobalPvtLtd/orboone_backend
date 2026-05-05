@@ -163,6 +163,7 @@
                 @php
                     $children = $menus[$menu->id] ?? collect();
                     $hasChildren = $children->count() > 0;
+                    $isParentMenu = $hasChildren || empty($menu->route);
 
                     $isOpen = false;
 
@@ -178,11 +179,13 @@
                     }
                 @endphp
 
-                @if($hasChildren)
+                @if($isParentMenu)
                     <div class="sidebar-group {{ $isOpen ? 'open' : '' }}">
-                        <button
-                            type="button"
+                        <a
+                            href="#"
+                            role="button"
                             class="sidebar-group-toggle {{ $isOpen ? '' : 'collapsed' }}"
+                            data-sidebar-parent
                             data-toggle="collapse"
                             data-target="#menu{{ $menu->id }}"
                             aria-expanded="{{ $isOpen ? 'true' : 'false' }}"
@@ -191,14 +194,18 @@
                             <span class="menu-icon"><i class="{{ $menu->icon }}"></i></span>
                             <span class="menu-text flex-grow-1">{{ $menu->name }}</span>
                             <span class="group-chevron"><i class="fas fa-chevron-down"></i></span>
-                        </button>
+                        </a>
 
                         <div class="sidebar-submenu collapse {{ $isOpen ? 'show' : '' }}"
                              id="menu{{ $menu->id }}"
                              data-parent="#sidebarMenu">
                             @foreach($children as $child)
-                                <a href="{{ $child->route && Route::has($child->route) ? route($child->route) : 'javascript:void(0)' }}"
-                                   class="sub-link {{ $child->route && request()->routeIs($child->route) ? 'active' : '' }}">
+                                @php
+                                    $childHasRoute = $child->route && Route::has($child->route);
+                                @endphp
+                                <a href="{{ $childHasRoute ? route($child->route) : '#' }}"
+                                   class="sub-link {{ $child->route && request()->routeIs($child->route) ? 'active' : '' }}"
+                                   @if(! $childHasRoute) data-sidebar-empty-link @endif>
                                     <span class="sub-link-icon"><i class="{{ $child->icon }}"></i></span>
                                     <span class="sub-link-text">{{ $child->name }}</span>
                                 </a>
@@ -225,3 +232,83 @@
         <div class="sidebar-footer-sub">v1.0 · {{ date('Y') }}</div>
     </div>
 </aside>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('[data-sidebar-parent], [data-sidebar-empty-link]').forEach(function (link) {
+            link.addEventListener('click', function (event) {
+                event.preventDefault();
+            });
+        });
+
+        var hasBootstrapCollapse = window.jQuery && window.jQuery.fn && window.jQuery.fn.collapse;
+
+        if (!hasBootstrapCollapse) {
+            document.querySelectorAll('[data-sidebar-parent]').forEach(function (toggle) {
+                toggle.addEventListener('click', function () {
+                    var targetSelector = toggle.getAttribute('data-target');
+                    var target = targetSelector ? document.querySelector(targetSelector) : null;
+                    var group = toggle.closest('.sidebar-group');
+
+                    if (!target || !group) {
+                        return;
+                    }
+
+                    var isOpen = target.classList.contains('show');
+
+                    document.querySelectorAll('#sidebarMenu .sidebar-submenu.show').forEach(function (submenu) {
+                        if (submenu !== target) {
+                            submenu.classList.remove('show');
+                            var submenuGroup = submenu.closest('.sidebar-group');
+                            var submenuToggle = submenuGroup ? submenuGroup.querySelector('[data-sidebar-parent]') : null;
+
+                            if (submenuGroup) {
+                                submenuGroup.classList.remove('open');
+                            }
+
+                            if (submenuToggle) {
+                                submenuToggle.classList.add('collapsed');
+                                submenuToggle.setAttribute('aria-expanded', 'false');
+                            }
+                        }
+                    });
+
+                    target.classList.toggle('show', !isOpen);
+                    group.classList.toggle('open', !isOpen);
+                    toggle.classList.toggle('collapsed', isOpen);
+                    toggle.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+                });
+            });
+        }
+
+        document.querySelectorAll('#sidebarMenu .sidebar-submenu').forEach(function (submenu) {
+            submenu.addEventListener('shown.bs.collapse', function () {
+                var group = submenu.closest('.sidebar-group');
+                var toggle = group ? group.querySelector('[data-sidebar-parent]') : null;
+
+                if (group) {
+                    group.classList.add('open');
+                }
+
+                if (toggle) {
+                    toggle.classList.remove('collapsed');
+                    toggle.setAttribute('aria-expanded', 'true');
+                }
+            });
+
+            submenu.addEventListener('hidden.bs.collapse', function () {
+                var group = submenu.closest('.sidebar-group');
+                var toggle = group ? group.querySelector('[data-sidebar-parent]') : null;
+
+                if (group) {
+                    group.classList.remove('open');
+                }
+
+                if (toggle) {
+                    toggle.classList.add('collapsed');
+                    toggle.setAttribute('aria-expanded', 'false');
+                }
+            });
+        });
+    });
+</script>

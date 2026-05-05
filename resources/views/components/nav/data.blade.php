@@ -1,6 +1,6 @@
 @php
     $isAdmin = auth()->user()->isAdmin();
-    $docOpen = request()->routeIs('hr.documents*') || request()->routeIs('employee.documents-index') || request()->routeIs('employee.hr-documents');
+    $docOpen = request()->routeIs('hrms.documents.hr.*') || request()->routeIs('hrms.documents.self.index') || request()->routeIs('hrms.documents.self.index');
 @endphp
 
 {{-- ========== SECTION: 5. DOCUMENT MANAGEMENT ========== --}}
@@ -16,7 +16,7 @@
     @if ($isAdmin)
     {{-- Sub-module: Document Approval (Admin) --}}
     <li>
-        <a href="{{ route('hr.documents.index') }}" class="nav-link sub-nav-link {{ request()->routeIs('hr.documents.index') ? 'active' : '' }}">
+        <a href="{{ route('hrms.documents.hr.index') }}" class="nav-link sub-nav-link {{ request()->routeIs('hrms.documents.hr.index') ? 'active' : '' }}">
             <i class="fas fa-shield-alt small mr-2 text-warning"></i> Compliance Management
         </a>
     </li>
@@ -24,14 +24,14 @@
 
     {{-- Sub-module: My Documents (Employee/Both) --}}
     <li>
-        <a href="{{ route('employee.documents-index') }}" class="nav-link sub-nav-link {{ request()->routeIs('employee.documents-index') ? 'active' : '' }}">
+        <a href="{{ route('hrms.documents.self.index') }}" class="nav-link sub-nav-link {{ request()->routeIs('hrms.documents.self.index') ? 'active' : '' }}">
             <i class="fas fa-file-upload small mr-2"></i> Upload Documents
         </a>
     </li>
 
     {{-- Sub-module: HR Policies / Company Doc (Both) --}}
     <li>
-        <a href="{{ route('employee.hr-policies') }}" class="nav-link sub-nav-link {{ request()->routeIs('employee.hr-policies') ? 'active' : '' }}">
+        <a href="{{ route('hrms.documents.policies.self') }}" class="nav-link sub-nav-link {{ request()->routeIs('hrms.documents.policies.self') ? 'active' : '' }}">
             <i class="fas fa-file-contract small mr-2 text-info"></i> Company Documents
         </a>
     </li>

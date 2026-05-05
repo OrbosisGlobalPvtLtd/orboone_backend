@@ -299,7 +299,7 @@
                 </div>
             @endif
 
-            <form action="{{ route('employees.profile.update', $profile->employee_id) }}" method="POST"
+            <form action="{{ route('hrms.employees.profile.update', $profile->employee_id) }}" method="POST"
                 enctype="multipart/form-data">
                 @csrf
 
@@ -464,7 +464,7 @@
                     </div>
 
                     <div class="profile-actions">
-                        <a href="{{ route('employees-data') }}" class="btn btn-soft">Cancel</a>
+                        <a href="{{ route('hrms.employees.index') }}" class="btn btn-soft">Cancel</a>
                         <button type="submit" class="btn btn-orb">
                             <i class="fas fa-save mr-1"></i> Update Profile
                         </button>

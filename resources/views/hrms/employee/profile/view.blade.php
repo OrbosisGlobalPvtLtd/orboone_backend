@@ -136,6 +136,9 @@
         border: 0;
         text-decoration: none;
         min-height: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .btn-soft {
@@ -163,6 +166,7 @@
         display: grid;
         grid-template-columns: 1fr 360px;
         gap: 16px;
+        align-items: start;
     }
 
     .profile-card {
@@ -171,7 +175,7 @@
         box-shadow: var(--orb-shadow);
         border-radius: 20px;
         overflow: hidden;
-        margin-bottom: 16px;
+        margin-bottom: 12px;
     }
 
     .profile-card-head {
@@ -192,6 +196,7 @@
         justify-content: center;
         color: var(--orb-primary);
         background: var(--orb-soft);
+        flex: 0 0 auto;
     }
 
     .profile-card-head h5 {
@@ -270,6 +275,12 @@
         top: 88px;
     }
 
+    .review-card .profile-card-body {
+        min-height: 430px;
+        display: flex;
+        flex-direction: column;
+    }
+
     .review-box {
         border-radius: 16px;
         padding: 14px;
@@ -281,6 +292,7 @@
         margin: 0 0 8px;
         font-weight: 950;
         color: var(--orb-text);
+        font-size: .88rem;
     }
 
     .review-box p {
@@ -291,10 +303,48 @@
         line-height: 1.5;
     }
 
+    .review-status-box {
+        border-radius: 16px;
+        padding: 14px;
+        background: #F8FAFC;
+        border: 1px solid #EEF1F6;
+        margin-bottom: 12px;
+    }
+
+    .review-actions {
+        margin-top: auto;
+        padding-top: 14px;
+    }
+
     .reject-form textarea {
         border-radius: 13px;
         font-size: .82rem;
         font-weight: 650;
+        min-height: 92px;
+        resize: vertical;
+    }
+
+    .reject-reason-box {
+        margin-top: 12px;
+        border-radius: 13px;
+        padding: 11px;
+        background: #FFF5F5;
+        border: 1px solid #FEE2E2;
+    }
+
+    .reject-reason-box strong {
+        display: block;
+        color: #991B1B;
+        font-size: .76rem;
+        font-weight: 950;
+        margin-bottom: 5px;
+    }
+
+    .reject-reason-box p {
+        margin: 0;
+        color: #7F1D1D;
+        font-size: .8rem;
+        font-weight: 700;
     }
 
     @media(max-width: 991px) {
@@ -309,6 +359,10 @@
 
         .review-card {
             position: static;
+        }
+
+        .review-card .profile-card-body {
+            min-height: auto;
         }
     }
 
@@ -378,8 +432,8 @@
         <div class="profile-hero">
             <div class="profile-main">
                 <div class="profile-avatar">
-                    @if (!empty($profile->profile_image) && Route::has('employee.file'))
-                        <img src="{{ route('employee.file', $profile->profile_image) }}" alt="Profile">
+                    @if (!empty($profile->profile_image) && Route::has('hrms.documents.file'))
+                        <img src="{{ route('hrms.documents.file', $profile->profile_image) }}" alt="Profile">
                     @else
                         {{ $initial }}
                     @endif
@@ -400,7 +454,7 @@
 
                     <div class="profile-meta">
                         <i class="fas fa-building mr-1"></i>
-                        {{ $profile->department_name ?? '-' }} 
+                        {{ $profile->department_name ?? '-' }}
                         @if(!empty($profile->designation_name))
                             • {{ $profile->designation_name }}
                         @endif
@@ -417,12 +471,12 @@
                 </div>
 
                 <div class="profile-actions">
-                    <a href="{{ route('employees.pending-profiles') }}" class="btn-soft">
+                    <a href="{{ route('hrms.employees.pending_profiles') }}" class="btn-soft">
                         <i class="fas fa-arrow-left mr-1"></i> Back
                     </a>
 
-                    @if(Route::has('employees.profile.edit'))
-                        <a href="{{ route('employees.profile.edit', $profile->employee_id) }}" class="btn-orb">
+                    @if(Route::has('hrms.employees.profile.edit'))
+                        <a href="{{ route('hrms.employees.profile.edit', $profile->employee_id) }}" class="btn-orb">
                             <i class="fas fa-edit mr-1"></i> Edit
                         </a>
                     @endif
@@ -508,8 +562,8 @@
 
                             <div class="profile-info wide">
                                 <span class="profile-label">Resume</span>
-                                @if (!empty($profile->resume_file) && Route::has('employee.file'))
-                                    <a href="{{ route('employee.file', $profile->resume_file) }}" target="_blank" class="file-link">
+                                @if (!empty($profile->resume_file) && Route::has('hrms.documents.file'))
+                                    <a href="{{ route('hrms.documents.file', $profile->resume_file) }}" target="_blank" class="file-link">
                                         <i class="fas fa-eye"></i> View Resume
                                     </a>
                                 @else
@@ -575,53 +629,64 @@
                     <div class="profile-icon"><i class="fas fa-user-check"></i></div>
                     <div>
                         <h5>HR Review</h5>
-                        <p>Mark profile completion status.</p>
+                        <p>Review and update profile status.</p>
                     </div>
                 </div>
 
                 <div class="profile-card-body">
-                    <div class="review-box mb-3">
-                        <h6>How it works?</h6>
+                    <div class="review-status-box">
+                        <span class="profile-label">Current Status</span>
+                        <div class="status-badge {{ $statusClass }}">
+                            <i class="fas fa-circle"></i>
+                            {{ $statusText }}
+                        </div>
+                    </div>
+
+                    <div class="review-box mt-3">
+                        <h6>Review Process</h6>
                         <p>
-                            Employee profile submit karega. HR review ke baad approve karega.
-                            Approve hone ke baad ye profile pending list me nahi dikhegi.
+                            Verify the employee’s personal details, education details, bank information and uploaded documents before approving or rejecting this profile.
+                            Once approved, the profile will be locked and removed from the pending review list.
                         </p>
                     </div>
 
-                    @if($status === 'approved')
-                        <div class="alert alert-success rounded-4 mb-0">
-                            <strong>Completed:</strong>
-                            This profile is already approved.
-                        </div>
-                    @else
-                        @if(Route::has('employees.profile.approve'))
-                            <form action="{{ route('employees.profile.approve', $profile->employee_id) }}" method="POST" class="mb-2">
-                                @csrf
-                                <button type="submit" class="btn-successx w-100">
-                                    <i class="fas fa-toggle-on mr-1"></i>
-                                    Mark as Completed
-                                </button>
-                            </form>
-                        @endif
-
-                        @if(Route::has('employees.profile.reject'))
-                            <form action="{{ route('employees.profile.reject', $profile->employee_id) }}" method="POST" class="reject-form">
-                                @csrf
-                                <textarea name="rejection_reason" class="form-control mb-2" rows="3" placeholder="Rejection reason optional">{{ $profile->rejection_reason ?? '' }}</textarea>
-
-                                <button type="submit" class="btn-dangerx w-100">
-                                    <i class="fas fa-toggle-off mr-1"></i>
-                                    Mark as Rejected
-                                </button>
-                            </form>
-                        @endif
-                    @endif
-
                     @if(!empty($profile->rejection_reason))
-                        <div class="alert alert-danger rounded-4 mt-3 mb-0">
-                            <strong>Reason:</strong> {{ $profile->rejection_reason }}
+                        <div class="reject-reason-box">
+                            <strong>Rejection Reason</strong>
+                            <p>{{ $profile->rejection_reason }}</p>
                         </div>
                     @endif
+
+                    <div class="review-actions">
+                        @if($status === 'approved')
+                            <div class="alert alert-success rounded-4 mb-0">
+                                <strong>Completed:</strong>
+                                This profile has already been approved.
+                            </div>
+                        @else
+                            @if(Route::has('hrms.employees.profile.approve'))
+                                <form action="{{ route('hrms.employees.profile.approve', $profile->employee_id) }}" method="POST" class="mb-2">
+                                    @csrf
+                                    <button type="submit" class="btn-successx w-100">
+                                        <i class="fas fa-check-circle mr-1"></i>
+                                        Mark as Completed
+                                    </button>
+                                </form>
+                            @endif
+
+                            @if(Route::has('hrms.employees.profile.reject'))
+                                <form action="{{ route('hrms.employees.profile.reject', $profile->employee_id) }}" method="POST" class="reject-form">
+                                    @csrf
+                                    <textarea name="rejection_reason" class="form-control mb-2" rows="3" placeholder="Enter rejection reason (optional)">{{ $profile->rejection_reason ?? '' }}</textarea>
+
+                                    <button type="submit" class="btn-dangerx w-100">
+                                        <i class="fas fa-times-circle mr-1"></i>
+                                        Mark as Rejected
+                                    </button>
+                                </form>
+                            @endif
+                        @endif
+                    </div>
                 </div>
             </div>
         </div>

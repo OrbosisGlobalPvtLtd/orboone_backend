@@ -338,7 +338,7 @@
             </div>
         @endif
 
-        <form action="{{ route('employees-data.update', $employeeData->id) }}" method="POST">
+        <form action="{{ route('hrms.employees.update', $employeeData->id) }}" method="POST">
             @csrf
             @method('PUT')
 
@@ -396,10 +396,17 @@
                             <select name="employment_type" id="employment_type" class="form-select" required>
                                 <option value="">Select Type</option>
                                 <option value="full_time" {{ old('employment_type', $employeeData->employment_type) == 'full_time' ? 'selected' : '' }}>Full Time</option>
+                                <option value="part_time" {{ old('employment_type', $employeeData->employment_type) == 'part_time' ? 'selected' : '' }}>Part Time</option>
                                 <option value="intern" {{ old('employment_type', $employeeData->employment_type) == 'intern' ? 'selected' : '' }}>Intern</option>
                                 <option value="freelancer" {{ old('employment_type', $employeeData->employment_type) == 'freelancer' ? 'selected' : '' }}>Freelancer</option>
                                 <option value="contract" {{ old('employment_type', $employeeData->employment_type) == 'contract' ? 'selected' : '' }}>Contract</option>
                             </select>
+                        </div>
+
+                        <div class="col-xl-3 col-lg-4 col-md-6 eo-field">
+                            <label>Employee Stage</label>
+                            <input type="text" id="employee_stage_display" class="form-control readonly-field" value="{{ ucfirst(str_replace('_', ' ', old('derived_employee_stage', $employeeData->employee_stage ?? 'Auto'))) }}" readonly>
+                            <input type="hidden" id="employee_stage" name="derived_employee_stage" value="{{ old('derived_employee_stage', $employeeData->employee_stage ?? '') }}">
                         </div>
 
                         <div class="col-xl-3 col-lg-4 col-md-6 eo-field joining-box">
@@ -418,6 +425,17 @@
                                 <option value="">Select Work Mode</option>
                                 <option value="wfo" {{ old('work_mode', $employeeData->work_mode) == 'wfo' ? 'selected' : '' }}>WFO</option>
                                 <option value="wfh" {{ old('work_mode', $employeeData->work_mode) == 'wfh' ? 'selected' : '' }}>WFH</option>
+                            </select>
+                        </div>
+
+                        <div class="col-xl-3 col-lg-4 col-md-6 eo-field">
+                            <label>Work Schedule</label>
+                            <select name="work_schedule_type" class="form-select">
+                                <option value="">Select Schedule</option>
+                                <option value="full_day" {{ old('work_schedule_type', $employeeData->work_schedule_type ?? '') == 'full_day' ? 'selected' : '' }}>Full Day</option>
+                                <option value="part_day" {{ old('work_schedule_type', $employeeData->work_schedule_type ?? '') == 'part_day' ? 'selected' : '' }}>Part Day</option>
+                                <option value="hourly" {{ old('work_schedule_type', $employeeData->work_schedule_type ?? '') == 'hourly' ? 'selected' : '' }}>Hourly</option>
+                                <option value="shift_based" {{ old('work_schedule_type', $employeeData->work_schedule_type ?? '') == 'shift_based' ? 'selected' : '' }}>Shift Based</option>
                             </select>
                         </div>
 
@@ -533,6 +551,16 @@
                             <label>Actual Salary <span class="required">*</span></label>
                             <input type="number" name="actual_salary" id="actual_salary" class="form-control" value="{{ old('actual_salary', $employeeData->actual_salary) }}" min="0" step="1" placeholder="Enter salary">
                         </div>
+
+                        <div class="col-xl-3 col-lg-4 col-md-6 eo-field">
+                            <label>Salary Effective From</label>
+                            <input type="date" name="salary_effective_from" class="form-control" value="{{ old('salary_effective_from') }}">
+                        </div>
+
+                        <div class="col-xl-3 col-lg-4 col-md-6 eo-field">
+                            <label>Salary Reason</label>
+                            <input type="text" name="salary_change_reason" class="form-control" value="{{ old('salary_change_reason') }}" placeholder="Salary update">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -543,14 +571,14 @@
                 </div>
 
                 <div class="eo-actions">
-                    <a href="{{ route('employees-data') }}" class="btn btn-soft">Cancel</a>
+                    <a href="{{ route('hrms.employees.index') }}" class="btn btn-soft">Cancel</a>
 
                     <button type="submit" class="btn btn-orb">
                         <i class="fas fa-save mr-1"></i> Update Employee
                     </button>
 
-                    @if(Route::has('employees.profile.complete'))
-                        <a href="{{ route('employees.profile.complete', $employeeData->id) }}" class="btn btn-profile">
+                    @if(Route::has('hrms.employees.profile.complete'))
+                        <a href="{{ route('hrms.employees.profile.complete', $employeeData->id) }}" class="btn btn-profile">
                             <i class="fas fa-user-check mr-1"></i> Complete Profile
                         </a>
                     @endif
@@ -566,6 +594,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const department = document.getElementById('department_id');
     const designation = document.getElementById('designation_id');
     const employmentType = document.getElementById('employment_type');
+    const employeeStage = document.getElementById('employee_stage');
+    const employeeStageDisplay = document.getElementById('employee_stage_display');
     const joiningDate = document.getElementById('joining_date');
     const probationDisplay = document.getElementById('probation_end_date_display');
     const internBox = document.getElementById('intern_box');
@@ -592,8 +622,36 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    const stageLabels = {
+        internship: 'Internship',
+        probation: 'Probation',
+        permanent: 'Permanent',
+        freelance: 'Freelance',
+        contract: 'Contract'
+    };
+    let employmentTypeChanged = false;
+
+    function defaultStageForType() {
+        if (!employmentType.value) return '';
+        if (employmentType.value === 'intern') return 'internship';
+        if (employmentType.value === 'freelancer') return 'freelance';
+        if (employmentType.value === 'contract') return 'contract';
+        return 'probation';
+    }
+
+    function currentStage() {
+        const stage = employmentTypeChanged
+            ? defaultStageForType()
+            : (employeeStage.value || defaultStageForType());
+
+        employeeStage.value = stage;
+        employeeStageDisplay.value = stageLabels[stage] || 'Auto';
+
+        return stage;
+    }
+
     function updateProbation() {
-        if (!joiningDate.value || employmentType.value !== 'full_time') {
+        if (!joiningDate.value || currentStage() !== 'probation') {
             probationDisplay.value = '';
             return;
         }
@@ -622,7 +680,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updateSalary() {
-        if (employmentType.value === 'intern' && paidIntern.value === '0') {
+        if (currentStage() === 'internship' && paidIntern.value === '0') {
             salary.value = 0;
             salary.setAttribute('readonly', 'readonly');
         } else {
@@ -631,9 +689,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updateEmploymentFields() {
-        if (employmentType.value === 'intern') {
+        if (currentStage() === 'internship') {
             internBox.style.display = 'block';
-            joiningDate.value = '';
             probationDisplay.value = '';
         } else {
             internBox.style.display = 'none';
@@ -645,7 +702,11 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     department.addEventListener('change', filterDesignations);
-    employmentType.addEventListener('change', updateEmploymentFields);
+    employmentType.addEventListener('change', function () {
+        employmentTypeChanged = true;
+        updateEmploymentFields();
+    });
+    employeeStage.addEventListener('change', updateEmploymentFields);
     joiningDate.addEventListener('change', updateProbation);
     internshipStart.addEventListener('change', updateInternshipDuration);
     internshipEnd.addEventListener('change', updateInternshipDuration);

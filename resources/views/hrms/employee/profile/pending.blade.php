@@ -19,19 +19,13 @@
 .pp-page{min-height:calc(100vh - 90px);padding:16px 10px 30px;background:var(--orb-bg);}
 .pp-container{max-width:1280px;margin:0 auto;}
 
-.pp-header{
-    background:#fff;border:1px solid var(--orb-border);border-radius:18px;box-shadow:var(--orb-shadow);
-    padding:16px;display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:14px;
-}
+.pp-header{background:#fff;border:1px solid var(--orb-border);border-radius:18px;box-shadow:var(--orb-shadow);padding:16px;display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:14px;}
 .pp-title{margin:0;color:var(--orb-text);font-size:24px;font-weight:900;}
 .pp-subtitle{margin:4px 0 0;color:var(--orb-muted);font-size:13px;font-weight:600;}
 .pp-chip{padding:9px 13px;border-radius:999px;background:var(--orb-soft);color:var(--orb-primary);font-size:12px;font-weight:900;white-space:nowrap;}
 
 .pp-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px;}
-.pp-stat{
-    background:#fff;border:1px solid var(--orb-border);border-radius:16px;box-shadow:var(--orb-shadow);
-    padding:14px;display:flex;align-items:center;gap:11px;
-}
+.pp-stat{background:#fff;border:1px solid var(--orb-border);border-radius:16px;box-shadow:var(--orb-shadow);padding:14px;display:flex;align-items:center;gap:11px;}
 .pp-stat-icon{width:38px;height:38px;border-radius:13px;background:var(--orb-soft);color:var(--orb-primary);display:flex;align-items:center;justify-content:center;}
 .pp-stat h4{margin:0;color:var(--orb-text);font-size:20px;font-weight:900;line-height:1;}
 .pp-stat small{color:var(--orb-muted);font-size:11px;font-weight:800;}
@@ -43,10 +37,7 @@
 
 .pp-table-wrap{overflow-x:auto;}
 .pp-table{margin:0;min-width:1050px;}
-.pp-table thead th{
-    border-top:0;border-bottom:1px solid #EEF1F6;background:#F8FAFC;color:#667085;
-    font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.4px;padding:12px 14px;white-space:nowrap;
-}
+.pp-table thead th{border-top:0;border-bottom:1px solid #EEF1F6;background:#F8FAFC;color:#667085;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.4px;padding:12px 14px;white-space:nowrap;}
 .pp-table tbody td{border-top:1px solid #F0F2F7;padding:12px 14px;vertical-align:middle;font-size:13px;font-weight:650;color:#344054;}
 .pp-table tbody tr:hover{background:#FCFAFF;}
 
@@ -55,9 +46,7 @@
 .emp-name{color:var(--orb-text);font-size:13px;font-weight:900;}
 .emp-email{color:var(--orb-muted);font-size:11px;margin-top:2px;font-weight:700;}
 
-.code-badge,.status-badge,.lock-badge{
-    display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 9px;font-size:11px;font-weight:900;white-space:nowrap;
-}
+.code-badge,.status-badge,.lock-badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 9px;font-size:11px;font-weight:900;white-space:nowrap;}
 .code-badge{background:#F4F2FF;color:var(--orb-primary);}
 .status-pending{background:#FFF4D6;color:#B54708;}
 .status-submitted{background:#E0F2FE;color:#0369A1;}
@@ -74,14 +63,10 @@
 .complete-switch input:checked + .slider:before{transform:translateX(21px);}
 
 .actions{display:flex;align-items:center;gap:7px;flex-wrap:nowrap;}
-.action-btn{
-    width:34px;height:34px;border:0;border-radius:11px;display:inline-flex;align-items:center;justify-content:center;
-    text-decoration:none!important;transition:.18s ease;background:#F8FAFC;color:#667085;
-}
+.action-btn{width:34px;height:34px;border:0;border-radius:11px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none!important;transition:.18s ease;background:#F8FAFC;color:#667085;}
 .action-btn:hover{color:#fff;transform:translateY(-1px);}
 .action-view:hover{background:var(--orb-primary);}
 .action-edit:hover{background:#F79009;}
-.action-approve:hover{background:#16A34A;}
 
 .pp-mobile-list{display:none;padding:12px;background:#F8FAFC;}
 .pp-mobile-card{background:#fff;border:1px solid var(--orb-border);border-radius:16px;padding:14px;margin-bottom:12px;box-shadow:var(--orb-shadow);}
@@ -155,7 +140,7 @@
             <div class="pp-card-head">
                 <div>
                     <h5 class="pp-card-title">Employee Profiles</h5>
-                    <p class="pp-card-sub">Use the compact toggle to complete and lock a profile.</p>
+                    <p class="pp-card-sub">View/edit profile details. Complete toggle locks profile after confirmation.</p>
                 </div>
             </div>
 
@@ -172,7 +157,7 @@
                                 <th>Status</th>
                                 <th class="text-center">Complete</th>
                                 <th>Updated</th>
-                                <th>Actions</th>
+                                <th>Profile Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -219,7 +204,7 @@
                                                     <input type="checkbox" class="profile-complete-toggle" data-form-id="approveForm{{ $emp->id }}">
                                                     <span class="slider"></span>
                                                 </label>
-                                                <form id="approveForm{{ $emp->id }}" action="{{ route('employees.profile.approve', $emp->id) }}" method="POST" class="d-none">@csrf</form>
+                                                <form id="approveForm{{ $emp->id }}" action="{{ route('hrms.employees.profile.approve', $emp->id) }}" method="POST" class="d-none">@csrf</form>
                                             @endif
                                         </div>
                                     </td>
@@ -232,15 +217,23 @@
                                     </td>
                                     <td>
                                         <div class="actions">
-                                            <a href="{{ route('employees.profile.view', $emp->id) }}" class="action-btn action-view" title="View"><i class="fas fa-eye"></i></a>
+                                            <a href="{{ route('hrms.employees.profile.view', $emp->id) }}" class="action-btn action-view" title="View Profile">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+
                                             @if($status !== 'approved' && !$isCompleted)
-                                                <a href="{{ route('employees.profile.edit', $emp->id) }}" class="action-btn action-edit" title="Edit"><i class="fas fa-edit"></i></a>
-                                            @endif
-                                            @if($status === 'submitted')
-                                                <form action="{{ route('employees.profile.approve', $emp->id) }}" method="POST" class="approve-inline-form m-0">
-                                                    @csrf
-                                                    <button type="button" class="action-btn action-approve approve-btn" title="Approve"><i class="fas fa-check"></i></button>
-                                                </form>
+                                                <a href="{{ route('hrms.employees.profile.edit', $emp->id) }}" class="action-btn action-edit" title="Edit Profile">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+
+                                                @if(Route::has('hrms.employees.profile.reject'))
+                                                    <form action="{{ route('hrms.employees.profile.reject', $emp->id) }}" method="POST" class="m-0" onsubmit="return confirm('Reject this profile?');">
+                                                        @csrf
+                                                        <button type="submit" class="action-btn action-edit" title="Reject Profile">
+                                                            <i class="fas fa-times"></i>
+                                                        </button>
+                                                    </form>
+                                                @endif
                                             @endif
                                         </div>
                                     </td>
@@ -294,22 +287,30 @@
                                             <input type="checkbox" class="profile-complete-toggle" data-form-id="approveMobileForm{{ $emp->id }}">
                                             <span class="slider"></span>
                                         </label>
-                                        <form id="approveMobileForm{{ $emp->id }}" action="{{ route('employees.profile.approve', $emp->id) }}" method="POST" class="d-none">@csrf</form>
+                                        <form id="approveMobileForm{{ $emp->id }}" action="{{ route('hrms.employees.profile.approve', $emp->id) }}" method="POST" class="d-none">@csrf</form>
                                     @endif
                                 </div>
                             </div>
 
                             <div class="pp-mobile-actions">
                                 <div class="actions">
-                                    <a href="{{ route('employees.profile.view', $emp->id) }}" class="action-btn action-view" title="View"><i class="fas fa-eye"></i></a>
+                                    <a href="{{ route('hrms.employees.profile.view', $emp->id) }}" class="action-btn action-view" title="View Profile">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+
                                     @if($status !== 'approved' && !$isCompleted)
-                                        <a href="{{ route('employees.profile.edit', $emp->id) }}" class="action-btn action-edit" title="Edit"><i class="fas fa-edit"></i></a>
-                                    @endif
-                                    @if($status === 'submitted')
-                                        <form action="{{ route('employees.profile.approve', $emp->id) }}" method="POST" class="approve-inline-form m-0">
-                                            @csrf
-                                            <button type="button" class="action-btn action-approve approve-btn" title="Approve"><i class="fas fa-check"></i></button>
-                                        </form>
+                                        <a href="{{ route('hrms.employees.profile.edit', $emp->id) }}" class="action-btn action-edit" title="Edit Profile">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+
+                                        @if(Route::has('hrms.employees.profile.reject'))
+                                            <form action="{{ route('hrms.employees.profile.reject', $emp->id) }}" method="POST" class="m-0" onsubmit="return confirm('Reject this profile?');">
+                                                @csrf
+                                                <button type="submit" class="action-btn action-edit" title="Reject Profile">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </form>
+                                        @endif
                                     @endif
                                 </div>
                             </div>
@@ -365,14 +366,12 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    document.querySelectorAll('.approve-btn').forEach(function(btn) {
-        btn.addEventListener('click', function () {
-            openConfirm(this.closest('form'));
-        });
+    cancelBtn.addEventListener('click', closeConfirm);
+
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) closeConfirm();
     });
 
-    cancelBtn.addEventListener('click', closeConfirm);
-    modal.addEventListener('click', e => { if (e.target === modal) closeConfirm(); });
     confirmBtn.addEventListener('click', function () {
         if (selectedForm) selectedForm.submit();
     });

@@ -2,11 +2,14 @@
 
 namespace App\Models\HRMS\Employee;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\HRMS\Employee\EmployeeM;
 
 class EmployeeProfileM extends Model
 {
+    use HasFactory;
+
     protected $table = 'employee_profiles';
 
     protected $fillable = [
@@ -38,6 +41,11 @@ class EmployeeProfileM extends Model
         'is_profile_completed' => 'boolean',
         'profile_completed_at' => 'datetime',
     ];
+
+    protected static function newFactory()
+    {
+        return \Database\Factories\EmployeeDetailFactory::new();
+    }
 
     /* =========================
        RELATION

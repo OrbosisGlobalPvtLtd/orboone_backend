@@ -8,21 +8,23 @@ use Illuminate\Database\Eloquent\Model;
 
 use App\Models\Core\UserM;
 use App\Models\Core\RoleM;
-use App\Models\Department;
-use App\Models\Position; // legacy
-use App\Models\Designation; // ✅ NEW
+use App\Models\HRMS\Employee\PositionM;
+use App\Models\HRMS\Department\DepartmentM; // ✅ NEW
+use App\Models\HRMS\Designation\DesignationM;
+
 use App\Models\HRMS\Employee\EmployeeProfileM;
-use App\Models\EmployeeDocument;
-use App\Models\EmployeeLeave;
-use App\Models\EmployeeLeaveRequest;
-use App\Models\Payroll;
-use App\Models\Payslip;
-use App\Models\Claim;
-use App\Models\SalaryStructure;
-use App\Models\AssetAllocation;
-use App\Models\LeaveAllocation;
-use App\Models\LeaveRequest;
-use App\Models\StatutorySetting;
+use App\Models\HRMS\Employee\EmployeeSalaryHistoryM;
+use App\Models\HRMS\Leave\EmployeeLeaveM as EmployeeLeave;
+use App\Models\HRMS\Leave\EmployeeLeaveRequestM as EmployeeLeaveRequest;
+use App\Models\HRMS\Payroll\PayrollM as Payroll;
+use App\Models\HRMS\Payroll\PayslipM as Payslip;
+use App\Models\HRMS\Payroll\ClaimM as Claim;
+use App\Models\HRMS\Payroll\FnFM as FnF;
+use App\Models\HRMS\Payroll\SalaryStructureM as SalaryStructure;
+use App\Models\HRMS\Employee\AssetAllocationM as AssetAllocation;
+use App\Models\HRMS\Leave\LeaveAllocationM as LeaveAllocation;
+use App\Models\HRMS\Leave\LeaveRequestM as LeaveRequest;
+use App\Models\HRMS\Payroll\StatutorySettingM as StatutorySetting;
 
 class EmployeeM extends Model
 {
@@ -32,21 +34,23 @@ class EmployeeM extends Model
 
     protected $guarded = [];
 
-    /**
-     * ⚠️ DO NOT REMOVE position (backward compatibility)
-     * NEW → designation added
-     */
+
     protected $with = [
         'user',
         'department',
         'designation', // ✅ NEW STANDARD
-        'position',    // ⚠️ LEGACY SUPPORT
+        'position',
         'systemRole',
         'reportingManager',
         'profile',
     ];
 
     protected $appends = ['is_permanent'];
+
+    protected static function newFactory()
+    {
+        return \Database\Factories\EmployeeFactory::new();
+    }
 
     /* ============================
        RELATIONSHIPS
@@ -63,26 +67,24 @@ class EmployeeM extends Model
     }
 
     public function department()
-    {
-        return $this->belongsTo(Department::class, 'department_id');
-    }
+{
+    return $this->belongsTo(DepartmentM::class, 'department_id');
+}
 
-    /**
-     * ✅ NEW CLEAN RELATION (USE THIS)
-     */
-    public function designation()
-    {
-        return $this->belongsTo(Designation::class, 'designation_id');
-    }
+public function designation()
+{
+    return $this->belongsTo(DesignationM::class, 'designation_id');
+}
 
-    /**
-     * ⚠️ OLD LEGACY RELATION (DO NOT REMOVE)
-     * Existing code break na ho isliye rakha hai
-     */
     public function position()
     {
-        return $this->belongsTo(Position::class, 'designation_id');
+        return $this->belongsTo(PositionM::class, 'designation_id');
     }
+
+  
+
+
+   
 
     public function reportingManager()
     {
@@ -109,6 +111,13 @@ class EmployeeM extends Model
         return $this->hasOne(EmployeeProfileM::class, 'employee_id');
     }
 
+    public function salaryHistories()
+    {
+        return $this->hasMany(EmployeeSalaryHistoryM::class, 'employee_id')
+            ->orderByDesc('effective_from')
+            ->orderByDesc('id');
+    }
+
     public function employeeDetail()
     {
         return $this->hasOne(EmployeeProfileM::class, 'employee_id');
@@ -126,7 +135,7 @@ class EmployeeM extends Model
 
     public function documents()
     {
-        return $this->hasMany(EmployeeDocument::class, 'employee_id');
+        return $this->hasMany(EmployeeDocumentM::class, 'employee_id');
     }
 
     public function payrolls()
@@ -185,16 +194,20 @@ class EmployeeM extends Model
 
     public function getIsPermanentAttribute()
     {
-        if ($this->employment_type === 'full_time') {
+        if ($this->employee_stage === 'permanent') {
+            return true;
+        }
 
-            if ($this->probation_status === 'confirmed') {
-                return true;
-            }
+        if (in_array($this->probation_status, ['completed', 'confirmed'], true)) {
+            return true;
+        }
 
-            if (!empty($this->probation_end_date) &&
-                Carbon::now()->greaterThanOrEqualTo(Carbon::parse($this->probation_end_date))) {
-                return true;
-            }
+        if (
+            $this->employee_stage === 'probation'
+            && ! empty($this->probation_end_date)
+            && Carbon::now()->greaterThanOrEqualTo(Carbon::parse($this->probation_end_date))
+        ) {
+            return true;
         }
 
         return false;
@@ -208,7 +221,13 @@ class EmployeeM extends Model
 
     public function scopeInterns($query)
     {
-        return $query->where('employment_type', 'intern');
+        return $query->where(function ($q) {
+            $q->where('employee_stage', 'internship')
+                ->orWhere(function ($legacy) {
+                    $legacy->whereNull('employee_stage')
+                        ->where('employment_type', 'intern');
+                });
+        });
     }
 
     public function scopeFullTime($query)
@@ -231,8 +250,8 @@ class EmployeeM extends Model
         return self::with([
             'user',
             'department',
-            'designation', 
-            'position',    
+            'designation',
+            'position',
             'systemRole',
             'reportingManager',
             'profile',

@@ -1,17 +1,20 @@
 <?php
 
-namespace App\Models;
+namespace App\Models\HRMS\Employee;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class RecruitmentCandidate extends Model
+class RecruitmentCandidateM extends Model
 {
     use HasFactory;
 
+    protected $table = 'recruitment_candidates';
+
     protected $guarded = [];
 
-    public function getCount() {
+    public function getCount()
+    {
         return $this->count();
     }
 }

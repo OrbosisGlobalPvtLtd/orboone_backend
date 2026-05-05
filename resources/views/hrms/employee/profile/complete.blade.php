@@ -295,7 +295,7 @@ textarea.form-control{
             </div>
         @endif
 
-        <form action="{{ route('employees.profile.store', $employeeData->id) }}" method="POST" enctype="multipart/form-data">
+        <form action="{{ route('hrms.employees.profile.store', $employeeData->id) }}" method="POST" enctype="multipart/form-data">
             @csrf
 
             <div class="profile-card">
@@ -456,7 +456,7 @@ textarea.form-control{
                 </div>
 
                 <div class="profile-actions">
-                    <a href="{{ route('employees.index') }}" class="btn btn-soft">Skip</a>
+                    <a href="{{ route('hrms.employees.index') }}" class="btn btn-soft">Skip</a>
                     <button type="submit" class="btn btn-orb">
                         <i class="fas fa-save mr-1"></i> Save Profile
                     </button>

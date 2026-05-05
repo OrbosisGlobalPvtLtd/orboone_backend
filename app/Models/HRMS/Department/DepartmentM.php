@@ -19,6 +19,11 @@ class DepartmentM extends Model
         'address',
     ];
 
+    protected static function newFactory()
+    {
+        return \Database\Factories\DepartmentFactory::new();
+    }
+
     public function designations()
     {
         return $this->hasMany(DesignationM::class, 'department_id');

@@ -1,10 +1,12 @@
 <?php
 
-namespace App\Models;
+namespace App\Models\HRMS\Employee;
 
+use App\Models\HRMS\Document\DocumentCategoryM as DocumentCategory;
+use App\Models\Core\UserM as User;
 use Illuminate\Database\Eloquent\Model;
 
-class EmployeeDocument extends Model
+class EmployeeDocumentM extends Model
 {
     protected $table = 'employee_documents_new';
 
@@ -28,7 +30,7 @@ class EmployeeDocument extends Model
 
     public function employee()
     {
-        return $this->belongsTo(EmployeeModel::class, 'employee_id');
+        return $this->belongsTo(EmployeeM::class, 'employee_id');
     }
 
     public function category()

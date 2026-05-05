@@ -310,16 +310,15 @@
         }
 
         .eo-more-menu {
-            position: absolute;
-            right: 0;
-            top: 40px;
-            min-width: 250px;
+            position: fixed;
+            width: 320px;
+            max-width: calc(100vw - 24px);
             background: #fff;
             border: 1px solid var(--orb-border);
-            border-radius: 16px;
-            box-shadow: 0 18px 45px rgba(16, 24, 40, .16);
-            padding: 8px;
-            z-index: 30;
+            border-radius: 18px;
+            box-shadow: 0 22px 60px rgba(16, 24, 40, .18);
+            padding: 10px;
+            z-index: 9999;
             display: none;
         }
 
@@ -329,16 +328,17 @@
 
         .eo-menu-item {
             width: 100%;
-            min-height: 38px;
+            min-height: 40px;
             border: 0;
             background: #fff;
-            border-radius: 11px;
-            padding: 8px 10px;
+            border-radius: 12px;
+            padding: 10px 12px;
             display: flex;
             align-items: center;
+            justify-content: flex-start;
             gap: 9px;
             color: var(--orb-text);
-            font-size: 12px;
+            font-size: 13px;
             font-weight: 850;
             text-align: left;
             cursor: pointer;
@@ -354,31 +354,49 @@
         }
 
         .eo-menu-form-box {
-            padding: 8px;
-            border-radius: 12px;
+            padding: 10px;
+            border-radius: 14px;
             background: #F8FAFC;
-            margin-top: 6px;
+            margin-top: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
 
         .eo-menu-form-box label {
+            display: block;
             font-size: 10px;
             font-weight: 900;
             color: var(--orb-muted);
             text-transform: uppercase;
-            margin-bottom: 5px;
+            margin: 0;
+            letter-spacing: .35px;
         }
 
         .eo-date {
-            height: 34px;
-            border-radius: 10px;
-            border: 1px solid var(--orb-border);
-            padding: 5px 8px;
+            width: 100% !important;
+            height: 38px;
+            border-radius: 11px !important;
+            border: 1px solid var(--orb-border) !important;
+            padding: 7px 10px !important;
             font-size: 12px;
-            font-weight: 700;
+            font-weight: 750;
             color: var(--orb-text);
-            width: 100%;
-            margin-bottom: 6px;
+            background: #fff !important;
+            outline: none;
+            display: block;
+            box-sizing: border-box;
+        }
+
+        .eo-date:focus {
+            border-color: rgba(75, 0, 232, .45) !important;
+            box-shadow: 0 0 0 4px rgba(75, 0, 232, .08) !important;
+        }
+
+        .eo-menu-form-box .eo-menu-item {
             background: #fff;
+            justify-content: center;
+            margin-top: 2px;
         }
 
         .eo-empty {
@@ -433,6 +451,12 @@
 
             .eo-filter-inside {
                 padding: 12px;
+            }
+
+            .eo-more-menu {
+                width: calc(100vw - 24px);
+                left: 12px !important;
+                right: auto !important;
             }
         }
     </style>
@@ -558,7 +582,8 @@
                                     data-department="{{ strtolower($employee->department_name ?? '') }}"
                                     data-status="{{ strtolower($status) }}"
                                     data-employment-type="{{ $isIntern ? 'intern' : 'probation' }}">
-                                    <td><span class="eo-code">{{ $employee->employee_code ?? 'EMP-' . $employee->id }}</span>
+                                    <td><span
+                                            class="eo-code">{{ $employee->employee_code ?? 'EMP-' . $employee->id }}</span>
                                     </td>
 
                                     <td>
@@ -710,6 +735,37 @@
                 }
             }
 
+            function closeAllMenus() {
+                document.querySelectorAll('.eo-more').forEach(function(box) {
+                    box.classList.remove('open');
+                });
+            }
+
+            function positionMenu(btn, menu) {
+                const rect = btn.getBoundingClientRect();
+                const menuWidth = menu.offsetWidth || 320;
+                const menuHeight = menu.offsetHeight || 240;
+                const gap = 8;
+
+                let left = rect.right - menuWidth;
+                let top = rect.bottom + gap;
+
+                if (left < 12) left = 12;
+
+                if (left + menuWidth > window.innerWidth - 12) {
+                    left = window.innerWidth - menuWidth - 12;
+                }
+
+                if (top + menuHeight > window.innerHeight - 12) {
+                    top = rect.top - menuHeight - gap;
+                }
+
+                if (top < 12) top = 12;
+
+                menu.style.left = left + 'px';
+                menu.style.top = top + 'px';
+            }
+
             searchInput.addEventListener('keyup', applyFilters);
             departmentFilter.addEventListener('change', applyFilters);
             statusFilter.addEventListener('change', applyFilters);
@@ -721,25 +777,26 @@
                 statusFilter.value = '';
                 employmentTypeFilter.value = '';
                 applyFilters();
+                closeAllMenus();
             });
 
             document.querySelectorAll('.eo-more-btn').forEach(function(btn) {
                 btn.addEventListener('click', function(e) {
                     e.stopPropagation();
 
-                    document.querySelectorAll('.eo-more').forEach(function(box) {
-                        if (box !== btn.closest('.eo-more')) {
-                            box.classList.remove('open');
-                        }
-                    });
+                    const box = btn.closest('.eo-more');
+                    const menu = box.querySelector('.eo-more-menu');
+                    const isOpen = box.classList.contains('open');
 
-                    btn.closest('.eo-more').classList.toggle('open');
-                });
-            });
+                    closeAllMenus();
 
-            document.addEventListener('click', function() {
-                document.querySelectorAll('.eo-more').forEach(function(box) {
-                    box.classList.remove('open');
+                    if (!isOpen) {
+                        box.classList.add('open');
+
+                        requestAnimationFrame(function() {
+                            positionMenu(btn, menu);
+                        });
+                    }
                 });
             });
 
@@ -748,6 +805,10 @@
                     e.stopPropagation();
                 });
             });
+
+            document.addEventListener('click', closeAllMenus);
+            window.addEventListener('resize', closeAllMenus);
+            window.addEventListener('scroll', closeAllMenus, true);
         });
     </script>
 @endsection

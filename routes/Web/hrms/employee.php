@@ -97,6 +97,10 @@ Route::middleware(['auth', 'web.admin.access', 'module:hrms'])
                 ->middleware('permission:employees.update')
                 ->name('profile.edit');
 
+            Route::post('/{employee}/profile-inline-update', [EmployeeC::class, 'inlineUpdateProfile'])
+                ->middleware('permission:employees.update')
+                ->name('profile.inline_update');
+
             Route::post('/{employee}/profile-update', [EmployeeC::class, 'updateProfile'])
                 ->middleware('permission:employees.update')
                 ->name('profile.update');

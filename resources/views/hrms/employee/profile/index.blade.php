@@ -7,6 +7,7 @@
     :root {
         --orb-primary: #4B00E8;
         --orb-secondary: #8600EE;
+        --orb-pink: #D400D5;
         --orb-bg: #F6F7FB;
         --orb-border: #E7EAF3;
         --orb-text: #101828;
@@ -274,22 +275,6 @@
         grid-column: 1 / -1;
     }
 
-    .profile-edit-control {
-        border: 1px solid #E7EAF3;
-        border-radius: 13px;
-        min-height: 42px;
-        font-size: .84rem;
-        font-weight: 750;
-        color: var(--orb-text);
-        background: #fff;
-        box-shadow: none;
-    }
-
-    .profile-edit-control:focus {
-        border-color: rgba(75, 0, 232, .45);
-        box-shadow: 0 0 0 3px rgba(75, 0, 232, .08);
-    }
-
     .file-link {
         display: inline-flex;
         align-items: center;
@@ -466,93 +451,10 @@
         color: #991B1B;
     }
 
-    .doc-upload-btn {
-        background: #E0F2FE;
-        color: #0369A1;
-    }
-
     .doc-disabled-btn {
         background: #F1F5F9;
         color: #64748B;
         cursor: not-allowed;
-    }
-
-    .doc-upload-card-form {
-        margin: 0;
-    }
-
-    .doc-upload-card {
-        min-width: 132px;
-        min-height: 74px;
-        padding: 10px 12px;
-        border-radius: 16px;
-        border: 1px dashed rgba(75, 0, 232, .32);
-        background: linear-gradient(180deg, #fff, #F8F5FF);
-        color: var(--orb-primary);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 3px;
-        cursor: pointer;
-        transition: .18s ease;
-        margin: 0;
-    }
-
-    .doc-upload-card:hover {
-        border-color: var(--orb-primary);
-        transform: translateY(-1px);
-        box-shadow: 0 10px 22px rgba(75, 0, 232, .10);
-    }
-
-    .doc-upload-card input {
-        display: none;
-    }
-
-    .doc-upload-icon {
-        height: 28px;
-        width: 28px;
-        border-radius: 10px;
-        background: #F4F2FF;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 14px;
-    }
-
-    .doc-upload-text {
-        font-size: .75rem;
-        font-weight: 950;
-        line-height: 1;
-    }
-
-    .doc-upload-card small {
-        font-size: .62rem;
-        font-weight: 800;
-        color: var(--orb-muted);
-    }
-
-    .doc-upload-card.is-uploading {
-        pointer-events: none;
-        opacity: .75;
-    }
-
-    .doc-upload-card.is-uploading .doc-upload-icon i:before {
-        content: "\f110";
-    }
-
-    .doc-upload-card.is-uploading .doc-upload-icon i {
-        animation: docSpin .8s linear infinite;
-    }
-
-    @keyframes docSpin {
-        from {
-            transform: rotate(0deg);
-        }
-
-        to {
-            transform: rotate(360deg);
-        }
     }
 
     .review-clean-body {
@@ -936,11 +838,6 @@
 </style>
 
 @php
-$isFullEditMode = request()->boolean('edit');
-$isDocOnlyEditMode = request()->boolean('doc_edit') && ! $isFullEditMode;
-$isDocEditMode = $isFullEditMode || $isDocOnlyEditMode;
-$isProfileEditMode = $isFullEditMode;
-
 $initial = strtoupper(substr($profile->name ?? 'E', 0, 1));
 $status = $profile->profile_status ?? 'pending';
 
@@ -959,6 +856,7 @@ default => 'Pending',
 };
 
 $documents = $documents ?? collect();
+
 $verifiedDocs = $documents->where('verification_status', 'verified')->count();
 $pendingDocs = $documents->where('verification_status', 'pending')->count();
 $rejectedDocs = $documents->where('verification_status', 'rejected')->count();
@@ -1011,16 +909,9 @@ $rejectedDocs = $documents->where('verification_status', 'rejected')->count();
                     <a href="{{ route('hrms.employees.pending_profiles') }}" class="btn-soft">
                         <i class="fas fa-arrow-left"></i> Back
                     </a>
-                    @if($isFullEditMode)
-                    <button type="submit" form="profileInlineForm" class="btn-orb">
-                        <i class="fas fa-save"></i> Save
-                    </button>
 
-                    <a href="{{ route('hrms.employees.profile.view', $profile->employee_id) }}" class="btn-soft">
-                        <i class="fas fa-times"></i> Cancel
-                    </a>
-                    @else
-                    <a href="{{ request()->fullUrlWithQuery(['edit' => 1]) }}" class="btn-orb">
+                    @if(Route::has('hrms.employees.profile.edit') && $status !== 'approved')
+                    <a href="{{ route('hrms.employees.profile.edit', $profile->employee_id) }}" class="btn-orb">
                         <i class="fas fa-edit"></i> Edit
                     </a>
                     @endif
@@ -1028,137 +919,50 @@ $rejectedDocs = $documents->where('verification_status', 'rejected')->count();
             </div>
         </div>
 
-        <form id="profileInlineForm"
-            action="{{ route('hrms.employees.profile.inline_update', $profile->employee_id) }}"
-            method="POST">
-            @csrf
-
-            <div class="section-two-grid">
-                <div class="profile-card">
-                    <div class="profile-card-head">
-                        <div class="profile-icon"><i class="fas fa-user"></i></div>
-                        <div>
-                            <h5>Personal Details</h5>
-                            <p>Basic identity and address information.</p>
-                        </div>
-                    </div>
-
-                    <div class="profile-card-body">
-                        <div class="info-grid">
-                            <div class="profile-info">
-                                <span class="profile-label">Date of Birth</span>
-                                @if($isProfileEditMode)
-                                <input type="date" name="date_of_birth" class="form-control profile-edit-control"
-                                    value="{{ old('date_of_birth', !empty($profile->date_of_birth) ? \Carbon\Carbon::parse($profile->date_of_birth)->format('Y-m-d') : '') }}">
-                                @else
-                                <div class="profile-value {{ empty($profile->date_of_birth) ? 'muted' : '' }}">
-                                    {{ !empty($profile->date_of_birth) ? \Carbon\Carbon::parse($profile->date_of_birth)->format('d M Y') : '-' }}
-                                </div>
-                                @endif
-                            </div>
-
-                            <div class="profile-info">
-                                <span class="profile-label">Gender</span>
-                                @if($isProfileEditMode)
-                                <select name="gender" class="form-control profile-edit-control">
-                                    <option value="">Select Gender</option>
-                                    <option value="male" {{ old('gender', $profile->gender ?? '') === 'male' ? 'selected' : '' }}>Male</option>
-                                    <option value="female" {{ old('gender', $profile->gender ?? '') === 'female' ? 'selected' : '' }}>Female</option>
-                                    <option value="other" {{ old('gender', $profile->gender ?? '') === 'other' ? 'selected' : '' }}>Other</option>
-                                </select>
-                                @else
-                                <div class="profile-value {{ empty($profile->gender) ? 'muted' : '' }}">
-                                    {{ !empty($profile->gender) ? ucfirst($profile->gender) : '-' }}
-                                </div>
-                                @endif
-                            </div>
-
-                            <div class="profile-info">
-                                <span class="profile-label">Phone</span>
-                                @if($isProfileEditMode)
-                                <input type="text" name="phone" class="form-control profile-edit-control"
-                                    value="{{ old('phone', $profile->phone ?? '') }}">
-                                @else
-                                <div class="profile-value {{ empty($profile->phone) ? 'muted' : '' }}">{{ $profile->phone ?? '-' }}</div>
-                                @endif
-                            </div>
-
-                            <div class="profile-info">
-                                <span class="profile-label">Email</span>
-                                <div class="profile-value {{ empty($profile->email) ? 'muted' : '' }}">{{ $profile->email ?? '-' }}</div>
-                            </div>
-
-                            <div class="profile-info wide">
-                                <span class="profile-label">Address</span>
-                                @if($isProfileEditMode)
-                                <textarea name="address" rows="2" class="form-control profile-edit-control">{{ old('address', $profile->address ?? '') }}</textarea>
-                                @else
-                                <div class="profile-value {{ empty($profile->address) ? 'muted' : '' }}">{{ $profile->address ?? '-' }}</div>
-                                @endif
-                            </div>
-                        </div>
+        <div class="section-two-grid">
+            <div class="profile-card">
+                <div class="profile-card-head">
+                    <div class="profile-icon"><i class="fas fa-user"></i></div>
+                    <div>
+                        <h5>Personal Details</h5>
+                        <p>Basic identity and address information.</p>
                     </div>
                 </div>
 
-                <div class="profile-card">
-                    <div class="profile-card-head">
-                        <div class="profile-icon"><i class="fas fa-graduation-cap"></i></div>
-                        <div>
-                            <h5>Education & Experience</h5>
-                            <p>Qualification, score and total work experience.</p>
+                <div class="profile-card-body">
+                    <div class="info-grid">
+                        <div class="profile-info">
+                            <span class="profile-label">Date of Birth</span>
+                            <div class="profile-value {{ empty($profile->date_of_birth) ? 'muted' : '' }}">
+                                {{ !empty($profile->date_of_birth) ? \Carbon\Carbon::parse($profile->date_of_birth)->format('d M Y') : '-' }}
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="profile-card-body">
-                        <div class="info-grid">
-                            <div class="profile-info">
-                                <span class="profile-label">Qualification</span>
-                                @if($isProfileEditMode)
-                                <input type="text" name="highest_qualification" class="form-control profile-edit-control"
-                                    value="{{ old('highest_qualification', $profile->highest_qualification ?? '') }}">
-                                @else
-                                <div class="profile-value {{ empty($profile->highest_qualification) ? 'muted' : '' }}">{{ $profile->highest_qualification ?? '-' }}</div>
-                                @endif
+                        <div class="profile-info">
+                            <span class="profile-label">Gender</span>
+                            <div class="profile-value {{ empty($profile->gender) ? 'muted' : '' }}">
+                                {{ !empty($profile->gender) ? ucfirst($profile->gender) : '-' }}
                             </div>
+                        </div>
 
-                            <div class="profile-info">
-                                <span class="profile-label">CGPA / Percentage</span>
-                                @if($isProfileEditMode)
-                                <input type="text" name="cgpa_percentage" class="form-control profile-edit-control"
-                                    value="{{ old('cgpa_percentage', $profile->cgpa_percentage ?? '') }}">
-                                @else
-                                <div class="profile-value {{ empty($profile->cgpa_percentage) ? 'muted' : '' }}">{{ $profile->cgpa_percentage ?? '-' }}</div>
-                                @endif
+                        <div class="profile-info">
+                            <span class="profile-label">Phone</span>
+                            <div class="profile-value {{ empty($profile->phone) ? 'muted' : '' }}">
+                                {{ $profile->phone ?? '-' }}
                             </div>
+                        </div>
 
-                            <div class="profile-info">
-                                <span class="profile-label">Experience</span>
-                                @if($isProfileEditMode)
-                                <input type="text" name="total_experience" class="form-control profile-edit-control"
-                                    value="{{ old('total_experience', $profile->total_experience ?? '') }}">
-                                @else
-                                <div class="profile-value {{ empty($profile->total_experience) ? 'muted' : '' }}">{{ $profile->total_experience ?? '-' }}</div>
-                                @endif
+                        <div class="profile-info">
+                            <span class="profile-label">Email</span>
+                            <div class="profile-value {{ empty($profile->email) ? 'muted' : '' }}">
+                                {{ $profile->email ?? '-' }}
                             </div>
+                        </div>
 
-                            <div class="profile-info">
-                                <span class="profile-label">Employee Code</span>
-                                <div class="profile-value {{ empty($profile->employee_code) ? 'muted' : '' }}">{{ $profile->employee_code ?? '-' }}</div>
-                            </div>
-
-                            <div class="profile-info wide">
-                                <span class="profile-label">Resume</span>
-                                @if (!empty($profile->resume_file) && Route::has('hrms.documents.file'))
-                                @php $resumeUrl = route('hrms.documents.file', $profile->resume_file); @endphp
-                                <button type="button" class="file-link js-doc-preview"
-                                    data-title="Resume"
-                                    data-url="{{ $resumeUrl }}"
-                                    data-ext="{{ strtolower(pathinfo($profile->resume_file, PATHINFO_EXTENSION)) }}">
-                                    <i class="fas fa-eye"></i> View Resume
-                                </button>
-                                @else
-                                <div class="profile-value muted">No resume uploaded</div>
-                                @endif
+                        <div class="profile-info wide">
+                            <span class="profile-label">Address</span>
+                            <div class="profile-value {{ empty($profile->address) ? 'muted' : '' }}">
+                                {{ $profile->address ?? '-' }}
                             </div>
                         </div>
                     </div>
@@ -1167,58 +971,105 @@ $rejectedDocs = $documents->where('verification_status', 'rejected')->count();
 
             <div class="profile-card">
                 <div class="profile-card-head">
-                    <div class="profile-icon"><i class="fas fa-university"></i></div>
+                    <div class="profile-icon"><i class="fas fa-graduation-cap"></i></div>
                     <div>
-                        <h5>Bank Details</h5>
-                        <p>Salary account and banking information.</p>
+                        <h5>Education & Experience</h5>
+                        <p>Qualification, score and total work experience.</p>
                     </div>
                 </div>
 
                 <div class="profile-card-body">
-                    <div class="bank-grid">
-                        @foreach([
-                        'bank_holder_name' => 'Account Holder',
-                        'bank_account_no' => 'Account No',
-                        'bank_account_type' => 'Account Type',
-                        'ifsc_code' => 'IFSC',
-                        'bank_branch' => 'Bank Branch',
-                        ] as $field => $label)
+                    <div class="info-grid">
                         <div class="profile-info">
-                            <span class="profile-label">{{ $label }}</span>
-                            @if($isProfileEditMode)
-                            <input type="text" name="{{ $field }}" class="form-control profile-edit-control"
-                                value="{{ old($field, $profile->{$field} ?? '') }}">
-                            @else
-                            <div class="profile-value {{ empty($profile->{$field}) ? 'muted' : '' }}">
-                                {{ $profile->{$field} ?? '-' }}
+                            <span class="profile-label">Qualification</span>
+                            <div class="profile-value {{ empty($profile->highest_qualification) ? 'muted' : '' }}">
+                                {{ $profile->highest_qualification ?? '-' }}
                             </div>
+                        </div>
+
+                        <div class="profile-info">
+                            <span class="profile-label">CGPA / Percentage</span>
+                            <div class="profile-value {{ empty($profile->cgpa_percentage) ? 'muted' : '' }}">
+                                {{ $profile->cgpa_percentage ?? '-' }}
+                            </div>
+                        </div>
+
+                        <div class="profile-info">
+                            <span class="profile-label">Experience</span>
+                            <div class="profile-value {{ empty($profile->total_experience) ? 'muted' : '' }}">
+                                {{ $profile->total_experience ?? '-' }}
+                            </div>
+                        </div>
+
+                        <div class="profile-info">
+                            <span class="profile-label">Employee Code</span>
+                            <div class="profile-value {{ empty($profile->employee_code) ? 'muted' : '' }}">
+                                {{ $profile->employee_code ?? '-' }}
+                            </div>
+                        </div>
+
+                        <div class="profile-info wide">
+                            <span class="profile-label">Resume</span>
+                            @if (!empty($profile->resume_file) && Route::has('hrms.documents.file'))
+                            @php $resumeUrl = route('hrms.documents.file', $profile->resume_file); @endphp
+                            <button type="button"
+                                class="file-link js-doc-preview"
+                                data-title="Resume"
+                                data-url="{{ $resumeUrl }}"
+                                data-ext="{{ strtolower(pathinfo($profile->resume_file, PATHINFO_EXTENSION)) }}">
+                                <i class="fas fa-eye"></i> View Resume
+                            </button>
+                            @else
+                            <div class="profile-value muted">No resume uploaded</div>
                             @endif
                         </div>
-                        @endforeach
                     </div>
                 </div>
             </div>
-        </form>
+        </div>
+
+        <div class="profile-card">
+            <div class="profile-card-head">
+                <div class="profile-icon"><i class="fas fa-university"></i></div>
+                <div>
+                    <h5>Bank Details</h5>
+                    <p>Salary account and banking information.</p>
+                </div>
+            </div>
+
+            <div class="profile-card-body">
+                <div class="bank-grid">
+                    <div class="profile-info">
+                        <span class="profile-label">Account Holder</span>
+                        <div class="profile-value {{ empty($profile->bank_holder_name) ? 'muted' : '' }}">{{ $profile->bank_holder_name ?? '-' }}</div>
+                    </div>
+                    <div class="profile-info">
+                        <span class="profile-label">Account No</span>
+                        <div class="profile-value {{ empty($profile->bank_account_no) ? 'muted' : '' }}">{{ $profile->bank_account_no ?? '-' }}</div>
+                    </div>
+                    <div class="profile-info">
+                        <span class="profile-label">Account Type</span>
+                        <div class="profile-value {{ empty($profile->bank_account_type) ? 'muted' : '' }}">{{ !empty($profile->bank_account_type) ? ucfirst($profile->bank_account_type) : '-' }}</div>
+                    </div>
+                    <div class="profile-info">
+                        <span class="profile-label">IFSC</span>
+                        <div class="profile-value {{ empty($profile->ifsc_code) ? 'muted' : '' }}">{{ $profile->ifsc_code ?? '-' }}</div>
+                    </div>
+                    <div class="profile-info">
+                        <span class="profile-label">Bank Branch</span>
+                        <div class="profile-value {{ empty($profile->bank_branch) ? 'muted' : '' }}">{{ $profile->bank_branch ?? '-' }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <div class="profile-card">
             <div class="profile-card-head">
                 <div class="profile-icon"><i class="fas fa-folder-open"></i></div>
-                <div style="flex:1;">
+                <div>
                     <h5>Employee Documents</h5>
-                    <p>{{ $isDocEditMode ? 'Select file to upload or re-upload document.' : 'Document name, status and verification actions.' }}</p>
+                    <p>Document name, required status, verification status and preview.</p>
                 </div>
-
-                @if(!$isFullEditMode)
-                @if($isDocOnlyEditMode)
-                <a href="{{ route('hrms.employees.profile.view', $profile->employee_id) }}" class="btn-soft">
-                    <i class="fas fa-times"></i> Cancel
-                </a>
-                @else
-                <a href="{{ request()->fullUrlWithQuery(['doc_edit' => 1]) }}" class="btn-orb">
-                    <i class="fas fa-file-upload"></i> Edit Documents
-                </a>
-                @endif
-                @endif
             </div>
 
             <div class="profile-card-body">
@@ -1228,7 +1079,7 @@ $rejectedDocs = $documents->where('verification_status', 'rejected')->count();
                         <thead>
                             <tr>
                                 <th>Document</th>
-                                <!-- <th>Required</th> -->
+                                <th>Required</th>
                                 <th>Status</th>
                                 <th>Uploaded At</th>
                                 <th>Action</th>
@@ -1239,6 +1090,7 @@ $rejectedDocs = $documents->where('verification_status', 'rejected')->count();
                             @foreach($documents as $doc)
                             @php
                             $docStatus = strtolower($doc->verification_status ?? 'pending');
+
                             $docStatusClass = match($docStatus) {
                             'verified' => 'doc-verified',
                             'rejected' => 'doc-rejected',
@@ -1258,7 +1110,6 @@ $rejectedDocs = $documents->where('verification_status', 'rejected')->count();
                             }
 
                             $ext = strtolower(pathinfo($doc->file_original_name ?: $docPath, PATHINFO_EXTENSION));
-                            $documentTypeId = $doc->document_type_id ?? $doc->category_id ?? null;
                             @endphp
 
                             <tr>
@@ -1267,16 +1118,16 @@ $rejectedDocs = $documents->where('verification_status', 'rejected')->count();
                                         <div class="doc-icon"><i class="fas fa-file-alt"></i></div>
                                         <div>
                                             <div class="doc-title">{{ $docTitle }}</div>
-                                            <div class="doc-sub">{{ $doc->file_original_name ?? 'No file uploaded' }}</div>
+                                            <div class="doc-sub">{{ $doc->file_original_name ?? 'Uploaded file' }}</div>
                                         </div>
                                     </div>
                                 </td>
 
-                                <!-- <td data-label="Required">
+                                <td data-label="Required">
                                     <span class="doc-pill {{ !empty($doc->is_required) ? 'doc-required' : 'doc-optional' }}">
                                         {{ !empty($doc->is_required) ? 'Required' : 'Optional' }}
                                     </span>
-                                </td> -->
+                                </td>
 
                                 <td data-label="Status">
                                     <span class="doc-pill {{ $docStatusClass }}">{{ ucfirst($docStatus) }}</span>
@@ -1295,7 +1146,8 @@ $rejectedDocs = $documents->where('verification_status', 'rejected')->count();
                                 <td data-label="Action">
                                     <div class="doc-actions">
                                         @if(!empty($docUrl))
-                                        <button type="button" class="doc-action-btn doc-view-btn js-doc-preview"
+                                        <button type="button"
+                                            class="doc-action-btn doc-view-btn js-doc-preview"
                                             data-title="{{ $docTitle }}"
                                             data-url="{{ $docUrl }}"
                                             data-ext="{{ $ext }}">
@@ -1303,34 +1155,6 @@ $rejectedDocs = $documents->where('verification_status', 'rejected')->count();
                                         </button>
                                         @endif
 
-                                        @if($isDocEditMode)
-                                        @if($documentTypeId && Route::has('hrms.documents.employee.upload_from_profile'))
-                                        <form action="{{ route('hrms.documents.employee.upload_from_profile', [$profile->employee_id, $documentTypeId]) }}"
-                                            method="POST"
-                                            enctype="multipart/form-data"
-                                            class="doc-upload-card-form js-auto-upload-form">
-                                            @csrf
-
-                                            <label class="doc-upload-card">
-                                                <input type="file"
-                                                    name="file"
-                                                    class="js-auto-upload-input"
-                                                    accept=".pdf,.jpg,.jpeg,.png,.webp"
-                                                    required>
-
-                                                <span class="doc-upload-icon">
-                                                    <i class="fas fa-cloud-upload-alt"></i>
-                                                </span>
-
-                                                <span class="doc-upload-text">
-                                                    {{ !empty($doc->file_path) ? 'Re-upload' : 'Upload' }}
-                                                </span>
-
-                                                <small>PDF, JPG, PNG, WEBP</small>
-                                            </label>
-                                        </form>
-                                        @endif
-                                        @else
                                         @if($docStatus === 'verified')
                                         <button type="button" class="doc-action-btn doc-disabled-btn" disabled>
                                             <i class="fas fa-lock"></i> Verified
@@ -1355,7 +1179,6 @@ $rejectedDocs = $documents->where('verification_status', 'rejected')->count();
                                         </form>
                                         @endif
                                         @endif
-                                        @endif
                                     </div>
                                 </td>
                             </tr>
@@ -1374,15 +1197,7 @@ $rejectedDocs = $documents->where('verification_status', 'rejected')->count();
                 <div class="profile-icon"><i class="fas fa-user-check"></i></div>
                 <div>
                     <h5>HR Review</h5>
-                    <p>
-                        @if($isFullEditMode)
-                        Update employee profile and documents.
-                        @elseif($isDocOnlyEditMode)
-                        Upload or re-upload employee documents only.
-                        @else
-                        Approve or reject employee profile.
-                        @endif
-                    </p>
+                    <p>Approve or reject employee profile.</p>
                 </div>
             </div>
 
@@ -1424,29 +1239,10 @@ $rejectedDocs = $documents->where('verification_status', 'rejected')->count();
 
                 <div class="review-note-clean">
                     <i class="fas fa-info-circle"></i>
-                    @if($isFullEditMode)
-                    Save button will update profile fields. Document file selection uploads separately.
-                    @elseif($isDocOnlyEditMode)
-                    Select a file in document list to auto upload or re-upload.
-                    @else
                     Approve only after checking all submitted documents.
-                    @endif
                 </div>
 
                 <div class="review-clean-actions">
-                    @if($isFullEditMode)
-                    <button type="submit" form="profileInlineForm" class="btn-successx">
-                        <i class="fas fa-save"></i> Update Profile
-                    </button>
-
-                    <a href="{{ route('hrms.employees.profile.view', $profile->employee_id) }}" class="btn-dangerx">
-                        <i class="fas fa-times-circle"></i> Cancel
-                    </a>
-                    @elseif($isDocOnlyEditMode)
-                    <a href="{{ route('hrms.employees.profile.view', $profile->employee_id) }}" class="btn-dangerx">
-                        <i class="fas fa-times-circle"></i> Cancel Document Edit
-                    </a>
-                    @else
                     @if($status === 'approved')
                     <div class="review-approved-box">
                         <i class="fas fa-check-circle"></i>
@@ -1472,14 +1268,18 @@ $rejectedDocs = $documents->where('verification_status', 'rejected')->count();
                     @if(Route::has('hrms.employees.profile.reject') && in_array($status, ['submitted', 'rejected']))
                     <form action="{{ route('hrms.employees.profile.reject', $profile->employee_id) }}" method="POST" class="review-reject-form">
                         @csrf
-                        <input type="text" name="rejection_reason" class="form-control" placeholder="Reject reason" value="{{ $profile->rejection_reason ?? '' }}">
+                        <input type="text"
+                            name="rejection_reason"
+                            class="form-control"
+                            placeholder="Reject reason"
+                            value="{{ $profile->rejection_reason ?? '' }}">
 
-                        <button type="submit" class="btn-dangerx" onclick="return confirm('Reject this profile?')">
+                        <button type="submit" class="btn-dangerx"
+                            onclick="return confirm('Reject this profile?')">
                             <i class="fas fa-times-circle"></i>
                             Reject
                         </button>
                     </form>
-                    @endif
                     @endif
                     @endif
                 </div>
@@ -1512,7 +1312,12 @@ $rejectedDocs = $documents->where('verification_status', 'rejected')->count();
         const body = document.getElementById('docPreviewBody');
 
         function resetDialogClass() {
-            dialog.classList.remove('doc-modal-pdf', 'doc-modal-image', 'doc-modal-small-image', 'doc-modal-other');
+            dialog.classList.remove(
+                'doc-modal-pdf',
+                'doc-modal-image',
+                'doc-modal-small-image',
+                'doc-modal-other'
+            );
         }
 
         document.querySelectorAll('.js-doc-preview').forEach(function(btn) {
@@ -1537,39 +1342,29 @@ $rejectedDocs = $documents->where('verification_status', 'rejected')->count();
                     const img = document.getElementById('docPreviewImage');
 
                     img.onload = function() {
-                        resetDialogClass();
                         if (img.naturalWidth <= 700 && img.naturalHeight <= 900) {
+                            resetDialogClass();
                             dialog.classList.add('doc-modal-small-image');
                         } else {
+                            resetDialogClass();
                             dialog.classList.add('doc-modal-image');
                         }
                     };
                 } else if (ext === 'pdf') {
                     dialog.classList.add('doc-modal-pdf');
-                    body.innerHTML = `<iframe class="doc-preview-frame" src="${url}#toolbar=0&navpanes=0&scrollbar=1"></iframe>`;
+
+                    body.innerHTML = `
+                        <iframe class="doc-preview-frame" src="${url}#toolbar=0&navpanes=0&scrollbar=1"></iframe>
+                    `;
                 } else {
                     dialog.classList.add('doc-modal-other');
-                    body.innerHTML = `<iframe class="doc-preview-frame" src="${url}"></iframe>`;
+
+                    body.innerHTML = `
+                        <iframe class="doc-preview-frame" src="${url}"></iframe>
+                    `;
                 }
 
                 modal.modal('show');
-            });
-        });
-
-        document.querySelectorAll('.js-auto-upload-input').forEach(function(input) {
-            input.addEventListener('change', function() {
-                if (!this.files || !this.files.length) return;
-
-                const form = this.closest('.js-auto-upload-form');
-                const card = this.closest('.doc-upload-card');
-
-                if (card) {
-                    card.classList.add('is-uploading');
-                    const text = card.querySelector('.doc-upload-text');
-                    if (text) text.textContent = 'Uploading...';
-                }
-
-                if (form) form.submit();
             });
         });
 

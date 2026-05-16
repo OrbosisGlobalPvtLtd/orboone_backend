@@ -25,6 +25,7 @@ use App\Models\HRMS\Employee\AssetAllocationM as AssetAllocation;
 use App\Models\HRMS\Leave\LeaveAllocationM as LeaveAllocation;
 use App\Models\HRMS\Leave\LeaveRequestM as LeaveRequest;
 use App\Models\HRMS\Payroll\StatutorySettingM as StatutorySetting;
+use App\Models\HRMS\Document\EmployeeDocumentM;
 
 class EmployeeM extends Model
 {
@@ -45,7 +46,7 @@ class EmployeeM extends Model
         'profile',
     ];
 
-    protected $appends = ['is_permanent'];
+    protected $appends = ['is_permanent', 'display_name'];
 
     protected static function newFactory()
     {
@@ -67,24 +68,32 @@ class EmployeeM extends Model
     }
 
     public function department()
-{
-    return $this->belongsTo(DepartmentM::class, 'department_id');
-}
+    {
+        return $this->belongsTo(DepartmentM::class, 'department_id');
+    }
 
-public function designation()
-{
-    return $this->belongsTo(DesignationM::class, 'designation_id');
-}
+    public function designation()
+    {
+        return $this->belongsTo(DesignationM::class, 'designation_id');
+    }
 
     public function position()
     {
         return $this->belongsTo(PositionM::class, 'designation_id');
     }
 
-  
 
 
-   
+    public function getDisplayNameAttribute()
+    {
+        return $this->user_name
+            ?? optional($this->user)->name
+            ?? $this->employee_name
+            ?? $this->full_name
+            ?? $this->employee_code
+            ?? 'N/A';
+    }
+
 
     public function reportingManager()
     {

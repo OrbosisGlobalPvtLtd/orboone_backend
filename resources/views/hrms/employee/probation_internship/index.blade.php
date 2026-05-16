@@ -905,7 +905,7 @@
                                                 <option value="completed">Only Mark Internship Completed
                                                 </option>
                                                 <option value="probation">Complete & Move to Probation</option>
-                                                <option value="permanent">Complete & Move Permanent</option>
+                                                <!-- <option value="permanent">Complete & Move Permanent</option> -->
                                             </select>
                                         </div>
                                         <div class="col-md-6 mb-3">

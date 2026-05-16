@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Api\V1\Profile;
 use App\Http\Controllers\Controller;
 use App\Models\HRMS\Employee\EmployeeM;
 use App\Models\HRMS\Employee\EmployeeProfileM;
+
 use App\Services\HRMS\Employee\EmployeeFileS;
+use App\Services\HRMS\Document\EmployeeDocumentCompletionS;
 use App\Models\HRMS\Leave\HolidayM as Holiday;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -23,7 +25,7 @@ class ProfileController extends Controller
             'systemRole',
             'reportingManager.user',
             'profile',
-            'documents',
+            'documents.type',
             'assetAllocations',
             'salaryHistories',
         ])->where('user_id', auth()->id())->first();
@@ -94,8 +96,13 @@ class ProfileController extends Controller
     {
         $today = Carbon::now();
 
-        $holidays = Holiday::whereDate('date', $today->format('Y-m-d'))
-            ->pluck('name')
+        $holidays = Holiday::whereDate('holiday_date', $today->format('Y-m-d'))
+            ->where('is_active', 1)
+            ->where(function ($q) {
+                $q->where('is_working_day_override', 0)
+                  ->orWhereNull('is_working_day_override');
+            })
+            ->pluck('title')
             ->values();
 
         return [
@@ -107,24 +114,133 @@ class ProfileController extends Controller
         ];
     }
 
+    // private function buildCompletionStatus(EmployeeM $employee, EmployeeProfileM $profile): array
+    // {
+    //     $documentCompletion = app(EmployeeDocumentCompletionS::class);
+    //     $isEmployee = method_exists($employee->user, 'isEmployee')
+    //         ? (bool) $employee->user->isEmployee()
+    //         : true;
+
+    //     $missingProfileFields = $documentCompletion->missingProfileFields($profile, $employee);
+    //     $isCompleted = count($missingProfileFields) === 0;
+    //     $documentStatus = $documentCompletion->completion($employee);
+
+    //     $requiredVerified = ($documentStatus['verified_count'] ?? 0) === ($documentStatus['required_count'] ?? 0)
+    //         && ($documentStatus['required_count'] ?? 0) > 0;
+
+    //     $canPunchAttendance = ! $isEmployee || ($profile->profile_status === 'approved' && $requiredVerified);
+
+    //     $docVerificationStatus = 'missing';
+    //     if (($documentStatus['rejected_count'] ?? 0) > 0) {
+    //         $docVerificationStatus = 'rejected';
+    //     } elseif (($documentStatus['pending_count'] ?? 0) > 0) {
+    //         $docVerificationStatus = 'pending';
+    //     } elseif ($requiredVerified) {
+    //         $docVerificationStatus = 'verified';
+    //     }
+
+    //     $mustCompleteProfile = $isEmployee ? ! $canPunchAttendance : false;
+    //     $attendanceBlocked = $isEmployee ? ! $canPunchAttendance : false;
+
+    //     $nextRoute = 'dashboard';
+    //     if ($mustCompleteProfile) {
+    //         if ($profile->profile_status === 'submitted') {
+    //             $nextRoute = 'verification_pending';
+    //         } elseif ($profile->profile_status === 'rejected') {
+    //             $nextRoute = 'profile_completion';
+    //         } else {
+    //             $nextRoute = $isCompleted ? 'document_completion' : 'profile_completion';
+    //         }
+    //     }
+
+    //     return [
+    //         'is_profile_completed'         => (bool) $profile->is_profile_completed,
+    //         'profile_verification_status'  => $profile->profile_status ?? 'pending',
+    //         'document_verification_status' => $docVerificationStatus,
+    //         'required_documents_verified'  => $requiredVerified,
+    //         'can_punch_attendance'         => $canPunchAttendance,
+    //         'attendance_blocked'           => $attendanceBlocked,
+    //         'next_route'                   => $nextRoute,
+
+    //         'must_complete_profile'        => $mustCompleteProfile,
+    //         'completion_percentage'        => $documentCompletion->profileCompletionPercentage($profile, $employee),
+    //         'missing_profile_fields'       => $missingProfileFields,
+    //         'document_completion_status'   => $documentStatus,
+    //         'experience_type'              => $profile->experience_type ?? 'fresher',
+    //     ];
+    // }
+
     private function buildCompletionStatus(EmployeeM $employee, EmployeeProfileM $profile): array
     {
+        $documentCompletion = app(EmployeeDocumentCompletionS::class);
+
         $isEmployee = method_exists($employee->user, 'isEmployee')
             ? (bool) $employee->user->isEmployee()
             : true;
 
-        $isCompleted = $this->isProfileCompleted($profile);
-        $mustCompleteProfile = $isEmployee ? !$isCompleted : false;
-        $attendanceBlocked = $isEmployee ? !$isCompleted : false;
+        $missingProfileFields = $documentCompletion->missingProfileFields($profile, $employee);
+        $profileFieldsCompleted = count($missingProfileFields) === 0;
+
+        $documentStatus = $documentCompletion->completion($employee);
+
+        $requiredUploaded = ($documentStatus['uploaded_required_count'] ?? 0) === ($documentStatus['required_count'] ?? 0)
+            && ($documentStatus['required_count'] ?? 0) > 0;
+
+        $requiredVerified = ($documentStatus['verified_count'] ?? 0) === ($documentStatus['required_count'] ?? 0)
+            && ($documentStatus['required_count'] ?? 0) > 0;
+
+        $canPunchAttendance = ! $isEmployee || (
+            $profile->profile_status === 'approved' && $requiredVerified
+        );
+
+        $docVerificationStatus = 'missing';
+
+        if (($documentStatus['rejected_count'] ?? 0) > 0) {
+            $docVerificationStatus = 'rejected';
+        } elseif (($documentStatus['pending_count'] ?? 0) > 0) {
+            $docVerificationStatus = 'pending';
+        } elseif ($requiredVerified) {
+            $docVerificationStatus = 'verified';
+        }
+
+        /*
+     |--------------------------------------------------------------------------
+     | IMPORTANT LOGIC
+     |--------------------------------------------------------------------------
+     | is_profile_completed = employee ne profile + required docs submit kar diye
+     | profile_status       = admin verification status
+     */
+        $isProfileCompleted = (bool) $profile->is_profile_completed;
+
+        $mustCompleteProfile = $isEmployee ? ! $isProfileCompleted : false;
+        $attendanceBlocked = $isEmployee ? ! $canPunchAttendance : false;
+
+        $nextRoute = 'dashboard';
+
+        if ($mustCompleteProfile) {
+            if (! $profileFieldsCompleted) {
+                $nextRoute = 'profile_completion';
+            } elseif (! $requiredUploaded) {
+                $nextRoute = 'document_completion';
+            } else {
+                $nextRoute = 'document_completion';
+            }
+        }
 
         return [
-            'is_profile_completed'   => $isCompleted,
-            'must_complete_profile'  => $mustCompleteProfile,
-            'completion_percentage'  => $this->completionPercentage($profile),
-            'missing_profile_fields' => $this->missingProfileFields($profile),
-            'can_punch_attendance'   => !$mustCompleteProfile && !$attendanceBlocked,
-            'attendance_blocked'     => $attendanceBlocked,
-            'next_route'             => $mustCompleteProfile ? 'profile_completion' : 'dashboard',
+            'is_profile_completed'         => $isProfileCompleted,
+            'profile_verification_status'  => $profile->profile_status ?? 'pending',
+            'document_verification_status' => $docVerificationStatus,
+            'required_documents_verified'  => $requiredVerified,
+            'can_punch_attendance'         => $canPunchAttendance,
+            'attendance_blocked'           => $attendanceBlocked,
+            'next_route'                   => $nextRoute,
+
+            'must_complete_profile'        => $mustCompleteProfile,
+            'completion_percentage'        => $documentCompletion->profileCompletionPercentage($profile, $employee),
+            'missing_profile_fields'       => $missingProfileFields,
+            'document_completion_status'   => $documentStatus,
+            'experience_type'              => $profile->experience_type ?? 'fresher',
         ];
     }
 
@@ -154,13 +270,6 @@ class ProfileController extends Controller
         }
 
         $completionStatus = $this->buildCompletionStatus($employee, $profile);
-
-        $profile->update([
-            'is_profile_completed' => $completionStatus['is_profile_completed'],
-            'profile_completed_at' => $completionStatus['is_profile_completed']
-                ? ($profile->profile_completed_at ?? now())
-                : null,
-        ]);
 
         $assetSummary = [];
         $salaryHistory = [];
@@ -198,7 +307,7 @@ class ProfileController extends Controller
                     'id'    => $user->id,
                     'name'  => $user->name,
                     'email' => $user->email,
-                    'phone' => $user->phone,    
+                    'phone' => $user->phone,
                 ],
 
                 'employee' => [
@@ -210,6 +319,7 @@ class ProfileController extends Controller
                     'designation_id'                => $employee->designation_id,
                     'reporting_manager_employee_id' => $employee->reporting_manager_employee_id,
                     'employment_type'               => $employee->employment_type,
+                    'experience_type'               => $profile->experience_type ?? 'fresher',
                     'employee_stage'                => $employee->employee_stage,
                     'work_mode'                     => $employee->work_mode,
                     'work_schedule_type'            => $employee->work_schedule_type,
@@ -260,17 +370,19 @@ class ProfileController extends Controller
                     'highest_qualification' => $profile->highest_qualification,
                     'cgpa_percentage'       => $profile->cgpa_percentage,
                     'total_experience'      => $profile->total_experience,
+                    'experience_type'       => $profile->experience_type ?? 'fresher',
                     'resume_file'           => $this->fileUrl($profile->resume_file),
                     'bank_account_no'       => $profile->bank_account_no,
                     'bank_account_type'     => $profile->bank_account_type,
                     'bank_holder_name'      => $profile->bank_holder_name,
                     'ifsc_code'             => $profile->ifsc_code,
                     'bank_branch'           => $profile->bank_branch,
-                    'is_profile_completed'  => $completionStatus['is_profile_completed'],
-                    'profile_completed_at'  => $profile->fresh()->profile_completed_at,
+                    'is_profile_completed'  => (bool) $profile->is_profile_completed,
+                    'profile_completed_at'  => $profile->profile_completed_at,
                 ],
 
                 'completion_status' => $completionStatus,
+                'document_completion_status' => $completionStatus['document_completion_status'] ?? null,
 
                 'editable_fields' => [
                     'profile_image',
@@ -281,6 +393,7 @@ class ProfileController extends Controller
                     'cgpa_percentage',
                     'total_experience',
                     'resume_file',
+                    'experience_type',
                     'bank_account_no',
                     'bank_account_type',
                     'bank_holder_name',
@@ -307,18 +420,9 @@ class ProfileController extends Controller
 
                 'assets' => $assetSummary,
 
-                'documents' => $employee->documents->map(function ($doc) {
-                    return [
-                        'id'                  => $doc->id,
-                        'employee_id'         => $doc->employee_id,
-                        'category_id'         => $doc->category_id,
-                        'title'               => $doc->title,
-                        'file_path'           => $this->fileUrl($doc->file_path),
-                        'verification_status' => $doc->verification_status,
-                        'verified_by_user_id' => $doc->verified_by_user_id,
-                        'uploaded_at'         => $doc->uploaded_at,
-                    ];
-                })->values(),
+                'documents' => $employee->documents->map(
+                    fn($doc) => app(EmployeeDocumentCompletionS::class)->formatDocument($doc)
+                )->values(),
 
                 'today_status' => $this->todayStatus(),
             ],
@@ -326,142 +430,158 @@ class ProfileController extends Controller
     }
 
     public function updateProfile(Request $request)
-{
-    try {
-        $employee = $this->currentEmployee();
+    {
+        try {
+            $employee = $this->currentEmployee();
 
-        if (!$employee) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Employee not found',
-                'data' => null
-            ], 404);
-        }
-
-        $validator = Validator::make($request->all(), [
-            'date_of_birth' => ['sometimes', 'nullable', 'date'],
-            'gender' => ['sometimes', 'nullable', 'in:male,female,other'],
-            'address' => ['sometimes', 'nullable'],
-            'highest_qualification' => ['sometimes', 'nullable'],
-            'cgpa_percentage' => ['sometimes', 'nullable'],
-            'total_experience' => ['sometimes', 'nullable'],
-
-            'bank_account_no' => ['sometimes', 'nullable'],
-            'bank_account_type' => ['sometimes', 'nullable'],
-            'bank_holder_name' => ['sometimes', 'nullable'],
-            'ifsc_code' => ['sometimes', 'nullable'],
-            'bank_branch' => ['sometimes', 'nullable'],
-
-            'profile_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
-            'resume_file' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:5120'],
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        DB::beginTransaction();
-
-        $profile = $employee->profile;
-
-        if (!$profile) {
-            $profile = EmployeeProfileM::create([
-                'employee_id' => $employee->id
-            ]);
-        }
-
-        $profileData = [];
-
-        foreach ([
-            'date_of_birth',
-            'gender',
-            'address',
-            'highest_qualification',
-            'cgpa_percentage',
-            'total_experience',
-            'bank_account_no',
-            'bank_account_type',
-            'bank_holder_name',
-            'bank_branch',
-        ] as $field) {
-            if ($request->has($field)) {
-                $profileData[$field] = $request->input($field);
+            if (!$employee) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Employee not found',
+                    'data' => null
+                ], 404);
             }
-        }
 
-        if ($request->has('ifsc_code')) {
-            $profileData['ifsc_code'] = strtoupper((string) $request->ifsc_code);
-        }
+            $validator = Validator::make($request->all(), [
+                'date_of_birth' => ['sometimes', 'nullable', 'date'],
+                'gender' => ['sometimes', 'nullable', 'in:male,female,other'],
+                'address' => ['sometimes', 'nullable'],
+                'highest_qualification' => ['sometimes', 'nullable'],
+                'cgpa_percentage' => ['sometimes', 'nullable'],
+                'total_experience' => ['sometimes', 'nullable'],
+                'experience_type' => ['sometimes', 'nullable', 'in:fresher,experienced'],
 
-        $fileService = app(EmployeeFileS::class);
+                'bank_account_no' => ['sometimes', 'nullable'],
+                'bank_account_type' => ['sometimes', 'nullable'],
+                'bank_holder_name' => ['sometimes', 'nullable'],
+                'ifsc_code' => ['sometimes', 'nullable'],
+                'bank_branch' => ['sometimes', 'nullable'],
 
-        if ($request->hasFile('profile_image')) {
-            $profileData['profile_image'] = $fileService->upload(
-                $request->file('profile_image'),
-                $employee->id,
-                $employee->employee_code,
-                'profile'
+                'profile_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+                'resume_file' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:5120'],
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            DB::beginTransaction();
+
+            $profile = $employee->profile;
+
+            if (!$profile) {
+                $profile = EmployeeProfileM::create([
+                    'employee_id' => $employee->id
+                ]);
+            }
+
+            $profileData = [];
+
+            if ($request->has('experience_type')) {
+                $experienceType = $request->input('experience_type');
+
+                $profileData['experience_type'] = $experienceType;
+
+                if ($experienceType === 'fresher') {
+                    $profileData['total_experience'] = '0';
+                }
+            }
+
+            foreach (
+                [
+                    'date_of_birth',
+                    'gender',
+                    'address',
+                    'highest_qualification',
+                    'cgpa_percentage',
+                    'total_experience',
+                    'bank_account_no',
+                    'bank_account_type',
+                    'bank_holder_name',
+                    'bank_branch',
+                ] as $field
+            ) {
+                if ($request->has($field)) {
+                    if ($field === 'total_experience' && (($profileData['experience_type'] ?? null) === 'fresher')) {
+                        continue;
+                    }
+
+                    $profileData[$field] = $request->input($field);
+                }
+            }
+
+            if ($request->has('ifsc_code')) {
+                $profileData['ifsc_code'] = strtoupper((string) $request->ifsc_code);
+            }
+
+            $fileService = app(EmployeeFileS::class);
+
+            if ($request->hasFile('profile_image')) {
+                $profileData['profile_image'] = $fileService->upload(
+                    $request->file('profile_image'),
+                    $employee->id,
+                    $employee->employee_code,
+                    'profile'
+                );
+            }
+
+            if ($request->hasFile('resume_file')) {
+                $profileData['resume_file'] = $fileService->upload(
+                    $request->file('resume_file'),
+                    $employee->id,
+                    $employee->employee_code,
+                    'resume'
+                );
+            }
+
+            if (empty($profileData)) {
+                DB::rollBack();
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No data provided for update.',
+                    'data' => null,
+                ], 422);
+            }
+
+            $profileData['employee_id'] = $employee->id;
+            $profileData['rejection_reason'] = null;
+            $profileData['updated_at'] = now();
+
+            if (! $profile->profile_status) {
+                $profileData['profile_status'] = 'pending';
+            }
+
+            if (! $profile->is_profile_completed) {
+                $profileData['is_profile_completed'] = false;
+                $profileData['profile_completed_at'] = null;
+            }
+
+            EmployeeProfileM::updateOrCreate(
+                ['employee_id' => $employee->id],
+                $profileData
             );
-        }
 
-        if ($request->hasFile('resume_file')) {
-            $profileData['resume_file'] = $fileService->upload(
-                $request->file('resume_file'),
-                $employee->id,
-                $employee->employee_code,
-                'resume'
-            );
-        }
+            DB::commit();
 
-        if (empty($profileData)) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Profile updated successfully.',
+                'data' => null
+            ]);
+        } catch (\Throwable $e) {
             DB::rollBack();
 
             return response()->json([
                 'success' => false,
-                'message' => 'No data provided for update.',
-                'data' => null,
-            ], 422);
+                'message' => $e->getMessage(),
+            ], 500);
         }
-
-        $profileData['employee_id'] = $employee->id;
-        $profileData['profile_status'] = 'submitted';
-        $profileData['rejection_reason'] = null;
-        $profileData['updated_at'] = now();
-
-        $profile->fill($profileData);
-        $isCompleted = $this->isProfileCompleted($profile);
-
-        $profileData['is_profile_completed'] = $isCompleted;
-        $profileData['profile_completed_at'] = $isCompleted
-            ? ($profile->profile_completed_at ?? now())
-            : null;
-
-        EmployeeProfileM::updateOrCreate(
-            ['employee_id' => $employee->id],
-            $profileData
-        );
-
-        DB::commit();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Profile updated successfully.',
-            'data' => null
-        ]);
-
-    } catch (\Throwable $e) {
-        DB::rollBack();
-
-        return response()->json([
-            'success' => false,
-            'message' => $e->getMessage(),
-        ], 500);
     }
-}
 
     public function listHolidays()
     {
@@ -472,6 +592,29 @@ class ProfileController extends Controller
             'message' => 'Holidays list fetched successfully',
             'errors'  => null,
             'data'    => $holidays,
+        ]);
+    }
+
+    public function updateFcmToken(Request $request)
+    {
+        $request->validate([
+            'fcm_token' => 'required|string',
+        ]);
+
+        $user = auth()->user();
+
+        if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'fcm_token')) {
+            $user->update(['fcm_token' => $request->fcm_token]);
+        } elseif (\Illuminate\Support\Facades\Schema::hasColumn('users', 'device_token')) {
+            $user->update(['device_token' => $request->fcm_token]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'status' => true,
+            'message' => 'FCM token updated successfully.',
+            'data' => null,
+            'errors' => null,
         ]);
     }
 }

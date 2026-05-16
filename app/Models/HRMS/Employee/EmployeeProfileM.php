@@ -4,6 +4,8 @@ namespace App\Models\HRMS\Employee;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+
+use App\Models\Core\UserM;
 use App\Models\HRMS\Employee\EmployeeM;
 
 class EmployeeProfileM extends Model
@@ -20,6 +22,7 @@ class EmployeeProfileM extends Model
         'address',
         'highest_qualification',
         'cgpa_percentage',
+        'experience_type',
         'total_experience',
         'resume_file',
 
@@ -29,10 +32,11 @@ class EmployeeProfileM extends Model
         'ifsc_code',
         'bank_branch',
 
-        // 🔥 NEW FIELDS
         'profile_status',
         'is_profile_completed',
         'profile_completed_at',
+        'approved_by_user_id',
+        'approved_at',
         'rejection_reason',
     ];
 
@@ -40,6 +44,7 @@ class EmployeeProfileM extends Model
         'date_of_birth' => 'date',
         'is_profile_completed' => 'boolean',
         'profile_completed_at' => 'datetime',
+        'approved_at' => 'datetime',
     ];
 
     protected static function newFactory()
@@ -48,36 +53,63 @@ class EmployeeProfileM extends Model
     }
 
     /* =========================
-       RELATION
+       RELATIONS
     ========================= */
+
     public function employee()
     {
         return $this->belongsTo(EmployeeM::class, 'employee_id');
     }
 
+    public function approvedBy()
+    {
+        return $this->belongsTo(UserM::class, 'approved_by_user_id');
+    }
+
     /* =========================
-       ACCESSORS (SMART LOGIC)
+       SCOPES
     ========================= */
 
-    // ✔ Simple completed check
+    public function scopeApproved($query)
+    {
+        return $query->where('is_profile_completed', 1)
+            ->where('profile_status', 'approved');
+    }
+
+    public function scopePendingForHr($query)
+    {
+        return $query->where(function ($q) {
+            $q->where('is_profile_completed', 0)
+                ->orWhereIn('profile_status', ['pending', 'submitted', 'rejected']);
+        });
+    }
+
+    /* =========================
+       ACCESSORS
+    ========================= */
+
     public function getIsCompletedAttribute()
     {
         return (bool) $this->is_profile_completed;
     }
 
-    // ✔ Profile status badge helper
+    public function getIsApprovedAttribute()
+    {
+        return $this->profile_status === 'approved'
+            && (bool) $this->is_profile_completed;
+    }
+
     public function getStatusLabelAttribute()
     {
         return match ($this->profile_status) {
             'pending' => 'Pending',
             'submitted' => 'Submitted',
-            'approved' => 'Completed',
+            'approved' => 'Approved',
             'rejected' => 'Rejected',
             default => 'Pending',
         };
     }
 
-    // ✔ Color helper (UI ke liye)
     public function getStatusColorAttribute()
     {
         return match ($this->profile_status) {
@@ -90,35 +122,38 @@ class EmployeeProfileM extends Model
     }
 
     /* =========================
-       HELPERS (IMPORTANT)
+       HELPERS
     ========================= */
 
-    // 👉 Employee submits profile
     public function markSubmitted()
     {
-        $this->update([
+        return $this->update([
             'profile_status' => 'submitted',
             'is_profile_completed' => 0,
+            'approved_by_user_id' => null,
+            'approved_at' => null,
         ]);
     }
 
-    // 👉 HR approves profile
-    public function markApproved()
+    public function markApproved($approvedByUserId = null)
     {
-        $this->update([
+        return $this->update([
             'profile_status' => 'approved',
             'is_profile_completed' => 1,
             'profile_completed_at' => now(),
+            'approved_by_user_id' => $approvedByUserId,
+            'approved_at' => now(),
             'rejection_reason' => null,
         ]);
     }
 
-    // 👉 HR rejects profile
     public function markRejected($reason = null)
     {
-        $this->update([
+        return $this->update([
             'profile_status' => 'rejected',
             'is_profile_completed' => 0,
+            'approved_by_user_id' => null,
+            'approved_at' => null,
             'rejection_reason' => $reason,
         ]);
     }

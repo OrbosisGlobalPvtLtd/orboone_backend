@@ -19,9 +19,14 @@ class AttendanceM extends Model
         'employee_id',
         'attendance_time_id',
         'attendance_type_id',
+        'leave_request_id',
+        'comp_off_id',
         'attendance_date',
         'punch_in_time',
         'punch_out_time',
+        'attendance_status',
+        'attendance_source',
+        'target_punch_out_time',
         'work_mode',
         'punch_in_latitude',
         'punch_in_longitude',
@@ -34,32 +39,70 @@ class AttendanceM extends Model
         'punch_in_device',
         'punch_out_device',
         'gross_work_minutes',
+        'break_minutes',
         'lunch_break_minutes',
         'total_work_minutes',
         'is_late',
         'late_minutes',
         'is_early_out',
         'early_out_minutes',
+        'violation_count',
+        'is_half_day',
+        'is_lwp',
+        'lwp_reason',
+        'missed_punch',
+        'is_missed_punch',
+        'missed_punch_reason',
+        'is_punch_blocked',
         'is_blocked',
+        'blocked_reason',
         'block_reason',
+        'auto_blocked_at',
+        'auto_block_reason',
+        'is_admin_unlocked',
+        'unlock_type',
+        'unlock_reason_category',
+        'unlock_remarks',
+        'approved_punch_in_time',
+        'is_late_exempted',
+        'unlocked_by',
+        'unlocked_at',
         'hr_approved_by',
         'hr_approved_at',
         'hr_approval_note',
+        'old_pending_hr_logic',
+        'pending_hr_reason',
+        'remarks',
         'is_profile_completed_at_punch',
         'is_locked',
+        'payroll_processed',
+        'payroll_processed_at',
+        'half_day_reason',
         'punch_in_note',
         'punch_out_note',
     ];
 
     protected $casts = [
-        // 'attendance_date' => 'date',
-        'attendance_date' => 'string',
+        'attendance_date' => 'date',
+        'punch_in_time' => 'datetime',
+        'punch_out_time' => 'datetime',
         'hr_approved_at' => 'datetime',
         'is_late' => 'boolean',
         'is_early_out' => 'boolean',
+        'is_half_day' => 'boolean',
+        'is_lwp' => 'boolean',
+        'missed_punch' => 'boolean',
+        'is_missed_punch' => 'boolean',
+        'is_punch_blocked' => 'boolean',
         'is_blocked' => 'boolean',
+        'auto_blocked_at' => 'datetime',
+        'is_admin_unlocked' => 'boolean',
+        'is_late_exempted' => 'boolean',
+        'unlocked_at' => 'datetime',
         'is_profile_completed_at_punch' => 'boolean',
         'is_locked' => 'boolean',
+        'payroll_processed' => 'boolean',
+        'payroll_processed_at' => 'datetime',
     ];
 
     public function employee()
@@ -82,6 +125,16 @@ class AttendanceM extends Model
         return $this->belongsTo(AttendanceTypeM::class, 'attendance_type_id');
     }
 
+    public function leaveRequest()
+    {
+        return $this->belongsTo(\App\Models\HRMS\Leave\LeaveRequestM::class, 'leave_request_id');
+    }
+
+    public function compOff()
+    {
+        return $this->belongsTo(\App\Models\HRMS\Leave\CompOffM::class, 'comp_off_id');
+    }
+
     public function workLogs()
     {
         return $this->hasMany(AttendanceWorkLogM::class, 'attendance_id');
@@ -90,6 +143,11 @@ class AttendanceM extends Model
     public function hrApprovedBy()
     {
         return $this->belongsTo(User::class, 'hr_approved_by');
+    }
+
+    public function unlockedBy()
+    {
+        return $this->belongsTo(User::class, 'unlocked_by');
     }
 
     public function getDurationAttribute()

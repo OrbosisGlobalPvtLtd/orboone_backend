@@ -4,13 +4,17 @@ namespace App\Http\Controllers\Api\V1\HRMS\Attendance;
 
 use App\Http\Controllers\Controller;
 use App\Models\HRMS\Attendance\AttendanceM as Attendance;
+use App\Services\HRMS\Attendance\AttendanceMobileService;
 use App\Services\HRMS\Attendance\AttendanceS;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class AttendanceController extends Controller
 {
-    public function __construct(private AttendanceS $attendanceService)
+    public function __construct(
+        private AttendanceS $attendanceService,
+        private AttendanceMobileService $mobileService
+    )
     {
     }
 
@@ -34,7 +38,7 @@ class AttendanceController extends Controller
             ]);
         }
 
-        $result = $this->attendanceService->processPunchIn(
+        $result = $this->mobileService->punchIn(
             auth()->id(),
             $workMode,
             $request->note,
@@ -66,7 +70,7 @@ class AttendanceController extends Controller
             'address' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        $result = $this->attendanceService->processPunchOut(
+        $result = $this->mobileService->punchOut(
             auth()->id(),
             $request->task_summary ?: $request->task_details,
             $request->note,
@@ -122,17 +126,86 @@ class AttendanceController extends Controller
 
     public function today()
     {
-        $today = Carbon::now(config('app.timezone', 'Asia/Kolkata'))->toDateString();
+        return $this->todayStatus();
+    }
 
-        $attendance = Attendance::with(['attendanceType', 'attendanceTime', 'workLogs'])
-            ->where('user_id', auth()->id())
-            ->whereDate('attendance_date', $today)
-            ->first();
+    public function todayStatus()
+    {
+        $result = $this->mobileService->todayStatus(auth()->id());
+
+        return $this->apiResponse($result['status'], $result['message'], $result['data'], $result['status'] ? 200 : 404);
+    }
+
+    public function profileStatus()
+    {
+        $result = $this->mobileService->profileStatus(auth()->id());
+
+        return $this->apiResponse($result['status'], $result['message'], $result['data'], $result['status'] ? 200 : 404);
+    }
+
+    public function history(Request $request)
+    {
+        $data = $this->mobileService->history(auth()->id(), $request->only(['date', 'month', 'year', 'per_page']));
+
+        return $this->apiResponse(true, 'Attendance history fetched successfully.', $data);
+    }
+
+    public function monthly(Request $request)
+    {
+        $request->merge([
+            'month' => $request->input('month', Carbon::now($this->attendanceService->attendanceTimezone())->month),
+            'year' => $request->input('year', Carbon::now($this->attendanceService->attendanceTimezone())->year),
+        ]);
+
+        return $this->getAttendance($request);
+    }
+
+    public function rules()
+    {
+        $shift = $this->attendanceService->defaultShift();
+
+        return $this->apiResponse(true, 'Attendance rules fetched successfully.', [
+            'timezone' => $this->attendanceService->attendanceTimezone(),
+            'shift' => $shift,
+            'punch_window' => [
+                'allowed_from' => $shift?->punch_allowed_from,
+                'early_login_from' => $shift?->early_login_from,
+                'normal_login_from' => $shift?->normal_login_from,
+                'late_after_time' => $shift?->late_after_time,
+                'warning_after_time' => $shift?->warning_after_time,
+                'block_after_time' => $shift?->block_after_time,
+            ],
+        ]);
+    }
+
+    public function unlock(Request $request)
+    {
+        if (! $this->canManageAttendance()) {
+            return $this->apiResponse(false, 'Only Admin/HR can unlock attendance.', null, 403);
+        }
+
+        $request->validate([
+            'attendance_id' => ['required', 'exists:attendances,id'],
+            'unlock_type' => ['required', 'in:unlock_only,late_exemption,manual_punch_in'],
+            'unlock_reason_category' => ['nullable', 'string', 'max:255'],
+            'unlock_remarks' => ['nullable', 'string', 'max:2000'],
+            'hr_approval_note' => ['nullable', 'string', 'max:2000'],
+            'approved_punch_in_time' => ['required_if:unlock_type,manual_punch_in', 'nullable'],
+        ]);
+
+        $result = $this->attendanceService->unlockAttendance($request->attendance_id, auth()->id(), $request->only([
+            'unlock_type',
+            'unlock_reason_category',
+            'unlock_remarks',
+            'hr_approval_note',
+            'approved_punch_in_time',
+        ]));
 
         return $this->apiResponse(
-            true,
-            $attendance ? 'Today attendance fetched successfully.' : 'No attendance recorded for today.',
-            $attendance ? $this->formatAttendanceRecord($attendance) : null
+            $result['success'],
+            $result['message'],
+            isset($result['data']) ? $this->formatAttendanceRecord($result['data']) : null,
+            $result['success'] ? 200 : 422
         );
     }
 
@@ -222,29 +295,10 @@ class AttendanceController extends Controller
             return null;
         }
 
-        $data = $attendance->toArray();
-
-        $data['attendance_date'] = $attendance->attendance_date
-            ? Carbon::parse($attendance->attendance_date)->format('Y-m-d')
-            : null;
-
-        if (isset($data['work_logs']) && is_array($data['work_logs'])) {
-            $data['work_logs'] = collect($attendance->workLogs ?? [])
-                ->map(function ($log) {
-                    $logData = $log->toArray();
-
-                    $logData['work_date'] = $log->work_date
-                        ? Carbon::parse($log->work_date)->format('Y-m-d')
-                        : null;
-
-                    return $logData;
-                })
-                ->values()
-                ->toArray();
-        }
-
-        return $data;
+        return $this->mobileService->formatAttendanceForApi($attendance);
     }
+
+
 
     private function summaryFromRecords($records): array
     {
@@ -257,9 +311,12 @@ class AttendanceController extends Controller
             'leave' => $records->filter(fn ($item) => $code($item) === 'leave')->count(),
             'week_off' => $records->filter(fn ($item) => $code($item) === 'week_off')->count(),
             'holiday' => $records->filter(fn ($item) => $code($item) === 'holiday')->count(),
-            'pending_hr' => $records->filter(fn ($item) => $code($item) === 'pending_hr' || $item->is_blocked)->count(),
+            'pending_hr' => $records->filter(fn ($item) => $code($item) === 'pending_hr')->count(),
+            'punch_blocked' => $records->filter(fn ($item) => $code($item) === 'punch_blocked' || $item->is_blocked || $item->is_punch_blocked)->count(),
             'late' => $records->where('is_late', true)->count(),
             'early_out' => $records->where('is_early_out', true)->count(),
+            'lwp' => $records->filter(fn ($item) => $code($item) === 'lwp' || $item->is_lwp)->count(),
+            'missed_punch' => $records->where('missed_punch', true)->count(),
             'total_work_minutes' => (int) $records->sum('total_work_minutes'),
             'total_work_hours' => round(((int) $records->sum('total_work_minutes')) / 60, 2),
         ];
@@ -279,6 +336,7 @@ class AttendanceController extends Controller
     private function apiResponse(bool $success, string $message, $data = null, int $status = 200, $errors = null)
     {
         return response()->json([
+            'status' => $success,
             'success' => $success,
             'message' => $message,
             'errors' => $errors,

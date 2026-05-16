@@ -18,14 +18,21 @@ class AttendanceWorkLogM extends Model
         'employee_id',
         'user_id',
         'work_date',
+        'task_type',
+        'duration_minutes',
         'work_summary',
+        'latitude',
+        'longitude',
+        'device_info',
+        'ip_address',
+        'remarks',
         'project_id',
         'project_task_id',
     ];
 
     protected $casts = [
-        // 'work_date' => 'date',
-        'work_date' => 'string',
+        'work_date' => 'date',
+        'duration_minutes' => 'integer',
     ];
 
     public function attendance()

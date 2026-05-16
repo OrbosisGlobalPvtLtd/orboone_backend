@@ -322,6 +322,74 @@
             </div>
         </div>
 
+        <div class="att-header mt-4">
+            <div>
+                <h3 class="att-title">Attendance Policy Rules</h3>
+                <p class="att-subtitle">Mobile app and automation policy values resolved per employee.</p>
+            </div>
+
+            <button type="button" class="att-btn att-btn-primary" data-toggle="modal" data-target="#createPolicyRuleModal">
+                <i class="fas fa-plus"></i> Add Policy
+            </button>
+        </div>
+
+        <div class="att-card">
+            <div class="att-table-wrap">
+                <div class="att-table-responsive">
+                    <table class="att-table">
+                        <thead>
+                            <tr>
+                                <th>Policy</th>
+                                <th>Punch From</th>
+                                <th>Late</th>
+                                <th>Warning</th>
+                                <th>Block</th>
+                                <th>Shift End</th>
+                                <th>Work</th>
+                                <th>Half Day</th>
+                                <th>Absent Below</th>
+                                <th>Lunch</th>
+                                <th>Limits</th>
+                                <th>Automation</th>
+                                <th class="text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($attendancePolicies ?? [] as $policy)
+                                <tr>
+                                    <td>
+                                        <strong>{{ $policy->policy_name }}</strong>
+                                        <div class="text-muted small">#{{ $policy->id }}</div>
+                                    </td>
+                                    <td>{{ \Carbon\Carbon::parse($policy->punch_allowed_from)->format('h:i A') }}</td>
+                                    <td>{{ \Carbon\Carbon::parse($policy->late_after_time)->format('h:i A') }}</td>
+                                    <td>{{ \Carbon\Carbon::parse($policy->warning_after_time)->format('h:i A') }}</td>
+                                    <td>{{ \Carbon\Carbon::parse($policy->block_after_time)->format('h:i A') }}</td>
+                                    <td>{{ \Carbon\Carbon::parse($policy->shift_end_time)->format('h:i A') }}</td>
+                                    <td>{{ $policy->required_work_minutes }}</td>
+                                    <td>{{ $policy->half_day_min_minutes }}</td>
+                                    <td>{{ $policy->absent_below_minutes }}</td>
+                                    <td>{{ $policy->lunch_break_minutes }}</td>
+                                    <td>{{ $policy->allowed_missed_punches }} missed / {{ $policy->combined_violation_limit }} total</td>
+                                    <td>
+                                        <span class="att-badge {{ $policy->auto_block_enabled ? 'badge-active' : 'badge-muted' }}">Block</span>
+                                        <span class="att-badge {{ $policy->auto_absent_enabled ? 'badge-active' : 'badge-muted' }}">Absent</span>
+                                    </td>
+                                    <td class="text-right">
+                                        <button type="button" class="icon-btn text-primary" data-toggle="modal" data-target="#policyRuleModal{{ $policy->id }}" title="Edit Policy">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="13" class="text-center text-muted py-5">No attendance policies found.</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
         {{-- Modals outside table --}}
         @foreach($attendanceTimes as $time)
             <div class="modal fade orb-rule-modal" id="ruleModal{{ $time->id }}" tabindex="-1" role="dialog" aria-hidden="true">
@@ -435,6 +503,135 @@
                 </div>
             </div>
         @endforeach
+
+        @php
+            $policyFields = [
+                ['policy_name', 'Policy Name', 'text'],
+                ['punch_allowed_from', 'Punch Allowed From', 'time'],
+                ['shift_start_time', 'Shift Start', 'time'],
+                ['late_after_time', 'Late After', 'time'],
+                ['warning_after_time', 'Warning After', 'time'],
+                ['block_after_time', 'Block After', 'time'],
+                ['shift_end_time', 'Shift End', 'time'],
+                ['required_work_minutes', 'Required Work Minutes', 'number'],
+                ['half_day_min_minutes', 'Half Day Min Minutes', 'number'],
+                ['absent_below_minutes', 'Absent Below Minutes', 'number'],
+                ['lunch_break_minutes', 'Lunch Break Minutes', 'number'],
+                ['allowed_missed_punches', 'Allowed Missed Punches', 'number'],
+                ['combined_violation_limit', 'Combined Violation Limit', 'number'],
+                ['late_violation_limit', 'Late Violation Limit', 'number'],
+                ['early_violation_limit', 'Early Violation Limit', 'number'],
+            ];
+            $policyDefaults = [
+                'policy_name' => '',
+                'punch_allowed_from' => '',
+                'shift_start_time' => '',
+                'late_after_time' => '',
+                'warning_after_time' => '',
+                'block_after_time' => '',
+                'shift_end_time' => '',
+                'required_work_minutes' => '',
+                'half_day_min_minutes' => '',
+                'absent_below_minutes' => '',
+                'lunch_break_minutes' => '',
+                'allowed_missed_punches' => '',
+                'combined_violation_limit' => '',
+                'late_violation_limit' => '',
+                'early_violation_limit' => '',
+                'auto_block_enabled' => true,
+                'auto_absent_enabled' => true,
+                'is_active' => true,
+            ];
+        @endphp
+
+        @foreach($attendancePolicies ?? [] as $policy)
+            <div class="modal fade orb-rule-modal" id="policyRuleModal{{ $policy->id }}" tabindex="-1" role="dialog" aria-hidden="true">
+                <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+                    <form method="POST" action="{{ route('attendance.policy_rules.update', $policy) }}" class="modal-content att-modal-content">
+                        @csrf
+                        @method('PUT')
+                        <div class="modal-header att-modal-header">
+                            <div>
+                                <h5 class="att-modal-title">Edit Attendance Policy</h5>
+                                <div class="att-modal-subtitle">{{ $policy->policy_name }}</div>
+                            </div>
+                            <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                        </div>
+                        <div class="modal-body att-modal-body">
+                            <div class="att-modal-section">
+                                <div class="row">
+                                    @foreach($policyFields as [$field, $label, $type])
+                                        <div class="col-md-4 mb-3">
+                                            <label>{{ $label }}</label>
+                                            <input type="{{ $type }}" name="{{ $field }}" class="form-control" value="{{ old($field, $type === 'time' && $policy->{$field} ? \Carbon\Carbon::parse($policy->{$field})->format('H:i') : $policy->{$field}) }}" {{ $type === 'number' ? 'min=0' : '' }} required>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                            <div class="att-modal-section mb-0">
+                                <div class="row">
+                                    @foreach(['auto_block_enabled' => 'Auto Block', 'auto_absent_enabled' => 'Auto Absent', 'is_active' => 'Active'] as $field => $label)
+                                        <div class="col-md-4 mb-2">
+                                            <div class="custom-control custom-checkbox">
+                                                <input type="checkbox" class="custom-control-input" id="{{ $field }}{{ $policy->id }}" name="{{ $field }}" value="1" {{ $policy->{$field} ? 'checked' : '' }}>
+                                                <label class="custom-control-label font-weight-bold" for="{{ $field }}{{ $policy->id }}">{{ $label }}</label>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer att-modal-footer">
+                            <button type="button" class="att-btn att-btn-light" data-dismiss="modal">Cancel</button>
+                            <button class="att-btn att-btn-primary"><i class="fas fa-save"></i> Save Policy</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        @endforeach
+
+        <div class="modal fade orb-rule-modal" id="createPolicyRuleModal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+                <form method="POST" action="{{ route('attendance.policy_rules.store') }}" class="modal-content att-modal-content">
+                    @csrf
+                    <div class="modal-header att-modal-header">
+                        <div>
+                            <h5 class="att-modal-title">Add Attendance Policy</h5>
+                            <div class="att-modal-subtitle">Create a database-driven policy for employee assignment.</div>
+                        </div>
+                        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                    </div>
+                    <div class="modal-body att-modal-body">
+                        <div class="att-modal-section">
+                            <div class="row">
+                                @foreach($policyFields as [$field, $label, $type])
+                                    <div class="col-md-4 mb-3">
+                                        <label>{{ $label }}</label>
+                                        <input type="{{ $type }}" name="{{ $field }}" class="form-control" value="{{ old($field, $policyDefaults[$field]) }}" {{ $type === 'number' ? 'min=0' : '' }} required>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                        <div class="att-modal-section mb-0">
+                            <div class="row">
+                                @foreach(['auto_block_enabled' => 'Auto Block', 'auto_absent_enabled' => 'Auto Absent', 'is_active' => 'Active'] as $field => $label)
+                                    <div class="col-md-4 mb-2">
+                                        <div class="custom-control custom-checkbox">
+                                            <input type="checkbox" class="custom-control-input" id="new{{ $field }}" name="{{ $field }}" value="1" checked>
+                                            <label class="custom-control-label font-weight-bold" for="new{{ $field }}">{{ $label }}</label>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer att-modal-footer">
+                        <button type="button" class="att-btn att-btn-light" data-dismiss="modal">Cancel</button>
+                        <button class="att-btn att-btn-primary"><i class="fas fa-save"></i> Create Policy</button>
+                    </div>
+                </form>
+            </div>
+        </div>
 
     </div>
 </div>

@@ -37,7 +37,7 @@ Route::middleware(['auth', 'check.access', 'check.profile.complete'])
         Route::post('/admin/punch-out', [AttendancesC::class, 'adminPunchOut'])->name('admin.punch-out');
     });
 
-Route::middleware(['auth', 'check.access'])
+Route::middleware(['auth', 'check.access', 'employee.user'])
     ->get('/my-attendance', [AttendancesC::class, 'attendanceRecord'])
     ->middleware('permission:attendance.my.view')
     ->name('hrms.attendance.my');

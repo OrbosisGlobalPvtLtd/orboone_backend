@@ -385,8 +385,16 @@ class PermissionSeeder extends Seeder
                 'module' => 'hrms',
                 'submodule' => 'announcements_self',
                 'action' => 'view',
-                'key' => 'announcements_self.view',
+                'key' => 'employee.announcements.view',
                 'description' => 'Employee can view announcements',
+            ],
+            [
+                'id' => 388,
+                'module' => 'hrms',
+                'submodule' => 'announcements_self',
+                'action' => 'detail',
+                'key' => 'employee.announcements.detail',
+                'description' => 'Employee can view announcement detail',
             ],
 
             // Access Control
@@ -554,6 +562,7 @@ class PermissionSeeder extends Seeder
             [272, 'hrms', 'announcements', 'edit', 'announcements.edit', 'Edit announcements'],
             [273, 'hrms', 'announcements', 'delete', 'announcements.delete', 'Delete announcements'],
             [274, 'hrms', 'announcements', 'publish', 'announcements.publish', 'Publish announcements'],
+            [389, 'hrms', 'announcements', 'print', 'announcements.print', 'Print announcements'],
             [275, 'access_control', 'roles', 'manage', 'access.roles.manage', 'Manage roles'],
             [276, 'access_control', 'permissions', 'manage', 'access.permissions.manage', 'Manage permissions'],
             [277, 'access_control', 'admins', 'manage', 'access.admins.manage', 'Manage admins'],

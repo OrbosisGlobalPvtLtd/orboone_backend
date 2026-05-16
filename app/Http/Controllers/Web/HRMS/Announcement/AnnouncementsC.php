@@ -18,24 +18,30 @@ class AnnouncementsC extends Controller
 {
     public function index(Request $request)
     {
-        $permissions = [
-            'create' => true,
-            'edit' => true,
-            'update' => true,
-            'delete' => true,
-            'view' => true,
-            'print' => true,
-            'export' => true,
-            'toggle' => true,
+        if (!Auth::user()->hasPermission('announcements.view') && !Auth::user()->hasPermission('announcements.manage')) {
+            abort(403, 'Unauthorized access.');
+        }
 
-            'canCreate' => true,
-            'canEdit' => true,
-            'canUpdate' => true,
-            'canDelete' => true,
-            'canView' => true,
-            'canPrint' => true,
-            'canExport' => true,
-            'canToggle' => true,
+        $user = Auth::user();
+
+        $permissions = [
+            'create' => $user->hasPermission('announcements.create') || $user->hasPermission('announcements.manage'),
+            'edit' => $user->hasPermission('announcements.edit') || $user->hasPermission('announcements.manage'),
+            'update' => $user->hasPermission('announcements.edit') || $user->hasPermission('announcements.manage'),
+            'delete' => $user->hasPermission('announcements.delete') || $user->hasPermission('announcements.manage'),
+            'view' => $user->hasPermission('announcements.view') || $user->hasPermission('announcements.manage'),
+            'print' => $user->hasPermission('announcements.print') || $user->hasPermission('announcements.manage'),
+            'export' => $user->hasPermission('announcements.export') || $user->hasPermission('announcements.manage'),
+            'toggle' => $user->hasPermission('announcements.publish') || $user->hasPermission('announcements.manage'),
+
+            'canCreate' => $user->hasPermission('announcements.create') || $user->hasPermission('announcements.manage'),
+            'canEdit' => $user->hasPermission('announcements.edit') || $user->hasPermission('announcements.manage'),
+            'canUpdate' => $user->hasPermission('announcements.edit') || $user->hasPermission('announcements.manage'),
+            'canDelete' => $user->hasPermission('announcements.delete') || $user->hasPermission('announcements.manage'),
+            'canView' => $user->hasPermission('announcements.view') || $user->hasPermission('announcements.manage'),
+            'canPrint' => $user->hasPermission('announcements.print') || $user->hasPermission('announcements.manage'),
+            'canExport' => $user->hasPermission('announcements.export') || $user->hasPermission('announcements.manage'),
+            'canToggle' => $user->hasPermission('announcements.publish') || $user->hasPermission('announcements.manage'),
         ];
 
         if ((int) $request->input('ajax_table') === 1) {
@@ -176,6 +182,10 @@ class AnnouncementsC extends Controller
 
     public function store(Request $request, NotificationS $notificationS)
     {
+        if (!Auth::user()->hasPermission('announcements.create') && !Auth::user()->hasPermission('announcements.manage')) {
+            abort(403, 'Unauthorized action.');
+        }
+
         $data = $this->validated($request);
 
         if ($request->hasFile('attachment')) {
@@ -198,6 +208,10 @@ class AnnouncementsC extends Controller
 
     public function update(Request $request, AnnouncementM $announcement)
     {
+        if (!Auth::user()->hasPermission('announcements.edit') && !Auth::user()->hasPermission('announcements.manage')) {
+            abort(403, 'Unauthorized action.');
+        }
+
         $data = $this->validated($request, true);
 
         if ($request->hasFile('attachment')) {
@@ -217,6 +231,10 @@ class AnnouncementsC extends Controller
 
     public function destroy(AnnouncementM $announcement)
     {
+        if (!Auth::user()->hasPermission('announcements.delete') && !Auth::user()->hasPermission('announcements.manage')) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized action.'], 403);
+        }
+
         if ($announcement->attachment) {
             Storage::disk('public')->delete($announcement->attachment);
         }
@@ -231,6 +249,10 @@ class AnnouncementsC extends Controller
 
     public function toggleStatus(AnnouncementM $announcement)
     {
+        if (!Auth::user()->hasPermission('announcements.publish') && !Auth::user()->hasPermission('announcements.manage')) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized action.'], 403);
+        }
+
         $announcement->update([
             'is_active' => ! (bool) $announcement->is_active,
         ]);
@@ -244,6 +266,10 @@ class AnnouncementsC extends Controller
 
     public function print()
     {
+        if (!Auth::user()->hasPermission('announcements.print') && !Auth::user()->hasPermission('announcements.manage')) {
+            abort(403, 'Unauthorized action.');
+        }
+
         $announcements = AnnouncementM::with('creator')->latest('id')->get();
 
         return view('hrms.announcements.print', compact('announcements'));
@@ -251,6 +277,10 @@ class AnnouncementsC extends Controller
 
     public function employeeIndex(Request $request)
     {
+        if (!Auth::user()->hasPermission('employee.announcements.view')) {
+            abort(403, 'Unauthorized access.');
+        }
+
         $announcements = AnnouncementM::with('creator')
             ->where('is_active', true)
             ->whereIn('target_type', ['all', 'employee'])
@@ -270,6 +300,10 @@ class AnnouncementsC extends Controller
 
     public function employeeShow(AnnouncementM $announcement)
     {
+        if (!Auth::user()->hasPermission('employee.announcements.detail') && !Auth::user()->hasPermission('employee.announcements.view')) {
+            abort(403, 'Unauthorized access.');
+        }
+
         if (
             ! (bool) $announcement->is_active ||
             ! in_array($announcement->target_type, ['all', 'employee'], true) ||
@@ -320,13 +354,17 @@ class AnnouncementsC extends Controller
 
         foreach ($users as $user) {
             try {
+                $routeName = ($user->hasPermission('announcements.view') || $user->hasPermission('announcements.manage'))
+                    ? 'announcements.index'
+                    : 'employee.announcements.index';
+
                 $notificationS->createNotification(
                     userId: $user->id,
                     roleId: $user->system_role_id ?? null,
                     title: $announcement->title,
                     message: Str::limit(strip_tags((string) $announcement->description), 130),
                     type: 'announcement',
-                    routeName: 'announcements.index',
+                    routeName: $routeName,
                     routeParams: [],
                     data: [
                         'announcement_id' => $announcement->id,

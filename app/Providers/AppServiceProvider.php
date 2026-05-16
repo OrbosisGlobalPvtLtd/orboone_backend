@@ -33,7 +33,37 @@ class AppServiceProvider extends ServiceProvider
         View::composer('*', function ($view) {
             if (auth()->check()) {
                 $accesses = resolve(Access::class)->get(true);
-                return $view->with('accesses', $accesses);
+                $view->with('accesses', $accesses);
+
+                $userId = auth()->id();
+                $employee = null;
+                $isEmployeeUser = false;
+                $authEmployeeId = null;
+
+                try {
+                    // Try using EmployeeM if it exists
+                    if (class_exists(\App\Models\HRMS\Employee\EmployeeM::class)) {
+                        $employee = \App\Models\HRMS\Employee\EmployeeM::where('user_id', $userId)->first();
+                    } else {
+                        // Fallback to DB
+                        $employee = \Illuminate\Support\Facades\DB::table('employees_new')->where('user_id', $userId)->first();
+                    }
+                } catch (\Exception $e) {
+                    // Ignore, maybe table doesn't exist yet
+                }
+
+                if ($employee) {
+                    $isEmployeeUser = true;
+                    $authEmployeeId = $employee->id ?? null;
+                }
+
+                $view->with('isEmployeeUser', $isEmployeeUser);
+                $view->with('authEmployee', $employee);
+                $view->with('authEmployeeId', $authEmployeeId);
+            } else {
+                $view->with('isEmployeeUser', false);
+                $view->with('authEmployee', null);
+                $view->with('authEmployeeId', null);
             }
         });
     }

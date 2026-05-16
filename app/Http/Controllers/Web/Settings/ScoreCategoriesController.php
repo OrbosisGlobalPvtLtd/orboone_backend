@@ -54,7 +54,7 @@ class ScoreCategoriesController extends Controller
         ]);
 
         Log::create([
-            'description' => auth()->user()->employee->name . " created a score category named '" . $request->input('name') . "'"
+            'description' => (optional(auth()->user()->employee)->name ?? auth()->user()->name) . " created a score category named '" . $request->input('name') . "'"
         ]);
 
         return redirect()->route('score-categories')->with('status', 'Successfully created a score category.');
@@ -97,7 +97,7 @@ class ScoreCategoriesController extends Controller
         ]);
 
         Log::create([
-            'description' => auth()->user()->employee->name . " updated a score category named '" . $scoreCategory->name . "' to '" . $request->input('name') . "'"
+            'description' => (optional(auth()->user()->employee)->name ?? auth()->user()->name) . " updated a score category named '" . $scoreCategory->name . "' to '" . $request->input('name') . "'"
         ]);
 
         return redirect()->route('score-categories')->with('status', 'Successfully updated score category.');
@@ -114,7 +114,7 @@ class ScoreCategoriesController extends Controller
         ScoreCategory::whereId($scoreCategory->id)->delete();
 
         Log::create([
-            'description' => auth()->user()->employee->name . " deleted a score category named '" . $scoreCategory->name . "'"
+            'description' => (optional(auth()->user()->employee)->name ?? auth()->user()->name) . " deleted a score category named '" . $scoreCategory->name . "'"
         ]);
 
         return redirect()->route('score-categories')->with('status', 'Successfully deleted score category.');

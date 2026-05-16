@@ -63,7 +63,7 @@ class DepartmentsC extends Controller
         Department::create($request->validated());
 
         Log::create([
-            'description' => auth()->user()->employee->name . " created an department named '" . $request->input('name') . "'"
+            'description' => (optional(auth()->user()->employee)->name ?? auth()->user()->name) . " created an department named '" . $request->input('name') . "'"
         ]);
 
         return redirect()->route('hrms.departments.index')->with('status', 'Successfully created a department.');
@@ -103,7 +103,7 @@ class DepartmentsC extends Controller
         Department::where('id', $department->id)->update($request->validated());
 
         Log::create([
-            'description' => auth()->user()->employee->name . " updated an department named '" . $department->name . "'"
+            'description' => (optional(auth()->user()->employee)->name ?? auth()->user()->name) . " updated an department named '" . $department->name . "'"
         ]);
 
         return redirect()->route('hrms.departments.index')->with('status', 'Successfully updated department.');
@@ -120,7 +120,7 @@ class DepartmentsC extends Controller
         Department::where('id', $department->id)->delete();
         
         Log::create([
-            'description' => auth()->user()->employee->name . " deleted an department named '" . $department->name . "'"
+            'description' => (optional(auth()->user()->employee)->name ?? auth()->user()->name) . " deleted an department named '" . $department->name . "'"
         ]);
 
         return redirect()->route('hrms.departments.index')->with('status', 'Successfully deleted department.');

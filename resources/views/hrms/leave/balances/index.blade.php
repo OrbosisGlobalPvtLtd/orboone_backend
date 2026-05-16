@@ -1,17 +1,92 @@
 @extends('layouts.panel')
 
 @section('_head')
-<style>.orb-title{font-size:26px;font-weight:800;margin:0}.orb-muted{color:#667085}.orb-card{background:#fff;border:1px solid #E7EAF3;border-radius:8px;box-shadow:0 14px 35px rgba(16,24,40,.07)}.orb-card-body{padding:18px}.orb-btn{background:#4B00E8;color:#fff;border:0;border-radius:8px;padding:8px 12px;font-weight:700}.orb-table th{font-size:12px;color:#667085;text-transform:uppercase;border-top:0}</style>
+@include('hrms.leave.shared.style')
 @endsection
 
 @section('_content')
-<div>
-    <h1 class="orb-title">Leave Balance</h1>
-    <div class="orb-muted mb-3">Employee-wise earned, used, remaining, and LWP balances.</div>
-    <div class="orb-card mb-3"><div class="orb-card-body"><form class="row"><div class="col-md-3"><input name="year" class="form-control" value="{{ $year }}"></div><div class="col-md-5"><select name="employee_id" class="form-control"><option value="">All Employees</option>@foreach($employees as $employee)<option value="{{ $employee->id }}" {{ request('employee_id') == $employee->id ? 'selected' : '' }}>{{ $employee->user_name ?? $employee->display_name }}</option>@endforeach</select></div><div class="col-md-2"><button class="orb-btn">Filter</button></div></form></div></div>
-    <div class="orb-card"><div class="orb-card-body table-responsive"><table class="table orb-table js-datatable"><thead><tr><th>Employee</th><th>Year</th><th>Total</th><th>Paid</th><th>Sick</th><th>Comp Off</th><th>LWP</th></tr></thead><tbody>
-    @foreach($balances as $balance)<tr><td>{{ optional($balance->employee)->display_name }}</td><td>{{ $balance->year }}</td><td>{{ $balance->total_remaining }} / {{ $balance->total_allocated }}</td><td>{{ $balance->paid_remaining }}</td><td>{{ $balance->sick_remaining }}</td><td>{{ $balance->comp_off_remaining }}</td><td>{{ $balance->lwp_used }}</td></tr>@endforeach
-    </tbody></table>{{ method_exists($balances, 'links') ? $balances->links() : '' }}</div></div>
+<div class="leave-page">
+    <div class="leave-container">
+
+        <div class="leave-header">
+            <div>
+                <h3 class="leave-title">Leave Balances</h3>
+                <p class="leave-subtitle">Employee-wise earned, used, remaining, and LWP balances.</p>
+            </div>
+            <button class="leave-btn leave-btn-primary" onclick="$('.js-datatable').DataTable().button('.buttons-excel').trigger();">
+                <i class="fas fa-file-excel mr-1"></i> Export Balances
+            </button>
+        </div>
+
+        @include('hrms.leave.shared.flash')
+
+        <div class="leave-filters mb-4" style="border-radius: 16px;">
+            <form class="d-flex w-100 flex-wrap gap-2 align-items-center">
+                <div class="font-weight-bold text-dark mr-3"><i class="fas fa-filter text-primary mr-1"></i> Filters:</div>
+                <input name="year" type="number" class="leave-filter-select" value="{{ request('year', $year ?? date('Y')) }}" style="width: 120px;" placeholder="Year">
+                
+                <select name="employee_id" class="leave-filter-select auto-filter">
+                    <option value="">All Employees</option>
+                    @foreach($employees as $employee)
+                        <option value="{{ $employee->id }}" {{ request('employee_id') == $employee->id ? 'selected' : '' }}>
+                            {{ $employee->user_name ?? $employee->display_name }}
+                        </option>
+                    @endforeach
+                </select>
+                
+                <button type="submit" class="leave-btn leave-btn-light ml-auto">
+                    Apply Filters
+                </button>
+            </form>
+        </div>
+
+        <div class="leave-card">
+            <div class="leave-table-wrap">
+                <div class="leave-table-responsive">
+                    <table class="leave-table js-datatable">
+                        <thead>
+                            <tr>
+                                <th>Employee</th>
+                                <th>Year</th>
+                                <th>Total Remaining</th>
+                                <th>Paid Rem.</th>
+                                <th>Sick Rem.</th>
+                                <th>Comp Off Rem.</th>
+                                <th>LWP Used</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($balances as $balance)
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="bg-soft-primary text-primary rounded-circle d-flex align-items-center justify-content-center mr-2" style="width:32px;height:32px;font-weight:bold;background:#F4F2FF;">
+                                                {{ substr(optional($balance->employee)->display_name ?? 'U', 0, 1) }}
+                                            </div>
+                                            <strong>{{ optional($balance->employee)->display_name }}</strong>
+                                        </div>
+                                    </td>
+                                    <td><strong>{{ $balance->year }}</strong></td>
+                                    <td>
+                                        <span class="text-success font-weight-bold">{{ $balance->total_remaining }}</span>
+                                        <span class="small text-muted">/ {{ $balance->total_allocated }}</span>
+                                    </td>
+                                    <td><span class="leave-badge badge-paid">{{ $balance->paid_remaining }}</span></td>
+                                    <td><span class="leave-badge badge-pending">{{ $balance->sick_remaining }}</span></td>
+                                    <td><span class="leave-badge badge-comp-off">{{ $balance->comp_off_remaining }}</span></td>
+                                    <td><span class="leave-badge badge-lwp">{{ $balance->lwp_used }}</span></td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="p-3 bg-light border-top">
+                {{ method_exists($balances, 'links') ? $balances->links() : '' }}
+            </div>
+        </div>
+
+    </div>
 </div>
 @endsection
 

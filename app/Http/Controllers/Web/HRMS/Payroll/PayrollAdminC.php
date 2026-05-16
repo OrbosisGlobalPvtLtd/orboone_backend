@@ -388,7 +388,7 @@ public function download($id)
 
     // Optional security (employee can download only own payslip)
     /*
-    if (auth()->user()->employee->id !== $payslip->employee_id) {
+    if (optional(auth()->user()->employee)->id !== $payslip->employee_id) {
         abort(403, 'Unauthorized access');
     }
     */

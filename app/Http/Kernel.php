@@ -70,5 +70,6 @@ class Kernel extends HttpKernel
         'permission' => \App\Http\Middleware\CheckPermission::class,
         'module' => \App\Http\Middleware\CheckModuleAccess::class,
         'check.profile.complete' => \App\Http\Middleware\CheckProfileComplete::class,
+        'employee.user' => \App\Http\Middleware\EnsureUserIsEmployee::class,
     ];
 }

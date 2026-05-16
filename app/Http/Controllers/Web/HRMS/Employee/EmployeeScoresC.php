@@ -77,14 +77,14 @@ class EmployeeScoresC extends Controller
                 'employee_id' => $request->input('employee_id'),
                 'score_category_id' => $cns["id"],
                 'score' => $cns["score"],
-                'scored_by' => auth()->user()->employee->id
+                'scored_by' => optional(auth()->user()->employee)->id
             ]);
         }
 
         $employeeName = Employee::whereId($request->input('employee_id'))->first()->name;
 
         Log::create([
-            'description' => auth()->user()->employee->name . " created performance scores for employee named '" . $employeeName . "'"
+            'description' => (optional(auth()->user()->employee)->name ?? auth()->user()->name) . " created performance scores for employee named '" . $employeeName . "'"
         ]);
 
         return redirect()->route('hrms.employees.performance_scores.index')->with('status', "Successfully added an employee's score");
@@ -143,7 +143,7 @@ class EmployeeScoresC extends Controller
                     ['group_id','=',$employeeScore->group_id],
                     ['score_category_id','=',$cns["id"]],
                     ['employee_id', '=', $request->input('employee_id')],
-                    ['scored_by', '=', auth()->user()->employee->id],
+                    ['scored_by', '=', optional(auth()->user()->employee)->id],
                 ])
                 ->update([
                 'score' => $cns["score"]
@@ -153,7 +153,7 @@ class EmployeeScoresC extends Controller
         $employeeName = Employee::whereId($request->input('employee_id'))->first()->name;
 
         Log::create([
-            'description' => auth()->user()->employee->name . " updated performance scores for employee named '" . $employeeName . "'"
+            'description' => (optional(auth()->user()->employee)->name ?? auth()->user()->name) . " updated performance scores for employee named '" . $employeeName . "'"
         ]);
 
         return redirect()->route('hrms.employees.performance_scores.index')->with('status', "Successfully updated employee's score");
@@ -172,7 +172,7 @@ class EmployeeScoresC extends Controller
         $employeeName = Employee::whereId($employeeScore->employee_id)->first()->name;
 
         Log::create([
-            'description' => auth()->user()->employee->name . " deleted performance scores for employee named '" . $employeeName . "'"
+            'description' => (optional(auth()->user()->employee)->name ?? auth()->user()->name) . " deleted performance scores for employee named '" . $employeeName . "'"
         ]);
 
         return redirect()->route('hrms.employees.performance_scores.index')->with('status', "Successfully deleted employee's score");

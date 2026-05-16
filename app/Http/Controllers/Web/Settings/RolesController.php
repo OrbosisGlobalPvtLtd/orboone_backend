@@ -71,7 +71,7 @@ class RolesController extends Controller
         }
 
         Log::create([
-            'description' => auth()->user()->employee->name . " created a role named '" . $request->input('name') . "'"
+            'description' => (optional(auth()->user()->employee)->name ?? auth()->user()->name) . " created a role named '" . $request->input('name') . "'"
         ]);
 
         return redirect()->route('roles.index')->with('status', 'Successfully created a role.');
@@ -131,7 +131,7 @@ class RolesController extends Controller
         }
 
         Log::create([
-            'description' => auth()->user()->employee->name . " updated a role's detail named '" . $role->name . "'"
+            'description' => (optional(auth()->user()->employee)->name ?? auth()->user()->name) . " updated a role's detail named '" . $role->name . "'"
         ]);
 
         return redirect()->route('roles.index')->with('status', 'Successfully updated role.');
@@ -148,7 +148,7 @@ class RolesController extends Controller
         $this->roles->where('id', $role->id)->delete();
 
         Log::create([
-            'description' => auth()->user()->employee->name . " deleted a role named '" . $role->name . "'"
+            'description' => (optional(auth()->user()->employee)->name ?? auth()->user()->name) . " deleted a role named '" . $role->name . "'"
         ]);
 
         return redirect()->route('roles.index')->with('status', 'Successfully deleted role.');

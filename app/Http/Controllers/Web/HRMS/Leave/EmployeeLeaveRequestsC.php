@@ -131,7 +131,7 @@ class EmployeeLeaveRequestsC extends Controller
 
     public function store(StoreEmployeeLeaveRequest $request)
     {
-        $employeeId = $request->input('employee_id') ?? auth()->user()->employee->id;
+        $employeeId = $request->input('employee_id') ?? optional(auth()->user()->employee)->id;
         $leaveType = $request->input('leave_type', 'Paid Leave');
         
         $employeeLeave = EmployeeLeave::where('employee_id', $employeeId)
@@ -262,7 +262,7 @@ class EmployeeLeaveRequestsC extends Controller
 
             $employeeLeaveRequest->update([
                 'status' => 'Approved',
-                'checked_by' => auth()->user()->employee->id,
+                'checked_by' => optional(auth()->user()->employee)->id,
                 'comment' => $request->input('comment')
             ]);
 
@@ -290,7 +290,7 @@ class EmployeeLeaveRequestsC extends Controller
     {
         $employeeLeaveRequest->update([
             'status' => 'Rejected',
-            'checked_by' => auth()->user()->employee->id,
+            'checked_by' => optional(auth()->user()->employee)->id,
             'comment' => $request->input('comment')
         ]);
 

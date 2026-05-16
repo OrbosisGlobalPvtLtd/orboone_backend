@@ -63,7 +63,7 @@ class RecruitmentsController extends Controller
         $this->recruitments->create($createArray);
 
         Log::create([
-            'description' => auth()->user()->employee->name . " created a recruitment titled '" . $request->input('title') . "'"
+            'description' => (optional(auth()->user()->employee)->name ?? auth()->user()->name) . " created a recruitment titled '" . $request->input('title') . "'"
         ]);
 
         return redirect()->route('hrms.recruitments.index')->with('status', 'Successfully created a recruitment.');
@@ -116,7 +116,7 @@ class RecruitmentsController extends Controller
         $this->recruitments->whereId($recruitment->id)->update($updateArray);
 
         Log::create([
-            'description' => auth()->user()->employee->name . " updated a recruitment's detail titled '" . $recruitment->title . "'"
+            'description' => (optional(auth()->user()->employee)->name ?? auth()->user()->name) . " updated a recruitment's detail titled '" . $recruitment->title . "'"
         ]);
 
         return redirect()->route('hrms.recruitments.index')->with('status', 'Successfully updated recruitment.');
@@ -133,7 +133,7 @@ class RecruitmentsController extends Controller
         $this->recruitments->whereId($recruitment->id)->delete();
 
         Log::create([
-            'description' => auth()->user()->employee->name . " deleted a recruitment titled '" . $recruitment->title . "'"
+            'description' => (optional(auth()->user()->employee)->name ?? auth()->user()->name) . " deleted a recruitment titled '" . $recruitment->title . "'"
         ]);
 
         return redirect()->route('hrms.recruitments.index')->with('status', 'Successfully deleted recruitment.');

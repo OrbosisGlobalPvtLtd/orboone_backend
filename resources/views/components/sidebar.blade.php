@@ -2,7 +2,63 @@
 use Illuminate\Support\Facades\Route;
 
 $menus = isset($menus) ? $menus : collect();
+
+$isEmployeeOnly = function($menu) {
+    $prefixes = [
+        'employee.self', 'employee.profile', 'employee.documents', 
+        'employee.attendance', 'employee.leave', 'employee.salary', 
+        'employee.announcements', 'my.profile', 'my.documents', 
+        'my.attendance', 'my.leave'
+    ];
+
+    if (!empty($menu->module_key)) {
+        foreach ($prefixes as $prefix) {
+            if (str_starts_with(strtolower($menu->module_key), $prefix)) return true;
+        }
+    }
+
+    if (!empty($menu->permission_key)) {
+        foreach ($prefixes as $prefix) {
+            if (str_starts_with(strtolower($menu->permission_key), $prefix)) return true;
+        }
+    }
+
+    if (!empty($menu->route)) {
+        foreach ($prefixes as $prefix) {
+            if (str_starts_with(strtolower($menu->route), $prefix)) return true;
+        }
+    }
+
+    if (!empty($menu->url)) {
+        foreach ($prefixes as $prefix) {
+            if (str_starts_with(strtolower($menu->url), $prefix)) return true;
+        }
+    }
+
+    return false;
+};
+
+if (empty($isEmployeeUser)) {
+    $menus = $menus->map(function($children) use ($isEmployeeOnly) {
+        return collect($children)->reject(function($menu) use ($isEmployeeOnly) {
+            return $isEmployeeOnly($menu);
+        });
+    });
+}
+
 $parentMenus = $menus[null] ?? collect();
+
+if (empty($isEmployeeUser)) {
+    $parentMenus = $parentMenus->reject(function($menu) use ($isEmployeeOnly, $menus) {
+        if ($isEmployeeOnly($menu)) return true;
+        // If parent has no route, and all children were filtered out, hide parent
+        if (empty($menu->route)) {
+            $children = $menus[$menu->id] ?? collect();
+            if ($children->isEmpty()) return true;
+        }
+        return false;
+    });
+}
 
 $currentRoute = optional(request()->route())->getName() ?? '';
 @endphp

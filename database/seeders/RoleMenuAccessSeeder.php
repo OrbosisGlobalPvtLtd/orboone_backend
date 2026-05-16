@@ -59,7 +59,7 @@ class RoleMenuAccessSeeder extends Seeder
             52,     // Upload Documents
             53,     // Company Documents
 
-            60,     // Notice / Announcement
+            154,    // My Announcements
         ];
 
         foreach ($adminRoles as $roleId) {
@@ -127,7 +127,7 @@ class RoleMenuAccessSeeder extends Seeder
                 30,32,137,34,133,
                 40,43,
                 50,52,53,
-                60,
+                154,
                 80,83,
             ],
         ];

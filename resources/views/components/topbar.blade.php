@@ -212,9 +212,11 @@ $topbarNotifications = collect();
                     <div class="dropdown-menu dropdown-menu-right shadow border-0"
                         style="border-radius:12px;padding:10px;min-width:180px;">
 
+                        @if(!empty($isEmployeeUser))
                         <a class="dropdown-item py-2 rounded" href="{{ Route::has('profile.index') ? route('profile.index') : 'javascript:void(0)' }}">
                             <i class="fas fa-user mr-2 text-muted"></i> My Profile
                         </a>
+                        @endif
 
                         <a class="dropdown-item py-2 rounded" href="{{ Route::has('profile.index') ? route('profile.index').'#change-password' : 'javascript:void(0)' }}">
                             <i class="fas fa-lock mr-2 text-muted"></i> Change Password

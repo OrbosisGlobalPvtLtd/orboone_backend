@@ -65,7 +65,7 @@ class PositionsC extends Controller
         Position::create($request->validated());
 
         Log::create([
-            'description' => auth()->user()->employee->name . " created a position named '" . $request->input('name') . "'"
+            'description' => (optional(auth()->user()->employee)->name ?? auth()->user()->name) . " created a position named '" . $request->input('name') . "'"
         ]);
 
         return redirect()->route('hrms.designations.index')->with('status', 'Successfully created a position.');
@@ -105,7 +105,7 @@ class PositionsC extends Controller
         Position::where('id', $position->id)->update($request->validated());
 
         Log::create([
-            'description' => auth()->user()->employee->name . " updated a position's detail named '" . $position->name . "'"
+            'description' => (optional(auth()->user()->employee)->name ?? auth()->user()->name) . " updated a position's detail named '" . $position->name . "'"
         ]);
 
         return redirect()->route('hrms.designations.index')->with('status', 'Successfully updated position.');
@@ -122,7 +122,7 @@ class PositionsC extends Controller
         Position::where('id', $position->id)->delete();
 
         Log::create([
-            'description' => auth()->user()->employee->name . " deleted a position named '" . $position->name . "'"
+            'description' => (optional(auth()->user()->employee)->name ?? auth()->user()->name) . " deleted a position named '" . $position->name . "'"
         ]);
 
         return redirect()->route('hrms.designations.index')->with('status', 'Successfully deleted a position.');

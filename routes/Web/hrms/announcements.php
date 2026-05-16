@@ -29,8 +29,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/announcements', [AnnouncementsC::class, 'index'])
         ->name('announcements.index');
 
-    Route::get('/announcement', [AnnouncementsC::class, 'index'])
-        ->name('announcements');
+    Route::middleware(['employee.user'])->group(function () {
+        Route::get('/my-announcements', [AnnouncementsC::class, 'employeeIndex'])
+            ->name('employee.announcements.index');
+        Route::get('/my-announcements/{announcement}', [AnnouncementsC::class, 'employeeShow'])
+            ->name('employee.announcements.show');
+    });
     Route::get('/announcements/create', [AnnouncementsC::class, 'create'])
         ->name('announcements.create');
 

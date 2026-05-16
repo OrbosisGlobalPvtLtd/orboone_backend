@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Web\HRMS\Payroll;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Web\HRMS\Concerns\HrmsCrudPage;
 use App\Models\HRMS\Payroll\SalaryStructureM as SalaryStructure;
 use App\Models\HRMS\Employee\EmployeeM as Employee;
 use App\Models\HRMS\Payroll\PayrollM as Payroll;
@@ -18,8 +19,11 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class PayrollAdminC extends Controller
 {
+    use HrmsCrudPage;
+
       public function structuresIndex()
     {
+        abort_unless($this->userHasPermission('payroll.salary_structure.view') || $this->userHasPermission('payroll.salary_structure.manage'), 403);
         $structures = SalaryStructure::withCount('employees')->get();
         $accesses = \App\Models\Core\AccessM::where('role_id', auth()->user()->role_id)->get();
         return view('hrms.payroll.index', compact('structures', 'accesses'))->with('active', 'payroll_index');
@@ -27,12 +31,14 @@ class PayrollAdminC extends Controller
 
     public function structuresCreate()
     {
+        abort_unless($this->userHasPermission('payroll.salary_structure.manage'), 403);
         $accesses = \App\Models\Core\AccessM::where('role_id', auth()->user()->role_id)->get();
         return view('hrms.payroll.create', compact('accesses'))->with('active', 'payroll_index');
     }
 
     public function salary_structure(Request $request)
     {
+        abort_unless($this->userHasPermission('payroll.salary_structure.manage'), 403);
         $data = $request->validate([
             'name'                  => 'required|string',
             'basic_salary'          => 'required|numeric',
@@ -58,6 +64,7 @@ class PayrollAdminC extends Controller
 
     public function structuresEdit($id)
     {
+        abort_unless($this->userHasPermission('payroll.salary_structure.manage'), 403);
         $structure = SalaryStructure::findOrFail($id);
         $accesses = \App\Models\Core\AccessM::where('role_id', auth()->user()->role_id)->get();
         return view('hrms.payroll.edit', compact('structure', 'accesses'))->with('active', 'payroll_index');
@@ -65,6 +72,7 @@ class PayrollAdminC extends Controller
 
     public function structuresUpdate($id, Request $request)
     {
+        abort_unless($this->userHasPermission('payroll.salary_structure.manage'), 403);
         $structure = SalaryStructure::findOrFail($id);
 
         $data = $request->validate([
@@ -93,6 +101,7 @@ class PayrollAdminC extends Controller
 
     public function structuresAssignForm()
     {
+        abort_unless($this->userHasPermission('payroll.salary_structure.manage'), 403);
         $employees  = Employee::with('salaryStructure')->get();
         $structures = SalaryStructure::all();
         $accesses = \App\Models\Core\AccessM::where('role_id', auth()->user()->role_id)->get();
@@ -101,10 +110,11 @@ class PayrollAdminC extends Controller
 
     public function dashboard()
     {
+        abort_unless($this->userHasPermission('payroll.dashboard.view'), 403);
         $employeesCount = Employee::where('is_active', true)->count();
         $totalSalaries = Payroll::where('month', now()->month)->where('year', now()->year)->sum('net_salary');
         $recentPayrolls = Payroll::with('employee')->orderBy('id', 'desc')->limit(5)->get();
-        $employees = Employee::where('is_active', true)->orderBy('name')->get();
+        $employees = Employee::where('is_active', true)->leftJoin('users', 'users.id', '=', 'employees_new.user_id')->select('employees_new.*', 'users.name as user_name')->orderByRaw('COALESCE(users.name, employees_new.employee_code)')->get();
         $accesses = \App\Models\Core\AccessM::where('role_id', auth()->user()->role_id)->get();
 
         return view('hrms.payroll.dashboard', compact('employeesCount', 'totalSalaries', 'recentPayrolls', 'employees', 'accesses'));
@@ -112,6 +122,7 @@ class PayrollAdminC extends Controller
 
     public function structuresAssign(Request $request)
     {
+        abort_unless($this->userHasPermission('payroll.salary_structure.manage'), 403);
         $data = $request->validate([
             'assignments' => 'required|array',
             'assignments.*' => 'nullable|exists:salary_structures,id',
@@ -141,14 +152,16 @@ class PayrollAdminC extends Controller
         ]);
     }
 
-    public function payrollRunForm()
+public function payrollRunForm()
 {
+    abort_unless($this->userHasPermission('payroll.generate.view'), 403);
     $accesses = \App\Models\Core\AccessM::where('role_id', auth()->user()->role_id)->get();
     return view('hrms.payroll.payrollrun', compact('accesses'))->with('active', 'payroll_run');
 }
 
 public function payrollRun(Request $request)
 {
+    abort_unless($this->userHasPermission('payroll.generate.process'), 403);
     $request->validate([
         'month' => 'required|date_format:Y-m',
     ]);
@@ -175,6 +188,7 @@ public function payrollRun(Request $request)
 
 public function payrollPreview($monthInput)
 {
+    abort_unless($this->userHasPermission('payroll.generate.view'), 403);
     $startDate = Carbon::createFromFormat('Y-m', $monthInput);
     $month = $startDate->month;
     $year = $startDate->year;
@@ -190,6 +204,7 @@ public function payrollPreview($monthInput)
 
 public function payrollLock($monthInput)
 {
+    abort_unless($this->userHasPermission('payroll.generate.process'), 403);
     $startDate = Carbon::createFromFormat('Y-m', $monthInput);
     $month = $startDate->month;
     $year = $startDate->year;
@@ -230,6 +245,7 @@ public function monthlyDetail($monthInput)
 }
 public function payslipsByMonth($monthInput)
 {
+    abort_unless($this->userHasPermission('payroll.payslips.view_all'), 403);
     $startDate = Carbon::createFromFormat('Y-m', $monthInput);
     $month = $startDate->month;
     $year = $startDate->year;
@@ -246,6 +262,7 @@ public function payslipsByMonth($monthInput)
 
 public function payslipsGenerate($monthInput)
 {
+    abort_unless($this->userHasPermission('payroll.generate.process'), 403);
     $startDate = Carbon::createFromFormat('Y-m', $monthInput);
     $month = $startDate->month;
     $year = $startDate->year;
@@ -294,6 +311,7 @@ public function payslipsGenerate($monthInput)
  */
 public function downloadAllPayslips($monthInput)
 {
+    abort_unless($this->userHasPermission('payroll.payslips.view_all'), 403);
     $startDate = Carbon::createFromFormat('Y-m', $monthInput);
     $month = $startDate->month;
     $year = $startDate->year;
@@ -322,7 +340,7 @@ public function downloadAllPayslips($monthInput)
             'month' => $monthInput
         ]);
         $fileName = 'Salary Slip-' . date('F-Y', strtotime($monthInput . '-01'))
-            . '-' . $p->employee->name . '.pdf';
+            . '-' . ($p->employee->display_name ?? $p->employee->employee_code ?? $p->employee_id) . '.pdf';
         $zip->addFromString($fileName, $pdf->output());
     }
 
@@ -334,6 +352,13 @@ public function downloadAllPayslips($monthInput)
 
     public function payslips()
     {
+        abort_unless($this->userHasPermission('payroll.payslips.view_own') || $this->userHasPermission('payroll.payslips.view_all') || $this->userHasPermission('payroll.payslips.view'), 403);
+        if ($this->userHasPermission('payroll.payslips.view_all')) {
+            $payslips = Payslip::orderBy('year', 'desc')->orderBy('month', 'desc')->get();
+            $accesses = \App\Models\Core\AccessM::where('role_id', auth()->user()->role_id)->get();
+            return view('hrms.payroll.payslips', compact('payslips', 'accesses'))->with('active', 'my_payslips');
+        }
+
         $employee = Employee::where('user_id', auth()->id())->firstOrFail();
         $payslips = Payslip::where('employee_id', $employee->id)
             ->orderBy('year', 'desc')
@@ -347,6 +372,9 @@ public function downloadAllPayslips($monthInput)
 public function download($id)
 {
     $payslip = Payslip::findOrFail($id);
+    if (! $this->userHasPermission('payroll.payslips.view_all')) {
+        abort_unless((int) $payslip->employee_id === (int) $this->ownEmployeeId(), 403);
+    }
 
     // Check file path exists in DB
     if (empty($payslip->file_path)) {
@@ -426,21 +454,23 @@ public function downloadByEmployeeMonth($employee_id, $monthInput)
 
     return Storage::disk('public')->download(
         $payslip->file_path,
-        'Salary Slip-' . date('F-Y', strtotime($monthInput . '-01')) . '-' . $employee->name . '.pdf'
+        'Salary Slip-' . date('F-Y', strtotime($monthInput . '-01')) . '-' . ($employee->display_name ?? $employee->employee_code ?? $employee->id) . '.pdf'
     );
 }
 
 public function salarySlipForm()
     {
-        $employees = Employee::where('is_active', true)->orderBy('name')->get();
+        abort_unless($this->userHasPermission('payroll.payslips.view_all'), 403);
+        $employees = Employee::where('is_active', true)->leftJoin('users', 'users.id', '=', 'employees_new.user_id')->select('employees_new.*', 'users.name as user_name')->orderByRaw('COALESCE(users.name, employees_new.employee_code)')->get();
         $accesses = \App\Models\Core\AccessM::where('role_id', auth()->user()->role_id)->get();
         return view('hrms.payroll.salary_slip_form', compact('employees', 'accesses'))->with('active', 'payroll_run');
     }
 
 public function salarySlipDownload(Request $request)
 {
+    abort_unless($this->userHasPermission('payroll.payslips.view_all'), 403);
     $data = $request->validate([
-        'employee_id' => 'required|integer|exists:employees,id',
+        'employee_id' => 'required|integer|exists:employees_new,id',
         'month' => 'required|date_format:Y-m',
     ]);
 
@@ -608,7 +638,7 @@ public function fnfProcess(Employee $employee, Request $request)
     ]);
 
     return redirect()->route('pages.payroll.fnfpending')
-        ->with('success', 'F&F processed for '.$employee->name);
+        ->with('success', 'F&F processed for '.($employee->display_name ?? $employee->employee_code ?? $employee->id));
 }
 
 public function fnfView()

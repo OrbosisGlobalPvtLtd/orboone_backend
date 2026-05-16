@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\Web\HRMS\Payroll\PayrollAdminC;
+use App\Http\Controllers\Web\HRMS\Payroll\MonthlyPayrollSummaryC;
+use App\Http\Controllers\Web\HRMS\Payroll\PayrollAttendanceImpactC;
+use App\Http\Controllers\Web\HRMS\Payroll\PayrollGenerateC;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -11,14 +14,14 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('payroll')->middleware('auth')->group(function () {
     // Dashboard
-    Route::get('/dashboard', [PayrollAdminC::class, 'dashboard'])->name('pages.payroll.dashboard');
+    Route::get('/dashboard', [PayrollAdminC::class, 'dashboard'])->middleware('permission:payroll.dashboard.view')->name('pages.payroll.dashboard');
 
     // Salary Structure
-    Route::get('/', [PayrollAdminC::class, 'structuresIndex'])->name('pages.payroll.index');
-    Route::get('/create', [PayrollAdminC::class, 'structuresCreate'])->name('pages.payroll.create');
-    Route::post('/store', [PayrollAdminC::class, 'salary_structure'])->name('pages.payroll.salary_structure');
-    Route::get('/edit/{id}', [PayrollAdminC::class, 'structuresEdit'])->name('pages.payroll.edit');
-    Route::post('/update/{id}', [PayrollAdminC::class, 'structuresUpdate'])->name('pages.payroll.update');
+    Route::get('/', [PayrollAdminC::class, 'structuresIndex'])->middleware('permission:payroll.salary_structure.view|payroll.salary_structure.manage')->name('pages.payroll.index');
+    Route::get('/create', [PayrollAdminC::class, 'structuresCreate'])->middleware('permission:payroll.salary_structure.manage')->name('pages.payroll.create');
+    Route::post('/store', [PayrollAdminC::class, 'salary_structure'])->middleware('permission:payroll.salary_structure.manage')->name('pages.payroll.salary_structure');
+    Route::get('/edit/{id}', [PayrollAdminC::class, 'structuresEdit'])->middleware('permission:payroll.salary_structure.manage')->name('pages.payroll.edit');
+    Route::post('/update/{id}', [PayrollAdminC::class, 'structuresUpdate'])->middleware('permission:payroll.salary_structure.manage')->name('pages.payroll.update');
 
     // Assign Structures
     Route::get('/assign', [PayrollAdminC::class, 'structuresAssignForm'])->name('pages.payroll.assign');
@@ -28,8 +31,8 @@ Route::prefix('payroll')->middleware('auth')->group(function () {
     Route::get('/salary-structure', [PayrollAdminC::class, 'salaryStructure'])->name('pages.payroll.salary.structure');
 
     // Payroll Run + Preview
-    Route::get('/run', [PayrollAdminC::class, 'payrollRunForm'])->name('pages.payroll.payrollrun');
-    Route::post('/run', [PayrollAdminC::class, 'payrollRun'])->name('pages.payroll.payrollrun.run');
+    Route::get('/run', [PayrollAdminC::class, 'payrollRunForm'])->middleware('permission:payroll.generate.view')->name('pages.payroll.payrollrun');
+    Route::post('/run', [PayrollAdminC::class, 'payrollRun'])->middleware('permission:payroll.generate.process')->name('pages.payroll.payrollrun.run');
     Route::get('/preview/{month}', [PayrollAdminC::class, 'payrollPreview'])->name('pages.payroll.preview');
     Route::post('/lock/{month}', [PayrollAdminC::class, 'payrollLock'])->name('pages.payroll.lock');
 
@@ -40,7 +43,7 @@ Route::prefix('payroll')->middleware('auth')->group(function () {
     // Payslips
     Route::get('/payslip-index/{month}', [PayrollAdminC::class, 'payslipsByMonth'])->name('pages.payroll.payslipindex');
     Route::post('/payslip-generate/{month}', [PayrollAdminC::class, 'payslipsGenerate'])->name('pages.payroll.payslipgenerate');
-    Route::get('/payslips', [PayrollAdminC::class, 'payslips'])->name('pages.payroll.payslips');
+    Route::get('/payslips', [PayrollAdminC::class, 'payslips'])->middleware('permission:payroll.payslips.view_own|payroll.payslips.view_all|payroll.payslips.view')->name('pages.payroll.payslips');
 
     Route::get('/payslips/{id}/download', [PayrollAdminC::class, 'download'])
         ->name('pages.payroll.payslip.download');
@@ -77,10 +80,18 @@ Route::prefix('payroll')->middleware('auth')->group(function () {
     Route::get('/fnf-pending', [PayrollAdminC::class, 'fnfPendingEmployees'])->name('pages.payroll.fnfpending');
     Route::get('/fnf/{employee}', [PayrollAdminC::class, 'fnfCalculateForm'])->name('pages.payroll.fnfcalculate');
     Route::post('/fnf/{employee}', [PayrollAdminC::class, 'fnfProcess'])->name('pages.payroll.fnfprocess');
-    Route::get('/fnf-view', [PayrollAdminC::class, 'fnfView'])->name('pages.payroll.fnf');
+    Route::get('/fnf-view', [PayrollAdminC::class, 'fnfView'])->middleware('permission:payroll.fnf.view')->name('pages.payroll.fnf');
 
     // Claims
     Route::get('/claims', [PayrollAdminC::class, 'claimsIndex'])->name('pages.payroll.claims.index');
     Route::get('/claims/create', [PayrollAdminC::class, 'claimsCreate'])->name('pages.payroll.claims.create');
     Route::post('/claims/store', [PayrollAdminC::class, 'claimsStore'])->name('pages.payroll.claims.store');
+
+    Route::get('/attendance-impacts', [PayrollAttendanceImpactC::class, 'index'])->middleware('permission:payroll.attendance_impacts.view')->name('hrms.payroll.attendance_impacts.index');
+    Route::post('/attendance-impacts/{id}/process', [PayrollAttendanceImpactC::class, 'process'])->name('hrms.payroll.attendance_impacts.process');
+
+    Route::get('/generate', [PayrollGenerateC::class, 'index'])->middleware('permission:payroll.generate.view')->name('hrms.payroll.generate.index');
+    Route::post('/generate/process', [PayrollGenerateC::class, 'process'])->middleware('permission:payroll.generate.process')->name('hrms.payroll.generate.process');
+
+    Route::get('/monthly-summary', [MonthlyPayrollSummaryC::class, 'index'])->middleware('permission:payroll.monthly_summary.view')->name('hrms.payroll.monthly_summary.index');
 });

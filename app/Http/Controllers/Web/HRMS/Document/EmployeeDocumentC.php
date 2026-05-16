@@ -3,88 +3,233 @@
 namespace App\Http\Controllers\Web\HRMS\Document;
 
 use App\Http\Controllers\Controller;
-use App\Models\HRMS\Document\DocumentTypeM as DocumentTypeModal;
-use App\Models\HRMS\Document\EmployeeDocumentM as EmployeeDocumentModal;
-use App\Services\HRMS\Document\DocumentS;
+use App\Models\HRMS\Document\DocumentTypeM;
+use App\Models\HRMS\Document\EmployeeDocumentM;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class EmployeeDocumentC extends Controller
 {
-    private DocumentS $documentService;
-
-    public function __construct(DocumentS $documentService)
-    {
-        $this->documentService = $documentService;
-    }
-
     public function index()
     {
-        $user = auth()->user();
+        $user = Auth::user();
+        $employee = $user->employee;
 
-        $documents = EmployeeDocumentModal::where('user_id', $user->id)
-            ->with('type')
-            ->orderBy('created_at', 'desc')
+        abort_if(! $employee, 404, 'Employee profile not found.');
+
+        $rawExperience = strtolower(trim(
+            $employee->experience_type
+                ?? $employee->profile->experience_type
+                ?? 'fresher'
+        ));
+
+        $isExperienced = in_array($rawExperience, [
+            'experienced',
+            'experience',
+            'exp',
+            'yes',
+            '1',
+        ]);
+
+        $appliesTo = $isExperienced
+            ? ['all', 'both', 'employee', 'employees', 'experienced', 'experience', 'exp']
+            : ['all', 'both', 'employee', 'employees', 'fresher', 'freshers'];
+
+        $documentTypes = DocumentTypeM::where('scope', 'employee')
+            ->where('is_active', 1)
+            ->where(function ($q) use ($appliesTo) {
+                $q->whereNull('applies_to')
+                    ->orWhere('applies_to', '')
+                    ->orWhereIn(DB::raw('LOWER(TRIM(applies_to))'), $appliesTo);
+            })
+            ->orderBy('is_mandatory', 'desc')
+            ->orderBy('name')
             ->get();
 
-        $types = DocumentTypeModal::where('scope', 'employee')->get();
+        $documents = EmployeeDocumentM::where('employee_id', $employee->id)
+            ->get()
+            ->keyBy('document_type_id');
 
-        $allEmployees = \App\Models\HRMS\Employee\EmployeeM::with(['user', 'employeeDetail'])->orderBy('name')->get();
-
-        $accesses = \App\Models\Core\AccessM::where('role_id', $user->role_id)->get();
-
-        return view('hrms.document.employee.documents-index', compact('documents', 'types', 'user', 'accesses', 'allEmployees'));
+        return view('hrms.documents.employee.index', compact(
+            'employee',
+            'documentTypes',
+            'documents'
+        ));
     }
 
     public function store(Request $request)
     {
-        $request->validate([
-            'user_id'          => 'required|exists:users,id',
-            'document_type_id' => 'required|exists:document_types,id',
-            'file'             => 'required|mimes:pdf,jpg,jpeg,png,docx|max:5120',
-        ]);
+        $user = Auth::user();
+        $employee = $user->employee;
 
-        $type = DocumentTypeModal::findOrFail($request->document_type_id);
+        abort_if(! $employee, 404, 'Employee profile not found.');
 
-        $exists = EmployeeDocumentModal::where('user_id', $request->user_id)
-            ->where('document_type_id', $request->document_type_id)
-            ->whereIn('status', ['pending', 'verified', 'approved'])
-            ->exists();
-
-        if ($exists) {
-            return back()->with('error', 'This document type is already submitted and active for the selected employee.');
+        if ($employee->profile && in_array($employee->profile->profile_status, ['submitted', 'approved'])) {
+            return back()->with('error', 'Documents editing is disabled after submission.');
         }
 
-        $path = $this->documentService->storePublicUpload($request->file('file'));
-
-        EmployeeDocumentModal::create([
-            'user_id'          => $request->user_id,
-            'document_type_id' => $request->document_type_id,
-            'document_type'    => $type->name,
-            'file_path'        => $path,
-            'uploaded_by'      => auth()->id(),
-            'status'           => 'pending',
+        $request->validate([
+            'document_type_id' => 'required|exists:document_types,id',
+            'title' => 'nullable|string|max:150',
+            'file' => 'required|file|max:5120|mimes:pdf,jpg,jpeg,png,webp',
+            'expiry_date' => 'nullable|date',
         ]);
 
-        return back()->with('success', 'Document uploaded successfully! It is now pending HR verification.');
+        $documentType = DocumentTypeM::findOrFail($request->document_type_id);
+        $file = $request->file('file');
+
+        $path = $file->store('employee-documents/' . $employee->id, 'private');
+
+        EmployeeDocumentM::updateOrCreate(
+            [
+                'employee_id' => $employee->id,
+                'document_type_id' => $documentType->id,
+            ],
+            [
+                'title' => $request->title ?? $documentType->name,
+                'file_path' => $path,
+                'file_original_name' => $file->getClientOriginalName(),
+                'file_mime_type' => $file->getClientMimeType(),
+                'file_size' => $file->getSize(),
+
+                // Employee upload = always pending
+                'verification_status' => 'pending',
+                'uploaded_by_user_id' => $user->id,
+                'verified_by_user_id' => null,
+                'verified_at' => null,
+                'rejection_reason' => null,
+
+                'expiry_date' => $request->expiry_date,
+                'uploaded_at' => now(),
+                'is_required' => $documentType->is_mandatory,
+            ]
+        );
+
+        return back()->with('success', 'Document uploaded successfully. It is pending for HR verification.');
+    }
+
+    public function replace(Request $request, $id)
+    {
+        $user = Auth::user();
+        $employee = $user->employee;
+
+        abort_if(! $employee, 404, 'Employee profile not found.');
+
+        $document = EmployeeDocumentM::where('employee_id', $employee->id)->findOrFail($id);
+
+        if ($employee->profile && in_array($employee->profile->profile_status, ['submitted', 'approved'])) {
+            return back()->with('error', 'Documents editing is disabled after submission.');
+        }
+
+        $request->validate([
+            'file' => 'required|file|max:5120|mimes:pdf,jpg,jpeg,png,webp',
+            'expiry_date' => 'nullable|date',
+        ]);
+
+        if ($document->file_path && Storage::disk('private')->exists($document->file_path)) {
+            Storage::disk('private')->delete($document->file_path);
+        }
+
+        $file = $request->file('file');
+        $path = $file->store('employee-documents/' . $employee->id, 'private');
+
+        $document->update([
+            'file_path' => $path,
+            'file_original_name' => $file->getClientOriginalName(),
+            'file_mime_type' => $file->getClientMimeType(),
+            'file_size' => $file->getSize(),
+
+            // Employee replace = again pending
+            'verification_status' => 'pending',
+            'uploaded_by_user_id' => $user->id,
+            'verified_by_user_id' => null,
+            'verified_at' => null,
+            'rejection_reason' => null,
+
+            'expiry_date' => $request->expiry_date,
+            'uploaded_at' => now(),
+        ]);
+
+        return back()->with('success', 'Document replaced successfully. It is pending for HR verification.');
     }
 
     public function destroy($id)
     {
-        $doc = EmployeeDocumentModal::findOrFail($id);
+        $user = Auth::user();
+        $employee = $user->employee;
 
-        if (in_array($doc->status, ['verified', 'approved'])) {
-            return back()->with('error', 'Approved documents cannot be deleted. Contact HR to revoke first.');
+        abort_if(! $employee, 404, 'Employee profile not found.');
+
+        if ($employee->profile && in_array($employee->profile->profile_status, ['submitted', 'approved'])) {
+            return back()->with('error', 'Documents editing is disabled after submission.');
         }
 
-        if ($doc->file_path) {
-            $fullPath = public_path($doc->file_path);
-            if (file_exists($fullPath) && is_file($fullPath)) {
-                unlink($fullPath);
-            }
+        $document = EmployeeDocumentM::where('employee_id', $employee->id)->findOrFail($id);
+
+        if ($document->file_path && Storage::disk('private')->exists($document->file_path)) {
+            Storage::disk('private')->delete($document->file_path);
         }
 
-        $doc->delete();
+        $document->delete();
 
-        return back()->with('success', 'Document removed successfully.');
+        return back()->with('success', 'Document deleted successfully.');
+    }
+
+    public function submitForVerification()
+    {
+        $user = Auth::user();
+        $employee = $user->employee;
+
+        abort_if(! $employee, 404, 'Employee profile not found.');
+
+        $rawExperience = strtolower(trim(
+            $employee->experience_type
+                ?? $employee->profile->experience_type
+                ?? 'fresher'
+        ));
+
+        $isExperienced = in_array($rawExperience, [
+            'experienced',
+            'experience',
+            'exp',
+            'yes',
+            '1',
+        ]);
+
+        $appliesTo = $isExperienced
+            ? ['all', 'both', 'employee', 'employees', 'experienced', 'experience', 'exp']
+            : ['all', 'both', 'employee', 'employees', 'fresher', 'freshers'];
+
+        $requiredDocumentTypeIds = DocumentTypeM::where('scope', 'employee')
+            ->where('is_active', 1)
+            ->where('is_mandatory', 1)
+            ->where(function ($q) use ($appliesTo) {
+                $q->whereNull('applies_to')
+                    ->orWhere('applies_to', '')
+                    ->orWhereIn(DB::raw('LOWER(TRIM(applies_to))'), $appliesTo);
+            })
+            ->pluck('id');
+
+        $uploadedDocumentTypeIds = EmployeeDocumentM::where('employee_id', $employee->id)
+            ->whereIn('document_type_id', $requiredDocumentTypeIds)
+            ->pluck('document_type_id');
+
+        $missing = $requiredDocumentTypeIds->diff($uploadedDocumentTypeIds);
+
+        if ($missing->count() > 0) {
+            return back()->with('error', 'Please upload all mandatory documents before submission.');
+        }
+
+        $employee->profile()->updateOrCreate(
+            ['employee_id' => $employee->id],
+            [
+                'profile_status' => 'submitted',
+                'is_profile_completed' => 0,
+            ]
+        );
+
+        return back()->with('success', 'Profile and documents submitted for verification.');
     }
 }

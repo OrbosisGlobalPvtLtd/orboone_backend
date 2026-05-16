@@ -20,6 +20,20 @@ class DocumentS
         );
     }
 
+    public function storePrivateEmployeeDocumentFile(
+        UploadedFile $file,
+        int $employeeId,
+        string $fieldKey
+    ): string {
+        $fileName = $fieldKey.'_'.time().'.'.$file->extension();
+
+        return $file->storeAs(
+            'employee_documents/'.$employeeId,
+            $fileName,
+            'private'
+        );
+    }
+
     public function storePublicUpload(UploadedFile $file): string
     {
         $fileName = 'doc_'.time().'_'.uniqid().'.'.$file->getClientOriginalExtension();

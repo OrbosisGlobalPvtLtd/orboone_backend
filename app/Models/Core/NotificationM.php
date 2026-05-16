@@ -2,17 +2,67 @@
 
 namespace App\Models\Core;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class NotificationM extends Model
 {
-    use HasFactory;
+    protected $table = 'notifications';
 
     protected $fillable = [
         'user_id',
+        'employee_id',
         'title',
         'message',
-        'is_read'
+        'type',
+        'category',
+        'data',
+        'is_read',
+        'read_at',
+        'created_by',
     ];
+
+    protected $casts = [
+        'data' => 'array',
+        'is_read' => 'boolean',
+        'read_at' => 'datetime',
+    ];
+
+    public function scopeForUser($query, $userId)
+    {
+        return $query->where(function ($q) use ($userId) {
+            $q->where('user_id', $userId);
+
+            // fallback agar employee_id based notification use ho rahi ho
+            $q->orWhereHas('user', function ($uq) use ($userId) {
+                $uq->where('id', $userId);
+            });
+        });
+    }
+
+    public function scopeUnread($query)
+    {
+        return $query->where('is_read', 0);
+    }
+
+    public function scopeRead($query)
+    {
+        return $query->where('is_read', 1);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(UserM::class, 'user_id');
+    }
+
+    public function markAsRead(): bool
+    {
+        if ($this->is_read) {
+            return true;
+        }
+
+        $this->is_read = true;
+        $this->read_at = now();
+
+        return $this->save();
+    }
 }

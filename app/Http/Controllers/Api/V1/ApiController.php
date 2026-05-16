@@ -687,8 +687,9 @@ class ApiController extends Controller
 
             // ── 1. Allocation (quota) ──────────────────────────────────────
             $alloc   = \App\Models\HRMS\Leave\LeaveAllocationM::where('employee_id', $employee->id)->where('year', $year)->first();
-            $totalPl = (float) ($alloc->total_pl ?? 18); // default 18 PL
-            $totalSl = (float) ($alloc->total_sl ?? 7);  // default 7 SL
+            $totalPl = (float) ($alloc->paid_allocated ?? 0);
+            $totalSl = (float) ($alloc->sick_allocated ?? 0);
+            $totalCompOff = (float) ($alloc->comp_off_allocated ?? 0);
 
             // ── 2. Used — from APPROVED applications (source of truth) ────
             $usedPl = (float) \App\Models\HRMS\Leave\LeaveApplicationM::where('employee_id', $employee->id)
@@ -710,8 +711,9 @@ class ApiController extends Controller
             $totalLwp = $lwpDirect + $lwpEmbedded;
 
             // ── 3. Remaining ───────────────────────────────────────────────
-            $remPl = max(0, $totalPl - $usedPl);
-            $remSl = max(0, $totalSl - $usedSl);
+            $remPl = max(0, (float) ($alloc->paid_remaining ?? ($totalPl - $usedPl)));
+            $remSl = max(0, (float) ($alloc->sick_remaining ?? ($totalSl - $usedSl)));
+            $remCompOff = max(0, (float) ($alloc->comp_off_remaining ?? $totalCompOff));
 
             // ── 4. Pending (applied but not yet approved) ──────────────────
             $pendingPl = (float) \App\Models\HRMS\Leave\LeaveApplicationM::where('employee_id', $employee->id)
@@ -755,9 +757,9 @@ class ApiController extends Controller
                         'employee_name'   => $user->name,
                         'employee_type'   => $employee->employment_type ?? 'Full-Time',
                         'year'            => $year,
-                        'total_leave'     => $totalPl + $totalSl,  // e.g. 25
+                        'total_leave'     => (float) ($alloc->total_allocated ?? ($totalPl + $totalSl + $totalCompOff)),
                         'used_leave'      => $usedPl + $usedSl,    // all approved
-                        'remaining_leave' => $remPl + $remSl,      // total left
+                        'remaining_leave' => (float) ($alloc->total_remaining ?? ($remPl + $remSl + $remCompOff)),
                         'lwp_days'        => $totalLwp,            // LWP taken
                         'pending_leave'   => $pendingPl + $pendingSl, // awaiting approval
                     ],
@@ -778,6 +780,12 @@ class ApiController extends Controller
                         'remaining'  => $remSl,
                         'pending'    => $pendingSl,
                         'usable_now' => $usableSl,
+                    ],
+
+                    'comp_off' => [
+                        'total' => $totalCompOff,
+                        'used' => (float) ($alloc->comp_off_used ?? 0),
+                        'remaining' => $remCompOff,
                     ],
 
                     // ── MONTHLY USAGE ─────────────────────────────────────
@@ -868,7 +876,7 @@ class ApiController extends Controller
             $warnings       = [];
 
             if ($isRestricted) {
-                $alreadyUsed = ($allocation->used_pl ?? 0) + ($allocation->used_sl ?? 0);
+                $alreadyUsed = ($allocation->paid_used ?? 0) + ($allocation->sick_used ?? 0);
                 if ($alreadyUsed >= 1) {
                     $finalLeaveType = 'LWP';
                     $lwpDays        = $totalDays;
@@ -894,8 +902,8 @@ class ApiController extends Controller
                 // Year-end restriction Nov/Dec = 50% balance
                 $nowMonth  = \Carbon\Carbon::now()->month;
                 $available = ($finalLeaveType === 'PL')
-                    ? max(0, $allocation->total_pl - $allocation->used_pl)
-                    : max(0, $allocation->total_sl - $allocation->used_sl);
+                    ? max(0, (float) ($allocation->paid_remaining ?? 0))
+                    : max(0, (float) ($allocation->sick_remaining ?? 0));
 
                 if ($nowMonth >= 11) {
                     $available  = floor($available * 0.5);
@@ -965,14 +973,20 @@ class ApiController extends Controller
             $alloc = \App\Models\HRMS\Leave\LeaveAllocationM::where('employee_id', $employee->id)->where('year', $year)->first();
 
             $balance = [
-                'year'     => $year,
-                'total_pl' => $alloc->total_pl ?? 0,
-                'used_pl'  => $alloc->used_pl  ?? 0,
-                'rem_pl'   => max(0, ($alloc->total_pl ?? 0) - ($alloc->used_pl ?? 0)),
-                'total_sl' => $alloc->total_sl ?? 0,
-                'used_sl'  => $alloc->used_sl  ?? 0,
-                'rem_sl'   => max(0, ($alloc->total_sl ?? 0) - ($alloc->used_sl ?? 0)),
-                'lwp_days' => $alloc->lwp_days ?? 0,
+                'year' => $year,
+                'total_allocated' => $alloc->total_allocated ?? 0,
+                'paid_allocated' => $alloc->paid_allocated ?? 0,
+                'sick_allocated' => $alloc->sick_allocated ?? 0,
+                'comp_off_allocated' => $alloc->comp_off_allocated ?? 0,
+                'total_used' => $alloc->total_used ?? 0,
+                'paid_used' => $alloc->paid_used ?? 0,
+                'sick_used' => $alloc->sick_used ?? 0,
+                'comp_off_used' => $alloc->comp_off_used ?? 0,
+                'lwp_used' => $alloc->lwp_used ?? 0,
+                'total_remaining' => $alloc->total_remaining ?? 0,
+                'paid_remaining' => $alloc->paid_remaining ?? 0,
+                'sick_remaining' => $alloc->sick_remaining ?? 0,
+                'comp_off_remaining' => $alloc->comp_off_remaining ?? 0,
             ];
 
             $history = \App\Models\HRMS\Leave\LeaveApplicationM::where('employee_id', $employee->id)
@@ -1044,9 +1058,20 @@ class ApiController extends Controller
             if ($allocation) {
                 $paidDays = max(0, $application->total_days - ($application->lwp_days ?? 0));
                 $lwpDays  = $application->lwp_days ?? 0;
-                if ($application->leave_type === 'PL') $allocation->increment('used_pl', $paidDays);
-                elseif ($application->leave_type === 'SL') $allocation->increment('used_sl', $paidDays);
-                if ($lwpDays > 0) $allocation->increment('lwp_days', $lwpDays);
+                if ($application->leave_type === 'PL') $allocation->paid_used = (float) $allocation->paid_used + $paidDays;
+                elseif ($application->leave_type === 'SL') $allocation->sick_used = (float) $allocation->sick_used + $paidDays;
+                if ($lwpDays > 0) $allocation->lwp_used = (float) $allocation->lwp_used + $lwpDays;
+
+                $allocation->total_used = (float) $allocation->paid_used
+                    + (float) $allocation->sick_used
+                    + (float) $allocation->comp_off_used;
+                $allocation->paid_remaining = max(0, (float) $allocation->paid_allocated - (float) $allocation->paid_used);
+                $allocation->sick_remaining = max(0, (float) $allocation->sick_allocated - (float) $allocation->sick_used);
+                $allocation->comp_off_remaining = max(0, (float) $allocation->comp_off_allocated - (float) $allocation->comp_off_used);
+                $allocation->total_remaining = (float) $allocation->paid_remaining
+                    + (float) $allocation->sick_remaining
+                    + (float) $allocation->comp_off_remaining;
+                $allocation->save();
             }
 
             return response()->json(['status' => true, 'message' => 'Leave approved.', 'data' => ['id' => $application->id, 'status' => 'approved']], 200);

@@ -214,20 +214,20 @@ class EmployeesController extends Controller
 
             // 6. LEAVE ALLOCATION LOGIC (Admin Override + Centralized Engine Fallback)
             $year = date('Y');
-            if ($request->filled('allocated_pl') || $request->filled('allocated_sl')) {
+            if ($request->filled('paid_allocated') || $request->filled('sick_allocated')) {
                 $alloc = \App\Models\HRMS\Leave\LeaveAllocationM::firstOrNew([
                     'employee_id' => $employee->id,
                     'year' => $year
                 ]);
                 
                 if (!$alloc->exists) {
-                    $alloc->used_pl = 0;
-                    $alloc->used_sl = 0;
-                    $alloc->lwp_days = 0;
+                    $alloc->paid_used = 0;
+                    $alloc->sick_used = 0;
+                    $alloc->lwp_used = 0;
                 }
                 
-                if ($request->filled('allocated_pl')) $alloc->total_pl = $request->allocated_pl;
-                if ($request->filled('allocated_sl')) $alloc->total_sl = $request->allocated_sl;
+                if ($request->filled('paid_allocated')) $alloc->paid_allocated = $request->paid_allocated;
+                if ($request->filled('sick_allocated')) $alloc->sick_allocated = $request->sick_allocated;
                 
                 $alloc->save();
             } else {

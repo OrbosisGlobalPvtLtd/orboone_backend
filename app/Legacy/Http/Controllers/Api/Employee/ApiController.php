@@ -554,8 +554,9 @@ class ApiController extends Controller
             $month = $now->month;
 
             $alloc   = LeaveAllocation::where('employee_id', $employee->id)->where('year', $year)->first();
-            $totalPl = (float) ($alloc->total_pl ?? 18);
-            $totalSl = (float) ($alloc->total_sl ?? 7);
+            $totalPl = (float) ($alloc->paid_allocated ?? 0);
+            $totalSl = (float) ($alloc->sick_allocated ?? 0);
+            $totalCompOff = (float) ($alloc->comp_off_allocated ?? 0);
 
             $usedPl = (float) LeaveApplication::where('employee_id', $employee->id)
                 ->where('leave_type', 'PL')->where('status', 'approved')
@@ -575,8 +576,9 @@ class ApiController extends Controller
 
             $totalLwp = $lwpDirect + $lwpEmbedded;
 
-            $remPl = max(0, $totalPl - $usedPl);
-            $remSl = max(0, $totalSl - $usedSl);
+            $remPl = max(0, (float) ($alloc->paid_remaining ?? ($totalPl - $usedPl)));
+            $remSl = max(0, (float) ($alloc->sick_remaining ?? ($totalSl - $usedSl)));
+            $remCompOff = max(0, (float) ($alloc->comp_off_remaining ?? $totalCompOff));
 
             $pendingPl = (float) LeaveApplication::where('employee_id', $employee->id)
                 ->where('leave_type', 'PL')->where('status', 'pending')
@@ -614,9 +616,9 @@ class ApiController extends Controller
                         'employee_name'   => $employee->user->name ?? null,
                         'employee_type'   => $employee->employment_type ?? 'full_time',
                         'year'            => $year,
-                        'total_leave'     => $totalPl + $totalSl,
+                        'total_leave'     => (float) ($alloc->total_allocated ?? ($totalPl + $totalSl + $totalCompOff)),
                         'used_leave'      => $usedPl + $usedSl,
-                        'remaining_leave' => $remPl + $remSl,
+                        'remaining_leave' => (float) ($alloc->total_remaining ?? ($remPl + $remSl + $remCompOff)),
                         'lwp_days'        => $totalLwp,
                         'pending_leave'   => $pendingPl + $pendingSl,
                     ],
@@ -633,6 +635,11 @@ class ApiController extends Controller
                         'remaining'  => $remSl,
                         'pending'    => $pendingSl,
                         'usable_now' => $usableSl,
+                    ],
+                    'comp_off' => [
+                        'total' => $totalCompOff,
+                        'used' => (float) ($alloc->comp_off_used ?? 0),
+                        'remaining' => $remCompOff,
                     ],
                     'monthly_usage' => [
                         'month'                 => $now->format('F Y'),
@@ -756,14 +763,20 @@ class ApiController extends Controller
             $alloc = LeaveAllocation::where('employee_id', $employee->id)->where('year', $year)->first();
 
             $balance = [
-                'year'     => $year,
-                'total_pl' => $alloc->total_pl ?? 0,
-                'used_pl'  => $alloc->used_pl ?? 0,
-                'rem_pl'   => max(0, ($alloc->total_pl ?? 0) - ($alloc->used_pl ?? 0)),
-                'total_sl' => $alloc->total_sl ?? 0,
-                'used_sl'  => $alloc->used_sl ?? 0,
-                'rem_sl'   => max(0, ($alloc->total_sl ?? 0) - ($alloc->used_sl ?? 0)),
-                'lwp_days' => $alloc->lwp_days ?? 0,
+                'year' => $year,
+                'total_allocated' => $alloc->total_allocated ?? 0,
+                'paid_allocated' => $alloc->paid_allocated ?? 0,
+                'sick_allocated' => $alloc->sick_allocated ?? 0,
+                'comp_off_allocated' => $alloc->comp_off_allocated ?? 0,
+                'total_used' => $alloc->total_used ?? 0,
+                'paid_used' => $alloc->paid_used ?? 0,
+                'sick_used' => $alloc->sick_used ?? 0,
+                'comp_off_used' => $alloc->comp_off_used ?? 0,
+                'lwp_used' => $alloc->lwp_used ?? 0,
+                'total_remaining' => $alloc->total_remaining ?? 0,
+                'paid_remaining' => $alloc->paid_remaining ?? 0,
+                'sick_remaining' => $alloc->sick_remaining ?? 0,
+                'comp_off_remaining' => $alloc->comp_off_remaining ?? 0,
             ];
 
             $history = LeaveApplication::where('employee_id', $employee->id)

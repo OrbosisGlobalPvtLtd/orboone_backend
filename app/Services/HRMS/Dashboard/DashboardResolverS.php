@@ -174,15 +174,12 @@ class DashboardResolverS
             $this->card('Pending Profiles', $employee['pending_profiles'], 'fas fa-id-card', 'Profile completion pending'),
             $this->card('Probation / Internship', $employee['probation_internship'], 'fas fa-user-clock', 'Lifecycle follow-up'),
             $this->card('Exit Employees', $employee['exit'], 'fas fa-user-slash', 'Resigned, terminated, or inactive'),
-            $this->card('Today Present', $attendance['present'], 'fas fa-calendar-check', 'Fresh attendance table'),
-            $this->card('Today Absent', $attendance['absent'], 'fas fa-calendar-times', 'Includes no-punch active employees'),
-            $this->card('Today Late', $attendance['late'], 'fas fa-clock', 'Late punch-ins'),
-            $this->card('Pending HR Attendance', $attendance['pending_hr'], 'fas fa-user-shield', 'Needs HR approval'),
             $this->card('Pending Leave', $leave['pending'], 'fas fa-plane-departure', 'Leave approvals waiting'),
             $this->card('Payroll Status', $payroll['current_status'], 'fas fa-file-invoice-dollar', 'Current month payroll'),
             $this->card('Documents Pending', $documents['pending'], 'fas fa-file-signature', 'Verification queue'),
             $this->card('Announcements', $announcements['total'], 'fas fa-bullhorn', 'Published announcements'),
         ];
+        array_splice($cards, 5, 0, $this->attendanceAdminCards($attendance));
 
         if ($role === 'hr_admin') {
             $cards = [
@@ -190,13 +187,11 @@ class DashboardResolverS
                 $this->card('Active Employees', $employee['active'], 'fas fa-user-check', 'Active workforce'),
                 $this->card('Pending Onboarding', $employee['pending_profiles'], 'fas fa-id-badge', 'Profiles needing review'),
                 $this->card('Probation Ending Soon', $employee['probation_ending_soon'], 'fas fa-hourglass-half', 'Next 30 days'),
-                $this->card('Today Present', $attendance['present'], 'fas fa-calendar-check', 'Attendance today'),
-                $this->card('Late Employees', $attendance['late'], 'fas fa-business-time', 'Late today'),
-                $this->card('Pending HR Approval', $attendance['pending_hr'], 'fas fa-user-shield', 'Attendance approval queue'),
                 $this->card('Leave Pending', $leave['pending'], 'fas fa-calendar-alt', 'Approvals waiting'),
                 $this->card('Documents Pending', $documents['pending'], 'fas fa-folder-open', 'Document approval queue'),
                 $this->card('Announcements', $announcements['total'], 'fas fa-bullhorn', 'Communication stats'),
             ];
+            array_splice($cards, 4, 0, $this->attendanceAdminCards($attendance));
         }
 
         return [
@@ -229,6 +224,18 @@ class DashboardResolverS
             'payroll' => $payroll,
             'attendance_today' => $attendance,
             'quick_actions' => $this->quickActionsFor('finance_admin'),
+        ];
+    }
+
+    private function attendanceAdminCards(array $attendance): array
+    {
+        return [
+            $this->card('Today Present', $attendance['present'], 'fas fa-calendar-check', 'Fresh attendance table'),
+            $this->card('Today Absent', $attendance['absent'], 'fas fa-calendar-times', 'Includes auto absent records'),
+            $this->card('Punch Blocked Today', $attendance['punch_blocked'], 'fas fa-user-lock', 'Auto-blocked missed punch-ins'),
+            $this->card('Missed Punches', $attendance['missed_punches'], 'fas fa-exclamation-circle', 'No punch-out records'),
+            $this->card('Today Late', $attendance['late'], 'fas fa-clock', 'Late punch-ins'),
+            $this->card('Pending HR Attendance', $attendance['pending_hr'], 'fas fa-user-shield', 'Needs HR approval'),
         ];
     }
 
@@ -364,6 +371,8 @@ class DashboardResolverS
             'leave' => 0,
             'week_off' => 0,
             'pending_hr' => 0,
+            'punch_blocked' => 0,
+            'missed_punches' => 0,
             'late' => 0,
             'early_out' => 0,
             'wfo' => 0,
@@ -394,8 +403,12 @@ class DashboardResolverS
             $stats[$code] = (int) ($rows[$code] ?? 0);
         }
 
+        $stats['punch_blocked'] = (int) ($rows['punch_blocked'] ?? 0);
         $stats['late'] = (int) (clone $query)->where('a.is_late', 1)->count();
         $stats['early_out'] = (int) (clone $query)->where('a.is_early_out', 1)->count();
+        $stats['missed_punches'] = (int) (clone $query)->where(function ($q) {
+            $q->where('a.missed_punch', 1)->orWhere('a.is_missed_punch', 1);
+        })->count();
         $stats['wfo'] = (int) (clone $query)->where('a.work_mode', 'wfo')->count();
         $stats['wfh'] = (int) (clone $query)->where('a.work_mode', 'wfh')->count();
 
@@ -650,23 +663,47 @@ class DashboardResolverS
 
     private function employeeLeaveData($employeeId): array
     {
-        $balance = null;
+        $balance = $this->emptyLeaveAllocationBalance();
 
         if ($this->tableExists('leave_allocations') && $employeeId) {
             $balance = DB::table('leave_allocations')
                 ->where('employee_id', $employeeId)
                 ->where('year', now()->year)
-                ->first();
+                ->first() ?: $balance;
         }
 
-        $pl = $balance ? max(0, (float) $balance->total_pl - (float) $balance->used_pl) : 0;
-        $sl = $balance ? max(0, (float) $balance->total_sl - (float) $balance->used_sl) : 0;
+        $paidRemaining = max(0, (float) ($balance->paid_remaining ?? 0));
+        $sickRemaining = max(0, (float) ($balance->sick_remaining ?? 0));
+        $compOffRemaining = max(0, (float) ($balance->comp_off_remaining ?? 0));
+        $totalRemaining = max(0, (float) ($balance->total_remaining ?? ($paidRemaining + $sickRemaining + $compOffRemaining)));
 
         return [
-            'pl' => $pl,
-            'sl' => $sl,
-            'summary' => $pl + $sl,
+            'balance' => $balance,
+            'paid_remaining' => $paidRemaining,
+            'sick_remaining' => $sickRemaining,
+            'comp_off_remaining' => $compOffRemaining,
+            'total_remaining' => $totalRemaining,
+            'summary' => $totalRemaining,
             'pending' => $this->employeePendingLeaveCount($employeeId),
+        ];
+    }
+
+    private function emptyLeaveAllocationBalance(): \stdClass
+    {
+        return (object) [
+            'total_allocated' => 0,
+            'paid_allocated' => 0,
+            'sick_allocated' => 0,
+            'comp_off_allocated' => 0,
+            'total_used' => 0,
+            'paid_used' => 0,
+            'sick_used' => 0,
+            'comp_off_used' => 0,
+            'lwp_used' => 0,
+            'total_remaining' => 0,
+            'paid_remaining' => 0,
+            'sick_remaining' => 0,
+            'comp_off_remaining' => 0,
         ];
     }
 

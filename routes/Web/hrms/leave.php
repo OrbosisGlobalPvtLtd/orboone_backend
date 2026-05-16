@@ -1,82 +1,63 @@
 <?php
 
-use App\Http\Controllers\Web\HRMS\Leave\EmployeeLeaveRequestsC;
+use App\Http\Controllers\Web\HRMS\Leave\CompOffC;
+use App\Http\Controllers\Web\HRMS\Leave\HolidayC;
 use App\Http\Controllers\Web\HRMS\Leave\LeaveAllocationC;
 use App\Http\Controllers\Web\HRMS\Leave\LeaveApprovalC;
+use App\Http\Controllers\Web\HRMS\Leave\LeaveBalanceC;
+use App\Http\Controllers\Web\HRMS\Leave\LeaveDashboardC;
+use App\Http\Controllers\Web\HRMS\Leave\LeavePolicyC;
+use App\Http\Controllers\Web\HRMS\Leave\LeavePolicyOverrideC;
 use App\Http\Controllers\Web\HRMS\Leave\LeaveRequestC;
+use App\Http\Controllers\Web\HRMS\Leave\LeaveTypeC;
+use App\Http\Controllers\Web\HRMS\Leave\LeaveBalanceLogC;
+use App\Http\Controllers\Web\HRMS\Leave\WeekoffRuleC;
 use Illuminate\Support\Facades\Route;
 
-/*
-|--------------------------------------------------------------------------
-| Leave Routes
-|--------------------------------------------------------------------------
-*/
-
 Route::middleware(['auth', 'check.access'])->group(function () {
-    /*
-    |--------------------------------------------------------------------------
-    | Employee Leave Request
-    |--------------------------------------------------------------------------
-    */
-    Route::get('/employees-leave-request/summary', [EmployeeLeaveRequestsC::class, 'summary'])
-        ->name('employees-leave-request.summary');
+    Route::get('/leave-dashboard', [LeaveDashboardC::class, 'index'])->middleware('permission:leave.dashboard.view')->name('hrms.leave.dashboard');
+    Route::get('/leave-requests', [LeaveRequestC::class, 'index'])->middleware('permission:leave.my_requests.view')->name('leave-requests.index');
+    Route::get('/leave-requests/create', [LeaveRequestC::class, 'create'])->middleware('permission:leave.my_requests.create')->name('leave-requests.create');
+    Route::post('/leave-requests', [LeaveRequestC::class, 'store'])->middleware('permission:leave.my_requests.create')->name('leave-requests.store');
+    Route::post('/leave-requests/{id}/cancel', [LeaveRequestC::class, 'cancel'])->middleware('permission:leave.my_requests.cancel')->name('leave-requests.cancel');
 
-    Route::get('/employees-leave-request', [EmployeeLeaveRequestsC::class, 'index'])
-        ->name('employees-leave-request');
+    Route::get('/leave-approvals', [LeaveApprovalC::class, 'index'])->middleware('permission:leave.approvals.view_all|leave.approvals.view_team|leave.approvals.view')->name('leave-approvals.index');
+    Route::post('/leave-approvals/{id}/approve', [LeaveApprovalC::class, 'approve'])->middleware('permission:leave.approvals.approve')->name('leave-approvals.approve');
+    Route::post('/leave-approvals/{id}/reject', [LeaveApprovalC::class, 'reject'])->middleware('permission:leave.approvals.reject')->name('leave-approvals.reject');
 
-    Route::get('/employees-leave-request/create', [EmployeeLeaveRequestsC::class, 'create'])
-        ->name('employees-leave-request.create');
+    Route::get('/leave-balances', [LeaveBalanceC::class, 'index'])->middleware('permission:leave.balance.view_all|leave.balance.view_team|leave.balance.view_own|leave.balance.view')->name('hrms.leave.balances.index');
+    Route::get('/leave-allocations', [LeaveAllocationC::class, 'index'])->middleware('permission:leave.allocation.view_all|leave.allocation.view_own|leave.allocation.view|leave.allocation.manage')->name('leave-allocations.index');
+    Route::post('/leave-allocations/process', [LeaveAllocationC::class, 'processAllocations'])->middleware('permission:leave.allocation.manage')->name('leave-allocations.process');
+    Route::post('/leave-allocations/single', [LeaveAllocationC::class, 'allocateSingle'])->middleware('permission:leave.allocation.manage')->name('leave-allocations.single');
+    Route::get('/leave-allocations/balance', [LeaveAllocationC::class, 'getBalance'])->name('leave-allocations.balance');
 
-    Route::get('/employees-leave-request/print', [EmployeeLeaveRequestsC::class, 'print'])
-        ->name('employees-leave-request.print');
+    Route::get('/leave-types', [LeaveTypeC::class, 'index'])->middleware('permission:leave.types.manage')->name('hrms.leave.types.index');
+    Route::post('/leave-types', [LeaveTypeC::class, 'store'])->middleware('permission:leave.types.manage')->name('hrms.leave.types.store');
+    Route::put('/leave-types/{id}', [LeaveTypeC::class, 'update'])->middleware('permission:leave.types.manage')->name('hrms.leave.types.update');
 
-    Route::get('/employees-leave-request/{employeeLeaveRequest}', [EmployeeLeaveRequestsC::class, 'show'])
-        ->name('employees-leave-request.show');
+    Route::get('/leave-policies', [LeavePolicyC::class, 'index'])->middleware('permission:leave.policies.manage')->name('hrms.leave.policies.index');
+    Route::post('/leave-policies', [LeavePolicyC::class, 'store'])->middleware('permission:leave.policies.manage')->name('hrms.leave.policies.store');
+    Route::put('/leave-policies/{id}', [LeavePolicyC::class, 'update'])->middleware('permission:leave.policies.manage')->name('hrms.leave.policies.update');
 
-    Route::get('/employees-leave-request/{employeeLeaveRequest}/edit', [EmployeeLeaveRequestsC::class, 'edit'])
-        ->name('employees-leave-request.edit');
+    Route::get('/holidays', [HolidayC::class, 'index'])->middleware('permission:leave.holidays.manage')->name('hrms.holidays.index');
+    Route::post('/holidays', [HolidayC::class, 'store'])->middleware('permission:leave.holidays.manage')->name('hrms.holidays.store');
+    Route::delete('/holidays/{id}', [HolidayC::class, 'destroy'])->middleware('permission:leave.holidays.manage')->name('hrms.holidays.destroy');
 
-    Route::post('/employees-leave-request', [EmployeeLeaveRequestsC::class, 'store'])
-        ->name('employees-leave-request.store');
+    Route::get('/comp-offs', [CompOffC::class, 'index'])->middleware('permission:leave.comp_off.view_all|leave.comp_off.view_own|leave.comp_off.view|leave.comp_off.manage')->name('hrms.comp_offs.index');
+    Route::post('/comp-offs/holiday-work/{id}/approve', [CompOffC::class, 'approveHolidayWork'])->middleware('permission:leave.comp_off.manage')->name('hrms.comp_offs.holiday_work.approve');
+    Route::post('/comp-offs/expire', [CompOffC::class, 'expire'])->middleware('permission:leave.comp_off.manage')->name('hrms.comp_offs.expire');
 
-    Route::put('/employees-leave-request/{employeeLeaveRequest}', [EmployeeLeaveRequestsC::class, 'update'])
-        ->name('employees-leave-request.update');
+    Route::get('/weekoff-rules', [WeekoffRuleC::class, 'index'])->middleware('permission:leave.weekoff_rules.manage')->name('hrms.weekoff_rules.index');
+    Route::post('/weekoff-rules', [WeekoffRuleC::class, 'store'])->middleware('permission:leave.weekoff_rules.manage')->name('hrms.weekoff_rules.store');
+    Route::put('/weekoff-rules/{id}', [WeekoffRuleC::class, 'update'])->middleware('permission:leave.weekoff_rules.manage')->name('hrms.weekoff_rules.update');
 
-    Route::delete('/employees-leave-request/{employeeLeaveRequest}', [EmployeeLeaveRequestsC::class, 'destroy'])
-        ->name('employees-leave-request.destroy');
+    Route::get('/leave-policy-overrides', [LeavePolicyOverrideC::class, 'index'])->middleware('permission:leave.policy_overrides.manage')->name('hrms.leave.policy_overrides.index');
+    Route::post('/leave-policy-overrides', [LeavePolicyOverrideC::class, 'store'])->middleware('permission:leave.policy_overrides.manage')->name('hrms.leave.policy_overrides.store');
+    Route::put('/leave-policy-overrides/{id}', [LeavePolicyOverrideC::class, 'update'])->middleware('permission:leave.policy_overrides.manage')->name('hrms.leave.policy_overrides.update');
 
-    /*
-    |--------------------------------------------------------------------------
-    | New Leave Management
-    |--------------------------------------------------------------------------
-    */
-    Route::get('/leave-allocations', [LeaveAllocationC::class, 'index'])
-        ->name('leave-allocations.index');
+    Route::get('/leave-balance-logs', [LeaveBalanceLogC::class, 'index'])->middleware('permission:leave.balance_logs.view')->name('hrms.leave.balance_logs.index');
 
-    Route::post('/leave-allocations/process', [LeaveAllocationC::class, 'processAllocations'])
-        ->name('leave-allocations.process');
+    Route::get('/team-leave-calendar', [LeaveApprovalC::class, 'index'])->name('hrms.leave.team_calendar.index');
 
-    Route::post('/leave-allocations/single', [LeaveAllocationC::class, 'allocateSingle'])
-        ->name('leave-allocations.single');
-
-    Route::get('/leave-allocations/balance', [LeaveAllocationC::class, 'getBalance'])
-        ->name('leave-allocations.balance');
-
-    Route::get('/leave-requests', [LeaveRequestC::class, 'index'])
-        ->name('leave-requests.index');
-
-    Route::get('/leave-requests/create', [LeaveRequestC::class, 'create'])
-        ->name('leave-requests.create');
-
-    Route::post('/leave-requests', [LeaveRequestC::class, 'store'])
-        ->name('leave-requests.store');
-
-    Route::get('/leave-approvals', [LeaveApprovalC::class, 'index'])
-        ->name('leave-approvals.index');
-
-    Route::post('/leave-approvals/{id}/approve', [LeaveApprovalC::class, 'approve'])
-        ->name('leave-approvals.approve');
-
-    Route::post('/leave-approvals/{id}/reject', [LeaveApprovalC::class, 'reject'])
-        ->name('leave-approvals.reject');
+    Route::get('/employees-leave-request/summary', [LeaveBalanceC::class, 'index'])->name('employees-leave-request.summary');
 });

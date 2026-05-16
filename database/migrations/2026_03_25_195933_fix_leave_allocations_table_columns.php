@@ -14,14 +14,14 @@ class FixLeaveAllocationsTableColumns extends Migration
     public function up()
     {
         Schema::table('leave_allocations', function (Blueprint $table) {
-            if (!Schema::hasColumn('leave_allocations', 'total_pl')) {
-                $table->decimal('total_pl', 8, 2)->default(0)->after('year');
+            if (!Schema::hasColumn('leave_allocations', 'paid_allocated')) {
+                $table->decimal('paid_allocated', 8, 2)->default(0)->after('year');
             }
-            if (!Schema::hasColumn('leave_allocations', 'total_sl')) {
-                $table->decimal('total_sl', 8, 2)->default(0)->after('total_pl');
+            if (!Schema::hasColumn('leave_allocations', 'sick_allocated')) {
+                $table->decimal('sick_allocated', 8, 2)->default(0)->after('paid_allocated');
             }
-            if (!Schema::hasColumn('leave_allocations', 'lwp_days')) {
-                $table->decimal('lwp_days', 8, 2)->default(0)->after('used_sl');
+            if (!Schema::hasColumn('leave_allocations', 'lwp_used')) {
+                $table->decimal('lwp_used', 8, 2)->default(0)->after('sick_used');
             }
         });
     }

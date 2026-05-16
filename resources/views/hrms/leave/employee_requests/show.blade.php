@@ -6,7 +6,7 @@
         <div class="col-12 d-flex justify-content-between align-items-center">
             <div>
                 <h2 class="mb-1 font-weight-bold text-dark">Review Leave Application</h2>
-                <p class="text-muted">Detailed review of the leave request submitted by <strong>{{ $employeeLeaveRequest->employee->name }}</strong>.</p>
+                <p class="text-muted">Detailed review of the leave request submitted by <strong>{{ optional($employeeLeaveRequest->employee)->display_name }}</strong>.</p>
             </div>
             <a href="{{ route('employees-leave-request') }}" class="btn btn-outline-secondary shadow-sm px-4">
                 <i class="fas fa-arrow-left mr-2"></i> Back to List
@@ -36,9 +36,9 @@
                             <label class="text-muted small font-weight-bold text-uppercase mb-1 d-block">Employee</label>
                             <div class="d-flex align-items-center">
                                 <div class="avatar-circle mr-2" style="width: 30px; height: 30px; border-radius: 50%; background: #f4f6f9; display: flex; align-items: center; justify-content: center; color: #4e73df; font-weight: bold; font-size: 0.8rem;">
-                                    {{ strtoupper(substr($employeeLeaveRequest->employee->name, 0, 1)) }}
+                                    {{ strtoupper(substr(optional($employeeLeaveRequest->employee)->display_name ?? 'N', 0, 1)) }}
                                 </div>
-                                <span class="h6 font-weight-bold mb-0 text-dark">{{ $employeeLeaveRequest->employee->name }}</span>
+                                <span class="h6 font-weight-bold mb-0 text-dark">{{ optional($employeeLeaveRequest->employee)->display_name }}</span>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -117,11 +117,11 @@
                             
                             $type = $employeeLeaveRequest->leave_type ?? 'PL';
                             if ($type === 'PL') {
-                                $quota = $alloc->total_pl ?? 0;
-                                $used  = $alloc->used_pl  ?? 0;
+                                $quota = $alloc->paid_allocated ?? 0;
+                                $used  = $alloc->paid_used ?? 0;
                             } else {
-                                $quota = $alloc->total_sl ?? 0;
-                                $used  = $alloc->used_sl  ?? 0;
+                                $quota = $alloc->sick_allocated ?? 0;
+                                $used  = $alloc->sick_used ?? 0;
                             }
                             
                             $left = max(0, $quota - $used);
@@ -171,7 +171,7 @@
                 <div class="modal-body py-4 text-center">
                     <i class="fas fa-check-circle fa-4x text-success mb-3"></i>
                     <h5 class="mb-3 font-weight-bold">Are you sure?</h5>
-                    <p class="text-muted mb-4">You are about to approve <strong>{{ $diff + 1 }} days</strong> of <strong>{{ $employeeLeaveRequest->leave_type ?? 'Paid Leave' }}</strong> for {{ $employeeLeaveRequest->employee->name }}.</p>
+                    <p class="text-muted mb-4">You are about to approve <strong>{{ $diff + 1 }} days</strong> of <strong>{{ $employeeLeaveRequest->leave_type ?? 'Paid Leave' }}</strong> for {{ optional($employeeLeaveRequest->employee)->display_name }}.</p>
                     <div class="form-group text-left">
                         <label class="font-weight-bold text-dark small">Admin Remarks (Optional)</label>
                         <textarea name="comment" class="form-control" rows="3" placeholder="Add a comment for the employee..."></textarea>

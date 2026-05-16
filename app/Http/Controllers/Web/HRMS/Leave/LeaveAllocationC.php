@@ -3,91 +3,105 @@
 namespace App\Http\Controllers\Web\HRMS\Leave;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Web\HRMS\Concerns\HrmsCrudPage;
+use App\Models\Core\AccessM;
 use App\Models\HRMS\Employee\EmployeeM;
-use App\Models\HRMS\Leave\LeaveAllocationM as LeaveAllocation;
-use App\Services\HRMS\Leave\LeaveS;
+use App\Models\HRMS\Leave\LeaveAllocationM;
+use App\Services\HRMS\Leave\LeaveAllocationService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class LeaveAllocationC extends Controller
 {
-    private LeaveS $leaveService;
+    use HrmsCrudPage;
 
-    public function __construct(LeaveS $leaveService)
+    public function __construct(private LeaveAllocationService $allocationService)
     {
-        $this->leaveService = $leaveService;
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $year = date('Y');
-        $allocations = LeaveAllocation::with('employee.employeeDetail')
+        abort_unless(
+            $this->userHasPermission('leave.allocation.view_all')
+            || $this->userHasPermission('leave.allocation.view_own')
+            || $this->userHasPermission('leave.allocation.view')
+            || $this->userHasPermission('leave.allocation.manage'),
+            403
+        );
+
+        $year = (int) ($request->year ?: Carbon::now('Asia/Kolkata')->year);
+        $allocations = LeaveAllocationM::with(['employee.user', 'policy'])
             ->where('year', $year)
-            ->orderBy('employee_id')
-            ->get();
+            ->orderBy('employee_id');
 
-        $employees = EmployeeM::with('employeeDetail')
-            ->where('is_active', 1)
-            ->orderBy('name')
-            ->get();
+        if (! $this->canViewAll('leave.allocation.view_all') && ! $this->userHasPermission('leave.allocation.manage')) {
+            $employeeId = $this->ownEmployeeId();
+            abort_if(! $employeeId, 403);
+            $allocations->where('employee_id', $employeeId);
+        }
 
-        $accesses = \App\Models\Core\AccessM::where('role_id', auth()->user()->role_id)->get();
+        $allocations = $allocations->paginate(30);
+        $employees = $this->scopedEmployeeOptions('leave.allocation.view_all');
+        $accesses = $this->accesses();
+        $canManageAllocations = $this->userHasPermission('leave.allocation.manage');
 
-        return view('hrms.leave.allocations.index', compact('allocations', 'employees', 'year', 'accesses'))
-            ->with('active', 'leave-allocations');
+        return view('hrms.leave.allocations.index', compact('allocations', 'employees', 'year', 'accesses', 'canManageAllocations'))
+            ->with('active', 'leave_management');
     }
 
     public function processAllocations(Request $request)
     {
-        $year = (int) ($request->year ?? date('Y'));
-        $employees = EmployeeM::where('is_active', 1)->get();
+        abort_unless($this->userHasPermission('leave.allocation.manage'), 403);
 
+        $year = (int) ($request->year ?: Carbon::now('Asia/Kolkata')->year);
         $count = 0;
-        foreach ($employees as $employee) {
-            $this->leaveService->calculateAllocationForEmployee($employee, $year);
+
+        foreach (EmployeeM::where('is_active', 1)->orWhereNull('is_active')->cursor() as $employee) {
+            $this->allocationService->generateForEmployee($employee, $year, Auth::id());
             $count++;
         }
 
-        return back()->with('success', "Leave Allocations for {$year} calculated for {$count} employees successfully.");
+        return back()->with('success', "Leave allocations generated for {$count} employee(s).");
     }
 
     public function allocateSingle(Request $request)
     {
+        abort_unless($this->userHasPermission('leave.allocation.manage'), 403);
+
         $request->validate([
-            'employee_id' => 'required|exists:employees,id',
+            'employee_id' => 'required|exists:employees_new,id',
             'year' => 'required|integer|min:2020|max:2099',
         ]);
 
-        $employee = EmployeeM::findOrFail($request->employee_id);
-        $this->leaveService->calculateAllocationForEmployee($employee, (int) $request->year);
+        try {
+            $employee = EmployeeM::findOrFail($request->employee_id);
+            $this->allocationService->generateForEmployee($employee, (int) $request->year, Auth::id());
 
-        return back()->with('success', "Leave successfully allocated for {$employee->name} ({$request->year}).");
+            return back()->with('success', 'Leave allocation generated successfully.');
+        } catch (\Throwable $e) {
+            Log::error('Single leave allocation failed', ['error' => $e->getMessage()]);
+            return back()->with('error', $e->getMessage());
+        }
     }
 
-    public function calculateAllocationForEmployee(EmployeeM $employee, $year)
+    public function getBalance()
     {
-        return $this->leaveService->calculateAllocationForEmployee($employee, (int) $year);
-    }
-
-    public function getBalance(Request $request)
-    {
-        $employee = EmployeeM::where('user_id', auth()->id())->first();
+        $employee = EmployeeM::where('user_id', Auth::id())->first();
         if (! $employee) {
-            return response()->json(['error' => 'No profile'], 404);
+            return response()->json(['error' => 'No employee profile found.'], 404);
         }
 
-        $year = date('Y');
-        $alloc = LeaveAllocation::where('employee_id', $employee->id)
-            ->where('year', $year)
-            ->first();
+        $allocation = $this->allocationService->getOrGenerate($employee, Carbon::now('Asia/Kolkata')->year, Auth::id());
 
         return response()->json([
-            'pl_total' => $alloc->total_pl ?? 0,
-            'pl_used' => $alloc->used_pl ?? 0,
-            'pl_balance' => max(0, ($alloc->total_pl ?? 0) - ($alloc->used_pl ?? 0)),
-            'sl_total' => $alloc->total_sl ?? 0,
-            'sl_used' => $alloc->used_sl ?? 0,
-            'sl_balance' => max(0, ($alloc->total_sl ?? 0) - ($alloc->used_sl ?? 0)),
-            'lwp_count' => $alloc->lwp_days ?? 0,
+            'total_allocated' => $allocation->total_allocated,
+            'total_remaining' => $allocation->total_remaining,
+            'paid_remaining' => $allocation->paid_remaining,
+            'sick_remaining' => $allocation->sick_remaining,
+            'comp_off_remaining' => $allocation->comp_off_remaining,
+            'lwp_used' => $allocation->lwp_used,
         ]);
     }
 }

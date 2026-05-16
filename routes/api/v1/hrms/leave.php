@@ -1,24 +1,51 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\V1\HRMS\Leave\LeaveController;
-use App\Http\Controllers\Api\V1\HRMS\Leave\LeaveTypeController;
-use App\Http\Controllers\Api\V1\HRMS\Leave\LeaveBalanceController;
-use App\Http\Controllers\Api\V1\HRMS\Leave\LeaveApprovalController;
+use App\Http\Controllers\Api\V1\HRMS\Leave\LeaveApiC;
+use App\Http\Controllers\Api\V1\HRMS\Leave\LeaveApprovalApiC;
 
-Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/leave/types', [LeaveTypeController::class, 'createLeaveType']);
-    Route::get('/leave/types', [LeaveTypeController::class, 'listLeaveTypes']);
+Route::middleware('auth:sanctum')
+    ->prefix('hrms/leave')
+    ->group(function () {
 
-    Route::get('/leave/my-balance', [LeaveBalanceController::class, 'getLeaveBalance']);
+        /*
+        |--------------------------------------------------------------------------
+        | Employee Leave APIs
+        |--------------------------------------------------------------------------
+        */
 
-    Route::post('/leave/apply', [LeaveController::class, 'applyLeave']);
-    Route::get('/leave/my-requests', [LeaveController::class, 'myLeaves']);
-    Route::get('/leave/my-requests-status', [LeaveController::class, 'myLeaves']);
-    Route::post('/leave/requests/{id}/cancel', [LeaveController::class, 'cancelLeaveRequest']);
-    Route::get('/leave/calendar/my', [LeaveController::class, 'myLeaveCalendar']);
-    Route::get('/leave/calendar/employees/{id}', [LeaveController::class, 'employeeLeaveCalendar']);
+        Route::get('/dashboard', [LeaveApiC::class, 'dashboard']);
+        Route::get('/types', [LeaveApiC::class, 'types']);
+        Route::get('/balance', [LeaveApiC::class, 'balance']);
+        Route::get('/history', [LeaveApiC::class, 'myRequests']);
+        Route::get('/holidays', [LeaveApiC::class, 'holidays']);
+        Route::get('/comp-offs', [LeaveApiC::class, 'compOffs']);
+        Route::get('/team-calendar', [LeaveApiC::class, 'teamCalendar']);
 
-    Route::post('/leave/requests/{id}/approve', [LeaveApprovalController::class, 'approveLeave']);
-    Route::post('/leave/requests/{id}/reject', [LeaveApprovalController::class, 'rejectLeave']);
-});
+        Route::post('/calculate', [LeaveApiC::class, 'calculate']);
+        Route::post('/apply', [LeaveApiC::class, 'apply']);
+        Route::post('/cancel/{id}', [LeaveApiC::class, 'cancel']);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Manager / HR Approval APIs
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get('/pending', [LeaveApprovalApiC::class, 'pending']);
+        Route::get('/approvals', [LeaveApprovalApiC::class, 'pending']);
+
+        Route::post('/approve/{id}', [LeaveApprovalApiC::class, 'approve']);
+        Route::post('/reject/{id}', [LeaveApprovalApiC::class, 'reject']);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Leave Details
+        |--------------------------------------------------------------------------
+        | Keep dynamic route LAST
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get('/{id}', [LeaveApiC::class, 'show']);
+    });
+    

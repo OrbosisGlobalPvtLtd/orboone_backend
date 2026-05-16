@@ -2,8 +2,6 @@
 
 namespace App\Http\Controllers\Api\V1\HRMS\Leave;
 
-use App\Http\Controllers\Api\V1\ApiController;
-
-class LeaveBalanceController extends ApiController
+class LeaveBalanceController extends LeaveApiC
 {
 }

@@ -79,20 +79,20 @@
                                 @forelse($employees as $employee)
                                     @php
                                         $alloc    = $employee->leaveAllocations->first();
-                                        $plQuota  = $alloc->total_pl ?? 0;
-                                        $plUsed   = $alloc->used_pl  ?? 0;
-                                        $slQuota  = $alloc->total_sl ?? 0;
-                                        $slUsed   = $alloc->used_sl  ?? 0;
-                                        $lwpCount = $alloc->lwp_days ?? 0;
+                                        $plQuota  = $alloc->paid_allocated ?? 0;
+                                        $plUsed   = $alloc->paid_used ?? 0;
+                                        $slQuota  = $alloc->sick_allocated ?? 0;
+                                        $slUsed   = $alloc->sick_used ?? 0;
+                                        $lwpCount = $alloc->lwp_used ?? 0;
                                     @endphp
                                     <tr>
                                         <td class="px-4 text-left">
                                             <div class="d-flex align-items-center">
                                                 <div class="avatar-circle mr-3" style="width: 40px; height: 40px; border-radius: 50%; background: #f4f6f9; display: flex; align-items: center; justify-content: center; color: #4e73df; font-weight: bold; border: 1px solid #eaecf4;">
-                                                    {{ strtoupper(substr($employee->name, 0, 1)) }}
+                                                    {{ strtoupper(substr($employee->display_name, 0, 1)) }}
                                                 </div>
                                                 <div>
-                                                    <span class="font-weight-bold d-block text-dark">{{ $employee->name }}</span>
+                                                    <span class="font-weight-bold d-block text-dark">{{ $employee->display_name }}</span>
                                                     <small class="text-muted">{{ $employee->department->name ?? 'N/A' }}</small>
                                                 </div>
                                             </div>
@@ -131,7 +131,7 @@
                                     <tr class="collapse" id="history{{ $employee->id }}">
                                         <td colspan="7" class="bg-light p-4">
                                             <div class="card border-0 shadow-none bg-transparent">
-                                                <h6 class="font-weight-bold mb-3 text-dark"><i class="fas fa-stream mr-2 text-primary"></i>Detailed Leave History: {{ $employee->name }}</h6>
+                                                <h6 class="font-weight-bold mb-3 text-dark"><i class="fas fa-stream mr-2 text-primary"></i>Detailed Leave History: {{ $employee->display_name }}</h6>
                                                 <div class="table-responsive">
                                                     <table class="table table-sm table-bordered bg-white shadow-sm">
                                                         <thead class="bg-light">

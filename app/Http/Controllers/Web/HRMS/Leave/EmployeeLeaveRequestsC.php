@@ -166,7 +166,7 @@ class EmployeeLeaveRequestsC extends Controller
         ]);
 
         Log::create([
-            'description' => auth()->user()->employee->name . " applied for $diff days $leaveType from '" . $request->input('from') . "' to '" . $request->input('to') . "'"
+            'description' => optional(auth()->user()->employee)->display_name . " applied for $diff days $leaveType from '" . $request->input('from') . "' to '" . $request->input('to') . "'"
         ]);
 
         return redirect()->route('employees-leave-request')->with('status', 'Leave application submitted successfully.');
@@ -224,7 +224,7 @@ class EmployeeLeaveRequestsC extends Controller
             ]);
 
             Log::create([
-                'description' => auth()->user()->employee->name . " updated a leave request's detail"
+                'description' => optional(auth()->user()->employee)->display_name . " updated a leave request's detail"
             ]);
 
             if ($request->ajax()) {
@@ -269,7 +269,7 @@ class EmployeeLeaveRequestsC extends Controller
             $employeeLeave->update(['used_leaves' => $employeeLeave->used_leaves + $diff]);
 
             Log::create([
-                'description' => auth()->user()->employee->name . " approved " . $employeeLeaveRequest->employee->name  . "'s leave request from '" . $employeeLeaveRequest->from . "' to '" . $employeeLeaveRequest->to . "'"
+                'description' => optional(auth()->user()->employee)->display_name . " approved " . optional($employeeLeaveRequest->employee)->display_name  . "'s leave request from '" . $employeeLeaveRequest->from . "' to '" . $employeeLeaveRequest->to . "'"
             ]);
 
             if ($request->ajax()) {
@@ -295,7 +295,7 @@ class EmployeeLeaveRequestsC extends Controller
         ]);
 
         Log::create([
-            'description' => auth()->user()->employee->name . " rejected " . $employeeLeaveRequest->employee->name  . "'s leave request from '" . $employeeLeaveRequest->from . "' to '" . $employeeLeaveRequest->to . "'"
+            'description' => optional(auth()->user()->employee)->display_name . " rejected " . optional($employeeLeaveRequest->employee)->display_name  . "'s leave request from '" . $employeeLeaveRequest->from . "' to '" . $employeeLeaveRequest->to . "'"
         ]);
 
         if ($request->ajax()) {

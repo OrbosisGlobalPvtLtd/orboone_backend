@@ -68,7 +68,7 @@
                                                  class="avatar-circle mr-3" 
                                                  style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
                                             <div>
-                                                <span class="font-weight-bold text-dark small">{{ $leaveReq->employee->employeeDetail->name ?? $leaveReq->employee->name }}</span>
+                                                <span class="font-weight-bold text-dark small">{{ optional($leaveReq->employee)->display_name }}</span>
                                                 <span class="badge badge-light ml-2 text-muted" style="font-size: 0.65rem;">ID: {{ $leaveReq->employee->employee_id }}</span>
                                             </div>
                                         </div>

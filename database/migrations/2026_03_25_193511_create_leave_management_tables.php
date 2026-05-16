@@ -24,17 +24,25 @@ class CreateLeaveManagementTables extends Migration
             });
         }
 
-        // 2. Leave Allocations Table (Track total PL/SL per year/period)
+        // 2. Leave Allocations Table
         if (!Schema::hasTable('leave_allocations')) {
             Schema::create('leave_allocations', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('employee_id')->constrained()->onDelete('cascade');
                 $table->integer('year');
-                $table->decimal('total_pl', 8, 2)->default(0); // Paid Leave
-                $table->decimal('total_sl', 8, 2)->default(0); // Sick Leave
-                $table->decimal('used_pl', 8, 2)->default(0);
-                $table->decimal('used_sl', 8, 2)->default(0);
-                $table->decimal('lwp_days', 8, 2)->default(0); // Leave Without Pay
+                $table->decimal('total_allocated', 8, 2)->default(0);
+                $table->decimal('paid_allocated', 8, 2)->default(0);
+                $table->decimal('sick_allocated', 8, 2)->default(0);
+                $table->decimal('comp_off_allocated', 8, 2)->default(0);
+                $table->decimal('total_used', 8, 2)->default(0);
+                $table->decimal('paid_used', 8, 2)->default(0);
+                $table->decimal('sick_used', 8, 2)->default(0);
+                $table->decimal('comp_off_used', 8, 2)->default(0);
+                $table->decimal('lwp_used', 8, 2)->default(0);
+                $table->decimal('total_remaining', 8, 2)->default(0);
+                $table->decimal('paid_remaining', 8, 2)->default(0);
+                $table->decimal('sick_remaining', 8, 2)->default(0);
+                $table->decimal('comp_off_remaining', 8, 2)->default(0);
                 $table->timestamps();
                 
                 $table->unique(['employee_id', 'year']);

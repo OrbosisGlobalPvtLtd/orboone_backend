@@ -101,14 +101,25 @@ class LeaveS
             'year' => $year,
         ]);
 
-        $allocation->total_pl = $pl;
-        $allocation->total_sl = $sl;
+        $allocation->paid_allocated = $pl;
+        $allocation->sick_allocated = $sl;
+        $allocation->comp_off_allocated = (float) ($allocation->comp_off_allocated ?? 0);
+        $allocation->total_allocated = $allocation->paid_allocated + $allocation->sick_allocated + $allocation->comp_off_allocated;
 
         if (! $allocation->exists) {
-            $allocation->used_pl = 0;
-            $allocation->used_sl = 0;
-            $allocation->lwp_days = 0;
+            $allocation->paid_used = 0;
+            $allocation->sick_used = 0;
+            $allocation->comp_off_used = 0;
+            $allocation->lwp_used = 0;
         }
+
+        $allocation->total_used = (float) ($allocation->paid_used ?? 0)
+            + (float) ($allocation->sick_used ?? 0)
+            + (float) ($allocation->comp_off_used ?? 0);
+        $allocation->paid_remaining = max(0, (float) $allocation->paid_allocated - (float) ($allocation->paid_used ?? 0));
+        $allocation->sick_remaining = max(0, (float) $allocation->sick_allocated - (float) ($allocation->sick_used ?? 0));
+        $allocation->comp_off_remaining = max(0, (float) $allocation->comp_off_allocated - (float) ($allocation->comp_off_used ?? 0));
+        $allocation->total_remaining = $allocation->paid_remaining + $allocation->sick_remaining + $allocation->comp_off_remaining;
 
         $allocation->save();
 

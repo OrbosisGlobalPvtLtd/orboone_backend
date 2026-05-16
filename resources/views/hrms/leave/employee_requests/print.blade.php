@@ -29,7 +29,7 @@
             @foreach ($employeeLeaveRequests as $leaveReq)
             <tr>
               <th scope="row">{{ $loop->iteration }}</th>
-              <td>{{ $leaveReq->employee->name }}</td>
+              <td>{{ optional($leaveReq->employee)->display_name }}</td>
               <td>{{ $leaveReq->from }}</td>
               <td>{{ $leaveReq->to }}</td>
               <td>{{ $leaveReq->message }}</td>

@@ -542,6 +542,45 @@
             backdrop-filter:blur(10px);
         }
 
+        .mobile-apk-download{
+            margin:14px 0 18px;
+            padding:14px;
+            border:1px solid rgba(124,58,237,.16);
+            border-radius:18px;
+            background:linear-gradient(135deg, rgba(244,242,255,.96), rgba(255,255,255,.96));
+        }
+
+        .mobile-apk-title{
+            color:var(--text-dark);
+            font-size:14px;
+            font-weight:900;
+            margin-bottom:4px;
+        }
+
+        .mobile-apk-text{
+            color:var(--text-soft);
+            font-size:12px;
+            font-weight:700;
+            margin-bottom:10px;
+        }
+
+        .mobile-apk-btn{
+            min-height:38px;
+            border-radius:12px;
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            gap:8px;
+            padding:0 14px;
+            color:#fff;
+            background:linear-gradient(135deg,var(--orb-primary),var(--orb-secondary));
+            font-size:13px;
+            font-weight:900;
+            box-shadow:0 12px 24px rgba(75,0,232,.18);
+        }
+
+        .mobile-apk-btn:hover{color:#fff;}
+
         /* =========================================================
            DESKTOP / LAPTOP
         ========================================================= */
@@ -1516,8 +1555,8 @@
                     Our HRMS mobile app gives employees faster access to attendance, leave, tasks, and daily office updates on smaller screens.
                 </p>
 
-                <a href="{{ url('downloads/orbosis-office.apk') }}" class="playstore-badge" download>
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="Get it on Google Play">
+                <a href="{{ route('mobile-app.download-latest') }}" class="playstore-badge" aria-label="Download OrboOne HRMS App">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="Download OrboOne HRMS App">
                 </a>
 
                 <div class="mobile-phone-wrap">
@@ -1636,8 +1675,8 @@
             <div class="mobile-bottom-panel">
                 <div class="mobile-round-bg"></div>
 
-                <a href="{{ url('downloads/orbosis-office.apk') }}" class="mobile-cta-btn" download>
-                    Open in free mobile app
+                <a href="{{ route('mobile-app.download-latest') }}" class="mobile-cta-btn">
+                    Download APK
                 </a>
 
                 <a href="{{ url('login?continue=1') }}" class="mobile-continue-link">
@@ -1669,6 +1708,15 @@
                 <p class="login-subtitle">
                     Sign in to continue to your employee dashboard.
                 </p>
+
+                <div class="mobile-apk-download">
+                    <div class="mobile-apk-title">Download OrboOne HRMS App</div>
+                    <div class="mobile-apk-text">Get the latest secure HRMS Android app.</div>
+                    <a href="{{ route('mobile-app.download-latest') }}" class="mobile-apk-btn">
+                        <i class="fa-solid fa-download"></i>
+                        Download APK
+                    </a>
+                </div>
 
                 @if (session('success'))
                     <div class="alert alert-success">

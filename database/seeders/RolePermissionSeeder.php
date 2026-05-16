@@ -37,7 +37,7 @@ class RolePermissionSeeder extends Seeder
             // ============================================================
             // SUPER ADMIN -> ALL PERMISSIONS
             // ============================================================
-            1 => range(1, 52),
+            1 => array_merge(range(1, 52), range(100, 112)),
 
             // ============================================================
             // ADMIN -> Broad HRMS admin access
@@ -57,6 +57,7 @@ class RolePermissionSeeder extends Seeder
 
                 // leave
                 22, 23, 24, 25, 26, 27, 28,
+                100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112,
 
                 // payroll
                 29, 30, 31, 32, 33, 34, 35,
@@ -83,6 +84,7 @@ class RolePermissionSeeder extends Seeder
 
                 // leave
                 22, 23, 24, 25, 26, 27, 28,
+                100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112,
 
                 // payroll (limited)
                 29, 31, 32, 35,
@@ -131,6 +133,7 @@ class RolePermissionSeeder extends Seeder
 
                 // leave
                 22, 23, 24, 25, 26, 27, 28,
+                100, 101, 102, 103, 104, 105, 106, 107, 108, 111, 112,
 
                 // employee directory/basic
                 2, 7, 11,
@@ -156,6 +159,7 @@ class RolePermissionSeeder extends Seeder
 
                 // leave self
                 23, 28,
+                101, 102, 103, 107,
 
                 // payroll self
                 35,
@@ -182,6 +186,7 @@ class RolePermissionSeeder extends Seeder
 
                 // leave
                 22, 23, 24, 25, 26, 27, 28,
+                100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112,
 
                 // payroll limited
                 29, 31, 32, 35,
@@ -220,6 +225,63 @@ class RolePermissionSeeder extends Seeder
                     'created_at' => DB::raw('COALESCE(created_at, NOW())'),
                 ]
             );
+        }
+
+        $allPermissionIds = DB::table('permissions')->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $permissionIdsByKey = DB::table('permissions')->pluck('id', 'key')->toArray();
+        $roleIdsBySlug = DB::table('roles')->pluck('id', 'slug')->toArray();
+
+        $rolePermissionKeys = [
+            'super_admin' => array_keys($permissionIdsByKey),
+            'hr_admin' => [
+                'dashboard.view',
+                'employees.view','employees.create','employees.edit','employees.delete','employees.pending_profiles.view','employees.pending_profiles.approve','employees.probation_internship.view','employees.probation_internship.manage','employees.exit.view','employees.exit.manage','employees.organization.manage','employees.reporting_structure.manage',
+                'attendance.dashboard.view','attendance.records.view_all','attendance.my.view','attendance.blocked.view','attendance.blocked.unlock','attendance.regularization.view_own','attendance.regularization.view_team','attendance.regularization.view_all','attendance.regularization.create','attendance.regularization.approve','attendance.regularization.reject','attendance.holiday_work.view','attendance.holiday_work.manage','attendance.holiday_work.approve','attendance.holiday_work.reject','attendance.monthly_report.view_own','attendance.monthly_report.view_team','attendance.monthly_report.view_all','attendance.monthly_summary.view','attendance.violations.view','attendance.rules.manage','attendance.types.manage','attendance.policy_overrides.manage','attendance.weekoff_rules.manage','attendance.holidays.manage','attendance.export',
+                'leave.dashboard.view','leave.my_requests.view','leave.my_requests.create','leave.my_requests.cancel','leave.approvals.view_team','leave.approvals.view_all','leave.approvals.approve','leave.approvals.reject','leave.team_calendar.view','leave.balance.view_own','leave.balance.view_team','leave.balance.view_all','leave.allocation.view_own','leave.allocation.view_all','leave.allocation.manage','leave.types.manage','leave.policies.manage','leave.holidays.manage','leave.weekoff_rules.manage','leave.comp_off.view_own','leave.comp_off.view_all','leave.comp_off.manage','leave.policy_overrides.manage','leave.balance_logs.view',
+                'documents.compliance.view','documents.upload.self','documents.company.view','documents.types.manage','documents.verification.view','documents.verification.approve','documents.verification.reject',
+                'announcements.view','announcements.create','announcements.edit','announcements.delete','announcements.publish',
+                'settings.profile.view','settings.profile.update','settings.policy_change_logs.view','settings.employee_policy_assignments.view','settings.employee_policy_assignments.manage','settings.notification_retention.manage',
+                'mobile_app_versions.view','mobile_app_versions.manage','mobile_app_versions.upload','mobile_app_versions.delete',
+                'employee_documents.view','company_documents.manage','documents_self.view','documents_self.upload','employee.view',
+            ],
+            'manager' => [
+                'dashboard.view','employees.view','attendance.dashboard.view','attendance.my.view','attendance.regularization.view_own','attendance.regularization.view_team','attendance.regularization.create','attendance.regularization.approve','attendance.regularization.reject','attendance.monthly_report.view_own','attendance.monthly_report.view_team',
+                'leave.dashboard.view','leave.my_requests.view','leave.my_requests.create','leave.my_requests.cancel','leave.approvals.view_team','leave.approvals.approve','leave.approvals.reject','leave.team_calendar.view','leave.balance.view_own','leave.balance.view_team','leave.comp_off.view_own',
+                'documents.upload.self','documents.company.view','announcements.view','settings.profile.view','settings.profile.update','documents_self.view',
+            ],
+            'finance_admin' => [
+                'dashboard.view','employees.view','attendance.monthly_report.view_all','attendance.monthly_summary.view','attendance.export','leave.balance.view_all','leave.balance_logs.view',
+                'payroll.dashboard.view','payroll.salary_structure.view','payroll.salary_structure.manage','payroll.attendance_impacts.view','payroll.generate.view','payroll.generate.process','payroll.payslips.view_all','payroll.fnf.view','payroll.fnf.manage','payroll.bonus.view','payroll.bonus.manage','payroll.monthly_summary.view',
+                'documents.company.view','announcements.view','settings.profile.view','settings.profile.update',
+            ],
+            'employee' => [
+                'dashboard.view','attendance.my.view','attendance.regularization.view_own','attendance.regularization.create','attendance.monthly_report.view_own','leave.my_requests.view','leave.my_requests.create','leave.my_requests.cancel','leave.balance.view_own','leave.comp_off.view_own','payroll.payslips.view_own','documents.upload.self','documents.company.view','announcements.view','settings.profile.view','settings.profile.update','documents_self.view','documents_self.upload',
+            ],
+        ];
+
+        foreach (array_keys($rolePermissionKeys) as $slug) {
+            $roleId = $roleIdsBySlug[$slug] ?? null;
+            if ($roleId) {
+                DB::table('role_permissions')->where('role_id', $roleId)->delete();
+            }
+        }
+
+        foreach ($rolePermissionKeys as $slug => $keys) {
+            $roleId = $roleIdsBySlug[$slug] ?? null;
+            if (! $roleId) {
+                continue;
+            }
+
+            $permissionIds = $slug === 'super_admin'
+                ? $allPermissionIds
+                : collect($keys)->map(fn ($key) => $permissionIdsByKey[$key] ?? null)->filter()->unique()->values()->all();
+
+            foreach ($permissionIds as $permissionId) {
+                DB::table('role_permissions')->updateOrInsert(
+                    ['role_id' => $roleId, 'permission_id' => $permissionId],
+                    ['updated_at' => $now, 'created_at' => DB::raw('COALESCE(created_at, NOW())')]
+                );
+            }
         }
     }
 }

@@ -8,10 +8,12 @@ Route::prefix('v1')->group(function () {
         'profile',
         'hrms/employee',
         'hrms/document',
+        'hrms/announcement',
         'hrms/attendance',
         'hrms/leave',
         'project_management/task',
         'hrms/payroll',
+        'mobile_app',
         'notification',
     ];
 

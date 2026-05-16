@@ -105,9 +105,11 @@
             <div class="dash-panel">
                 <h2 class="dash-section-title"><i class="fas fa-plane-departure"></i> Leave Balance</h2>
                 <div class="dash-stat-list">
-                    <div class="dash-stat"><span>PL</span><strong>{{ $dashboard['leave_self']['pl'] ?? 0 }}</strong>
+                    <div class="dash-stat"><span>Paid</span><strong>{{ $dashboard['leave_self']['paid_remaining'] ?? 0 }}</strong>
                     </div>
-                    <div class="dash-stat"><span>SL</span><strong>{{ $dashboard['leave_self']['sl'] ?? 0 }}</strong>
+                    <div class="dash-stat"><span>Sick</span><strong>{{ $dashboard['leave_self']['sick_remaining'] ?? 0 }}</strong>
+                    </div>
+                    <div class="dash-stat"><span>Comp Off</span><strong>{{ $dashboard['leave_self']['comp_off_remaining'] ?? 0 }}</strong>
                     </div>
                     <div class="dash-stat">
                         <span>Pending</span><strong>{{ $dashboard['leave_self']['pending'] ?? 0 }}</strong></div>

@@ -4,6 +4,9 @@ use App\Http\Controllers\Web\HRMS\Announcement\AnnouncementsC;
 use App\Http\Controllers\Web\Settings\CompanySettingsController;
 use App\Http\Controllers\Web\Settings\LogsController;
 use App\Http\Controllers\Web\Settings\ProfilesController;
+use App\Http\Controllers\Web\Settings\PolicyChangeLogC;
+use App\Http\Controllers\Web\Settings\EmployeePolicyAssignmentC;
+use App\Http\Controllers\Web\Settings\NotificationRetentionC;
 use App\Http\Controllers\Web\Settings\ScoreCategoriesController;
 use App\Http\Controllers\Web\Settings\SystemSettingsController;
 use App\Http\Controllers\Web\Settings\UsersController;
@@ -16,19 +19,6 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::middleware(['auth', 'check.access'])->group(function () {
-    /*
-    |--------------------------------------------------------------------------
-    | Announcements
-    |--------------------------------------------------------------------------
-    */
-    Route::get('/announcements', [AnnouncementsC::class, 'index'])->name('announcements');
-    Route::get('/announcements/create', [AnnouncementsC::class, 'create'])->name('announcements.create');
-    Route::get('/announcements/print', [AnnouncementsC::class, 'print'])->name('announcements.print');
-    Route::get('/announcements/{announcement}', [AnnouncementsC::class, 'show'])->name('announcements.show');
-    Route::get('/announcements/{announcement}/edit', [AnnouncementsC::class, 'edit'])->name('announcements.edit');
-    Route::post('/announcements', [AnnouncementsC::class, 'store'])->name('announcements.store');
-    Route::put('/announcements/{announcement}', [AnnouncementsC::class, 'update'])->name('announcements.update');
-    Route::delete('/announcements/{announcement}', [AnnouncementsC::class, 'destroy'])->name('announcements.destroy');
 
     /*
     |--------------------------------------------------------------------------
@@ -71,6 +61,21 @@ Route::middleware(['auth', 'check.access'])->group(function () {
     Route::get('/profile', [ProfilesController::class, 'index'])->name('profile.index');
     Route::put('/profile', [ProfilesController::class, 'update'])->name('profile.update');
     Route::put('/profile/password', [ProfilesController::class, 'updatePassword'])->name('profile.password.update');
+
+    Route::get('/settings/policy-change-logs', [PolicyChangeLogC::class, 'index'])->name('hrms.policy_change_logs.index');
+    Route::get('/settings/employee-policy-assignments', [EmployeePolicyAssignmentC::class, 'index'])
+        ->middleware('permission:settings.employee_policy_assignments.view|settings.employee_policy_assignments.manage')
+        ->name('hrms.employee_policy_assignments.index');
+    Route::post('/settings/employee-policy-assignments', [EmployeePolicyAssignmentC::class, 'store'])
+        ->middleware('permission:settings.employee_policy_assignments.manage')
+        ->name('hrms.employee_policy_assignments.store');
+    Route::put('/settings/employee-policy-assignments/{id}', [EmployeePolicyAssignmentC::class, 'update'])
+        ->middleware('permission:settings.employee_policy_assignments.manage')
+        ->name('hrms.employee_policy_assignments.update');
+
+    Route::get('/settings/notification-retention', [NotificationRetentionC::class, 'index'])->name('settings.notification_retention.index');
+    Route::get('/settings/notification-retention-alias', [NotificationRetentionC::class, 'index'])->name('settings.notification-retention.index');
+    Route::post('/settings/notification-retention', [NotificationRetentionC::class, 'update'])->name('settings.notification-retention.update');
 });
 
 Route::middleware(['auth', 'web.admin.access'])->group(function () {

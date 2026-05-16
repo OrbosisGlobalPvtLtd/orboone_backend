@@ -77,6 +77,14 @@ class RoleSeeder extends Seeder
                 'is_system' => 1,
                 'status' => 1,
             ],
+            [
+                'id' => 9,
+                'name' => 'Manager',
+                'slug' => 'manager',
+                'description' => 'Manager role for team attendance, leave approvals, and team reports.',
+                'is_system' => 1,
+                'status' => 1,
+            ],
         ];
 
         foreach ($roles as $role) {

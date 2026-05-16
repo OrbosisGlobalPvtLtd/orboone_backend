@@ -16,6 +16,9 @@ class DatabaseSeeder extends Seeder
         $this->call([
             EmployeeSeeder::class,
             AttendanceSeeder::class,
+            AttendanceTypeSeeder::class,
+            AttendanceTimeSeeder::class,
+            AttendancePolicyRuleSeeder::class,
             MenuSeeder::class,
             AccessSeeder::class,
             ScoreCategorySeeder::class,
@@ -26,6 +29,9 @@ class DatabaseSeeder extends Seeder
             DepartmentSeeder::class,
             RolePermissionSeeder::class,
             DepartmentModuleAccessSeeder::class,
+            LeavePolicySeeder::class,
+            LeaveTypeSeeder::class,
+            WeekoffRuleSeeder::class,
             MenuSeeder::class,
             RoleMenuAccessSeeder::class,
         ]);

@@ -13,11 +13,11 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/project-admin', [DashboardC::class, 'projectAdmin'])->name('project_admin');
         Route::get('/operations-admin', [DashboardC::class, 'operationsAdmin'])->name('operations_admin');
         Route::get('/custom-admin', [DashboardC::class, 'customAdmin'])->name('custom_admin');
-        Route::get('/employee', [DashboardC::class, 'employee'])->middleware('employee.user')->name('employee');
+        Route::get('/employee', [DashboardC::class, 'employee'])->middleware(['employee.user', 'check.profile.complete'])->name('employee');
     });
 
     Route::get('/admin/dashboard', [DashboardC::class, 'adminIndex'])->name('admin.dashboard');
-    Route::get('/employee/dashboard', [DashboardC::class, 'employeeIndex'])->middleware('employee.user')->name('employee.dashboard');
+    Route::get('/employee/dashboard', [DashboardC::class, 'employeeIndex'])->middleware(['employee.user', 'check.profile.complete'])->name('employee.dashboard');
     Route::get('/generate-storage-link', [DashboardC::class, 'generateStorageLink']);
 
     Route::middleware(['web.admin.access'])->group(function () {

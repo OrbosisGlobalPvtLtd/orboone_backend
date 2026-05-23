@@ -52,9 +52,9 @@ return [
     |
     */
 
-    'url' => env('APP_URL', 'https://orbosis.in/'),
+    'url' => env('APP_URL', 'https://orboone.orbosis.in/'),
 
-  'asset_url' => env('ASSET_URL','https://orbosis.in/public'),
+    'asset_url' => env('ASSET_URL', 'https://orboone.orbosis.in/public'),
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

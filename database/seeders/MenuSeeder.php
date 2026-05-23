@@ -64,6 +64,7 @@ class MenuSeeder extends Seeder
             ['id' => 44, 'name' => 'Settlement (FNF)', 'route' => 'pages.payroll.fnf', 'icon' => 'fas fa-walking', 'module_key' => 'payroll', 'parent_id' => 40, 'sort_order' => 6],
             ['id' => 45, 'name' => 'Bonus Management', 'route' => 'pages.payroll.index', 'icon' => 'fas fa-gift', 'module_key' => 'payroll', 'parent_id' => 40, 'sort_order' => 7],
             ['id' => 147, 'name' => 'Monthly Payroll Summary', 'route' => 'hrms.payroll.monthly_summary.index', 'icon' => 'fas fa-table', 'module_key' => 'payroll', 'parent_id' => 40, 'sort_order' => 8],
+            ['id' => 155, 'name' => 'Payroll Adjustments', 'route' => 'hrms.payroll.adjustments.index', 'icon' => 'fas fa-sliders-h', 'module_key' => 'payroll', 'parent_id' => 40, 'sort_order' => 9],
 
             ['id' => 50, 'name' => 'Document Management', 'route' => null, 'icon' => 'fas fa-folder-open', 'module_key' => 'documents', 'parent_id' => null, 'sort_order' => 50],
             ['id' => 51, 'name' => 'Compliance Management', 'route' => 'hrms.documents.hr.index', 'icon' => 'fas fa-shield-alt', 'module_key' => 'documents', 'parent_id' => 50, 'sort_order' => 1],
@@ -102,6 +103,42 @@ class MenuSeeder extends Seeder
                     'module_key' => $menu['module_key'],
                     'parent_id' => $menu['parent_id'],
                     'sort_order' => $menu['sort_order'],
+                    'is_active' => 1,
+                    'updated_at' => $now,
+                    'created_at' => DB::raw('COALESCE(created_at, NOW())'),
+                ]
+            );
+        }
+
+        DB::table('menus')->whereIn('id', [40, 41, 42, 43, 44, 45, 141, 142, 147, 155])->update([
+            'is_active' => 0,
+            'updated_at' => $now,
+        ]);
+
+        $enterpriseMenus = [
+            [300, 'Enterprise Payroll', null, 'fas fa-money-check-alt', 'enterprise_payroll', null, 40],
+            [301, 'Dashboard', 'enterprise-payroll.dashboard', 'fas fa-chart-pie', 'enterprise_payroll', 300, 1],
+            [302, 'Salary Structures', 'enterprise-payroll.salary-structures.index', 'fas fa-layer-group', 'enterprise_payroll', 300, 2],
+            [303, 'Payroll Runs', 'enterprise-payroll.runs.index', 'fas fa-play-circle', 'enterprise_payroll', 300, 3],
+            [304, 'Payslips', 'enterprise-payroll.payslips.index', 'fas fa-file-invoice-dollar', 'enterprise_payroll', 300, 4],
+            [305, 'Bonus & Incentives', 'enterprise-payroll.bonus-incentives.index', 'fas fa-gift', 'enterprise_payroll', 300, 5],
+            [306, 'Reimbursements', 'enterprise-payroll.reimbursements.index', 'fas fa-receipt', 'enterprise_payroll', 300, 6],
+            [307, 'FNF Settlements', 'enterprise-payroll.fnf.index', 'fas fa-hand-holding-usd', 'enterprise_payroll', 300, 7],
+            [308, 'Reports', 'enterprise-payroll.reports.index', 'fas fa-chart-bar', 'enterprise_payroll', 300, 8],
+            [309, 'My Payslips', 'enterprise-payroll.self.payslips', 'fas fa-file-invoice-dollar', 'employee.salary', null, 42],
+            [310, 'My Reimbursements', 'enterprise-payroll.self.reimbursements', 'fas fa-receipt', 'employee.salary', null, 43],
+        ];
+
+        foreach ($enterpriseMenus as [$id, $name, $route, $icon, $moduleKey, $parentId, $sortOrder]) {
+            DB::table('menus')->updateOrInsert(
+                ['id' => $id],
+                [
+                    'name' => $name,
+                    'route' => $route,
+                    'icon' => $icon,
+                    'module_key' => $moduleKey,
+                    'parent_id' => $parentId,
+                    'sort_order' => $sortOrder,
                     'is_active' => 1,
                     'updated_at' => $now,
                     'created_at' => DB::raw('COALESCE(created_at, NOW())'),

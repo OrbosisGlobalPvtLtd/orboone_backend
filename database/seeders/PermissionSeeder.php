@@ -633,10 +633,17 @@ class PermissionSeeder extends Seeder
             ['hrms', 'leave_comp_off', 'view_all', 'leave.comp_off.view_all', 'View all comp off'],
             ['hrms', 'payroll_payslips', 'view_own', 'payroll.payslips.view_own', 'View own payslips'],
             ['hrms', 'payroll_payslips', 'view_all', 'payroll.payslips.view_all', 'View all payslips'],
+            ['hrms', 'payroll', 'approve', 'payroll.approve', 'Approve generated payroll'],
+            ['hrms', 'payroll_claims', 'view_all', 'payroll.claims.view_all', 'View all reimbursement claims'],
+            ['hrms', 'payroll_claims', 'manage', 'payroll.claims.manage', 'Approve or reject reimbursement claims'],
+            ['hrms', 'payroll_adjustments', 'manage', 'payroll.adjustments.manage', 'Manage payroll bonus, incentive, TDS and deductions'],
             ['settings', 'mobile_app_versions', 'view', 'mobile_app_versions.view', 'View mobile app versions'],
             ['settings', 'mobile_app_versions', 'manage', 'mobile_app_versions.manage', 'Manage mobile app versions'],
             ['settings', 'mobile_app_versions', 'upload', 'mobile_app_versions.upload', 'Upload mobile APK releases'],
             ['settings', 'mobile_app_versions', 'delete', 'mobile_app_versions.delete', 'Delete mobile APK releases'],
+            ['hrms', 'enterprise_payroll_self', 'view_payslips', 'enterprise_payroll.my_payslips.view', 'Employee can view own payslips'],
+            ['hrms', 'enterprise_payroll_self', 'view_reimbursements', 'enterprise_payroll.my_reimbursements.view', 'Employee can view own reimbursements'],
+            ['hrms', 'enterprise_payroll_self', 'create_reimbursements', 'enterprise_payroll.my_reimbursements.create', 'Employee can apply for reimbursement'],
         ];
 
         foreach ($runtimePermissions as [$module, $submodule, $action, $key, $description]) {

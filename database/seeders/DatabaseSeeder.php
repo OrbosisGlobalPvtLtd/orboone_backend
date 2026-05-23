@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             AttendanceSeeder::class,
             AttendanceTypeSeeder::class,
             AttendanceTimeSeeder::class,
+            AttendanceLocationSeeder::class,
             AttendancePolicyRuleSeeder::class,
             MenuSeeder::class,
             AccessSeeder::class,

@@ -1,48 +1,47 @@
 @csrf
 
-<div class="ac-grid">
+<div class="ac-grid mb-4">
     <div>
-        <label class="ac-label">Name</label>
-        <input type="text" name="name" class="ac-control" value="{{ old('name', $role->name ?? '') }}" required>
+        <label class="ac-label">Name <span class="text-danger">*</span></label>
+        <input type="text" name="name" class="ac-control" value="{{ old('name', $role->name ?? '') }}" placeholder="e.g. Finance Manager" required>
     </div>
 
     <div>
-        <label class="ac-label">Code</label>
-        <input type="text" name="slug" class="ac-control" value="{{ old('slug', $role->slug ?? '') }}" placeholder="hr_admin">
+        <label class="ac-label">Role Code / Slug <span class="text-danger">*</span></label>
+        <input type="text" name="slug" class="ac-control" value="{{ old('slug', $role->slug ?? '') }}" placeholder="e.g. finance_manager" required>
     </div>
 
-    <div class="col-span-2" style="grid-column:1 / -1;">
+    <div style="grid-column: 1 / -1;">
         <label class="ac-label">Description</label>
-        <textarea name="description" class="ac-control">{{ old('description', $role->description ?? '') }}</textarea>
+        <textarea name="description" class="ac-control" placeholder="Describe the permissions and access levels associated with this role...">{{ old('description', $role->description ?? '') }}</textarea>
     </div>
 
     <div>
         <input type="hidden" name="is_system" value="0">
-        <label class="ac-check">
-            <input type="checkbox" name="is_system" value="1" {{ old('is_system', $role->is_system ?? false) ? 'checked' : '' }}>
+        <label class="ac-check d-flex align-items-start">
+            <input type="checkbox" name="is_system" value="1" {{ old('is_system', $role->is_system ?? false) ? 'checked' : '' }} class="mr-2">
             <span>
-                <strong>System Role</strong>
-                <span>System roles are protected from deletion.</span>
+                <strong>System Protected Role</strong>
+                <span>Protected roles cannot be deleted from the database.</span>
             </span>
         </label>
     </div>
 
     <div>
         <input type="hidden" name="status" value="0">
-        <label class="ac-check">
-            <input type="checkbox" name="status" value="1" {{ old('status', $role->status ?? true) ? 'checked' : '' }}>
+        <label class="ac-check d-flex align-items-start">
+            <input type="checkbox" name="status" value="1" {{ old('status', $role->status ?? true) ? 'checked' : '' }} class="mr-2">
             <span>
-                <strong>Active</strong>
-                <span>Inactive roles stay saved but cannot be selected in active lists.</span>
+                <strong>Active & Selectable</strong>
+                <span>Inactive roles remain saved but cannot be linked to active administrators.</span>
             </span>
         </label>
     </div>
 </div>
 
-<div class="mt-4 d-flex align-items-center flex-wrap" style="gap:8px;">
+<div class="d-flex align-items-center flex-wrap pt-3 border-top" style="gap:8px;">
     <button type="submit" class="ac-btn ac-btn-primary">
-        <i class="fas fa-save"></i>
-        Save
+        <i class="fas fa-save mr-1"></i> Save Role Settings
     </button>
     <a href="{{ route('roles.index') }}" class="ac-btn ac-btn-soft">Cancel</a>
 </div>

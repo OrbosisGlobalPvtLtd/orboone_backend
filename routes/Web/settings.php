@@ -60,7 +60,9 @@ Route::middleware(['auth', 'check.access'])->group(function () {
 
     Route::get('/profile', [ProfilesController::class, 'index'])->name('profile.index');
     Route::put('/profile', [ProfilesController::class, 'update'])->name('profile.update');
+    Route::post('/profile/submit', [ProfilesController::class, 'submitForVerification'])->name('profile.submit');
     Route::put('/profile/password', [ProfilesController::class, 'updatePassword'])->name('profile.password.update');
+    Route::get('/hrms/employee/profile-image/{employee}', [ProfilesController::class, 'profileImage'])->name('employee.profile-image');
 
     Route::get('/settings/policy-change-logs', [PolicyChangeLogC::class, 'index'])->name('hrms.policy_change_logs.index');
     Route::get('/settings/employee-policy-assignments', [EmployeePolicyAssignmentC::class, 'index'])

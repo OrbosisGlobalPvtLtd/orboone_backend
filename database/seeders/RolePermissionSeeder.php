@@ -233,6 +233,17 @@ class RolePermissionSeeder extends Seeder
 
         $rolePermissionKeys = [
             'super_admin' => array_keys($permissionIdsByKey),
+            'admin' => [
+                'dashboard.view',
+                'employees.view','employees.create','employees.edit','employees.delete','employees.pending_profiles.view','employees.pending_profiles.approve','employees.probation_internship.view','employees.probation_internship.manage','employees.exit.view','employees.exit.manage','employees.organization.manage','employees.reporting_structure.manage',
+                'attendance.dashboard.view','attendance.records.view_all','attendance.monthly_report.view_all','attendance.monthly_summary.view','attendance.export',
+                'leave.dashboard.view','leave.approvals.view_all','leave.approvals.approve','leave.approvals.reject','leave.balance.view_all','leave.allocation.view_all','leave.allocation.manage','leave.balance_logs.view',
+                'payroll.dashboard.view','payroll.salary_structure.view','payroll.salary_structure.manage','payroll.attendance_impacts.view','payroll.generate.view','payroll.generate.process','payroll.approve','payroll.payslips.view_all','payroll.claims.view_all','payroll.claims.manage','payroll.adjustments.manage','payroll.fnf.view','payroll.fnf.manage','payroll.bonus.view','payroll.bonus.manage','payroll.monthly_summary.view',
+                'documents.compliance.view','documents.upload.self','documents.company.view','documents.types.manage','documents.verification.view','documents.verification.approve','documents.verification.reject',
+                'announcements.view','announcements.create','announcements.edit','announcements.delete','announcements.publish','announcements.print',
+                'settings.profile.view','settings.profile.update','settings.policy_change_logs.view','settings.employee_policy_assignments.view','settings.employee_policy_assignments.manage','settings.notification_retention.manage',
+                'mobile_app_versions.view','mobile_app_versions.manage','mobile_app_versions.upload','mobile_app_versions.delete',
+            ],
             'hr_admin' => [
                 'dashboard.view',
                 'employees.view','employees.create','employees.edit','employees.delete','employees.pending_profiles.view','employees.pending_profiles.approve','employees.probation_internship.view','employees.probation_internship.manage','employees.exit.view','employees.exit.manage','employees.organization.manage','employees.reporting_structure.manage',
@@ -251,11 +262,12 @@ class RolePermissionSeeder extends Seeder
             ],
             'finance_admin' => [
                 'dashboard.view','employees.view','attendance.monthly_report.view_all','attendance.monthly_summary.view','attendance.export','leave.balance.view_all','leave.balance_logs.view',
-                'payroll.dashboard.view','payroll.salary_structure.view','payroll.salary_structure.manage','payroll.attendance_impacts.view','payroll.generate.view','payroll.generate.process','payroll.payslips.view_all','payroll.fnf.view','payroll.fnf.manage','payroll.bonus.view','payroll.bonus.manage','payroll.monthly_summary.view',
+                'payroll.dashboard.view','payroll.salary_structure.view','payroll.salary_structure.manage','payroll.attendance_impacts.view','payroll.generate.view','payroll.generate.process','payroll.approve','payroll.payslips.view_all','payroll.claims.view_all','payroll.claims.manage','payroll.adjustments.manage','payroll.fnf.view','payroll.fnf.manage','payroll.bonus.view','payroll.bonus.manage','payroll.monthly_summary.view',
                 'documents.company.view','employee.announcements.view','employee.announcements.detail','settings.profile.view','settings.profile.update',
             ],
             'employee' => [
                 'dashboard.view','attendance.my.view','attendance.regularization.view_own','attendance.regularization.create','attendance.monthly_report.view_own','leave.my_requests.view','leave.my_requests.create','leave.my_requests.cancel','leave.balance.view_own','leave.comp_off.view_own','payroll.payslips.view_own','documents.upload.self','documents.company.view','employee.announcements.view','employee.announcements.detail','settings.profile.view','settings.profile.update','documents_self.view','documents_self.upload',
+                'enterprise_payroll.my_payslips.view','enterprise_payroll.my_reimbursements.view','enterprise_payroll.my_reimbursements.create',
             ],
         ];
 

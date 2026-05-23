@@ -54,6 +54,16 @@ class AttendanceMobileService
             $payload['attendance'] = $payload['attendance'] ? $this->formatAttendanceForApi($payload['attendance'], $payload['policy'] ?? null) : (object)[];
         }
 
+        $attendanceData = is_array($payload['attendance']) ? $payload['attendance'] : [];
+        $payload['status_code'] = $attendanceData['status_code'] ?? ($payload['ui']['status_code'] ?? 'not_punched');
+        $payload['status_name'] = $attendanceData['status_name'] ?? ucwords(str_replace('_', ' ', $payload['status_code']));
+        $payload['is_blocked'] = (bool) ($attendanceData['is_blocked'] ?? $payload['ui']['is_blocked'] ?? false);
+        $payload['is_punch_blocked'] = (bool) ($attendanceData['is_punch_blocked'] ?? $payload['ui']['is_punch_blocked'] ?? false);
+        $payload['can_punch_in'] = (bool) ($attendanceData['can_punch_in'] ?? $payload['ui']['can_punch_in'] ?? false);
+        $payload['can_punch_out'] = (bool) ($attendanceData['can_punch_out'] ?? $payload['ui']['can_punch_out'] ?? false);
+        $payload['next_action'] = $attendanceData['next_action'] ?? ($payload['ui']['next_action'] ?? 'none');
+        $payload['office_location'] = $this->attendanceService->officeLocationPayload();
+
         return [
             'success' => true,
             'status' => true,
@@ -133,6 +143,42 @@ class AttendanceMobileService
 
         $data = is_array($attendance) ? $attendance : $attendance->toArray();
         $rawDate = $data['attendance_date'] ?? null;
+        $typeCode = $data['attendance_type']['code'] ?? null;
+        $isUnlocked = (bool) ($data['is_admin_unlocked'] ?? false);
+        $isBlocked = (bool) (
+            ($data['is_blocked'] ?? false)
+            || ($data['is_punch_blocked'] ?? false)
+            || $typeCode === 'punch_blocked'
+        );
+        if ($isUnlocked) {
+            $isBlocked = false;
+        }
+        $hasPunchIn = ! empty($data['punch_in_time']);
+        $hasPunchOut = ! empty($data['punch_out_time']);
+
+        $statusCode = $typeCode ?: ($data['attendance_status'] ?? 'not_punched');
+        $statusName = $data['attendance_type']['name'] ?? ucwords(str_replace('_', ' ', $statusCode));
+        if ($isBlocked) {
+            $statusCode = 'punch_blocked';
+            $statusName = 'Punch Blocked';
+        } elseif ($isUnlocked && ! $hasPunchIn) {
+            $statusCode = 'unlocked';
+            $statusName = 'Unlocked';
+        } elseif ($hasPunchIn) {
+            $statusCode = 'present';
+            $statusName = 'Present';
+        } elseif ($statusCode === 'pending_hr') {
+            $statusCode = 'not_punched';
+            $statusName = 'Not Punched';
+        }
+
+        $data['status_code'] = $statusCode;
+        $data['status_name'] = $statusName;
+        $data['is_blocked'] = $isBlocked;
+        $data['is_punch_blocked'] = $isBlocked;
+        $data['can_punch_in'] = ! $isBlocked && ! $hasPunchIn;
+        $data['can_punch_out'] = ! $isBlocked && $hasPunchIn && ! $hasPunchOut;
+        $data['next_action'] = $isBlocked ? 'blocked' : (! $hasPunchIn ? 'punch_in' : (! $hasPunchOut ? 'punch_out' : 'completed'));
 
         $attendanceDate = $this->localDate($rawDate);
         $data['attendance_date'] = $attendanceDate;
@@ -181,9 +227,9 @@ class AttendanceMobileService
         return $this->attendanceService->processPunchIn($userId, $workMode, $note, $meta);
     }
 
-    public function punchOut(int $userId, string $taskSummary, ?string $note, array $meta = []): array
+    public function punchOut(int $userId, string $taskSummary, ?string $note, array $meta = [], $taskSummaryJson = null): array
     {
-        return $this->attendanceService->processPunchOut($userId, $taskSummary, $note, $meta);
+        return $this->attendanceService->processPunchOut($userId, $taskSummary, $note, $meta, null, true, $taskSummaryJson);
     }
 
     public function history(int $userId, array $filters = []): array

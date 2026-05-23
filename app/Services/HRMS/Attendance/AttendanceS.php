@@ -3,6 +3,7 @@
 namespace App\Services\HRMS\Attendance;
 
 use App\Models\HRMS\Attendance\AttendanceM as Attendance;
+use App\Models\HRMS\Attendance\AttendanceLocationM as AttendanceLocation;
 use App\Models\HRMS\Attendance\AttendanceTimeM as AttendanceTime;
 use App\Models\HRMS\Attendance\AttendanceTypeM as AttendanceType;
 use App\Models\HRMS\Attendance\AttendanceViolationM;
@@ -43,6 +44,14 @@ class AttendanceS
             return ['status' => 'error', 'message' => 'You are not eligible to mark attendance yet.'];
         }
 
+        $workMode = strtolower($workMode);
+        if ($enforceEmployeeRules && $workMode === 'wfo') {
+            $locationValidation = $this->validateWfoOfficeLocation($meta);
+            if (($locationValidation['status'] ?? null) === 'error') {
+                return $locationValidation;
+            }
+        }
+
         $policy = $this->ruleResolver->getPolicyForEmployee($employee, $now);
         $dayContext = $this->ruleResolver->getDayContext($employee, $now);
 
@@ -75,36 +84,39 @@ class AttendanceS
 
         $time = $now->format('H:i:s');
         $blockAfter = $window['block_after'];
-        $isBlocked = $window['is_blocked'] && ! $attendanceTypeId && ! optional($existing)->is_late_exempted;
+        $isBlocked = $window['is_blocked']
+            && ! $attendanceTypeId
+            && ! optional($existing)->is_late_exempted
+            && ! optional($existing)->is_admin_unlocked;
 
-        /*
-        |--------------------------------------------------------------------------
-        | OLD FUTURE LOGIC:
-        | After 11:15: attendance_type = pending_hr and HR approval was required.
-        |
-        | CURRENT ACTIVE LOGIC:
-        | After block_after_time: attendance_type = punch_blocked for missed punch
-        | auto-block records, and late mobile punches are rejected unless Admin/HR
-        | unlocks with late exemption or manual punch-in.
-        |--------------------------------------------------------------------------
-        */
         if ($isBlocked) {
+            $this->notifyAttendance($employee, 'punch_blocked', 'Punch In Blocked', 'Your punch-in is blocked after ' . $blockAfter->format('h:i A') . '. Please contact HR/Admin.', $today);
             return ['status' => 'error', 'message' => 'Punch in is blocked after ' . $blockAfter->format('h:i A') . '. Please contact HR/Admin.'];
         }
 
         $targetPunchOut = $this->targetPunchOutTime($now, $shift);
         $isLate = ! optional($existing)->is_late_exempted && $this->isLatePunch($now, $shift);
         $lateMinutes = $isLate ? $this->lateMinutes($now, $shift) : 0;
+        $presentType = $this->attendanceType('present');
+        $existingTypeCode = optional($existing?->attendanceType)->code;
+        $attendanceTypeForPunchIn = $attendanceTypeId
+            ?: (in_array($existingTypeCode, ['punch_blocked', 'pending_hr'], true) ? $presentType?->id : ($existing->attendance_type_id ?? $presentType?->id));
+
+        $attendanceStatusForPunchIn = ($existing && ! in_array($existing->attendance_status, ['pending_hr', 'punch_blocked', 'unlocked'], true)) ? $existing->attendance_status : 'present';
+        if ($existing && $existing->is_admin_unlocked && ! $existing->punch_in_time) {
+            $attendanceTypeForPunchIn = $presentType?->id ?: $attendanceTypeForPunchIn;
+            $attendanceStatusForPunchIn = 'present';
+        }
 
         $attendance = Attendance::updateOrCreate(
             ['employee_id' => $employee->id, 'attendance_date' => $today],
             [
                 'user_id' => $userId,
                 'attendance_time_id' => ($shift?->source_table ?? null) === 'attendance_times' ? $shift?->id : ($existing->attendance_time_id ?? $this->defaultShift()?->id),
-                'attendance_type_id' => $attendanceTypeId ?: ($existing->attendance_type_id ?: $this->attendanceType('present')?->id),
+                'attendance_type_id' => $attendanceTypeForPunchIn,
                 'punch_in_time' => $time,
                 'target_punch_out_time' => $targetPunchOut,
-                'work_mode' => strtolower($workMode),
+                'work_mode' => $workMode,
                 'punch_in_latitude' => $meta['latitude'] ?? null,
                 'punch_in_longitude' => $meta['longitude'] ?? null,
                 'punch_in_address' => $meta['address'] ?? null,
@@ -116,13 +128,22 @@ class AttendanceS
                 'is_punch_blocked' => false,
                 'blocked_reason' => null,
                 'block_reason' => null,
+                'auto_block_reason' => null,
+                'auto_blocked_at' => null,
                 'is_profile_completed_at_punch' => $this->employeeEligibleForAttendance($employee),
                 'is_locked' => false,
                 'punch_in_note' => $note,
                 'attendance_source' => 'mobile',
-                'attendance_status' => ($existing && $existing->attendance_status !== 'pending_hr' && $existing->attendance_status !== 'punch_blocked') ? $existing->attendance_status : 'present',
+                'attendance_status' => $attendanceStatusForPunchIn,
             ]
         );
+
+        if ($isLate) {
+            $this->notifyAttendance($employee, 'late_mark', 'Late Mark Applied', 'Your punch-in was recorded with a late mark.', $today, [
+                'attendance_id' => $attendance->id,
+                'late_minutes' => $lateMinutes,
+            ]);
+        }
 
         return [
             'status' => true,
@@ -136,7 +157,9 @@ class AttendanceS
         string $taskSummary,
         ?string $note = null,
         array $meta = [],
-        ?string $customTime = null
+        ?string $customTime = null,
+        bool $enforceEmployeeRules = true,
+        $taskSummaryJson = null
     ): array {
         $timezone = $this->attendanceTimezone();
         $now = $customTime ? Carbon::parse($customTime, $timezone) : Carbon::now($timezone);
@@ -160,8 +183,24 @@ class AttendanceS
             return ['status' => 'error', 'message' => 'Punch out already recorded.'];
         }
 
-        if ($attendance->is_blocked || optional($attendance->attendanceType)->code === 'pending_hr') {
-            return ['status' => 'error', 'message' => 'Waiting for HR/Admin approval. Punch out is disabled.'];
+        if ($attendance->is_blocked || $attendance->is_punch_blocked || optional($attendance->attendanceType)->code === 'punch_blocked') {
+            return ['status' => 'error', 'message' => 'Attendance is blocked. Please contact HR/Admin.'];
+        }
+
+        $existingWorkMode = strtolower($attendance->work_mode ?? 'wfo');
+        if ($enforceEmployeeRules && $existingWorkMode === 'wfo') {
+            $locationValidation = $this->validateOfficeRadiusForWfo('punch_out', isset($meta['latitude']) && $meta['latitude'] !== '' ? (float) $meta['latitude'] : null, isset($meta['longitude']) && $meta['longitude'] !== '' ? (float) $meta['longitude'] : null);
+            if (! $locationValidation['allowed']) {
+                return [
+                    'status' => 'error',
+                    'message' => $locationValidation['message'],
+                    'data' => [
+                        'distance_meters' => $locationValidation['distance_meters'],
+                        'allowed_radius_meters' => $locationValidation['allowed_radius_meters'],
+                        'office_location_name' => $locationValidation['office_location_name'],
+                    ],
+                ];
+            }
         }
 
         $attendance->fill([
@@ -181,6 +220,7 @@ class AttendanceS
                 'user_id' => $userId,
                 'work_date' => $today,
                 'work_summary' => $taskSummary,
+                'work_summary_json' => $taskSummaryJson,
                 'latitude' => $meta['latitude'] ?? null,
                 'longitude' => $meta['longitude'] ?? null,
                 'device_info' => $meta['device'] ?? null,
@@ -224,14 +264,14 @@ class AttendanceS
             'skipped_no_user' => 0,
         ];
 
-        $blockedType = $this->attendanceType('punch_blocked') ?: $this->attendanceType('pending_hr');
+        $blockedType = $this->attendanceType('punch_blocked');
         if (! $blockedType) {
             $counts['missing_attendance_type'] = 1;
             return $counts;
         }
 
         $employees = Employee::with(['profile', 'documents'])->active()->get();
-        $status = $blockedType->code ?: 'punch_blocked';
+        $status = 'punch_blocked';
 
         foreach ($employees as $employee) {
             $counts['total_checked']++;
@@ -289,10 +329,6 @@ class AttendanceS
                 continue;
             }
 
-            /*
-            | OLD FUTURE LOGIC: after 11:15 create Pending HR approval instead of punch block.
-            | Preserved for future policy switch.
-            */
             $reason = 'Auto blocked after ' . Carbon::parse($policy->block_after_time, $timezone)->format('h:i A') . ' because employee did not punch in.';
             $payload = $this->attendancePayload([
                 'employee_id' => $employee->id,
@@ -313,7 +349,6 @@ class AttendanceS
                 'punch_in_note' => $reason,
                 'attendance_source' => 'system_auto',
                 'attendance_status' => $status,
-                'old_pending_hr_logic' => 'OLD FUTURE LOGIC: After block time attendance_type = pending_hr. CURRENT ACTIVE LOGIC: attendance_type = punch_blocked.',
                 'pending_hr_reason' => null,
             ]);
 
@@ -322,10 +357,15 @@ class AttendanceS
                 continue;
             }
 
-            Attendance::firstOrCreate(
+            $attendance = Attendance::firstOrCreate(
                 ['employee_id' => $employee->id, 'attendance_date' => $date],
                 $payload
             );
+
+            $this->notifyAttendance($employee, 'punch_blocked', 'Punch In Blocked', 'Your punch-in was auto-blocked because you did not punch in before the allowed time.', $date, [
+                'attendance_id' => $attendance->id,
+                'reason' => $reason,
+            ]);
 
             $counts['created']++;
         }
@@ -345,20 +385,32 @@ class AttendanceS
         $data = is_array($payload) ? $payload : ['unlock_remarks' => $payload];
         $unlockType = $data['unlock_type'] ?? 'unlock_only';
         $approvedPunchIn = $data['approved_punch_in_time'] ?? null;
+        $presentType = $this->attendanceType('present');
+        $now = Carbon::now($this->attendanceTimezone());
+        $approvalNote = trim((string) ($data['hr_approval_note'] ?? ''))
+            ?: (trim((string) ($data['unlock_remarks'] ?? '')) ?: 'Unlocked by HR/Admin.');
 
         $updates = [
+            'attendance_type_id' => $presentType?->id ?: $attendance->attendance_type_id,
+            'attendance_status' => 'unlocked',
             'is_admin_unlocked' => true,
             'unlock_type' => $unlockType,
             'unlock_reason_category' => $data['unlock_reason_category'] ?? null,
-            'unlock_remarks' => $data['unlock_remarks'] ?? ($data['hr_approval_note'] ?? null),
-            'hr_approval_note' => $data['hr_approval_note'] ?? ($data['unlock_remarks'] ?? null),
+            'unlock_remarks' => $data['unlock_remarks'] ?? null,
+            'hr_approval_note' => $approvalNote,
             'unlocked_by' => $adminUserId,
-            'unlocked_at' => Carbon::now($this->attendanceTimezone()),
+            'unlocked_at' => $now,
             'hr_approved_by' => $adminUserId,
-            'hr_approved_at' => Carbon::now($this->attendanceTimezone()),
+            'hr_approved_at' => $now,
             'is_locked' => false,
             'is_blocked' => false,
-            'attendance_status' => 'pending_hr',
+            'is_punch_blocked' => false,
+            'block_reason' => null,
+            'blocked_reason' => null,
+            'auto_block_reason' => null,
+            'auto_blocked_at' => null,
+            'punch_in_note' => null,
+            'pending_hr_reason' => null,
         ];
 
         if ($unlockType === 'late_exemption') {
@@ -375,7 +427,6 @@ class AttendanceS
             $date = Carbon::parse($attendance->attendance_date, $this->attendanceTimezone())->toDateString();
             $punchIn = Carbon::parse($date . ' ' . $approvedPunchIn, $this->attendanceTimezone());
             $shift = $attendance->employee ? $this->ruleResolver->getPolicyForEmployee($attendance->employee, $date) : ($attendance->attendanceTime ?: $this->defaultShift());
-            $presentType = $this->attendanceType('present');
 
             $updates['approved_punch_in_time'] = $punchIn->format('H:i:s');
             $updates['punch_in_time'] = $punchIn->format('H:i:s');
@@ -431,8 +482,7 @@ class AttendanceS
             ->where(function ($query) {
                 $query->where('is_blocked', true)
                     ->orWhere('is_punch_blocked', true)
-                    ->orWhereHas('attendanceType', fn ($q) => $q->whereIn('code', ['punch_blocked', 'pending_hr']))
-                    ->orWhereIn('attendance_status', ['punch_blocked', 'pending_hr']);
+                    ->orWhere('attendance_status', 'punch_blocked');
             })
             ->get();
 
@@ -487,7 +537,7 @@ class AttendanceS
                 'blocked_reason' => $reason,
                 'punch_in_note' => $reason,
                 'punch_out_note' => $reason,
-                'pending_hr_reason' => $reason,
+                'pending_hr_reason' => null,
             ]);
 
             if ($dryRun) {
@@ -576,7 +626,48 @@ class AttendanceS
 
         $attendance->save();
 
+        if ($isHalfDay) {
+            $this->notifyAttendance($employee, 'half_day', 'Half Day Marked', 'Your attendance has been marked as half day.', $date, [
+                'attendance_id' => $attendance->id,
+                'total_work_minutes' => $netMinutes,
+            ]);
+        }
+
+        if ($isEarly) {
+            $this->notifyAttendance($employee, 'early_logout', 'Early Logout Recorded', 'Your punch-out was earlier than the target time.', $date, [
+                'attendance_id' => $attendance->id,
+                'early_out_minutes' => $attendance->early_out_minutes,
+            ]);
+        }
+
         return $attendance;
+    }
+
+    private function notifyAttendance(Employee $employee, string $type, string $title, string $message, string $date, array $extra = []): void
+    {
+        if (! $employee->user_id) {
+            return;
+        }
+
+        $notificationS = app(\App\Services\HRMS\Notification\NotificationS::class);
+        if ($notificationS->alreadySent($type, (int) $employee->id, $date, (int) $employee->user_id)) {
+            return;
+        }
+
+        $notificationS->notifyEmployee(
+            $title,
+            $message,
+            $type,
+            'attendance',
+            ['attendance_date' => $date],
+            array_merge([
+                'employee_id' => $employee->id,
+                'user_id' => $employee->user_id,
+                'employee_name' => $employee->display_name,
+                'target_date' => $date,
+            ], $extra),
+            $employee->user_id
+        );
     }
 
     public function processMissedPunches(?string $date = null, bool $dryRun = false): array
@@ -722,18 +813,30 @@ class AttendanceS
 
     public function processAdminPunchOut(int $userId, string $taskSummary, ?string $note = 'Admin Override', ?string $customTime = null): array
     {
-        return $this->processPunchOut($userId, $taskSummary, $note, ['ip' => request()?->ip(), 'device' => request()?->userAgent()], $customTime);
+        return $this->processPunchOut($userId, $taskSummary, $note, ['ip' => request()?->ip(), 'device' => request()?->userAgent()], $customTime, false);
     }
 
     public function todayStatus(int $userId): array
     {
         $timezone = $this->attendanceTimezone();
         $now = Carbon::now($timezone);
-        $attendance = Attendance::with(['attendanceType', 'attendanceTime'])
-            ->where('user_id', $userId)
-            ->whereDate('attendance_date', $now->toDateString())
-            ->first();
         $employee = Employee::where('user_id', $userId)->first();
+        
+        $attendance = null;
+        if ($employee) {
+            $attendance = Attendance::with(['attendanceType', 'attendanceTime'])
+                ->where('employee_id', $employee->id)
+                ->whereDate('attendance_date', $now->toDateString())
+                ->latest('id')
+                ->first();
+        } else {
+            $attendance = Attendance::with(['attendanceType', 'attendanceTime'])
+                ->where('user_id', $userId)
+                ->whereDate('attendance_date', $now->toDateString())
+                ->latest('id')
+                ->first();
+        }
+
         $shift = $employee ? $this->ruleResolver->getPolicyForEmployee($employee, $now) : ($attendance?->attendanceTime ?: $this->defaultShift());
         $completed = (int) ($attendance?->total_work_minutes ?? 0);
         if ($attendance?->punch_in_time && ! $attendance->punch_out_time) {
@@ -744,11 +847,43 @@ class AttendanceS
         $target = $attendance?->target_punch_out_time ? Carbon::parse($now->toDateString() . ' ' . $this->ruleResolver->timeString($attendance->target_punch_out_time), $timezone) : null;
         $remainingSeconds = $target && ! $attendance?->punch_out_time ? max(0, $now->diffInSeconds($target, false)) : 0;
 
+        $typeCode = optional($attendance?->attendanceType)->code;
+        $statusCode = $attendance?->attendance_status;
+        $isUnlocked = (bool) ($attendance?->is_admin_unlocked ?? false);
+        $isBlocked = (bool) (
+            $attendance?->is_blocked
+            || $attendance?->is_punch_blocked
+            || $typeCode === 'punch_blocked'
+            || $statusCode === 'punch_blocked'
+        );
+        if ($isUnlocked) {
+            $isBlocked = false;
+        }
+
+        $statusCodeVal = $typeCode ?? 'not_punched';
+        $statusName = optional($attendance?->attendanceType)->name ?? 'Not Punched';
+        if ($isBlocked) {
+            $statusCodeVal = 'punch_blocked';
+            $statusName = 'Punch Blocked';
+        } elseif ($isUnlocked && ! $attendance?->punch_in_time) {
+            $statusCodeVal = 'unlocked';
+            $statusName = 'Unlocked';
+        } elseif ($attendance?->punch_in_time) {
+            $statusCodeVal = 'present';
+            $statusName = 'Present';
+        } elseif ($statusCodeVal === 'pending_hr') {
+            $statusCodeVal = 'not_punched';
+            $statusName = 'Not Punched';
+        }
+
+        $canPunchIn = ! $isBlocked && ! $attendance?->punch_in_time;
+        $canPunchOut = ! $isBlocked && (bool) ($attendance?->punch_in_time && ! $attendance?->punch_out_time);
+
         return [
             'attendance_date' => $now->toDateString(),
             'server_time' => $now->format('Y-m-d H:i:s'),
-            'status_code' => optional($attendance?->attendanceType)->code ?? 'not_punched',
-            'status_name' => optional($attendance?->attendanceType)->name ?? 'Not Punched',
+            'status_code' => $statusCodeVal,
+            'status_name' => $statusName,
             'punch_in_time' => $attendance?->punch_in_time,
             'punch_out_time' => $attendance?->punch_out_time,
             'target_punch_out_time' => $attendance?->target_punch_out_time,
@@ -760,12 +895,62 @@ class AttendanceS
             'break_minutes' => (int) ($shift?->lunch_break_minutes ?? $shift?->break_minutes ?? 0),
             'is_late' => (bool) ($attendance?->is_late ?? false),
             'is_early_out' => (bool) ($attendance?->is_early_out ?? false),
-            'is_punch_blocked' => (bool) ($attendance?->is_punch_blocked ?? false),
-            'is_blocked' => (bool) ($attendance?->is_blocked ?? false),
+            'is_punch_blocked' => $isBlocked,
+            'is_blocked' => $isBlocked,
+            'can_punch_in' => $canPunchIn,
+            'can_punch_out' => $canPunchOut,
             'late_warning' => $this->lateWarning($now, $shift),
-            'next_action' => ! $attendance?->punch_in_time ? 'punch_in' : (! $attendance?->punch_out_time ? 'punch_out' : 'completed'),
+            'next_action' => $isBlocked ? 'blocked' : (! $attendance?->punch_in_time ? 'punch_in' : (! $attendance?->punch_out_time ? 'punch_out' : 'completed')),
             'dynamic_timer_enabled' => (bool) ($attendance?->punch_in_time && ! $attendance?->punch_out_time),
+            'office_location' => $this->officeLocationPayload(),
         ];
+    }
+
+    public function defaultOfficeLocation(): ?AttendanceLocation
+    {
+        if (! Schema::hasTable('attendance_locations')) {
+            return null;
+        }
+
+        return AttendanceLocation::where('is_active', 1)
+            ->where('is_default', 1)
+            ->first();
+    }
+
+    public function officeLocationPayload(): array
+    {
+        $location = $this->defaultOfficeLocation();
+
+        if (! $location) {
+            return ['enabled' => false];
+        }
+
+        return [
+            'enabled' => true,
+            'name' => $location->name,
+            'latitude' => (float) $location->latitude,
+            'longitude' => (float) $location->longitude,
+            'radius_meters' => (int) $location->radius_meters,
+        ];
+    }
+
+    public function calculateDistanceMeters($lat1, $lng1, $lat2, $lng2): float
+    {
+        $earthRadiusMeters = 6371000;
+        $latFrom = deg2rad((float) $lat1);
+        $lngFrom = deg2rad((float) $lng1);
+        $latTo = deg2rad((float) $lat2);
+        $lngTo = deg2rad((float) $lng2);
+
+        $latDelta = $latTo - $latFrom;
+        $lngDelta = $lngTo - $lngFrom;
+
+        $angle = 2 * asin(sqrt(
+            pow(sin($latDelta / 2), 2)
+            + cos($latFrom) * cos($latTo) * pow(sin($lngDelta / 2), 2)
+        ));
+
+        return $angle * $earthRadiusMeters;
     }
 
     public function defaultShift(): ?AttendanceTime
@@ -938,6 +1123,75 @@ class AttendanceS
         ]);
 
         return true;
+    }
+
+    private function validateWfoOfficeLocation(array $meta): array
+    {
+        $locationValidation = $this->validateOfficeRadiusForWfo('punch_in', isset($meta['latitude']) && $meta['latitude'] !== '' ? (float) $meta['latitude'] : null, isset($meta['longitude']) && $meta['longitude'] !== '' ? (float) $meta['longitude'] : null);
+        if (! $locationValidation['allowed']) {
+            return [
+                'status' => 'error',
+                'message' => $locationValidation['message'],
+                'data' => [
+                    'distance_meters' => $locationValidation['distance_meters'],
+                    'allowed_radius_meters' => $locationValidation['allowed_radius_meters'],
+                    'office_location_name' => $locationValidation['office_location_name'],
+                ],
+            ];
+        }
+
+        return [
+            'status' => true,
+            'data' => [
+                'distance_meters' => $locationValidation['distance_meters'],
+                'allowed_radius_meters' => $locationValidation['allowed_radius_meters'],
+                'office_location_name' => $locationValidation['office_location_name'],
+            ],
+        ];
+    }
+
+    public function validateOfficeRadiusForWfo(string $action, ?float $lat, ?float $lng): array
+    {
+        $officeLocation = $this->defaultOfficeLocation();
+        if (! $officeLocation) {
+            return [
+                'allowed' => false,
+                'message' => 'Office location is not configured. Please contact HR/Admin.',
+                'distance_meters' => 0.0,
+                'allowed_radius_meters' => 0,
+                'office_location_name' => '',
+            ];
+        }
+
+        if ($lat === null || $lng === null) {
+            $actionWord = ($action === 'punch_out') ? 'punch-out' : 'punch-in';
+            return [
+                'allowed' => false,
+                'message' => "Location is required for WFO {$actionWord}.",
+                'distance_meters' => 0.0,
+                'allowed_radius_meters' => (int) $officeLocation->radius_meters,
+                'office_location_name' => $officeLocation->name,
+            ];
+        }
+
+        $distanceMeters = $this->calculateDistanceMeters(
+            $lat,
+            $lng,
+            $officeLocation->latitude,
+            $officeLocation->longitude
+        );
+        $allowedRadiusMeters = (int) $officeLocation->radius_meters;
+
+        $allowed = $distanceMeters <= $allowedRadiusMeters;
+        $actionMsg = ($action === 'punch_out') ? 'punch-out' : 'punch-in';
+
+        return [
+            'allowed' => $allowed,
+            'message' => $allowed ? 'Success' : "You are outside the allowed office {$actionMsg} radius.",
+            'distance_meters' => round($distanceMeters, 2),
+            'allowed_radius_meters' => $allowedRadiusMeters,
+            'office_location_name' => $officeLocation->name,
+        ];
     }
 
     private function targetPunchOutTime(Carbon $punchIn, ?object $shift): string

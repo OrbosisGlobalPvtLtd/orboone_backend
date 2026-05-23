@@ -271,11 +271,6 @@
         color: #475569;
     }
 
-    .badge-pending_hr {
-        background: #FFEDD5;
-        color: #9A3412;
-    }
-
     .badge-punch_blocked {
         background: #FFE4E6;
         color: #BE123C;
@@ -604,11 +599,6 @@
                                 <option value="blocked"
                                     {{ request('flag') == 'blocked' ? 'selected' : '' }}>
                                     Punch Blocked
-                                </option>
-
-                                <option value="pending_hr"
-                                    {{ request('flag') == 'pending_hr' ? 'selected' : '' }}>
-                                    Pending HR
                                 </option>
 
                                 <option value="missed_punch"

@@ -54,15 +54,19 @@ class AttendanceController extends Controller
         return $this->apiResponse(
             ($result['status'] ?? null) !== 'error',
             $result['message'] ?? 'Punch in processed.',
-            isset($result['data']) ? $this->formatAttendanceRecord($result['data']) : null,
-            ($result['status'] ?? null) === 'error' ? 422 : 200
+            isset($result['data'])
+                ? (($result['status'] ?? null) === 'error' ? $result['data'] : $this->formatAttendanceRecord($result['data']))
+                : null,
+            ($result['status'] ?? null) === 'error' ? 422 : 200,
+            $result['errors'] ?? (($result['status'] ?? null) === 'error' ? $result['data'] : null)
         );
     }
 
     public function clockOut(Request $request)
     {
         $request->validate([
-            'task_summary' => ['required_without:task_details', 'string', 'min:5', 'max:5000'],
+            'task_summary' => ['required', 'string', 'min:5', 'max:10000'],
+            'task_summary_json' => ['nullable', 'array'],
             'task_details' => ['nullable', 'string', 'min:5', 'max:5000'],
             'note' => ['nullable', 'string', 'max:1000'],
             'latitude' => ['nullable', 'numeric'],
@@ -72,7 +76,7 @@ class AttendanceController extends Controller
 
         $result = $this->mobileService->punchOut(
             auth()->id(),
-            $request->task_summary ?: $request->task_details,
+            $request->task_summary,
             $request->note,
             [
                 'latitude' => $request->latitude,
@@ -80,14 +84,18 @@ class AttendanceController extends Controller
                 'address' => $request->address,
                 'ip' => $request->ip(),
                 'device' => $request->userAgent(),
-            ]
+            ],
+            $request->task_summary_json
         );
 
         return $this->apiResponse(
             ($result['status'] ?? null) !== 'error',
             $result['message'] ?? 'Punch out processed.',
-            isset($result['data']) ? $this->formatAttendanceRecord($result['data']) : null,
-            ($result['status'] ?? null) === 'error' ? 422 : 200
+            isset($result['data'])
+                ? (($result['status'] ?? null) === 'error' ? $result['data'] : $this->formatAttendanceRecord($result['data']))
+                : null,
+            ($result['status'] ?? null) === 'error' ? 422 : 200,
+            $result['errors'] ?? (($result['status'] ?? null) === 'error' ? $result['data'] : null)
         );
     }
 
@@ -175,6 +183,7 @@ class AttendanceController extends Controller
                 'warning_after_time' => $shift?->warning_after_time,
                 'block_after_time' => $shift?->block_after_time,
             ],
+            'office_location' => $this->attendanceService->officeLocationPayload(),
         ]);
     }
 
@@ -311,8 +320,8 @@ class AttendanceController extends Controller
             'leave' => $records->filter(fn ($item) => $code($item) === 'leave')->count(),
             'week_off' => $records->filter(fn ($item) => $code($item) === 'week_off')->count(),
             'holiday' => $records->filter(fn ($item) => $code($item) === 'holiday')->count(),
-            'pending_hr' => $records->filter(fn ($item) => $code($item) === 'pending_hr')->count(),
-            'punch_blocked' => $records->filter(fn ($item) => $code($item) === 'punch_blocked' || $item->is_blocked || $item->is_punch_blocked)->count(),
+            'pending_hr' => 0,
+            'punch_blocked' => $records->filter(fn ($item) => $item->is_blocked || $item->is_punch_blocked || $item->attendance_status === 'punch_blocked')->count(),
             'late' => $records->where('is_late', true)->count(),
             'early_out' => $records->where('is_early_out', true)->count(),
             'lwp' => $records->filter(fn ($item) => $code($item) === 'lwp' || $item->is_lwp)->count(),

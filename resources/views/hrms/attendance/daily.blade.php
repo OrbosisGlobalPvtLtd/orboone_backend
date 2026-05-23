@@ -243,11 +243,6 @@
         color: #475569;
     }
 
-    .badge-pending_hr {
-        background: #FFEDD5;
-        color: #9A3412;
-    }
-
     .badge-punch_blocked {
         background: #FFE4E6;
         color: #BE123C;

@@ -22,7 +22,7 @@ $kpis = [
 ['label' => 'Absent Today', 'value' => $stats['absent_today'] ?? 0, 'icon' => 'fa-user-times', 'tone' => 'danger'],
 ['label' => 'Late Employees', 'value' => $stats['late_employees'] ?? $stats['late_today'] ?? 0, 'icon' => 'fa-user-clock', 'tone' => 'warning'],
 ['label' => 'Early Logout', 'value' => $stats['early_logout'] ?? $stats['early_out_today'] ?? 0, 'icon' => 'fa-running', 'tone' => 'orange'],
-['label' => 'Pending HR', 'value' => $stats['pending_hr'] ?? $stats['pending_hr_today'] ?? 0, 'icon' => 'fa-user-shield', 'tone' => 'purple'],
+['label' => 'Pending Unlock', 'value' => $stats['total_blocked'] ?? $stats['punch_blocked'] ?? 0, 'icon' => 'fa-user-lock', 'tone' => 'purple'],
 ['label' => 'Pending Punch Out', 'value' => $stats['pending_punch_out'] ?? 0, 'icon' => 'fa-clock', 'tone' => 'info'],
 ['label' => 'Half Day', 'value' => $stats['half_day'] ?? $stats['half_day_today'] ?? 0, 'icon' => 'fa-adjust', 'tone' => 'amber'],
 ['label' => 'LWP', 'value' => $stats['lwp'] ?? $stats['lwp_today'] ?? 0, 'icon' => 'fa-calendar-minus', 'tone' => 'danger'],
@@ -609,11 +609,6 @@ $kpis = [
         color: #5B21B6;
     }
 
-    .badge-pending_hr {
-        background: #FFEDD5;
-        color: #9A3412;
-    }
-
     .badge-punch_blocked {
         background: #FFE4E6;
         color: #BE123C;
@@ -837,14 +832,17 @@ $kpis = [
 
 <div class="att-page">
     <div class="att-container">
-        <div class="att-header">
-            <div>
-                <h3 class="att-title">Attendance Dashboard</h3>
-                <p class="att-subtitle">Live daily overview with punch status, blocked employees, WFO/WFH, late marks and shift completion.</p>
+        <div class="orb-page-header">
+            <div class="orb-page-header-content">
+                <div class="orb-page-kicker">
+                    <i class="fas fa-calendar-alt"></i> HRMS &bull; Attendance
+                </div>
+                <h1 class="orb-page-title">Attendance Dashboard</h1>
+                <p class="orb-page-subtitle">Live daily overview with punch status, blocked employees, WFO/WFH, late marks and shift completion.</p>
             </div>
-            <div class="att-toolbar">
-                <a href="{{ route('attendances.daily') }}" class="att-btn att-btn-light"><i class="fas fa-list"></i> Attendance Records</a>
-                <a href="{{ route('attendances.export-pdf', request()->query()) }}" class="att-btn att-btn-light"><i class="fas fa-file-pdf text-danger"></i> Export</a>
+            <div class="orb-page-actions">
+                <a href="{{ route('attendances.daily') }}" class="orb-btn-light"><i class="fas fa-list"></i> Attendance Records</a>
+                <a href="{{ route('attendances.export-pdf', request()->query()) }}" class="orb-btn-light"><i class="fas fa-file-pdf text-danger"></i> Export</a>
             </div>
         </div>
 
@@ -868,8 +866,8 @@ $kpis = [
             @endforeach
         </div>
 
-        <div class="att-card att-block-card">
-            <div class="att-section-head">
+        <div class="orb-table-card att-block-card" style="border-color: #FED7AA;">
+            <div class="orb-table-toolbar justify-content-between align-items-center">
                 <div>
                     <h5 class="att-section-title"><i class="fas fa-user-lock"></i> Punch-In Blocked Employees</h5>
                     <div class="att-section-subtitle">Employees auto-blocked after 11:15 AM because they did not punch in.</div>
@@ -879,7 +877,7 @@ $kpis = [
                     <span class="att-mini-stat">Pending Unlock: {{ $blockedRows->where('is_admin_unlocked', false)->count() }}</span>
                 </div>
             </div>
-            <div class="att-table-wrap">
+            <div class="orb-table-wrapper att-table-wrap">
                 <div class="att-table-responsive">
                     <table class="att-table att-block-table table mb-0" id="blockedAttendanceTable">
                         <thead>
@@ -902,7 +900,7 @@ $kpis = [
                             $autoBlockedAt = $blocked->auto_blocked_at ? \Carbon\Carbon::parse($blocked->auto_blocked_at)->format('d M Y h:i A') : '-';
                             $isUnlocked = (bool) ($blocked->is_admin_unlocked ?? false);
                             $blockedTypeCode = optional($blocked->attendanceType)->code ?: ($blocked->attendance_status ?: 'default');
-                            $blockedStatusLabel = $blockedTypeCode === 'punch_blocked' ? 'Punch Blocked' : ($blockedTypeCode === 'pending_hr' ? 'Pending HR' : (optional($blocked->attendanceType)->name ?? ucwords(str_replace('_', ' ', $blockedTypeCode))));
+                            $blockedStatusLabel = $blockedTypeCode === 'punch_blocked' ? 'Punch Blocked' : (optional($blocked->attendanceType)->name ?? ucwords(str_replace('_', ' ', $blockedTypeCode)));
                             @endphp
                             <tr>
                                 <td>
@@ -960,18 +958,18 @@ $kpis = [
             </div>
         </div>
 
-        <div class="att-card">
-            <div class="att-section-head">
+        <div class="orb-table-card">
+            <div class="orb-table-toolbar justify-content-between align-items-end flex-wrap gap-3">
                 <div>
                     <h5 class="att-section-title"><i class="fas fa-calendar-day"></i> Today's Attendance</h5>
                     <div class="att-section-subtitle">Daily attendance list for today only. Full history is available in Attendance Records.</div>
                 </div>
-                <div class="att-toolbar">
+                <div class="orb-filter-group align-items-center">
                     <input type="text" id="todayAttendanceSearch" class="att-search" placeholder="Search today attendance...">
-                    <a href="{{ route('attendances.index') }}" class="att-btn att-btn-light"><i class="fas fa-sync-alt"></i> Refresh</a>
+                    <a href="{{ route('attendances.index') }}" class="orb-btn-light py-2 px-3 h-auto" style="min-height: 38px !important; border-radius: 12px !important;"><i class="fas fa-sync-alt"></i> Refresh</a>
                 </div>
             </div>
-            <div class="att-table-wrap">
+            <div class="orb-table-wrapper att-table-wrap">
                 <div class="att-table-responsive">
                     <table class="att-table table mb-0" id="attendanceDataTable">
                         <thead>
@@ -1052,7 +1050,7 @@ $kpis = [
                                     <div class="att-action-wrap dropdown">
                                         <button class="action-dot" type="button" data-toggle="dropdown"><i class="fas fa-ellipsis-v"></i></button>
                                         <div class="dropdown-menu dropdown-menu-right att-action-menu">
-                                            @if(($canUnlockAttendance ?? false) && (($attendance->is_blocked ?? false) || ($attendance->is_punch_blocked ?? false) || in_array($typeCode, ['pending_hr', 'punch_blocked'], true)))
+                                            @if(($canUnlockAttendance ?? false) && (($attendance->is_blocked ?? false) || ($attendance->is_punch_blocked ?? false) || $typeCode === 'punch_blocked'))
                                             <button type="button" class="dropdown-item" data-toggle="modal" data-target="#unlockModal{{ $attendance->id }}"><i class="fas fa-unlock text-success"></i> Unlock</button>
                                             @endif
                                             @if($canManageAttendance ?? false)

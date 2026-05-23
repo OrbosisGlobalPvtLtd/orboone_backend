@@ -1,6 +1,6 @@
 @extends('layouts.panel', ['active' => 'attendances'])
 
-@section('page_title', 'Attendance Records')
+@section('page_title', request()->routeIs('hrms.attendance.my') ? 'My Attendance' : 'Attendance Records')
 
 @section('_head')
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap4.min.css">
@@ -8,6 +8,10 @@
 @endsection
 
 @section('_content')
+@php
+    $isMyAttendance = request()->routeIs('hrms.attendance.my');
+@endphp
+
 <style>
     :root {
         --orb-primary: #4B00E8;
@@ -24,7 +28,7 @@
     .att-page {
         min-height: calc(100vh - 90px);
         background: var(--orb-bg);
-        padding: 18px 12px 35px;
+        padding: 16px 12px 36px;
     }
 
     .att-container {
@@ -32,54 +36,167 @@
         margin: 0 auto;
     }
 
-    .att-header {
-        background: radial-gradient(circle at top right, rgba(75, 0, 232, .12), transparent 26%), linear-gradient(135deg, #fff, #F8F5FF);
-        border: 1px solid var(--orb-border);
-        border-radius: 26px;
-        padding: 20px 22px;
-        margin-bottom: 16px;
-        box-shadow: var(--orb-shadow);
+    .att-hero {
+        background: linear-gradient(135deg, #4B00E8 0%, #7600EC 55%, #9A00F5 100%);
+        border-radius: 30px;
+        padding: 30px;
+        margin-bottom: 18px;
+        box-shadow: 0 18px 45px rgba(75, 0, 232, .20);
         display: flex;
-        justify-content: space-between;
         align-items: center;
-        gap: 16px;
+        justify-content: space-between;
+        gap: 18px;
+        color: #fff;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .att-hero:before {
+        content: "";
+        position: absolute;
+        right: -80px;
+        top: -110px;
+        width: 360px;
+        height: 360px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, .12)
+    }
+
+    .att-kicker {
+        font-size: 12px;
+        font-weight: 950;
+        letter-spacing: .14em;
+        text-transform: uppercase;
+        opacity: .9;
+        margin-bottom: 10px;
+        display: flex;
+        gap: 9px;
+        align-items: center;
     }
 
     .att-title {
-        font-size: 28px;
+        font-size: 34px;
         font-weight: 950;
-        color: var(--orb-text);
         margin: 0;
+        line-height: 1.1;
+        color: #fff;
     }
 
     .att-subtitle {
-        font-size: 13px;
-        color: var(--orb-muted);
-        margin-top: 5px;
+        font-size: 15px;
         font-weight: 650;
+        margin-top: 10px;
+        opacity: .92;
+        max-width: 850px;
+    }
+
+    .att-hero-actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        position: relative;
+        z-index: 1;
     }
 
     .att-btn {
         border: 0;
-        border-radius: 13px;
-        padding: 10px 16px;
-        font-weight: 900;
+        border-radius: 14px;
+        padding: 13px 18px;
+        font-weight: 950;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 8px;
+        gap: 9px;
         text-decoration: none !important;
+        white-space: nowrap;
     }
 
     .att-btn-light {
         background: #fff;
-        border: 1px solid var(--orb-border);
-        color: var(--orb-text) !important;
+        color: #101828 !important;
+        box-shadow: 0 10px 22px rgba(16, 24, 40, .08);
     }
 
     .att-btn-light:hover {
         background: #F9F5FF;
         color: var(--orb-primary) !important;
+    }
+
+    .att-metric-grid {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 18px;
+    }
+
+    .att-metric {
+        background: #fff;
+        border: 1px solid var(--orb-border);
+        border-radius: 18px;
+        padding: 14px 14px 10px;
+        box-shadow: 0 10px 24px rgba(16, 24, 40, .055);
+        position: relative;
+        overflow: hidden;
+        min-height: 92px;
+    }
+
+    .att-metric:after {
+        content: "";
+        position: absolute;
+        right: -22px;
+        top: -30px;
+        width: 86px;
+        height: 86px;
+        border-radius: 50%;
+        background: var(--metric-soft, #F4F2FF);
+    }
+
+    .att-metric-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        position: relative;
+        z-index: 1;
+    }
+
+    .att-metric-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 13px;
+        background: var(--metric-soft, #F4F2FF);
+        color: var(--metric-color, #4B00E8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px;
+    }
+
+    .att-metric-value {
+        font-size: 25px;
+        font-weight: 950;
+        color: #101828;
+        line-height: 1;
+    }
+
+    .att-metric-label {
+        font-size: 11px;
+        font-weight: 950;
+        color: #475467;
+        text-transform: uppercase;
+        margin-top: 14px;
+        position: relative;
+        z-index: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .att-metric-line {
+        height: 3px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, var(--metric-color, #4B00E8), transparent);
+        margin-top: 8px;
     }
 
     .att-card {
@@ -91,13 +208,17 @@
     }
 
     .att-section-head {
-        padding: 18px;
+        padding: 18px 22px;
         border-bottom: 1px solid var(--orb-border);
         background: linear-gradient(180deg, #fff, #FAFBFF);
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
     }
 
     .att-section-title {
-        font-size: 16px;
+        font-size: 19px;
         font-weight: 950;
         color: var(--orb-text);
         margin: 0;
@@ -107,14 +228,44 @@
     }
 
     .att-section-title i {
-        color: var(--orb-primary);
+        color: var(--orb-primary)
+    }
+
+    .att-section-sub {
+        font-size: 13px;
+        color: var(--orb-muted);
+        font-weight: 650;
+        margin-top: 4px;
+    }
+
+    .att-head-badges {
+        display: flex;
+        gap: 9px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .att-total-pill {
+        border: 1px solid #FAD7AA;
+        background: #FFF7ED;
+        color: #C2410C;
+        border-radius: 12px;
+        padding: 9px 12px;
+        font-size: 12px;
+        font-weight: 950;
+        white-space: nowrap;
+    }
+
+    .att-filter-panel {
+        padding: 16px 22px;
+        border-bottom: 1px solid var(--orb-border);
+        background: #fff;
     }
 
     .att-filter-grid {
         display: grid;
         grid-template-columns: repeat(6, minmax(0, 1fr));
         gap: 12px;
-        margin-top: 18px;
     }
 
     .att-filter-group label {
@@ -128,13 +279,14 @@
     }
 
     .att-filter-group .form-control {
-        height: 44px;
+        height: 43px;
         border-radius: 14px;
         border: 1px solid #E4E7EC;
         font-size: 13px;
-        font-weight: 700;
+        font-weight: 750;
         padding: 0 14px;
         box-shadow: none !important;
+        background: #fff;
     }
 
     .att-filter-group .form-control:focus {
@@ -143,7 +295,7 @@
     }
 
     .att-table-wrap {
-        padding: 16px;
+        padding: 0 16px 16px;
     }
 
     .att-table {
@@ -156,11 +308,11 @@
 
     .att-table thead th {
         background: #F8FAFC !important;
-        color: #475467 !important;
+        color: #344054 !important;
         font-size: 10px !important;
         font-weight: 950 !important;
         text-transform: uppercase;
-        padding: 13px 12px !important;
+        padding: 14px 12px !important;
         border-top: 1px solid #EAECF0 !important;
         border-bottom: 1px solid #EAECF0 !important;
         white-space: nowrap;
@@ -179,83 +331,11 @@
         background: #FCFAFF !important;
     }
 
-    .att-table th:nth-child(1),
-    .att-table td:nth-child(1) {
-        width: 65px;
-        text-align: center;
-    }
-
-    .att-table th:nth-child(2),
-    .att-table td:nth-child(2) {
-        width: 230px;
-    }
-
-    .att-table th:nth-child(3),
-    .att-table td:nth-child(3) {
-        width: 125px;
-    }
-
-    .att-table th:nth-child(4),
-    .att-table td:nth-child(4) {
-        width: 80px;
-    }
-
-    .att-table th:nth-child(5),
-    .att-table td:nth-child(5) {
-        width: 145px;
-    }
-
-    .att-table th:nth-child(6),
-    .att-table td:nth-child(6) {
-        width: 100px;
-    }
-
-    .att-table th:nth-child(7),
-    .att-table td:nth-child(7) {
-        width: 100px;
-    }
-
-    .att-table th:nth-child(8),
-    .att-table td:nth-child(8) {
-        width: 110px;
-    }
-
-    .att-table th:nth-child(9),
-    .att-table td:nth-child(9) {
-        width: 105px;
-    }
-
-    .att-table th:nth-child(10),
-    .att-table td:nth-child(10) {
-        width: 105px;
-    }
-
-    .att-table th:nth-child(11),
-    .att-table td:nth-child(11) {
-        width: 125px;
-    }
-
-    .att-table th:nth-child(12),
-    .att-table td:nth-child(12) {
-        width: 145px;
-    }
-
-    .att-table th:nth-child(13),
-    .att-table td:nth-child(13) {
-        width: 220px;
-    }
-
-    .att-table th:nth-child(14),
-    .att-table td:nth-child(14) {
-        width: 85px;
-        text-align: right;
-    }
-
     .att-emp {
         display: flex;
         align-items: center;
         gap: 10px;
-        min-width: 0;
+        min-width: 0
     }
 
     .att-avatar {
@@ -269,7 +349,7 @@
         font-weight: 950;
         color: var(--orb-primary);
         border: 1px solid rgba(75, 0, 232, .08);
-        flex-shrink: 0;
+        flex-shrink: 0
     }
 
     .att-emp-name {
@@ -279,7 +359,7 @@
         max-width: 160px;
         overflow: hidden;
         text-overflow: ellipsis;
-        white-space: nowrap;
+        white-space: nowrap
     }
 
     .att-emp-code {
@@ -289,128 +369,107 @@
         max-width: 160px;
         overflow: hidden;
         text-overflow: ellipsis;
-        white-space: nowrap;
+        white-space: nowrap
     }
 
-    .att-badge {
+    .att-badge,
+    .mode-badge,
+    .flag {
         display: inline-flex;
         align-items: center;
         justify-content: center;
         border-radius: 999px;
-        padding: 6px 10px;
-        font-size: 10px;
         font-weight: 950;
-        text-transform: uppercase;
+        text-transform: uppercase
+    }
+
+    .att-badge,
+    .mode-badge {
+        padding: 6px 10px;
+        font-size: 10px
+    }
+
+    .flag {
+        padding: 4px 8px;
+        font-size: 9px;
+        margin: 2px 3px 2px 0
     }
 
     .badge-present {
         background: #DCFCE7;
-        color: #166534;
+        color: #166534
     }
 
-    .badge-absent {
+    .badge-absent,
+    .badge-lwp {
         background: #FEE2E2;
-        color: #991B1B;
+        color: #991B1B
     }
 
     .badge-half_day {
         background: #FEF3C7;
-        color: #92400E;
+        color: #92400E
     }
 
     .badge-leave {
         background: #DBEAFE;
-        color: #1E40AF;
+        color: #1E40AF
     }
 
     .badge-week_off {
         background: #F1F5F9;
-        color: #475569;
+        color: #475569
     }
 
     .badge-holiday {
         background: #EDE9FE;
-        color: #5B21B6;
-    }
-
-    .badge-pending_hr {
-        background: #FFEDD5;
-        color: #9A3412;
+        color: #5B21B6
     }
 
     .badge-punch_blocked {
         background: #FFE4E6;
-        color: #BE123C;
-    }
-
-    .badge-lwp {
-        background: #FEE2E2;
-        color: #B42318;
+        color: #BE123C
     }
 
     .badge-default {
         background: #F1F5F9;
-        color: #475569;
-    }
-
-    .mode-badge {
-        display: inline-flex;
-        align-items: center;
-        border-radius: 999px;
-        padding: 6px 10px;
-        font-size: 10px;
-        font-weight: 950;
-        text-transform: uppercase;
+        color: #475569
     }
 
     .mode-wfo {
         background: #EEF2FF;
-        color: #3730A3;
+        color: #3730A3
     }
 
     .mode-wfh {
         background: #ECFEFF;
-        color: #155E75;
+        color: #155E75
     }
 
     .mode-default {
         background: #F1F5F9;
-        color: #475569;
-    }
-
-    .flag {
-        display: inline-flex;
-        align-items: center;
-        border-radius: 999px;
-        padding: 4px 8px;
-        font-size: 9px;
-        font-weight: 950;
-        margin: 2px 3px 2px 0;
+        color: #475569
     }
 
     .flag-late {
         background: #FFF7ED;
-        color: #C2410C;
+        color: #C2410C
     }
 
-    .flag-early {
-        background: #FEF2F2;
-        color: #B42318;
-    }
-
+    .flag-early,
     .flag-blocked {
-        background: #FFE4E6;
-        color: #BE123C;
+        background: #FEF2F2;
+        color: #B42318
     }
 
     .flag-missed {
         background: #FEF3C7;
-        color: #92400E;
+        color: #92400E
     }
 
     .flag-clear {
         background: #F1F5F9;
-        color: #475569;
+        color: #475569
     }
 
     .att-task {
@@ -420,12 +479,12 @@
         white-space: nowrap;
         color: var(--orb-muted);
         font-size: 12px;
-        font-weight: 650;
+        font-weight: 650
     }
 
     .att-action-wrap {
         display: flex;
-        justify-content: flex-end;
+        justify-content: flex-end
     }
 
     .action-dot {
@@ -437,12 +496,12 @@
         color: #475467;
         display: flex;
         align-items: center;
-        justify-content: center;
+        justify-content: center
     }
 
     .action-dot:hover {
         background: var(--orb-soft);
-        color: var(--orb-primary);
+        color: var(--orb-primary)
     }
 
     .dropdown-menu.att-action-menu {
@@ -450,7 +509,7 @@
         border-radius: 15px;
         box-shadow: 0 18px 45px rgba(16, 24, 40, .14);
         padding: 7px;
-        min-width: 185px;
+        min-width: 185px
     }
 
     .att-action-menu .dropdown-item {
@@ -460,79 +519,60 @@
         font-weight: 800;
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 8px
     }
 
     .att-action-menu .dropdown-item:hover {
         background: var(--orb-soft);
-        color: var(--orb-primary);
+        color: var(--orb-primary)
     }
 
-    /* DataTables controls bahar rahenge, scroll sirf table head+body me hoga */
-    .dataTables_wrapper>.row:first-child {
+    /* Premium unified Datatables styles */
+    .leave-dt-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 24px;
+        border-top: 1px solid #E7EAF3;
+        border-bottom: 1px solid #E7EAF3;
         background: #fff;
-        border-bottom: 1px solid var(--orb-border);
-        padding: 12px 16px;
-        margin: 0 -16px 12px !important;
     }
 
-    .dataTables_wrapper>.row:last-child {
-        background: #fff;
-        border-top: 1px solid var(--orb-border);
-        padding: 12px 16px 0;
-        margin: 12px -16px 0 !important;
+    .leave-dt-left {
+        display: flex;
+        align-items: center;
     }
 
-    .dataTables_scroll {
-        border: 1px solid #EEF2F6;
-        border-radius: 18px;
-        overflow: hidden;
+    .leave-dt-right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
 
-    .dataTables_scrollHead {
-        background: #F8FAFC;
-    }
-
-    .dataTables_scrollHeadInner,
-    .dataTables_scrollHeadInner table,
-    .dataTables_scrollBody table {
-        width: 100% !important;
-    }
-
-    .dataTables_scrollBody {
-        overflow-x: auto !important;
-        overflow-y: hidden !important;
-        border-bottom: 0 !important;
-    }
-
-    .dataTables_scrollBody::-webkit-scrollbar {
-        height: 10px;
-    }
-
-    .dataTables_scrollBody::-webkit-scrollbar-thumb {
-        background: #D0D5DD;
-        border-radius: 20px;
-    }
-
-    .dataTables_wrapper .dt-buttons {
+    .dt-buttons {
         display: flex !important;
-        justify-content: flex-end !important;
-        gap: 7px;
-        flex-wrap: wrap;
+        gap: 8px;
     }
 
-    .dataTables_wrapper .dt-buttons .btn {
-        border-radius: 11px !important;
-        font-size: 12px !important;
-        font-weight: 850 !important;
-        background: #fff !important;
+    .leave-export-btn {
+        height: 38px !important;
+        border-radius: 12px !important;
+        padding: 8px 16px !important;
+        font-size: 13px !important;
+        font-weight: 800 !important;
         color: #344054 !important;
-        border: 1px solid #E4E7EC !important;
-        padding: 8px 13px !important;
-        margin-bottom: 6px !important;
+        background: #fff !important;
+        border: 1px solid #E7EAF3 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        box-shadow: 0 1px 2px rgba(16,24,40,0.05) !important;
+        transition: all 0.2s ease !important;
+        margin-bottom: 0 !important;
     }
 
-    .dataTables_wrapper .dt-buttons .btn:hover {
+    .leave-export-btn:hover {
         background: #F9F5FF !important;
         color: #4B00E8 !important;
         border-color: #D9CCFF !important;
@@ -541,12 +581,49 @@
     .dataTables_length select {
         border-radius: 10px !important;
         padding: 4px 22px 4px 8px !important;
+        height: 38px !important;
+        border: 1px solid #E7EAF3 !important;
+    }
+
+    .leave-table-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 24px;
+        background: #fff;
+        border-top: 1px solid #E7EAF3;
+    }
+
+    .dataTables_scroll {
+        border: 1px solid #EEF2F6;
+        border-radius: 18px;
+        overflow: hidden;
+        margin: 16px 24px;
+    }
+
+    .dataTables_scrollHead {
+        background: #F8FAFC
+    }
+
+    .dataTables_scrollBody {
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        border-bottom: 0 !important
+    }
+
+    .dataTables_scrollBody::-webkit-scrollbar {
+        height: 10px
+    }
+
+    .dataTables_scrollBody::-webkit-scrollbar-thumb {
+        background: #D0D5DD;
+        border-radius: 20px
     }
 
     .dataTables_info {
         font-size: 12px;
         color: var(--orb-muted);
-        font-weight: 700;
+        font-weight: 700
     }
 
     .page-link {
@@ -554,31 +631,75 @@
         margin: 0 2px;
         border-color: var(--orb-border);
         color: var(--orb-primary);
-        font-weight: 800;
+        font-weight: 800
     }
 
-    @media(max-width:1200px) {
+    .page-item.active .page-link {
+        background: var(--orb-primary) !important;
+        border-color: var(--orb-primary) !important;
+        color: #fff !important
+    }
+
+    @media(max-width:1300px) {
+        .att-metric-grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
         .att-filter-grid {
             grid-template-columns: repeat(3, minmax(0, 1fr));
         }
     }
 
+    @media(max-width:992px) {
+        .leave-dt-toolbar {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 12px;
+        }
+        .leave-dt-right {
+            justify-content: flex-end;
+        }
+    }
+
     @media(max-width:768px) {
         .att-page {
-            padding: 12px 8px 25px;
+            padding: 12px 8px 25px
         }
 
-        .att-header {
+        .att-hero {
             flex-direction: column;
             align-items: flex-start;
+            padding: 22px;
+            border-radius: 24px
         }
 
         .att-title {
-            font-size: 22px;
+            font-size: 25px
+        }
+
+        .att-hero-actions {
+            width: 100%
+        }
+
+        .att-btn {
+            width: 100%
+        }
+
+        .att-metric-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .att-section-head {
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .att-head-badges {
+            justify-content: flex-start
         }
 
         .att-filter-grid {
-            grid-template-columns: 1fr;
+            grid-template-columns: 1fr
         }
     }
 </style>
@@ -586,17 +707,112 @@
 <div class="att-page">
     <div class="att-container">
 
-        <div class="att-header">
+        @php
+        $recordItems = $attendances instanceof \Illuminate\Pagination\AbstractPaginator ? collect($attendances->items()) : collect($attendances);
+        $totalRecords = $recordItems->count();
+        $presentRecords = $recordItems->filter(fn($a) => optional($a->attendanceType)->code === 'present')->count();
+        $lateRecords = $recordItems->filter(fn($a) => ($a->is_late ?? $a->late_mark ?? false))->count();
+        $blockedRecords = $recordItems->filter(fn($a) => ($a->is_blocked ?? $a->is_punch_blocked ?? false))->count();
+        $missedRecords = $recordItems->filter(fn($a) => ($a->missed_punch ?? false))->count();
+        $halfDayRecords = $recordItems->filter(fn($a) => ($a->is_half_day ?? false))->count();
+        $wfoRecords = $recordItems->filter(fn($a) => strtolower($a->work_mode ?? '') === 'wfo')->count();
+        $wfhRecords = $recordItems->filter(fn($a) => strtolower($a->work_mode ?? '') === 'wfh')->count();
+        @endphp
+
+        <div class="att-hero">
             <div>
-                <h3 class="att-title">Attendance Records</h3>
+                <div class="att-kicker">
+                    <i class="fas fa-calendar-check"></i>
+                    {{ $isMyAttendance ? 'EMPLOYEE • ATTENDANCE' : 'HRMS • ATTENDANCE' }}
+                </div>
+                <h3 class="att-title">{{ $isMyAttendance ? 'My Attendance' : 'Attendance Records' }}</h3>
                 <div class="att-subtitle">
-                    Overall employee attendance records with filters, shift timing, work duration and export options.
+                    {{ $isMyAttendance 
+                        ? 'Track your daily punches, working hours, late marks, missed punches, and monthly attendance summary.'
+                        : 'Overall employee attendance records with filters, shift timing, work duration, flags and export options.' }}
                 </div>
             </div>
+            @if(!$isMyAttendance)
+            <div class="att-hero-actions">
+                <a href="{{ route('attendances.index') }}" class="att-btn att-btn-light">
+                    <i class="fas fa-chart-line"></i> Attendance Dashboard
+                </a>
+                <a href="{{ route('attendances.record') }}" class="att-btn att-btn-light">
+                    <i class="fas fa-undo"></i> Reset
+                </a>
+            </div>
+            @endif
+        </div>
 
-            <a href="{{ route('attendances.record') }}" class="att-btn att-btn-light">
-                <i class="fas fa-undo"></i> Reset
-            </a>
+        <div class="att-metric-grid">
+            <div class="att-metric" style="--metric-color:#12B76A;--metric-soft:#E8F8EF;">
+                <div class="att-metric-top">
+                    <div class="att-metric-icon"><i class="fas fa-list"></i></div>
+                    <div class="att-metric-value">{{ $totalRecords }}</div>
+                </div>
+                <div class="att-metric-label">Total Records</div>
+                <div class="att-metric-line"></div>
+            </div>
+            <div class="att-metric" style="--metric-color:#16A34A;--metric-soft:#DCFCE7;">
+                <div class="att-metric-top">
+                    <div class="att-metric-icon"><i class="fas fa-check-circle"></i></div>
+                    <div class="att-metric-value">{{ $presentRecords }}</div>
+                </div>
+                <div class="att-metric-label">Present</div>
+                <div class="att-metric-line"></div>
+            </div>
+            <div class="att-metric" style="--metric-color:#F97316;--metric-soft:#FFF7ED;">
+                <div class="att-metric-top">
+                    <div class="att-metric-icon"><i class="fas fa-user-clock"></i></div>
+                    <div class="att-metric-value">{{ $lateRecords }}</div>
+                </div>
+                <div class="att-metric-label">Late</div>
+                <div class="att-metric-line"></div>
+            </div>
+            @if(!$isMyAttendance)
+            <div class="att-metric" style="--metric-color:#E11D48;--metric-soft:#FFE4E6;">
+                <div class="att-metric-top">
+                    <div class="att-metric-icon"><i class="fas fa-user-lock"></i></div>
+                    <div class="att-metric-value">{{ $blockedRecords }}</div>
+                </div>
+                <div class="att-metric-label">Blocked</div>
+                <div class="att-metric-line"></div>
+            </div>
+            @endif
+            <div class="att-metric" style="--metric-color:#D97706;--metric-soft:#FEF3C7;">
+                <div class="att-metric-top">
+                    <div class="att-metric-icon"><i class="fas fa-exclamation-circle"></i></div>
+                    <div class="att-metric-value">{{ $missedRecords }}</div>
+                </div>
+                <div class="att-metric-label">Missed Punch</div>
+                <div class="att-metric-line"></div>
+            </div>
+            @if($isMyAttendance)
+            <div class="att-metric" style="--metric-color:#F59E0B;--metric-soft:#FEF3C7;">
+                <div class="att-metric-top">
+                    <div class="att-metric-icon"><i class="fas fa-business-time"></i></div>
+                    <div class="att-metric-value">{{ $halfDayRecords }}</div>
+                </div>
+                <div class="att-metric-label">Half Day</div>
+                <div class="att-metric-line"></div>
+            </div>
+            @endif
+            <div class="att-metric" style="--metric-color:#4F46E5;--metric-soft:#EEF2FF;">
+                <div class="att-metric-top">
+                    <div class="att-metric-icon"><i class="fas fa-building"></i></div>
+                    <div class="att-metric-value">{{ $wfoRecords }}</div>
+                </div>
+                <div class="att-metric-label">WFO</div>
+                <div class="att-metric-line"></div>
+            </div>
+            <div class="att-metric" style="--metric-color:#0E7490;--metric-soft:#ECFEFF;">
+                <div class="att-metric-top">
+                    <div class="att-metric-icon"><i class="fas fa-home"></i></div>
+                    <div class="att-metric-value">{{ $wfhRecords }}</div>
+                </div>
+                <div class="att-metric-label">WFH</div>
+                <div class="att-metric-line"></div>
+            </div>
         </div>
 
         @if(session('status'))
@@ -609,19 +825,40 @@
 
         <div class="att-card">
             <div class="att-section-head">
-                <h5 class="att-section-title">
-                    <i class="fas fa-filter"></i> Attendance Filters
-                </h5>
+                @if($isMyAttendance)
+                <div class="d-flex align-items-center gap-3">
+                    <div style="width:40px; height:40px; border-radius:50%; background:#F4F2FF; color:#4B00E8; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;">
+                        <i class="fas fa-table"></i>
+                    </div>
+                    <div>
+                        <h5 class="att-section-title" style="margin:0; font-size:18px;">My Attendance History</h5>
+                        <div class="att-section-sub" style="margin-top:4px;">Review your attendance logs, punch timings, working hours, and status.</div>
+                    </div>
+                </div>
+                @else
+                <div>
+                    <h5 class="att-section-title"><i class="fas fa-table"></i> Attendance Records List</h5>
+                    <div class="att-section-sub">Filters are attached with this table and auto-apply on change/search.</div>
+                </div>
+                <div class="att-head-badges">
+                    <span class="att-total-pill">Total: {{ $totalRecords }}</span>
+                    <span class="att-total-pill">Blocked: {{ $blockedRecords }}</span>
+                </div>
+                @endif
+            </div>
 
-                <form method="GET" action="{{ route('attendances.record') }}" id="dailyAttendanceFilterForm">
+            <div class="att-filter-panel">
+                <form method="GET" action="{{ $isMyAttendance ? route('hrms.attendance.my') : route('attendances.record') }}" id="dailyAttendanceFilterForm">
                     <div class="att-filter-grid">
 
+                        @if(!$isMyAttendance)
                         <div class="att-filter-group">
                             <label>Search</label>
                             <input type="text" name="search" class="form-control auto-filter-input"
                                 value="{{ request('search') }}"
                                 placeholder="Name, email, employee code">
                         </div>
+                        @endif
 
                         <div class="att-filter-group">
                             <label>Date</label>
@@ -638,6 +875,7 @@
                             <input type="date" name="to_date" class="form-control auto-filter" value="{{ request('to_date') }}">
                         </div>
 
+                        @if(!$isMyAttendance)
                         <div class="att-filter-group">
                             <label>Employee</label>
                             <select name="employee_id" class="form-control auto-filter">
@@ -650,6 +888,7 @@
                                 @endforeach
                             </select>
                         </div>
+                        @endif
 
                         <div class="att-filter-group">
                             <label>Status</label>
@@ -691,11 +930,18 @@
                                 <option value="late" {{ request('flag') == 'late' ? 'selected' : '' }}>Late</option>
                                 <option value="early_out" {{ request('flag') == 'early_out' ? 'selected' : '' }}>Early Logout</option>
                                 <option value="blocked" {{ request('flag') == 'blocked' ? 'selected' : '' }}>Punch Blocked</option>
-                                <option value="pending_hr" {{ request('flag') == 'pending_hr' ? 'selected' : '' }}>Pending HR</option>
                                 <option value="missed_punch" {{ request('flag') == 'missed_punch' ? 'selected' : '' }}>Missed Punch</option>
                                 <option value="clear" {{ request('flag') == 'clear' ? 'selected' : '' }}>Clear</option>
                             </select>
                         </div>
+
+                        @if($isMyAttendance)
+                        <div class="att-filter-group d-flex align-items-end">
+                            <a href="{{ route('hrms.attendance.my') }}" class="btn btn-light w-100" style="height:43px; border-radius:14px; display:inline-flex; align-items:center; justify-content:center; gap:8px; font-weight:750; border:1px solid #E4E7EC;">
+                                <i class="fas fa-undo"></i> Reset
+                            </a>
+                        </div>
+                        @endif
 
                     </div>
                 </form>
@@ -706,7 +952,9 @@
                     <thead>
                         <tr>
                             <th>S.No</th>
+                            @if(!$isMyAttendance)
                             <th>Employee</th>
+                            @endif
                             <th>Date</th>
                             <th>Mode</th>
                             <th>Shift</th>
@@ -718,7 +966,9 @@
                             <th>Status</th>
                             <th>Flags</th>
                             <th>Task Summary</th>
+                            @if(!$isMyAttendance)
                             <th class="no-export text-right">Action</th>
+                            @endif
                         </tr>
                     </thead>
 
@@ -763,6 +1013,7 @@
                         <tr>
                             <td>{{ $loop->iteration }}</td>
 
+                            @if(!$isMyAttendance)
                             <td>
                                 <div class="att-emp">
                                     <div class="att-avatar">
@@ -778,6 +1029,7 @@
                                     </div>
                                 </div>
                             </td>
+                            @endif
 
                             <td><strong>{{ $attDate }}</strong></td>
 
@@ -837,6 +1089,7 @@
                                 </div>
                             </td>
 
+                            @if(!$isMyAttendance)
                             <td>
                                 <div class="att-action-wrap dropdown">
                                     <button type="button" class="action-dot" data-toggle="dropdown">
@@ -866,6 +1119,7 @@
                                     </div>
                                 </div>
                             </td>
+                            @endif
                         </tr>
                         @endforeach
                     </tbody>
@@ -874,11 +1128,13 @@
         </div>
 
         @foreach($attendances as $attendance)
-        @if(($canManageAttendance ?? false) || (auth()->user() && method_exists(auth()->user(), 'hasRole') && auth()->user()->hasRole('super_admin')))
-        @include('hrms.attendance.partials.edit-modal', ['attendance' => $attendance])
-        @endif
+            @if(!$isMyAttendance)
+                @if(($canManageAttendance ?? false) || (auth()->user() && method_exists(auth()->user(), 'hasRole') && auth()->user()->hasRole('super_admin')))
+                    @include('hrms.attendance.partials.edit-modal', ['attendance' => $attendance])
+                @endif
 
-        @include('hrms.attendance.partials.unlock-modal', ['attendance' => $attendance])
+                @include('hrms.attendance.partials.unlock-modal', ['attendance' => $attendance])
+            @endif
         @endforeach
 
     </div>
@@ -946,13 +1202,11 @@
             paging: true,
             info: true,
             searching: false,
-            dom: "<'row align-items-center mb-3'<'col-md-4'l><'col-md-8 text-md-right'B>>" +
-                "<'row'<'col-md-12'tr>>" +
-                "<'row align-items-center mt-3'<'col-md-5'i><'col-md-7'p>>",
+            dom: '<"leave-dt-toolbar"<"leave-dt-left"l><"leave-dt-right"B>>rt<"leave-table-footer"ip>',
             buttons: [{
                     extend: 'csvHtml5',
                     text: '<i class="fas fa-file-csv"></i> CSV',
-                    className: 'btn btn-light border',
+                    className: 'leave-export-btn',
                     exportOptions: {
                         columns: ':not(.no-export)'
                     }
@@ -960,7 +1214,7 @@
                 {
                     extend: 'excelHtml5',
                     text: '<i class="fas fa-file-excel"></i> Excel',
-                    className: 'btn btn-light border',
+                    className: 'leave-export-btn',
                     exportOptions: {
                         columns: ':not(.no-export)'
                     }
@@ -968,7 +1222,7 @@
                 {
                     extend: 'pdfHtml5',
                     text: '<i class="fas fa-file-pdf"></i> PDF',
-                    className: 'btn btn-light border',
+                    className: 'leave-export-btn',
                     orientation: 'landscape',
                     pageSize: 'A3',
                     title: 'Orbosis HRMS Attendance Records',
@@ -979,7 +1233,7 @@
                 {
                     extend: 'print',
                     text: '<i class="fas fa-print"></i> Print',
-                    className: 'btn btn-light border',
+                    className: 'leave-export-btn',
                     title: 'Orbosis HRMS Attendance Records',
                     exportOptions: {
                         columns: ':not(.no-export)'

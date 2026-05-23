@@ -120,11 +120,6 @@
             color: #5b21b6;
         }
 
-        .badge-pending_hr {
-            background: #ffedd5;
-            color: #9a3412;
-        }
-
         .badge-default {
             background: #f1f5f9;
             color: #475569;
@@ -162,7 +157,7 @@
         </div>
         <div class="summary-item">
             <strong>{{ $attendances->where('is_blocked', true)->count() }}</strong>
-            <span>Pending HR</span>
+            <span>Pending Unlock</span>
         </div>
         <div class="summary-item">
             <strong>{{ number_format($attendances->sum('total_work_minutes') / 60, 1) }}h</strong>
@@ -197,7 +192,7 @@
                         $flags[] = 'Early ' . $attendance->early_out_minutes . 'm';
                     }
                     if ($attendance->is_blocked) {
-                        $flags[] = 'Pending HR';
+                        $flags[] = 'Punch Blocked';
                     }
                 @endphp
                 <tr>

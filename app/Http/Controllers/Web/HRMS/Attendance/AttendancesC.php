@@ -103,7 +103,11 @@ class AttendancesC extends Controller
                     $query->where('is_early_out', 1);
                     break;
                 case 'blocked':
-                    $query->where('is_punch_blocked', 1);
+                    $query->where(function ($blockedQuery) {
+                        $blockedQuery->where('is_punch_blocked', 1)
+                            ->orWhere('is_blocked', 1)
+                            ->orWhere('attendance_status', 'punch_blocked');
+                    });
                     break;
                 case 'half_day':
                     $query->where('is_half_day', 1);
@@ -113,9 +117,6 @@ class AttendancesC extends Controller
                     break;
                 case 'missed':
                     $query->where('missed_punch', 1);
-                    break;
-                case 'pending_hr':
-                    $query->whereHas('attendanceType', fn($typeQuery) => $typeQuery->where('code', 'pending_hr'));
                     break;
                 case 'unlocked':
                     $query->where('is_admin_unlocked', 1);
@@ -149,8 +150,8 @@ class AttendancesC extends Controller
             'early_logout' => $todayRecords->where('is_early_out', true)->count(),
             'half_day' => $todayRecords->where('is_half_day', true)->count(),
             'lwp' => $todayRecords->where('is_lwp', true)->count(),
-            'punch_blocked' => $todayRecords->filter(fn($item) => $item->is_punch_blocked || $item->is_blocked || optional($item->attendanceType)->code === 'punch_blocked' || $item->attendance_status === 'punch_blocked')->count(),
-            'pending_hr' => $todayRecords->filter(fn($item) => optional($item->attendanceType)->code === 'pending_hr')->count(),
+            'punch_blocked' => $todayRecords->filter(fn($item) => $item->is_punch_blocked || $item->is_blocked || $item->attendance_status === 'punch_blocked')->count(),
+            'pending_hr' => 0,
             'missed_punches' => $todayRecords->where('missed_punch', true)->count(),
             'currently_working' => $todayRecords->whereNotNull('punch_in_time')->whereNull('punch_out_time')->where('is_blocked', false)->count(),
             'pending_punch_out' => $todayRecords->whereNotNull('punch_in_time')->whereNull('punch_out_time')->count(),
@@ -160,8 +161,8 @@ class AttendancesC extends Controller
             'total_hours' => round($todayRecords->sum('total_work_minutes') / 60, 1),
             'total_late' => $todayRecords->where('is_late', true)->count(),
             'total_early_out' => $todayRecords->where('is_early_out', true)->count(),
-            'total_pending_hr' => $todayRecords->filter(fn($item) => optional($item->attendanceType)->code === 'pending_hr')->count(),
-            'total_blocked' => $todayRecords->filter(fn($item) => $item->is_punch_blocked || $item->is_blocked || optional($item->attendanceType)->code === 'punch_blocked' || $item->attendance_status === 'punch_blocked')->count(),
+            'total_pending_hr' => 0,
+            'total_blocked' => $todayRecords->filter(fn($item) => $item->is_punch_blocked || $item->is_blocked || $item->attendance_status === 'punch_blocked')->count(),
         ];
 
         $attendances = $query->orderByDesc('attendance_date')
@@ -179,8 +180,7 @@ class AttendancesC extends Controller
             ->where(function ($q) {
                 $q->where('is_punch_blocked', true)
                     ->orWhere('is_blocked', true)
-                    ->orWhereHas('attendanceType', fn($typeQuery) => $typeQuery->whereIn('code', ['punch_blocked', 'pending_hr']))
-                    ->orWhereIn('attendance_status', ['punch_blocked', 'pending_hr']);
+                    ->orWhere('attendance_status', 'punch_blocked');
             })
             ->orderBy('id')
             ->get();
@@ -238,20 +238,6 @@ class AttendancesC extends Controller
     public function unlock(Request $request)
     {
         abort_unless($this->canUnlockAttendance(), 403, 'Only HR/Admin can unlock attendance.');
-
-        /*
-        |--------------------------------------------------------------------------
-        | OLD FUTURE LOGIC - Pending HR after 11:15 |
-        | ----------------------------------------- |
-        | Earlier behavior:                         |
-        | After 11:15 attendance_type = pending_hr  |
-        | HR approval required.                     |
-        
-        Current active behavior:
-        After 11:15 attendance becomes punch_blocked
-        | and requires Admin/HR unlock. |
-        | ----------------------------- |
-        */
 
         $request->validate([
             'id' => 'required|exists:attendances,id',
@@ -365,15 +351,22 @@ class AttendancesC extends Controller
 
         $query = $this->scopeAttendanceQuery($this->baseQuery(), 'attendance.records.view_all', 'attendance.regularization.view_team')
             ->where(function ($query) {
-                $query->whereHas('attendanceType', function ($q) {
-                    $q->whereIn('code', ['pending_hr', 'punch_blocked']);
-                })
-                    ->orWhere('is_blocked', true)
+                $query->where('is_blocked', true)
                     ->orWhere('is_punch_blocked', true)
-                    ->orWhereIn('attendance_status', ['pending_hr', 'punch_blocked'])
+                    ->orWhere('attendance_status', 'punch_blocked')
                     ->orWhere('missed_punch', true);
             })
-            ->when($request->flag === 'unlocked', fn($q) => $q->where('is_admin_unlocked', true))
+            ->where(function ($q) use ($request) {
+                if ($request->flag === 'unlocked') {
+                    $q->where('is_admin_unlocked', true);
+                } else {
+                    $q->where(function ($sq) {
+                        $sq->whereNull('is_admin_unlocked')
+                           ->orWhere('is_admin_unlocked', false)
+                           ->orWhere('is_admin_unlocked', 0);
+                    })->whereNull('unlocked_at');
+                }
+            })
             ->when($request->flag === 'manual_punch_in', fn($q) => $q->where('unlock_type', 'manual_punch_in'));
 
         $attendances = $this->applyFilters($query, $request)
@@ -387,9 +380,9 @@ class AttendancesC extends Controller
         $approvalRecords = Attendance::with('attendanceType')->get();
         $today = Carbon::now($this->attendanceService->attendanceTimezone())->toDateString();
         $stats = [
-            'total_blocked' => $approvalRecords->filter(fn($item) => $item->is_punch_blocked || $item->is_blocked || optional($item->attendanceType)->code === 'punch_blocked' || $item->attendance_status === 'punch_blocked')->count(),
-            'pending_unlock' => $approvalRecords->where('is_blocked', true)->where('is_admin_unlocked', false)->count(),
-            'pending_hr' => $approvalRecords->filter(fn($item) => optional($item->attendanceType)->code === 'pending_hr')->count(),
+            'total_blocked' => $approvalRecords->filter(fn($item) => $item->is_punch_blocked || $item->is_blocked || $item->attendance_status === 'punch_blocked')->count(),
+            'pending_unlock' => $approvalRecords->filter(fn($item) => ($item->is_blocked || $item->is_punch_blocked || $item->attendance_status === 'punch_blocked') && ! $item->is_admin_unlocked)->count(),
+            'pending_hr' => 0,
             'missed_punch' => $approvalRecords->where('missed_punch', true)->count(),
             'manual_punch' => $approvalRecords->where('unlock_type', 'manual_punch_in')->count(),
             'unlocked_today' => $approvalRecords->filter(fn($item) => $item->unlocked_at && Carbon::parse($item->unlocked_at)->toDateString() === $today)->count(),
@@ -431,7 +424,7 @@ class AttendancesC extends Controller
             'half_day' => 0,
             'leave' => 0,
             'week_off' => 0,
-            'pending_hr' => 0,
+            'punch_blocked' => 0,
             'late' => 0,
             'early_out' => 0,
             'total_hours' => 0,
@@ -448,7 +441,7 @@ class AttendancesC extends Controller
             if ($typeCode === 'half_day') $summary['half_day']++;
             if ($typeCode === 'leave') $summary['leave']++;
             if ($typeCode === 'week_off') $summary['week_off']++;
-            if (in_array($typeCode, ['pending_hr', 'punch_blocked'])) $summary['pending_hr']++;
+            if ($typeCode === 'punch_blocked') $summary['punch_blocked']++;
 
             if ($att->is_late) $summary['late']++;
             if ($att->is_early_out) $summary['early_out']++;

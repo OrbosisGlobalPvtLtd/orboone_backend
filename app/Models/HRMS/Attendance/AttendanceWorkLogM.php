@@ -21,6 +21,7 @@ class AttendanceWorkLogM extends Model
         'task_type',
         'duration_minutes',
         'work_summary',
+        'work_summary_json',
         'latitude',
         'longitude',
         'device_info',
@@ -33,6 +34,7 @@ class AttendanceWorkLogM extends Model
     protected $casts = [
         'work_date' => 'date',
         'duration_minutes' => 'integer',
+        'work_summary_json' => 'array',
     ];
 
     public function attendance()

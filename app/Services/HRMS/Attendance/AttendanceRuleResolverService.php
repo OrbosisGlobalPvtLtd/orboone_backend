@@ -68,42 +68,121 @@ class AttendanceRuleResolverService
         $now = $this->date($dateTime);
         $policy = $this->getPolicyForEmployee($employee, $now);
         $dayContext = $this->getDayContext($employee, $now);
-        $attendance = Attendance::with(['attendanceType', 'attendanceTime'])
+        
+        $today = $now->toDateString();
+        $attendance = Attendance::with(['attendanceType', 'attendanceTime', 'workLogs'])
             ->where('employee_id', $employee->id)
-            ->whereDate('attendance_date', $now->toDateString())
+            ->whereDate('attendance_date', $today)
+            ->latest('id')
             ->first();
+
         $window = $this->calculatePunchWindowState($policy, $now);
         $typeCode = optional($attendance?->attendanceType)->code;
+        $statusCode = $attendance?->attendance_status;
+        $isUnlocked = (bool) ($attendance?->is_admin_unlocked ?? false);
         
         $hasPunchIn = (bool) $attendance?->punch_in_time;
         $hasPunchOut = (bool) $attendance?->punch_out_time;
-        $isBlockedDb = (bool) ($attendance?->is_blocked || $attendance?->is_punch_blocked || in_array($typeCode, ['punch_blocked'], true));
-        
-        $showBlockedCard = ($isBlockedDb || $window['is_blocked']) && !$hasPunchIn;
-        
-        $canPunchIn = $dayContext['is_working_day']
-            && ! $hasPunchIn
-            && ! ($isBlockedDb && ! $attendance?->is_admin_unlocked)
-            && $window['is_allowed'];
+
+        // Define default states based on user requirements
+        $isBlocked = false;
+        $isPunchBlocked = false;
+        $showBlockedCard = false;
+        $canPunchIn = false;
+        $canPunchOut = false;
+        $attendanceState = 'absent';
+        $statusCodeVal = 'not_punched';
+        $nextAction = 'none';
+
+        if ($attendance) {
+            $isBlockedDb = ! $isUnlocked && (bool) (
+                $attendance->is_blocked
+                || $attendance->is_punch_blocked
+                || $typeCode === 'punch_blocked'
+                || $statusCode === 'punch_blocked'
+            );
             
-        $canPunchOut = $dayContext['is_working_day']
-            && $hasPunchIn
-            && ! $hasPunchOut
-            && ! $showBlockedCard;
+            if ($isUnlocked) {
+                $isBlocked = false;
+                $isPunchBlocked = false;
+                $showBlockedCard = false;
+                
+                if (! $hasPunchIn) {
+                    $statusCodeVal = 'unlocked';
+                    $canPunchIn = true;
+                    $nextAction = 'punch_in';
+                } else {
+                    $statusCodeVal = 'present';
+                    $canPunchIn = false;
+                    $canPunchOut = ! $hasPunchOut;
+                    $nextAction = ! $hasPunchOut ? 'punch_out' : 'completed';
+                    $attendanceState = ! $hasPunchOut ? 'punched_in' : 'punched_out';
+                }
+            } elseif ($isBlockedDb) {
+                $isBlocked = true;
+                $isPunchBlocked = true;
+                $showBlockedCard = true;
+                $statusCodeVal = 'punch_blocked';
+                $canPunchIn = false;
+                $canPunchOut = false;
+                $nextAction = 'blocked';
+            } else {
+                // Not unlocked, not blocked in DB
+                // Normal processing
+                $statusCodeVal = $typeCode ?: ($statusCode ?: 'not_punched');
+                if ($statusCodeVal === 'pending_hr') {
+                    $statusCodeVal = 'not_punched';
+                }
+                
+                if (! $hasPunchIn) {
+                    // Check if block time is crossed
+                    if ($window['is_blocked']) {
+                        $isBlocked = true;
+                        $isPunchBlocked = true;
+                        $showBlockedCard = true;
+                        $statusCodeVal = 'punch_blocked';
+                        $canPunchIn = false;
+                        $nextAction = 'blocked';
+                    } else {
+                        $canPunchIn = $dayContext['is_working_day'] && $window['is_allowed'];
+                        $nextAction = $canPunchIn ? 'punch_in' : 'none';
+                    }
+                } else {
+                    $statusCodeVal = 'present';
+                    $canPunchIn = false;
+                    $canPunchOut = ! $hasPunchOut;
+                    $nextAction = ! $hasPunchOut ? 'punch_out' : 'completed';
+                    $attendanceState = ! $hasPunchOut ? 'punched_in' : 'punched_out';
+                }
+            }
+        } else {
+            // Attendance is null (no attendance row exists)
+            $isBlocked = false;
+            $isPunchBlocked = false;
+            $showBlockedCard = false;
+            $canPunchOut = false;
+            $attendanceState = 'absent';
+            
+            if ($window['is_blocked']) {
+                $statusCodeVal = 'absent';
+                $canPunchIn = false;
+                $nextAction = 'blocked_by_policy';
+            } else {
+                $canPunchIn = $dayContext['is_working_day'] && $window['is_allowed'];
+                $statusCodeVal = 'not_punched';
+                $nextAction = $canPunchIn ? 'punch_in' : 'none';
+            }
+        }
 
         $primaryMessage = $this->primaryMessage($policy, $dayContext, $attendance, $window);
         $blockedMessage = $showBlockedCard ? 'Your punch-in is blocked. Please contact HR/Admin.' : null;
-
-        $attendanceState = 'absent';
-        if ($hasPunchIn && !$hasPunchOut) {
-            $attendanceState = 'punched_in';
-            $canPunchIn = false;
-            $canPunchOut = true;
-            $showBlockedCard = false;
+        
+        if ($isUnlocked && ! $hasPunchIn) {
+            $primaryMessage = 'Punch-in is available.';
             $blockedMessage = null;
-            $primaryMessage = 'Punch-out is available.';
-        } elseif ($hasPunchIn && $hasPunchOut) {
-            $attendanceState = 'punched_out';
+        } elseif (! $attendance && $window['is_blocked']) {
+            $primaryMessage = 'Punch-in is blocked by policy.';
+            $blockedMessage = null;
         }
 
         return [
@@ -116,6 +195,10 @@ class AttendanceRuleResolverService
                 'attendance_state' => $attendanceState,
                 'can_punch_in' => $canPunchIn,
                 'can_punch_out' => $canPunchOut,
+                'is_blocked' => $isBlocked,
+                'is_punch_blocked' => $isPunchBlocked,
+                'status_code' => $statusCodeVal,
+                'next_action' => $nextAction,
                 'show_early_login_tag' => $window['is_before_shift_start'] && $canPunchIn,
                 'show_late_mark' => $window['is_late'],
                 'show_late_warning' => $window['is_warning'],

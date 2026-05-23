@@ -542,83 +542,122 @@
     </div>
 
     {{-- Admin Punch In Modal --}}
-    <div class="modal fade" id="adminPunchInModal" tabindex="-1">
-        <div class="modal-dialog">
-            <form method="POST" action="{{ route('attendances.admin.punch-in') }}" class="modal-content">
+    <div class="modal fade" id="adminPunchInModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <form method="POST" action="{{ route('attendances.admin.punch-in') }}" class="modal-content orb-modal">
                 @csrf
-                <div class="modal-header">
-                    <h5 class="modal-title">Admin Punch In</h5>
-                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                <div class="orb-modal-header">
+                    <div>
+                        <h5 class="modal-title">Admin Punch In</h5>
+                        <p class="orb-modal-subtitle">Manually record a punch-in event for an employee</p>
+                    </div>
+                    <button type="button" class="close btn-close btn-close-white" data-dismiss="modal" aria-label="Close" style="color:#fff; opacity:1; border:0; background:transparent; font-size:24px; padding:0; outline:none; line-height:1;">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
                 </div>
-                <div class="modal-body">
-                    <label>Employee</label>
-                    <select name="user_id" class="form-control mb-3" required>
-                        <option value="">Select Employee</option>
-                        @foreach ($employees as $emp)
-                            <option value="{{ $emp->id }}">{{ $emp->name }} -
-                                {{ optional($emp->employee)->employee_code }}</option>
-                        @endforeach
-                    </select>
+                <div class="modal-body orb-modal-body">
+                    <div class="orb-form-section">
+                        <div class="orb-form-grid" style="grid-template-columns: 1fr;">
+                            <div>
+                                <label class="orb-form-label">Employee <span class="text-danger">*</span></label>
+                                <select name="user_id" class="form-control" required>
+                                    <option value="">Select Employee</option>
+                                    @foreach ($employees as $emp)
+                                        <option value="{{ $emp->id }}">{{ $emp->name }} -
+                                            {{ optional($emp->employee)->employee_code }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
 
-                    <label>Time</label>
-                    <input type="datetime-local" name="time" class="form-control mb-3" required>
+                            <div>
+                                <label class="orb-form-label">Time <span class="text-danger">*</span></label>
+                                <input type="datetime-local" name="time" class="form-control" required>
+                            </div>
 
-                    <label>Work Mode</label>
-                    <select name="work_mode" class="form-control mb-3" required>
-                        <option value="wfo">Work From Office</option>
-                        <option value="wfh">Work From Home</option>
-                    </select>
+                            <div>
+                                <label class="orb-form-label">Work Mode <span class="text-danger">*</span></label>
+                                <select name="work_mode" class="form-control" required>
+                                    <option value="wfo">Work From Office</option>
+                                    <option value="wfh">Work From Home</option>
+                                </select>
+                            </div>
 
-                    <label>Status</label>
-                    <select name="attendance_type_id" class="form-control mb-3">
-                        @foreach ($attendanceTypes as $type)
-                            <option value="{{ $type->id }}">{{ $type->name }}</option>
-                        @endforeach
-                    </select>
+                            <div>
+                                <label class="orb-form-label">Status <span class="text-danger">*</span></label>
+                                <select name="attendance_type_id" class="form-control">
+                                    @foreach ($attendanceTypes as $type)
+                                        <option value="{{ $type->id }}">{{ $type->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
 
-                    <label>Note</label>
-                    <textarea name="note" class="form-control" rows="3">Admin Override</textarea>
+                            <div>
+                                <label class="orb-form-label">Note</label>
+                                <textarea name="note" class="form-control" rows="3">Admin Override</textarea>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="modal-footer">
-                    <button class="att-btn att-btn-primary">Save Punch In</button>
+                <div class="modal-footer orb-modal-footer">
+                    <button type="button" class="orb-btn-light" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="orb-btn-primary"><i class="fas fa-save mr-1"></i> Save Punch In</button>
                 </div>
             </form>
         </div>
     </div>
 
     {{-- Admin Punch Out Modal --}}
-    <div class="modal fade" id="adminPunchOutModal" tabindex="-1">
-        <div class="modal-dialog">
-            <form method="POST" action="{{ route('attendances.admin.punch-out') }}" class="modal-content">
+    <div class="modal fade" id="adminPunchOutModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <form method="POST" action="{{ route('attendances.admin.punch-out') }}" class="modal-content orb-modal">
                 @csrf
-                <div class="modal-header">
-                    <h5 class="modal-title">Admin Punch Out</h5>
-                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                <div class="orb-modal-header" style="background: linear-gradient(135deg, #ec4e74, #ff7675) !important;">
+                    <div>
+                        <h5 class="modal-title" style="color: #fff !important;">Admin Punch Out</h5>
+                        <p class="orb-modal-subtitle" style="color: rgba(255,255,255,0.85) !important;">Manually record a punch-out event with task details</p>
+                    </div>
+                    <button type="button" class="close btn-close btn-close-white" data-dismiss="modal" aria-label="Close" style="color:#fff; opacity:1; border:0; background:transparent; font-size:24px; padding:0; outline:none; line-height:1;">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
                 </div>
-                <div class="modal-body">
-                    <label>Employee</label>
-                    <select name="user_id" class="form-control mb-3" required>
-                        <option value="">Select Employee</option>
-                        @foreach ($employees as $emp)
-                            <option value="{{ $emp->id }}">{{ $emp->name }} -
-                                {{ optional($emp->employee)->employee_code }}</option>
-                        @endforeach
-                    </select>
+                <div class="modal-body orb-modal-body">
+                    <div class="orb-form-section">
+                        <div class="orb-form-grid" style="grid-template-columns: 1fr;">
+                            <div>
+                                <label class="orb-form-label">Employee <span class="text-danger">*</span></label>
+                                <select name="user_id" class="form-control" required>
+                                    <option value="">Select Employee</option>
+                                    @foreach ($employees as $emp)
+                                        <option value="{{ $emp->id }}">{{ $emp->name }} -
+                                            {{ optional($emp->employee)->employee_code }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
 
-                    <label>Time</label>
-                    <input type="datetime-local" name="time" class="form-control mb-3" required>
+                            <div>
+                                <label class="orb-form-label">Time <span class="text-danger">*</span></label>
+                                <input type="datetime-local" name="time" class="form-control" required>
+                            </div>
 
-                    <label>Task Summary</label>
-                    <textarea name="task_summary" class="form-control mb-3" rows="4" required
-                        placeholder="What did employee work on?"></textarea>
+                            <div>
+                                <label class="orb-form-label">Task Summary <span class="text-danger">*</span></label>
+                                <textarea name="task_summary" class="form-control" rows="4" required
+                                    placeholder="What did employee work on?"></textarea>
+                            </div>
 
-                    <label>Note</label>
-                    <textarea name="note" class="form-control" rows="3">Admin Override</textarea>
+                            <div>
+                                <label class="orb-form-label">Note</label>
+                                <textarea name="note" class="form-control" rows="3">Admin Override</textarea>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="modal-footer">
-                    <button class="att-btn att-btn-danger">Save Punch Out</button>
+                <div class="modal-footer orb-modal-footer">
+                    <button type="button" class="orb-btn-light" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="orb-btn-primary" style="background: linear-gradient(135deg, #ec4e74, #ff7675) !important; border-color: #ec4e74 !important;"><i class="fas fa-save mr-1"></i> Save Punch Out</button>
                 </div>
             </form>
         </div>
     </div>
+
 @endsection

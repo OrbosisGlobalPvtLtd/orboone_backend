@@ -64,12 +64,12 @@ $topbarNotifications = collect();
 
             <div class="d-flex align-items-center" style="gap:10px;">
 
-                <button type="button"
+                <button type="button" class="d-none d-md-block"
                     style="width:40px;height:40px;border-radius:12px;border:1px solid #e5e7eb;background:#fff;">
                     <i class="fas fa-search text-muted"></i>
                 </button>
 
-                <a href="{{ $announcementRoute }}"
+                <a href="{{ $announcementRoute }}" class="d-none d-md-flex"
                     style="width:40px;height:40px;border-radius:12px;border:1px solid #e5e7eb;background:#fff;display:flex;align-items:center;justify-content:center;text-decoration:none;"
                     onmouseover="this.style.background='#f9f9ff'"
                     onmouseout="this.style.background='#fff'">
@@ -107,12 +107,56 @@ $topbarNotifications = collect();
                             @forelse($topbarNotifications as $notification)
                             @php
                             $isUnread = ((int)($notification->is_read ?? 0) === 0) || empty($notification->read_at);
+                            
+                            // Safely decode JSON for DB query results
+                            $data = [];
+                            if (!empty($notification->data)) {
+                                $decoded = json_decode($notification->data, true);
+                                if (is_array($decoded)) {
+                                    $data = $decoded;
+                                }
+                            }
+                            
+                            // Map icon & background based on resolved type
+                            $type = strtolower($notification->type ?? $data['type'] ?? 'general');
+                            $icon = 'fa-bell';
+                            $iconBg = 'linear-gradient(135deg, #4B00E8, #8600EE)';
+                            
+                            if (str_contains($type, 'announcement')) {
+                                $icon = 'fa-bullhorn';
+                                $iconBg = 'linear-gradient(135deg, #06B6D4, #0891B2)';
+                            } elseif (str_contains($type, 'leave')) {
+                                $icon = 'fa-calendar-alt';
+                                $iconBg = 'linear-gradient(135deg, #3B82F6, #1D4ED8)';
+                            } elseif (str_contains($type, 'attendance')) {
+                                $icon = 'fa-clock';
+                                $iconBg = 'linear-gradient(135deg, #F59E0B, #D97706)';
+                            } elseif (str_contains($type, 'document')) {
+                                $icon = 'fa-file-alt';
+                                $iconBg = 'linear-gradient(135deg, #10B981, #047857)';
+                            } elseif (str_contains($type, 'payroll') || str_contains($type, 'salary')) {
+                                $icon = 'fa-wallet';
+                                $iconBg = 'linear-gradient(135deg, #F97316, #C2410C)';
+                            } elseif (str_contains($type, 'system') || str_contains($type, 'security')) {
+                                $icon = 'fa-shield-alt';
+                                $iconBg = 'linear-gradient(135deg, #EF4444, #B91C1C)';
+                            }
+
+                            // Attachment extraction
+                            $attUrl = $data['attachment_url'] ?? $data['attachment'] ?? '';
+                            $attType = $data['attachment_type'] ?? '';
+                            if (empty($attType) && !empty($attUrl)) {
+                                $ext = strtolower(pathinfo($attUrl, PATHINFO_EXTENSION));
+                                if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'])) $attType = 'image';
+                                elseif ($ext === 'pdf') $attType = 'pdf';
+                                else $attType = 'document';
+                            }
                             @endphp
 
-                            <a href="{{ $notificationRoute }}"
+                            <a href="{{ route('notifications.open', $notification->id) }}"
                                 class="orb-notification-item {{ $isUnread ? 'unread' : '' }}">
-                                <div class="orb-notification-icon">
-                                    <i class="fas fa-bell"></i>
+                                <div class="orb-notification-icon" style="background: {{ $iconBg }}; color: #fff;">
+                                    <i class="fas {{ $icon }}"></i>
                                 </div>
 
                                 <div class="flex-grow-1" style="min-width:0;">
@@ -129,6 +173,21 @@ $topbarNotifications = collect();
                                     <div class="orb-notification-message">
                                         {{ Str::limit(strip_tags((string)($notification->message ?? '')), 70) }}
                                     </div>
+
+                                    <!-- Compact Attachment Badge inside Dropdown -->
+                                    @if(!empty($attUrl))
+                                        <div style="margin-top: 4px;">
+                                            <span class="orb-notification-att-badge" style="font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; background:#F1F5F9; color:#475569; display:inline-flex; align-items:center; gap:4px;">
+                                                @if($attType === 'pdf')
+                                                    <i class="fas fa-file-pdf" style="color:#EF4444;"></i> PDF
+                                                @elseif($attType === 'image')
+                                                    <i class="fas fa-file-image" style="color:#10B981;"></i> Image
+                                                @else
+                                                    <i class="fas fa-file-alt" style="color:#3B82F6;"></i> Doc
+                                                @endif
+                                            </span>
+                                        </div>
+                                    @endif
 
                                     <div class="orb-notification-time">
                                         {{ !empty($notification->created_at) ? \Carbon\Carbon::parse($notification->created_at)->diffForHumans() : '' }}
@@ -160,18 +219,19 @@ $topbarNotifications = collect();
                 $topbarEmployee = $topbarUser?->employee;
                 $topbarUserImage = trim((string) data_get($topbarUser, 'profile_image'));
                 $topbarEmployeeImage = trim((string) data_get($topbarEmployee, 'profile.profile_image'));
-                $topbarImage = $topbarUserImage !== '' ? $topbarUserImage : $topbarEmployeeImage;
 
-                if ($topbarImage !== '' && preg_match('/^https?:\/\//i', $topbarImage)) {
-                $topbarAvatar = $topbarImage;
-                } elseif ($topbarImage !== '' && substr($topbarImage, 0, 1) === '/') {
-                $topbarAvatar = $topbarImage;
-                } elseif ($topbarImage !== '' && substr($topbarImage, 0, 8) === 'storage/') {
-                $topbarAvatar = asset($topbarImage);
-                } elseif ($topbarImage !== '') {
-                $topbarAvatar = asset('storage/'.$topbarImage);
+                if ($topbarEmployee && $topbarEmployeeImage !== '') {
+                    $topbarAvatar = route('employee.profile-image', ['employee' => $topbarEmployee->id]);
+                } elseif ($topbarUserImage !== '') {
+                    if (preg_match('/^https?:\/\//i', $topbarUserImage) || substr($topbarUserImage, 0, 1) === '/') {
+                        $topbarAvatar = $topbarUserImage;
+                    } elseif (substr($topbarUserImage, 0, 8) === 'storage/') {
+                        $topbarAvatar = asset($topbarUserImage);
+                    } else {
+                        $topbarAvatar = asset('storage/'.$topbarUserImage);
+                    }
                 } else {
-                $topbarAvatar = null;
+                    $topbarAvatar = null;
                 }
 
                 $topbarInitial = strtoupper(substr(trim($topbarUser?->name ?? ''), 0, 1));
@@ -218,7 +278,7 @@ $topbarNotifications = collect();
                         </a>
                         @endif
 
-                        <a class="dropdown-item py-2 rounded" href="{{ Route::has('profile.index') ? route('profile.index').'#change-password' : 'javascript:void(0)' }}">
+                        <a class="dropdown-item py-2 rounded" href="javascript:void(0)" data-toggle="modal" data-target="#topbarChangePasswordModal">
                             <i class="fas fa-lock mr-2 text-muted"></i> Change Password
                         </a>
 
@@ -246,14 +306,27 @@ $topbarNotifications = collect();
 
 <style>
     .orb-notification-menu {
-        width: 390px;
+        width: 420px;
         max-width: calc(100vw - 24px);
-        border-radius: 22px;
+        border-radius: 24px;
         overflow: hidden;
         margin-top: 12px;
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.5) !important;
+        box-shadow: 0 20px 40px rgba(16, 24, 40, 0.08) !important;
+        animation: dropdownSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes dropdownSlideIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 
     .orb-notification-head {
+        position: sticky;
+        top: 0;
+        z-index: 10;
         padding: 16px 18px;
         background: linear-gradient(135deg, #4B00E8 0%, #8600EE 100%);
         display: flex;
@@ -276,59 +349,62 @@ $topbarNotifications = collect();
     }
 
     .orb-notification-list {
-        max-height: 360px;
+        max-height: 380px;
         overflow-y: auto;
         background: #fff;
+        scroll-behavior: smooth;
     }
 
     .orb-notification-item {
         display: flex;
         gap: 12px;
-        padding: 14px 16px;
-        text-decoration: none;
+        padding: 16px;
+        text-decoration: none !important;
         border-bottom: 1px solid #F0F2F7;
-        color: inherit;
+        color: inherit !important;
         transition: .2s;
     }
 
     .orb-notification-item:hover {
-        background: #F8F6FF;
-        text-decoration: none;
+        background: rgba(75, 0, 232, 0.03);
     }
 
     .orb-notification-item.unread {
-        background: #FBFAFF;
+        background: rgba(75, 0, 232, 0.01);
     }
 
     .orb-notification-icon {
-        width: 38px;
-        height: 38px;
-        min-width: 38px;
-        border-radius: 13px;
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        border-radius: 12px;
         background: #F4F2FF;
         color: #4B00E8;
         display: flex;
         align-items: center;
         justify-content: center;
+        font-size: 16px;
     }
 
     .orb-notification-title {
-        font-size: 13px;
-        font-weight: 900;
+        font-size: 13.5px;
+        font-weight: 800;
         color: #101828;
     }
 
     .orb-notification-message {
-        font-size: 12px;
+        font-size: 12.5px;
         color: #667085;
-        margin-top: 3px;
-        line-height: 1.35;
+        margin-top: 4px;
+        line-height: 1.45;
+        word-break: break-word;
     }
 
     .orb-notification-time {
         font-size: 11px;
         color: #98A2B3;
         margin-top: 6px;
+        font-weight: 600;
     }
 
     .orb-unread-dot {
@@ -336,11 +412,15 @@ $topbarNotifications = collect();
         height: 8px;
         min-width: 8px;
         border-radius: 50%;
-        background: #EC4E74;
+        background: #4B00E8;
         margin-top: 5px;
+        animation: pulse-dot 1.5s infinite;
     }
 
     .orb-notification-footer {
+        position: sticky;
+        bottom: 0;
+        z-index: 10;
         padding: 12px;
         background: #fff;
         border-top: 1px solid #F0F2F7;
@@ -355,14 +435,14 @@ $topbarNotifications = collect();
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: 900;
-        text-decoration: none;
+        font-weight: 800;
+        text-decoration: none !important;
+        transition: all 0.2s ease;
     }
 
     .orb-view-all-btn:hover {
-        color: #fff;
+        color: #fff !important;
         background: linear-gradient(135deg, #4B00E8 0%, #8600EE 100%);
-        text-decoration: none;
     }
 
     .orb-empty-bell {
@@ -375,6 +455,21 @@ $topbarNotifications = collect();
         display: flex;
         align-items: center;
         justify-content: center;
+    }
+
+    /* Responsiveness for Topbar Dropdown */
+    @media (max-width: 992px) {
+        .orb-notification-menu {
+            width: 95vw;
+            right: -10px !important;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .orb-notification-menu {
+            width: calc(100vw - 24px);
+            right: -12px !important;
+        }
     }
 </style>
 
@@ -390,5 +485,49 @@ $topbarNotifications = collect();
                 }
             });
         });
+
+        @if($errors->has('current_password') || $errors->has('password'))
+            $('#topbarChangePasswordModal').modal('show');
+        @endif
     });
 </script>
+
+<!-- TOPBAR CHANGE PASSWORD MODAL -->
+<div class="modal fade" id="topbarChangePasswordModal" tabindex="-1" role="dialog" aria-labelledby="topbarChangePasswordModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content" style="border: none; border-radius: 24px; overflow: hidden; box-shadow: 0 15px 40px rgba(0,0,0,0.12);">
+            <div class="modal-header" style="background: linear-gradient(135deg, #4B00E8, #8600EE); color: white; border-bottom: none; padding: 20px 24px;">
+                <h5 class="modal-title" id="topbarChangePasswordModalLabel" style="font-weight: 800; font-size: 18px; color: white;"><i class="fas fa-lock mr-2"></i>Change Password</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="opacity: 0.8; font-size: 24px; border: none; background: none;">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form action="{{ route('profile.password.update') }}" method="POST">
+                @csrf
+                @method('PUT')
+                <div class="modal-body" style="padding: 24px;">
+                    <p class="text-muted mb-4" style="font-size: 13px; font-weight: 600;">Update your account password. Make sure it's secure and at least 8 characters long.</p>
+                    
+                    <div class="mb-3">
+                        <label style="display: block; color: #667085; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Current Password</label>
+                        <input type="password" name="current_password" required style="width: 100%; height: 42px; border-radius: 12px; border: 1px solid #E7EAF3; background: #F9FAFB; color: #101828; font-size: 13px; font-weight: 700; padding: 8px 14px; transition: all 0.2s ease;">
+                    </div>
+                    <div class="mb-3">
+                        <label style="display: block; color: #667085; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">New Password</label>
+                        <input type="password" name="password" required style="width: 100%; height: 42px; border-radius: 12px; border: 1px solid #E7EAF3; background: #F9FAFB; color: #101828; font-size: 13px; font-weight: 700; padding: 8px 14px; transition: all 0.2s ease;">
+                    </div>
+                    <div class="mb-3">
+                        <label style="display: block; color: #667085; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Confirm New Password</label>
+                        <input type="password" name="password_confirmation" required style="width: 100%; height: 42px; border-radius: 12px; border: 1px solid #E7EAF3; background: #F9FAFB; color: #101828; font-size: 13px; font-weight: 700; padding: 8px 14px; transition: all 0.2s ease;">
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top: none; padding: 16px 24px; gap: 8px; display: flex; justify-content: flex-end;">
+                    <button type="button" data-dismiss="modal" style="background: #E7EAF3; border: none; color: #4B5563; min-height:38px; border-radius: 12px; padding: 8px 16px; font-size: 13px; font-weight: 800; cursor: pointer; transition: all 0.2s ease;">Cancel</button>
+                    <button type="submit" style="color: white; border-color: transparent; background: linear-gradient(135deg, #4B00E8, #8600EE); box-shadow: 0 4px 14px rgba(75, 0, 232, 0.2); min-height:38px; border-radius: 12px; padding: 8px 16px; font-size: 13px; font-weight: 800; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 6px;">
+                        <i class="fas fa-key"></i> Update Password
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

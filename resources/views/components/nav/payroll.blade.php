@@ -1,6 +1,6 @@
 @php
     $isAdmin = auth()->user()->isAdmin();
-    $payrollOpen = request()->is('payroll*') || request()->routeIs('pages.payroll*');
+    $payrollOpen = request()->is('payroll*') || request()->routeIs('pages.payroll*') || request()->routeIs('hrms.payroll*');
 @endphp
 
 {{-- ========== SECTION: 4. PAYROLL MANAGEMENT ========== --}}
@@ -46,7 +46,7 @@
 
     {{-- Sub-module: Bonus Management (Admin Placeholder) --}}
     <li>
-        <a href="{{ route('pages.payroll.index') }}" class="nav-link sub-nav-link">
+        <a href="{{ route('hrms.payroll.adjustments.index') }}" class="nav-link sub-nav-link {{ request()->routeIs('hrms.payroll.adjustments.*') ? 'active' : '' }}">
             <i class="fas fa-gift small mr-2 text-warning"></i> Bonus Management
         </a>
     </li>

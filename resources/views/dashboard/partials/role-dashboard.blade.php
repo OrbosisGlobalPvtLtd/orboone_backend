@@ -73,15 +73,30 @@
                 </h2>
 
                 <div class="dash-actions">
+                    @php $hasDashActions = false; @endphp
                     @foreach ($actions as $action)
-                        <a href="{{ $action['url'] ?? '#' }}" class="dash-action">
-                            <div class="dash-action-icon">
-                                <i class="{{ $action['icon'] ?? 'fas fa-link' }}"></i>
-                            </div>
-                            <strong>{{ $action['label'] ?? 'Action' }}</strong>
-                            <span>Open {{ strtolower($action['label'] ?? 'action') }}</span>
-                        </a>
+                        @php
+                            $url = $action['url'] ?? '';
+                            $title = trim($action['title'] ?? $action['label'] ?? '');
+                        @endphp
+
+                        @if($url && $url !== '#' && $title !== '')
+                            @php $hasDashActions = true; @endphp
+                            <a href="{{ $url }}" class="dash-action">
+                                <div class="dash-action-icon">
+                                    <i class="{{ $action['icon'] ?? 'fas fa-link' }}"></i>
+                                </div>
+                                <strong>{{ $title }}</strong>
+                                <span>Open {{ strtolower($title) }}</span>
+                            </a>
+                        @endif
                     @endforeach
+
+                    @if(!$hasDashActions)
+                        <div class="dash-empty" style="grid-column: 1 / -1; padding: 20px; border: 1px dashed #e2e8f0; border-radius: 12px; text-align: center; color: #64748b; font-weight: 600;">
+                            No quick actions available
+                        </div>
+                    @endif
                 </div>
             </div>
         @endif

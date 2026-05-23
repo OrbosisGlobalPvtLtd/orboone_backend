@@ -6,17 +6,20 @@
     $canPayslipView = $user->hasPermission('payroll.payslip.view');
     $canFnfManage = $user->hasPermission('payroll.fnf.manage');
     $canBonusManage = $user->hasPermission('payroll.bonus.manage');
+    $canAdjustmentManage = $user->hasPermission('payroll.adjustments.manage');
 
     $showPayrollMenu =
         $canSalaryStructure ||
         $canPayrollDashboard ||
         $canPayslipView ||
         $canFnfManage ||
-        $canBonusManage;
+        $canBonusManage ||
+        $canAdjustmentManage;
 
     $payrollOpen =
         request()->is('payroll*') ||
-        request()->routeIs('pages.payroll*');
+        request()->routeIs('pages.payroll*') ||
+        request()->routeIs('hrms.payroll*');
 @endphp
 
 @if($showPayrollMenu)
@@ -72,9 +75,9 @@
             </a>
         @endif
 
-        @if ($canBonusManage)
-            <a href="{{ route('pages.payroll.index') }}"
-               class="sub-link">
+        @if ($canBonusManage || $canAdjustmentManage)
+            <a href="{{ route('hrms.payroll.adjustments.index') }}"
+               class="sub-link {{ request()->routeIs('hrms.payroll.adjustments.*') ? 'active' : '' }}">
                 <span class="sub-link-icon"><i class="fas fa-gift"></i></span>
                 <span class="sub-link-text">Bonus Management</span>
             </a>

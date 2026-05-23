@@ -58,7 +58,7 @@
                                 </span>
                             </td>
                             <td>
-                                <a href="{{ route('hrms.documents.hr.show', $doc->employee->user_id) }}" class="dm-action-btn-pill dm-action-btn-primary">
+                                <a href="{{ route('documents.hr.show', $doc->employee->user_id) }}" class="dm-action-btn-pill dm-action-btn-primary">
                                     <i class="fas fa-eye mr-1"></i> View Details
                                 </a>
                             </td>

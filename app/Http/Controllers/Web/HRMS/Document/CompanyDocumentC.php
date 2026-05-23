@@ -32,7 +32,7 @@ class CompanyDocumentC extends Controller
             'download_allowed' => $request->has('download_allowed') ? (bool)$request->download_allowed : true
         ]);
 
-        return redirect()->route('hrms.documents.policies.index')->with('success', 'Policy uploaded successfully.');
+        return redirect()->route('documents.policies.index')->with('success', 'Policy uploaded successfully.');
     }
 
     public function destroy($id)

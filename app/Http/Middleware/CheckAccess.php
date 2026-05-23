@@ -50,7 +50,7 @@ class CheckAccess
         else if (strpos($routeName, 'hrms.documents.self.') === 0) {
             $menuName = 'employee';
         }
-        else if (strpos($routeName, 'hrms.documents.hr.') === 0 || strpos($routeName, 'hrms.documents.policies.') === 0) {
+        else if (strpos($routeName, 'documents.hr.') === 0 || strpos($routeName, 'documents.policies.') === 0) {
             $menuName = 'hr';
         }
         else if ($routeName === 'hrms.organization.index') {

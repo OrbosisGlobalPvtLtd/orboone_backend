@@ -11,7 +11,7 @@
         $canCompanyDocumentsView;
 
     $docOpen =
-        request()->routeIs('hrms.documents.hr.*') ||
+        request()->routeIs('documents.hr.*') ||
         request()->routeIs('hrms.hrms.documents.self.index') ||
         request()->routeIs('hrms.hrms.documents.self.index') ||
         request()->routeIs('documents.policies.self');

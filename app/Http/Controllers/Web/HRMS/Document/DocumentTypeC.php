@@ -48,7 +48,7 @@ class DocumentTypeC extends Controller
         ]);
 
         return redirect()
-            ->route('hrms.documents.types.index')
+            ->route('documents.types.index')
             ->with('success', 'Document type created successfully.');
     }
 
@@ -84,7 +84,7 @@ class DocumentTypeC extends Controller
         ]);
 
         return redirect()
-            ->route('hrms.documents.types.index')
+            ->route('documents.types.index')
             ->with('success', 'Document type updated successfully.');
     }
 

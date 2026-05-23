@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\HRMS\Document\DocumentTypeM;
 use App\Models\HRMS\Document\EmployeeDocumentM;
 use App\Models\HRMS\Employee\EmployeeM;
+use App\Models\HRMS\Department\DepartmentM;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -14,12 +15,14 @@ class HRDocumentC extends Controller
 {
     public function index(Request $request)
     {
+        $departments = DepartmentM::where('is_active', 1)->orderBy('name')->get();
+
         $documentTypes = DocumentTypeM::where('scope', 'employee')
             ->where('is_active', 1)
             ->orderBy('name')
             ->get();
 
-        $query = EmployeeM::with(['user', 'documents.documentType'])
+        $query = EmployeeM::with(['user', 'profile', 'designation', 'documents.documentType'])
             ->whereHas('documents');
 
         if ($request->filled('employee')) {
@@ -58,22 +61,37 @@ class HRDocumentC extends Controller
 
         $employees = $query->latest()->paginate(20)->withQueryString();
 
-        $employees->getCollection()->transform(function ($employee) {
+        $employees->getCollection()->transform(function ($employee) use ($documentTypes) {
+            $experienceType = $employee->experience_type ?? 'fresher';
+            
+            $requiredDocs = $documentTypes->where('is_mandatory', 1)->filter(function ($type) use ($experienceType) {
+                return $type->applies_to === 'all' || $type->applies_to === $experienceType;
+            });
+            
+            $requiredIds = $requiredDocs->pluck('id');
             $documents = $employee->documents;
 
             $employee->doc_total = $documents->count();
+            $employee->doc_required = $requiredDocs->count();
             $employee->doc_verified = $documents->where('verification_status', 'verified')->count();
             $employee->doc_pending = $documents->where('verification_status', 'pending')->count();
             $employee->doc_rejected = $documents->where('verification_status', 'rejected')->count();
 
-            $employee->doc_status = ($employee->doc_total > 0 && $employee->doc_verified === $employee->doc_total)
+            $uploadedRelevant = $documents->whereIn('document_type_id', $requiredIds)->where('verification_status', '!=', 'rejected')->unique('document_type_id')->count();
+            $employee->doc_missing = max(0, $requiredDocs->count() - $uploadedRelevant);
+            
+            $employee->doc_expiring = $documents->whereNotNull('expiry_date')->filter(function($doc) {
+                return \Carbon\Carbon::parse($doc->expiry_date)->isFuture() && \Carbon\Carbon::parse($doc->expiry_date)->diffInDays(now()) <= 30;
+            })->count();
+
+            $employee->doc_status = ($employee->doc_missing === 0 && $employee->doc_pending === 0 && $employee->doc_rejected === 0 && $employee->doc_verified >= $employee->doc_required && $employee->doc_required > 0)
                 ? 'verified'
                 : 'pending';
 
             return $employee;
         });
 
-        return view('hrms.documents.hr.index', compact('employees', 'documentTypes'));
+        return view('hrms.documents.hr.index', compact('employees', 'documentTypes', 'departments'));
     }
 
     public function verifyEmployee($employee)

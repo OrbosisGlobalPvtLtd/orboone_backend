@@ -175,7 +175,7 @@
                                                 <i class="fas fa-eye"></i> View
                                             </a>
                                             @if($doc->status == 'pending')
-                                                <form action="{{ route('hrms.documents.hr.approve', $doc->id) }}" method="POST">
+                                                <form action="{{ route('documents.hr.approve', $doc->id) }}" method="POST">
                                                     @csrf
                                                     <button type="submit" class="btn-action btn-verify"><i class="fas fa-check"></i> Verify</button>
                                                 </form>
@@ -205,7 +205,7 @@
     <div class="modal fade" id="rejectModal{{ $doc->id }}" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content orb-modal">
-                <form action="{{ route('hrms.documents.hr.reject', $doc->id) }}" method="POST" style="width: 100%;">
+                <form action="{{ route('documents.hr.reject', $doc->id) }}" method="POST" style="width: 100%;">
                     @csrf
                     <div class="orb-modal-header">
                         <div>

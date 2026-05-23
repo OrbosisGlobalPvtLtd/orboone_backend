@@ -1237,7 +1237,7 @@ class DashboardResolverS
                 ['title' => 'Publish Announcement', 'icon' => 'fas fa-bullhorn', 'routes' => ['announcements', 'announcements.index', 'hrms.announcements.index']],
                 ['title' => 'Attendance Report', 'icon' => 'fas fa-calendar-check', 'routes' => ['attendances.index', 'attendances.monthly-report']],
                 ['title' => 'Open Approvals', 'icon' => 'fas fa-tasks', 'routes' => ['leave-approvals.index', 'attendances.pending-approval']],
-                ['title' => 'Documents', 'icon' => 'fas fa-file-alt', 'routes' => ['hrms.documents.hr.index', 'hrms.employee-documents.index', 'hrms.documents.index']],
+                ['title' => 'Documents', 'icon' => 'fas fa-file-alt', 'routes' => ['documents.hr.index', 'hrms.employee-documents.index', 'hrms.documents.index']],
             ],
             'hr_admin' => [
                 ['title' => 'Add Employee', 'icon' => 'fas fa-user-plus', 'routes' => ['hrms.employees.create', 'employees.create']],
@@ -1877,7 +1877,7 @@ class DashboardResolverS
                     'count' => $pendingDocs,
                     'icon' => 'fas fa-file-signature',
                     'tone' => 'danger',
-                    'url' => $this->routeUrl('hrms.documents.hr.index'),
+                    'url' => $this->routeUrl('documents.hr.index'),
                 ];
             }
 

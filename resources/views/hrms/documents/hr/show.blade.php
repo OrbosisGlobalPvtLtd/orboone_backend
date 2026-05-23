@@ -95,7 +95,7 @@
                         <td>
                             <div class="d-flex align-items-center gap-2">
                                 @if($doc && $doc->verification_status == 'pending')
-                                <form action="{{ route('hrms.documents.hr.verify', $doc->id) }}" method="POST" style="display:inline;">
+                                <form action="{{ route('documents.hr.verify', $doc->id) }}" method="POST" style="display:inline;">
                                     @csrf
                                     <button type="submit" class="dm-action-btn-pill dm-action-btn-success" onclick="return confirm('Verify this document?')">
                                         <i class="fas fa-check mr-1"></i> Verify
@@ -109,7 +109,7 @@
                                 <div class="modal fade" id="rejectModal{{ $doc->id }}" tabindex="-1" role="dialog" aria-hidden="true">
                                     <div class="modal-dialog modal-dialog-centered modal-md" role="document">
                                         <div class="modal-content" style="border: none; border-radius: 24px; overflow: hidden; box-shadow: var(--dm-shadow);">
-                                            <form action="{{ route('hrms.documents.hr.reject', $doc->id) }}" method="POST" style="width: 100%;">
+                                            <form action="{{ route('documents.hr.reject', $doc->id) }}" method="POST" style="width: 100%;">
                                                 @csrf
                                                 <div class="dm-modal-header" style="background: linear-gradient(135deg, #E11D48, #BE123C);">
                                                     <h5 class="modal-title"><i class="fas fa-times-circle mr-2"></i>Reject Document</h5>

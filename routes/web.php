@@ -1,5 +1,6 @@
 <?php
 require __DIR__ . '/Web/hrms/employee.php';
+require __DIR__ . '/Web/hrms/employee-self.php';
 require __DIR__ . '/Web/hrms/organization.php';
 require __DIR__ . '/Web/hrms/asset.php';
 require __DIR__ . '/Web/hrms/document.php';

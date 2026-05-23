@@ -158,7 +158,7 @@
                                 $empDetail = $emp->employee->employeeDetail ?? null;
                                 $photo = $empDetail->photo ?? ($empDetail->image ?? 'images/profile.png');
                             @endphp
-                            <a href="{{ route('hrms.documents.hr.show', $emp->id) }}" class="emp-card" data-name="{{ strtolower($emp->name) }}">
+                            <a href="{{ route('documents.hr.show', $emp->id) }}" class="emp-card" data-name="{{ strtolower($emp->name) }}">
                                 <img src="{{ asset($photo) }}" class="emp-avatar" onerror="this.src='{{ asset('images/profile.png') }}'">
                                 <div class="emp-info">
                                     <div class="emp-name text-truncate">{{ $emp->name }}</div>
@@ -234,7 +234,7 @@
                                         <td class="align-middle"><span class="badge badge-light px-3 py-2">{{ $doc->type->name ?? $doc->document_type }}</span></td>
                                         <td class="align-middle small text-muted">{{ $doc->created_at->diffForHumans() }}</td>
                                         <td class="text-right align-middle">
-                                            <a href="{{ route('hrms.documents.hr.show', $doc->user_id) }}" class="btn btn-primary btn-sm rounded-pill px-4 font-weight-bold">
+                                            <a href="{{ route('documents.hr.show', $doc->user_id) }}" class="btn btn-primary btn-sm rounded-pill px-4 font-weight-bold">
                                                 Review
                                             </a>
                                         </td>

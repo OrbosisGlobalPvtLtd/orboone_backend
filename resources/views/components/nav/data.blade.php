@@ -1,6 +1,6 @@
 @php
     $isAdmin = auth()->user()->isAdmin();
-    $docOpen = request()->routeIs('hrms.documents.hr.*') || request()->routeIs('hrms.hrms.documents.self.index') || request()->routeIs('hrms.hrms.documents.self.index');
+    $docOpen = request()->routeIs('documents.hr.*') || request()->routeIs('hrms.hrms.documents.self.index') || request()->routeIs('hrms.hrms.documents.self.index');
 @endphp
 
 {{-- ========== SECTION: 5. DOCUMENT MANAGEMENT ========== --}}

@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/profile', [ProfileController::class, 'getProfile']);
+    Route::get('/profile/summary', [ProfileController::class, 'getProfileSummary']);
     Route::post('/profile/update', [ProfileController::class, 'updateProfile']);
     Route::post('/update-fcm-token', [ProfileController::class, 'updateFcmToken']);
     Route::get('/holidays', [ProfileController::class, 'listHolidays']);

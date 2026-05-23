@@ -212,13 +212,13 @@ class ProfileController extends Controller
      */
         $isProfileCompleted = (bool) $profile->is_profile_completed;
 
-        $mustCompleteProfile = $isEmployee ? ! $isProfileCompleted : false;
+        $mustCompleteProfile = $isEmployee ? (! $isProfileCompleted || $profile->profile_status === 'rejected') : false;
         $attendanceBlocked = $isEmployee ? ! $canPunchAttendance : false;
 
         $nextRoute = 'dashboard';
 
         if ($mustCompleteProfile) {
-            if (! $profileFieldsCompleted) {
+            if (! $profileFieldsCompleted || $profile->profile_status === 'rejected') {
                 $nextRoute = 'profile_completion';
             } elseif (! $requiredUploaded) {
                 $nextRoute = 'document_completion';
@@ -230,6 +230,7 @@ class ProfileController extends Controller
         return [
             'is_profile_completed'         => $isProfileCompleted,
             'profile_verification_status'  => $profile->profile_status ?? 'pending',
+            'rejection_reason'             => $profile->rejection_reason,
             'document_verification_status' => $docVerificationStatus,
             'required_documents_verified'  => $requiredVerified,
             'can_punch_attendance'         => $canPunchAttendance,
@@ -377,8 +378,11 @@ class ProfileController extends Controller
                     'bank_holder_name'      => $profile->bank_holder_name,
                     'ifsc_code'             => $profile->ifsc_code,
                     'bank_branch'           => $profile->bank_branch,
+                    'profile_status'        => $profile->profile_status ?? 'pending',
+                    'rejection_reason'      => $profile->rejection_reason,
                     'is_profile_completed'  => (bool) $profile->is_profile_completed,
                     'profile_completed_at'  => $profile->profile_completed_at,
+                    'updated_at'            => $profile->updated_at ? $profile->updated_at->timestamp : time(),
                 ],
 
                 'completion_status' => $completionStatus,
@@ -581,6 +585,104 @@ class ProfileController extends Controller
                 'message' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    public function getProfileSummary()
+    {
+        $user = auth()->user();
+        $employee = EmployeeM::with([
+            'user',
+            'department',
+            'designation',
+            'systemRole',
+            'reportingManager.user',
+            'profile',
+        ])->where('user_id', auth()->id())->first();
+
+        if (!$employee) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Employee record not found.',
+                'errors'  => null,
+                'data'    => null,
+            ], 404);
+        }
+
+        $profile = $employee->profile;
+
+        if (!$profile) {
+            $profile = EmployeeProfileM::create([
+                'employee_id' => $employee->id,
+            ]);
+
+            $employee->load('profile');
+            $profile = $employee->profile;
+        }
+
+        $completionStatus = $this->buildCompletionStatus($employee, $profile);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Profile summary fetched successfully.',
+            'errors'  => null,
+            'data'    => [
+                'user' => [
+                    'id'    => $user->id,
+                    'name'  => $user->name,
+                    'email' => $user->email,
+                    'phone' => $user->phone,
+                ],
+
+                'employee' => [
+                    'id'                            => $employee->id,
+                    'user_id'                       => $employee->user_id,
+                    'employee_code'                 => $employee->employee_code,
+                    'system_role_id'                => $employee->system_role_id,
+                    'department_id'                 => $employee->department_id,
+                    'designation_id'                => $employee->designation_id,
+                    'reporting_manager_employee_id' => $employee->reporting_manager_employee_id,
+                    'employment_type'               => $employee->employment_type,
+                    'experience_type'               => $profile->experience_type ?? 'fresher',
+                    'employee_stage'                => $employee->employee_stage,
+                    'work_mode'                     => $employee->work_mode,
+                    'work_schedule_type'            => $employee->work_schedule_type,
+                    'joining_date'                  => $employee->joining_date,
+                    'employment_status'             => $employee->employment_status,
+                    'is_active'                     => $employee->is_active,
+
+                    'department' => [
+                        'id'   => $employee->department?->id,
+                        'name' => $employee->department?->name,
+                    ],
+
+                    'designation' => [
+                        'id'   => $employee->designation?->id,
+                        'name' => $employee->designation?->name,
+                    ],
+
+                    'system_role' => [
+                        'id'   => $employee->systemRole?->id,
+                        'name' => $employee->systemRole?->name,
+                    ],
+
+                    'reporting_manager' => [
+                        'id'   => $employee->reportingManager?->id,
+                        'name' => $employee->reportingManager?->user?->name,
+                    ],
+                ],
+
+                'profile' => [
+                    'id'                    => $profile->id,
+                    'employee_id'           => $profile->employee_id,
+                    'profile_image'         => $this->fileUrl($profile->profile_image),
+                    'profile_status'        => $profile->profile_status ?? 'pending',
+                    'rejection_reason'      => $profile->rejection_reason,
+                    'is_profile_completed'  => (bool) $profile->is_profile_completed,
+                ],
+
+                'completion_status' => $completionStatus,
+            ],
+        ]);
     }
 
     public function listHolidays()

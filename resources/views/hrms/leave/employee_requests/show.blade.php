@@ -157,10 +157,13 @@
 <!-- Accept Modal -->
 <div class="modal fade" id="acceptModal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-success text-white border-0">
-                <h5 class="modal-title font-weight-bold">Approve Leave Request</h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+        <div class="modal-content orb-modal">
+            <div class="orb-modal-header" style="background: linear-gradient(135deg, #10B981, #059669) !important;">
+                <div>
+                    <h5 class="modal-title" style="color: #fff !important;">Approve Leave Request</h5>
+                    <p class="orb-modal-subtitle" style="color: rgba(255,255,255,0.85) !important;">Approve the leave application details</p>
+                </div>
+                <button type="button" class="close btn-close btn-close-white" data-dismiss="modal" aria-label="Close" style="color:#fff; opacity:1; border:0; background:transparent; font-size:24px; padding:0; outline:none; line-height:1;">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
@@ -168,18 +171,20 @@
                 @csrf
                 @method('PUT')
                 <input type="hidden" name="type" value="accept">
-                <div class="modal-body py-4 text-center">
-                    <i class="fas fa-check-circle fa-4x text-success mb-3"></i>
-                    <h5 class="mb-3 font-weight-bold">Are you sure?</h5>
-                    <p class="text-muted mb-4">You are about to approve <strong>{{ $diff + 1 }} days</strong> of <strong>{{ $employeeLeaveRequest->leave_type ?? 'Paid Leave' }}</strong> for {{ optional($employeeLeaveRequest->employee)->display_name }}.</p>
-                    <div class="form-group text-left">
-                        <label class="font-weight-bold text-dark small">Admin Remarks (Optional)</label>
-                        <textarea name="comment" class="form-control" rows="3" placeholder="Add a comment for the employee..."></textarea>
+                <div class="modal-body orb-modal-body text-center">
+                    <div class="orb-form-section" style="background:#fff !important; border:0 !important; margin-bottom:0 !important; padding:10px !important;">
+                        <i class="fas fa-check-circle fa-4x text-success mb-3"></i>
+                        <h5 class="mb-3 font-weight-bold" style="color: var(--orb-text);">Are you sure?</h5>
+                        <p class="text-muted mb-4">You are about to approve <strong>{{ $diff + 1 }} days</strong> of <strong>{{ $employeeLeaveRequest->leave_type ?? 'Paid Leave' }}</strong> for {{ optional($employeeLeaveRequest->employee)->display_name }}. </p>
+                        <div class="form-group text-left">
+                            <label class="orb-form-label" style="text-align: left; display: block; margin-bottom: 8px;">Admin Remarks (Optional)</label>
+                            <textarea name="comment" class="form-control" rows="3" placeholder="Add a comment for the employee..."></textarea>
+                        </div>
                     </div>
                 </div>
-                <div class="modal-footer bg-light border-0">
-                    <button type="button" class="btn btn-secondary px-4" data-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success px-4 font-weight-bold shadow-sm">Confirm & Approve</button>
+                <div class="modal-footer orb-modal-footer">
+                    <button type="button" class="orb-btn-light" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="orb-btn-primary" style="background: linear-gradient(135deg, #10B981, #059669) !important; border-color: #059669 !important;">Confirm & Approve</button>
                 </div>
             </form>
         </div>
@@ -189,28 +194,33 @@
 <!-- Reject Modal -->
 <div class="modal fade" id="rejectModal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-danger text-white border-0">
-                <h5 class="modal-title font-weight-bold">Reject Leave Request</h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+        <div class="modal-content orb-modal">
+            <div class="orb-modal-header" style="background: linear-gradient(135deg, #EF4444, #DC2626) !important;">
+                <div>
+                    <h5 class="modal-title" style="color: #fff !important;">Reject Leave Request</h5>
+                    <p class="orb-modal-subtitle" style="color: rgba(255,255,255,0.85) !important;">Decline the leave application with reason</p>
+                </div>
+                <button type="button" class="close btn-close btn-close-white" data-dismiss="modal" aria-label="Close" style="color:#fff; opacity:1; border:0; background:transparent; font-size:24px; padding:0; outline:none; line-height:1;">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
             <form action="{{ route('employees-leave-request.destroy', ['employeeLeaveRequest' => $employeeLeaveRequest->id]) }}" method="POST">
                 @csrf
                 @method('DELETE')
-                <div class="modal-body py-4 text-center">
-                    <i class="fas fa-times-circle fa-4x text-danger mb-3"></i>
-                    <h5 class="mb-3 font-weight-bold">Decline Application?</h5>
-                    <p class="text-muted mb-4 text-center">Please provide a reason for rejecting this leave request.</p>
-                    <div class="form-group text-left">
-                        <label class="font-weight-bold text-danger small">Rejection Reason (Required)</label>
-                        <textarea name="comment" class="form-control border-danger" rows="3" placeholder="Explain why the leave is rejected..." required></textarea>
+                <div class="modal-body orb-modal-body text-center">
+                    <div class="orb-form-section" style="background:#fff !important; border:0 !important; margin-bottom:0 !important; padding:10px !important;">
+                        <i class="fas fa-times-circle fa-4x text-danger mb-3"></i>
+                        <h5 class="mb-3 font-weight-bold" style="color: var(--orb-text);">Decline Application?</h5>
+                        <p class="text-muted mb-4">Please provide a reason for rejecting this leave request.</p>
+                        <div class="form-group text-left">
+                            <label class="orb-form-label" style="text-align: left; display: block; margin-bottom: 8px;">Rejection Reason <span class="text-danger">*</span></label>
+                            <textarea name="comment" class="form-control" rows="3" placeholder="Explain why the leave is rejected..." required></textarea>
+                        </div>
                     </div>
                 </div>
-                <div class="modal-footer bg-light border-0">
-                    <button type="button" class="btn btn-secondary px-4" data-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-danger px-4 font-weight-bold shadow-sm">Confirm & Reject</button>
+                <div class="modal-footer orb-modal-footer">
+                    <button type="button" class="orb-btn-light" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="orb-btn-primary" style="background: linear-gradient(135deg, #EF4444, #DC2626) !important; border-color: #DC2626 !important;">Confirm & Reject</button>
                 </div>
             </form>
         </div>

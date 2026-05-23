@@ -1318,7 +1318,7 @@ $employeeDocuments = $employeeDocuments ?? collect();
                     <div class="em-card-head">
                         <div>
                             <h5 class="em-card-title"><i class="fas fa-folder-open mr-2"></i>Employee Documents</h5>
-                            <div class="em-card-sub">Uploaded employee documents. Edit mode me upload/re-upload option show hoga.</div>
+                            <div class="em-card-sub">Uploaded employee documents. The upload/re-upload option will be available in edit mode.</div>
                         </div>
                     </div>
 

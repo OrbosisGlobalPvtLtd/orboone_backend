@@ -238,21 +238,30 @@
 </div>
 
 <!-- Delete Confirmation Modal -->
-<div class="modal fade" id="deleteAssetModal" tabindex="-1" role="dialog" aria-hidden="true" style="backdrop-filter: blur(5px);">
+<div class="modal fade" id="deleteAssetModal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
-        <div class="modal-content border-0" style="border-radius: 20px; box-shadow: 0 15px 45px rgba(0,0,0,0.2);">
-            <div class="modal-body text-center p-5">
-                <div class="mb-4">
-                    <div style="width: 80px; height: 80px; border-radius: 50%; background: #ffe5e5; display: inline-flex; align-items: center; justify-content: center;">
-                        <i class="fas fa-exclamation-triangle fa-3x" style="color: #e74a3b;"></i>
+        <div class="modal-content orb-modal">
+            <div class="orb-modal-header" style="background: linear-gradient(135deg, #DC2626, #EC4E74) !important;">
+                <div>
+                    <h5 class="modal-title">Delete Asset Record</h5>
+                    <p class="orb-modal-subtitle">Permanently remove this asset allocation</p>
+                </div>
+                <button type="button" class="close btn-close btn-close-white" data-dismiss="modal" aria-label="Close" style="color:#fff; opacity:1; border:0; background:transparent; font-size:24px; padding:0; outline:none; line-height:1;">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body orb-modal-body text-center p-4">
+                <div class="mb-4 mt-2">
+                    <div style="width: 80px; height: 80px; border-radius: 50%; background: #ffe5e5; display: inline-flex; align-items: center; justify-content: center; margin: 0 auto;">
+                        <i class="fas fa-exclamation-triangle fa-2x" style="color: #dc3545;"></i>
                     </div>
                 </div>
-                <h4 class="font-weight-bold text-dark mb-3">Delete Asset Record?</h4>
-                <p class="text-muted mb-4" style="line-height: 1.6;">You are about to permanently delete this asset allocation. This action cannot be undone. Are you absolutely sure you wish to proceed?</p>
-                <div class="d-flex justify-content-center mt-4">
-                    <button type="button" class="btn btn-light px-4 py-2 mr-3" style="border-radius: 50px; font-weight: 600;" data-dismiss="modal">Cancel</button>
-                    <button type="button" id="confirmDeleteActionBtn" class="btn px-4 py-2 text-white" style="background: #e74a3b; border-radius: 50px; font-weight: 600; box-shadow: 0 4px 15px rgba(231, 74, 59, 0.4); transition: transform 0.2s;">Yes, Delete it!</button>
-                </div>
+                <h5 class="font-weight-bold mb-3" style="color: var(--orb-text);">Are you absolutely sure?</h5>
+                <p class="text-muted mb-4" style="line-height: 1.6;">You are about to permanently delete this asset allocation. This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer orb-modal-footer">
+                <button type="button" class="orb-btn-light" data-dismiss="modal">Cancel</button>
+                <button type="button" id="confirmDeleteActionBtn" class="orb-btn-primary" style="background: linear-gradient(135deg, #DC2626, #EC4E74) !important; border: 0 !important;">Yes, Delete it!</button>
             </div>
         </div>
     </div>

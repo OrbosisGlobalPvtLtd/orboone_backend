@@ -176,6 +176,52 @@
         overflow: hidden;
     }
 
+    .announcement-modal {
+        position: fixed !important;
+        inset: 0 !important;
+        z-index: 30000 !important;
+        padding-left: 0 !important;
+    }
+
+    .announcement-modal .modal-dialog {
+        margin: 1.75rem auto !important;
+        max-width: 1040px;
+        transform: none;
+    }
+
+    .announcement-modal .modal-content {
+        border: 0;
+        border-radius: 24px;
+        overflow: hidden;
+        max-height: calc(100vh - 56px);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .announcement-modal .modal-body {
+        overflow-y: auto;
+        max-height: calc(100vh - 230px);
+        padding: 26px 30px;
+    }
+
+    .announcement-modal .modal-footer {
+        flex-shrink: 0;
+        padding: 20px 30px;
+        background: #fff;
+        border-top: 1px solid var(--orb-border);
+        display: flex;
+        justify-content: flex-end;
+        gap: 14px;
+    }
+
+    .modal-backdrop {
+        z-index: 29990 !important;
+    }
+
+    body.modal-open {
+        overflow: hidden;
+    }
+
     .modal-header {
         background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary));
         color: #fff;
@@ -209,7 +255,7 @@
             </p>
         </div>
 
-        <div class="d-flex gap-2 flex-wrap">
+        <div class="d-flex flex-column flex-sm-row gap-2 w-100 w-sm-auto">
 
             @if($permissions['canPrint'])
             <a href="{{ route('announcements.print') }}"
@@ -345,232 +391,151 @@
 
 </div>
 
-<div class="modal fade"
-    id="announcementModal"
-    tabindex="-1">
-
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-
-        <form method="POST"
-            action="{{ route('announcements.store') }}"
-            enctype="multipart/form-data"
-            class="modal-content"
-            id="announcementForm">
-
-            @csrf
-
-            <input type="hidden"
-                name="_method"
-                id="formMethod"
-                value="POST">
-
-            <div class="modal-header">
-
-                <h5 class="modal-title fw-bold"
-                    id="modalTitle">
-                    Publish Announcement
-                </h5>
-
-                <button type="button"
-                    class="btn-close btn-close-white"
-                    data-bs-dismiss="modal"
-                    data-dismiss="modal">
+<div class="modal fade" id="announcementModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content orb-modal">
+            <div class="orb-modal-header">
+                <div>
+                    <h5 class="modal-title" id="modalTitle">Publish Announcement</h5>
+                    <p class="orb-modal-subtitle">Post general notices, holiday updates, emergency warnings or policy changes.</p>
+                </div>
+                <button type="button" class="close btn-close btn-close-white" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close" style="color:#fff; opacity:1; border:0; background:transparent; font-size:24px; padding:0; outline:none; line-height:1;">
+                    <span aria-hidden="true">&times;</span>
                 </button>
-
             </div>
 
-            <div class="modal-body p-4">
+            <form method="POST" action="{{ route('announcements.store') }}" enctype="multipart/form-data" id="announcementForm">
+                @csrf
+                <input type="hidden" name="_method" id="formMethod" value="POST">
 
-                <div class="row g-3">
-
-                    <div class="col-md-12">
-                        <label class="fw-bold mb-1">Title</label>
-
-                        <input type="text"
-                            name="title"
-                            id="title"
-                            class="form-control"
-                            required>
-                    </div>
-
-                    <div class="col-md-12">
-
-                        <label class="fw-bold mb-1">Description</label>
-
-                        <textarea name="description"
-                            id="description"
-                            rows="4"
-                            class="form-control"
-                            required></textarea>
-
-                    </div>
-
-                    <div class="col-md-4">
-
-                        <label class="fw-bold mb-1">Type</label>
-
-                        <select name="type"
-                            id="type"
-                            class="form-select"
-                            required>
-
-                            <option value="general">General</option>
-                            <option value="holiday">Holiday</option>
-                            <option value="emergency">Emergency</option>
-                            <option value="policy">Policy</option>
-                            <option value="meeting">Meeting</option>
-
-                        </select>
-
-                    </div>
-
-                    <div class="col-md-4">
-
-                        <label class="fw-bold mb-1">Priority</label>
-
-                        <select name="priority"
-                            id="priority"
-                            class="form-select"
-                            required>
-
-                            <option value="low">Low</option>
-                            <option value="normal" selected>Normal</option>
-                            <option value="high">High</option>
-                            <option value="urgent">Urgent</option>
-
-                        </select>
-
-                    </div>
-
-                    <div class="col-md-4">
-
-                        <label class="fw-bold mb-1">Target</label>
-
-                        <select name="target_type"
-                            id="target_type"
-                            class="form-select"
-                            required>
-
-                            <option value="all">All</option>
-                            <option value="employee">Employee</option>
-                            <option value="admin">Admin</option>
-                            <option value="hr">HR</option>
-                            <option value="role">Specific Role</option>
-                            <option value="department">Specific Department</option>
-                            <option value="user">Specific User</option>
-
-                        </select>
-
-                    </div>
-
-                    <div class="col-md-4 target-input d-none" id="target_role_div">
-                        <label class="fw-bold mb-1">Select Role</label>
-                        <select name="target_role_id" id="target_role_id" class="form-select">
-                            <option value="">-- Choose Role --</option>
-                            @foreach($roles as $role)
-                            <option value="{{ $role->id }}">{{ $role->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div class="col-md-4 target-input d-none" id="target_department_div">
-                        <label class="fw-bold mb-1">Select Department</label>
-                        <select name="target_department_id" id="target_department_id" class="form-select">
-                            <option value="">-- Choose Dept --</option>
-                            @foreach($departments as $dept)
-                            <option value="{{ $dept->id }}">{{ $dept->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div class="col-md-4 target-input d-none" id="target_user_div">
-                        <label class="fw-bold mb-1">Select User</label>
-                        <select name="target_user_id" id="target_user_id" class="form-select">
-                            <option value="">-- Choose User --</option>
-                            @foreach($users as $targetUser)
-                            <option value="{{ $targetUser->id }}">{{ $targetUser->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div class="col-md-4">
-
-                        <label class="fw-bold mb-1">Start Date</label>
-
-                        <input type="date"
-                            name="start_date"
-                            id="start_date"
-                            class="form-control">
-
-                    </div>
-
-                    <div class="col-md-4">
-
-                        <label class="fw-bold mb-1">End Date</label>
-
-                        <input type="date"
-                            name="end_date"
-                            id="end_date"
-                            class="form-control">
-
-                    </div>
-
-                    <input type="file"
-                        name="attachment"
-                        id="attachment"
-                        class="form-control">
-
-                    <div id="currentAttachment" class="mt-2 d-none">
-                        <small class="text-muted d-block mb-1">Current Attachment:</small>
-                        <div id="attachmentPreview" class="p-2 border rounded-3 bg-light d-flex align-items-center gap-2">
-                            <i class="fas fa-file"></i>
-                            <a href="#" target="_blank" id="attachmentLink" class="text-primary fw-bold small text-truncate">View File</a>
+                <div class="modal-body orb-modal-body">
+                    <!-- Section 1: Content -->
+                    <div class="orb-form-section">
+                        <div class="orb-form-section-title">
+                            <i class="fas fa-edit"></i> Announcement Content
+                        </div>
+                        <div class="orb-form-grid" style="grid-template-columns: 1fr;">
+                            <div>
+                                <label class="orb-form-label">Title <span class="text-danger">*</span></label>
+                                <input type="text" name="title" id="title" class="form-control" required>
+                            </div>
+                            <div>
+                                <label class="orb-form-label">Description <span class="text-danger">*</span></label>
+                                <textarea name="description" id="description" rows="4" class="form-control" required></textarea>
+                            </div>
                         </div>
                     </div>
 
+                    <!-- Section 2: Distribution Settings -->
+                    <div class="orb-form-section">
+                        <div class="orb-form-section-title">
+                            <i class="fas fa-cog"></i> Settings & Target Audience
+                        </div>
+                        <div class="orb-form-grid-3">
+                            <div>
+                                <label class="orb-form-label">Type <span class="text-danger">*</span></label>
+                                <select name="type" id="type" class="form-control" required>
+                                    <option value="general">General</option>
+                                    <option value="holiday">Holiday</option>
+                                    <option value="emergency">Emergency</option>
+                                    <option value="policy">Policy</option>
+                                    <option value="meeting">Meeting</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="orb-form-label">Priority <span class="text-danger">*</span></label>
+                                <select name="priority" id="priority" class="form-control" required>
+                                    <option value="low">Low</option>
+                                    <option value="normal" selected>Normal</option>
+                                    <option value="high">High</option>
+                                    <option value="urgent">Urgent</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="orb-form-label">Target Audience <span class="text-danger">*</span></label>
+                                <select name="target_type" id="target_type" class="form-control" required>
+                                    <option value="all">All</option>
+                                    <option value="employee">Employee</option>
+                                    <option value="admin">Admin</option>
+                                    <option value="hr">HR</option>
+                                    <option value="role">Specific Role</option>
+                                    <option value="department">Specific Department</option>
+                                    <option value="user">Specific User</option>
+                                </select>
+                            </div>
+
+                            <div class="target-input d-none orb-col-span-3" id="target_role_div">
+                                <label class="orb-form-label">Select Role <span class="text-danger">*</span></label>
+                                <select name="target_role_id" id="target_role_id" class="form-control">
+                                    <option value="">-- Choose Role --</option>
+                                    @foreach($roles as $role)
+                                        <option value="{{ $role->id }}">{{ $role->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div class="target-input d-none orb-col-span-3" id="target_department_div">
+                                <label class="orb-form-label">Select Department <span class="text-danger">*</span></label>
+                                <select name="target_department_id" id="target_department_id" class="form-control">
+                                    <option value="">-- Choose Dept --</option>
+                                    @foreach($departments as $dept)
+                                        <option value="{{ $dept->id }}">{{ $dept->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div class="target-input d-none orb-col-span-3" id="target_user_div">
+                                <label class="orb-form-label">Select User <span class="text-danger">*</span></label>
+                                <select name="target_user_id" id="target_user_id" class="form-control">
+                                    <option value="">-- Choose User --</option>
+                                    @foreach($users as $targetUser)
+                                        <option value="{{ $targetUser->id }}">{{ $targetUser->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="orb-form-label">Start Date</label>
+                                <input type="date" name="start_date" id="start_date" class="form-control">
+                            </div>
+                            <div>
+                                <label class="orb-form-label">End Date</label>
+                                <input type="date" name="end_date" id="end_date" class="form-control">
+                            </div>
+                            <div>
+                                <label class="orb-form-label">Attachment</label>
+                                <input type="file" name="attachment" id="attachment" class="form-control">
+                            </div>
+
+                            <div id="currentAttachment" class="mt-2 d-none orb-col-span-3">
+                                <small class="text-muted d-block mb-1">Current Attachment:</small>
+                                <div id="attachmentPreview" class="p-2 border rounded-3 bg-light d-flex align-items-center gap-2">
+                                    <i class="fas fa-file"></i>
+                                    <a href="#" target="_blank" id="attachmentLink" class="text-primary fw-bold small text-truncate">View File</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 3: Publishing Options -->
+                    <div class="orb-form-section">
+                        <div class="orb-form-section-title">
+                            <i class="fas fa-toggle-on"></i> Publishing Options
+                        </div>
+                        <div class="custom-control custom-switch">
+                            <input type="checkbox" class="custom-control-input" name="is_active" id="is_active" value="1" checked>
+                            <label class="custom-control-label font-weight-bold" for="is_active">Active / Publish Now</label>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="col-md-12">
-
-                    <label class="d-flex align-items-center gap-2 fw-bold">
-
-                        <input type="checkbox"
-                            name="is_active"
-                            id="is_active"
-                            value="1"
-                            checked>
-
-                        Active / Publish Now
-
-                    </label>
-
+                <div class="modal-footer orb-modal-footer">
+                    <button type="button" class="orb-btn-light" data-dismiss="modal" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="orb-btn-primary" id="submitBtn"><i class="fas fa-paper-plane"></i> Publish Announcement</button>
                 </div>
-
-            </div>
-
+            </form>
+        </div>
     </div>
-
-    <div class="modal-footer p-3">
-
-        <button type="button"
-            class="btn btn-soft"
-            data-bs-dismiss="modal"
-            data-dismiss="modal">
-            Cancel
-        </button>
-
-        <button type="submit"
-            class="btn btn-orb"
-            id="submitBtn">
-            Publish Announcement
-        </button>
-
-    </div>
-
-    </form>
-
-</div>
-
 </div>
 
 @endsection

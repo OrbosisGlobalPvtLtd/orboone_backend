@@ -228,9 +228,24 @@
     }
 
     .leave-table-responsive {
-        overflow-x: auto;
-        border-radius: 18px;
+        border: none;
+        overflow: visible;
+    }
+
+    .dataTables_scroll {
         border: 1px solid var(--leave-border);
+        border-radius: 18px;
+        overflow: hidden;
+        background: #fff;
+    }
+    
+    .dataTables_scrollHead {
+        background: #F9FAFB;
+        border-bottom: 1px solid var(--leave-border) !important;
+    }
+    
+    .dataTables_scrollBody {
+        border-top: none !important;
     }
 
     .leave-table {
@@ -377,19 +392,19 @@
     .leave-actions {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
     }
 
     .leave-action-btn {
         border: 0;
         border-radius: 12px;
-        height: 34px;
-        padding: 0 14px;
-        font-size: 12px;
+        height: 30px;
+        padding: 0 10px;
+        font-size: 11px;
         font-weight: 900;
         display: inline-flex;
         align-items: center;
-        gap: 6px;
+        gap: 4px;
         transition: all .2s ease;
     }
 
@@ -403,6 +418,12 @@
         background: #FEF3F2;
         color: #B42318;
         border: 1px solid #FECDCA;
+    }
+
+    .details-btn {
+        background: #EFF8FF;
+        color: #175CD3;
+        border: 1px solid #B2DDFF;
     }
 
     .processed-text {
@@ -478,39 +499,51 @@
 @section('_content')
 <div class="leave-page-wrap">
 
-    <div class="leave-hero">
-        <div class="leave-hero-content">
-            <div>
-                <div class="leave-hero-kicker">
-                    <i class="fas fa-user-check"></i>
-                    HRMS Leave Approval Panel
-                </div>
-                <h1 class="leave-hero-title">Leave Approvals</h1>
-                <div class="leave-hero-subtitle">
-                    Approve or reject employee leave requests with payroll impact, leave balance deduction, attendance sync and complete approval workflow tracking.
-                </div>
+    <div class="orb-page-header">
+        <div class="orb-page-header-content">
+            <div class="orb-page-kicker">
+                <i class="fas fa-user-check"></i> HRMS &bull; Leave Approval Panel
             </div>
+            <h1 class="orb-page-title">Leave Approvals</h1>
+            <p class="orb-page-subtitle">
+                Approve or reject employee leave requests with payroll impact, leave balance deduction, attendance sync and complete approval workflow tracking.
+            </p>
         </div>
     </div>
 
     @include('hrms.leave.shared.flash')
 
-    <div class="leave-card">
-        <div class="leave-card-head">
+    <div class="orb-table-card">
+        <div class="orb-table-toolbar justify-content-between align-items-end flex-wrap gap-3">
             <div class="leave-card-title-wrap">
                 <div class="leave-card-icon">
-                    <i class="fas fa-filter"></i>
+                    <i class="fas fa-calendar-check"></i>
                 </div>
                 <div>
-                    <h5 class="leave-card-title">Filter Leave Requests</h5>
+                    <h5 class="leave-card-title">Leave Approval Requests</h5>
                     <div class="leave-card-subtitle">
-                        Filters auto-apply when changed. Use reset to clear all filters.
+                        Manage employee leave requests with payroll and attendance impact.
                     </div>
                 </div>
             </div>
+
+            <div class="orb-page-actions">
+                <button type="button" class="orb-btn-light py-2 px-3 h-auto" style="min-height: 38px !important; border-radius: 12px !important;" onclick="triggerLeaveExport('csv');">
+                    <i class="fas fa-file-csv"></i> CSV
+                </button>
+                <button type="button" class="orb-btn-light py-2 px-3 h-auto" style="min-height: 38px !important; border-radius: 12px !important;" onclick="triggerLeaveExport('excel');">
+                    <i class="fas fa-file-excel text-success"></i> Excel
+                </button>
+                <button type="button" class="orb-btn-light py-2 px-3 h-auto" style="min-height: 38px !important; border-radius: 12px !important;" onclick="triggerLeaveExport('pdf');">
+                    <i class="fas fa-file-pdf text-danger"></i> PDF
+                </button>
+                <button type="button" class="orb-btn-light py-2 px-3 h-auto" style="min-height: 38px !important; border-radius: 12px !important;" onclick="triggerLeaveExport('print');">
+                    <i class="fas fa-print"></i> Print
+                </button>
+            </div>
         </div>
 
-        <div class="leave-card-body">
+        <div class="orb-table-toolbar d-block py-3">
             <form id="leaveApprovalFilterForm" method="GET">
                 <div class="leave-filter-grid">
 
@@ -552,60 +585,28 @@
 
                     <div>
                         <div class="leave-label">Reset</div>
-                        <a href="{{ url()->current() }}" class="leave-reset-btn w-100">
-                            <i class="fas fa-undo"></i>
-                            Reset Filter
+                        <a href="{{ url()->current() }}" class="orb-btn-light w-100 py-2 px-3 h-auto justify-content-center" style="min-height: 44px !important; border-radius: 14px !important;">
+                            <i class="fas fa-undo"></i> Reset Filter
                         </a>
                     </div>
 
                 </div>
             </form>
         </div>
-    </div>
 
-    <div class="leave-card">
-        <div class="leave-card-head">
-            <div class="leave-card-title-wrap">
-                <div class="leave-card-icon">
-                    <i class="fas fa-calendar-check"></i>
-                </div>
-                <div>
-                    <h5 class="leave-card-title">Leave Approval Requests</h5>
-                    <div class="leave-card-subtitle">
-                        Manage employee leave requests with payroll and attendance impact.
-                    </div>
-                </div>
-            </div>
-
-            <div class="leave-action-wrap">
-                <button type="button" class="leave-light-btn" onclick="triggerLeaveExport('csv');">
-                    <i class="fas fa-file-csv"></i> CSV
-                </button>
-                <button type="button" class="leave-light-btn" onclick="triggerLeaveExport('excel');">
-                    <i class="fas fa-file-excel text-success"></i> Excel
-                </button>
-                <button type="button" class="leave-light-btn" onclick="triggerLeaveExport('pdf');">
-                    <i class="fas fa-file-pdf text-danger"></i> PDF
-                </button>
-                <button type="button" class="leave-light-btn" onclick="triggerLeaveExport('print');">
-                    <i class="fas fa-print"></i> Print
-                </button>
-            </div>
-        </div>
-
-        <div class="leave-table-wrap">
+        <div class="orb-table-wrapper leave-table-wrap">
             <div class="leave-table-responsive">
-                <table class="leave-table js-datatable">
+                <table class="leave-table js-leave-approval-datatable">
                     <thead>
                         <tr>
-                            <th>S.No.</th>
+                            <th data-orderable="false" data-searchable="false">S.No.</th>
                             <th>Employee</th>
                             <th>Leave Type</th>
                             <th>Period</th>
                             <th>Days</th>
                             <th>Balance Split</th>
                             <th>Status</th>
-                            <th>Actions</th>
+                            <th class="text-end" data-orderable="false" data-searchable="false" style="width: 190px;">Actions</th>
                         </tr>
                     </thead>
 
@@ -673,30 +674,29 @@
                                 </span>
                             </td>
 
-                            <td>
-                                @if($request->status === 'pending')
-                                <div class="leave-actions">
-                                    <form method="POST" action="{{ route('leave-approvals.approve', $request->id) }}" class="d-inline">
-                                        @csrf
-                                        <button class="leave-action-btn approve-btn">
-                                            <i class="fas fa-check"></i> Approve
-                                        </button>
-                                    </form>
+                            <td class="text-end">
+                                <div class="leave-actions justify-content-end">
+                                    <button class="leave-action-btn details-btn" type="button" data-toggle="modal" data-bs-toggle="modal" data-target="#detailsModal-{{ $request->id }}" data-bs-target="#detailsModal-{{ $request->id }}">
+                                        <i class="fas fa-eye"></i> Details
+                                    </button>
 
-                                    <form method="POST" action="{{ route('leave-approvals.reject', $request->id) }}" class="d-inline">
-                                        @csrf
-                                        <input type="hidden" name="reason" value="Rejected from approval list">
-                                        <button class="leave-action-btn reject-btn">
+                                    @if($request->status === 'pending')
+                                        @if(auth()->user()->hasPermission('leave.approvals.approve'))
+                                        <form method="POST" action="{{ route('leave-approvals.approve', $request->id) }}" class="d-inline" onsubmit="return confirm('Are you sure you want to approve the leave request for {{ $employeeName }}?')">
+                                            @csrf
+                                            <button class="leave-action-btn approve-btn" type="submit">
+                                                <i class="fas fa-check"></i> Approve
+                                            </button>
+                                        </form>
+                                        @endif
+
+                                        @if(auth()->user()->hasPermission('leave.approvals.reject'))
+                                        <button class="leave-action-btn reject-btn" type="button" data-toggle="modal" data-bs-toggle="modal" data-target="#rejectModal-{{ $request->id }}" data-bs-target="#rejectModal-{{ $request->id }}">
                                             <i class="fas fa-times"></i> Reject
                                         </button>
-                                    </form>
+                                        @endif
+                                    @endif
                                 </div>
-                                @else
-                                <span class="processed-text">
-                                    <i class="fas fa-check-circle mr-1"></i>
-                                    Already Processed
-                                </span>
-                                @endif
                             </td>
                         </tr>
                         @empty
@@ -726,6 +726,158 @@
         </div>
     </div>
 
+    <!-- Modals (Rendered outside table to prevent markup corruption and layout issues) -->
+    @foreach($requests as $request)
+        @php
+        $employeeName = optional($request->employee)->display_name ?? 'Unknown Employee';
+        $employeeCode = optional($request->employee)->employee_code ?? 'EMP';
+        $leaveType = optional($request->leaveType)->name ?? 'Leave';
+        $initial = strtoupper(substr(trim($employeeName),0,1));
+
+        $statusClass = 'pill-pending';
+        if($request->status === 'approved'){
+            $statusClass = 'pill-approved';
+        }elseif($request->status === 'rejected'){
+            $statusClass = 'pill-rejected';
+        }elseif($request->status === 'cancelled'){
+            $statusClass = 'pill-cancelled';
+        }
+        @endphp
+
+        <!-- Details Modal -->
+        <div class="modal fade" id="detailsModal-{{ $request->id }}" tabindex="-1" role="dialog" aria-labelledby="detailsModalLabel-{{ $request->id }}" aria-hidden="true" style="white-space: normal;">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content leave-modal-content">
+                    <div class="modal-header leave-modal-header">
+                        <div>
+                            <h5 class="leave-modal-title" id="detailsModalLabel-{{ $request->id }}">Leave Request Details</h5>
+                            <div class="leave-modal-subtitle">{{ $employeeName }} · {{ $employeeCode }}</div>
+                        </div>
+                        <button type="button" class="close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close">
+                            <span>&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body leave-modal-body">
+                        <div class="leave-modal-section mb-0">
+                            <div class="d-flex align-items-center mb-4">
+                                <div class="leave-avatar mr-3" style="width:48px; height:48px; font-size:18px; display: flex; align-items: center; justify-content: center;">{{ $initial }}</div>
+                                <div>
+                                    <h6 class="mb-0" style="font-weight:900; color:var(--leave-text); font-size:15px;">{{ $employeeName }}</h6>
+                                    <small class="text-muted" style="font-weight:700;">Employee Code: {{ $employeeCode }}</small>
+                                </div>
+                            </div>
+
+                            <table class="table table-bordered" style="font-size:13px; margin-bottom:0;">
+                                <tbody>
+                                    <tr>
+                                        <td style="font-weight:700; width:40%; background:#F9FAFB; color:var(--leave-text);">Leave Type</td>
+                                        <td><span class="badge badge-soft" style="background:var(--leave-soft); color:var(--leave-primary); font-weight:700; padding:5px 10px; border-radius:6px;">{{ $leaveType }}</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="font-weight:700; background:#F9FAFB; color:var(--leave-text);">Period</td>
+                                        <td style="font-weight:800; color:var(--leave-text);">
+                                            {{ optional($request->start_date)->format('d M Y') }}
+                                            to
+                                            {{ optional($request->end_date)->format('d M Y') }}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="font-weight:700; background:#F9FAFB; color:var(--leave-text);">Deducted Days</td>
+                                        <td style="font-weight:800; color:var(--leave-text);">{{ $request->deducted_days }} Days</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="font-weight:700; background:#F9FAFB; color:var(--leave-text);">Balance Split</td>
+                                        <td>
+                                            <div class="leave-split" style="min-width:auto;">
+                                                <div class="leave-split-item"><span>Paid Days</span><span class="leave-split-value">{{ $request->paid_days }}</span></div>
+                                                <div class="leave-split-item"><span>Sick Days</span><span class="leave-split-value">{{ $request->sick_days }}</span></div>
+                                                <div class="leave-split-item"><span>Comp Off Days</span><span class="leave-split-value">{{ $request->comp_off_days }}</span></div>
+                                                <div class="leave-split-item"><span>LWP Days</span><span class="leave-split-value">{{ $request->lwp_days }}</span></div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="font-weight:700; background:#F9FAFB; color:var(--leave-text);">Reason</td>
+                                        <td style="white-space:normal; word-break:break-word; color:var(--leave-text);">{{ $request->reason ?: 'No reason provided.' }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="font-weight:700; background:#F9FAFB; color:var(--leave-text);">Status</td>
+                                        <td>
+                                            <span class="leave-pill {{ $statusClass }}">
+                                                <i class="fas fa-circle" style="font-size:6px; margin-right:4px;"></i>
+                                                {{ ucfirst($request->status) }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    @if($request->status === 'rejected' && $request->rejection_reason)
+                                    <tr>
+                                        <td style="font-weight:700; background:#F9FAFB; color:#B42318;">Rejection Reason</td>
+                                        <td style="white-space:normal; word-break:break-word; color:#B42318; font-weight:600;">{{ $request->rejection_reason }}</td>
+                                    </tr>
+                                    @endif
+                                    @if($request->approver)
+                                    <tr>
+                                        <td style="font-weight:700; background:#F9FAFB; color:var(--leave-text);">Processed By</td>
+                                        <td style="color:var(--leave-text);">{{ $request->approver->name }}</td>
+                                    </tr>
+                                    @endif
+                                    @if($request->approved_at)
+                                    <tr>
+                                        <td style="font-weight:700; background:#F9FAFB; color:var(--leave-text);">Processed At</td>
+                                        <td style="color:var(--leave-text);">{{ \Carbon\Carbon::parse($request->approved_at)->format('d M Y h:i A') }}</td>
+                                    </tr>
+                                    @endif
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="modal-footer leave-modal-footer">
+                        <button type="button" class="leave-modal-btn leave-modal-btn-light w-100" data-dismiss="modal" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if($request->status === 'pending')
+        <!-- Reject Modal -->
+        <div class="modal fade" id="rejectModal-{{ $request->id }}" tabindex="-1" role="dialog" aria-labelledby="rejectModalLabel-{{ $request->id }}" aria-hidden="true" style="white-space: normal;">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content leave-modal-content">
+                    <div class="modal-header leave-modal-header" style="background: linear-gradient(135deg, #e11d48, #be123c) !important;">
+                        <div>
+                            <h5 class="leave-modal-title" id="rejectModalLabel-{{ $request->id }}">Reject Leave Request</h5>
+                            <div class="leave-modal-subtitle">{{ $employeeName }} · {{ $employeeCode }}</div>
+                        </div>
+                        <button type="button" class="close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close">
+                            <span>&times;</span>
+                        </button>
+                    </div>
+                    <form method="POST" action="{{ route('leave-approvals.reject', $request->id) }}">
+                        @csrf
+                        <div class="modal-body leave-modal-body">
+                            <div class="leave-modal-section mb-0">
+                                <div class="mb-3">
+                                    <p class="text-muted" style="font-size:13px; font-weight:600; margin-bottom:0;">
+                                        Are you sure you want to reject the leave request for <strong>{{ $employeeName }}</strong>?
+                                    </p>
+                                </div>
+                                <div class="form-floating">
+                                    <textarea name="reason" class="form-control" style="height:120px;" placeholder="Reason" required minlength="3"></textarea>
+                                    <label>Reason for Rejection <span class="text-danger">*</span></label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer leave-modal-footer">
+                            <button type="button" class="leave-modal-btn leave-modal-btn-light" data-dismiss="modal" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="leave-modal-btn leave-modal-btn-danger"><i class="fas fa-times"></i> Reject Request</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        @endif
+    @endforeach
+
 </div>
 @endsection
 
@@ -733,12 +885,43 @@
 @include('hrms.leave.shared.datatable')
 
 <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        if (window.jQuery && $.fn.DataTable) {
+            $('.js-leave-approval-datatable').DataTable({
+                pageLength: 25,
+                scrollX: true,
+                autoWidth: false,
+                language: {
+                    emptyTable: '<div class="py-4"><i class="fas fa-folder-open fa-3x mb-3 text-muted opacity-50"></i><br>No records found</div>',
+                    loadingRecords: '<div class="spinner-border text-primary" role="status"><span class="sr-only">Loading...</span></div>'
+                },
+                dom: "<'row'<'col-sm-12 col-md-4'l><'col-sm-12 col-md-4 text-center'B><'col-sm-12 col-md-4'f>>" +
+                     "<'row'<'col-sm-12'tr>>" +
+                     "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+                buttons: [
+                    { extend: 'excel', className: 'btn btn-light border shadow-sm d-none' },
+                    { extend: 'csv', className: 'btn btn-light border shadow-sm d-none' },
+                    { extend: 'pdf', className: 'btn btn-light border shadow-sm d-none' },
+                    { extend: 'print', className: 'btn btn-light border shadow-sm d-none' }
+                ],
+                columnDefs: [
+                    { targets: 0, width: "60px", orderable: false, searchable: false }, // S.No
+                    { targets: 6, width: "130px" }, // Status
+                    { targets: 7, width: "190px", orderable: false, searchable: false } // Actions
+                ],
+                drawCallback: function() {
+                    $('.dataTables_paginate > .pagination').addClass('pagination-rounded justify-content-end mb-0');
+                }
+            });
+        }
+    });
+
     $(document).on('change', '#leaveApprovalFilterForm select', function() {
         $('#leaveApprovalFilterForm').submit();
     });
 
     function triggerLeaveExport(type) {
-        let table = $('.js-datatable').DataTable();
+        let table = $('.js-leave-approval-datatable').DataTable();
 
         let buttons = {
             csv: '.buttons-csv',

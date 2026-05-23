@@ -29,7 +29,7 @@ class EmployeeProfileS
 
         $isComplete = $profile
             && (int) ($profile->is_profile_completed ?? 0) === 1
-            && in_array($profile->profile_status, ['approved', null], true);
+            && in_array($profile->profile_status, ['submitted', 'approved', null], true);
 
         return $isComplete ? null : (int) $employee->id;
     }

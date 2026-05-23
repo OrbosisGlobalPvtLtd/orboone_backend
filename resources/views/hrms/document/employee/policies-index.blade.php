@@ -1,203 +1,283 @@
 @extends('layouts.admin', ['accesses' => $accesses, 'active' => 'employee-policies'])
 
-@section('_content')
+@section('page_title', 'Company Policies')
+
+@section('_head')
+@include('settings.partials.styles')
 <style>
-    :root {
-        --orbosis-gradient: linear-gradient(135deg, #4b00e8 0%, #ffb101 100%);
-        --soft-bg: #f8faff;
-        --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-        --border-radius: 20px;
+    .policies-container {
+        max-width: 1400px;
+        margin: 0 auto;
     }
 
-    .premium-header {
-        background: var(--orbosis-gradient);
-        border-radius: 0 0 var(--border-radius) var(--border-radius);
-        padding: 40px 40px 80px;
-        color: white;
-        margin-bottom: -50px;
-        position: relative;
-        overflow: hidden;
-        box-shadow: 0 10px 30px rgba(75, 0, 232, 0.2);
-    }
-
-    .premium-header::after {
-        content: '';
-        position: absolute;
-        top: -50px;
-        right: -50px;
-        width: 250px;
-        height: 250px;
-        background: rgba(255, 255, 255, 0.1);
+    /* Small Circular Icon Box */
+    .policy-icon-box {
+        width: 36px;
+        height: 36px;
         border-radius: 50%;
-    }
-
-    .search-container {
-        border-radius: 16px;
-        background: rgba(255, 255, 255, 0.15);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-    }
-
-    .search-input {
-        background: transparent !important;
-        border: none !important;
-        color: white !important;
-        padding: 15px !important;
-        font-weight: 600;
-    }
-
-    .search-input::placeholder { color: rgba(255, 255, 255, 0.7); }
-    .search-input:focus { outline: none; box-shadow: none; }
-
-    .policy-card {
-        background: white;
-        border-radius: 20px;
-        border: none;
-        box-shadow: var(--card-shadow);
-        transition: all 0.3s ease;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        border: 2px solid transparent;
-    }
-
-    .policy-card:hover {
-        transform: translateY(-8px);
-        border-color: #ffb101;
-        box-shadow: 0 15px 35px rgba(255, 177, 1, 0.15);
-    }
-
-    .pdf-icon-bg {
-        background: rgba(231, 74, 59, 0.1);
-        color: #e74a3b;
-        width: 80px;
-        height: 80px;
-        border-radius: 20px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 2.5rem;
-        margin-bottom: 20px;
-        transition: transform 0.3s;
+        background: rgba(239, 68, 68, 0.06);
+        color: #EF4444;
+        font-size: 14px;
+        flex-shrink: 0;
     }
 
-    .policy-card:hover .pdf-icon-bg { transform: scale(1.1) rotate(-5deg); }
-
-    .category-tag {
-        font-size: 0.7rem;
-        font-weight: 800;
+    .policy-rev-pill {
+        font-size: 9px;
+        font-weight: 850;
+        color: #64748B;
+        background: #F1F5F9;
+        padding: 4px 8px;
+        border-radius: 6px;
         text-transform: uppercase;
-        letter-spacing: 1.5px;
-        padding: 6px 15px;
-        border-radius: 20px;
-        background: rgba(75, 0, 232, 0.1);
-        color: #4b00e8;
+        font-family: monospace;
+    }
+
+    /* Policy Card title truncation */
+    .policy-card-title {
+        font-size: 14px;
+        font-weight: 850;
+        color: var(--set-text);
+        line-height: 1.4;
+        margin-top: 12px;
         margin-bottom: 15px;
-        display: inline-block;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        height: 40px; /* 2 lines max */
     }
 
-    .btn-view {
-        background: #f8faff;
-        color: #4b00e8;
-        border: 2px solid #ebf0f6;
+    /* Card buttons */
+    .policy-btn-split {
+        display: flex;
+        gap: 8px;
+        margin-top: auto;
+    }
+
+    .policy-btn {
+        flex: 1;
+        height: 38px;
         border-radius: 12px;
-        padding: 12px;
-        font-weight: 700;
-        transition: 0.3s;
+        font-size: 11px;
+        font-weight: 850;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none !important;
+        white-space: nowrap;
     }
 
-    .btn-view:hover {
-        background: #4b00e8;
-        color: white;
-        border-color: #4b00e8;
+    .policy-btn-view {
+        background: rgba(75, 0, 232, 0.05);
+        color: #4B00E8;
+        border: 1px solid rgba(75, 0, 232, 0.12);
     }
 
-    .btn-download {
-        background: #ffb101;
-        color: #1a1a1a !important;
+    .policy-btn-view:hover {
+        background: #4B00E8;
+        color: #fff;
+        border-color: #4B00E8;
+    }
+
+    .policy-btn-download {
+        background: linear-gradient(135deg, #4B00E8 0%, #8600EE 100%);
+        color: #fff;
         border: none;
-        border-radius: 12px;
-        padding: 12px;
-        font-weight: 800;
-        transition: 0.3s;
+        box-shadow: 0 4px 12px rgba(75, 0, 232, 0.15);
     }
 
-    .btn-download:hover { filter: brightness(1.1); transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255, 177, 1, 0.4); }
+    .policy-btn-download:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(75, 0, 232, 0.25);
+        color: #fff;
+    }
 
-    @media (max-width: 768px) {
-        .premium-header { padding: 30px 20px 70px; }
+    /* Search input inside premium header */
+    .header-search-wrap {
+        position: relative;
+        width: 100%;
+        max-width: 320px;
+    }
+
+    .header-search-input {
+        width: 100%;
+        height: 40px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        background: rgba(255, 255, 255, 0.12);
+        padding-left: 36px;
+        padding-right: 12px;
+        color: #fff;
+        font-size: 13px;
+        font-weight: 700;
+        outline: none;
+        backdrop-filter: blur(8px);
+        transition: all 0.2s ease;
+    }
+
+    .header-search-input::placeholder {
+        color: rgba(255, 255, 255, 0.7);
+    }
+
+    .header-search-input:focus {
+        border-color: rgba(255, 255, 255, 0.6);
+        background: rgba(255, 255, 255, 0.18);
+        box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+    }
+
+    .header-search-icon {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 13px;
+    }
+
+    @media (max-width: 767px) {
+        .header-search-wrap {
+            max-width: 100%;
+            margin-top: 14px;
+        }
     }
 </style>
+@endsection
 
-<div class="container-fluid p-0">
-    <!-- Premium Header -->
-    <div class="premium-header">
-        <div class="container-fluid">
-            <div class="row align-items-center">
-                <div class="col-lg-7 col-md-12 text-center text-lg-left mb-4 mb-lg-0">
-                    <h1 class="font-weight-bold mb-2" style="font-size: 2.5rem; text-shadow: 0 2px 10px rgba(0,0,0,0.2);">Policy & Guidelines Hub</h1>
-                    <p class="mb-0" style="font-weight: 500; font-size: 1.1rem; opacity: 0.9;">
-                        Access the latest organization guidelines, HR policies, and compliance documents.
-                    </p>
+@section('_content')
+<div class="set-page">
+    <div class="policies-container">
+        
+        <!-- Premium Purple Gradient Hero Header -->
+        <div class="set-header">
+            <div>
+                <div class="set-kicker">
+                    <i class="fas fa-shield-alt"></i> EMPLOYEE &bull; POLICIES
                 </div>
-                <div class="col-lg-5 col-md-12">
-                    <div class="input-group overflow-hidden search-container">
-                        <div class="input-group-prepend">
-                            <span class="input-group-text bg-transparent border-0 text-white"><i class="fas fa-search" style="font-size: 1.2rem;"></i></span>
-                        </div>
-                        <input type="text" class="form-control search-input" placeholder="Search operational policies...">
-                    </div>
-                </div>
+                <h1 class="set-title">Company Policies</h1>
+                <p class="set-subtitle">Access updated HR guidelines, employee handbooks, and operational compliance documents.</p>
+            </div>
+            
+            <!-- Compact Right-Aligned Search Box -->
+            <div class="header-search-wrap">
+                <i class="fas fa-search header-search-icon"></i>
+                <input type="text" id="policySearchInput" class="header-search-input" placeholder="Search policies...">
             </div>
         </div>
-    </div>
 
-    <!-- Content Grid -->
-    <div class="container-fluid px-2 px-md-4 pb-5 pt-4" style="position: relative; z-index: 10;">
-        <div class="row">
-                        @forelse($policies as $policy)
+        @include('hrms.leave.shared.flash')
+
+        <!-- Policies Responsive Grid -->
+        <div class="row" id="policiesGrid">
+            @forelse($policies as $policy)
                 @php
                     $pdfUrl = 'https://orbosis.in/public/uploads/Employee%20Orientation%20&%20Company%20Policy%20Document%20(1).pdf';
                 @endphp
-                <div class="col-xl-3 col-lg-4 col-md-6 mb-4">
-                    <div class="policy-card p-4">
-                        <div class="d-flex justify-content-between align-items-start mb-3">
-                            <div class="pdf-icon-bg shadow-sm">
+                
+                <div class="col-xl-3 col-lg-4 col-md-6 mb-4 policy-card-item" data-title="{{ strtolower($policy->title) }}" data-category="{{ strtolower($policy->category ?? '') }}">
+                    <div class="set-card h-100" style="padding: 22px; display: flex; flex-direction: column;">
+                        
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="policy-icon-box shadow-sm">
                                 <i class="fas fa-file-pdf"></i>
                             </div>
-                            <span class="badge badge-pill badge-light shadow-sm py-2 px-3" style="color: #858796; font-weight: 800; font-size: 0.65rem;">
-                                REV: {{ $policy->updated_at->format('M Y') }}
+                            <span class="policy-rev-pill">
+                                Rev: {{ $policy->updated_at->format('M Y') }}
                             </span>
                         </div>
+
+                        <!-- HSL Category Pill Badge -->
+                        <div>
+                            <span class="set-badge set-badge-paid" style="font-size: 9px; font-weight: 850; letter-spacing: 0.05em; padding: 4px 10px; border-radius: 6px;">
+                                {{ $policy->category ?? 'Company General' }}
+                            </span>
+                        </div>
+
+                        <h5 class="policy-card-title" title="{{ $policy->title }}">
+                            {{ $policy->title }}
+                        </h5>
                         
-                        <div class="category-tag">{{ $policy->category ?? 'Company General' }}</div>
-                        <h5 class="font-weight-bold text-dark mb-4" style="line-height: 1.5; flex-grow: 1;">{{ $policy->title }}</h5>
-                        
-                        <div class="row no-gutters mt-auto">
-                            <div class="col-6 pr-2">
-                                <a href="{{ $pdfUrl }}" target="_blank" class="btn btn-view btn-block shadow-sm">
-                                    <i class="fas fa-eye mr-1"></i> Preview
-                                </a>
-                            </div>
-                            <div class="col-6 pl-2">
-                                <a href="{{ $pdfUrl }}" download class="btn btn-download btn-block shadow-sm">
-                                    <i class="fas fa-download mr-1"></i> PDF
-                                </a>
-                            </div>
+                        <!-- Split Actions -->
+                        <div class="policy-btn-split">
+                            <a href="{{ $pdfUrl }}" target="_blank" class="policy-btn policy-btn-view">
+                                <i class="fas fa-eye"></i> Preview
+                            </a>
+                            <a href="{{ $pdfUrl }}" download class="policy-btn policy-btn-download">
+                                <i class="fas fa-download"></i> PDF
+                            </a>
                         </div>
                     </div>
                 </div>
             @empty
-                <div class="col-12 text-center py-5 mt-5 bg-white rounded-lg shadow-sm">
-                    <div class="mb-4 d-inline-block p-4" style="background: rgba(75, 0, 232, 0.05); border-radius: 50%;">
-                        <i class="fas fa-folder-open text-muted" style="font-size: 4rem; opacity: 0.5;"></i>
+                <div class="col-12" id="originalEmptyState">
+                    <div class="set-card py-5 text-center">
+                        <div class="mb-4 d-inline-flex align-items-center justify-content-center" style="background: rgba(75, 0, 232, 0.05); border-radius: 50%; width: 80px; height: 80px; color: var(--set-primary); font-size: 28px;">
+                            <i class="fas fa-folder-open"></i>
+                        </div>
+                        <h4 class="font-weight-black" style="color: var(--set-text); font-size: 18px;">Policy Repository is Empty</h4>
+                        <p class="text-muted mt-2" style="max-width: 360px; margin: 0 auto; font-size: 13px; line-height: 1.5;">
+                            There are currently no active policies uploaded. Please contact HR for assistance.
+                        </p>
                     </div>
-                    <h3 class="font-weight-bold text-dark mb-2">Policy Repository is Empty</h3>
-                    <p class="text-muted" style="font-size: 1.1rem;">There are currently no active policies uploaded in the system.<br>Please contact Human Resources for further assistance.</p>
                 </div>
             @endforelse
+
+            <!-- Dynamic Search Empty State (initially hidden) -->
+            <div class="col-12 d-none" id="searchEmptyState">
+                <div class="set-card py-5 text-center">
+                    <div class="mb-4 d-inline-flex align-items-center justify-content-center" style="background: rgba(239, 68, 68, 0.05); border-radius: 50%; width: 80px; height: 80px; color: #EF4444; font-size: 28px;">
+                        <i class="fas fa-search-minus"></i>
+                    </div>
+                    <h4 class="font-weight-black" style="color: var(--set-text); font-size: 18px;">No Matching Policies</h4>
+                    <p class="text-muted mt-2" style="max-width: 360px; margin: 0 auto; font-size: 13px; line-height: 1.5;">
+                        We couldn't find any policies matching your search term. Try checking for spelling mistakes or simplified terms.
+                    </p>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+@endsection
+
+@section('_script')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var searchInput = document.getElementById('policySearchInput');
+        
+        if (searchInput) {
+            searchInput.addEventListener('keyup', function(e) {
+                var query = e.target.value.toLowerCase().trim();
+                var items = document.querySelectorAll('.policy-card-item');
+                var visibleCount = 0;
+                
+                items.forEach(function(item) {
+                    var title = item.getAttribute('data-title') || '';
+                    var category = item.getAttribute('data-category') || '';
+                    
+                    if (title.indexOf(query) !== -1 || category.indexOf(query) !== -1) {
+                        item.classList.remove('d-none');
+                        visibleCount++;
+                    } else {
+                        item.classList.add('d-none');
+                    }
+                });
+                
+                var originalEmpty = document.getElementById('originalEmptyState');
+                var searchEmpty = document.getElementById('searchEmptyState');
+                
+                if (visibleCount === 0) {
+                    if (searchEmpty) searchEmpty.classList.remove('d-none');
+                    if (originalEmpty) originalEmpty.classList.add('d-none');
+                } else {
+                    if (searchEmpty) searchEmpty.classList.add('d-none');
+                }
+            });
+        }
+    });
+</script>
 @endsection

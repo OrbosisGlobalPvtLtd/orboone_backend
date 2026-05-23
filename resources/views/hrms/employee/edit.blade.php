@@ -621,7 +621,7 @@ $probationMonths = old('probation_months', $employeeData->probation_months ?? 3)
                                 <input type="date" name="internship_end_date" id="internship_end_date"
                                     class="form-control @error('internship_end_date') is-invalid @enderror"
                                     value="{{ $internshipEnd }}">
-                                <div class="small-note">Auto calculated for 3/6 months. Custom me manually select karo.</div>
+                                <div class="small-note">Auto calculated for 3/6 months. Select manually if Custom is chosen.</div>
                                 @error('internship_end_date') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
 
@@ -653,7 +653,7 @@ $probationMonths = old('probation_months', $employeeData->probation_months ?? 3)
                                 <input type="date" name="contract_end_date" id="contract_end_date"
                                     class="form-control @error('contract_end_date') is-invalid @enderror"
                                     value="{{ $contractEnd }}">
-                                <div class="small-note">Agar DB column nahi hai to controller me ignore rahega.</div>
+                                <div class="small-note">This will be ignored by the controller if the database column does not exist.</div>
                                 @error('contract_end_date') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
                         </div>
@@ -935,7 +935,7 @@ $probationMonths = old('probation_months', $employeeData->probation_months ?? 3)
             salaryEffectiveFrom.classList.add('disabled-soft');
 
             if (salaryEffectiveNote) {
-                salaryEffectiveNote.innerText = 'Unpaid internship me salary effective date required nahi hai.';
+                salaryEffectiveNote.innerText = 'Salary effective date is not required for an unpaid internship.';
             }
         }
 
@@ -974,7 +974,7 @@ $probationMonths = old('probation_months', $employeeData->probation_months ?? 3)
                     salaryEffectiveFrom.value = internshipStart.value;
                 }
 
-                salaryNote.innerText = 'Paid intern ke liye stipend amount enter karo.';
+                salaryNote.innerText = 'Please enter the stipend amount for a paid intern.';
                 return;
             }
 

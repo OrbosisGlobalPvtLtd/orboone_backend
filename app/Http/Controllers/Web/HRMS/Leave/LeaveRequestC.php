@@ -105,6 +105,8 @@ class LeaveRequestC extends Controller
                 $leaveRequest->dates()->create(array_merge($row, ['employee_id' => $employee->id]));
             }
 
+            $this->notifyLeaveApplied($leaveRequest->fresh(['employee.user', 'leaveType', 'dates']));
+
             return redirect()->route('leave-requests.index')->with('success', 'Leave request submitted successfully.');
         } catch (\Throwable $e) {
             Log::error('Web leave request failed', ['error' => $e->getMessage()]);
@@ -145,6 +147,56 @@ class LeaveRequestC extends Controller
         $file->move($directory, $fileName);
 
         return 'uploads/leave_attachments/' . $fileName;
+    }
+
+    private function notifyLeaveApplied(LeaveRequestM $leaveRequest): void
+    {
+        $leaveType = $leaveRequest->leaveType?->name ?: 'Leave';
+        $employeeName = $leaveRequest->employee?->display_name ?: 'Employee';
+        $dateRange = Carbon::parse($leaveRequest->start_date)->format('d M Y') . ' to ' . Carbon::parse($leaveRequest->end_date)->format('d M Y');
+        $payload = [
+            'leave_id' => $leaveRequest->id,
+            'leave_type' => $leaveType,
+            'leave_dates' => $dateRange,
+            'from_date' => (string) $leaveRequest->start_date,
+            'to_date' => (string) $leaveRequest->end_date,
+            'start_date' => (string) $leaveRequest->start_date,
+            'end_date' => (string) $leaveRequest->end_date,
+            'employee_id' => $leaveRequest->employee_id,
+            'employee_name' => $employeeName,
+            'status' => 'pending',
+            'attachment_url' => $this->leaveAttachmentUrl($leaveRequest->attachment_path),
+            'attachment_type' => $leaveRequest->attachment_path ? $this->attachmentType($leaveRequest->attachment_path) : '',
+            'attachment_name' => $leaveRequest->attachment_path ? basename($leaveRequest->attachment_path) : '',
+        ];
+
+        app(\App\Services\HRMS\Notification\NotificationS::class)->notifyHrAndSuperAdmin(
+            'New Leave Request',
+            "{$employeeName} applied for {$leaveType} leave from {$payload['from_date']} to {$payload['to_date']}.",
+            'leave_applied',
+            'leave-approvals.index',
+            ['leave_id' => $leaveRequest->id],
+            $payload
+        );
+    }
+
+    private function leaveAttachmentUrl(?string $path): string
+    {
+        if (! $path) {
+            return '';
+        }
+
+        return preg_match('/^https?:\/\//i', $path) ? $path : asset(ltrim($path, '/'));
+    }
+
+    private function attachmentType(string $path): string
+    {
+        $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        if (in_array($extension, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+            return 'image';
+        }
+
+        return $extension === 'pdf' ? 'pdf' : 'document';
     }
 
     private function accesses()

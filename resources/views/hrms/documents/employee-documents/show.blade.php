@@ -2,478 +2,11 @@
 
 @section('page_title', 'Employee Document Details')
 
+@section('_head')
+@include('hrms.documents.partials.styles')
+@endsection
+
 @section('_content')
-<style>
-    :root {
-        --orb-primary: #4B00E8;
-        --orb-secondary: #8600EE;
-        --orb-bg: #F6F7FB;
-        --orb-card: #fff;
-        --orb-border: #E7EAF3;
-        --orb-text: #101828;
-        --orb-muted: #667085;
-        --orb-soft: #F4F2FF;
-        --orb-success: #12B76A;
-        --orb-warning: #F79009;
-        --orb-danger: #EC4E74;
-        --orb-shadow: 0 10px 28px rgba(16, 24, 40, .06);
-    }
-
-    .eo-page {
-        min-height: calc(100vh - 90px);
-        padding: 16px 10px 30px;
-        background: var(--orb-bg);
-    }
-
-    .eo-container {
-        max-width: 1320px;
-        margin: 0 auto;
-    }
-
-    .eo-header {
-        background: #fff;
-        border: 1px solid var(--orb-border);
-        border-radius: 20px;
-        box-shadow: var(--orb-shadow);
-        padding: 16px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        margin-bottom: 14px;
-    }
-
-    .eo-title {
-        margin: 0;
-        color: var(--orb-text);
-        font-size: 24px;
-        font-weight: 900;
-    }
-
-    .eo-subtitle {
-        margin: 4px 0 0;
-        color: var(--orb-muted);
-        font-size: 13px;
-        font-weight: 700;
-    }
-
-    .eo-btn {
-        min-height: 46px;
-        border-radius: 12px;
-        padding: 9px 14px;
-        font-size: 13px;
-        font-weight: 900;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        border: 1px solid transparent;
-        text-decoration: none !important;
-        cursor: pointer;
-        white-space: nowrap;
-    }
-
-    .eo-btn-primary {
-        color: #fff !important;
-        background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary));
-        box-shadow: 0 10px 22px rgba(75, 0, 232, .16);
-    }
-
-    .eo-btn-light {
-        background: #fff;
-        color: var(--orb-text);
-        border-color: var(--orb-border);
-    }
-
-    .eo-card {
-        background: #fff;
-        border: 1px solid var(--orb-border);
-        border-radius: 20px;
-        box-shadow: var(--orb-shadow);
-        overflow: hidden;
-        margin-bottom: 16px;
-    }
-
-    .eo-card-head {
-        padding: 16px;
-        border-bottom: 1px solid var(--orb-border);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        background: #FCFCFD;
-    }
-
-    .eo-card-title {
-        margin: 0;
-        color: var(--orb-text);
-        font-size: 16px;
-        font-weight: 900;
-    }
-
-    .eo-card-subtitle {
-        margin: 3px 0 0;
-        color: var(--orb-muted);
-        font-size: 12px;
-        font-weight: 700;
-    }
-
-    .eo-card-body {
-        padding: 16px;
-    }
-
-    .eo-summary-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 12px;
-        margin-bottom: 16px;
-    }
-
-    .eo-summary {
-        background: #fff;
-        border: 1px solid var(--orb-border);
-        border-radius: 18px;
-        padding: 14px;
-        box-shadow: 0 6px 16px rgba(16, 24, 40, .035);
-    }
-
-    .eo-summary-label {
-        color: var(--orb-muted);
-        font-size: 11px;
-        font-weight: 900;
-        text-transform: uppercase;
-        margin-bottom: 6px;
-    }
-
-    .eo-summary-value {
-        color: var(--orb-text);
-        font-size: 22px;
-        font-weight: 950;
-    }
-
-    .eo-upload-grid {
-        display: grid;
-        grid-template-columns: 1.15fr 1.45fr .8fr auto;
-        gap: 12px;
-        align-items: end;
-    }
-
-    .eo-field label {
-        display: block;
-        margin: 0 0 6px;
-        color: var(--orb-muted);
-        font-size: 11px;
-        font-weight: 900;
-        text-transform: uppercase;
-        letter-spacing: .4px;
-    }
-
-    .eo-control {
-        width: 100%;
-        height: 46px;
-        border-radius: 13px !important;
-        border: 1px solid var(--orb-border) !important;
-        background: #F9FAFB !important;
-        color: var(--orb-text) !important;
-        font-size: 13px;
-        font-weight: 800;
-        padding: 8px 12px;
-        outline: none;
-    }
-
-    .eo-control:focus {
-        border-color: rgba(75, 0, 232, .45) !important;
-        background: #fff !important;
-        box-shadow: 0 0 0 4px rgba(75, 0, 232, .08) !important;
-    }
-
-    .eo-file-input {
-        display: none;
-    }
-
-    .eo-file-upload {
-        height: 46px;
-        border: 1px solid var(--orb-border);
-        border-radius: 13px;
-        background: #F9FAFB;
-        padding: 0 8px 0 12px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-        cursor: pointer;
-        transition: .18s ease;
-        overflow: hidden;
-    }
-
-    .eo-file-upload:hover {
-        background: #fff;
-        border-color: rgba(75, 0, 232, .45);
-        box-shadow: 0 0 0 4px rgba(75, 0, 232, .08);
-    }
-
-    .eo-file-left {
-        display: flex;
-        align-items: center;
-        gap: 9px;
-        min-width: 0;
-        flex: 1;
-    }
-
-    .eo-file-icon {
-        width: 30px;
-        height: 30px;
-        border-radius: 10px;
-        background: var(--orb-soft);
-        color: var(--orb-primary);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 13px;
-        flex: 0 0 auto;
-    }
-
-    .eo-file-title {
-        color: var(--orb-text);
-        font-size: 13px;
-        font-weight: 850;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: 100%;
-    }
-
-    .eo-file-browse {
-        height: 30px;
-        padding: 0 11px;
-        border-radius: 10px;
-        background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary));
-        color: #fff;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        font-size: 11px;
-        font-weight: 900;
-        flex: 0 0 auto;
-    }
-
-    .eo-table {
-        width: 100%;
-        margin: 0 !important;
-    }
-
-    .eo-table thead th {
-        background: #F8FAFC;
-        color: #667085;
-        font-size: 11px;
-        font-weight: 900;
-        text-transform: uppercase;
-        letter-spacing: .45px;
-        padding: 12px 14px;
-        border-bottom: 1px solid var(--orb-border);
-        white-space: nowrap;
-    }
-
-    .eo-table tbody td {
-        padding: 13px 14px;
-        border-bottom: 1px solid #F1F3F8;
-        vertical-align: middle;
-        color: var(--orb-text);
-        font-size: 13px;
-        font-weight: 700;
-    }
-
-    .eo-table tbody tr:hover {
-        background: #FCFAFF;
-    }
-
-    .eo-sno {
-        width: 36px;
-        height: 36px;
-        border-radius: 12px;
-        background: #F4F2FF;
-        color: var(--orb-primary);
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 12px;
-        font-weight: 950;
-    }
-
-    .eo-doc-name {
-        font-weight: 900;
-        color: var(--orb-text);
-    }
-
-    .eo-doc-meta {
-        font-size: 11px;
-        color: var(--orb-muted);
-        font-weight: 750;
-        margin-top: 5px;
-        display: flex;
-        gap: 6px;
-        flex-wrap: wrap;
-    }
-
-    .eo-pill,
-    .eo-mini-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        border-radius: 999px;
-        font-weight: 900;
-        text-transform: uppercase;
-        white-space: nowrap;
-    }
-
-    .eo-pill {
-        padding: 7px 10px;
-        font-size: 11px;
-    }
-
-    .eo-mini-pill {
-        padding: 5px 8px;
-        font-size: 10px;
-    }
-
-    .eo-dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 999px;
-        background: currentColor;
-    }
-
-    .eo-pill-active {
-        color: #12B76A;
-        background: rgba(18, 183, 106, .10);
-    }
-
-    .eo-pill-warning {
-        color: #B54708;
-        background: #FFF7E8;
-    }
-
-    .eo-pill-danger {
-        color: #EC4E74;
-        background: rgba(236, 78, 116, .10);
-    }
-
-    .eo-pill-muted {
-        color: #667085;
-        background: #F2F4F7;
-    }
-
-    .eo-pill-required {
-        color: #C01048;
-        background: rgba(236, 78, 116, .10);
-    }
-
-    .eo-pill-optional {
-        color: #667085;
-        background: #F2F4F7;
-    }
-
-    .eo-actions {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        flex-wrap: wrap;
-    }
-
-    .eo-action-btn {
-        min-height: 34px;
-        border: 0;
-        border-radius: 11px;
-        padding: 0 10px;
-        font-size: 12px;
-        font-weight: 900;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        text-decoration: none !important;
-        cursor: pointer;
-    }
-
-    .eo-action-view {
-        background: #EEF4FF;
-        color: #3538CD;
-    }
-
-    .eo-action-view:hover {
-        background: #3538CD;
-        color: #fff;
-    }
-
-    .eo-action-edit {
-        background: var(--orb-soft);
-        color: var(--orb-primary);
-    }
-
-    .eo-action-edit:hover {
-        background: var(--orb-primary);
-        color: #fff;
-    }
-
-    .eo-action-verify {
-        background: rgba(18, 183, 106, .10);
-        color: #067647;
-    }
-
-    .eo-action-verify:hover {
-        background: #12B76A;
-        color: #fff;
-    }
-
-    .eo-action-reject {
-        background: rgba(236, 78, 116, .10);
-        color: #C01048;
-    }
-
-    .eo-empty-action {
-        color: var(--orb-muted);
-        font-size: 12px;
-        font-weight: 800;
-    }
-
-    .alert-success {
-        border: 0;
-        border-radius: 14px;
-        background: rgba(18, 183, 106, .12);
-        color: #067647;
-        font-weight: 800;
-    }
-
-    @media(max-width:1100px) {
-        .eo-summary-grid {
-            grid-template-columns: repeat(2, 1fr);
-        }
-
-        .eo-upload-grid {
-            grid-template-columns: 1fr 1fr;
-        }
-    }
-
-    @media(max-width:768px) {
-
-        .eo-header,
-        .eo-card-head {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-
-        .eo-summary-grid,
-        .eo-upload-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .eo-btn {
-            width: 100%;
-        }
-    }
-</style>
-
 @php
 $totalDocs = $documentTypes->count();
 $uploadedDocs = 0;
@@ -482,260 +15,297 @@ $pendingDocs = 0;
 $rejectedDocs = 0;
 
 foreach($documentTypes as $type){
-$doc = $documents->get($type->id);
-if($doc){
-$uploadedDocs++;
-if($doc->verification_status === 'verified') $verifiedDocs++;
-elseif($doc->verification_status === 'rejected') $rejectedDocs++;
-else $pendingDocs++;
-}
+    $doc = $documents->get($type->id);
+    if($doc){
+        $uploadedDocs++;
+        if($doc->verification_status === 'verified') $verifiedDocs++;
+        elseif($doc->verification_status === 'rejected') $rejectedDocs++;
+        else $pendingDocs++;
+    }
 }
 
 $missingDocs = max($totalDocs - $uploadedDocs, 0);
 $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id));
 @endphp
 
-<div class="eo-page">
-    <div class="eo-container">
-
-        <div class="eo-header">
-            <div>
-                <h1 class="eo-title">{{ $employee->user->name ?? 'Employee' }} - Documents</h1>
-                <p class="eo-subtitle">
-                    Code: {{ $employee->employee_code ?? '-' }}
-                    • Experience: {{ ucfirst($employee->experience_type ?? 'Fresher') }}
-                    @if($employee->user?->email)
-                    • {{ $employee->user->email }}
-                    @endif
-                </p>
+<div class="dm-page">
+    <!-- Premium Purple Gradient Hero -->
+    <div class="dm-hero">
+        <div>
+            <div class="dm-kicker">
+                <i class="fas fa-file-alt"></i> HRMS &bull; DOCUMENT MANAGEMENT
             </div>
-
-            <a href="{{ route('hrms.documents.employee.index') }}" class="eo-btn eo-btn-light">
-                <i class="fas fa-arrow-left"></i> Back to List
+            <h1>{{ $employee->user->name ?? 'Employee' }} - Documents</h1>
+            <p>
+                Code: {{ $employee->employee_code ?? '-' }}
+                &bull; Experience: {{ ucfirst($employee->experience_type ?? 'Fresher') }}
+                @if($employee->user?->email)
+                &bull; {{ $employee->user->email }}
+                @endif
+            </p>
+        </div>
+        <div class="dm-hero-actions">
+            <a href="{{ route('hrms.documents.employee.index') }}" class="dm-btn dm-btn-light">
+                <i class="fas fa-arrow-left"></i> Back to Directory
             </a>
         </div>
+    </div>
 
-        @if(session('success'))
-        <div class="alert alert-success mb-3">
-            <i class="fas fa-check-circle mr-2"></i>{{ session('success') }}
-        </div>
-        @endif
+    @if(session('success'))
+    <div class="alert alert-success border-0 shadow-sm" style="border-radius: 14px; font-weight: 700; font-size: 13px;">
+        <i class="fas fa-check-circle mr-2"></i>{{ session('success') }}
+    </div>
+    @endif
 
-        <div class="eo-summary-grid">
-            <div class="eo-summary">
-                <div class="eo-summary-label">Total Types</div>
-                <div class="eo-summary-value">{{ $totalDocs }}</div>
-            </div>
-            <div class="eo-summary">
-                <div class="eo-summary-label">Uploaded</div>
-                <div class="eo-summary-value">{{ $uploadedDocs }}</div>
-            </div>
-            <div class="eo-summary">
-                <div class="eo-summary-label">Verified</div>
-                <div class="eo-summary-value">{{ $verifiedDocs }}</div>
-            </div>
-            <div class="eo-summary">
-                <div class="eo-summary-label">Pending / Missing</div>
-                <div class="eo-summary-value">{{ $missingDocs + $pendingDocs + $rejectedDocs }}</div>
-            </div>
-        </div>
-
-        <div class="eo-card" id="uploadCard">
-            <div class="eo-card-head">
-                <div>
-                    <h4 class="eo-card-title" id="uploadTitle">Upload Document</h4>
-                    <!-- <p class="eo-card-subtitle" id="uploadSubtitle">Dropdown me sirf missing documents aayenge. Existing document ke liye Edit/Re-upload button use karein.</p> -->
+    <!-- Metrics Cards Grid -->
+    <div class="row dm-metrics-grid">
+        <div class="col-xl-3 col-lg-3 col-md-6 col-12 mb-3">
+            <div class="dm-metric-card border-bottom-primary">
+                <div class="dm-metric-icon dm-icon-primary"><i class="fas fa-folder"></i></div>
+                <div class="dm-metric-content">
+                    <div class="dm-metric-label">Total Required</div>
+                    <div class="dm-metric-value">{{ $totalDocs }}</div>
                 </div>
             </div>
+        </div>
+        <div class="col-xl-3 col-lg-3 col-md-6 col-12 mb-3">
+            <div class="dm-metric-card border-bottom-info">
+                <div class="dm-metric-icon dm-icon-info"><i class="fas fa-cloud-upload-alt"></i></div>
+                <div class="dm-metric-content">
+                    <div class="dm-metric-label">Uploaded</div>
+                    <div class="dm-metric-value">{{ $uploadedDocs }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-lg-3 col-md-6 col-12 mb-3">
+            <div class="dm-metric-card border-bottom-success">
+                <div class="dm-metric-icon dm-icon-success"><i class="fas fa-check-circle"></i></div>
+                <div class="dm-metric-content">
+                    <div class="dm-metric-label">Verified</div>
+                    <div class="dm-metric-value">{{ $verifiedDocs }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-lg-3 col-md-6 col-12 mb-3">
+            <div class="dm-metric-card border-bottom-warning">
+                <div class="dm-metric-icon dm-icon-warning"><i class="fas fa-hourglass-half"></i></div>
+                <div class="dm-metric-content">
+                    <div class="dm-metric-label">Pending / Missing</div>
+                    <div class="dm-metric-value">{{ $missingDocs + $pendingDocs + $rejectedDocs }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-            <div class="eo-card-body">
-                <form action="{{ route('hrms.documents.employee.store', $employee->id) }}"
-                    method="POST"
-                    enctype="multipart/form-data"
-                    class="eo-upload-grid"
-                    id="documentUploadForm">
-                    @csrf
+    <!-- Upload/Re-upload Card -->
+    <div class="dm-card" id="uploadCard">
+        <div class="dm-table-header">
+            <div class="dm-table-head-left">
+                <div class="dm-icon-box"><i class="fas fa-cloud-upload-alt"></i></div>
+                <div>
+                    <h5 class="dm-table-title" id="uploadTitle">Upload Document</h5>
+                    <p class="dm-table-subtitle" id="uploadSubtitle">Select a missing document type from the list to upload a file on behalf of the employee.</p>
+                </div>
+            </div>
+        </div>
 
-                    <div class="eo-field">
-                        <label>Document Type</label>
-                        <select name="document_type_id" id="documentTypeSelect" class="eo-control" required>
-                            <option value="">Select Missing Document</option>
+        <div style="padding: 24px;">
+            <form action="{{ route('hrms.documents.employee.store', $employee->id) }}"
+                method="POST"
+                enctype="multipart/form-data"
+                id="documentUploadForm">
+                @csrf
 
-                            @foreach($missingTypes as $type)
-                            <option value="{{ $type->id }}" data-mode="new">
-                                {{ $type->name }} {{ $type->is_mandatory ? '(Mandatory)' : '(Optional)' }}
-                            </option>
-                            @endforeach
+                <div class="row align-items-end">
+                    <div class="col-xl-4 col-lg-4 col-md-6 col-12 mb-3">
+                        <div class="dm-form-group">
+                            <label>Document Type</label>
+                            <select name="document_type_id" id="documentTypeSelect" class="form-control" required>
+                                <option value="">Select Missing Document</option>
 
-                            @foreach($documentTypes as $type)
-                            @php $doc = $documents->get($type->id); @endphp
-                            @if($doc)
-                            <option value="{{ $type->id }}"
-                                data-mode="edit"
-                                data-file="{{ $doc->file_original_name ?? $doc->title ?? 'Current document' }}"
-                                data-expiry="{{ $doc->expiry_date ? \Carbon\Carbon::parse($doc->expiry_date)->format('Y-m-d') : '' }}"
-                                style="display:none;">
-                                {{ $type->name }} - Re-upload
-                            </option>
-                            @endif
-                            @endforeach
-                        </select>
+                                @foreach($missingTypes as $type)
+                                <option value="{{ $type->id }}" data-mode="new">
+                                    {{ $type->name }} {{ $type->is_mandatory ? '(Mandatory)' : '(Optional)' }}
+                                </option>
+                                @endforeach
+
+                                @foreach($documentTypes as $type)
+                                @php $doc = $documents->get($type->id); @endphp
+                                @if($doc)
+                                <option value="{{ $type->id }}"
+                                    data-mode="edit"
+                                    data-file="{{ $doc->file_original_name ?? $doc->title ?? 'Current document' }}"
+                                    data-expiry="{{ $doc->expiry_date ? \Carbon\Carbon::parse($doc->expiry_date)->format('Y-m-d') : '' }}"
+                                    style="display:none;">
+                                    {{ $type->name }} - Re-upload
+                                </option>
+                                @endif
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
 
-                    <div class="eo-field">
-                        <label>Upload File</label>
-                        <label class="eo-file-upload">
-                            <div class="eo-file-left">
-                                <div class="eo-file-icon"><i class="fas fa-paperclip"></i></div>
-                                <div class="eo-file-title" id="selectedFileName">Choose file Browse</div>
-                            </div>
+                    <div class="col-xl-3 col-lg-3 col-md-6 col-12 mb-3">
+                        <div class="dm-form-group">
+                            <label>Upload File</label>
+                            <label class="eo-file-upload" style="margin: 0;">
+                                <div class="eo-file-left">
+                                    <div class="eo-file-icon"><i class="fas fa-paperclip"></i></div>
+                                    <div class="eo-file-title selected-file-name" id="selectedFileName" style="font-weight: 700;">Choose file...</div>
+                                </div>
 
-                            <!-- <span class="eo-file-browse">
-                                <i class="fas fa-folder-open"></i> Browse
-                            </span> -->
+                                <span class="eo-file-browse">
+                                    <i class="fas fa-folder-open"></i> Browse
+                                </span>
 
-                            <input type="file"
-                                name="file"
-                                id="documentFileInput"
-                                class="eo-file-input"
-                                required
-                                accept=".pdf,.jpg,.jpeg,.png,.webp">
-                        </label>
+                                <input type="file"
+                                    name="file"
+                                    id="documentFileInput"
+                                    class="eo-file-input"
+                                    required
+                                    accept=".pdf,.jpg,.jpeg,.png,.webp">
+                            </label>
+                        </div>
                     </div>
 
-                    <div class="eo-field">
-                        <label>Expiry Date</label>
-                        <input type="date" name="expiry_date" id="expiryDateInput" class="eo-control">
+                    <div class="col-xl-3 col-lg-3 col-md-6 col-12 mb-3">
+                        <div class="dm-form-group">
+                            <label>Expiry Date</label>
+                            <input type="date" name="expiry_date" id="expiryDateInput" class="form-control">
+                        </div>
                     </div>
 
-                    <div class="eo-field">
-                        <label>&nbsp;</label>
-                        <button type="submit" class="eo-btn eo-btn-primary" style="width:100%;" id="uploadSubmitBtn">
+                    <div class="col-xl-2 col-lg-2 col-md-6 col-12 mb-3">
+                        <button type="submit" class="dm-btn dm-btn-gradient w-100" id="uploadSubmitBtn">
                             <i class="fas fa-cloud-upload-alt"></i> Upload
                         </button>
                     </div>
-                </form>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Document Checklist Table -->
+    <div class="dm-card">
+        <div class="dm-table-header">
+            <div class="dm-table-head-left">
+                <div class="dm-icon-box"><i class="fas fa-clipboard-list"></i></div>
+                <div>
+                    <h5 class="dm-table-title">Document Checklist Requirements</h5>
+                    <p class="dm-table-subtitle">Review, verify, reject, or edit individual files uploaded by the employee.</p>
+                </div>
             </div>
         </div>
 
-        <div class="eo-card">
-            <div class="eo-card-head">
-                <div>
-                    <h4 class="eo-card-title">Document Checklist</h4>
-                    <p class="eo-card-subtitle">Requirement document type ke niche show hoga.</p>
-                </div>
-            </div>
+        <div class="dm-table-wrap">
+            <table class="table dm-table">
+                <thead>
+                    <tr>
+                        <th width="70">S.No</th>
+                        <th>Document Type</th>
+                        <th>Status</th>
+                        <th>File Name & Details</th>
+                        <th width="320">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($documentTypes as $type)
+                    @php $doc = $documents->get($type->id); @endphp
+                    <tr>
+                        <td>
+                            <span class="d-inline-flex align-items-center justify-content-center" style="width: 32px; height: 32px; border-radius: 10px; background: var(--dm-soft); color: var(--dm-primary); font-weight: 800; font-size: 12px;">
+                                {{ $loop->iteration }}
+                            </span>
+                        </td>
 
-            <div class="table-responsive">
-                <table class="table eo-table">
-                    <thead>
-                        <tr>
-                            <th width="70">S.No</th>
-                            <th>Document Type</th>
-                            <th>Status</th>
-                            <th>File</th>
-                            <th width="320">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($documentTypes as $type)
-                        @php $doc = $documents->get($type->id); @endphp
-                        <tr>
-                            <td><span class="eo-sno">{{ $loop->iteration }}</span></td>
+                        <td>
+                            <div style="font-weight: 800; color: var(--dm-text); font-size: 14px;">{{ $type->name }}</div>
+                            <div class="d-flex flex-wrap gap-2 mt-1">
+                                @if($type->is_mandatory)
+                                <span class="dm-badge dm-badge-danger" style="font-size: 9px; padding: 2px 8px;">Mandatory</span>
+                                @else
+                                <span class="dm-badge dm-badge-secondary" style="font-size: 9px; padding: 2px 8px;">Optional</span>
+                                @endif
 
-                            <td>
-                                <div class="eo-doc-name">{{ $type->name }}</div>
-                                <div class="eo-doc-meta">
-                                    @if($type->is_mandatory)
-                                    <span class="eo-mini-pill eo-pill-required"><span class="eo-dot"></span> Mandatory</span>
-                                    @else
-                                    <span class="eo-mini-pill eo-pill-optional"><span class="eo-dot"></span> Optional</span>
-                                    @endif
+                                @if($type->has_expiry_date ?? false)
+                                <span class="dm-badge dm-badge-warning" style="font-size: 9px; padding: 2px 8px;">Expiry Required</span>
+                                @endif
+                            </div>
+                        </td>
 
-                                    <!-- <span class="eo-mini-pill eo-pill-muted">{{ ucfirst($type->applies_to ?? 'all') }}</span> -->
-
-                                    @if($type->has_expiry_date ?? false)
-                                    <span class="eo-mini-pill eo-pill-warning">Expiry Required</span>
-                                    @endif
-                                </div>
-                            </td>
-
-                            <td>
-                                @if($doc)
+                        <td>
+                            @if($doc)
                                 @if($doc->verification_status == 'verified')
-                                <span class="eo-pill eo-pill-active"><span class="eo-dot"></span> Verified</span>
+                                <span class="dm-badge dm-badge-success"><i class="fas fa-check-circle mr-1"></i> Verified</span>
                                 @elseif($doc->verification_status == 'rejected')
-                                <span class="eo-pill eo-pill-danger"><span class="eo-dot"></span> Rejected</span>
+                                <span class="dm-badge dm-badge-danger"><i class="fas fa-times-circle mr-1"></i> Rejected</span>
                                 @else
-                                <span class="eo-pill eo-pill-warning"><span class="eo-dot"></span> Pending</span>
+                                <span class="dm-badge dm-badge-warning"><i class="fas fa-hourglass-half mr-1"></i> Pending</span>
                                 @endif
-                                @else
-                                <span class="eo-pill eo-pill-muted"><span class="eo-dot"></span> Missing</span>
-                                @endif
-                            </td>
+                            @else
+                            <span class="dm-badge dm-badge-secondary"><i class="fas fa-minus-circle mr-1"></i> Missing</span>
+                            @endif
+                        </td>
 
-                            <td>
+                        <td>
+                            @if($doc && $doc->file_path)
+                            <div style="font-weight: 800; color: var(--dm-text); font-size: 13px;">{{ $doc->file_original_name ?? $doc->title ?? 'Document File' }}</div>
+                            <div style="font-size: 11px; color: var(--dm-muted); font-weight: 700; margin-top: 3px;">
+                                @if($doc->expiry_date)
+                                <i class="fas fa-calendar-alt mr-1"></i> Expiry: {{ \Carbon\Carbon::parse($doc->expiry_date)->format('d M Y') }}
+                                @else
+                                <i class="fas fa-calendar-times mr-1"></i> No expiry date set
+                                @endif
+                            </div>
+                            @else
+                            <span class="text-muted" style="font-size: 12px;">No file uploaded</span>
+                            @endif
+                        </td>
+
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
                                 @if($doc && $doc->file_path)
-                                <div class="eo-doc-name">{{ $doc->file_original_name ?? $doc->title ?? 'Document' }}</div>
-                                <div class="eo-doc-meta">
-                                    @if($doc->expiry_date)
-                                    Expiry: {{ \Carbon\Carbon::parse($doc->expiry_date)->format('d M Y') }}
-                                    @else
-                                    No expiry
-                                    @endif
-                                </div>
-                                @else
-                                <span class="eo-empty-action">No file uploaded</span>
-                                @endif
-                            </td>
+                                <a href="{{ route('hrms.documents.file', $doc->file_path) }}"
+                                    target="_blank"
+                                    class="dm-action-btn-pill dm-action-btn-primary">
+                                    <i class="fas fa-eye"></i> View File
+                                </a>
 
-                            <td>
-                                <div class="eo-actions">
-                                    @if($doc && $doc->file_path)
-                                    <a href="{{ route('hrms.documents.file', $doc->file_path) }}"
-                                        target="_blank"
-                                        class="eo-action-btn eo-action-view">
-                                        <i class="fas fa-eye"></i> View
-                                    </a>
+                                <button type="button"
+                                    class="dm-action-btn-pill dm-action-btn-light js-edit-doc"
+                                    data-type-id="{{ $type->id }}"
+                                    data-file="{{ $doc->file_original_name ?? $doc->title ?? 'Current document' }}"
+                                    data-expiry="{{ $doc->expiry_date ? \Carbon\Carbon::parse($doc->expiry_date)->format('Y-m-d') : '' }}">
+                                    <i class="fas fa-edit text-warning"></i> Edit
+                                </button>
 
-                                    <button type="button"
-                                        class="eo-action-btn eo-action-edit js-edit-doc"
-                                        data-type-id="{{ $type->id }}"
-                                        data-file="{{ $doc->file_original_name ?? $doc->title ?? 'Current document' }}"
-                                        data-expiry="{{ $doc->expiry_date ? \Carbon\Carbon::parse($doc->expiry_date)->format('Y-m-d') : '' }}">
-                                        <i class="fas fa-edit"></i> Edit / Re-upload
+                                @if($doc->verification_status != 'verified')
+                                <form action="{{ route('hrms.documents.employee.verify', $doc->id) }}" method="POST" style="display:inline;">
+                                    @csrf
+                                    <button type="submit" class="dm-action-btn-pill dm-action-btn-success">
+                                        <i class="fas fa-check"></i> Verify
                                     </button>
+                                </form>
+                                @endif
 
-                                    @if($doc->verification_status != 'verified')
-                                    <form action="{{ route('hrms.documents.employee.verify', $doc->id) }}" method="POST" style="display:inline;">
-                                        @csrf
-                                        <button type="submit" class="eo-action-btn eo-action-verify">
-                                            <i class="fas fa-check"></i> Verify
-                                        </button>
-                                    </form>
-                                    @endif
-
-                                    {{-- Future use ke liye reject code comment rakha hai
-                                            @if($doc->verification_status != 'rejected')
-                                                <form action="{{ route('hrms.documents.employee.reject', $doc->id) }}" method="POST" style="display:inline;">
+                                @if($doc->verification_status != 'rejected')
+                                <form action="{{ route('hrms.documents.employee.reject', $doc->id) }}" method="POST" style="display:inline;">
                                     @csrf
                                     <input type="hidden" name="rejection_reason" value="Rejected by admin.">
-                                    <button type="submit" class="eo-action-btn eo-action-reject">
+                                    <button type="submit" class="dm-action-btn-pill dm-action-btn-danger">
                                         <i class="fas fa-times"></i> Reject
                                     </button>
-                                    </form>
-                                    @endif
-                                    --}}
-                                    @else
-                                    <span class="eo-empty-action">Upload from form above</span>
-                                    @endif
-                                </div>
-                            </td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
+                                </form>
+                                @endif
+                                @else
+                                <span class="text-muted" style="font-size: 12px;">Upload from form above</span>
+                                @endif
+                            </div>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
@@ -750,7 +320,7 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
     const uploadSubmitBtn = document.getElementById('uploadSubmitBtn');
 
     fileInput?.addEventListener('change', function() {
-        fileNameBox.textContent = this.files && this.files.length ? this.files[0].name : 'Choose file';
+        fileNameBox.textContent = this.files && this.files.length ? this.files[0].name : 'Choose file...';
     });
 
     document.querySelectorAll('.js-edit-doc').forEach(function(btn) {
@@ -769,7 +339,7 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
             expiryInput.value = expiry;
             fileNameBox.textContent = fileName;
             uploadTitle.textContent = 'Re-upload Document';
-            uploadSubtitle.textContent = 'Aap selected document ko replace kar rahe hain. Nayi file select karke Upload karein.';
+            uploadSubtitle.textContent = 'You are replacing the selected document. Please select a new file and upload.';
             uploadSubmitBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Re-upload';
 
             document.getElementById('uploadCard').scrollIntoView({

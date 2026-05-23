@@ -7,6 +7,8 @@ use App\Models\HRMS\MobileApp\MobileAppVersionM;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 class MobileAppVersionC extends Controller
@@ -89,10 +91,10 @@ class MobileAppVersionC extends Controller
         $filename = 'orboone-hrms-v' . $versionCode . '-' . now()->format('YmdHis') . '.apk';
         $path = $file->storeAs('mobile-apps', $filename, 'public');
 
-        DB::transaction(function () use ($validated, $platform, $versionCode, $file, $path, $filename) {
+        $version = DB::transaction(function () use ($validated, $platform, $versionCode, $file, $path, $filename) {
             MobileAppVersionM::where('platform', $platform)->update(['is_active' => false]);
 
-            MobileAppVersionM::create([
+            return MobileAppVersionM::create([
                 'app_name' => $validated['app_name'] ?: 'OrboOne HRMS',
                 'platform' => $platform,
                 'version_name' => $validated['version_name'],
@@ -110,6 +112,8 @@ class MobileAppVersionC extends Controller
                 'uploaded_by_user_id' => Auth::id(),
             ]);
         });
+
+        $this->notifyAppUpdate($version);
 
         return redirect()->route('hrms.mobile-app-versions.index')->with('success', 'APK release uploaded and published successfully.');
     }
@@ -202,9 +206,15 @@ class MobileAppVersionC extends Controller
                 ->header('Content-Type', 'text/plain');
         }
 
-        $downloadName = $version->apk_original_name ?: 'orboone-hrms-v' . $version->version_code . '.apk';
+        $downloadName = 'OrboOne-v' . $version->version_name . '.apk';
 
-        return Storage::disk('public')->download($version->apk_file, $downloadName);
+        $path = storage_path('app/public/' . $version->apk_file);
+
+        return response()->download($path, $downloadName, [
+            'Content-Type' => 'application/vnd.android.package-archive',
+            'Content-Disposition' => 'attachment; filename="' . $downloadName . '"',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 
     private function apkExists(?MobileAppVersionM $version): bool
@@ -228,5 +238,47 @@ class MobileAppVersionC extends Controller
         $user = Auth::user();
 
         return $user && method_exists($user, 'hasPermission') && $user->hasPermission($permission);
+    }
+
+    private function notifyAppUpdate(MobileAppVersionM $version): void
+    {
+        $query = DB::table('users')->select('id', 'system_role_id');
+
+        if (Schema::hasColumn('users', 'is_active')) {
+            $query->where('is_active', 1);
+        }
+
+        $payload = [
+            'version_name' => $version->version_name,
+            'version_code' => $version->version_code,
+            'changelog' => $version->release_notes,
+            'release_notes' => preg_split('/\r\n|\r|\n/', (string) $version->release_notes),
+            'apk_url' => $version->apk_url ?: asset('storage/' . $version->apk_file),
+            'attachment_url' => $version->apk_url ?: asset('storage/' . $version->apk_file),
+            'attachment_type' => 'apk',
+            'attachment_name' => $version->apk_original_name ?: basename((string) $version->apk_file),
+            'force_update_required' => (bool) $version->is_force_update,
+        ];
+
+        foreach ($query->get() as $user) {
+            try {
+                app(\App\Services\HRMS\Notification\NotificationS::class)->createNotification(
+                    userId: $user->id,
+                    roleId: $user->system_role_id ?? null,
+                    title: 'New app update available',
+                    message: 'Version ' . $version->version_name . ' is available for download.',
+                    type: 'apk_update',
+                    routeName: 'app_update',
+                    routeParams: ['version_code' => $version->version_code],
+                    data: $payload
+                );
+            } catch (\Throwable $e) {
+                Log::error('APK update notification failed', [
+                    'version_id' => $version->id,
+                    'user_id' => $user->id ?? null,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
     }
 }

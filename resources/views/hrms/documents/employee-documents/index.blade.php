@@ -5,454 +5,272 @@
 @section('_head')
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap4.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap4.min.css">
-@endsection
-
-@section('_content')
+@include('hrms.documents.partials.styles')
 <style>
-    :root {
-        --orb-primary: #4B00E8;
-        --orb-secondary: #8600EE;
-        --orb-bg: #F6F7FB;
-        --orb-card: #fff;
-        --orb-border: #E7EAF3;
-        --orb-text: #101828;
-        --orb-muted: #667085;
-        --orb-soft: #F4F2FF;
-        --orb-shadow: 0 10px 28px rgba(16, 24, 40, .06);
-    }
-
-    .eo-page {
-        min-height: calc(100vh - 90px);
-        padding: 16px 10px 30px;
-        background: var(--orb-bg);
-    }
-
-    .eo-container {
-        max-width: 1320px;
-        margin: 0 auto;
-    }
-
-    .eo-header {
-        background: #fff;
-        border: 1px solid var(--orb-border);
-        border-radius: 20px;
-        box-shadow: var(--orb-shadow);
-        padding: 16px;
-        margin-bottom: 14px;
-    }
-
-    .eo-title {
-        margin: 0;
-        color: var(--orb-text);
-        font-size: 24px;
-        font-weight: 900;
-    }
-
-    .eo-subtitle {
-        margin: 4px 0 0;
-        color: var(--orb-muted);
-        font-size: 13px;
-        font-weight: 600;
-    }
-
-    .eo-card {
-        background: #fff;
-        border: 1px solid var(--orb-border);
-        border-radius: 20px;
-        box-shadow: var(--orb-shadow);
-        overflow: hidden;
-    }
-
-    .eo-filter-inside {
-        padding: 14px 16px;
-        border-bottom: 1px solid var(--orb-border);
-        background: #FCFCFD;
-    }
-
-    .eo-filter-grid {
-        display: grid;
-        grid-template-columns: 1.7fr 1fr auto;
-        gap: 10px;
-        align-items: end;
-    }
-
-    .eo-field label {
-        display: block;
-        margin: 0 0 6px;
-        color: var(--orb-muted);
-        font-size: 11px;
-        font-weight: 900;
-        text-transform: uppercase;
-    }
-
-    .eo-control {
-        width: 100%;
-        height: 42px;
-        border-radius: 12px !important;
-        border: 1px solid var(--orb-border) !important;
-        background: #F9FAFB !important;
-        color: var(--orb-text) !important;
-        font-size: 13px;
-        font-weight: 700;
-        padding: 8px 12px;
-    }
-
-    .eo-btn {
-        min-height: 40px;
-        border-radius: 12px;
-        padding: 9px 14px;
-        font-size: 13px;
-        font-weight: 800;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        text-decoration: none !important;
-    }
-
-    .eo-btn-light {
-        background: #fff;
-        color: var(--orb-text);
-        border: 1px solid var(--orb-border);
-    }
-
-    .eo-table-toolbar,
-    .eo-table-footer {
-        padding: 14px 16px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        background: #fff;
-        border-bottom: 1px solid var(--orb-border);
-    }
-
-    .eo-table-footer {
-        border-bottom: 0;
-    }
-
-    #employeeLengthBox,
-    #employeeExportButtons {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
-    }
-
-    #employeeDocDirectoryTable {
-        width: 100% !important;
-        margin: 0 !important;
-    }
-
-    #employeeDocDirectoryTable thead th {
-        background: #F8FAFC;
-        color: #667085;
-        font-size: 11px;
-        font-weight: 900;
-        text-transform: uppercase;
-        padding: 12px 14px;
-        border-bottom: 1px solid var(--orb-border);
-    }
-
-    #employeeDocDirectoryTable tbody td {
-        padding: 12px 14px;
-        border-bottom: 1px solid #F1F3F8;
-        vertical-align: middle;
-        color: var(--orb-text);
-        font-size: 13px;
-        font-weight: 650;
-    }
-
-    #employeeDocDirectoryTable tbody tr:hover {
-        background: #FCFAFF;
-    }
-
-    .eo-emp {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        min-width: 220px;
-    }
-
-    .eo-avatar {
-        width: 38px;
-        height: 38px;
-        border-radius: 13px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--orb-primary);
-        font-weight: 900;
-        background: #F4F2FF;
-        border: 1px solid #EEE7FF;
-    }
-
-    .eo-name {
-        font-size: 13px;
-        font-weight: 900;
-        color: var(--orb-text);
-    }
-
-    .eo-meta {
-        font-size: 11px;
-        font-weight: 700;
-        color: var(--orb-muted);
-        margin-top: 2px;
-    }
-
-    .eo-code {
-        display: inline-flex;
-        padding: 6px 10px;
-        border-radius: 999px;
-        background: #F2F4F7;
-        color: #344054;
-        font-size: 12px;
-        font-weight: 900;
-    }
-
-    .eo-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 7px 10px;
-        border-radius: 999px;
-        font-size: 11px;
-        font-weight: 900;
-        text-transform: uppercase;
-        white-space: nowrap;
-    }
-
-    .eo-dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 999px;
-        background: currentColor;
-    }
-
-    .eo-pill-active {
-        color: #12B76A;
-        background: rgba(18, 183, 106, .10);
-    }
-
-    .eo-pill-warning {
-        color: #B54708;
-        background: #FFF7E8;
-    }
-
-    .eo-pill-danger {
-        color: #EC4E74;
-        background: rgba(236, 78, 116, .10);
-    }
-
-    .eo-pill-muted {
-        color: #667085;
-        background: #F2F4F7;
-    }
-
-    .eo-docs {
-        display: flex;
-        gap: 6px;
-        flex-wrap: wrap;
-    }
-
-    .eo-icon-btn {
-        min-width: 34px;
-        height: 34px;
-        border-radius: 11px;
-        background: #F8FAFC;
-        color: #667085;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0 10px;
-        font-size: 12px;
-        font-weight: 900;
-        text-decoration: none !important;
-    }
-
-    .eo-icon-btn:hover {
-        color: #fff;
-        background: var(--orb-primary);
-        text-decoration: none;
-    }
-
-    .dataTables_filter {
-        display: none;
-    }
-
-    .dataTables_length label,
-    .dataTables_info {
-        margin: 0 !important;
-        color: var(--orb-muted);
-        font-size: 12px;
-        font-weight: 700;
+    /* DataTable Toolbar layout inside the table card */
+    .dm-table-toolbar-row {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding: 16px 24px !important;
+        border-bottom: 1px solid var(--dm-border) !important;
+        background: #fff !important;
+        flex-wrap: wrap !important;
+        gap: 12px !important;
     }
 
     #employeeLengthBox .dataTables_length label {
         display: flex !important;
         align-items: center !important;
-        gap: 6px;
+        gap: 6px !important;
+        margin: 0 !important;
+        font-size: 13px !important;
+        font-weight: 700 !important;
+        color: var(--dm-muted) !important;
+        white-space: nowrap !important;
     }
 
     #employeeLengthBox .dataTables_length select {
-        min-width: 68px;
-        height: 34px;
-        border-radius: 10px;
-        border: 1px solid var(--orb-border);
+        width: 70px !important;
+        height: 34px !important;
+        border-radius: 9px !important;
+        border: 1px solid var(--dm-border) !important;
+        padding: 4px 8px !important;
+        outline: none !important;
+        font-weight: 700 !important;
     }
 
+    /* DataTable buttons styling */
     .dt-buttons {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
+        display: flex !important;
+        gap: 6px !important;
     }
 
     .dt-buttons .btn {
-        border-radius: 11px !important;
-        border: 1px solid var(--orb-border) !important;
-        background: #fff !important;
-        color: var(--orb-text) !important;
+        height: 32px !important;
+        padding: 0 12px !important;
         font-size: 12px !important;
-        font-weight: 900 !important;
-        padding: 8px 12px !important;
+        font-weight: 800 !important;
+        border-radius: 9px !important;
+        border: 1px solid var(--dm-border) !important;
+        background: #fff !important;
+        color: var(--dm-muted) !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        box-shadow: none !important;
+        transition: all 0.2s ease !important;
     }
 
     .dt-buttons .btn:hover {
-        color: #fff !important;
-        background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary)) !important;
+        background: var(--dm-soft) !important;
+        color: var(--dm-primary) !important;
+        border-color: var(--dm-primary) !important;
     }
 
-    .page-link {
-        border-radius: 10px !important;
-        margin: 0 3px;
-        border: 1px solid var(--orb-border);
-        color: var(--orb-primary);
-        font-weight: 800;
+    /* Pagination design styling */
+    .dataTables_paginate {
+        margin: 0 !important;
+    }
+
+    .pagination {
+        display: flex !important;
+        gap: 4px !important;
+        margin: 0 !important;
+        list-style: none !important;
+    }
+
+    .page-item .page-link {
+        height: 32px !important;
+        padding: 0 12px !important;
+        border-radius: 9px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 12px !important;
+        font-weight: 800 !important;
+        color: var(--dm-muted) !important;
+        border: 1px solid var(--dm-border) !important;
+        background: #fff !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .page-item:hover .page-link {
+        background: var(--dm-soft) !important;
+        color: var(--dm-primary) !important;
+        text-decoration: none !important;
     }
 
     .page-item.active .page-link {
-        background: var(--orb-primary);
-        border-color: var(--orb-primary);
+        background: var(--dm-primary) !important;
+        color: #fff !important;
+        border-color: var(--dm-primary) !important;
     }
 
-    @media(max-width:991px) {
-        .eo-filter-grid {
-            grid-template-columns: 1fr;
-        }
+    .page-item.disabled .page-link {
+        opacity: 0.5 !important;
+        pointer-events: none !important;
+    }
 
-        .eo-table-toolbar,
-        .eo-table-footer {
-            flex-direction: column;
-            align-items: flex-start;
-        }
+    /* Card avatar alignment */
+    .dm-avatar-wrapper {
+        width: 36px !important;
+        height: 36px !important;
+        border-radius: 10px !important;
+        background: var(--dm-soft) !important;
+        color: var(--dm-primary) !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-weight: 900 !important;
+        font-size: 13px !important;
+        border: 1px solid rgba(75, 0, 232, 0.15) !important;
+    }
+
+    .dm-table-footer-row {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding: 16px 24px !important;
+        border-top: 1px solid var(--dm-border) !important;
+        background: #fff !important;
+        flex-wrap: wrap !important;
+        gap: 12px !important;
+    }
+
+    #employeeInfoBox {
+        font-size: 12px !important;
+        font-weight: 700 !important;
+        color: var(--dm-muted) !important;
     }
 </style>
+@endsection
 
-<div class="eo-page">
-    <div class="eo-container">
-        <div class="eo-header">
-            <h1 class="eo-title">Employee Documents Directory</h1>
-            <p class="eo-subtitle">Verified tabhi dikhayega jab employee ke sabhi uploaded documents verified honge.</p>
+@section('_content')
+<div class="dm-page">
+    <!-- Premium Purple Gradient Hero -->
+    <div class="dm-hero">
+        <div>
+            <div class="dm-kicker">
+                <i class="fas fa-file-alt"></i> HRMS &bull; DOCUMENT MANAGEMENT
+            </div>
+            <h1>Employee Documents Directory</h1>
+            <p>Complete record directory. The "Verified" compliance status will lock once all uploaded documents are approved.</p>
+        </div>
+    </div>
+
+    <!-- Main Card -->
+    <div class="dm-card">
+        <!-- Card Header with circular icon -->
+        <div class="dm-table-header">
+            <div class="dm-table-head-left">
+                <div class="dm-icon-box"><i class="fas fa-folder-open"></i></div>
+                <div>
+                    <h5 class="dm-table-title">Employee Document Listing</h5>
+                    <p class="dm-table-subtitle">Filter by search tags or compliance states to verify outstanding employee documents.</p>
+                </div>
+            </div>
         </div>
 
-        <div class="eo-card">
-            <form method="GET" action="{{ route('hrms.documents.employee.index') }}" id="docDirectoryFilterForm">
-                <div class="eo-filter-inside">
-                    <div class="eo-filter-grid">
-                        <div class="eo-field">
-                            <label>Search</label>
-                            <input type="text" name="search" id="filterSearch" value="{{ request('search') }}" class="eo-control" placeholder="Search name, email, code...">
-                        </div>
+        <!-- Filter Row Attached inside card -->
+        <form method="GET" action="{{ route('hrms.documents.employee.index') }}" id="docDirectoryFilterForm">
+            <div class="dm-filter-wrapper">
+                <div class="dm-filter-row">
+                    <div class="dm-filter-col" style="flex: 2 1 300px;">
+                        <label class="dm-filter-label">Search Directory</label>
+                        <input type="text" name="search" id="filterSearch" value="{{ request('search') }}" class="dm-filter-control" placeholder="Search by name, email, employee code...">
+                    </div>
 
-                        <div class="eo-field">
-                            <label>Document Status</label>
-                            <select name="status" id="filterStatus" class="eo-control">
-                                <option value="">All Status</option>
-                                <option value="verified" {{ request('status') == 'verified' ? 'selected' : '' }}>Verified</option>
-                                <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
-                            </select>
-                        </div>
+                    <div class="dm-filter-col">
+                        <label class="dm-filter-label">Compliance Status</label>
+                        <select name="status" id="filterStatus" class="dm-filter-control">
+                            <option value="">All Compliance States</option>
+                            <option value="verified" {{ request('status') == 'verified' ? 'selected' : '' }}>Verified</option>
+                            <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending Verification</option>
+                        </select>
+                    </div>
 
-                        <div class="eo-field">
-                            <label>&nbsp;</label>
-                            <a href="{{ route('hrms.documents.employee.index') }}" class="eo-btn eo-btn-light">
-                                <i class="fas fa-undo"></i> Reset
-                            </a>
-                        </div>
+                    <div class="dm-filter-col" style="flex: 0 0 auto;">
+                        <a href="{{ route('hrms.documents.employee.index') }}" class="dm-btn dm-btn-dark-light" style="height: 40px; border-radius: 9px;">
+                            <i class="fas fa-undo"></i> Reset Filters
+                        </a>
                     </div>
                 </div>
-            </form>
-
-            <div class="eo-table-toolbar">
-                <div id="employeeLengthBox"></div>
-                <div id="employeeExportButtons"></div>
             </div>
+        </form>
 
-            <div class="table-responsive">
-                <table id="employeeDocDirectoryTable" class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Employee</th>
-                            <!-- <th>Employee Code</th> -->
-                            <th>Email</th>
-                            <th>Documents</th>
-                            <th>Document Status</th>
-                            <th width="150" class="text-center">Actions</th>
-                        </tr>
-                    </thead>
+        <!-- DataTable Toolbar (Entries and buttons appended here) -->
+        <div class="dm-table-toolbar-row">
+            <div id="employeeLengthBox"></div>
+            <div id="employeeExportButtons"></div>
+        </div>
 
-                    <tbody>
-                        @forelse($employees as $emp)
-                        <tr>
-                            <td>
-                                <div class="eo-emp">
-                                    <div class="eo-avatar">{{ strtoupper(substr($emp->user->name ?? 'E', 0, 1)) }}</div>
-                                    <div>
-                                        <div class="eo-name">{{ $emp->user->name ?? '-' }}</div>
-                                        <div class="eo-meta">{{ $emp->employee_code ?? '-' }}</div>
-                                    </div>
+        <!-- Table Listing -->
+        <div class="dm-table-wrap">
+            <table id="employeeDocDirectoryTable" class="table dm-table">
+                <thead>
+                    <tr>
+                        <th>Employee</th>
+                        <th>Email</th>
+                        <th>Documents Status Overview</th>
+                        <th>Compliance State</th>
+                        <th width="150" class="text-center">Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @forelse($employees as $emp)
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="dm-avatar-wrapper">
+                                    {{ strtoupper(substr($emp->user->name ?? 'E', 0, 1)) }}
                                 </div>
-                            </td>
-
-                            <!-- <td><span class="eo-code">{{ $emp->employee_code ?? '-' }}</span></td> -->
-
-                            <td>{{ $emp->user->email ?? '-' }}</td>
-
-                            <td>
-                                <div class="eo-docs">
-                                    <span class="eo-pill eo-pill-muted">Total: {{ $emp->doc_total }}</span>
-                                    <span class="eo-pill eo-pill-active">Verify: {{ $emp->doc_verified }}</span>
-                                    <span class="eo-pill eo-pill-warning">Pen: {{ $emp->doc_pending }}</span>
-                                    <span class="eo-pill eo-pill-danger">Rej: {{ $emp->doc_rejected }}</span>
+                                <div>
+                                    <div style="font-weight: 800; color: var(--dm-text); font-size: 14px;">{{ $emp->user->name ?? '-' }}</div>
+                                    <div style="font-size: 11px; color: var(--dm-muted); font-weight: 700;">{{ $emp->employee_code ?? '-' }}</div>
                                 </div>
-                            </td>
+                            </div>
+                        </td>
 
-                            <td>
-                                @if($emp->verification_status === 'verified')
-                                <span class="eo-pill eo-pill-active"><span class="eo-dot"></span> Verified</span>
-                                @else
-                                <span class="eo-pill eo-pill-warning"><span class="eo-dot"></span> Pending</span>
-                                @endif
-                            </td>
+                        <td><span style="font-weight: 600;">{{ $emp->user->email ?? '-' }}</span></td>
 
-                            <td class="text-center">
-                                <a href="{{ route('hrms.documents.employee.show', $emp->id) }}" class="eo-icon-btn">
-                                    <i class="fas fa-eye mr-1"></i> View Docs
-                                </a>
-                            </td>
-                        </tr>
-                        @empty
-                        <tr>
-                            <td colspan="6" class="text-center text-muted py-4">No employee documents found.</td>
-                        </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
+                        <td>
+                            <div class="d-flex flex-wrap gap-2">
+                                <span class="dm-badge dm-badge-secondary" style="font-size: 9px; padding: 2px 8px;">Total: {{ $emp->doc_total }}</span>
+                                <span class="dm-badge dm-badge-success" style="font-size: 9px; padding: 2px 8px;">Verify: {{ $emp->doc_verified }}</span>
+                                <span class="dm-badge dm-badge-warning" style="font-size: 9px; padding: 2px 8px;">Pen: {{ $emp->doc_pending }}</span>
+                                <span class="dm-badge dm-badge-danger" style="font-size: 9px; padding: 2px 8px;">Rej: {{ $emp->doc_rejected }}</span>
+                            </div>
+                        </td>
 
-            <div class="eo-table-footer">
-                <div id="employeeInfoBox"></div>
-                <div id="employeePaginationBox"></div>
-            </div>
+                        <td>
+                            @if($emp->verification_status === 'verified')
+                            <span class="dm-badge dm-badge-success"><i class="fas fa-check-circle mr-1"></i> Verified</span>
+                            @else
+                            <span class="dm-badge dm-badge-warning"><i class="fas fa-hourglass-half mr-1"></i> Pending</span>
+                            @endif
+                        </td>
+
+                        <td class="text-center">
+                            <a href="{{ route('hrms.documents.employee.show', $emp->id) }}" class="dm-action-btn-pill dm-action-btn-primary">
+                                <i class="fas fa-eye mr-1"></i> View Docs
+                            </a>
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">No employee documents found.</td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        <!-- DataTable Footer (Pagination & pagination info appended here) -->
+        <div class="dm-table-footer-row">
+            <div id="employeeInfoBox"></div>
+            <div id="employeePaginationBox"></div>
         </div>
     </div>
 </div>
@@ -491,7 +309,7 @@
                     title: 'Employee Documents Directory',
                     className: 'btn btn-sm',
                     exportOptions: {
-                        columns: [0, 1, 2, 3, 4],
+                        columns: [0, 1, 2, 3],
                         format: {
                             body: function(data) {
                                 return cleanExportText(data);
@@ -505,7 +323,7 @@
                     title: 'Employee Documents Directory',
                     className: 'btn btn-sm',
                     exportOptions: {
-                        columns: [0, 1, 2, 3, 4],
+                        columns: [0, 1, 2, 3],
                         format: {
                             body: function(data) {
                                 return cleanExportText(data);
@@ -519,7 +337,7 @@
                     title: 'Employee Documents Directory',
                     className: 'btn btn-sm',
                     exportOptions: {
-                        columns: [0, 1, 2, 3, 4],
+                        columns: [0, 1, 2, 3],
                         format: {
                             body: function(data) {
                                 return cleanExportText(data);
@@ -535,7 +353,7 @@
                     orientation: 'landscape',
                     pageSize: 'A4',
                     exportOptions: {
-                        columns: [0, 1, 2, 3, 4],
+                        columns: [0, 1, 2, 3],
                         format: {
                             body: function(data) {
                                 return cleanExportText(data);

@@ -9,12 +9,13 @@ use App\Http\Controllers\Web\HRMS\Document\EmployeePolicyC;
 use App\Http\Controllers\Web\HRMS\Document\HRDocumentC;
 use App\Http\Controllers\Web\HRMS\Employee\EmployeeC;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\DB;
 
 /*
 |--------------------------------------------------------------------------
 | Secure Private Document Preview
 |--------------------------------------------------------------------------
-| Employee aur Admin dono browser me document view kar sakein.
+| Ensure that both Employee and Admin can view documents in the browser.
 */
 
 Route::middleware(['auth', 'module:hrms'])
@@ -22,6 +23,35 @@ Route::middleware(['auth', 'module:hrms'])
     ->name('hrms.')
     ->group(function () {
         Route::get('/employee/file/{path}', function ($path) {
+            $user = auth()->user();
+            
+            // Authorization: Parse employee_id from directory structure: "employee-documents/ID/file"
+            if (preg_match('/employee-documents[\\/](\d+)/', $path, $matches)) {
+                $employeeId = (int)$matches[1];
+                $employee = DB::table('employees_new')->where('id', $employeeId)->first();
+                
+                if ($employee) {
+                    $hasPermission = false;
+                    
+                    if ($employee->user_id == $user->id) {
+                        $hasPermission = true;
+                    } else {
+                        $userRole = DB::table('roles')
+                            ->join('user_roles', 'roles.id', '=', 'user_roles.role_id')
+                            ->where('user_roles.user_id', $user->id)
+                            ->whereIn('roles.slug', ['super_admin', 'admin', 'hr_admin', 'finance_admin', 'operations_admin'])
+                            ->exists();
+                        if ($userRole) {
+                            $hasPermission = true;
+                        }
+                    }
+                    
+                    if (!$hasPermission) {
+                        abort(403, 'Unauthorized access to employee document.');
+                    }
+                }
+            }
+
             $filePath = storage_path('app/private/' . $path);
 
             if (! file_exists($filePath)) {
@@ -40,8 +70,6 @@ Route::middleware(['auth', 'module:hrms'])
     });
 
 Route::middleware(['auth', 'check.access'])
-    ->prefix('hrms')
-    ->name('hrms.')
     ->group(function () {
 
         /*
@@ -217,7 +245,7 @@ Route::middleware(['auth', 'check.access'])
 |--------------------------------------------------------------------------
 | Employee Self Documents
 |--------------------------------------------------------------------------
-| Admin middleware se bahar rakha hai, kyunki employee ko access chahiye.
+| Kept outside the Admin middleware because employees require access.
 */
 Route::middleware(['auth', 'module:hrms'])
     ->prefix('hrms')

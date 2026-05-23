@@ -1133,7 +1133,7 @@ class EmployeeC extends Controller
                 app(\App\Services\HRMS\Notification\NotificationS::class)->notifyHrAndSuperAdmin(
                     'Profile Verification Request',
                     $employeeName . ' submitted profile for verification.',
-                    'profile_document_verification',
+                    'profile_submitted',
                     'hrms.employees.profile.view',
                     ['employee' => $id],
                     [
@@ -1206,11 +1206,15 @@ class EmployeeC extends Controller
 
             app(\App\Services\HRMS\Notification\NotificationS::class)->notifyEmployee(
                 'Profile Approved',
-                'Your profile and documents have been approved. Attendance is now enabled.',
+                'Your profile has been approved. You can now Punch In/Out and mark attendance.',
                 'profile_approved',
-                'hrms.documents.self.index',
+                'punch_in_out',
                 [],
-                ['employee_id' => $employeeData->id, 'user_id' => $employeeData->user_id],
+                [
+                    'employee_id' => $employeeData->id,
+                    'user_id' => $employeeData->user_id,
+                    'redirect_type' => 'attendance',
+                ],
                 $employeeData->user_id
             );
 
@@ -1268,9 +1272,13 @@ class EmployeeC extends Controller
                 'Profile Rejected',
                 'Your profile/documents were rejected. Please update and resubmit.',
                 'profile_rejected',
-                'hrms.documents.self.index',
+                'profile_completion',
                 [],
-                ['employee_id' => $employeeData->id, 'user_id' => $employeeData->user_id],
+                [
+                    'employee_id' => $employeeData->id,
+                    'user_id' => $employeeData->user_id,
+                    'rejection_reason' => $request->rejection_reason ?: 'Profile rejected by HR',
+                ],
                 $employeeData->user_id
             );
 

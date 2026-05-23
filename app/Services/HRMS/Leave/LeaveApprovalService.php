@@ -87,6 +87,7 @@ class LeaveApprovalService
             $this->logBalance($leaveRequest, $allocation, 'leave_approved', $before, (float) $allocation->total_remaining, $approvedByUserId);
             $this->attendanceSyncService->syncApprovedLeave($leaveRequest->fresh(['dates']), $approvedByUserId);
             $this->createPayrollImpacts($leaveRequest->fresh(['dates']), $approvedByUserId);
+            $this->notifyLeaveDecision($leaveRequest->fresh(['employee.user', 'leaveType', 'dates']), 'leave_approved');
 
             return $leaveRequest->fresh(['employee', 'leaveType', 'dates']);
         });
@@ -107,6 +108,8 @@ class LeaveApprovalService
                 'approved_at' => Carbon::now('Asia/Kolkata'),
                 'rejection_reason' => $reason,
             ])->save();
+
+            $this->notifyLeaveDecision($leaveRequest->fresh(['employee.user', 'leaveType', 'dates']), 'leave_rejected', $reason);
 
             return $leaveRequest->fresh(['employee', 'leaveType', 'dates']);
         });
@@ -217,5 +220,70 @@ class LeaveApprovalService
                 ]
             );
         }
+    }
+
+    private function notifyLeaveDecision(LeaveRequestM $leaveRequest, string $type, ?string $reason = null): void
+    {
+        $userId = $leaveRequest->user_id ?: $leaveRequest->employee?->user_id;
+        if (! $userId) {
+            return;
+        }
+
+        $leaveType = $leaveRequest->leaveType?->name ?: 'Leave';
+        $fromDate = Carbon::parse($leaveRequest->start_date)->format('Y-m-d');
+        $toDate = Carbon::parse($leaveRequest->end_date)->format('Y-m-d');
+        $dateRange = $fromDate . ' to ' . $toDate;
+        $approved = $type === 'leave_approved';
+
+        app(\App\Services\HRMS\Notification\NotificationS::class)->notifyEmployee(
+            $approved ? 'Leave Approved' : 'Leave Rejected',
+            $approved
+                ? "Your {$leaveType} leave from {$fromDate} to {$toDate} has been approved."
+                : "Your {$leaveType} leave from {$fromDate} to {$toDate} has been rejected. Reason: {$reason}",
+            $type,
+            'leave',
+            ['leave_id' => $leaveRequest->id],
+            [
+                'leave_id' => $leaveRequest->id,
+                'leave_type' => $leaveType,
+                'leave_dates' => $dateRange,
+                'from_date' => $fromDate,
+                'to_date' => $toDate,
+                'start_date' => (string) $leaveRequest->start_date,
+                'end_date' => (string) $leaveRequest->end_date,
+                'employee_id' => $leaveRequest->employee_id,
+                'employee_name' => $leaveRequest->employee?->display_name,
+                'status' => $leaveRequest->status,
+                'reason' => $reason,
+                'attachment_url' => $this->leaveAttachmentUrl($leaveRequest->attachment_path),
+                'attachment_type' => $leaveRequest->attachment_path ? $this->attachmentType($leaveRequest->attachment_path) : '',
+                'attachment_name' => $leaveRequest->attachment_path ? basename($leaveRequest->attachment_path) : '',
+            ],
+            $userId
+        );
+    }
+
+    private function leaveAttachmentUrl(?string $path): string
+    {
+        if (! $path) {
+            return '';
+        }
+
+        if (preg_match('/^https?:\/\//i', $path)) {
+            return $path;
+        }
+
+        return asset(ltrim($path, '/'));
+    }
+
+    private function attachmentType(string $path): string
+    {
+        $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+
+        if (in_array($extension, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+            return 'image';
+        }
+
+        return $extension === 'pdf' ? 'pdf' : 'document';
     }
 }

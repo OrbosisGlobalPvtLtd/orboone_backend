@@ -164,49 +164,58 @@
 <!-- Add Policy Modal -->
 <div class="modal fade" id="addPolicyModal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
-        <div class="modal-content border-0 shadow-lg" style="border-radius: 25px;">
-            <div class="modal-header bg-primary text-white border-0 py-4 px-4" style="border-radius: 25px 25px 0 0;">
-                <h5 class="modal-title font-weight-bold">Upload Company Policy</h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <form action="{{ route('hrms.documents.policies.store') }}" method="POST" enctype="multipart/form-data">
+        <div class="modal-content orb-modal">
+            <form action="{{ route('hrms.documents.policies.store') }}" method="POST" enctype="multipart/form-data" style="width: 100%;">
                 @csrf
-                <div class="modal-body p-4">
-                    <div class="form-group mb-4">
-                        <label class="small font-weight-bold text-muted uppercase">Policy Title</label>
-                        <input type="text" name="title" class="form-control border-light bg-light" placeholder="e.g., Annual Leave Policy 2026" required style="border-radius: 12px; height: 50px;">
+                <div class="orb-modal-header">
+                    <div>
+                        <h5 class="modal-title">Upload Company Policy</h5>
+                        <p class="orb-modal-subtitle">Publish a new policy file for employees and admins</p>
                     </div>
-                    <div class="form-group mb-4">
-                        <label class="small font-weight-bold text-muted uppercase">Category</label>
-                        <select name="category" class="form-control border-light bg-light" required style="border-radius: 12px; height: 50px;">
-                            <option value="HR Policy">HR Policy</option>
-                            <option value="IT Policy">IT Policy</option>
-                            <option value="Finance">Finance</option>
-                            <option value="Conduct">Code of Conduct</option>
-                            <option value="General">General</option>
-                        </select>
-                    </div>
-                    <div class="form-group mb-4">
-                        <label class="small font-weight-bold text-muted uppercase">Document File (PDF/Image)</label>
-                        <input type="file" name="file" class="form-control-file border p-2 w-100" required style="border-radius: 12px;">
-                    </div>
-                    <div class="form-group mb-4">
-                        <label class="small font-weight-bold text-muted d-block uppercase mb-2">Visible To</label>
-                        <div class="custom-control custom-checkbox custom-control-inline">
-                            <input type="checkbox" name="visible_to[]" value="employee" class="custom-control-input" id="vis_emp" checked>
-                            <label class="custom-control-label" for="vis_emp">Employees</label>
-                        </div>
-                        <div class="custom-control custom-checkbox custom-control-inline">
-                            <input type="checkbox" name="visible_to[]" value="admin" class="custom-control-input" id="vis_adm" checked>
-                            <label class="custom-control-label" for="vis_adm">Admins/HR</label>
+                    <button type="button" class="close btn-close btn-close-white" data-dismiss="modal" aria-label="Close" style="color:#fff; opacity:1; border:0; background:transparent; font-size:24px; padding:0; outline:none; line-height:1;">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body orb-modal-body">
+                    <div class="orb-form-section">
+                        <div class="orb-form-grid" style="grid-template-columns: 1fr;">
+                            <div>
+                                <label class="orb-form-label" for="policy_title">Policy Title <span class="text-danger">*</span></label>
+                                <input type="text" name="title" id="policy_title" class="form-control" placeholder="e.g., Annual Leave Policy 2026" required>
+                            </div>
+                            <div>
+                                <label class="orb-form-label" for="policy_category">Category <span class="text-danger">*</span></label>
+                                <select name="category" id="policy_category" class="form-control" required>
+                                    <option value="HR Policy">HR Policy</option>
+                                    <option value="IT Policy">IT Policy</option>
+                                    <option value="Finance">Finance</option>
+                                    <option value="Conduct">Code of Conduct</option>
+                                    <option value="General">General</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="orb-form-label" for="policy_file">Document File (PDF/Image) <span class="text-danger">*</span></label>
+                                <input type="file" name="file" id="policy_file" class="form-control p-1" required>
+                            </div>
+                            <div>
+                                <label class="orb-form-label">Visible To</label>
+                                <div class="d-flex align-items-center gap-4 mt-2">
+                                    <div class="form-check form-check-inline mr-3">
+                                        <input class="form-check-input" type="checkbox" name="visible_to[]" value="employee" id="vis_emp" checked>
+                                        <label class="form-check-label font-weight-bold ml-1" for="vis_emp" style="font-size: 13px; color: var(--orb-text);">Employees</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" name="visible_to[]" value="admin" id="vis_adm" checked>
+                                        <label class="form-check-label font-weight-bold ml-1" for="vis_adm" style="font-size: 13px; color: var(--orb-text);">Admins/HR</label>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer bg-light border-0 py-3 px-4" style="border-radius: 0 0 25px 25px;">
-                    <button type="button" class="btn btn-link text-muted font-weight-bold" data-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary px-5 font-weight-bold" style="border-radius: 12px;">Publish Policy</button>
+                <div class="modal-footer orb-modal-footer">
+                    <button type="button" class="orb-btn-light" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="orb-btn-primary"><i class="fas fa-bullhorn mr-1"></i> Publish Policy</button>
                 </div>
             </form>
         </div>

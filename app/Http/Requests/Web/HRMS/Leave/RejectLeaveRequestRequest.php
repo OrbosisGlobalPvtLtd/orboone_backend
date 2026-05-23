@@ -14,7 +14,7 @@ class RejectLeaveRequestRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'reason' => 'nullable|string|max:2000',
+            'reason' => 'required|string|min:3|max:2000',
             'remark' => 'nullable|string|max:2000',
             'admin_remark' => 'nullable|string|max:2000',
         ];

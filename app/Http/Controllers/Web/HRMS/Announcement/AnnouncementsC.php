@@ -156,6 +156,11 @@ class AnnouncementsC extends Controller
                 ->select('id', 'name', 'slug')
                 ->orderBy('name')
                 ->get();
+        } elseif (Schema::hasTable('roles')) {
+            $roles = DB::table('roles')
+                ->select('id', 'name', 'slug')
+                ->orderBy('name')
+                ->get();
         }
 
         $departments = collect();
@@ -206,7 +211,7 @@ class AnnouncementsC extends Controller
         return back()->with('success', 'Announcement published successfully.');
     }
 
-    public function update(Request $request, AnnouncementM $announcement)
+    public function update(Request $request, AnnouncementM $announcement, NotificationS $notificationS)
     {
         if (!Auth::user()->hasPermission('announcements.edit') && !Auth::user()->hasPermission('announcements.manage')) {
             abort(403, 'Unauthorized action.');
@@ -224,7 +229,12 @@ class AnnouncementsC extends Controller
 
         $data['is_active'] = $request->boolean('is_active');
 
+        $wasActive = (bool) $announcement->is_active;
         $announcement->update($data);
+
+        if (! $wasActive && (bool) $announcement->is_active) {
+            $this->sendAnnouncementNotification($announcement->fresh(), $notificationS);
+        }
 
         return back()->with('success', 'Announcement updated successfully.');
     }
@@ -247,15 +257,18 @@ class AnnouncementsC extends Controller
         ]);
     }
 
-    public function toggleStatus(AnnouncementM $announcement)
+    public function toggleStatus(AnnouncementM $announcement, NotificationS $notificationS)
     {
         if (!Auth::user()->hasPermission('announcements.publish') && !Auth::user()->hasPermission('announcements.manage')) {
             return response()->json(['success' => false, 'message' => 'Unauthorized action.'], 403);
         }
 
-        $announcement->update([
-            'is_active' => ! (bool) $announcement->is_active,
-        ]);
+        $willPublish = ! (bool) $announcement->is_active;
+        $announcement->update(['is_active' => $willPublish]);
+
+        if ($willPublish) {
+            $this->sendAnnouncementNotification($announcement->fresh(), $notificationS);
+        }
 
         return response()->json([
             'success' => true,
@@ -363,11 +376,16 @@ class AnnouncementsC extends Controller
                     roleId: $user->system_role_id ?? null,
                     title: $announcement->title,
                     message: Str::limit(strip_tags((string) $announcement->description), 130),
-                    type: 'announcement',
+                    type: 'announcement_published',
                     routeName: $routeName,
-                    routeParams: [],
+                    routeParams: ['announcement_id' => $announcement->id],
                     data: [
                         'announcement_id' => $announcement->id,
+                        'announcement_type' => $announcement->type,
+                        'priority' => $announcement->priority,
+                        'attachment_url' => $announcement->attachment ? asset('storage/' . $announcement->attachment) : '',
+                        'attachment_type' => $announcement->attachment ? $this->attachmentType($announcement->attachment) : '',
+                        'attachment_name' => $announcement->attachment ? basename($announcement->attachment) : '',
                     ]
                 );
             } catch (\Throwable $e) {
@@ -408,23 +426,76 @@ class AnnouncementsC extends Controller
             })->get();
         }
 
-        if (Schema::hasColumn('users', 'system_role_id') && Schema::hasTable('system_roles')) {
-            $roleSlugs = match ($targetType) {
-                'employee' => ['employee'],
-                'admin' => ['super_admin', 'admin', 'finance_admin', 'project_admin', 'operations_admin', 'custom_admin'],
-                'hr' => ['super_admin', 'admin', 'hr_admin'],
-                default => [],
-            };
+        $roleSlugs = match ($targetType) {
+            'employee' => ['employee'],
+            'admin' => ['super_admin', 'admin', 'finance_admin', 'project_admin', 'operations_admin', 'custom_admin'],
+            'hr' => ['super_admin', 'admin', 'hr_admin'],
+            default => [],
+        };
 
-            if (!empty($roleSlugs)) {
-                $roleIds = DB::table('system_roles')
-                    ->whereIn('slug', $roleSlugs)
-                    ->pluck('id');
-
-                return $query->whereIn('system_role_id', $roleIds)->get();
-            }
+        if (!empty($roleSlugs)) {
+            return $this->usersForRoleSlugs($query, $roleSlugs)->get();
         }
 
         return collect();
+    }
+
+    private function usersForRoleSlugs($query, array $roleSlugs)
+    {
+        $roleIds = collect();
+
+        if (Schema::hasTable('roles')) {
+            $roleIds = DB::table('roles')
+                ->where(function ($q) use ($roleSlugs) {
+                    if (Schema::hasColumn('roles', 'slug')) {
+                        $q->orWhereIn('slug', $roleSlugs);
+                    }
+
+                    if (Schema::hasColumn('roles', 'name')) {
+                        $q->orWhereIn('name', $roleSlugs)
+                            ->orWhereIn('name', array_map(fn ($role) => str_replace('_', ' ', $role), $roleSlugs))
+                            ->orWhereIn('name', array_map(fn ($role) => ucwords(str_replace('_', ' ', $role)), $roleSlugs));
+                    }
+                })
+                ->pluck('id');
+        } elseif (Schema::hasTable('system_roles')) {
+            $roleIds = DB::table('system_roles')
+                ->whereIn('slug', $roleSlugs)
+                ->pluck('id');
+        }
+
+        if ($roleIds->isEmpty()) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where(function ($q) use ($roleIds) {
+            if (Schema::hasColumn('users', 'system_role_id')) {
+                $q->orWhereIn('system_role_id', $roleIds);
+            }
+
+            if (Schema::hasTable('user_roles')) {
+                $q->orWhereExists(function ($sub) use ($roleIds) {
+                    $sub->select(DB::raw(1))
+                        ->from('user_roles')
+                        ->whereColumn('user_roles.user_id', 'users.id')
+                        ->whereIn('user_roles.role_id', $roleIds);
+                });
+            }
+        });
+    }
+
+    private function attachmentType(string $path): string
+    {
+        $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+
+        if (in_array($extension, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+            return 'image';
+        }
+
+        if ($extension === 'pdf') {
+            return 'pdf';
+        }
+
+        return 'document';
     }
 }

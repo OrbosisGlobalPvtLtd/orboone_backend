@@ -91,7 +91,7 @@ class HRDocumentC extends Controller
 
         $this->syncEmployeeVerification($employee->id);
 
-        return back()->with('success', ($employee->user->name ?? 'Employee') . ' ke sabhi documents verified ho gaye.');
+        return back()->with('success', 'All documents for ' . ($employee->user->name ?? 'Employee') . ' have been verified successfully.');
     }
 
     public function show($user)
@@ -126,6 +126,7 @@ class HRDocumentC extends Controller
         ]);
 
         $this->syncEmployeeVerification($document->employee_id);
+        $this->notifyDocumentStatus($document->fresh(['employee.user', 'documentType']), 'document_approved');
 
         return back()->with('success', 'Document verified successfully.');
     }
@@ -150,6 +151,8 @@ class HRDocumentC extends Controller
             'rejection_reason' => $request->rejection_reason,
         ]);
 
+        $this->notifyDocumentStatus($document->fresh(['employee.user', 'documentType']), 'document_rejected', $request->rejection_reason);
+
         return back()->with('success', 'Document rejected successfully.');
     }
 
@@ -171,6 +174,7 @@ class HRDocumentC extends Controller
             ]);
 
             $this->syncEmployeeVerification($document->employee_id);
+            $this->notifyDocumentStatus($document->fresh(['employee.user', 'documentType']), 'document_approved');
         }
 
         return back()->with('success', 'Selected documents verified successfully.');
@@ -228,5 +232,61 @@ class HRDocumentC extends Controller
                 'rejection_reason' => null,
             ]);
         }
+    }
+
+    private function notifyDocumentStatus(EmployeeDocumentM $document, string $type, ?string $reason = null): void
+    {
+        $userId = $document->employee?->user_id;
+        if (! $userId) {
+            return;
+        }
+
+        app(\App\Services\HRMS\Notification\NotificationS::class)->notifyEmployee(
+            $type === 'document_rejected' ? 'Document Rejected' : 'Document Approved',
+            $type === 'document_rejected'
+                ? 'Your document ' . ($document->title ?: 'document') . ' was rejected. Please re-upload it.'
+                : 'Your document ' . ($document->title ?: 'document') . ' has been approved.',
+            $type,
+            'documents',
+            ['document_id' => $document->id],
+            [
+                'document_id' => $document->id,
+                'employee_id' => $document->employee_id,
+                'document_title' => $document->title,
+                'rejection_reason' => $reason,
+                'attachment_url' => $this->privateFileUrl($document->file_path),
+                'attachment_type' => $this->attachmentType($document->file_mime_type, $document->file_original_name),
+                'attachment_name' => $document->file_original_name ?: $document->title,
+            ],
+            $userId
+        );
+    }
+
+    private function privateFileUrl(?string $path): string
+    {
+        if (! $path) {
+            return '';
+        }
+
+        return url('/api/v1/file') . '?' . http_build_query([
+            'disk' => 'private',
+            'path' => $path,
+        ]);
+    }
+
+    private function attachmentType(?string $mime, ?string $name): string
+    {
+        $mime = strtolower((string) $mime);
+        $extension = strtolower(pathinfo((string) $name, PATHINFO_EXTENSION));
+
+        if (str_starts_with($mime, 'image/') || in_array($extension, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+            return 'image';
+        }
+
+        if ($mime === 'application/pdf' || $extension === 'pdf') {
+            return 'pdf';
+        }
+
+        return 'document';
     }
 }

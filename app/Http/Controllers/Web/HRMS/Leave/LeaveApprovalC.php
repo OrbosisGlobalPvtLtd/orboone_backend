@@ -69,6 +69,9 @@ class LeaveApprovalC extends Controller
 
         try {
             $leaveRequest = LeaveRequestM::findOrFail($id);
+            if ($leaveRequest->status !== 'pending') {
+                return back()->with('error', 'Only pending leave requests can be approved.');
+            }
             $this->authorizeLeaveRequestForApproval($leaveRequest);
             $this->approvalService->approve($leaveRequest, Auth::id(), $request->input('note') ?: $request->input('remark') ?: $request->input('admin_remark'));
 
@@ -84,8 +87,11 @@ class LeaveApprovalC extends Controller
         abort_unless($this->userHasPermission('leave.approvals.reject'), 403);
 
         try {
-            $reason = $request->input('reason') ?: $request->input('remark') ?: $request->input('admin_remark') ?: 'Rejected by approver.';
             $leaveRequest = LeaveRequestM::findOrFail($id);
+            if ($leaveRequest->status !== 'pending') {
+                return back()->with('error', 'Only pending leave requests can be rejected.');
+            }
+            $reason = $request->input('reason') ?: $request->input('remark') ?: $request->input('admin_remark') ?: 'Rejected by approver.';
             $this->authorizeLeaveRequestForApproval($leaveRequest);
             $this->approvalService->reject($leaveRequest, Auth::id(), $reason);
 

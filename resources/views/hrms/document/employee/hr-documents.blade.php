@@ -202,21 +202,34 @@
 
 {{-- Rejection Modals --}}
 @foreach($documents as $doc)
-    <div class="modal fade" id="rejectModal{{ $doc->id }}" tabindex="-1" role="dialog">
+    <div class="modal fade" id="rejectModal{{ $doc->id }}" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
-            <div class="modal-content border-0" style="border-radius:22px; box-shadow: 0 20px 50px rgba(0,0,0,0.2);">
-                <form action="{{ route('hrms.documents.hr.reject', $doc->id) }}" method="POST">
+            <div class="modal-content orb-modal">
+                <form action="{{ route('hrms.documents.hr.reject', $doc->id) }}" method="POST" style="width: 100%;">
                     @csrf
-                    <div class="modal-body p-4 text-center">
-                        <i class="fas fa-exclamation-circle text-danger fa-4x mb-4"></i>
-                        <h4 class="font-weight-bold text-dark mb-2">Reject Documentation</h4>
-                        <p class="text-muted small mb-4">Provide a specific reason for rejection to help the employee re-upload correctly.</p>
-                        <textarea name="reason" class="form-control border-0 bg-light p-3" rows="4" 
-                                  placeholder="e.g. Identity proof is not clear..." required style="border-radius:15px;"></textarea>
+                    <div class="orb-modal-header">
+                        <div>
+                            <h5 class="modal-title">Reject Documentation</h5>
+                            <p class="orb-modal-subtitle">Reason for rejecting this set of documents</p>
+                        </div>
+                        <button type="button" class="close btn-close btn-close-white" data-dismiss="modal" aria-label="Close" style="color:#fff; opacity:1; border:0; background:transparent; font-size:24px; padding:0; outline:none; line-height:1;">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
                     </div>
-                    <div class="modal-footer border-0 justify-content-center pb-4">
-                        <button type="button" class="btn btn-light rounded-pill px-4" data-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-danger rounded-pill px-4 font-weight-bold">Confirm Rejection</button>
+                    <div class="modal-body orb-modal-body">
+                        <div class="orb-form-section">
+                            <div class="orb-form-grid" style="grid-template-columns: 1fr;">
+                                <div>
+                                    <label class="orb-form-label" for="rejection_reason_{{ $doc->id }}">Reason for Rejection <span class="text-danger">*</span></label>
+                                    <textarea name="reason" id="rejection_reason_{{ $doc->id }}" class="form-control" rows="4" 
+                                              placeholder="e.g. Identity proof is not clear..." required></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer orb-modal-footer">
+                        <button type="button" class="orb-btn-light" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="orb-btn-primary" style="background: linear-gradient(135deg, #DC2626, #EC4E74) !important;"><i class="fas fa-times-circle"></i> Confirm Rejection</button>
                     </div>
                 </form>
             </div>

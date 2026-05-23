@@ -32,6 +32,8 @@ class UserM extends Authenticatable
         'phone',
         'username',
         'password',
+        'fcm_token',
+        'device_token',
         'is_active',
         'is_web_access',
         'is_app_access',

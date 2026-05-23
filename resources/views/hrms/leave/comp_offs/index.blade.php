@@ -692,7 +692,7 @@
 
         <div class="leave-table-wrap">
             <div class="leave-table-responsive">
-                <table class="leave-table js-datatable">
+                <table class="leave-table js-comp-off-datatable">
                     <thead>
                         <tr>
                             <th>S.No.</th>
@@ -705,7 +705,7 @@
                     </thead>
 
                     <tbody>
-                        @forelse($compOffs as $compOff)
+                        @foreach($compOffs as $compOff)
                         @php
                         $employeeName = optional($compOff->employee)->display_name ?? optional(optional($compOff->employee)->user)->name ?? 'Unknown Employee';
                         $employeeCode = optional($compOff->employee)->employee_code ?? optional($compOff->employee)->code ?? 'EMP';
@@ -760,21 +760,7 @@
                                 </span>
                             </td>
                         </tr>
-                        @empty
-                        <tr>
-                            <td colspan="6">
-                                <div class="empty-state">
-                                    <i class="fas fa-calendar-plus"></i>
-                                    <div style="font-weight:900;color:var(--leave-text);">
-                                        No Comp Off Records Found
-                                    </div>
-                                    <div style="font-size:12px;margin-top:4px;color:var(--leave-muted);">
-                                        Approved holiday/weekoff work will generate comp-off records here.
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
-                        @endforelse
+                        @endforeach
                     </tbody>
                 </table>
             </div>
@@ -788,8 +774,41 @@
 @include('hrms.leave.shared.datatable')
 
 <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        if (window.jQuery && $.fn.DataTable) {
+            $('.js-comp-off-datatable').DataTable({
+                pageLength: 25,
+                responsive: true,
+                language: {
+                    emptyTable: `<div class="empty-state">
+                                    <i class="fas fa-calendar-plus"></i>
+                                    <div style="font-weight:900;color:var(--leave-text);">
+                                        No Comp Off Records Found
+                                    </div>
+                                    <div style="font-size:12px;margin-top:4px;color:var(--leave-muted);">
+                                        Approved holiday/weekoff work will generate comp-off records here.
+                                    </div>
+                                </div>`,
+                    loadingRecords: '<div class="spinner-border text-primary" role="status"><span class="sr-only">Loading...</span></div>'
+                },
+                dom: "<'row'<'col-sm-12 col-md-4'l><'col-sm-12 col-md-4 text-center'B><'col-sm-12 col-md-4'f>>" +
+                     "<'row'<'col-sm-12'tr>>" +
+                     "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+                buttons: [
+                    { extend: 'excel', className: 'btn btn-light border shadow-sm' },
+                    { extend: 'csv', className: 'btn btn-light border shadow-sm' },
+                    { extend: 'pdf', className: 'btn btn-light border shadow-sm' },
+                    { extend: 'print', className: 'btn btn-light border shadow-sm' }
+                ],
+                drawCallback: function() {
+                    $('.dataTables_paginate > .pagination').addClass('pagination-rounded justify-content-end mb-0');
+                }
+            });
+        }
+    });
+
     function triggerLeaveExport(type) {
-        let table = $('.js-datatable').DataTable();
+        let table = $('.js-comp-off-datatable').DataTable();
 
         let buttons = {
             csv: '.buttons-csv',

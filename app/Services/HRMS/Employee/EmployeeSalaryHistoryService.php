@@ -19,6 +19,26 @@ class EmployeeSalaryHistoryService
         ?string $reason = null,
         ?int $actorId = null
     ): void {
+        $this->performSyncSalary($employeeId, $stage, $salaryAmount, $effectiveFrom, $reason, $actorId);
+
+        try {
+            $updatedEmployee = DB::table($this->employeeTable)->where('id', $employeeId)->first();
+            if ($updatedEmployee) {
+                app(\App\Services\HRMS\EnterprisePayroll\EnterpriseSalaryStructureSyncS::class)->syncFromEmployee($updatedEmployee, $reason);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Enterprise payroll salary sync failed: '.$e->getMessage());
+        }
+    }
+
+    private function performSyncSalary(
+        int $employeeId,
+        ?string $stage,
+        $salaryAmount,
+        ?string $effectiveFrom = null,
+        ?string $reason = null,
+        ?int $actorId = null
+    ): void {
         if (
             ! Schema::hasTable($this->employeeTable)
             || ! Schema::hasTable($this->salaryHistoryTable)

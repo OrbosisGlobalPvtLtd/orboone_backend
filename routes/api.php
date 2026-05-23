@@ -13,6 +13,7 @@ Route::prefix('v1')->group(function () {
         'hrms/leave',
         'project_management/task',
         'hrms/payroll',
+        'hrms/enterprise_payroll',
         'mobile_app',
         'notification',
     ];
@@ -24,6 +25,6 @@ Route::prefix('v1')->group(function () {
             throw new RuntimeException("Missing API route file: {$path}");
         }
 
-        require_once $path;
+        require $path;
     }
 });

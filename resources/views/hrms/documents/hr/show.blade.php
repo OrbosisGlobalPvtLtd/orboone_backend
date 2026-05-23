@@ -2,206 +2,145 @@
 
 @section('page_title', 'Employee Document Details')
 
+@section('_head')
+@include('hrms.documents.partials.styles')
+@endsection
+
 @section('_content')
-<style>
-    :root {
-        --orb-primary: #4B00E8;
-        --orb-secondary: #8600EE;
-        --orb-bg: #F6F7FB;
-        --orb-card: #FFFFFF;
-        --orb-border: #E7EAF3;
-        --orb-text: #101828;
-        --orb-muted: #667085;
-        --orb-shadow: 0 10px 28px rgba(16, 24, 40, .06);
-    }
-
-    .eo-page {
-        min-height: calc(100vh - 90px);
-        padding: 16px 10px 30px;
-        background: var(--orb-bg);
-    }
-
-    .eo-container {
-        max-width: 1320px;
-        margin: 0 auto;
-    }
-
-    .eo-header {
-        background: #fff;
-        border: 1px solid var(--orb-border);
-        border-radius: 20px;
-        box-shadow: var(--orb-shadow);
-        padding: 16px;
-        margin-bottom: 20px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .eo-title {
-        margin: 0;
-        color: var(--orb-text);
-        font-size: 24px;
-        font-weight: 900;
-    }
-
-    .eo-card {
-        background: #fff;
-        border-radius: 20px;
-        box-shadow: var(--orb-shadow);
-        border: 1px solid var(--orb-border);
-        padding: 20px;
-        margin-bottom: 20px;
-    }
-
-    .table th {
-        background: #F8FAFC;
-        color: #667085;
-        font-size: 11px;
-        font-weight: 900;
-        text-transform: uppercase;
-    }
-
-    .table td {
-        vertical-align: middle;
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--orb-text);
-    }
-
-    .badge {
-        padding: 5px 10px;
-        border-radius: 20px;
-        font-size: 11px;
-        font-weight: 700;
-        text-transform: uppercase;
-    }
-
-    .badge-pending {
-        background: #FFF7E8;
-        color: #B54708;
-    }
-
-    .badge-verified {
-        background: rgba(18, 183, 106, .1);
-        color: #12B76A;
-    }
-
-    .badge-rejected {
-        background: rgba(236, 78, 116, .1);
-        color: #EC4E74;
-    }
-
-    .badge-missing {
-        background: #F2F4F7;
-        color: #667085;
-    }
-
-    .btn-action {
-        font-weight: 800;
-        border-radius: 10px;
-        padding: 6px 12px;
-        font-size: 12px;
-    }
-</style>
-
-<div class="eo-page">
-    <div class="eo-container">
-        <div class="eo-header">
-            <div>
-                <h1 class="eo-title">{{ $employee->user->name }} - Documents</h1>
-                <p class="eo-subtitle">Code: {{ $employee->employee_code }} | Experience: {{ ucfirst($employee->experience_type ?? 'Fresher') }}</p>
+<div class="dm-page">
+    <!-- Premium Purple Gradient Hero -->
+    <div class="dm-hero">
+        <div>
+            <div class="dm-kicker">
+                <i class="fas fa-file-alt"></i> HRMS &bull; DOCUMENT MANAGEMENT
             </div>
-            <a href="{{ route('hrms.documents.hr.index') }}" class="btn btn-light btn-action">Back to List</a>
+            <h1>{{ $employee->user->name }} - Documents Overview</h1>
+            <p>Code: {{ $employee->employee_code }} &bull; Experience: {{ ucfirst($employee->experience_type ?? 'Fresher') }}</p>
+        </div>
+        <div class="dm-hero-actions">
+            <a href="{{ route('hrms.documents.hr.index') }}" class="dm-btn dm-btn-light">
+                <i class="fas fa-arrow-left"></i> Back to List
+            </a>
+        </div>
+    </div>
+
+    @if(session('success'))
+    <div class="alert alert-success border-0 shadow-sm" style="border-radius: 14px; font-weight: 700; font-size: 13px;">
+        <i class="fas fa-check-circle mr-2"></i>{{ session('success') }}
+    </div>
+    @endif
+
+    <!-- Document Checklist Table -->
+    <div class="dm-card">
+        <div class="dm-table-header">
+            <div class="dm-table-head-left">
+                <div class="dm-icon-box"><i class="fas fa-clipboard-list"></i></div>
+                <div>
+                    <h5 class="dm-table-title">Employee Document Listing</h5>
+                    <p class="dm-table-subtitle">Review verification states of all requested compliance items for this employee.</p>
+                </div>
+            </div>
         </div>
 
-        @if(session('success'))
-        <div class="alert alert-success">{{ session('success') }}</div>
-        @endif
-
-        <div class="eo-card">
-            <div class="table-responsive">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Document Type</th>
-                            <th>Mandatory</th>
-                            <th>Status</th>
-                            <th>View</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($documentTypes as $type)
-                        @php
-                        $doc = $documents->get($type->id);
-                        @endphp
-                        <tr>
-                            <td>{{ $type->name }}</td>
-                            <td>{!! $type->is_mandatory ? '<span class="text-danger">* Yes</span>' : 'No' !!}</td>
-                            <td>
-                                @if($doc)
+        <div class="dm-table-wrap">
+            <table class="table dm-table">
+                <thead>
+                    <tr>
+                        <th>Document Type</th>
+                        <th>Mandatory</th>
+                        <th>Status</th>
+                        <th>View File</th>
+                        <th width="240">Verification Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($documentTypes as $type)
+                    @php
+                    $doc = $documents->get($type->id);
+                    @endphp
+                    <tr>
+                        <td><span style="font-weight: 800; color: var(--dm-text);">{{ $type->name }}</span></td>
+                        <td>
+                            @if($type->is_mandatory)
+                            <span class="dm-badge dm-badge-danger" style="font-size: 9px; padding: 2px 8px;">Mandatory</span>
+                            @else
+                            <span class="dm-badge dm-badge-secondary" style="font-size: 9px; padding: 2px 8px;">Optional</span>
+                            @endif
+                        </td>
+                        <td>
+                            @if($doc)
                                 @if($doc->verification_status == 'pending')
-                                <span class="badge badge-pending">Pending Verification</span>
+                                <span class="dm-badge dm-badge-warning"><i class="fas fa-hourglass-half mr-1"></i> Pending Verification</span>
                                 @elseif($doc->verification_status == 'verified')
-                                <span class="badge badge-verified">Verified</span>
+                                <span class="dm-badge dm-badge-success"><i class="fas fa-check-circle mr-1"></i> Verified</span>
                                 @else
-                                <span class="badge badge-rejected">Rejected</span><br>
-                                <small class="text-danger">{{ $doc->rejection_reason }}</small>
+                                <span class="dm-badge dm-badge-danger"><i class="fas fa-times-circle mr-1"></i> Rejected</span>
+                                @if($doc->rejection_reason)
+                                <div class="text-danger mt-1" style="font-size: 11px; font-weight: 700;">{{ $doc->rejection_reason }}</div>
                                 @endif
-                                @else
-                                <span class="badge badge-missing">Missing</span>
                                 @endif
-                            </td>
-                            <td>
-                                @if($doc && $doc->file_path)
-                                <!-- <a href="{{ route('hrms.documents.employee.download', $doc->id) }}" target="_blank" class="btn btn-sm btn-info btn-action"><i class="fas fa-eye"></i> View</a> -->
-                                <a href="{{ route('hrms.documents.file', $doc->file_path) }}" target="_blank" class="btn btn-sm btn-info btn-action"><i class="fas fa-eye"></i> View</a>
-                                @else
-                                -
-                                @endif
-                            </td>
-                            <td>
+                            @else
+                            <span class="dm-badge dm-badge-secondary"><i class="fas fa-minus-circle mr-1"></i> Missing</span>
+                            @endif
+                        </td>
+                        <td>
+                            @if($doc && $doc->file_path)
+                            <a href="{{ route('hrms.documents.file', $doc->file_path) }}" target="_blank" class="dm-action-btn-pill dm-action-btn-primary">
+                                <i class="fas fa-eye mr-1"></i> View File
+                            </a>
+                            @else
+                            <span class="text-muted" style="font-size: 12px;">No file uploaded</span>
+                            @endif
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
                                 @if($doc && $doc->verification_status == 'pending')
                                 <form action="{{ route('hrms.documents.hr.verify', $doc->id) }}" method="POST" style="display:inline;">
                                     @csrf
-                                    <button type="submit" class="btn btn-sm btn-success btn-action" onclick="return confirm('Verify this document?')"><i class="fas fa-check"></i> Verify</button>
+                                    <button type="submit" class="dm-action-btn-pill dm-action-btn-success" onclick="return confirm('Verify this document?')">
+                                        <i class="fas fa-check mr-1"></i> Verify
+                                    </button>
                                 </form>
-                                <button type="button" class="btn btn-sm btn-danger btn-action" data-toggle="modal" data-target="#rejectModal{{ $doc->id }}"><i class="fas fa-times"></i> Reject</button>
+                                <button type="button" class="dm-action-btn-pill dm-action-btn-danger" data-toggle="modal" data-target="#rejectModal{{ $doc->id }}">
+                                    <i class="fas fa-times mr-1"></i> Reject
+                                </button>
 
                                 <!-- Reject Modal -->
-                                <div class="modal fade" id="rejectModal{{ $doc->id }}" tabindex="-1">
-                                    <div class="modal-dialog">
-                                        <div class="modal-content">
-                                            <form action="{{ route('hrms.documents.hr.reject', $doc->id) }}" method="POST">
+                                <div class="modal fade" id="rejectModal{{ $doc->id }}" tabindex="-1" role="dialog" aria-hidden="true">
+                                    <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+                                        <div class="modal-content" style="border: none; border-radius: 24px; overflow: hidden; box-shadow: var(--dm-shadow);">
+                                            <form action="{{ route('hrms.documents.hr.reject', $doc->id) }}" method="POST" style="width: 100%;">
                                                 @csrf
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title">Reject Document: {{ $type->name }}</h5>
-                                                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                                                <div class="dm-modal-header" style="background: linear-gradient(135deg, #E11D48, #BE123C);">
+                                                    <h5 class="modal-title"><i class="fas fa-times-circle mr-2"></i>Reject Document</h5>
+                                                    <p>Specify the reason for rejecting "{{ $type->name }}" so the employee can upload a corrected version.</p>
+                                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button>
                                                 </div>
-                                                <div class="modal-body">
-                                                    <div class="form-group">
-                                                        <label>Reason for Rejection</label>
-                                                        <textarea name="rejection_reason" class="form-control" required rows="3"></textarea>
+                                                <div class="dm-modal-body">
+                                                    <div class="dm-form-group">
+                                                        <label>Reason for Rejection <span class="text-danger">*</span></label>
+                                                        <textarea name="rejection_reason" id="rejection_reason_{{ $doc->id }}" class="form-control" required rows="3" placeholder="Explain what is missing or incorrect..."></textarea>
                                                     </div>
                                                 </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-light" data-dismiss="modal">Cancel</button>
-                                                    <button type="submit" class="btn btn-danger">Confirm Reject</button>
+                                                <div class="dm-modal-footer">
+                                                    <button type="button" class="dm-btn dm-btn-dark-light" style="height: 38px;" data-dismiss="modal">Cancel</button>
+                                                    <button type="submit" class="dm-btn dm-btn-danger" style="height: 38px; background: #E11D48; border-color: #E11D48;">
+                                                        <i class="fas fa-check mr-1"></i> Confirm Reject
+                                                    </button>
                                                 </div>
                                             </form>
                                         </div>
                                     </div>
                                 </div>
                                 @else
-                                -
+                                <span class="text-muted" style="font-size: 12px; font-weight: 700;">No actions available</span>
                                 @endif
-                            </td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
+                            </div>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
         </div>
     </div>
 </div>

@@ -1,43 +1,115 @@
 @extends('layouts.panel')
 
+@section('page_title', 'Apply Leave')
+
 @section('_head')
+@include('settings.partials.styles')
 <style>
-    .orb-title{font-size:26px;font-weight:800;margin:0}.orb-muted{color:#667085}.orb-card{background:#fff;border:1px solid #E7EAF3;border-radius:8px;box-shadow:0 14px 35px rgba(16,24,40,.07)}.orb-card-body{padding:22px}.orb-btn{background:#4B00E8;color:#fff;border:0;border-radius:8px;padding:10px 14px;font-weight:700}.orb-btn:hover{background:#8600EE;color:#fff}
+    .leave-page-container {
+        max-width: 1120px;
+        margin: 0 auto;
+    }
 </style>
 @endsection
 
 @section('_content')
-<div>
-    <div class="mb-3">
-        <h1 class="orb-title">Apply Leave</h1>
-        <div class="orb-muted">Requests remain pending until HR/admin approval.</div>
-    </div>
-
-    @include('hrms.leave.shared.flash')
-
-    <div class="orb-card">
-        <div class="orb-card-body">
-            <form method="POST" action="{{ route('leave-requests.store') }}" enctype="multipart/form-data">
-                @csrf
-                <div class="row">
-                    <div class="col-md-4 mb-3">
-                        <label>Leave Type</label>
-                        <select name="leave_type_id" class="form-control" required>
-                            @foreach($leaveTypes as $type)
-                                <option value="{{ $type->id }}" {{ old('leave_type_id') == $type->id ? 'selected' : '' }}>{{ $type->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-md-4 mb-3"><label>Start Date</label><input type="date" name="start_date" value="{{ old('start_date') }}" class="form-control" required></div>
-                    <div class="col-md-4 mb-3"><label>End Date</label><input type="date" name="end_date" value="{{ old('end_date') }}" class="form-control" required></div>
-                    <div class="col-md-4 mb-3"><label>Half Day</label><select name="is_half_day" class="form-control"><option value="0">No</option><option value="1">Yes</option></select></div>
-                    <div class="col-md-4 mb-3"><label>Half Day Type</label><select name="half_day_type" class="form-control"><option value="">Full day</option><option value="first_half">First half</option><option value="second_half">Second half</option></select></div>
-                    <div class="col-md-4 mb-3"><label>Attachment</label><input type="file" name="attachment" class="form-control"></div>
-                    <div class="col-12 mb-3"><label>Reason</label><textarea name="reason" rows="4" class="form-control" required>{{ old('reason') }}</textarea></div>
+<div class="set-page">
+    <div class="leave-page-container">
+        
+        <!-- Premium Purple Gradient Hero -->
+        <div class="set-header">
+            <div>
+                <div class="set-kicker">
+                    <i class="fas fa-calendar-alt"></i> EMPLOYEE &bull; LEAVE MANAGEMENT
                 </div>
-                <button class="orb-btn" type="submit">Submit Request</button>
-                <a href="{{ route('leave-requests.index') }}" class="btn btn-light border ml-2">Back</a>
-            </form>
+                <h1 class="set-title">Apply Leave</h1>
+                <p class="set-subtitle">Submit your leave request for approval. Requests remain pending until HR/admin approval.</p>
+            </div>
+            
+            <!-- Glassmorphic Info Badge -->
+            <div class="set-glass-badge">
+                <div style="font-size: 24px; font-weight: 900; line-height: 1;"><i class="fas fa-edit"></i></div>
+                <div style="font-size: 9px; font-weight: 850; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; opacity: 0.9;">Apply Form</div>
+            </div>
+        </div>
+
+        @include('hrms.leave.shared.flash')
+
+        <!-- Apply Form Card -->
+        <div class="set-card">
+            <div class="set-card-header">
+                <div class="set-head-left">
+                    <div class="set-icon-box"><i class="fas fa-file-signature"></i></div>
+                    <div>
+                        <h5 class="set-card-title">Leave Details</h5>
+                        <p class="set-card-subtitle">Ensure all required fields are accurately filled for timely processing.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="set-card-body" style="padding: 30px;">
+                <form method="POST" action="{{ route('leave-requests.store') }}" enctype="multipart/form-data">
+                    @csrf
+
+                    <div class="set-grid mb-4">
+                        <div>
+                            <label class="set-label">Leave Type <span class="text-danger">*</span></label>
+                            <select name="leave_type_id" class="set-control" required>
+                                <option value="" disabled selected>Select leave type...</option>
+                                @foreach($leaveTypes as $type)
+                                    <option value="{{ $type->id }}" {{ old('leave_type_id') == $type->id ? 'selected' : '' }}>{{ $type->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="set-label">Attachment</label>
+                            <input type="file" name="attachment" class="set-control" style="padding: 6px 12px; height: 38px;">
+                        </div>
+
+                        <div>
+                            <label class="set-label">Start Date <span class="text-danger">*</span></label>
+                            <input type="date" name="start_date" value="{{ old('start_date') }}" class="set-control" required>
+                        </div>
+
+                        <div>
+                            <label class="set-label">End Date <span class="text-danger">*</span></label>
+                            <input type="date" name="end_date" value="{{ old('end_date') }}" class="set-control" required>
+                        </div>
+
+                        <div>
+                            <label class="set-label">Half Day</label>
+                            <select name="is_half_day" class="set-control">
+                                <option value="0" {{ old('is_half_day') == '0' ? 'selected' : '' }}>No</option>
+                                <option value="1" {{ old('is_half_day') == '1' ? 'selected' : '' }}>Yes</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="set-label">Half Day Type</label>
+                            <select name="half_day_type" class="set-control">
+                                <option value="" {{ old('half_day_type') == '' ? 'selected' : '' }}>Full day</option>
+                                <option value="first_half" {{ old('half_day_type') == 'first_half' ? 'selected' : '' }}>First half</option>
+                                <option value="second_half" {{ old('half_day_type') == 'second_half' ? 'selected' : '' }}>Second half</option>
+                            </select>
+                        </div>
+
+                        <div style="grid-column: 1 / -1;">
+                            <label class="set-label">Reason / Explanation <span class="text-danger">*</span></label>
+                            <textarea name="reason" rows="4" class="set-control" required placeholder="Describe the purpose of your leave request...">{{ old('reason') }}</textarea>
+                        </div>
+                    </div>
+
+                    <div class="d-flex align-items-center flex-wrap pt-3 border-top" style="gap: 12px;">
+                        <button type="submit" class="set-btn">
+                            <i class="fas fa-check-circle"></i> Submit Request
+                        </button>
+                        <a href="{{ route('leave-requests.index') }}" class="set-btn set-btn-soft">
+                            <i class="fas fa-arrow-left"></i> Cancel & Back
+                        </a>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>

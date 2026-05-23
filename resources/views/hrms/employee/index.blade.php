@@ -593,30 +593,35 @@
 <div class="eo-page">
     <div class="eo-container">
 
-        <div class="eo-hero">
-            <div class="eo-hero-content">
-                <div>
-                    <h1 class="eo-title">Employee Directory</h1>
-                    <p class="eo-subtitle">
-                        Active approved employees, verification status, work mode and HR lifecycle in one premium view.
-                    </p>
+        <div class="orb-page-header">
+            <div class="orb-page-header-content">
+                <div class="orb-page-kicker">
+                    <i class="fas fa-users"></i> HRMS &bull; Employee
                 </div>
 
-                <div class="eo-hero-actions">
-                    @if (Route::has('hrms.employees.pending_profiles'))
-                    <a href="{{ route('hrms.employees.pending_profiles') }}" class="eo-btn eo-btn-white">
-                        <i class="fas fa-user-clock"></i>
-                        Pending Profiles
-                    </a>
-                    @endif
+                <h1 class="orb-page-title">
+                    Employee Directory
+                </h1>
 
-                    @if (Route::has('hrms.employees.create'))
-                    <a href="{{ route('hrms.employees.create') }}" class="eo-btn eo-btn-white">
-                        <i class="fas fa-plus-circle"></i>
-                        Add Employee
-                    </a>
-                    @endif
-                </div>
+                <p class="orb-page-subtitle">
+                    Active approved employees, verification status, work mode and HR lifecycle in one premium view.
+                </p>
+            </div>
+
+            <div class="orb-page-actions">
+                @if (Route::has('hrms.employees.pending_profiles'))
+                <a href="{{ route('hrms.employees.pending_profiles') }}" class="orb-btn-light">
+                    <i class="fas fa-user-clock"></i>
+                    Pending Profiles
+                </a>
+                @endif
+
+                @if (Route::has('hrms.employees.create'))
+                <a href="{{ route('hrms.employees.create') }}" class="orb-btn-light">
+                    <i class="fas fa-plus-circle"></i>
+                    Add Employee
+                </a>
+                @endif
             </div>
         </div>
 
@@ -678,9 +683,9 @@
         </div>
         @endif
 
-        <div class="eo-card">
-            <div class="eo-filter-inside">
-                <div class="eo-filter-grid">
+        <div class="orb-table-card">
+            <div class="orb-table-toolbar d-block">
+                <div class="eo-filter-grid mb-3">
                     <div class="eo-field">
                         <label>Search</label>
                         <input type="text" id="filterSearch" class="eo-control"
@@ -732,20 +737,20 @@
 
                     <div class="eo-field">
                         <label>&nbsp;</label>
-                        <button type="button" id="resetFilter" class="eo-btn eo-btn-light">
+                        <button type="button" id="resetFilter" class="orb-btn-light py-2 px-3 h-auto" style="min-height: 42px !important; border-radius: 13px !important;">
                             <i class="fas fa-undo"></i>
                             Reset
                         </button>
                     </div>
                 </div>
+
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 pt-3 border-top">
+                    <div id="employeeLengthBox"></div>
+                    <div id="employeeExportButtons"></div>
+                </div>
             </div>
 
-            <div class="eo-table-toolbar">
-                <div id="employeeLengthBox"></div>
-                <div id="employeeExportButtons"></div>
-            </div>
-
-            <div class="table-responsive">
+            <div class="orb-table-wrapper table-responsive">
                 <table id="employeesTable" class="table table-hover">
                     <thead>
                         <tr>
@@ -838,7 +843,7 @@
                 },
                 error: function(xhr) {
                     console.log(xhr.responseText);
-                    alert('Employee data load nahi ho raha. Console check karo.');
+                    alert('Unable to load employee data. Please check the console for details.');
                 }
             },
             columns: [{

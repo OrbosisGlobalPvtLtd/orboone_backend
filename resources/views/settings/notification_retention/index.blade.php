@@ -3,198 +3,114 @@
 @section('page_title', 'Notification Retention Settings')
 
 @section('_head')
+@include('settings.partials.styles')
 <style>
-    :root {
-        --orb-primary: #4B00E8;
-        --orb-secondary: #8600EE;
-        --orb-bg: #F6F7FB;
-        --orb-card: #FFFFFF;
-        --orb-border: #E7EAF3;
-        --orb-text: #101828;
-        --orb-muted: #667085;
-        --orb-soft: #F4F2FF;
-        --orb-shadow: 0 14px 35px rgba(16, 24, 40, .07);
-    }
-
-    .settings-card {
-        background: #fff;
-        border: 1px solid var(--orb-border);
-        border-radius: 24px;
-        box-shadow: var(--orb-shadow);
-        overflow: hidden;
-    }
-
-    .settings-header {
-        background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary));
-        color: #fff;
-        padding: 30px;
-    }
-
-    .settings-header h3 {
-        font-weight: 800;
-        margin: 0;
-    }
-
-    .settings-header p {
-        opacity: 0.8;
-        margin: 10px 0 0;
-    }
-
-    .table {
-        margin-bottom: 0;
-    }
-
-    .table th {
-        background: var(--orb-soft);
-        color: var(--orb-primary);
-        font-weight: 800;
-        text-transform: uppercase;
-        font-size: 11px;
-        letter-spacing: 0.5px;
-        padding: 15px 20px;
-        border: 0;
-    }
-
-    .table td {
-        padding: 18px 20px;
-        vertical-align: middle;
-        border-bottom: 1px solid var(--orb-border);
-    }
-
-    .category-badge {
-        background: var(--orb-soft);
-        color: var(--orb-primary);
-        font-weight: 800;
-        padding: 6px 14px;
-        border-radius: 99px;
-        font-size: 13px;
-    }
-
-    .btn-orb {
-        background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary));
-        border: 0;
-        color: #fff;
-        border-radius: 12px;
-        font-weight: 700;
-        padding: 8px 16px;
-    }
-
-    .btn-orb:hover {
-        opacity: 0.9;
-        color: #fff;
-    }
-
-    .form-control, .form-select {
-        border-radius: 12px;
-        border-color: var(--orb-border);
-    }
-
-    .switch {
-        position: relative;
-        display: inline-block;
-        width: 40px;
-        height: 22px;
-    }
-
-    .switch input {
-        opacity: 0;
-        width: 0;
-        height: 0;
-    }
-
-    .slider {
-        position: absolute;
-        cursor: pointer;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: #ccc;
-        transition: .4s;
-        border-radius: 34px;
-    }
-
-    .slider:before {
-        position: absolute;
-        content: "";
-        height: 16px;
-        width: 16px;
-        left: 3px;
-        bottom: 3px;
-        background-color: white;
-        transition: .4s;
-        border-radius: 50%;
-    }
-
-    input:checked + .slider {
-        background-color: var(--orb-primary);
-    }
-
-    input:checked + .slider:before {
-        transform: translateX(18px);
+    .w-100px {
+        width: 100px !important;
     }
 </style>
 @endsection
 
 @section('_content')
-<div class="container-fluid py-4">
-    <div class="settings-card">
-        <div class="settings-header">
-            <h3>Notification Retention Settings</h3>
-            <p>Define how many days notifications should be kept in the system before automatic cleanup.</p>
+<div class="set-page">
+    <div class="set-container">
+        <!-- Premium Purple Gradient Hero -->
+        <div class="set-header">
+            <div>
+                <div class="set-kicker">
+                    <i class="fas fa-clock"></i> HRMS &bull; SETTINGS
+                </div>
+                <h1 class="set-title">Notification Retention</h1>
+                <p class="set-subtitle">Define automatic message cleanup policies and retention duration states across hrms activity feeds.</p>
+            </div>
+            <!-- Glassmorphic Info Badge -->
+            <div class="set-glass-badge">
+                <div style="font-size: 24px; font-weight: 900; line-height: 1;"><i class="fas fa-clock"></i></div>
+                <div style="font-size: 9px; font-weight: 850; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; opacity: 0.9;">Logs Retention</div>
+            </div>
         </div>
 
-        <div class="table-responsive">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Category</th>
-                        <th>Retention (Days)</th>
-                        <th>Delete Only Read</th>
-                        <th>Active</th>
-                        <th>Last Updated</th>
-                        <th width="100">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($settings as $item)
-                    <tr>
-                        <td>
-                            <span class="category-badge">{{ $item->display_name }}</span>
-                            <div class="small text-muted mt-1">{{ $item->notification_type }}</div>
-                        </td>
-                        <td>
-                            <input type="number" 
-                                   id="days_{{ $item->id }}" 
-                                   class="form-control form-control-sm w-100px" 
-                                   value="{{ $item->retention_days }}" 
-                                   min="7" max="3650">
-                        </td>
-                        <td>
-                            <label class="switch">
-                                <input type="checkbox" id="read_{{ $item->id }}" {{ $item->delete_only_read ? 'checked' : '' }}>
-                                <span class="slider"></span>
-                            </label>
-                        </td>
-                        <td>
-                            <label class="switch">
-                                <input type="checkbox" id="active_{{ $item->id }}" {{ $item->is_active ? 'checked' : '' }}>
-                                <span class="slider"></span>
-                            </label>
-                        </td>
-                        <td>
-                            <div class="small fw-bold">{{ optional($item->updated_at)->format('d M Y') ?? '-' }}</div>
-                            <div class="small text-muted">{{ optional($item->updater)->name ?? 'System' }}</div>
-                        </td>
-                        <td>
-                            <button type="button" class="btn btn-orb btn-sm save-btn" data-id="{{ $item->id }}">
-                                Save
-                            </button>
-                        </td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
+        @if(session('success'))
+            <div class="alert alert-success border-0 shadow-sm mb-4" style="border-radius: 16px; font-weight: 800; font-size: 13px;">
+                <i class="fas fa-check-circle mr-1"></i> {{ session('success') }}
+            </div>
+        @endif
+
+        <!-- Settings Table Card -->
+        <div class="set-card">
+            <div class="set-card-header">
+                <div class="set-head-left">
+                    <div class="set-icon-box"><i class="fas fa-bell"></i></div>
+                    <div>
+                        <h5 class="set-card-title">Notification Retention Rules</h5>
+                        <p class="set-card-subtitle">Manage purge triggers, select only-read delete tags, and set life spans for alert types.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="set-table">
+                    <thead>
+                        <tr>
+                            <th>Category / Trigger</th>
+                            <th>Retention (Days)</th>
+                            <th>Delete Only Read</th>
+                            <th>Active Status</th>
+                            <th>Last Updated</th>
+                            <th width="120" class="text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($settings as $item)
+                            <tr>
+                                <td>
+                                    <span class="set-badge">{{ $item->display_name }}</span>
+                                    <div class="small text-muted mt-1" style="font-family: monospace; font-size: 10px;">{{ $item->notification_type }}</div>
+                                </td>
+                                <td>
+                                    <input type="number" 
+                                           id="days_{{ $item->id }}" 
+                                           class="set-control w-100px" 
+                                           style="height: 36px; padding: 4px 10px;"
+                                           value="{{ $item->retention_days }}" 
+                                           min="7" max="3650">
+                                </td>
+                                <td>
+                                    <label class="switch">
+                                        <input type="checkbox" id="read_{{ $item->id }}" {{ $item->delete_only_read ? 'checked' : '' }}>
+                                        <span class="slider"></span>
+                                    </label>
+                                </td>
+                                <td>
+                                    <label class="switch">
+                                        <input type="checkbox" id="active_{{ $item->id }}" {{ $item->is_active ? 'checked' : '' }}>
+                                        <span class="slider"></span>
+                                    </label>
+                                </td>
+                                <td>
+                                    <div class="small font-weight-bold" style="color: var(--set-text);">{{ optional($item->updated_at)->format('d M Y') ?? '-' }}</div>
+                                    <div class="small text-muted" style="font-size: 11px;">{{ optional($item->updater)->name ?? 'System' }}</div>
+                                </td>
+                                <td>
+                                    <div class="text-right">
+                                        <button type="button" class="set-btn btn-sm save-btn" data-id="{{ $item->id }}" style="min-height: 32px; padding: 6px 14px; border-radius: 8px;">
+                                            Save Settings
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-5">
+                                    <div style="font-size: 24px; color: var(--set-muted);"><i class="fas fa-clock"></i></div>
+                                    <h6 class="mt-3 font-weight-bold">No Retention Settings Found</h6>
+                                    <p class="small mb-0">System default cleanups will apply automatically.</p>
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
@@ -216,7 +132,7 @@
                 _method: 'PATCH'
             };
 
-            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Saving...');
 
             $.ajax({
                 url: '{{ route("settings.notification-retention.update") }}',
@@ -233,7 +149,7 @@
                     toastr.error('Error updating settings');
                 },
                 complete: function() {
-                    btn.prop('disabled', false).html('Save');
+                    btn.prop('disabled', false).html('Save Settings');
                 }
             });
         });

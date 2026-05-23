@@ -79,70 +79,97 @@
 </div>
 
 <div class="modal fade" id="applyModal" tabindex="-1" role="dialog" aria-labelledby="applyModalLabel" aria-hidden="true">
-  <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="applyModalLabel">Apply</h5>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+  <div class="modal-dialog modal-dialog-centered" role="document" style="max-width: 650px;">
+    <div class="modal-content orb-modal">
+      <div class="modal-header orb-modal-header">
+        <div>
+          <h5 class="modal-title" id="applyModalLabel">Submit Application</h5>
+          <div class="orb-modal-subtitle">Apply for {{ $recruitment->position->name }}</div>
+        </div>
+        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="background:none; border:none; font-size:24px; opacity:0.8; outline:none;">
           <span aria-hidden="true">&times;</span>
         </button>
       </div>
-      <form action="{{ route('recruitment-candidates.store') }}" method="POST" class="d-inline-block" enctype="multipart/form-data">
+      <form action="{{ route('recruitment-candidates.store') }}" method="POST" enctype="multipart/form-data" style="width: 100%;">
         @csrf
-        <div class="modal-body">
+        <div class="modal-body orb-modal-body">
           <input type="hidden" name="recruitment_id" value="{{ $recruitment->id }}">
-          <div class="form-group">
-            <label for="name">Name:</label>
-            <input type="text" name="name" id="name" value="{{ old('name') }}" required placeholder="Enter name" class="form-control @error('name') is-invalid @enderror">
+          
+          <div class="orb-form-section">
+            <div class="orb-form-section-title">
+              <i class="fas fa-user-tie"></i> Candidate Details
+            </div>
+            
+            <div class="orb-form-grid">
+              <div>
+                <label class="orb-form-label" for="name">Full Name <span class="text-danger">*</span></label>
+                <input type="text" name="name" id="name" value="{{ old('name') }}" required placeholder="Enter name" class="form-control @error('name') is-invalid @enderror">
+                @error('name')
+                  <div class="text-danger small mt-1">{{ $message }}</div>
+                @enderror
+              </div>
+              
+              <div>
+                <label class="orb-form-label" for="email">Email Address <span class="text-danger">*</span></label>
+                <input type="email" name="email" id="email" value="{{ old('email') }}" required placeholder="Enter email" class="form-control @error('email') is-invalid @enderror">
+                @error('email')
+                  <div class="text-danger small mt-1">{{ $message }}</div>
+                @enderror
+              </div>
+
+              <div>
+                <label class="orb-form-label" for="phone">Phone Number <span class="text-danger">*</span></label>
+                <input type="text" name="phone" id="phone" value="{{ old('phone') }}" required placeholder="Enter phone" class="form-control @error('phone') is-invalid @enderror" minlength="11" maxlength="13">
+                @error('phone')
+                  <div class="text-danger small mt-1">{{ $message }}</div>
+                @enderror
+              </div>
+
+              <div>
+                <label class="orb-form-label" for="address">Address <span class="text-danger">*</span></label>
+                <input type="text" name="address" id="address" value="{{ old('address') }}" required placeholder="Enter address" class="form-control @error('address') is-invalid @enderror">
+                @error('address')
+                  <div class="text-danger small mt-1">{{ $message }}</div>
+                @enderror
+              </div>
+            </div>
+            
+            <div class="mt-3">
+              <label class="orb-form-label" for="message">Cover Message <span class="text-danger">*</span></label>
+              <textarea name="message" id="message" required placeholder="Enter message" class="form-control @error('message') is-invalid @enderror" style="height: 100px;"></textarea>
+              @error('message')
+                <div class="text-danger small mt-1">{{ $message }}</div>
+              @enderror
+            </div>
           </div>
-          @error('name')
-            <div class="alert alert-danger">{{ $message }}</div>
-          @enderror
-          <div class="form-group">
-            <label for="email">Email:</label>
-            <input type="email" name="email" id="email" value="{{ old('email') }}" required placeholder="Enter email" class="form-control @error('email') is-invalid @enderror">
+
+          <div class="orb-form-section">
+            <div class="orb-form-section-title">
+              <i class="fas fa-paperclip"></i> Documents
+            </div>
+            
+            <div class="orb-form-grid">
+              <div>
+                <label class="orb-form-label" for="photo">Photo <span class="text-danger">*</span></label>
+                <input type="file" name="photo" id="photo" class="form-control-file @error('photo') is-invalid @enderror" required style="padding-top: 6px;">
+                @error('photo')
+                  <div class="text-danger small mt-1">{{ $message }}</div>
+                @enderror
+              </div>
+
+              <div>
+                <label class="orb-form-label" for="cv">CV / Resume <span class="text-danger">*</span></label>
+                <input type="file" name="cv" id="cv" class="form-control-file @error('cv') is-invalid @enderror" required style="padding-top: 6px;">
+                @error('cv')
+                  <div class="text-danger small mt-1">{{ $message }}</div>
+                @enderror
+              </div>
+            </div>
           </div>
-          @error('email')
-            <div class="alert alert-danger">{{ $message }}</div>
-          @enderror
-          <div class="form-group">
-            <label for="phone">Phone:</label>
-            <input type="text" name="phone" id="phone" value="{{ old('phone') }}" required placeholder="Enter phone" class="form-control @error('phone') is-invalid @enderror" minlength="11" maxlength="13">
-          </div>
-          @error('phone')
-            <div class="alert alert-danger">{{ $message }}</div>
-          @enderror
-          <div class="form-group">
-            <label for="address">Address:</label>
-            <input type="text" name="address" id="address" value="{{ old('address') }}" required placeholder="Enter address" class="form-control @error('address') is-invalid @enderror">
-          </div>
-          @error('address')
-            <div class="alert alert-danger">{{ $message }}</div>
-          @enderror
-          <div class="form-group">
-            <label for="message">Message:</label>
-            <input type="text" name="message" id="message" value="{{ old('message') }}" required placeholder="Enter message" class="form-control @error('message') is-invalid @enderror">
-          </div>
-          @error('message')
-            <div class="alert alert-danger">{{ $message }}</div>
-          @enderror
-          <div class="form-group">
-            <label for="photo">Photo:</label>
-            <input type="file" name="photo" id="photo" class="form-control-file @error('photo') is-invalid @enderror" required>
-          </div>
-          @error('photo')
-            <div class="alert alert-danger">{{ $message }}</div>
-          @enderror
-          <div class="form-group">
-            <label for="cv">CV:</label>
-            <input type="file" name="cv" id="cv" class="form-control-file @error('cv') is-invalid @enderror" required>
-          </div>
-          @error('cv')
-            <div class="alert alert-danger">{{ $message }}</div>
-          @enderror
         </div>
-        <div class="modal-footer">
-            <button type="submit" class="btn btn-primary mr-2 px-5">Apply</button>
+        <div class="modal-footer orb-modal-footer">
+          <button type="button" class="orb-btn-light" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="orb-btn-primary"><i class="fas fa-paper-plane"></i> Submit Application</button>
         </div>
       </form>
     </div>

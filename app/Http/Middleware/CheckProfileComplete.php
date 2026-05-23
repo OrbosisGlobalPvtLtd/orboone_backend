@@ -39,14 +39,18 @@ class CheckProfileComplete
         $allowedRoutes = [
             'logout',
             'profile',
+            'profile.index',
             'profile.update',
+            'profile.submit',
+            'profile.password.update',
+            'employee.profile-image',
+            'hrms.documents.self.upload',
+            'hrms.documents.file',
             'hrms.employees.profile.complete',
             'hrms.employees.profile.store',
             'hrms.employees.profile.view',
             'hrms.employees.profile.edit',
             'hrms.employees.profile.update',
-            'dashboard',
-            'employee.dashboard',
         ];
 
         if ($routeName && in_array($routeName, $allowedRoutes, true)) {
@@ -58,6 +62,12 @@ class CheckProfileComplete
                 'status' => false,
                 'message' => 'Please complete your profile before using this feature.',
             ], 423);
+        }
+
+        if (\Illuminate\Support\Facades\Route::has('profile.index')) {
+            return redirect()
+                ->route('profile.index')
+                ->with('warning', 'Please complete your profile first.');
         }
 
         if (Route::has('profile')) {

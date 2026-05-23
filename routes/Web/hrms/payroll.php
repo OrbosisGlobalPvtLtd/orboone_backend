@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Web\HRMS\Payroll\PayrollAdminC;
+use App\Http\Controllers\Web\HRMS\Payroll\PayrollAdjustmentC;
 use App\Http\Controllers\Web\HRMS\Payroll\MonthlyPayrollSummaryC;
 use App\Http\Controllers\Web\HRMS\Payroll\PayrollAttendanceImpactC;
 use App\Http\Controllers\Web\HRMS\Payroll\PayrollGenerateC;
@@ -10,6 +11,9 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 | Payroll Routes
 |--------------------------------------------------------------------------
+| LEGACY PAYROLL MODULE - DO NOT USE for new enterprise payroll.
+| Kept only as a backup/reference route set. New payroll navigation and
+| workflows must use routes/Web/hrms/enterprise_payroll.php.
 */
 
 Route::prefix('payroll')->middleware('auth')->group(function () {
@@ -34,6 +38,7 @@ Route::prefix('payroll')->middleware('auth')->group(function () {
     Route::get('/run', [PayrollAdminC::class, 'payrollRunForm'])->middleware('permission:payroll.generate.view')->name('pages.payroll.payrollrun');
     Route::post('/run', [PayrollAdminC::class, 'payrollRun'])->middleware('permission:payroll.generate.process')->name('pages.payroll.payrollrun.run');
     Route::get('/preview/{month}', [PayrollAdminC::class, 'payrollPreview'])->name('pages.payroll.preview');
+    Route::post('/approve/{id}', [PayrollAdminC::class, 'payrollApprove'])->middleware('permission:payroll.approve|payroll.generate.process')->name('pages.payroll.approve');
     Route::post('/lock/{month}', [PayrollAdminC::class, 'payrollLock'])->name('pages.payroll.lock');
 
     // Monthly Salary View
@@ -86,6 +91,12 @@ Route::prefix('payroll')->middleware('auth')->group(function () {
     Route::get('/claims', [PayrollAdminC::class, 'claimsIndex'])->name('pages.payroll.claims.index');
     Route::get('/claims/create', [PayrollAdminC::class, 'claimsCreate'])->name('pages.payroll.claims.create');
     Route::post('/claims/store', [PayrollAdminC::class, 'claimsStore'])->name('pages.payroll.claims.store');
+    Route::post('/claims/{id}/approve', [PayrollAdminC::class, 'claimsApprove'])->middleware('permission:payroll.claims.manage|payroll.generate.process')->name('pages.payroll.claims.approve');
+    Route::post('/claims/{id}/reject', [PayrollAdminC::class, 'claimsReject'])->middleware('permission:payroll.claims.manage|payroll.generate.process')->name('pages.payroll.claims.reject');
+
+    Route::get('/adjustments', [PayrollAdjustmentC::class, 'index'])->middleware('permission:payroll.adjustments.manage')->name('hrms.payroll.adjustments.index');
+    Route::post('/adjustments', [PayrollAdjustmentC::class, 'store'])->middleware('permission:payroll.adjustments.manage')->name('hrms.payroll.adjustments.store');
+    Route::put('/adjustments/{id}', [PayrollAdjustmentC::class, 'update'])->middleware('permission:payroll.adjustments.manage')->name('hrms.payroll.adjustments.update');
 
     Route::get('/attendance-impacts', [PayrollAttendanceImpactC::class, 'index'])->middleware('permission:payroll.attendance_impacts.view')->name('hrms.payroll.attendance_impacts.index');
     Route::post('/attendance-impacts/{id}/process', [PayrollAttendanceImpactC::class, 'process'])->name('hrms.payroll.attendance_impacts.process');

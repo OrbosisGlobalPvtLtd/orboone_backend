@@ -212,6 +212,7 @@ class EmployeeDocumentsC extends Controller
         ]);
 
         $this->syncEmployeeVerification($document->employee_id);
+        $this->notifyDocumentStatus($document->fresh(['employee.user', 'documentType']), 'document_approved');
 
         return back()->with('success', 'Document verified successfully.');
     }
@@ -233,6 +234,8 @@ class EmployeeDocumentsC extends Controller
             'profile_status' => 'rejected',
             'rejection_reason' => $request->rejection_reason,
         ]);
+
+        $this->notifyDocumentStatus($document->fresh(['employee.user', 'documentType']), 'document_rejected', $request->rejection_reason);
 
         return back()->with('success', 'Document rejected successfully.');
     }
@@ -260,6 +263,7 @@ class EmployeeDocumentsC extends Controller
         ]);
 
         $this->syncEmployeeVerification($doc->employee_id);
+        $this->notifyDocumentStatus($doc->fresh(['employee.user', 'documentType']), 'document_verified');
 
         return back()->with('success', 'Document verified successfully.');
     }
@@ -284,6 +288,8 @@ class EmployeeDocumentsC extends Controller
             'profile_status' => 'rejected',
             'rejection_reason' => $request->rejection_reason ?: 'Document rejected by HR',
         ]);
+
+        $this->notifyDocumentStatus($doc->fresh(['employee.user', 'documentType']), 'document_rejected', $request->rejection_reason ?: 'Document rejected by HR');
 
         return back()->with('success', 'Document rejected successfully.');
     }
@@ -412,5 +418,72 @@ class EmployeeDocumentsC extends Controller
                 'is_profile_completed' => 0,
                 'updated_at' => now(),
             ]);
+    }
+
+    private function notifyDocumentStatus(EmployeeDocumentM $document, string $type, ?string $reason = null): void
+    {
+        $userId = $document->employee?->user_id;
+        if (! $userId) {
+            return;
+        }
+
+        $title = match ($type) {
+            'document_rejected' => 'Document Rejected',
+            'document_reuploaded' => 'Document Reupload Requested',
+            'document_verified' => 'Document Verified',
+            default => 'Document Approved',
+        };
+
+        $message = match ($type) {
+            'document_rejected' => 'Your document ' . ($document->title ?: 'document') . ' was rejected. Please re-upload it.',
+            'document_reuploaded' => 'Please re-upload ' . ($document->title ?: 'your document') . '.',
+            default => 'Your document ' . ($document->title ?: 'document') . ' has been approved.',
+        };
+
+        app(\App\Services\HRMS\Notification\NotificationS::class)->notifyEmployee(
+            $title,
+            $message,
+            $type,
+            'documents',
+            ['document_id' => $document->id],
+            [
+                'document_id' => $document->id,
+                'employee_id' => $document->employee_id,
+                'document_title' => $document->title,
+                'rejection_reason' => $reason,
+                'attachment_url' => $this->privateFileUrl($document->file_path),
+                'attachment_type' => $this->attachmentType($document->file_mime_type, $document->file_original_name),
+                'attachment_name' => $document->file_original_name ?: $document->title,
+            ],
+            $userId
+        );
+    }
+
+    private function privateFileUrl(?string $path): string
+    {
+        if (! $path) {
+            return '';
+        }
+
+        return url('/api/v1/file') . '?' . http_build_query([
+            'disk' => 'private',
+            'path' => $path,
+        ]);
+    }
+
+    private function attachmentType(?string $mime, ?string $name): string
+    {
+        $mime = strtolower((string) $mime);
+        $extension = strtolower(pathinfo((string) $name, PATHINFO_EXTENSION));
+
+        if (str_starts_with($mime, 'image/') || in_array($extension, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+            return 'image';
+        }
+
+        if ($mime === 'application/pdf' || $extension === 'pdf') {
+            return 'pdf';
+        }
+
+        return 'document';
     }
 }

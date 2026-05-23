@@ -199,22 +199,33 @@
                                             </div>
 
                                             {{-- Reject Modal --}}
-                                            <div class="modal fade" id="rejectModal{{ $doc->id }}" tabindex="-1">
-                                                <div class="modal-dialog modal-dialog-centered">
-                                                    <div class="modal-content border-0 shadow rounded-4">
-                                                        <form method="POST" action="{{ route('hrms.documents.employee.reject', $doc->id) }}">
+                                            <div class="modal fade" id="rejectModal{{ $doc->id }}" tabindex="-1" role="dialog" aria-hidden="true">
+                                                <div class="modal-dialog modal-dialog-centered" role="document">
+                                                    <div class="modal-content orb-modal">
+                                                        <form method="POST" action="{{ route('hrms.documents.employee.reject', $doc->id) }}" style="width: 100%;">
                                                             @csrf
-                                                            <div class="modal-header border-0">
-                                                                <h5 class="modal-title fw-bold">Reject Document Set</h5>
-                                                                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                                                            <div class="orb-modal-header">
+                                                                <div>
+                                                                    <h5 class="modal-title">Reject Document Set</h5>
+                                                                    <p class="orb-modal-subtitle">Reason for rejecting this set of documents</p>
+                                                                </div>
+                                                                <button type="button" class="close btn-close btn-close-white" data-dismiss="modal" aria-label="Close" style="color:#fff; opacity:1; border:0; background:transparent; font-size:24px; padding:0; outline:none; line-height:1;">
+                                                                    <span aria-hidden="true">&times;</span>
+                                                                </button>
                                                             </div>
-                                                            <div class="modal-body">
-                                                                <label class="form-label small fw-bold">Reason for Rejection</label>
-                                                                <textarea name="rejection_reason" class="form-control" rows="3" placeholder="e.g. Aadhar card is blurred or expired" required></textarea>
+                                                            <div class="modal-body orb-modal-body">
+                                                                <div class="orb-form-section">
+                                                                    <div class="orb-form-grid" style="grid-template-columns: 1fr;">
+                                                                        <div>
+                                                                            <label class="orb-form-label" for="rejection_reason_{{ $doc->id }}">Reason for Rejection <span class="text-danger">*</span></label>
+                                                                            <textarea name="rejection_reason" id="rejection_reason_{{ $doc->id }}" class="form-control" rows="3" placeholder="e.g. Aadhar card is blurred or expired" required></textarea>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
                                                             </div>
-                                                            <div class="modal-footer border-0">
-                                                                <button type="button" class="btn btn-light rounded-pill px-4" data-dismiss="modal">Cancel</button>
-                                                                <button type="submit" class="btn btn-danger rounded-pill px-4">Reject Documents</button>
+                                                            <div class="modal-footer orb-modal-footer">
+                                                                <button type="button" class="orb-btn-light" data-dismiss="modal">Cancel</button>
+                                                                <button type="submit" class="orb-btn-primary" style="background: linear-gradient(135deg, #DC2626, #EC4E74) !important;"><i class="fas fa-times-circle"></i> Reject Documents</button>
                                                             </div>
                                                         </form>
                                                     </div>

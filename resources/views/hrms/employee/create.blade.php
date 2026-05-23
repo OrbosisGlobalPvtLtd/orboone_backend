@@ -620,7 +620,7 @@
                                 <label>Internship End Date <span class="required">*</span></label>
                                 <input type="date" name="internship_end_date" id="internship_end_date"
                                     class="form-control" value="{{ old('internship_end_date') }}">
-                                <div class="small-note">Auto calculated for 3/6 months. Custom me manually select karo.
+                                <div class="small-note">Auto calculated for 3/6 months. Select manually if Custom is chosen.
                                 </div>
                             </div>
 
@@ -653,7 +653,7 @@
                                 <label>Contract End / Review Date</label>
                                 <input type="date" name="contract_end_date" id="contract_end_date"
                                     class="form-control" value="{{ old('contract_end_date') }}">
-                                <div class="small-note">Agar DB column nahi hai to controller me ignore rahega.</div>
+                                <div class="small-note">This will be ignored by the controller if the database column does not exist.</div>
                             </div>
                         </div>
                     </div>
@@ -713,8 +713,7 @@
                             <input type="number" name="actual_salary" id="actual_salary" class="form-control"
                                 value="{{ old('actual_salary') }}" min="0" step="1"
                                 placeholder="Enter salary">
-                            <div class="small-note" id="salary_note">Initial salary employee_salary_histories me save
-                                hogi.</div>
+                            <div class="small-note" id="salary_note">Initial salary will be saved in employee_salary_histories.</div>
                         </div>
 
                         <div class="col-xl-3 col-lg-4 col-md-6 eo-field">
@@ -908,7 +907,7 @@
             salaryEffectiveFrom.value = '';
             salaryEffectiveFrom.setAttribute('readonly', 'readonly');
             salaryEffectiveFrom.classList.add('disabled-soft');
-            salaryEffectiveNote.innerText = 'Unpaid internship me salary effective date required nahi hai.';
+            salaryEffectiveNote.innerText = 'Salary effective date is not required for an unpaid internship.';
         }
 
         function enableSalaryEffective() {
@@ -941,7 +940,7 @@
                     salaryEffectiveFrom.value = internshipStart.value;
                 }
 
-                salaryNote.innerText = 'Paid intern ke liye stipend amount enter karo.';
+                salaryNote.innerText = 'Please enter the stipend amount for a paid intern.';
                 return;
             }
 

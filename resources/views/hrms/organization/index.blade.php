@@ -650,93 +650,107 @@ textarea.form-control{
     </div>
 </div>
 
-<div class="modal fade" id="deptModal" tabindex="-1">
+<div class="modal fade" id="deptModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <form id="deptForm" method="POST" class="modal-content">
+        <form id="deptForm" method="POST" class="modal-content orb-modal">
             @csrf
             <div id="deptMethodBox"></div>
 
-            <div class="modal-header">
-                <h5 class="modal-title" id="deptModalTitle">Add Department</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span>&times;</span>
+            <div class="orb-modal-header">
+                <div>
+                    <h5 class="modal-title" id="deptModalTitle">Add Department</h5>
+                    <p class="orb-modal-subtitle">Define a new department unit inside the organization</p>
+                </div>
+                <button type="button" class="close btn-close btn-close-white" data-dismiss="modal" aria-label="Close" style="color:#fff; opacity:1; border:0; background:transparent; font-size:24px; padding:0; outline:none; line-height:1;">
+                    <span aria-hidden="true">&times;</span>
                 </button>
             </div>
 
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label class="form-label">Department Name</label>
-                    <input type="text" name="name" id="dept_name" class="form-control" placeholder="Example: HR Department" required>
-                </div>
+            <div class="modal-body orb-modal-body">
+                <div class="orb-form-section">
+                    <div class="orb-form-grid" style="grid-template-columns: 1fr;">
+                        <div>
+                            <label class="orb-form-label">Department Name <span class="text-danger">*</span></label>
+                            <input type="text" name="name" id="dept_name" class="form-control" placeholder="Example: HR Department" required>
+                        </div>
 
-                <div class="mb-3">
-                    <label class="form-label">Code</label>
-                    <input type="text" id="dept_code" class="form-control readonly-field" value="Auto Generated" readonly>
-                    <div class="small text-muted mt-1">Auto generated like DEP-001.</div>
-                </div>
+                        <div>
+                            <label class="orb-form-label">Code</label>
+                            <input type="text" id="dept_code" class="form-control readonly-field" value="Auto Generated" readonly>
+                            <div class="small text-muted mt-1">Auto generated like DEP-001.</div>
+                        </div>
 
-                <div class="mb-0">
-                    <label class="form-label">Address</label>
-                    <input type="text" name="address" id="dept_address" class="form-control" placeholder="Department location / office" required>
+                        <div>
+                            <label class="orb-form-label">Address <span class="text-danger">*</span></label>
+                            <input type="text" name="address" id="dept_address" class="form-control" placeholder="Department location / office" required>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="modal-footer">
-                <button type="button" class="btn btn-soft" data-dismiss="modal">Cancel</button>
-                <button type="submit" class="btn btn-orb">Save Department</button>
+            <div class="modal-footer orb-modal-footer">
+                <button type="button" class="orb-btn-light" data-dismiss="modal">Cancel</button>
+                <button type="submit" class="orb-btn-primary">Save Department</button>
             </div>
         </form>
     </div>
 </div>
 
-<div class="modal fade" id="desModal" tabindex="-1">
+<div class="modal fade" id="desModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <form id="desForm" method="POST" class="modal-content">
+        <form id="desForm" method="POST" class="modal-content orb-modal">
             @csrf
             <div id="desMethodBox"></div>
             <input type="hidden" name="department_id" id="des_dept">
 
-            <div class="modal-header">
-                <h5 class="modal-title" id="desModalTitle">Add Designation</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span>&times;</span>
+            <div class="orb-modal-header">
+                <div>
+                    <h5 class="modal-title" id="desModalTitle">Add Designation</h5>
+                    <p class="orb-modal-subtitle">Configure designation mapping and details</p>
+                </div>
+                <button type="button" class="close btn-close btn-close-white" data-dismiss="modal" aria-label="Close" style="color:#fff; opacity:1; border:0; background:transparent; font-size:24px; padding:0; outline:none; line-height:1;">
+                    <span aria-hidden="true">&times;</span>
                 </button>
             </div>
 
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label class="form-label">Selected Department</label>
-                    <input type="text" id="des_dept_name" class="form-control readonly-field" readonly>
-                </div>
+            <div class="modal-body orb-modal-body">
+                <div class="orb-form-section">
+                    <div class="orb-form-grid" style="grid-template-columns: 1fr;">
+                        <div>
+                            <label class="orb-form-label">Selected Department</label>
+                            <input type="text" id="des_dept_name" class="form-control readonly-field" readonly>
+                        </div>
 
-                <div class="mb-3">
-                    <label class="form-label">Designation Name</label>
-                    <input type="text" name="name" id="des_name" class="form-control" placeholder="Example: HR Executive" required>
-                </div>
+                        <div>
+                            <label class="orb-form-label">Designation Name <span class="text-danger">*</span></label>
+                            <input type="text" name="name" id="des_name" class="form-control" placeholder="Example: HR Executive" required>
+                        </div>
 
-                <div class="mb-3">
-                    <label class="form-label">Code</label>
-                    <input type="text" id="des_code" class="form-control readonly-field" value="Auto Generated" readonly>
-                    <div class="small text-muted mt-1">Auto generated based on department.</div>
-                </div>
+                        <div>
+                            <label class="orb-form-label">Code</label>
+                            <input type="text" id="des_code" class="form-control readonly-field" value="Auto Generated" readonly>
+                            <div class="small text-muted mt-1">Auto generated based on department.</div>
+                        </div>
 
-                <div class="mb-3">
-                    <label class="form-label">Description</label>
-                    <textarea name="description" id="des_description" class="form-control" rows="3" placeholder="Designation description"></textarea>
-                </div>
+                        <div>
+                            <label class="orb-form-label">Description</label>
+                            <textarea name="description" id="des_description" class="form-control" rows="3" placeholder="Designation description"></textarea>
+                        </div>
 
-                <div class="mb-0">
-                    <label class="form-label">Status</label>
-                    <select name="is_active" id="des_is_active" class="form-select">
-                        <option value="1">Active</option>
-                        <option value="0">Inactive</option>
-                    </select>
+                        <div>
+                            <label class="orb-form-label">Status <span class="text-danger">*</span></label>
+                            <select name="is_active" id="des_is_active" class="form-control">
+                                <option value="1">Active</option>
+                                <option value="0">Inactive</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="modal-footer">
-                <button type="button" class="btn btn-soft" data-dismiss="modal">Cancel</button>
-                <button type="submit" class="btn btn-orb">Save Designation</button>
+            <div class="modal-footer orb-modal-footer">
+                <button type="button" class="orb-btn-light" data-dismiss="modal">Cancel</button>
+                <button type="submit" class="orb-btn-primary">Save Designation</button>
             </div>
         </form>
     </div>

@@ -20,6 +20,7 @@ use App\Models\HRMS\Payroll\PayrollM as Payroll;
 use App\Models\HRMS\Payroll\PayslipM as Payslip;
 use App\Models\HRMS\Payroll\ClaimM as Claim;
 use App\Models\HRMS\Payroll\FnFM as FnF;
+use App\Models\HRMS\Payroll\PayrollAdjustmentM as PayrollAdjustment;
 use App\Models\HRMS\Payroll\SalaryStructureM as SalaryStructure;
 use App\Models\HRMS\Employee\AssetAllocationM as AssetAllocation;
 use App\Models\HRMS\Leave\LeaveAllocationM as LeaveAllocation;
@@ -170,6 +171,11 @@ class EmployeeM extends Model
     public function claims()
     {
         return $this->hasMany(Claim::class, 'employee_id');
+    }
+
+    public function payrollAdjustments()
+    {
+        return $this->hasMany(PayrollAdjustment::class, 'employee_id');
     }
 
     public function salaryStructure()

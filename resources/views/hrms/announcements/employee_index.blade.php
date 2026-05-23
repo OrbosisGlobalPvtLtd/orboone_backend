@@ -245,43 +245,53 @@
 </div>
 
 <!-- View Modal -->
-<div class="modal fade" id="viewModal" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title fw-bold">Announcement Details</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+<div class="modal fade" id="viewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content orb-modal">
+            <div class="orb-modal-header">
+                <div>
+                    <h5 class="modal-title">Announcement Details</h5>
+                    <p class="orb-modal-subtitle">Official company notice / broadcast details</p>
+                </div>
+                <button type="button" class="close btn-close btn-close-white" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close" style="color:#fff; opacity:1; border:0; background:transparent; font-size:24px; padding:0; outline:none; line-height:1;">
+                    <span aria-hidden="true">&times;</span>
+                </button>
             </div>
-            <div class="modal-body p-4">
-                <div id="viewBadge" class="ann-badge mb-3"></div>
-                <h3 id="viewTitle" class="fw-900 mb-3" style="color: var(--orb-text);"></h3>
-                
-                <div class="d-flex gap-3 mb-4 text-muted small fw-bold">
-                    <span><i class="far fa-calendar-alt me-1"></i> <span id="viewDate"></span></span>
-                    <span><i class="far fa-user me-1"></i> <span id="viewAuthor"></span></span>
-                    <span id="viewPriority" class="text-uppercase"></span>
-                </div>
-
-                <div id="viewContent" class="mb-4" style="line-height: 1.8; color: #444; font-size: 15px;"></div>
-
-                <div id="viewImagePreview" class="mb-4 d-none">
-                    <img src="" class="img-fluid rounded-4 shadow-sm border w-100" style="max-height: 400px; object-fit: contain;" alt="Announcement Image">
-                </div>
-
-                <div id="viewAttachment" class="p-3 rounded-4 bg-light d-none align-items-center justify-content-between">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="bg-white p-2 rounded-3 shadow-sm">
-                            <i class="fas fa-file-pdf text-danger fs-4"></i>
-                        </div>
-                        <div>
-                            <div class="fw-bold small">Attachment Attached</div>
-                            <div class="text-muted" style="font-size: 10px;">Click to download or view</div>
-                        </div>
+            <div class="modal-body orb-modal-body">
+                <div class="orb-form-section">
+                    <div id="viewBadge" class="ann-badge mb-3"></div>
+                    <h3 id="viewTitle" class="fw-900 mb-3" style="color: var(--orb-text);"></h3>
+                    
+                    <div class="d-flex gap-3 mb-4 text-muted small fw-bold">
+                        <span><i class="far fa-calendar-alt me-1"></i> <span id="viewDate"></span></span>
+                        <span><i class="far fa-user me-1"></i> <span id="viewAuthor"></span></span>
+                        <span id="viewPriority" class="text-uppercase"></span>
                     </div>
-                    <a id="viewDownload" href="#" target="_blank" class="btn btn-orb btn-sm rounded-pill px-3">
-                        <i class="fas fa-download me-1"></i> Download
-                    </a>
+
+                    <div id="viewContent" class="mb-4" style="line-height: 1.8; color: #444; font-size: 15px;"></div>
+
+                    <div id="viewImagePreview" class="mb-4 d-none">
+                        <img src="" class="img-fluid rounded-4 shadow-sm border w-100" style="max-height: 400px; object-fit: contain;" alt="Announcement Image">
+                    </div>
+
+                    <div id="viewAttachment" class="p-3 rounded-4 bg-light d-none align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="bg-white p-2 rounded-3 shadow-sm">
+                                <i class="fas fa-file-pdf text-danger fs-4"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold small">Attachment Attached</div>
+                                <div class="text-muted" style="font-size: 10px;">Click to download or view</div>
+                            </div>
+                        </div>
+                        <a id="viewDownload" href="#" target="_blank" class="orb-btn-primary">
+                            <i class="fas fa-download me-1"></i> Download
+                        </a>
+                    </div>
                 </div>
+            </div>
+            <div class="modal-footer orb-modal-footer">
+                <button type="button" class="orb-btn-light" data-dismiss="modal" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>

@@ -141,10 +141,26 @@ class MyDocumentController extends Controller
             'uploaded_at' => now(),
         ]);
 
+        $freshDocument = $document->fresh(['type', 'uploadedBy', 'verifiedBy', 'employee.user']);
+        app(NotificationS::class)->notifyHrAndSuperAdmin(
+            'Employee Document Uploaded',
+            ($employee->user?->name ?: $employee->employee_code) . ' uploaded ' . ($freshDocument->title ?: $type->name) . ' for verification.',
+            'document_uploaded',
+            'documents',
+            ['document_id' => $freshDocument->id, 'employee_id' => $employee->id],
+            $this->documentNotificationPayload($freshDocument, [
+                'employee_id' => $employee->id,
+                'user_id' => $employee->user_id,
+                'employee_name' => $employee->user?->name ?: $employee->employee_code,
+                'document_id' => $freshDocument->id,
+                'document_title' => $freshDocument->title,
+            ])
+        );
+
         return $this->apiResponse(
             true,
             'Document uploaded successfully. It is pending HR verification.',
-            $this->completionService->formatDocument($document->fresh(['type', 'uploadedBy', 'verifiedBy'])),
+            $this->completionService->formatDocument($freshDocument),
             201
         );
     }
@@ -226,7 +242,7 @@ class MyDocumentController extends Controller
             app(NotificationS::class)->notifyHrAndSuperAdmin(
                 'Profile Verification Request',
                 $employeeName . ' submitted profile and documents for verification.',
-                'profile_document_verification',
+                'profile_submitted',
                 'hrms.documents.employee.show',
                 ['employee' => $employee->id],
                 [
@@ -394,5 +410,36 @@ class MyDocumentController extends Controller
             'errors' => $errors,
             'data' => $data,
         ], $status);
+    }
+
+    private function documentNotificationPayload(EmployeeDocumentM $document, array $extra = []): array
+    {
+        $absoluteUrl = url('/api/v1/file') . '?' . http_build_query([
+            'disk' => 'private',
+            'path' => $document->file_path,
+        ]);
+
+        return array_merge($extra, [
+            'attachment_url' => $absoluteUrl,
+            'attachment_type' => $this->attachmentType($document->file_mime_type, $document->file_original_name),
+            'attachment_name' => $document->file_original_name ?: $document->title,
+            'file_mime_type' => $document->file_mime_type,
+        ]);
+    }
+
+    private function attachmentType(?string $mime, ?string $name): string
+    {
+        $mime = strtolower((string) $mime);
+        $extension = strtolower(pathinfo((string) $name, PATHINFO_EXTENSION));
+
+        if (str_starts_with($mime, 'image/') || in_array($extension, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+            return 'image';
+        }
+
+        if ($mime === 'application/pdf' || $extension === 'pdf') {
+            return 'pdf';
+        }
+
+        return 'document';
     }
 }

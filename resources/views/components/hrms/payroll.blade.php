@@ -18,8 +18,8 @@
 
     $payrollOpen =
         request()->is('payroll*') ||
-        request()->routeIs('pages.payroll*') ||
-        request()->routeIs('hrms.payroll*');
+        request()->routeIs('enterprise-payroll*') ||
+        request()->routeIs('enterprise-payroll*');
 @endphp
 
 @if($showPayrollMenu)
@@ -40,24 +40,24 @@
     <div class="sidebar-submenu collapse {{ $payrollOpen ? 'show' : '' }}" id="payrollSubmenu" data-parent="#sidebarMenu">
 
         @if ($canSalaryStructure)
-            <a href="{{ route('pages.payroll.index') }}"
-               class="sub-link {{ request()->routeIs('pages.payroll.index') ? 'active' : '' }}">
+            <a href="{{ route('enterprise-payroll.salary-structures.index') }}"
+               class="sub-link {{ request()->routeIs('enterprise-payroll.salary-structures.index') ? 'active' : '' }}">
                 <span class="sub-link-icon"><i class="fas fa-layer-group"></i></span>
                 <span class="sub-link-text">Salary Structure</span>
             </a>
         @endif
 
         @if ($canPayrollDashboard)
-            <a href="{{ route('pages.payroll.dashboard') }}"
-               class="sub-link {{ request()->routeIs('pages.payroll.dashboard') ? 'active' : '' }}">
+            <a href="{{ route('enterprise-payroll.dashboard') }}"
+               class="sub-link {{ request()->routeIs('enterprise-payroll.dashboard') ? 'active' : '' }}">
                 <span class="sub-link-icon"><i class="fas fa-chart-pie"></i></span>
                 <span class="sub-link-text">Payroll Dashboard</span>
             </a>
         @endif
 
         @if ($canPayslipView)
-            <a href="{{ route('pages.payroll.payslips') }}"
-               class="sub-link {{ request()->routeIs('pages.payroll.payslips') ? 'active' : '' }}">
+            <a href="{{ route('enterprise-payroll.self.payslips') }}"
+               class="sub-link {{ request()->routeIs('enterprise-payroll.self.payslips') ? 'active' : '' }}">
                 <span class="sub-link-icon"><i class="fas fa-file-invoice-dollar"></i></span>
                 <span class="sub-link-text">My Salary Slips</span>
             </a>
@@ -68,16 +68,16 @@
         @endif
 
         @if ($canFnfManage)
-            <a href="{{ route('pages.payroll.fnf') }}"
-               class="sub-link {{ request()->routeIs('pages.payroll.fnf') ? 'active' : '' }}">
+            <a href="{{ route('enterprise-payroll.fnf.index') }}"
+               class="sub-link {{ request()->routeIs('enterprise-payroll.fnf.index') ? 'active' : '' }}">
                 <span class="sub-link-icon"><i class="fas fa-walking"></i></span>
                 <span class="sub-link-text">Settlement (FNF)</span>
             </a>
         @endif
 
         @if ($canBonusManage || $canAdjustmentManage)
-            <a href="{{ route('hrms.payroll.adjustments.index') }}"
-               class="sub-link {{ request()->routeIs('hrms.payroll.adjustments.*') ? 'active' : '' }}">
+            <a href="{{ route('enterprise-payroll.bonus-incentives.index') }}"
+               class="sub-link {{ request()->routeIs('enterprise-payroll.bonus-incentives.*') ? 'active' : '' }}">
                 <span class="sub-link-icon"><i class="fas fa-gift"></i></span>
                 <span class="sub-link-text">Bonus Management</span>
             </a>

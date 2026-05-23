@@ -69,6 +69,7 @@ Route::middleware(['auth', 'module:hrms'])
             ->name('documents.file');
     });
 
+
 Route::middleware(['auth', 'check.access'])
     ->group(function () {
 
@@ -150,9 +151,9 @@ Route::middleware(['auth', 'check.access'])
                     ->middleware('permission:employee_documents.view')
                     ->name('index');
 
-                Route::get('/employee-documents/pending-profiles', [EmployeeC::class, 'pendingProfiles'])
+                Route::get('/pending-profiles', [EmployeeC::class, 'pendingProfiles'])
                     ->middleware('permission:employee.view')
-                    ->name('documents.employee.pending_profiles');
+                    ->name('pending_profiles');
 
                 Route::post('/global', [EmployeeDocumentsC::class, 'storeGlobal'])
                     ->middleware('permission:company_documents.manage')
@@ -238,7 +239,7 @@ Route::middleware(['auth', 'check.access'])
             ->middleware('permission:documents.company.view|documents_self.view')
             ->name('documents.policies.self');
 
-        Route::redirect('/employee/policie', '/hrms/employee/policies');
+        Route::redirect('/employee/policie', '/employee/policies');
     });
 
 /*

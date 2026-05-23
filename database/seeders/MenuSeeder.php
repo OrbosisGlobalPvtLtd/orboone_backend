@@ -67,11 +67,15 @@ class MenuSeeder extends Seeder
             ['id' => 155, 'name' => 'Payroll Adjustments', 'route' => 'hrms.payroll.adjustments.index', 'icon' => 'fas fa-sliders-h', 'module_key' => 'payroll', 'parent_id' => 40, 'sort_order' => 9],
 
             ['id' => 50, 'name' => 'Document Management', 'route' => null, 'icon' => 'fas fa-folder-open', 'module_key' => 'documents', 'parent_id' => null, 'sort_order' => 50],
-            ['id' => 51, 'name' => 'Compliance Management', 'route' => 'hrms.documents.hr.index', 'icon' => 'fas fa-shield-alt', 'module_key' => 'documents', 'parent_id' => 50, 'sort_order' => 1],
+            ['id' => 51, 'name' => 'Compliance Management', 'route' => 'documents.hr.index', 'icon' => 'fas fa-shield-alt', 'module_key' => 'documents', 'parent_id' => 50, 'sort_order' => 1],
+
             ['id' => 52, 'name' => 'Upload Documents', 'route' => 'hrms.documents.self.index', 'icon' => 'fas fa-file-upload', 'module_key' => 'employee.documents', 'parent_id' => 50, 'sort_order' => 2],
-            ['id' => 53, 'name' => 'Company Documents', 'route' => 'hrms.documents.policies.self', 'icon' => 'fas fa-file-contract', 'module_key' => 'documents', 'parent_id' => 50, 'sort_order' => 3],
-            ['id' => 148, 'name' => 'Document Types', 'route' => 'hrms.documents.types.index', 'icon' => 'fas fa-file-alt', 'module_key' => 'documents', 'parent_id' => 50, 'sort_order' => 4],
-            ['id' => 149, 'name' => 'Document Verification', 'route' => 'hrms.documents.verification.index', 'icon' => 'fas fa-clipboard-check', 'module_key' => 'documents', 'parent_id' => 50, 'sort_order' => 5],
+
+            ['id' => 53, 'name' => 'Company Documents', 'route' => 'documents.policies.index', 'icon' => 'fas fa-file-contract', 'module_key' => 'documents', 'parent_id' => 50, 'sort_order' => 3],
+
+            ['id' => 148, 'name' => 'Document Types', 'route' => 'documents.types.index', 'icon' => 'fas fa-file-alt', 'module_key' => 'documents', 'parent_id' => 50, 'sort_order' => 4],
+
+            ['id' => 149, 'name' => 'Document Verification', 'route' => 'documents.verification.index', 'icon' => 'fas fa-clipboard-check', 'module_key' => 'documents', 'parent_id' => 50, 'sort_order' => 5],
 
             ['id' => 60, 'name' => 'Notice / Announcement', 'route' => 'announcements.index', 'icon' => 'fas fa-bullhorn', 'module_key' => 'announcements', 'parent_id' => null, 'sort_order' => 60],
             ['id' => 154, 'name' => 'My Announcements', 'route' => 'employee.announcements.index', 'icon' => 'fas fa-bullhorn', 'module_key' => 'employee.announcements', 'parent_id' => null, 'sort_order' => 61],

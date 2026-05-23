@@ -1246,7 +1246,7 @@ class DashboardResolverS
                 ['title' => 'Leave Approval', 'icon' => 'fas fa-plane', 'routes' => ['leave-approvals.index']],
             ],
             'finance_admin' => [
-                ['title' => 'Payroll Dashboard', 'icon' => 'fas fa-chart-line', 'routes' => ['pages.payroll.dashboard']],
+                ['title' => 'Payroll Dashboard', 'icon' => 'fas fa-chart-line', 'routes' => ['enterprise-payroll.dashboard']],
                 ['title' => 'Run Payroll', 'icon' => 'fas fa-play-circle', 'routes' => ['pages.payroll.payrollrun']],
             ],
             'project_admin' => [

@@ -233,7 +233,7 @@
         </div>
 
         <!-- Filter Row Attached inside card -->
-        <form method="GET" action="{{ route('hrms.documents.hr.index') }}" id="docFilterForm">
+        <form method="GET" action="{{ route('documents.hr.index') }}" id="docFilterForm">
             <div class="dm-filter-wrapper">
                 <div class="dm-filter-row">
                     <div class="dm-filter-col" style="flex: 2 1 300px;">
@@ -252,7 +252,7 @@
                     </div>
 
                     <div class="dm-filter-col" style="flex: 0 0 auto;">
-                        <a href="{{ route('hrms.documents.hr.index') }}" class="dm-btn dm-btn-dark-light" style="height: 40px; border-radius: 9px;">
+                        <a href="{{ route('documents.hr.index') }}" class="dm-btn dm-btn-dark-light" style="height: 40px; border-radius: 9px;">
                             <i class="fas fa-undo"></i> Reset Filters
                         </a>
                     </div>

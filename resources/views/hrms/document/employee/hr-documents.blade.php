@@ -86,7 +86,7 @@
         <div class="container-fluid px-3 px-md-5">
             <div class="d-flex align-items-center justify-content-between flex-wrap gap-4">
                 <div>
-                    <a href="{{ route('hrms.documents.hr.index') }}" class="text-white small font-weight-bold mb-3 d-inline-block opacity-75 text-decoration-none">
+                    <a href="{{ route('documents.hr.index') }}" class="text-white small font-weight-bold mb-3 d-inline-block opacity-75 text-decoration-none">
                         <i class="fas fa-arrow-left mr-2"></i> Document Ledger
                     </a>
                     <h1 class="font-weight-bold mb-2">{{ $user->name }}</h1>

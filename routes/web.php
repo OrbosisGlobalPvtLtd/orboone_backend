@@ -9,7 +9,6 @@ require __DIR__ . '/Web/hrms/recruitment.php';
 require __DIR__ . '/Web/hrms/attendance.php';
 require __DIR__ . '/Web/hrms/leave.php';
 require __DIR__ . '/Web/hrms/enterprise_payroll.php';
-require __DIR__ . '/Web/hrms/payroll.php';
 require __DIR__ . '/Web/hrms/mobile_app.php';
 require __DIR__ . '/Web/auth.php';
 require __DIR__ . '/Web/dashboard.php';

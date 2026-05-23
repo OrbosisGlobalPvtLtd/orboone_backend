@@ -107,7 +107,7 @@
                                         <i class="fas fa-edit text-warning mr-1"></i> Edit
                                     </button>
 
-                                    <form action="{{ route('hrms.documents.policies.destroy', $policy->id) }}" method="POST" style="display:inline; margin: 0;" onsubmit="return confirm('Are you sure you want to delete this policy?')">
+                                    <form action="{{ route('documents.policies.destroy', $policy->id) }}" method="POST" style="display:inline; margin: 0;" onsubmit="return confirm('Are you sure you want to delete this policy?')">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="dm-action-btn-pill dm-action-btn-danger">
@@ -207,7 +207,7 @@
 
     function openAddPolicyModal() {
         document.getElementById('policyModalTitle').innerHTML = '<i class="fas fa-plus-circle mr-2"></i>Add Company Policy';
-        document.getElementById('policyForm').action = "{{ route('hrms.documents.policies.store') }}";
+        document.getElementById('policyForm').action = "{{ route('documents.policies.store') }}";
         document.getElementById('policyMethodContainer').innerHTML = '';
         
         document.getElementById('policyDocTypeId').value = '';

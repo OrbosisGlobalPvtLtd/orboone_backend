@@ -1,6 +1,6 @@
 @php
     $isAdmin = auth()->user()->isAdmin();
-    $payrollOpen = request()->is('payroll*') || request()->routeIs('pages.payroll*') || request()->routeIs('hrms.payroll*');
+    $payrollOpen = request()->is('payroll*') || request()->routeIs('enterprise-payroll*') || request()->routeIs('enterprise-payroll*');
 @endphp
 
 {{-- ========== SECTION: 4. PAYROLL MANAGEMENT ========== --}}
@@ -16,14 +16,14 @@
     @if ($isAdmin)
     {{-- Sub-module: Salary Structure (Admin) --}}
     <li>
-        <a href="{{ route('pages.payroll.index') }}" class="nav-link sub-nav-link {{ request()->routeIs('pages.payroll.index') ? 'active' : '' }}">
+        <a href="{{ route('enterprise-payroll.salary-structures.index') }}" class="nav-link sub-nav-link {{ request()->routeIs('enterprise-payroll.salary-structures.index') ? 'active' : '' }}">
             <i class="fas fa-layer-group small mr-2"></i> Salary Structure
         </a>
     </li>
 
     {{-- Sub-module: Payroll Dashboard (Admin) --}}
     <li>
-        <a href="{{ route('pages.payroll.dashboard') }}" class="nav-link sub-nav-link {{ request()->routeIs('pages.payroll.dashboard') ? 'active' : '' }}">
+        <a href="{{ route('enterprise-payroll.dashboard') }}" class="nav-link sub-nav-link {{ request()->routeIs('enterprise-payroll.dashboard') ? 'active' : '' }}">
             <i class="fas fa-chart-pie small mr-2"></i> Payroll Dashboard
         </a>
     </li>
@@ -31,7 +31,7 @@
 
     {{-- Sub-module: Salary Slip / Payslips (Both) --}}
     <li>
-        <a href="{{ route('pages.payroll.payslips') }}" class="nav-link sub-nav-link {{ request()->routeIs('pages.payroll.payslips') ? 'active' : '' }}">
+        <a href="{{ route('enterprise-payroll.self.payslips') }}" class="nav-link sub-nav-link {{ request()->routeIs('enterprise-payroll.self.payslips') ? 'active' : '' }}">
             <i class="fas fa-file-invoice-dollar small mr-2 text-success"></i> My Salary Slips
         </a>
     </li>
@@ -39,14 +39,14 @@
     @if ($isAdmin)
     {{-- Sub-module: FNF (Admin) --}}
     <li>
-        <a href="{{ route('pages.payroll.fnf') }}" class="nav-link sub-nav-link {{ request()->routeIs('pages.payroll.fnf') ? 'active' : '' }}">
+        <a href="{{ route('enterprise-payroll.fnf.index') }}" class="nav-link sub-nav-link {{ request()->routeIs('enterprise-payroll.fnf.index') ? 'active' : '' }}">
             <i class="fas fa-walking small mr-2 text-danger"></i> Settlement (FNF)
         </a>
     </li>
 
     {{-- Sub-module: Bonus Management (Admin Placeholder) --}}
     <li>
-        <a href="{{ route('hrms.payroll.adjustments.index') }}" class="nav-link sub-nav-link {{ request()->routeIs('hrms.payroll.adjustments.*') ? 'active' : '' }}">
+        <a href="{{ route('enterprise-payroll.bonus-incentives.index') }}" class="nav-link sub-nav-link {{ request()->routeIs('enterprise-payroll.bonus-incentives.*') ? 'active' : '' }}">
             <i class="fas fa-gift small mr-2 text-warning"></i> Bonus Management
         </a>
     </li>

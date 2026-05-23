@@ -304,7 +304,7 @@ $extensionOptions = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'];
                                     <input
                                         type="checkbox"
                                         class="status-toggle"
-                                        data-url="{{ route('hrms.documents.types.toggle-status', $type) }}"
+                                        data-url="{{ route('documents.types.toggle-status', $type) }}"
                                         {{ $type->is_active ? 'checked' : '' }}>
                                     <span class="status-slider"></span>
                                 </label>
@@ -326,7 +326,7 @@ $extensionOptions = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'];
                                 </button>
 
                                 <form method="POST"
-                                    action="{{ route('hrms.documents.types.destroy', $type) }}"
+                                    action="{{ route('documents.types.destroy', $type) }}"
                                     onsubmit="return confirm('Delete this document type?')"
                                     style="display:inline-block;margin:0;">
                                     @csrf
@@ -361,7 +361,7 @@ $selectedExtensions = is_array($type->allowed_extensions)
 
 <div class="modal fade" id="editDocumentTypeModal{{ $type->id }}" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
-        <form method="POST" action="{{ route('hrms.documents.types.update', $type) }}" class="modal-content" style="border: none; border-radius: 24px; overflow: hidden; box-shadow: var(--dm-shadow);">
+        <form method="POST" action="{{ route('documents.types.update', $type) }}" class="modal-content" style="border: none; border-radius: 24px; overflow: hidden; box-shadow: var(--dm-shadow);">
             @csrf
             @method('PUT')
 
@@ -516,7 +516,7 @@ $selectedExtensions = is_array($type->allowed_extensions)
 {{-- Create Modal Outside Table --}}
 <div class="modal fade" id="createDocumentTypeModal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
-        <form method="POST" action="{{ route('hrms.documents.types.store') }}" class="modal-content" style="border: none; border-radius: 24px; overflow: hidden; box-shadow: var(--dm-shadow);">
+        <form method="POST" action="{{ route('documents.types.store') }}" class="modal-content" style="border: none; border-radius: 24px; overflow: hidden; box-shadow: var(--dm-shadow);">
             @csrf
 
             <div class="dm-modal-header">

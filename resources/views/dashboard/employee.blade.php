@@ -699,7 +699,7 @@
                         </div>
                     </div>
 
-                    <a href="{{ Route::has('hrms.documents.self.index') ? route('hrms.documents.self.index') : '#' }}" class="btn btn-light w-100 font-weight-bold" style="border-radius:14px; font-weight:800; border: 1px solid #E4E7EC; height: 43px; display:inline-flex; align-items:center; justify-content:center; gap:8px;">
+                    <a href="{{ Route::has('hrms.hrms.documents.self.index') ? route('hrms.hrms.documents.self.index') : '#' }}" class="btn btn-light w-100 font-weight-bold" style="border-radius:14px; font-weight:800; border: 1px solid #E4E7EC; height: 43px; display:inline-flex; align-items:center; justify-content:center; gap:8px;">
                         <i class="fas fa-folder-open"></i> Upload & Manage Documents
                     </a>
                 </div>
@@ -728,11 +728,11 @@
                             <div class="quick-action-icon"><i class="fas fa-file-invoice-dollar"></i></div>
                             <div class="quick-action-label">Payslips</div>
                         </a>
-                        <a href="{{ Route::has('hrms.documents.self.index') ? route('hrms.documents.self.index') : '#' }}" class="quick-action-btn">
+                        <a href="{{ Route::has('hrms.hrms.documents.self.index') ? route('hrms.hrms.documents.self.index') : '#' }}" class="quick-action-btn">
                             <div class="quick-action-icon"><i class="fas fa-folder-open"></i></div>
                             <div class="quick-action-label">Documents</div>
                         </a>
-                        <a href="{{ Route::has('hrms.documents.policies.self') ? route('hrms.documents.policies.self') : (Route::has('documents.policies.self') ? route('documents.policies.self') : '#') }}" class="quick-action-btn">
+                        <a href="{{ Route::has('documents.policies.self') ? route('documents.policies.self') : (Route::has('documents.policies.self') ? route('documents.policies.self') : '#') }}" class="quick-action-btn">
                             <div class="quick-action-icon"><i class="fas fa-shield-alt"></i></div>
                             <div class="quick-action-label">Policies</div>
                         </a>

@@ -136,7 +136,7 @@
                                         <a href="{{ asset('storage/'.$doc->file_path) }}" target="_blank" class="btn btn-sm btn-light border mr-2" style="border-radius: 8px;">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        <form action="{{ route('hrms.documents.policies.destroy', $doc->id) }}" method="POST" onsubmit="return confirm('Delete this policy?')">
+                                        <form action="{{ route('documents.policies.destroy', $doc->id) }}" method="POST" onsubmit="return confirm('Delete this policy?')">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="btn btn-sm btn-light border text-danger" style="border-radius: 8px;">
@@ -165,7 +165,7 @@
 <div class="modal fade" id="addPolicyModal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content orb-modal">
-            <form action="{{ route('hrms.documents.policies.store') }}" method="POST" enctype="multipart/form-data" style="width: 100%;">
+            <form action="{{ route('documents.policies.store') }}" method="POST" enctype="multipart/form-data" style="width: 100%;">
                 @csrf
                 <div class="orb-modal-header">
                     <div>

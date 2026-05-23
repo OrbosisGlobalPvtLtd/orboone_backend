@@ -24,7 +24,7 @@ $compliance = $totalEmployees > 0 ? round(($verifiedEmployees / max($totalEmploy
             <p>Employee-wise verification tracking, missing mandatory records, and expiring compliance metrics.</p>
         </div>
         <div class="dm-hero-actions">
-            <a href="{{ route('hrms.documents.hr.index') }}" class="dm-btn dm-btn-primary">
+            <a href="{{ route('documents.hr.index') }}" class="dm-btn dm-btn-primary">
                 <i class="fas fa-user-check"></i> Pending Verification
             </a>
             <a href="{{ route('hrms.documents.employee.index') }}" class="dm-btn dm-btn-light">
@@ -145,7 +145,7 @@ $compliance = $totalEmployees > 0 ? round(($verifiedEmployees / max($totalEmploy
                             <p class="dm-table-subtitle">Employee-wise count of uploaded files awaiting review.</p>
                         </div>
                     </div>
-                    <a href="{{ route('hrms.documents.hr.index') }}" class="dm-action-btn-pill dm-action-btn-light">
+                    <a href="{{ route('documents.hr.index') }}" class="dm-action-btn-pill dm-action-btn-light">
                         View All <i class="fas fa-arrow-right ml-1"></i>
                     </a>
                 </div>

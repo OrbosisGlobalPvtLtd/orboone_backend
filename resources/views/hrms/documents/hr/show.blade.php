@@ -18,7 +18,7 @@
             <p>Code: {{ $employee->employee_code }} &bull; Experience: {{ ucfirst($employee->experience_type ?? 'Fresher') }}</p>
         </div>
         <div class="dm-hero-actions">
-            <a href="{{ route('hrms.documents.hr.index') }}" class="dm-btn dm-btn-light">
+            <a href="{{ route('documents.hr.index') }}" class="dm-btn dm-btn-light">
                 <i class="fas fa-arrow-left"></i> Back to List
             </a>
         </div>

@@ -1,36 +1,54 @@
 @extends('layouts.admin', ['accesses' => $accesses, 'active' => 'payroll_dashboard'])
 
 @section('_content')
-<div class="container-fluid py-4">
-    <div class="row">
-        <div class="col-12">
-            <h2 class="mb-4">Payroll Dashboard</h2>
+    <div class="orb-page-header">
+        <div class="orb-page-header-content">
+            <div class="orb-page-kicker">
+                <i class="fas fa-wallet"></i> HRMS &bull; Payroll
+            </div>
+
+            <h1 class="orb-page-title">
+                Payroll Dashboard
+            </h1>
+
+            <p class="orb-page-subtitle">
+                Comprehensive overview of salary aggregation, active employee structures, and monthly statutory computations.
+            </p>
         </div>
     </div>
 
     <!-- Stats Cards -->
     <div class="row mb-4">
-        <div class="col-md-4">
-            <div class="card shadow-sm border-0 bg-primary text-white">
-                <div class="card-body">
-                    <h5 class="card-title">Total Active Employees</h5>
-                    <p class="display-4 font-weight-bold">{{ $employeesCount }}</p>
+        <div class="col-md-4 mb-3">
+            <div class="orb-table-card mb-0" style="border-radius: 20px; background: radial-gradient(circle at top right, rgba(75, 0, 232, .12), transparent 28%), #fff;">
+                <div class="orb-card-body p-4 d-flex align-items-center gap-3">
+                    <div class="orb-kpi-icon" style="width: 48px; height: 48px; border-radius: 14px; background: rgba(75, 0, 232, .10); color: #4B00E8; display: flex; align-items: center; justify-content: center; font-size: 18px;"><i class="fas fa-users"></i></div>
+                    <div>
+                        <div class="orb-muted small font-weight-bold text-uppercase" style="font-size: 11px; letter-spacing: 0.05em;">Total Active Employees</div>
+                        <div class="h2 mb-0 font-weight-black mt-1" style="color: #101828;">{{ $employeesCount }}</div>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card shadow-sm border-0 bg-success text-white">
-                <div class="card-body">
-                    <h5 class="card-title">Total Salaries (This Month)</h5>
-                    <p class="display-4 font-weight-bold">₹{{ number_format($totalSalaries, 2) }}</p>
+        <div class="col-md-4 mb-3">
+            <div class="orb-table-card mb-0" style="border-radius: 20px; background: radial-gradient(circle at top right, rgba(18, 183, 106, .12), transparent 28%), #fff;">
+                <div class="orb-card-body p-4 d-flex align-items-center gap-3">
+                    <div class="orb-kpi-icon" style="width: 48px; height: 48px; border-radius: 14px; background: rgba(18, 183, 106, .10); color: #12B76A; display: flex; align-items: center; justify-content: center; font-size: 18px;"><i class="fas fa-wallet"></i></div>
+                    <div>
+                        <div class="orb-muted small font-weight-bold text-uppercase" style="font-size: 11px; letter-spacing: 0.05em;">Total Salaries (This Month)</div>
+                        <div class="h2 mb-0 font-weight-black mt-1" style="color: #12B76A;">₹{{ number_format($totalSalaries, 2) }}</div>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card shadow-sm border-0 bg-info text-white">
-                <div class="card-body">
-                    <h5 class="card-title">Pending F&F</h5>
-                    <p class="display-4 font-weight-bold">0</p>
+        <div class="col-md-4 mb-3">
+            <div class="orb-table-card mb-0" style="border-radius: 20px; background: radial-gradient(circle at top right, rgba(14, 165, 233, .12), transparent 28%), #fff;">
+                <div class="orb-card-body p-4 d-flex align-items-center gap-3">
+                    <div class="orb-kpi-icon" style="width: 48px; height: 48px; border-radius: 14px; background: rgba(14, 165, 233, .10); color: #0EA5E9; display: flex; align-items: center; justify-content: center; font-size: 18px;"><i class="fas fa-handshake"></i></div>
+                    <div>
+                        <div class="orb-muted small font-weight-bold text-uppercase" style="font-size: 11px; letter-spacing: 0.05em;">Pending F&F</div>
+                        <div class="h2 mb-0 font-weight-black mt-1" style="color: #0EA5E9;">0</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -39,11 +57,11 @@
     <div class="row">
         <!-- Quick Actions & Employee Selection -->
         <div class="col-md-6">
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header bg-white border-0 py-3">
-                    <h5 class="mb-0">Quick Actions</h5>
+            <div class="orb-table-card mb-4">
+                <div class="orb-table-toolbar justify-content-between align-items-center">
+                    <h5 class="mb-0 font-weight-black"><i class="fas fa-bolt text-primary mr-1"></i> Quick Actions</h5>
                 </div>
-                <div class="card-body">
+                <div class="orb-card-body p-4">
                     <div class="row">
                         <div class="col-6 mb-3">
                             <a href="{{ route('pages.payroll.payrollrun') }}" class="btn btn-outline-primary btn-block py-3">
@@ -75,7 +93,7 @@
                             <label for="month">Select Month</label>
                             <input type="month" name="month" id="month" class="form-control" value="{{ date('Y-m') }}" required>
                         </div>
-                        <button type="submit" class="btn btn-primary btn-block">Generate & Download PDF</button>
+                        <button type="submit" class="orb-btn-primary btn-block justify-content-center">Generate & Download PDF</button>
                     </form>
                 </div>
             </div>
@@ -83,12 +101,12 @@
 
         <!-- Recent Payrolls -->
         <div class="col-md-6">
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Recent Payrolls</h5>
-                    <a href="{{ route('pages.payroll.payslips') }}" class="btn btn-sm btn-link">View All</a>
+            <div class="orb-table-card mb-4">
+                <div class="orb-table-toolbar justify-content-between align-items-center">
+                    <h5 class="mb-0 font-weight-black"><i class="fas fa-history text-primary mr-1"></i> Recent Payrolls</h5>
+                    <a href="{{ route('pages.payroll.payslips') }}" class="orb-btn-light py-1 px-3" style="min-height: 32px !important; font-size: 12px;"><i class="fas fa-arrow-right"></i> View All</a>
                 </div>
-                <div class="card-body p-0">
+                <div class="orb-table-wrapper p-0">
                     <div class="table-responsive">
                         <table class="table table-hover mb-0">
                             <thead class="bg-light">
@@ -123,7 +141,6 @@
             </div>
         </div>
     </div>
-</div>
 
 @push('styles')
 <style>

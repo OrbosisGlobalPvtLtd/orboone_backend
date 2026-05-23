@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Web\HRMS\Payroll;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Web\HRMS\Concerns\HrmsCrudPage;
+use App\Services\HRMS\Payroll\PayrollCalculationService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class PayrollGenerateC extends Controller
 {
@@ -34,12 +34,23 @@ class PayrollGenerateC extends Controller
         ]);
     }
 
-    public function process(Request $request)
+    public function process(Request $request, PayrollCalculationService $payrollService)
     {
         abort_unless($this->userHasPermission('payroll.generate.process'), 403);
 
-        $request->validate(['month' => 'required|integer|min:1|max:12', 'year' => 'required|integer|min:2020|max:2099']);
-        DB::table('payroll_attendance_impacts')->where('month', $request->month)->where('year', $request->year)->where('is_processed_in_payroll', 0)->update(['is_processed_in_payroll' => 1, 'processed_at' => now(), 'updated_at' => now()]);
-        return back()->with('success', 'Payroll impacts marked processed for selected month.');
+        $data = $request->validate([
+            'month' => 'required|integer|min:1|max:12',
+            'year' => 'required|integer|min:2020|max:2099',
+            'employee_id' => 'nullable|integer|exists:employees_new,id',
+        ]);
+
+        $result = $payrollService->generateMonth(
+            (int) $data['month'],
+            (int) $data['year'],
+            isset($data['employee_id']) ? (int) $data['employee_id'] : null,
+            auth()->id()
+        );
+
+        return back()->with('success', "Payroll generated: {$result['generated']}. Locked skipped: {$result['skipped_locked']}. Missing salary structure: {$result['skipped_missing_salary_structure']}.");
     }
 }

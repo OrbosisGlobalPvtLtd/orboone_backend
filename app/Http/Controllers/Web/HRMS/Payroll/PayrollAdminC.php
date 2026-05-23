@@ -13,12 +13,18 @@ use App\Models\HRMS\Payroll\ClaimM as Claim;
 use Illuminate\Http\Request;
 use App\Models\HRMS\Payroll\StatutorySettingM as StatutorySetting;
 use App\Models\HRMS\Attendance\AttendanceM as Attendance;
+use App\Services\HRMS\Payroll\PayrollCalculationService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class PayrollAdminC extends Controller
 {
+    /*
+     * LEGACY PAYROLL MODULE - DO NOT USE for new enterprise payroll.
+     * Kept only as backup/reference. Enterprise payroll lives under
+     * App\Http\Controllers\Web\HRMS\EnterprisePayroll.
+     */
     use HrmsCrudPage;
 
       public function structuresIndex()
@@ -159,7 +165,7 @@ public function payrollRunForm()
     return view('hrms.payroll.payrollrun', compact('accesses'))->with('active', 'payroll_run');
 }
 
-public function payrollRun(Request $request)
+public function payrollRun(Request $request, PayrollCalculationService $payrollService)
 {
     abort_unless($this->userHasPermission('payroll.generate.process'), 403);
     $request->validate([
@@ -173,17 +179,11 @@ public function payrollRun(Request $request)
     $month = $startDate->month; // 1-12
     $year = $startDate->year;
 
-    $employees = Employee::with('salaryStructure')
-        ->where('is_active', true)
-        ->get();
-
-    foreach ($employees as $employee) {
-        $this->ensurePayrollForEmployee($employee, $startDate, $endDate, $month, $year);
-    }
+    $result = $payrollService->generateMonth($month, $year, null, auth()->id());
 
     return redirect()
         ->route('pages.payroll.preview', $monthInput)
-        ->with('success', 'Payroll run completed successfully.');
+        ->with('success', "Payroll run completed. Generated: {$result['generated']}, locked skipped: {$result['skipped_locked']}, missing salary structure: {$result['skipped_missing_salary_structure']}.");
 }
 
 public function payrollPreview($monthInput)
@@ -202,19 +202,26 @@ public function payrollPreview($monthInput)
     return view('hrms.payroll.preview', compact('payrolls', 'monthInput', 'accesses'))->with('active', 'payroll_run');
 }
 
-public function payrollLock($monthInput)
+public function payrollApprove($id, PayrollCalculationService $payrollService)
+{
+    abort_unless($this->userHasPermission('payroll.approve') || $this->userHasPermission('payroll.generate.process'), 403);
+
+    $payroll = Payroll::findOrFail($id);
+    $payrollService->approve($payroll, auth()->id());
+
+    return back()->with('success', 'Payroll approved successfully.');
+}
+
+public function payrollLock($monthInput, PayrollCalculationService $payrollService)
 {
     abort_unless($this->userHasPermission('payroll.generate.process'), 403);
     $startDate = Carbon::createFromFormat('Y-m', $monthInput);
     $month = $startDate->month;
     $year = $startDate->year;
 
-    Payroll::where('month', $month)
-        ->where('year', $year)
-        ->update(['status' => 'locked']);
+    $count = $payrollService->lockMonth($month, $year, auth()->id());
 
-    // here you can auto-generate payslips if you want
-    return back()->with('success', "Payroll locked for {$monthInput}.");
+    return back()->with('success', "Payroll locked for {$monthInput}. Rows locked: {$count}.");
 }
 public function monthlyList()
 {
@@ -253,14 +260,14 @@ public function payslipsByMonth($monthInput)
     $payrolls = Payroll::with(['employee', 'payslip'])
         ->where('month', $month)
         ->where('year', $year)
-        ->where('status', 'locked')
+        ->whereIn('status', [PayrollCalculationService::STATUS_APPROVED, PayrollCalculationService::STATUS_LOCKED])
         ->get();
     $accesses = \App\Models\Core\AccessM::where('role_id', auth()->user()->role_id)->get();
 
     return view('hrms.payroll.payslipindex', compact('payrolls', 'monthInput', 'accesses'))->with('active', 'payroll_run');
 }
 
-public function payslipsGenerate($monthInput)
+public function payslipsGenerate($monthInput, PayrollCalculationService $payrollService)
 {
     abort_unless($this->userHasPermission('payroll.generate.process'), 403);
     $startDate = Carbon::createFromFormat('Y-m', $monthInput);
@@ -270,14 +277,18 @@ public function payslipsGenerate($monthInput)
     $payrolls = Payroll::with('employee')
         ->where('month', $month)
         ->where('year', $year)
-        ->where('status', 'locked')
+        ->whereIn('status', [PayrollCalculationService::STATUS_APPROVED, PayrollCalculationService::STATUS_LOCKED])
         ->get();
 
     if ($payrolls->isEmpty()) {
-        return back()->with('error', 'No locked payrolls found for that month.');
+        return back()->with('error', 'No approved or locked payrolls found for that month.');
     }
 
     foreach ($payrolls as $p) {
+        if (! $payrollService->canGeneratePayslip($p)) {
+            continue;
+        }
+
         $pdf = Pdf::loadView('hrms.payroll.payslip_pdf', [
             'p' => $p,
             'month' => $monthInput,
@@ -298,6 +309,8 @@ public function payslipsGenerate($monthInput)
             ],
             [
                 'file_path' => $filePath,
+                'generated_by' => auth()->id(),
+                'generated_at' => now(),
             ]
         );
     }
@@ -309,7 +322,7 @@ public function payslipsGenerate($monthInput)
  * Download a zip containing all employee payslips for a given month.
  * Admin-level feature, called from the payslip-index page.
  */
-public function downloadAllPayslips($monthInput)
+public function downloadAllPayslips($monthInput, PayrollCalculationService $payrollService)
 {
     abort_unless($this->userHasPermission('payroll.payslips.view_all'), 403);
     $startDate = Carbon::createFromFormat('Y-m', $monthInput);
@@ -319,11 +332,11 @@ public function downloadAllPayslips($monthInput)
     $payrolls = Payroll::with('employee')
         ->where('month', $month)
         ->where('year', $year)
-        ->where('status', 'locked')
+        ->whereIn('status', [PayrollCalculationService::STATUS_APPROVED, PayrollCalculationService::STATUS_LOCKED])
         ->get();
 
     if ($payrolls->isEmpty()) {
-        return back()->with('error', 'No locked payrolls found for that month.');
+        return back()->with('error', 'No approved or locked payrolls found for that month.');
     }
 
     // create temporary zip
@@ -335,6 +348,10 @@ public function downloadAllPayslips($monthInput)
     }
 
     foreach ($payrolls as $p) {
+        if (! $payrollService->canGeneratePayslip($p)) {
+            continue;
+        }
+
         $pdf = Pdf::loadView('hrms.payroll.payslip_pdf', [
             'p' => $p,
             'month' => $monthInput
@@ -369,11 +386,15 @@ public function downloadAllPayslips($monthInput)
         return view('hrms.payroll.payslips', compact('payslips', 'accesses'))->with('active', 'my_payslips');
     }
 
-public function download($id)
+public function download($id, PayrollCalculationService $payrollService)
 {
-    $payslip = Payslip::findOrFail($id);
+    $payslip = Payslip::with('payroll')->findOrFail($id);
     if (! $this->userHasPermission('payroll.payslips.view_all')) {
         abort_unless((int) $payslip->employee_id === (int) $this->ownEmployeeId(), 403);
+    }
+
+    if (! $payslip->payroll || ! $payrollService->canGeneratePayslip($payslip->payroll)) {
+        return back()->with('error', 'Payslip can be downloaded only after payroll is approved or locked.');
     }
 
     // Check file path exists in DB
@@ -399,9 +420,13 @@ public function download($id)
     );
 }
 
-public function downloadByEmployeeMonth($employee_id, $monthInput)
+public function downloadByEmployeeMonth($employee_id, $monthInput, PayrollCalculationService $payrollService)
 {
     $employee = Employee::findOrFail($employee_id);
+    if (! $this->userHasPermission('payroll.payslips.view_all')) {
+        abort_unless((int) $employee->id === (int) $this->ownEmployeeId(), 403);
+    }
+
     $startDate = Carbon::createFromFormat('Y-m', $monthInput);
     $month = $startDate->month;
     $year = $startDate->year;
@@ -412,13 +437,11 @@ public function downloadByEmployeeMonth($employee_id, $monthInput)
         ->first();
 
     if (!$payroll) {
-        $payroll = $this->ensurePayrollForEmployee(
-            $employee->load('salaryStructure'),
-            $startDate->copy()->startOfMonth(),
-            $startDate->copy()->endOfMonth(),
-            $month,
-            $year
-        );
+        return back()->with('error', 'Payroll is not generated for the selected month.');
+    }
+
+    if (! $payrollService->canGeneratePayslip($payroll)) {
+        return back()->with('error', 'Payslip can be downloaded only after payroll is approved or locked.');
     }
 
     // Check if payslip exists, if not generate it
@@ -448,6 +471,8 @@ public function downloadByEmployeeMonth($employee_id, $monthInput)
             ],
             [
                 'file_path' => $filePath,
+                'generated_by' => auth()->id(),
+                'generated_at' => now(),
             ]
         );
     }
@@ -552,12 +577,15 @@ private function ensurePayrollForEmployee(Employee $employee, Carbon $startDate,
 
 public function statutorySettingsForm()
 {
+    abort_unless($this->userHasPermission('payroll.generate.view') || $this->userHasPermission('payroll.generate.process'), 403);
     $settings = StatutorySetting::first();
-    return view('hrms.payroll.statutorysettings', compact('settings'));
+    $accesses = \App\Models\Core\AccessM::where('role_id', auth()->user()->role_id)->get();
+    return view('hrms.payroll.statutorysettings', compact('settings', 'accesses'));
 }
 
 public function statutorySettingsSave(Request $request)
 {
+    abort_unless($this->userHasPermission('payroll.generate.process'), 403);
     $data = $request->validate([
         'pf_percent'  => 'nullable|numeric',
         'esi_percent' => 'nullable|numeric',
@@ -651,17 +679,23 @@ public function fnfView()
 
 public function claimsIndex()
 {
-    $employee = Employee::where('user_id', auth()->id())->firstOrFail();
-    $claims = Claim::where('employee_id', $employee->id)
-        ->orderBy('created_at','desc')
-        ->get();
+    if ($this->userHasPermission('payroll.claims.view_all') || $this->userHasPermission('payroll.generate.view')) {
+        $claims = Claim::with('employee')->orderBy('created_at', 'desc')->get();
+    } else {
+        $employee = Employee::where('user_id', auth()->id())->firstOrFail();
+        $claims = Claim::where('employee_id', $employee->id)
+            ->orderBy('created_at','desc')
+            ->get();
+    }
 
-    return view('hrms.payroll.claims.index', compact('claims'));
+    $accesses = \App\Models\Core\AccessM::where('role_id', auth()->user()->role_id)->get();
+    return view('hrms.payroll.claims.index', compact('claims', 'accesses'));
 }
 
 public function claimsCreate()
 {
-    return view('hrms.payroll.claims.create');
+    $accesses = \App\Models\Core\AccessM::where('role_id', auth()->user()->role_id)->get();
+    return view('hrms.payroll.claims.create', compact('accesses'));
 }
 
 public function claimsStore(Request $request)
@@ -676,7 +710,7 @@ public function claimsStore(Request $request)
 
     $filePath = null;
     if ($request->hasFile('file')) {
-        $filePath = $request->file('file')->store('claims');
+        $filePath = $request->file('file')->store('claims', 'public');
     }
 
     Claim::create([
@@ -699,19 +733,36 @@ public function claimsStore(Request $request)
 
 public function claimsApprove($id, Request $request)
 {
-    $claim = Claim::findOrFail($id);
-    $claim->status = 'approved';
-    $claim->save();
+    abort_unless($this->userHasPermission('payroll.claims.manage') || $this->userHasPermission('payroll.generate.process'), 403);
+    $data = $request->validate([
+        'payroll_month' => 'required|integer|min:1|max:12',
+        'payroll_year' => 'required|integer|min:2020|max:2099',
+        'approval_note' => 'nullable|string|max:1000',
+    ]);
 
-    // Add to payroll earning of that month (your logic)
+    $claim = Claim::findOrFail($id);
+    $claim->forceFill([
+        'status' => 'approved',
+        'payroll_month' => $data['payroll_month'],
+        'payroll_year' => $data['payroll_year'],
+        'approved_by' => auth()->id(),
+        'approved_at' => now(),
+        'approval_note' => $data['approval_note'] ?? null,
+    ])->save();
+
     return back()->with('success', 'Claim approved.');
 }
 
 public function claimsReject($id, Request $request)
 {
+    abort_unless($this->userHasPermission('payroll.claims.manage') || $this->userHasPermission('payroll.generate.process'), 403);
     $claim = Claim::findOrFail($id);
-    $claim->status = 'rejected';
-    $claim->save();
+    $claim->forceFill([
+        'status' => 'rejected',
+        'rejected_by' => auth()->id(),
+        'rejected_at' => now(),
+        'approval_note' => $request->input('approval_note'),
+    ])->save();
 
     return back()->with('success', 'Claim rejected.');
 }

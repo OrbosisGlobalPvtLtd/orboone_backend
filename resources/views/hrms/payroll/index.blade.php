@@ -1,23 +1,32 @@
 @extends('layouts.admin', ['accesses' => $accesses, 'active' => 'payroll_index'])
 
 @section('_content')
-<div class="container-fluid py-4">
-    <div class="row mb-4 align-items-center">
-        <div class="col-md-6">
-            <h2 class="mb-1">Salary Management</h2>
-            <p class="text-muted">Define and assign salary structures to employees.</p>
+    <div class="orb-page-header">
+        <div class="orb-page-header-content">
+            <div class="orb-page-kicker">
+                <i class="fas fa-wallet"></i> HRMS &bull; Payroll
+            </div>
+
+            <h1 class="orb-page-title">
+                Salary Management
+            </h1>
+
+            <p class="orb-page-subtitle">
+                Define and assign salary structures to employees.
+            </p>
         </div>
-        <div class="col-md-6 text-md-right">
+
+        <div class="orb-page-actions">
             @if(!isset($employees))
-                <a href="{{ route('pages.payroll.create') }}" class="btn btn-primary shadow-sm px-4">
-                    <i class="fas fa-plus-circle mr-1"></i> Create Salary Structure
+                <a href="{{ route('pages.payroll.create') }}" class="orb-btn-primary">
+                    <i class="fas fa-plus-circle"></i> Create Salary Structure
                 </a>
-                <a href="{{ route('pages.payroll.assign') }}" class="btn btn-outline-primary shadow-sm px-4 ml-2">
-                    <i class="fas fa-user-tag mr-1"></i> Assign to Employees
+                <a href="{{ route('pages.payroll.assign') }}" class="orb-btn-light">
+                    <i class="fas fa-user-tag"></i> Assign to Employees
                 </a>
             @else
-                <a href="{{ route('pages.payroll.index') }}" class="btn btn-outline-secondary shadow-sm px-4">
-                    <i class="fas fa-arrow-left mr-1"></i> Back to Structures
+                <a href="{{ route('pages.payroll.index') }}" class="orb-btn-light">
+                    <i class="fas fa-arrow-left"></i> Back to Structures
                 </a>
             @endif
         </div>
@@ -34,11 +43,11 @@
 
     @if(isset($employees))
         <!-- Assign Structures View -->
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-white border-0 py-3">
-                <h5 class="mb-0">Assign Salary Structures</h5>
+        <div class="orb-table-card">
+            <div class="orb-table-toolbar justify-content-between align-items-center">
+                <h5 class="mb-0 font-weight-black"><i class="fas fa-user-tag text-primary mr-1"></i> Assign Salary Structures</h5>
             </div>
-            <div class="card-body p-0">
+            <div class="orb-table-wrapper p-0">
                 <form method="POST" action="{{ route('pages.payroll.assign.save') }}">
                     @csrf
                     <div class="table-responsive">
@@ -82,7 +91,7 @@
                         </table>
                     </div>
                     <div class="card-footer bg-white border-0 py-4 text-right">
-                        <button type="submit" class="btn btn-success btn-lg px-5 shadow-sm">
+                        <button type="submit" class="orb-btn-primary py-2 px-4 h-auto shadow-sm">
                             <i class="fas fa-save mr-2"></i> Save Assignments
                         </button>
                     </div>
@@ -91,11 +100,11 @@
         </div>
     @else
         <!-- Structures List View -->
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-white border-0 py-3">
-                <h5 class="mb-0">Defined Salary Structures</h5>
+        <div class="orb-table-card">
+            <div class="orb-table-toolbar justify-content-between align-items-center">
+                <h5 class="mb-0 font-weight-black"><i class="fas fa-file-invoice-dollar text-primary mr-1"></i> Defined Salary Structures</h5>
             </div>
-            <div class="card-body p-0">
+            <div class="orb-table-wrapper p-0">
                 <div class="table-responsive">
                     <table class="table table-hover mb-0 align-middle">
                         <thead class="bg-light text-uppercase small font-weight-bold text-muted">
@@ -140,7 +149,6 @@
             </div>
         </div>
     @endif
-</div>
 
 @push('styles')
 <style>

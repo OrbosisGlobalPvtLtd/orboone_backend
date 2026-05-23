@@ -14,7 +14,15 @@ class PayslipM extends Model
         'payroll_id',
         'month',
         'year',
-        'file_path' // pdf location
+        'file_path', // pdf location
+        'generated_by',
+        'generated_at',
+    ];
+
+    protected $casts = [
+        'month' => 'integer',
+        'year' => 'integer',
+        'generated_at' => 'datetime',
     ];
 
     public function employee()

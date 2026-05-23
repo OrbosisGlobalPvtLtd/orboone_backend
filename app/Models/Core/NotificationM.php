@@ -16,6 +16,9 @@ class NotificationM extends Model
         'type',
         'category',
         'data',
+        'route_name',
+        'route_params',
+        'role_id',
         'is_read',
         'read_at',
         'created_by',
@@ -23,6 +26,7 @@ class NotificationM extends Model
 
     protected $casts = [
         'data' => 'array',
+        'route_params' => 'array',
         'is_read' => 'boolean',
         'read_at' => 'datetime',
     ];
@@ -32,7 +36,7 @@ class NotificationM extends Model
         return $query->where(function ($q) use ($userId) {
             $q->where('user_id', $userId);
 
-            // fallback agar employee_id based notification use ho rahi ho
+            // Fallback in case employee_id based notification is being used
             $q->orWhereHas('user', function ($uq) use ($userId) {
                 $uq->where('id', $userId);
             });

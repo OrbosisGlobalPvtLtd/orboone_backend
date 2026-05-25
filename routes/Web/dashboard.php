@@ -9,10 +9,12 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('dashboard')->name('dashboard.')->group(function () {
         Route::get('/super-admin', [DashboardC::class, 'superAdmin'])->name('super_admin');
         Route::get('/hr-admin', [DashboardC::class, 'hrAdmin'])->name('hr_admin');
+        Route::get('/admin', [DashboardC::class, 'admin'])->name('admin');
         Route::get('/finance-admin', [DashboardC::class, 'financeAdmin'])->name('finance_admin');
         Route::get('/project-admin', [DashboardC::class, 'projectAdmin'])->name('project_admin');
         Route::get('/operations-admin', [DashboardC::class, 'operationsAdmin'])->name('operations_admin');
         Route::get('/custom-admin', [DashboardC::class, 'customAdmin'])->name('custom_admin');
+        Route::get('/manager', [DashboardC::class, 'manager'])->name('manager');
         Route::get('/employee', [DashboardC::class, 'employee'])->middleware(['employee.user', 'check.profile.complete'])->name('employee');
     });
 

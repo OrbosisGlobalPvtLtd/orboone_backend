@@ -328,15 +328,15 @@
                 <div class="mini-card-grid">
                     <div class="stat-card">
                         <div class="stat-title">Interns</div>
-                        <div class="stat-value">{{ $dashboard['lifecycle']['interns'] }}</div>
+                        <div class="stat-value">{{ $dashboard['employee_lifecycle']['interns'] ?? 0 }}</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-title">Probation</div>
-                        <div class="stat-value">{{ $dashboard['lifecycle']['probation'] }}</div>
+                        <div class="stat-value">{{ $dashboard['employee_lifecycle']['probation'] ?? 0 }}</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-title">Permanent</div>
-                        <div class="stat-value">{{ $dashboard['lifecycle']['permanent'] }}</div>
+                        <div class="stat-value">{{ $dashboard['employee_lifecycle']['permanent'] ?? 0 }}</div>
                     </div>
                 </div>
             </div>

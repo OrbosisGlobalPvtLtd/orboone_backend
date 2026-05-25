@@ -34,6 +34,11 @@ class DashboardC extends Controller
         return $this->renderRoleDashboard('hr_admin');
     }
 
+    public function admin()
+    {
+        return $this->renderRoleDashboard('admin');
+    }
+
     public function financeAdmin()
     {
         return $this->renderRoleDashboard('finance_admin');
@@ -52,6 +57,11 @@ class DashboardC extends Controller
     public function customAdmin()
     {
         return $this->renderRoleDashboard('custom_admin');
+    }
+
+    public function manager()
+    {
+        return $this->renderRoleDashboard('manager');
     }
 
     public function employee()

@@ -97,6 +97,11 @@ class MenuSeeder extends Seeder
             ['id' => 151, 'name' => 'Mobile App Updates', 'route' => 'hrms.mobile-app-versions.index', 'icon' => 'fas fa-mobile-alt', 'module_key' => 'settings', 'parent_id' => 80, 'sort_order' => 7],
 
             ['id' => 90, 'name' => 'CRM', 'route' => 'module.crm', 'icon' => 'fas fa-handshake', 'module_key' => 'crm', 'parent_id' => null, 'sort_order' => 90],
+            ['id' => 320, 'name' => 'Project Management', 'route' => null, 'icon' => 'fas fa-project-diagram', 'module_key' => 'project_management', 'parent_id' => null, 'sort_order' => 65],
+            ['id' => 321, 'name' => 'Projects', 'route' => 'module.project-mgmt', 'icon' => 'fas fa-folder-open', 'module_key' => 'project_management', 'parent_id' => 320, 'sort_order' => 1],
+            ['id' => 322, 'name' => 'Tasks', 'route' => 'project_management.tasks.index', 'icon' => 'fas fa-tasks', 'module_key' => 'project_management', 'parent_id' => 320, 'sort_order' => 2],
+            ['id' => 323, 'name' => 'Team Work Logs', 'route' => 'attendances.daily', 'icon' => 'fas fa-clipboard-list', 'module_key' => 'project_management', 'parent_id' => 320, 'sort_order' => 3],
+            ['id' => 330, 'name' => 'Assets', 'route' => 'hrms.assets.index', 'icon' => 'fas fa-laptop', 'module_key' => 'assets', 'parent_id' => null, 'sort_order' => 66],
         ];
 
         foreach ($menus as $menu) {

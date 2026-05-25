@@ -95,6 +95,14 @@ class RoleMenuAccessSeeder extends Seeder
 
         $roleMenus = [
             'super_admin' => $allMenuIds,
+            'admin' => [
+                1,
+                10,11,
+                20,21,26,134,
+                30,31,33,
+                50,51,149,
+                60,
+            ],
             'hr_admin' => [
                 1,
                 10,11,12,13,15,16,17,18,
@@ -107,19 +115,31 @@ class RoleMenuAccessSeeder extends Seeder
             'manager' => [
                 1,
                 10,11,
-                20,21,145,28,26,
-                30,31,32,137,33,146,34,133,
-                50,52,53,
-                80,83,
+                20,21,26,134,
+                30,33,146,
+                50,51,149,
+                60,
             ],
             'finance_admin' => [
                 1,
+                300,301,302,303,304,305,306,308,
+            ],
+            'project_admin' => [
+                1,
+                320,321,322,323,
                 10,11,
                 20,26,134,
-                30,34,140,
-                40,42,41,141,142,43,44,45,147,
-                50,53,
-                80,83,
+            ],
+            'operations_admin' => [
+                1,
+                20,21,23,26,134,
+                30,132,138,
+                330,
+                10,11,
+                60,
+            ],
+            'custom_admin' => [
+                1,
             ],
             'employee' => [
                 1,
@@ -148,6 +168,112 @@ class RoleMenuAccessSeeder extends Seeder
             foreach (array_unique($menuIds) as $menuId) {
                 DB::table('role_menu_access')->updateOrInsert(
                     ['role_id' => $roleId, 'menu_id' => $menuId],
+                    ['updated_at' => $now, 'created_at' => DB::raw('COALESCE(created_at, NOW())')]
+                );
+            }
+        }
+
+        DB::table('permissions')->updateOrInsert(
+            ['key' => 'asset_allocation.manage'],
+            [
+                'module' => 'hrms',
+                'submodule' => 'asset_allocations',
+                'action' => 'manage',
+                'description' => 'Manage asset allocations',
+                'updated_at' => $now,
+                'created_at' => DB::raw('COALESCE(created_at, NOW())'),
+            ]
+        );
+
+        $permissionKeysByRole = [
+            'admin' => [
+                'dashboard.view',
+                'employees.view',
+                'attendance.dashboard.view',
+                'attendance.records.view_all',
+                'attendance.monthly_report.view_all',
+                'attendance.monthly_summary.view',
+                'leave.dashboard.view',
+                'leave.approvals.view',
+                'leave.approvals.view_all',
+                'documents.compliance.view',
+                'documents.verification.view',
+                'employee_documents.view',
+                'announcements.view',
+            ],
+            'finance_admin' => [
+                'dashboard.view',
+                'enterprise_payroll.dashboard.view',
+                'enterprise_salary_structure.view',
+                'enterprise_salary_structure.manage',
+                'enterprise_payroll_run.view',
+                'enterprise_payroll_run.generate',
+                'enterprise_payroll_run.approve',
+                'enterprise_payroll_run.lock',
+                'enterprise_payslip.view',
+                'enterprise_payslip.generate',
+                'enterprise_payslip.download',
+                'enterprise_bonus_incentive.view',
+                'enterprise_bonus_incentive.manage',
+                'enterprise_reimbursement.view',
+                'enterprise_reimbursement.manage',
+                'enterprise_payroll_reports.view',
+            ],
+            'project_admin' => [
+                'dashboard.view',
+                'project_management.view',
+                'employees.view',
+                'attendance.records.view_all',
+                'attendance.monthly_report.view_all',
+                'attendance.monthly_summary.view',
+            ],
+            'operations_admin' => [
+                'dashboard.view',
+                'employees.view',
+                'attendance.dashboard.view',
+                'attendance.records.view_all',
+                'attendance.blocked.view',
+                'attendance.monthly_report.view_all',
+                'attendance.monthly_summary.view',
+                'leave.holidays.manage',
+                'leave.weekoff_rules.manage',
+                'asset_allocation.manage',
+                'announcements.view',
+            ],
+            'custom_admin' => [
+                'dashboard.view',
+            ],
+            'manager' => [
+                'dashboard.view',
+                'employees.view',
+                'attendance.dashboard.view',
+                'attendance.monthly_report.view_team',
+                'attendance.monthly_summary.view',
+                'leave.approvals.view',
+                'leave.approvals.view_team',
+                'leave.team_calendar.view',
+                'documents.verification.view',
+                'employee_documents.view',
+                'announcements.view',
+            ],
+        ];
+
+        $permissionIds = DB::table('permissions')->pluck('id', 'key')->toArray();
+
+        foreach ($permissionKeysByRole as $slug => $permissionKeys) {
+            $roleId = $roleIdsBySlug[$slug] ?? null;
+            if (! $roleId) {
+                continue;
+            }
+
+            foreach ($permissionKeys as $key) {
+                $permissionId = $permissionIds[$key] ?? null;
+                if (! $permissionId) {
+                    continue;
+                }
+
+                DB::table('role_permissions')->updateOrInsert(
+                    ['role_id' => $roleId, 'permission_id' => $permissionId],
                     ['updated_at' => $now, 'created_at' => DB::raw('COALESCE(created_at, NOW())')]
                 );
             }

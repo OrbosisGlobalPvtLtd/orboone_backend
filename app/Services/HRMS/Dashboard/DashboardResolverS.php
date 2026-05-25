@@ -21,6 +21,11 @@ class DashboardResolverS
             'route' => 'dashboard.hr_admin',
             'view' => 'dashboard.hr-admin',
         ],
+        'admin' => [
+            'title' => 'Admin Dashboard',
+            'route' => 'dashboard.admin',
+            'view' => 'dashboard.admin',
+        ],
         'finance_admin' => [
             'title' => 'Finance Admin Dashboard',
             'route' => 'dashboard.finance_admin',
@@ -41,6 +46,11 @@ class DashboardResolverS
             'route' => 'dashboard.custom_admin',
             'view' => 'dashboard.custom-admin',
         ],
+        'manager' => [
+            'title' => 'Manager Dashboard',
+            'route' => 'dashboard.manager',
+            'view' => 'dashboard.manager',
+        ],
         'employee' => [
             'title' => 'Employee Dashboard',
             'route' => 'dashboard.employee',
@@ -56,10 +66,6 @@ class DashboardResolverS
             if (in_array($role, $slugs, true)) {
                 return $role;
             }
-        }
-
-        if (in_array('admin', $slugs, true)) {
-            return 'custom_admin';
         }
 
         return 'employee';
@@ -84,8 +90,7 @@ class DashboardResolverS
         $slugs = $this->roleSlugs($user);
 
         return in_array('super_admin', $slugs, true)
-            || in_array($role, $slugs, true)
-            || ($role === 'custom_admin' && in_array('admin', $slugs, true));
+            || in_array($role, $slugs, true);
     }
 
     public function roleSlugs($user): array
@@ -136,6 +141,19 @@ class DashboardResolverS
     public function dashboardData(string $role, $user): array
     {
         $role = isset(self::ROLE_PRIORITY[$role]) ? $role : 'employee';
+
+        $rolePayloadMethods = [
+            'admin' => 'adminDashboardData',
+            'finance_admin' => 'financeAdminDashboardData',
+            'project_admin' => 'projectAdminDashboardData',
+            'operations_admin' => 'operationsAdminDashboardData',
+            'custom_admin' => 'customAdminDashboardData',
+            'manager' => 'managerDashboardData',
+        ];
+
+        if (isset($rolePayloadMethods[$role])) {
+            return $this->{$rolePayloadMethods[$role]}($user);
+        }
         
         $base = $this->baseDashboardPayload(self::ROLE_PRIORITY[$role]['title'], 'HRMS Dashboard');
         $base['meta']['user_name'] = $user->name ?? 'User';
@@ -318,6 +336,1103 @@ class DashboardResolverS
             'attendance_today' => $attendance,
             'quick_actions' => $this->quickActionsFor('finance_admin'),
         ];
+    }
+
+    public function adminDashboardData($user = null): array
+    {
+        $employee = $this->employeeStats();
+        $attendance = $this->attendanceStatsForEmployees(today()->toDateString());
+        $leave = $this->leaveStats();
+        $documents = $this->documentStats();
+        $announcements = $this->announcementStats();
+        $pendingProfiles = (int) data_get($employee, 'lifecycle.pending_profiles', 0);
+
+        return $this->roleDashboardPayload('admin', $user, [
+            'subtitle' => 'General HR monitoring and limited HR operations.',
+            'cards' => [
+                $this->card('Total Employees', $employee['total'] ?? 0, 'fas fa-users', 'All employee records'),
+                $this->card('Present Today', $attendance['present'], 'fas fa-user-check', 'Marked present today'),
+                $this->card('Pending Leave Requests', $leave['pending'] ?? 0, 'fas fa-calendar-times', 'Awaiting approval'),
+                $this->card('Pending Documents', $documents['pending'] ?? 0, 'fas fa-file-signature', 'Verification required'),
+                $this->card('Active Announcements', $announcements['active'] ?? 0, 'fas fa-bullhorn', 'Visible communications'),
+                $this->card('Profiles Pending', $pendingProfiles, 'fas fa-id-card', 'Profile completion or review'),
+            ],
+            'quick_actions' => $this->dashboardQuickActions([
+                ['Employee Directory', 'fas fa-address-book', ['hrms.employees.index']],
+                ['Attendance Overview', 'fas fa-calendar-check', ['attendances.index', 'attendances.monthly-report']],
+                ['Leave Overview', 'fas fa-calendar-alt', ['leave-approvals.index', 'hrms.leave.dashboard']],
+                ['Documents', 'fas fa-folder-open', ['documents.hr.index', 'documents.dashboard']],
+                ['Announcements', 'fas fa-bullhorn', ['announcements.index']],
+                ['Reports', 'fas fa-chart-bar', ['attendances.monthly-report', 'hrms.attendance.monthly_summary.index']],
+            ]),
+            'action_required' => $this->dashboardActionItems([
+                ['Pending Leave Requests', 'Employee leave requests waiting for review', $leave['pending'] ?? 0, 'fas fa-calendar-times', 'leave-approvals.index'],
+                ['Pending Documents', 'Employee documents waiting for verification', $documents['pending'] ?? 0, 'fas fa-file-signature', 'documents.hr.index'],
+                ['Profiles Pending', 'Profiles needing completion or approval', $pendingProfiles, 'fas fa-id-card', 'hrms.employees.pending_profiles'],
+            ]),
+            'recent_activities' => $this->buildRecentActivities(),
+            'tables' => [
+                'attendance_snapshot' => $this->dashboardTable('Today Attendance Snapshot', 'Latest attendance records for today', 'fas fa-clock', $this->todayAttendanceRows(), [
+                    ['key' => 'employee', 'label' => 'Employee'],
+                    ['key' => 'code', 'label' => 'Code'],
+                    ['key' => 'status', 'label' => 'Status'],
+                    ['key' => 'punch_in', 'label' => 'Punch In'],
+                    ['key' => 'punch_out', 'label' => 'Punch Out'],
+                ], 'No attendance records for today.'),
+                'pending_leaves' => $this->dashboardTable('Pending Leave Requests', 'Requests awaiting action', 'fas fa-calendar-times', $this->pendingLeaveRows(), [
+                    ['key' => 'employee', 'label' => 'Employee'],
+                    ['key' => 'period', 'label' => 'Period'],
+                    ['key' => 'days', 'label' => 'Days'],
+                    ['key' => 'status', 'label' => 'Status'],
+                ], 'No pending leave requests.'),
+                'pending_documents' => $this->dashboardTable('Pending Documents', 'Documents awaiting verification', 'fas fa-file-signature', $this->pendingDocumentRows(), [
+                    ['key' => 'employee', 'label' => 'Employee'],
+                    ['key' => 'document', 'label' => 'Document'],
+                    ['key' => 'uploaded', 'label' => 'Uploaded'],
+                    ['key' => 'status', 'label' => 'Status'],
+                ], 'No pending documents.'),
+                'recent_announcements' => $this->dashboardTable('Recent Announcements', 'Latest published communications', 'fas fa-bullhorn', $this->recentAnnouncementRows(), [
+                    ['key' => 'title', 'label' => 'Title'],
+                    ['key' => 'status', 'label' => 'Status'],
+                    ['key' => 'published', 'label' => 'Published'],
+                ], 'No announcements found.'),
+            ],
+            'charts' => [
+                'monthly_attendance' => $this->monthlyAttendanceTrend(),
+                'departments' => $this->departmentEmployeesChart(),
+            ],
+        ]);
+    }
+
+    public function financeAdminDashboardData($user = null): array
+    {
+        $payroll = $this->enterprisePayrollStats();
+
+        return $this->roleDashboardPayload('finance_admin', $user, [
+            'subtitle' => 'Payroll, salary, reimbursement and payslip operations.',
+            'cards' => [
+                $this->card('Current Month Gross Payroll', $this->money($payroll['gross_payroll']), 'fas fa-coins', 'Enterprise payroll gross total'),
+                $this->card('Net Payroll', $this->money($payroll['net_payroll']), 'fas fa-money-check-alt', 'Enterprise payroll net total'),
+                $this->card('Pending Payroll Runs', $payroll['pending_runs'], 'fas fa-hourglass-half', 'Draft or pending runs'),
+                $this->card('Payslips Generated', $payroll['payslips_generated'], 'fas fa-file-invoice-dollar', 'Current month payslips'),
+                $this->card('Pending Reimbursements', $payroll['pending_reimbursements'], 'fas fa-receipt', 'Claims waiting for action'),
+                $this->card('Employees Without Salary Structure', $payroll['missing_structure'], 'fas fa-user-slash', 'Active employees missing setup'),
+            ],
+            'quick_actions' => $this->dashboardQuickActions([
+                ['Enterprise Payroll', 'fas fa-chart-pie', ['enterprise-payroll.dashboard']],
+                ['Salary Structures', 'fas fa-layer-group', ['enterprise-payroll.salary-structures.index']],
+                ['Payroll Runs', 'fas fa-play-circle', ['enterprise-payroll.runs.index']],
+                ['Payslips', 'fas fa-file-invoice-dollar', ['enterprise-payroll.payslips.index']],
+                ['Reimbursements', 'fas fa-receipt', ['enterprise-payroll.reimbursements.index']],
+                ['Payroll Reports', 'fas fa-chart-bar', ['enterprise-payroll.reports.index']],
+            ]),
+            'action_required' => $this->dashboardActionItems([
+                ['Pending Payroll Runs', 'Payroll runs still waiting for processing or approval', $payroll['pending_runs'], 'fas fa-hourglass-half', 'enterprise-payroll.runs.index'],
+                ['Pending Reimbursements', 'Employee reimbursement claims awaiting review', $payroll['pending_reimbursements'], 'fas fa-receipt', 'enterprise-payroll.reimbursements.index'],
+                ['Missing Salary Structures', 'Employees cannot be processed until salary is configured', $payroll['missing_structure'], 'fas fa-user-slash', 'enterprise-payroll.salary-structures.index'],
+            ]),
+            'recent_activities' => $this->payrollActivityRows(),
+            'tables' => [
+                'latest_payroll_runs' => $this->dashboardTable('Latest Payroll Runs', 'Recent enterprise payroll cycles', 'fas fa-play-circle', $this->latestPayrollRunRows(), [
+                    ['key' => 'period', 'label' => 'Period'],
+                    ['key' => 'employees', 'label' => 'Employees'],
+                    ['key' => 'gross', 'label' => 'Gross'],
+                    ['key' => 'net', 'label' => 'Net'],
+                    ['key' => 'status', 'label' => 'Status'],
+                ], 'No enterprise payroll runs found.'),
+                'pending_reimbursements' => $this->dashboardTable('Pending Reimbursements', 'Claims awaiting finance action', 'fas fa-receipt', $this->pendingReimbursementRows(), [
+                    ['key' => 'employee', 'label' => 'Employee'],
+                    ['key' => 'title', 'label' => 'Title'],
+                    ['key' => 'amount', 'label' => 'Amount'],
+                    ['key' => 'claim_date', 'label' => 'Claim Date'],
+                ], 'No pending reimbursements.'),
+                'recent_payslips' => $this->dashboardTable('Recent Payslips', 'Latest generated payslips', 'fas fa-file-invoice-dollar', $this->recentPayslipRows(), [
+                    ['key' => 'employee', 'label' => 'Employee'],
+                    ['key' => 'period', 'label' => 'Period'],
+                    ['key' => 'payslip_no', 'label' => 'Payslip No.'],
+                    ['key' => 'generated', 'label' => 'Generated'],
+                ], 'No payslips generated yet.'),
+                'missing_salary_structures' => $this->dashboardTable('Salary Structure Missing Employees', 'Active employees without enterprise salary setup', 'fas fa-user-slash', $this->missingSalaryStructureRows(), [
+                    ['key' => 'employee', 'label' => 'Employee'],
+                    ['key' => 'code', 'label' => 'Code'],
+                    ['key' => 'department', 'label' => 'Department'],
+                ], 'All active employees have salary structures.'),
+            ],
+            'charts' => [
+                'payroll_trend' => $payroll['monthly_trend'],
+            ],
+        ]);
+    }
+
+    public function projectAdminDashboardData($user = null): array
+    {
+        $project = $this->projectDashboardStats($user);
+
+        return $this->roleDashboardPayload('project_admin', $user, [
+            'subtitle' => 'Project, task and team work log monitoring.',
+            'empty_message' => $project['has_project_setup'] ? null : 'Project tables or project routes are not configured yet. Available task and attendance data is shown where present.',
+            'cards' => [
+                $this->card('Active Projects', $project['active_projects'], 'fas fa-project-diagram', 'Currently active projects'),
+                $this->card('Open Tasks', $project['open_tasks'], 'fas fa-tasks', 'Pending task workload'),
+                $this->card('Completed Tasks', $project['completed_tasks'], 'fas fa-check-double', 'Completed tasks'),
+                $this->card('Team Members', $project['team_members'], 'fas fa-users', 'Employees in directory'),
+                $this->card('Pending Work Logs', $project['pending_work_logs'], 'fas fa-clipboard-list', 'Work logs awaiting review if configured'),
+                $this->card('Today Attendance', $project['today_attendance'], 'fas fa-user-check', 'Present today'),
+            ],
+            'quick_actions' => $this->dashboardQuickActions([
+                ['Projects', 'fas fa-project-diagram', ['project_management.projects.index', 'module.project-mgmt']],
+                ['Tasks', 'fas fa-tasks', ['project_management.tasks.index']],
+                ['Team Work Logs', 'fas fa-clipboard-list', ['attendances.daily', 'hrms.attendance.monthly_summary.index']],
+                ['Employee Directory', 'fas fa-address-book', ['hrms.employees.index']],
+                ['Attendance Summary', 'fas fa-calendar-check', ['hrms.attendance.monthly_summary.index', 'attendances.monthly-report']],
+                ['Reports', 'fas fa-chart-bar', ['project_management.tasks.export', 'attendances.monthly-report']],
+            ]),
+            'action_required' => $this->dashboardActionItems([
+                ['Open Tasks', 'Tasks that are not completed', $project['open_tasks'], 'fas fa-tasks', 'project_management.tasks.index'],
+                ['Pending Work Logs', 'Work logs awaiting review if configured', $project['pending_work_logs'], 'fas fa-clipboard-list', 'attendances.daily'],
+            ]),
+            'recent_activities' => $this->workLogActivityRows(),
+            'tables' => [
+                'project_progress' => $this->dashboardTable('Project Progress', 'Progress data from project tables when available', 'fas fa-project-diagram', $this->projectProgressRows(), [
+                    ['key' => 'project', 'label' => 'Project'],
+                    ['key' => 'status', 'label' => 'Status'],
+                    ['key' => 'progress', 'label' => 'Progress'],
+                    ['key' => 'deadline', 'label' => 'Deadline'],
+                ], 'Project tables are not configured.'),
+                'recent_tasks' => $this->dashboardTable('Recent Tasks', 'Latest task records', 'fas fa-tasks', $this->recentTaskRows(), [
+                    ['key' => 'title', 'label' => 'Task'],
+                    ['key' => 'employee', 'label' => 'Owner'],
+                    ['key' => 'due_date', 'label' => 'Due Date'],
+                    ['key' => 'status', 'label' => 'Status'],
+                ], 'No tasks found.'),
+                'team_work_logs' => $this->dashboardTable('Team Work Logs', 'Latest submitted work logs', 'fas fa-clipboard-list', $this->workLogRows(), [
+                    ['key' => 'employee', 'label' => 'Employee'],
+                    ['key' => 'date', 'label' => 'Date'],
+                    ['key' => 'summary', 'label' => 'Summary'],
+                ], 'No work logs found.'),
+                'project_deadlines' => $this->dashboardTable('Project Deadlines', 'Upcoming project or task deadlines', 'fas fa-calendar-day', $this->deadlineRows(), [
+                    ['key' => 'item', 'label' => 'Item'],
+                    ['key' => 'owner', 'label' => 'Owner'],
+                    ['key' => 'deadline', 'label' => 'Deadline'],
+                    ['key' => 'status', 'label' => 'Status'],
+                ], 'No upcoming deadlines found.'),
+            ],
+            'charts' => [],
+        ]);
+    }
+
+    public function operationsAdminDashboardData($user = null): array
+    {
+        $attendance = $this->attendanceStatsForEmployees(today()->toDateString());
+
+        return $this->roleDashboardPayload('operations_admin', $user, [
+            'subtitle' => 'Daily attendance, punch block, asset and holiday monitoring.',
+            'cards' => [
+                $this->card('Present Today', $attendance['present'], 'fas fa-user-check', 'Employees present today'),
+                $this->card('Punch Blocked', $attendance['punch_blocked'], 'fas fa-user-lock', 'Blocked punch records'),
+                $this->card('Late Employees', $attendance['late'], 'fas fa-clock', 'Late arrivals today'),
+                $this->card('Early Logout', $attendance['early_out'], 'fas fa-door-open', 'Early exits today'),
+                $this->card('Assets Assigned', $this->assetsAssignedCount(), 'fas fa-laptop', 'Active asset allocations'),
+                $this->card('Upcoming Holidays', $this->upcomingHolidayCount(), 'fas fa-calendar-day', 'Next 30 days'),
+            ],
+            'quick_actions' => $this->dashboardQuickActions([
+                ['Attendance Live', 'fas fa-broadcast-tower', ['attendances.daily', 'attendances.index']],
+                ['Punch Blocked', 'fas fa-user-lock', ['attendances.pending-approval']],
+                ['Week Off / Holidays', 'fas fa-calendar-day', ['hrms.weekoff_rules.index', 'hrms.holidays.index']],
+                ['Assets', 'fas fa-laptop', ['hrms.assets.index']],
+                ['Employee Directory', 'fas fa-address-book', ['hrms.employees.index']],
+                ['Announcements', 'fas fa-bullhorn', ['announcements.index']],
+                ['Reports', 'fas fa-chart-bar', ['attendances.monthly-report', 'hrms.attendance.monthly_summary.index']],
+            ]),
+            'action_required' => $this->dashboardActionItems([
+                ['Punch Blocked', 'Blocked punches need operations review', $attendance['punch_blocked'], 'fas fa-user-lock', 'attendances.pending-approval'],
+                ['Late Employees', 'Employees marked late today', $attendance['late'], 'fas fa-clock', 'attendances.daily'],
+                ['Early Logout', 'Employees with early logout today', $attendance['early_out'], 'fas fa-door-open', 'attendances.daily'],
+            ]),
+            'recent_activities' => $this->buildRecentActivities(),
+            'tables' => [
+                'live_attendance' => $this->dashboardTable('Live Attendance Table', 'Today attendance activity', 'fas fa-broadcast-tower', $this->todayAttendanceRows(10), [
+                    ['key' => 'employee', 'label' => 'Employee'],
+                    ['key' => 'code', 'label' => 'Code'],
+                    ['key' => 'status', 'label' => 'Status'],
+                    ['key' => 'punch_in', 'label' => 'Punch In'],
+                    ['key' => 'punch_out', 'label' => 'Punch Out'],
+                ], 'No live attendance records found.'),
+                'punch_blocked' => $this->dashboardTable('Punch Blocked Employees', 'Employees blocked from punching', 'fas fa-user-lock', $this->punchBlockedRows(), [
+                    ['key' => 'employee', 'label' => 'Employee'],
+                    ['key' => 'code', 'label' => 'Code'],
+                    ['key' => 'reason', 'label' => 'Reason'],
+                    ['key' => 'status', 'label' => 'Status'],
+                ], 'No punch blocked employees today.'),
+                'asset_summary' => $this->dashboardTable('Asset Allocation Summary', 'Latest active asset assignments', 'fas fa-laptop', $this->assetRows(), [
+                    ['key' => 'employee', 'label' => 'Employee'],
+                    ['key' => 'asset', 'label' => 'Asset'],
+                    ['key' => 'assigned', 'label' => 'Assigned'],
+                    ['key' => 'status', 'label' => 'Status'],
+                ], 'No active asset allocations found.'),
+                'holiday_summary' => $this->dashboardTable('Week Off / Holiday Summary', 'Upcoming holidays and configured days off', 'fas fa-calendar-day', $this->holidayRows(), [
+                    ['key' => 'name', 'label' => 'Name'],
+                    ['key' => 'date', 'label' => 'Date'],
+                    ['key' => 'type', 'label' => 'Type'],
+                ], 'No upcoming holidays found.'),
+            ],
+            'charts' => [
+                'monthly_attendance' => $this->monthlyAttendanceTrend(),
+            ],
+        ]);
+    }
+
+    public function customAdminDashboardData($user = null): array
+    {
+        $modules = $this->assignedModules($user);
+        $cards = [];
+        foreach ($modules as $module) {
+            $metric = $this->moduleMetric($module['name'], $module['count']);
+            $cards[] = $this->card($metric['label'], $metric['value'], $module['icon'], $metric['subtitle']);
+        }
+
+        return $this->roleDashboardPayload('custom_admin', $user, [
+            'subtitle' => 'Permission-based administration dashboard.',
+            'empty_message' => empty($cards) ? 'No module access assigned.' : null,
+            'cards' => $cards,
+            'quick_actions' => $this->customAdminQuickActions($user),
+            'action_required' => [],
+            'recent_activities' => $this->buildRecentActivities(),
+            'tables' => [
+                'assigned_modules' => $this->dashboardTable('Assigned Modules', 'Modules visible through role menu access', 'fas fa-shield-alt', $modules, [
+                    ['key' => 'name', 'label' => 'Module'],
+                    ['key' => 'description', 'label' => 'Access'],
+                    ['key' => 'count', 'label' => 'Menu Items'],
+                ], 'No assigned modules found.'),
+            ],
+            'charts' => [],
+        ]);
+    }
+
+    public function managerDashboardData($user = null): array
+    {
+        $teamIds = $this->managerTeamEmployeeIds($user);
+        $attendance = $this->attendanceStatsForEmployees(today()->toDateString(), $teamIds);
+        $teamCount = count($teamIds);
+        $pendingLeaves = $this->pendingLeaveCount($teamIds);
+        $pendingDocuments = $this->pendingDocumentCount($teamIds);
+
+        return $this->roleDashboardPayload('manager', $user, [
+            'subtitle' => 'Team-level attendance, leave and document monitoring.',
+            'empty_message' => $teamCount === 0 ? 'No team employees are assigned to this manager.' : null,
+            'cards' => [
+                $this->card('Team Members', $teamCount, 'fas fa-users', 'Direct reporting employees'),
+                $this->card('Present Today', $attendance['present'], 'fas fa-user-check', 'Team present today'),
+                $this->card('Team On Leave', $attendance['leave'], 'fas fa-plane-departure', 'Team leave today'),
+                $this->card('Pending Leave Approvals', $pendingLeaves, 'fas fa-calendar-check', 'Team requests awaiting approval'),
+                $this->card('Late Team Members', $attendance['late'], 'fas fa-clock', 'Team late arrivals'),
+                $this->card('Pending Team Documents', $pendingDocuments, 'fas fa-folder-open', 'Team document verification'),
+            ],
+            'quick_actions' => $this->dashboardQuickActions([
+                ['My Team', 'fas fa-users', ['hrms.employees.index']],
+                ['Team Attendance', 'fas fa-calendar-check', ['attendances.monthly-report', 'attendances.daily']],
+                ['Team Leave Calendar', 'fas fa-calendar-week', ['hrms.leave.team_calendar.index']],
+                ['Leave Approvals', 'fas fa-check-double', ['leave-approvals.index']],
+                ['Team Documents View', 'fas fa-folder-open', ['documents.employee.index', 'documents.hr.index']],
+                ['Announcements', 'fas fa-bullhorn', ['announcements.index', 'employee.announcements.index']],
+                ['Reports', 'fas fa-chart-bar', ['attendances.monthly-report']],
+            ]),
+            'action_required' => $this->dashboardActionItems([
+                ['Pending Leave Approvals', 'Team leave requests waiting for manager action', $pendingLeaves, 'fas fa-calendar-check', 'leave-approvals.index'],
+                ['Pending Team Documents', 'Team documents waiting for verification', $pendingDocuments, 'fas fa-folder-open', 'documents.employee.index'],
+                ['Late Team Members', 'Team members marked late today', $attendance['late'], 'fas fa-clock', 'attendances.daily'],
+            ]),
+            'recent_activities' => $this->teamActivityRows($teamIds),
+            'tables' => [
+                'team_attendance' => $this->dashboardTable('Team Attendance Today', 'Only assigned team employees are shown', 'fas fa-calendar-check', $this->todayAttendanceRows(10, $teamIds), [
+                    ['key' => 'employee', 'label' => 'Employee'],
+                    ['key' => 'code', 'label' => 'Code'],
+                    ['key' => 'status', 'label' => 'Status'],
+                    ['key' => 'punch_in', 'label' => 'Punch In'],
+                    ['key' => 'punch_out', 'label' => 'Punch Out'],
+                ], 'No team attendance records for today.'),
+                'team_leave_calendar' => $this->dashboardTable('Team Leave Calendar Preview', 'Upcoming approved or pending team leaves', 'fas fa-calendar-week', $this->teamLeaveRows($teamIds), [
+                    ['key' => 'employee', 'label' => 'Employee'],
+                    ['key' => 'period', 'label' => 'Period'],
+                    ['key' => 'days', 'label' => 'Days'],
+                    ['key' => 'status', 'label' => 'Status'],
+                ], 'No team leave records found.'),
+                'pending_approvals' => $this->dashboardTable('Pending Approvals', 'Manager action queue', 'fas fa-check-double', $this->pendingLeaveRows(8, $teamIds), [
+                    ['key' => 'employee', 'label' => 'Employee'],
+                    ['key' => 'period', 'label' => 'Period'],
+                    ['key' => 'days', 'label' => 'Days'],
+                    ['key' => 'status', 'label' => 'Status'],
+                ], 'No pending team approvals.'),
+                'recent_team_activities' => $this->dashboardTable('Recent Team Activities', 'Latest team attendance and work log records', 'fas fa-history', $this->teamActivityRows($teamIds), [
+                    ['key' => 'title', 'label' => 'Activity'],
+                    ['key' => 'description', 'label' => 'Description'],
+                    ['key' => 'time', 'label' => 'Time'],
+                ], 'No recent team activity.'),
+            ],
+            'charts' => [],
+        ]);
+    }
+
+    private function roleDashboardPayload(string $role, $user, array $payload): array
+    {
+        $title = self::ROLE_PRIORITY[$role]['title'] ?? 'Dashboard';
+
+        return [
+            'meta' => [
+                'title' => $title,
+                'subtitle' => $payload['subtitle'] ?? 'Orbosis HRMS dashboard',
+                'current_date' => Carbon::now(config('app.timezone', 'Asia/Kolkata'))->format('l, d M Y h:i A'),
+                'user_name' => $user->name ?? 'User',
+            ],
+            'role' => $role,
+            'role_title' => $title,
+            'user_name' => $user->name ?? 'User',
+            'today_label' => Carbon::now(config('app.timezone', 'Asia/Kolkata'))->format('d M Y'),
+            'cards' => $payload['cards'] ?? [],
+            'quick_actions' => $payload['quick_actions'] ?? [],
+            'action_required' => $payload['action_required'] ?? [],
+            'recent_activities' => $payload['recent_activities'] ?? [],
+            'tables' => $payload['tables'] ?? [],
+            'charts' => $payload['charts'] ?? [],
+            'empty_message' => $payload['empty_message'] ?? null,
+        ];
+    }
+
+    private function dashboardQuickActions(array $items): array
+    {
+        return collect($items)->map(function ($item) {
+            [$title, $icon, $routes] = $item;
+            foreach ($routes as $route) {
+                if (Route::has($route)) {
+                    return [
+                        'title' => $title,
+                        'icon' => $icon,
+                        'route' => $route,
+                        'url' => route($route),
+                    ];
+                }
+            }
+
+            return null;
+        })->filter()->values()->all();
+    }
+
+    private function dashboardActionItems(array $items): array
+    {
+        return collect($items)->map(function ($item) {
+            [$title, $subtitle, $count, $icon, $route] = $item;
+            $count = (int) $count;
+            if ($count <= 0) {
+                return null;
+            }
+
+            return [
+                'title' => $title,
+                'subtitle' => $subtitle,
+                'count' => $count,
+                'icon' => $icon,
+                'url' => Route::has($route) ? route($route) : null,
+            ];
+        })->filter()->values()->all();
+    }
+
+    private function dashboardTable(string $title, string $subtitle, string $icon, array $rows, array $columns, string $empty): array
+    {
+        return compact('title', 'subtitle', 'icon', 'rows', 'columns', 'empty');
+    }
+
+    private function attendanceStatsForEmployees($date, ?array $employeeIds = null): array
+    {
+        $empty = [
+            'present' => 0,
+            'absent' => 0,
+            'half_day' => 0,
+            'leave' => 0,
+            'week_off' => 0,
+            'pending_hr' => 0,
+            'punch_blocked' => 0,
+            'missed_punches' => 0,
+            'late' => 0,
+            'early_out' => 0,
+            'wfo' => 0,
+            'wfh' => 0,
+        ];
+
+        if (! $this->tableExists('attendances')) {
+            return $empty;
+        }
+
+        if (is_array($employeeIds) && empty($employeeIds)) {
+            return $empty;
+        }
+
+        $query = DB::table('attendances as a')->whereDate('a.attendance_date', $date);
+
+        if (is_array($employeeIds)) {
+            $query->whereIn('a.employee_id', $employeeIds);
+        }
+
+        if ($this->tableExists('attendance_types') && $this->columnExists('attendances', 'attendance_type_id')) {
+            $rows = (clone $query)
+                ->leftJoin('attendance_types as t', 't.id', '=', 'a.attendance_type_id')
+                ->select('t.code', DB::raw('COUNT(*) as total'))
+                ->groupBy('t.code')
+                ->pluck('total', 'code')
+                ->toArray();
+
+            foreach (['present', 'absent', 'half_day', 'leave', 'week_off', 'pending_hr', 'punch_blocked'] as $code) {
+                $empty[$code] = (int) ($rows[$code] ?? 0);
+            }
+        } elseif ($this->columnExists('attendances', 'attendance_status')) {
+            $rows = (clone $query)
+                ->select('a.attendance_status', DB::raw('COUNT(*) as total'))
+                ->groupBy('a.attendance_status')
+                ->pluck('total', 'attendance_status')
+                ->toArray();
+
+            foreach ($rows as $status => $total) {
+                $key = strtolower((string) $status);
+                if (array_key_exists($key, $empty)) {
+                    $empty[$key] = (int) $total;
+                }
+            }
+        }
+
+        foreach (['is_late' => 'late', 'is_early_out' => 'early_out', 'is_blocked' => 'punch_blocked'] as $column => $key) {
+            if ($this->columnExists('attendances', $column)) {
+                $empty[$key] = max($empty[$key], (int) (clone $query)->where("a.$column", 1)->count());
+            }
+        }
+
+        if ($this->columnExists('attendances', 'missed_punch')) {
+            $empty['missed_punches'] = (int) (clone $query)->where('a.missed_punch', 1)->count();
+        } elseif ($this->columnExists('attendances', 'is_missed_punch')) {
+            $empty['missed_punches'] = (int) (clone $query)->where('a.is_missed_punch', 1)->count();
+        }
+
+        if ($this->columnExists('attendances', 'work_mode')) {
+            $empty['wfo'] = (int) (clone $query)->where('a.work_mode', 'wfo')->count();
+            $empty['wfh'] = (int) (clone $query)->where('a.work_mode', 'wfh')->count();
+        }
+
+        $activeCount = is_array($employeeIds) ? count($employeeIds) : $this->activeEmployeesQuery()->count();
+        $marked = (int) (clone $query)->distinct('a.employee_id')->count('a.employee_id');
+        $empty['absent'] += max(0, $activeCount - $marked);
+
+        return $empty;
+    }
+
+    private function todayAttendanceRows(int $limit = 8, ?array $employeeIds = null): array
+    {
+        if (! $this->tableExists('attendances') || ! $this->tableExists('employees_new')) {
+            return [];
+        }
+
+        if (is_array($employeeIds) && empty($employeeIds)) {
+            return [];
+        }
+
+        $query = DB::table('attendances as a')
+            ->join('employees_new as e', 'e.id', '=', 'a.employee_id')
+            ->leftJoin('users as u', 'u.id', '=', 'e.user_id')
+            ->whereDate('a.attendance_date', today()->toDateString());
+
+        if (is_array($employeeIds)) {
+            $query->whereIn('a.employee_id', $employeeIds);
+        }
+
+        if ($this->tableExists('attendance_types') && $this->columnExists('attendances', 'attendance_type_id')) {
+            $query->leftJoin('attendance_types as t', 't.id', '=', 'a.attendance_type_id');
+        }
+
+        $select = [
+            DB::raw("COALESCE(u.name, 'Employee') as employee"),
+            DB::raw($this->columnExists('employees_new', 'employee_code') ? "COALESCE(e.employee_code, '-') as code" : "'-' as code"),
+            DB::raw($this->tableExists('attendance_types') && $this->columnExists('attendances', 'attendance_type_id') ? "COALESCE(t.name, t.code, 'Marked') as status" : ($this->columnExists('attendances', 'attendance_status') ? "COALESCE(a.attendance_status, 'Marked') as status" : "'Marked' as status")),
+            DB::raw($this->columnExists('attendances', 'punch_in_time') ? "COALESCE(a.punch_in_time, '-')" : "'-' as punch_in"),
+            DB::raw($this->columnExists('attendances', 'punch_out_time') ? "COALESCE(a.punch_out_time, '-')" : "'-' as punch_out"),
+        ];
+
+        return $query->select($select)
+            ->orderByDesc($this->columnExists('attendances', 'created_at') ? 'a.created_at' : 'a.id')
+            ->limit($limit)
+            ->get()
+            ->map(fn ($row) => $this->rowToArray($row))
+            ->all();
+    }
+
+    private function pendingLeaveRows(int $limit = 8, ?array $employeeIds = null): array
+    {
+        if ($this->tableExists('leave_requests')) {
+            if (is_array($employeeIds) && empty($employeeIds)) {
+                return [];
+            }
+
+            $query = DB::table('leave_requests as lr')
+                ->leftJoin('employees_new as e', 'e.id', '=', 'lr.employee_id')
+                ->leftJoin('users as u', 'u.id', '=', 'e.user_id')
+                ->whereRaw('LOWER(lr.status) = ?', ['pending']);
+
+            if (is_array($employeeIds) && $this->columnExists('leave_requests', 'employee_id')) {
+                $query->whereIn('lr.employee_id', $employeeIds);
+            }
+
+            return $query->select(
+                DB::raw("COALESCE(u.name, 'Employee') as employee"),
+                DB::raw($this->columnExists('leave_requests', 'start_date') && $this->columnExists('leave_requests', 'end_date') ? "CONCAT(lr.start_date, ' to ', lr.end_date) as period" : "'-' as period"),
+                DB::raw($this->columnExists('leave_requests', 'total_days') ? 'lr.total_days as days' : "'-' as days"),
+                'lr.status'
+            )->orderByDesc('lr.id')->limit($limit)->get()->map(fn ($row) => $this->rowToArray($row))->all();
+        }
+
+        return [];
+    }
+
+    private function pendingLeaveCount(?array $employeeIds = null): int
+    {
+        if (! $this->tableExists('leave_requests') || ! $this->columnExists('leave_requests', 'status')) {
+            return 0;
+        }
+
+        if (is_array($employeeIds) && empty($employeeIds)) {
+            return 0;
+        }
+
+        $query = DB::table('leave_requests')->whereRaw('LOWER(status) = ?', ['pending']);
+        if (is_array($employeeIds) && $this->columnExists('leave_requests', 'employee_id')) {
+            $query->whereIn('employee_id', $employeeIds);
+        }
+
+        return (int) $query->count();
+    }
+
+    private function pendingDocumentRows(int $limit = 8, ?array $employeeIds = null): array
+    {
+        if (! $this->tableExists('employee_documents_new')) {
+            return [];
+        }
+
+        if (is_array($employeeIds) && empty($employeeIds)) {
+            return [];
+        }
+
+        $query = DB::table('employee_documents_new as d')
+            ->leftJoin('employees_new as e', 'e.id', '=', 'd.employee_id')
+            ->leftJoin('users as u', 'u.id', '=', 'e.user_id')
+            ->where('d.verification_status', 'pending');
+
+        if (is_array($employeeIds)) {
+            $query->whereIn('d.employee_id', $employeeIds);
+        }
+
+        return $query->select(
+            DB::raw("COALESCE(u.name, 'Employee') as employee"),
+            DB::raw("COALESCE(d.title, 'Document') as document"),
+            DB::raw($this->columnExists('employee_documents_new', 'uploaded_at') ? "COALESCE(DATE_FORMAT(d.uploaded_at, '%d %b %Y'), '-') as uploaded" : "COALESCE(DATE_FORMAT(d.created_at, '%d %b %Y'), '-') as uploaded"),
+            'd.verification_status as status'
+        )->orderByDesc('d.id')->limit($limit)->get()->map(fn ($row) => $this->rowToArray($row))->all();
+    }
+
+    private function pendingDocumentCount(?array $employeeIds = null): int
+    {
+        if (! $this->tableExists('employee_documents_new') || ! $this->columnExists('employee_documents_new', 'verification_status')) {
+            return 0;
+        }
+
+        if (is_array($employeeIds) && empty($employeeIds)) {
+            return 0;
+        }
+
+        $query = DB::table('employee_documents_new')->where('verification_status', 'pending');
+        if (is_array($employeeIds)) {
+            $query->whereIn('employee_id', $employeeIds);
+        }
+
+        return (int) $query->count();
+    }
+
+    private function recentAnnouncementRows(int $limit = 6): array
+    {
+        if (! $this->tableExists('announcements')) {
+            return [];
+        }
+
+        return DB::table('announcements')
+            ->select(
+                'title',
+                DB::raw($this->columnExists('announcements', 'status') ? "COALESCE(status, 'published') as status" : ($this->columnExists('announcements', 'is_active') ? "CASE WHEN is_active = 1 THEN 'active' ELSE 'inactive' END as status" : "'published' as status")),
+                DB::raw("DATE_FORMAT(created_at, '%d %b %Y') as published")
+            )
+            ->orderByDesc('created_at')
+            ->limit($limit)
+            ->get()
+            ->map(fn ($row) => $this->rowToArray($row))
+            ->all();
+    }
+
+    private function enterprisePayrollStats(): array
+    {
+        $month = (int) now()->month;
+        $year = (int) now()->year;
+        $stats = [
+            'gross_payroll' => 0,
+            'net_payroll' => 0,
+            'pending_runs' => 0,
+            'payslips_generated' => 0,
+            'pending_reimbursements' => 0,
+            'missing_structure' => 0,
+            'monthly_trend' => ['labels' => [], 'gross' => [], 'net' => []],
+        ];
+
+        if ($this->tableExists('enterprise_payrolls')) {
+            $stats['gross_payroll'] = (float) DB::table('enterprise_payrolls')->where('month', $month)->where('year', $year)->sum('gross_salary');
+            $stats['net_payroll'] = (float) DB::table('enterprise_payrolls')->where('month', $month)->where('year', $year)->sum('net_salary');
+        }
+
+        if ($this->tableExists('enterprise_payroll_runs')) {
+            $stats['pending_runs'] = (int) DB::table('enterprise_payroll_runs')->whereIn('status', ['draft', 'pending', 'processing'])->count();
+        }
+
+        if ($this->tableExists('enterprise_payslips')) {
+            $stats['payslips_generated'] = (int) DB::table('enterprise_payslips')->where('month', $month)->where('year', $year)->count();
+        }
+
+        if ($this->tableExists('enterprise_reimbursements')) {
+            $stats['pending_reimbursements'] = (int) DB::table('enterprise_reimbursements')->where('status', 'pending')->count();
+        }
+
+        $stats['missing_structure'] = count($this->missingSalaryStructureRows(100000));
+
+        if ($this->tableExists('enterprise_payroll_runs')) {
+            $trend = DB::table('enterprise_payroll_runs')
+                ->select('month', 'year', 'total_gross', 'total_net')
+                ->orderByDesc('year')
+                ->orderByDesc('month')
+                ->limit(6)
+                ->get()
+                ->reverse();
+
+            foreach ($trend as $row) {
+                $stats['monthly_trend']['labels'][] = Carbon::createFromDate((int) $row->year, (int) $row->month, 1)->format('M Y');
+                $stats['monthly_trend']['gross'][] = (float) $row->total_gross;
+                $stats['monthly_trend']['net'][] = (float) $row->total_net;
+            }
+        }
+
+        return $stats;
+    }
+
+    private function latestPayrollRunRows(int $limit = 6): array
+    {
+        if (! $this->tableExists('enterprise_payroll_runs')) {
+            return [];
+        }
+
+        return DB::table('enterprise_payroll_runs')
+            ->select('month', 'year', 'total_employees', 'total_gross', 'total_net', 'status')
+            ->orderByDesc('year')
+            ->orderByDesc('month')
+            ->limit($limit)
+            ->get()
+            ->map(function ($row) {
+                return [
+                    'period' => Carbon::createFromDate((int) $row->year, (int) $row->month, 1)->format('M Y'),
+                    'employees' => (int) $row->total_employees,
+                    'gross' => $this->money($row->total_gross),
+                    'net' => $this->money($row->total_net),
+                    'status' => ucfirst((string) $row->status),
+                ];
+            })->all();
+    }
+
+    private function pendingReimbursementRows(int $limit = 6): array
+    {
+        if (! $this->tableExists('enterprise_reimbursements')) {
+            return [];
+        }
+
+        return DB::table('enterprise_reimbursements as r')
+            ->leftJoin('employees_new as e', 'e.id', '=', 'r.employee_id')
+            ->leftJoin('users as u', 'u.id', '=', 'e.user_id')
+            ->where('r.status', 'pending')
+            ->select(DB::raw("COALESCE(u.name, 'Employee') as employee"), 'r.title', 'r.amount', 'r.claim_date')
+            ->orderByDesc('r.claim_date')
+            ->limit($limit)
+            ->get()
+            ->map(fn ($row) => [
+                'employee' => $row->employee,
+                'title' => $row->title,
+                'amount' => $this->money($row->amount),
+                'claim_date' => $row->claim_date ? Carbon::parse($row->claim_date)->format('d M Y') : '-',
+            ])->all();
+    }
+
+    private function recentPayslipRows(int $limit = 6): array
+    {
+        if (! $this->tableExists('enterprise_payslips')) {
+            return [];
+        }
+
+        return DB::table('enterprise_payslips as p')
+            ->leftJoin('employees_new as e', 'e.id', '=', 'p.employee_id')
+            ->leftJoin('users as u', 'u.id', '=', 'e.user_id')
+            ->select(DB::raw("COALESCE(u.name, 'Employee') as employee"), 'p.month', 'p.year', 'p.payslip_no', 'p.generated_at')
+            ->orderByDesc('p.generated_at')
+            ->limit($limit)
+            ->get()
+            ->map(fn ($row) => [
+                'employee' => $row->employee,
+                'period' => Carbon::createFromDate((int) $row->year, (int) $row->month, 1)->format('M Y'),
+                'payslip_no' => $row->payslip_no,
+                'generated' => $row->generated_at ? Carbon::parse($row->generated_at)->format('d M Y') : '-',
+            ])->all();
+    }
+
+    private function missingSalaryStructureRows(int $limit = 8): array
+    {
+        if (! $this->tableExists('employees_new') || ! $this->tableExists('enterprise_salary_structures')) {
+            return [];
+        }
+
+        $query = DB::table('employees_new as e')
+            ->leftJoin('users as u', 'u.id', '=', 'e.user_id')
+            ->leftJoin('enterprise_salary_structures as s', function ($join) {
+                $join->on('s.employee_id', '=', 'e.id')->where('s.status', '=', 'active');
+            })
+            ->whereNull('s.id');
+
+        if ($this->columnExists('employees_new', 'employment_status')) {
+            $query->where('e.employment_status', 'active');
+        }
+
+        if ($this->columnExists('employees_new', 'is_active')) {
+            $query->where('e.is_active', 1);
+        }
+
+        if ($this->tableExists('departments') && $this->columnExists('employees_new', 'department_id')) {
+            $query->leftJoin('departments as d', 'd.id', '=', 'e.department_id');
+        }
+
+        return $query->select(
+            DB::raw("COALESCE(u.name, 'Employee') as employee"),
+            DB::raw($this->columnExists('employees_new', 'employee_code') ? "COALESCE(e.employee_code, '-') as code" : "'-' as code"),
+            DB::raw($this->tableExists('departments') && $this->columnExists('employees_new', 'department_id') ? "COALESCE(d.name, '-') as department" : "'-' as department")
+        )->limit($limit)->get()->map(fn ($row) => $this->rowToArray($row))->all();
+    }
+
+    private function payrollActivityRows(): array
+    {
+        return collect($this->latestPayrollRunRows(3))->map(fn ($row) => [
+            'title' => 'Payroll run',
+            'description' => ($row['period'] ?? '-') . ' payroll is ' . strtolower($row['status'] ?? '-'),
+            'time' => now(),
+            'icon' => 'fas fa-money-check-alt',
+        ])->values()->all();
+    }
+
+    private function projectDashboardStats($user): array
+    {
+        $tasks = $this->taskStats($user);
+        $attendance = $this->attendanceStatsForEmployees(today()->toDateString());
+
+        return [
+            'active_projects' => $this->tableExists('projects') && $this->columnExists('projects', 'status') ? DB::table('projects')->where('status', 'active')->count() : 0,
+            'open_tasks' => $tasks['open'] ?? 0,
+            'completed_tasks' => $tasks['completed'] ?? 0,
+            'team_members' => $this->tableExists('employees_new') ? $this->activeEmployeesQuery()->count() : 0,
+            'pending_work_logs' => $this->tableExists('attendance_work_logs') && $this->columnExists('attendance_work_logs', 'status') ? DB::table('attendance_work_logs')->where('status', 'pending')->count() : 0,
+            'today_attendance' => $attendance['present'],
+            'has_project_setup' => $this->tableExists('projects') || $this->tableExists('taskmanagement'),
+        ];
+    }
+
+    private function recentTaskRows(int $limit = 8): array
+    {
+        if (! $this->tableExists('taskmanagement')) {
+            return [];
+        }
+
+        return DB::table('taskmanagement')
+            ->select('title', 'employee_name', 'due_date', 'status')
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get()
+            ->map(fn ($row) => [
+                'title' => $row->title,
+                'employee' => $row->employee_name ?: '-',
+                'due_date' => $row->due_date ? Carbon::parse($row->due_date)->format('d M Y') : '-',
+                'status' => ucfirst((string) $row->status),
+            ])->all();
+    }
+
+    private function projectProgressRows(): array
+    {
+        if (! $this->tableExists('projects')) {
+            return [];
+        }
+
+        $select = [
+            DB::raw($this->columnExists('projects', 'name') ? 'name as project' : "'Project' as project"),
+            DB::raw($this->columnExists('projects', 'status') ? 'status' : "'active' as status"),
+            DB::raw($this->columnExists('projects', 'progress') ? 'progress' : "'-' as progress"),
+            DB::raw($this->columnExists('projects', 'deadline') ? 'deadline' : ($this->columnExists('projects', 'end_date') ? 'end_date as deadline' : "'-' as deadline")),
+        ];
+
+        return DB::table('projects')->select($select)->limit(8)->get()->map(fn ($row) => $this->rowToArray($row))->all();
+    }
+
+    private function workLogRows(int $limit = 8, ?array $employeeIds = null): array
+    {
+        if (! $this->tableExists('attendance_work_logs')) {
+            return [];
+        }
+
+        if (is_array($employeeIds) && empty($employeeIds)) {
+            return [];
+        }
+
+        $query = DB::table('attendance_work_logs as w')
+            ->leftJoin('employees_new as e', 'e.id', '=', 'w.employee_id')
+            ->leftJoin('users as u', 'u.id', '=', 'e.user_id');
+
+        if (is_array($employeeIds)) {
+            $query->whereIn('w.employee_id', $employeeIds);
+        }
+
+        return $query->select(
+            DB::raw("COALESCE(u.name, 'Employee') as employee"),
+            DB::raw($this->columnExists('attendance_work_logs', 'work_date') ? "DATE_FORMAT(w.work_date, '%d %b %Y') as date" : "DATE_FORMAT(w.created_at, '%d %b %Y') as date"),
+            DB::raw("COALESCE(w.work_summary, '-') as summary")
+        )->orderByDesc('w.id')->limit($limit)->get()->map(fn ($row) => $this->rowToArray($row))->all();
+    }
+
+    private function workLogActivityRows(?array $employeeIds = null): array
+    {
+        return collect($this->workLogRows(5, $employeeIds))->map(fn ($row) => [
+            'title' => 'Work log submitted',
+            'description' => ($row['employee'] ?? 'Employee') . ': ' . ($row['summary'] ?? '-'),
+            'time' => $row['date'] ?? now(),
+            'icon' => 'fas fa-clipboard-list',
+        ])->all();
+    }
+
+    private function deadlineRows(): array
+    {
+        return collect($this->recentTaskRows(8))->filter(fn ($row) => ! empty($row['due_date']) && $row['due_date'] !== '-')->map(fn ($row) => [
+            'item' => $row['title'],
+            'owner' => $row['employee'],
+            'deadline' => $row['due_date'],
+            'status' => $row['status'],
+        ])->values()->all();
+    }
+
+    private function assetsAssignedCount(): int
+    {
+        if (! $this->tableExists('asset_allocations')) {
+            return 0;
+        }
+
+        return (int) DB::table('asset_allocations')
+            ->when($this->columnExists('asset_allocations', 'status'), fn ($query) => $query->whereIn('status', ['Active', 'active', 'assigned']))
+            ->count();
+    }
+
+    private function assetRows(int $limit = 8): array
+    {
+        if (! $this->tableExists('asset_allocations')) {
+            return [];
+        }
+
+        $query = DB::table('asset_allocations as a');
+        if ($this->tableExists('employees_new')) {
+            $query->leftJoin('employees_new as e', 'e.id', '=', 'a.employee_id')->leftJoin('users as u', 'u.id', '=', 'e.user_id');
+        }
+
+        return $query->select(
+            DB::raw($this->tableExists('employees_new') ? "COALESCE(u.name, 'Employee') as employee" : "'Employee' as employee"),
+            DB::raw($this->columnExists('asset_allocations', 'asset_type') ? "COALESCE(a.asset_type, '-') as asset" : "'-' as asset"),
+            DB::raw($this->columnExists('asset_allocations', 'assigned_date') ? "COALESCE(DATE_FORMAT(a.assigned_date, '%d %b %Y'), '-') as assigned" : "'-' as assigned"),
+            DB::raw($this->columnExists('asset_allocations', 'status') ? "COALESCE(a.status, '-') as status" : "'-' as status")
+        )->orderByDesc('a.id')->limit($limit)->get()->map(fn ($row) => $this->rowToArray($row))->all();
+    }
+
+    private function upcomingHolidayCount(): int
+    {
+        if (! $this->tableExists('holidays')) {
+            return 0;
+        }
+
+        $dateColumn = $this->columnExists('holidays', 'holiday_date') ? 'holiday_date' : ($this->columnExists('holidays', 'date') ? 'date' : null);
+        if (! $dateColumn) {
+            return 0;
+        }
+
+        return (int) DB::table('holidays')->whereBetween($dateColumn, [today()->toDateString(), today()->addDays(30)->toDateString()])->count();
+    }
+
+    private function holidayRows(int $limit = 8): array
+    {
+        if (! $this->tableExists('holidays')) {
+            return [];
+        }
+
+        $dateColumn = $this->columnExists('holidays', 'holiday_date') ? 'holiday_date' : ($this->columnExists('holidays', 'date') ? 'date' : null);
+        if (! $dateColumn) {
+            return [];
+        }
+
+        return DB::table('holidays')
+            ->select(
+                DB::raw($this->columnExists('holidays', 'name') ? "COALESCE(name, 'Holiday') as name" : "'Holiday' as name"),
+                DB::raw("DATE_FORMAT($dateColumn, '%d %b %Y') as date"),
+                DB::raw($this->columnExists('holidays', 'type') ? "COALESCE(type, 'Holiday') as type" : "'Holiday' as type")
+            )
+            ->where($dateColumn, '>=', today()->toDateString())
+            ->orderBy($dateColumn)
+            ->limit($limit)
+            ->get()
+            ->map(fn ($row) => $this->rowToArray($row))
+            ->all();
+    }
+
+    private function punchBlockedRows(int $limit = 8): array
+    {
+        if (! $this->tableExists('attendances') || ! $this->tableExists('employees_new')) {
+            return [];
+        }
+
+        $query = DB::table('attendances as a')
+            ->join('employees_new as e', 'e.id', '=', 'a.employee_id')
+            ->leftJoin('users as u', 'u.id', '=', 'e.user_id')
+            ->whereDate('a.attendance_date', today()->toDateString());
+
+        if ($this->columnExists('attendances', 'is_blocked')) {
+            $query->where('a.is_blocked', 1);
+        } elseif ($this->columnExists('attendances', 'attendance_status')) {
+            $query->where('a.attendance_status', 'punch_blocked');
+        } else {
+            return [];
+        }
+
+        return $query->select(
+            DB::raw("COALESCE(u.name, 'Employee') as employee"),
+            DB::raw($this->columnExists('employees_new', 'employee_code') ? "COALESCE(e.employee_code, '-') as code" : "'-' as code"),
+            DB::raw($this->columnExists('attendances', 'blocked_reason') ? "COALESCE(a.blocked_reason, '-')" : "'-' as reason"),
+            DB::raw($this->columnExists('attendances', 'is_admin_unlocked') ? "CASE WHEN a.is_admin_unlocked = 1 THEN 'Unlocked' ELSE 'Blocked' END as status" : "'Blocked' as status")
+        )->limit($limit)->get()->map(fn ($row) => $this->rowToArray($row))->all();
+    }
+
+    private function customAdminQuickActions($user): array
+    {
+        $roleIds = $this->roleIds($user);
+        if (empty($roleIds) || ! $this->tableExists('role_menu_access') || ! $this->tableExists('menus')) {
+            return [];
+        }
+
+        return DB::table('menus as m')
+            ->join('role_menu_access as rma', 'rma.menu_id', '=', 'm.id')
+            ->whereIn('rma.role_id', $roleIds)
+            ->where('m.is_active', 1)
+            ->whereNotNull('m.route')
+            ->orderBy('m.sort_order')
+            ->select('m.name', 'm.icon', 'm.route')
+            ->get()
+            ->map(function ($menu) {
+                if (! Route::has($menu->route)) {
+                    return null;
+                }
+
+                return [
+                    'title' => $menu->name,
+                    'icon' => $menu->icon ?: 'fas fa-link',
+                    'route' => $menu->route,
+                    'url' => route($menu->route),
+                ];
+            })->filter()->take(6)->values()->all();
+    }
+
+    private function moduleMetric(string $name, int $fallback): array
+    {
+        $key = strtolower($name);
+        if (str_contains($key, 'employee')) {
+            return ['label' => 'Employees', 'value' => $this->tableExists('employees_new') ? $this->activeEmployeesQuery()->count() : 0, 'subtitle' => 'Accessible employee module'];
+        }
+        if (str_contains($key, 'attendance')) {
+            $attendance = $this->attendanceStatsForEmployees(today()->toDateString());
+            return ['label' => 'Attendance', 'value' => $attendance['present'], 'subtitle' => 'Present today'];
+        }
+        if (str_contains($key, 'leave')) {
+            return ['label' => 'Leave', 'value' => $this->pendingLeaveCount(), 'subtitle' => 'Pending leave requests'];
+        }
+        if (str_contains($key, 'document')) {
+            return ['label' => 'Documents', 'value' => $this->pendingDocumentCount(), 'subtitle' => 'Pending document verification'];
+        }
+        if (str_contains($key, 'payroll')) {
+            $payroll = $this->enterprisePayrollStats();
+            return ['label' => 'Payroll', 'value' => $payroll['payslips_generated'], 'subtitle' => 'Current month payslips'];
+        }
+        if (str_contains($key, 'announcement')) {
+            $announcements = $this->announcementStats();
+            return ['label' => 'Announcements', 'value' => $announcements['active'] ?? 0, 'subtitle' => 'Active announcements'];
+        }
+
+        return ['label' => $name, 'value' => $fallback, 'subtitle' => 'Assigned menu access'];
+    }
+
+    private function managerTeamEmployeeIds($user): array
+    {
+        $manager = $this->employeeForUser($user->id ?? null);
+        if (! $manager || ! $this->tableExists('employees_new') || ! $this->columnExists('employees_new', 'reporting_manager_employee_id')) {
+            return [];
+        }
+
+        return DB::table('employees_new')
+            ->where('reporting_manager_employee_id', $manager->id)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
+    private function teamLeaveRows(array $employeeIds): array
+    {
+        if (empty($employeeIds) || ! $this->tableExists('leave_requests')) {
+            return [];
+        }
+
+        return DB::table('leave_requests as lr')
+            ->leftJoin('employees_new as e', 'e.id', '=', 'lr.employee_id')
+            ->leftJoin('users as u', 'u.id', '=', 'e.user_id')
+            ->whereIn('lr.employee_id', $employeeIds)
+            ->whereIn('lr.status', ['pending', 'approved'])
+            ->select(
+                DB::raw("COALESCE(u.name, 'Employee') as employee"),
+                DB::raw($this->columnExists('leave_requests', 'start_date') && $this->columnExists('leave_requests', 'end_date') ? "CONCAT(lr.start_date, ' to ', lr.end_date) as period" : "'-' as period"),
+                DB::raw($this->columnExists('leave_requests', 'total_days') ? 'lr.total_days as days' : "'-' as days"),
+                'lr.status'
+            )
+            ->orderByDesc('lr.id')
+            ->limit(8)
+            ->get()
+            ->map(fn ($row) => $this->rowToArray($row))
+            ->all();
+    }
+
+    private function teamActivityRows(array $employeeIds): array
+    {
+        if (empty($employeeIds)) {
+            return [];
+        }
+
+        return collect($this->workLogActivityRows($employeeIds))
+            ->merge(collect($this->todayAttendanceRows(5, $employeeIds))->map(fn ($row) => [
+                'title' => 'Attendance marked',
+                'description' => ($row['employee'] ?? 'Employee') . ' is ' . strtolower($row['status'] ?? 'marked'),
+                'time' => now(),
+                'icon' => 'fas fa-calendar-check',
+            ]))
+            ->take(8)
+            ->values()
+            ->all();
     }
 
     private function attendanceAdminCards(array $attendance): array

@@ -2491,19 +2491,28 @@ class DashboardResolverS
 
     private function tableExists($table): bool
     {
+        static $cache = [];
+        if (array_key_exists($table, $cache)) {
+            return $cache[$table];
+        }
         try {
-            return Schema::hasTable($table);
+            return $cache[$table] = Schema::hasTable($table);
         } catch (\Throwable $e) {
-            return false;
+            return $cache[$table] = false;
         }
     }
 
     private function columnExists($table, $column): bool
     {
+        static $cache = [];
+        $key = "{$table}.{$column}";
+        if (array_key_exists($key, $cache)) {
+            return $cache[$key];
+        }
         try {
-            return Schema::hasColumn($table, $column);
+            return $cache[$key] = Schema::hasColumn($table, $column);
         } catch (\Throwable $e) {
-            return false;
+            return $cache[$key] = false;
         }
     }
     private function getSystemHealth(): array

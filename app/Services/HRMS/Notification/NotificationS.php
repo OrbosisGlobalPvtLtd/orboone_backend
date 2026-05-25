@@ -128,19 +128,25 @@ class NotificationS
 
         $notificationId = DB::table($this->notificationsTable)->insertGetId($insert);
 
-        $this->sendFcmPush(
-            $notificationId,
-            $userId,
-            $roleId,
-            $title,
-            $message,
-            $type,
-            $routeName,
-            $routeParams,
-            $payload
-        );
+        $policy = app(\App\Services\HRMS\Notification\NotificationPolicyS::class);
 
-        $this->sendEmailNotification($userId, $title, $message, $payload);
+        if ($policy->shouldSendFcm($type, $payload)) {
+            $this->sendFcmPush(
+                $notificationId,
+                $userId,
+                $roleId,
+                $title,
+                $message,
+                $type,
+                $routeName,
+                $routeParams,
+                $payload
+            );
+        }
+
+        if ($policy->shouldSendEmail($type, $payload)) {
+            $this->sendEmailNotification($userId, $title, $message, $payload);
+        }
 
         return $notificationId;
     }

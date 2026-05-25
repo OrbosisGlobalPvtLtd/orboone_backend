@@ -8,11 +8,11 @@ $topbarUser = Auth::user();
 
 $announcementRoute = Route::has('announcements.index')
 ? route('announcements.index')
-: (Route::has('hrms.announcements.index') ? route('hrms.announcements.index') : 'javascript:void(0)');
+: (Route::has('employee.announcements.index') ? route('employee.announcements.index') : 'javascript:void(0)');
 
 $notificationRoute = Route::has('notifications.index')
 ? route('notifications.index')
-: (Route::has('hrms.notifications.index') ? route('hrms.notifications.index') : 'javascript:void(0)');
+: 'javascript:void(0)';
 
 $unreadCount = 0;
 $topbarNotifications = collect();

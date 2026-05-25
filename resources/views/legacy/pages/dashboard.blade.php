@@ -772,7 +772,7 @@
             </div>
 
             <div class="col-lg-3 col-md-6 mb-4">
-                <a href="{{ route('leave-requests.index') }}" class="quick-action-card">
+                <a href="{{ auth()->user()->isAdmin() ? route('leave-approvals.index') : route('leave-requests.index') }}" class="quick-action-card">
                     <div class="quick-action-icon" style="background:linear-gradient(135deg,#EC4E74,#D400D5);">
                         <i class="fas fa-calendar-check"></i>
                     </div>

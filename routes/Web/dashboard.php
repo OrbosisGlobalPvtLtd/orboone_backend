@@ -20,7 +20,8 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/admin/dashboard', [DashboardC::class, 'adminIndex'])->name('admin.dashboard');
     Route::get('/employee/dashboard', [DashboardC::class, 'employeeIndex'])->middleware(['employee.user', 'check.profile.complete'])->name('employee.dashboard');
-    Route::get('/generate-storage-link', [DashboardC::class, 'generateStorageLink']);
+    Route::get('/generate-storage-link', [DashboardC::class, 'generateStorageLink'])
+        ->middleware(['web.admin.access']);
 
     Route::middleware(['web.admin.access'])->group(function () {
         Route::get('/module/crm', function () {

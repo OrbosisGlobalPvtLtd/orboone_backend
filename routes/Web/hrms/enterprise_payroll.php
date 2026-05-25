@@ -10,7 +10,7 @@ use App\Http\Controllers\Web\HRMS\EnterprisePayroll\ReportC;
 use App\Http\Controllers\Web\HRMS\EnterprisePayroll\FnfSettlementC;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('enterprise-payroll')->middleware('auth')->name('enterprise-payroll.')->group(function () {
+Route::prefix('enterprise-payroll')->middleware(['auth', 'check.access'])->name('enterprise-payroll.')->group(function () {
     Route::get('/dashboard', [DashboardC::class, 'index'])
         ->middleware('permission:enterprise_payroll.dashboard.view')
         ->name('dashboard');

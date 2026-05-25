@@ -566,7 +566,7 @@
         }
 
         if (Route::has('hrms.employee.file')) {
-            return route('hrms.employee.file', $path);
+            return route('hrms.documents.file', ['path' => $path]);
         }
 
         return asset('storage/' . $path);

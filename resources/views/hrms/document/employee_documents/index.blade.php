@@ -24,7 +24,7 @@
         <div class="modal fade" id="globalUploadModal" tabindex="-1" role="dialog" aria-hidden="true">
             <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
                 <div class="modal-content orb-modal">
-                    <form method="POST" action="{{ route('hrms.documents.employee.store_global') }}" enctype="multipart/form-data" style="width: 100%;">
+                    <form method="POST" action="{{ route('documents.employee.store_global') }}" enctype="multipart/form-data" style="width: 100%;">
                         @csrf
                         <div class="orb-modal-header">
                             <div>
@@ -148,7 +148,7 @@
                                 </td>
                                 <td class="text-end pe-4">
                                     <a class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm"
-                                       href="{{ route('hrms.documents.employee.show', $employee->id) }}">
+                                       href="{{ route('documents.employee.show', $employee->id) }}">
                                         <i class="fas fa-eye me-1"></i> Manage
                                     </a>
                                 </td>

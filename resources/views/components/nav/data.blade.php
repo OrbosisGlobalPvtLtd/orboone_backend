@@ -24,7 +24,7 @@
 
     {{-- Sub-module: My Documents (Employee/Both) --}}
     <li>
-        <a href="{{ route('hrms.hrms.documents.self.index') }}" class="nav-link sub-nav-link {{ request()->routeIs('hrms.hrms.documents.self.index') ? 'active' : '' }}">
+        <a href="{{ route('hrms.documents.self.index') }}" class="nav-link sub-nav-link {{ request()->routeIs('hrms.documents.self.index') ? 'active' : '' }}">
             <i class="fas fa-file-upload small mr-2"></i> Upload Documents
         </a>
     </li>

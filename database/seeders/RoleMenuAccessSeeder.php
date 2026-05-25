@@ -149,6 +149,7 @@ class RoleMenuAccessSeeder extends Seeder
                 50,52,53,161,
                 154,
                 80,83,
+                309,310,
             ],
         ];
 

@@ -173,7 +173,7 @@
         </div>
 
         <!-- Filter Row Attached inside card -->
-        <form method="GET" action="{{ route('hrms.documents.employee.index') }}" id="docDirectoryFilterForm">
+        <form method="GET" action="{{ route('documents.employee.index') }}" id="docDirectoryFilterForm">
             <div class="dm-filter-wrapper">
                 <div class="dm-filter-row">
                     <div class="dm-filter-col" style="flex: 2 1 300px;">
@@ -191,7 +191,7 @@
                     </div>
 
                     <div class="dm-filter-col" style="flex: 0 0 auto;">
-                        <a href="{{ route('hrms.documents.employee.index') }}" class="dm-btn dm-btn-dark-light" style="height: 40px; border-radius: 9px;">
+                        <a href="{{ route('documents.employee.index') }}" class="dm-btn dm-btn-dark-light" style="height: 40px; border-radius: 9px;">
                             <i class="fas fa-undo"></i> Reset Filters
                         </a>
                     </div>
@@ -253,7 +253,7 @@
                         </td>
 
                         <td class="text-center">
-                            <a href="{{ route('hrms.documents.employee.show', $emp->id) }}" class="dm-action-btn-pill dm-action-btn-primary">
+                            <a href="{{ route('documents.employee.show', $emp->id) }}" class="dm-action-btn-pill dm-action-btn-primary">
                                 <i class="fas fa-eye mr-1"></i> View Docs
                             </a>
                         </td>

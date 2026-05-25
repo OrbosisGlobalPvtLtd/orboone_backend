@@ -43,7 +43,7 @@
         @endif
 
         @if ($canDocumentUpload)
-            <a href="{{ route('hrms.hrms.documents.self.index') }}"
+            <a href="{{ route('hrms.documents.self.index') }}"
                class="sub-link {{ request()->routeIs('hrms.hrms.documents.self.index') ? 'active' : '' }}">
                 <span class="sub-link-icon"><i class="fas fa-file-upload"></i></span>
                 <span class="sub-link-text">Upload Documents</span>

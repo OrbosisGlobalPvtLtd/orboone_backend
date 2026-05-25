@@ -91,7 +91,7 @@
                                     <td class="text-right font-weight-bold text-primary">₹{{ number_format((float) optional($payslip->payroll)->net_salary, 2) }}</td>
                                     <td>{{ $payslip->generated_at ? $payslip->generated_at->format('d M Y h:i A') : '-' }}</td>
                                     <td>
-                                        <a class="ep-btn ep-btn-light" style="height: 30px; padding: 0 10px;" href="{{ $self ? route('enterprise-payroll.self.payslips.download', $payslip) : route('enterprise-payroll.payslips.download', $payslip) }}">
+                                        <a class="ep-btn ep-btn-light" style="height: 30px; padding: 0 10px;" href="{{ route('enterprise-payroll.payslips.download', $payslip) }}">
                                             <i class="fas fa-download text-primary"></i> Download
                                         </a>
                                     </td>

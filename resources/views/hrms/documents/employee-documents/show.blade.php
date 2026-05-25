@@ -45,7 +45,7 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
             </p>
         </div>
         <div class="dm-hero-actions">
-            <a href="{{ route('hrms.documents.employee.index') }}" class="dm-btn dm-btn-light">
+            <a href="{{ route('documents.employee.index') }}" class="dm-btn dm-btn-light">
                 <i class="fas fa-arrow-left"></i> Back to Directory
             </a>
         </div>
@@ -110,7 +110,7 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
         </div>
 
         <div style="padding: 24px;">
-            <form action="{{ route('hrms.documents.employee.store', $employee->id) }}"
+            <form action="{{ route('documents.employee.store', $employee->id) }}"
                 method="POST"
                 enctype="multipart/form-data"
                 id="documentUploadForm">
@@ -280,7 +280,7 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
                                 </button>
 
                                 @if($doc->verification_status != 'verified')
-                                <form action="{{ route('hrms.documents.employee.verify', $doc->id) }}" method="POST" style="display:inline;">
+                                <form action="{{ route('documents.employee.verify', $doc->id) }}" method="POST" style="display:inline;">
                                     @csrf
                                     <button type="submit" class="dm-action-btn-pill dm-action-btn-success">
                                         <i class="fas fa-check"></i> Verify
@@ -289,7 +289,7 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
                                 @endif
 
                                 @if($doc->verification_status != 'rejected')
-                                <form action="{{ route('hrms.documents.employee.reject', $doc->id) }}" method="POST" style="display:inline;">
+                                <form action="{{ route('documents.employee.reject', $doc->id) }}" method="POST" style="display:inline;">
                                     @csrf
                                     <input type="hidden" name="rejection_reason" value="Rejected by admin.">
                                     <button type="submit" class="dm-action-btn-pill dm-action-btn-danger">

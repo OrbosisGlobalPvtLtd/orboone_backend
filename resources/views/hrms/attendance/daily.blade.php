@@ -5,9 +5,12 @@
 @section('_head')
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap4.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap4.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 @endsection
 
 @section('_content')
+
+@include('hrms.employee.partials.styles')
 
 <style>
     :root {
@@ -25,7 +28,8 @@
     .att-page {
         min-height: calc(100vh - 90px);
         background: var(--orb-bg);
-        padding: 18px 12px 35px;
+        padding: 24px;
+        font-family: 'Outfit', sans-serif;
     }
 
     .att-container {
@@ -33,363 +37,253 @@
         margin: 0 auto;
     }
 
-    .att-header {
-        background:
-            radial-gradient(circle at top right, rgba(75, 0, 232, .12), transparent 26%),
-            linear-gradient(135deg, #fff, #F8F5FF);
-        border: 1px solid var(--orb-border);
-        border-radius: 26px;
-        padding: 20px 22px;
-        margin-bottom: 16px;
-        box-shadow: var(--orb-shadow);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 16px;
+    /* Premium Purple Gradient Hero Header */
+    .att-header-premium {
+        background: linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%) !important;
+        border-radius: 26px !important;
+        padding: 32px 36px !important;
+        color: #fff !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        gap: 20px !important;
+        box-shadow: 0 12px 30px rgba(75, 0, 232, 0.15) !important;
+        position: relative !important;
+        overflow: hidden !important;
+        margin-bottom: 28px !important;
+        border: none !important;
     }
 
-    .att-title {
-        font-size: 26px;
-        font-weight: 950;
-        color: var(--orb-text);
-        margin: 0;
+    .att-header-premium::before {
+        content: '' !important;
+        position: absolute !important;
+        top: -50% !important;
+        right: -20% !important;
+        width: 300px !important;
+        height: 300px !important;
+        background: rgba(255, 255, 255, 0.08) !important;
+        border-radius: 50% !important;
+        filter: blur(40px) !important;
+        pointer-events: none !important;
     }
 
-    .att-subtitle {
-        font-size: 13px;
-        color: var(--orb-muted);
-        margin: 5px 0 0;
-        font-weight: 650;
+    .att-header-premium .title-area h3 {
+        font-size: 26px !important;
+        font-weight: 900 !important;
+        margin: 0 !important;
+        color: #fff !important;
+        letter-spacing: -0.02em !important;
     }
 
-    .att-btn {
-        border: 0;
-        border-radius: 13px;
-        padding: 10px 15px;
-        font-weight: 900;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
+    .att-header-premium .title-area p {
+        font-size: 14px !important;
+        color: rgba(255, 255, 255, 0.85) !important;
+        margin: 6px 0 0 0 !important;
+        font-weight: 500 !important;
+    }
+
+    .att-header-premium .header-kicker {
+        font-size: 11px !important;
+        font-weight: 800 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.15em !important;
+        color: rgba(255, 255, 255, 0.75) !important;
+        margin-bottom: 8px !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+    }
+
+    /* Premium Pill Buttons */
+    .att-btn-pill {
+        height: 42px !important;
+        padding: 0 20px !important;
+        border-radius: 50px !important;
+        font-size: 13px !important;
+        font-weight: 800 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        transition: all 0.2s ease !important;
+        border: 1px solid rgba(255, 255, 255, 0.25) !important;
+        cursor: pointer !important;
+        text-decoration: none !important;
+        outline: none !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+        background: rgba(255, 255, 255, 0.18) !important;
+        color: #fff !important;
+    }
+
+    .att-btn-pill:hover {
+        background: rgba(255, 255, 255, 0.3) !important;
+        color: #fff !important;
+        transform: translateY(-1px) !important;
         text-decoration: none !important;
     }
 
-    .att-btn-light {
-        background: #fff;
-        border: 1px solid var(--orb-border);
-        color: var(--orb-text);
-    }
-
-    .att-card {
-        background: #fff;
-        border: 1px solid var(--orb-border);
-        border-radius: 24px;
-        overflow: hidden;
-        box-shadow: var(--orb-shadow);
-    }
-
-    .att-section-head {
-        padding: 18px;
-        background: linear-gradient(180deg, #fff, #FAFBFF);
-        border-bottom: 1px solid var(--orb-border);
-    }
-
-    .att-section-title {
-        font-size: 16px;
-        font-weight: 950;
-        color: var(--orb-text);
-        display: flex;
-        align-items: center;
-        gap: 9px;
-        margin: 0;
-    }
-
-    .att-section-title i {
-        color: var(--orb-primary);
+    /* Attached Filters Area inside Table Card */
+    .att-filters-attached {
+        background: #F8FAFC !important;
+        border-bottom: 1px solid var(--orb-border) !important;
+        padding: 20px 24px !important;
     }
 
     .att-filter-grid {
         display: grid;
         grid-template-columns: repeat(7, minmax(0, 1fr));
-        gap: 10px;
-        margin-top: 16px;
+        gap: 12px;
+        align-items: flex-end;
     }
 
     .att-filter-grid label {
-        font-size: 10px;
-        text-transform: uppercase;
-        font-weight: 950;
-        color: #667085;
-        margin-bottom: 5px;
-        letter-spacing: .04em;
+        font-size: 11px !important;
+        font-weight: 800 !important;
+        color: var(--orb-muted) !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05em !important;
+        margin-bottom: 6px !important;
+        display: block !important;
     }
 
     .att-filter-grid .form-control {
-        border-radius: 13px;
-        border: 1px solid #E4E7EC;
-        height: 42px;
-        font-size: 13px;
+        height: 40px !important;
+        border-radius: 9px !important;
+        border: 1px solid var(--orb-border) !important;
+        background: #fff !important;
+        padding: 8px 12px !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        color: var(--orb-text) !important;
+        width: 100% !important;
+        outline: none !important;
+        transition: all 0.2s ease !important;
     }
 
     .att-filter-grid .form-control:focus {
-        border-color: var(--orb-primary);
-        box-shadow: 0 0 0 .15rem rgba(75, 0, 232, .10);
+        border-color: var(--orb-primary) !important;
+        box-shadow: 0 0 0 3px rgba(75, 0, 232, 0.08) !important;
     }
 
-    .att-table-wrap {
-        padding: 16px;
+    /* Entries Dropdown CSS */
+    .dataTables_length,
+    .dataTables_length label {
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        white-space: nowrap !important;
+        margin: 0 !important;
+        font-weight: 600 !important;
+        font-size: 13px !important;
+        color: var(--orb-muted) !important;
     }
 
-    .att-table-responsive {
-        width: 100%;
-        overflow-x: auto;
+    .dataTables_length select {
+        width: auto !important;
+        min-width: 64px !important;
+        max-width: 80px !important;
+        height: 34px !important;
+        padding: 4px 24px 4px 10px !important;
+        border-radius: 8px !important;
+        border: 1px solid var(--orb-border) !important;
+        outline: none !important;
     }
 
-    .att-table {
-        width: 100% !important;
-        min-width: 1550px;
-        border-collapse: separate !important;
-        border-spacing: 0;
-        table-layout: fixed;
-    }
-
-    .att-table thead th {
-        background: #F8FAFC;
-        color: #475467;
-        font-size: 10px;
-        font-weight: 950;
-        text-transform: uppercase;
-        padding: 12px !important;
-        border-top: 1px solid #EAECF0 !important;
-        border-bottom: 1px solid #EAECF0 !important;
-        white-space: nowrap;
-    }
-
-    .att-table td {
-        background: #fff;
-        border-bottom: 1px solid #EEF2F6 !important;
-        padding: 12px !important;
-        vertical-align: middle;
-    }
-
-    .att-table tbody tr:hover td {
-        background: #FCFAFF;
-    }
-
-    .att-emp {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .att-avatar {
-        width: 40px;
-        height: 40px;
-        border-radius: 14px;
-        background: linear-gradient(135deg, var(--orb-soft), #fff);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 950;
-        color: var(--orb-primary);
-        border: 1px solid rgba(75, 0, 232, .08);
-    }
-
-    .att-emp-name {
-        font-size: 13px;
-        font-weight: 900;
-        color: var(--orb-text);
-    }
-
-    .att-emp-code {
-        font-size: 11px;
-        color: var(--orb-muted);
-        margin-top: 2px;
-    }
-
-    .att-badge {
-        display: inline-flex;
-        align-items: center;
-        border-radius: 999px;
-        padding: 6px 10px;
-        font-size: 10px;
-        font-weight: 950;
-        text-transform: uppercase;
-        white-space: nowrap;
-    }
-
-    .badge-present {
-        background: #DCFCE7;
-        color: #166534;
-    }
-
-    .badge-absent {
-        background: #FEE2E2;
-        color: #991B1B;
-    }
-
-    .badge-half_day {
-        background: #FEF3C7;
-        color: #92400E;
-    }
-
-    .badge-leave {
-        background: #DBEAFE;
-        color: #1E40AF;
-    }
-
-    .badge-week_off {
-        background: #F1F5F9;
-        color: #475569;
-    }
-
-    .badge-punch_blocked {
-        background: #FFE4E6;
-        color: #BE123C;
-    }
-
-    .badge-lwp {
-        background: #FEE2E2;
-        color: #B42318;
-    }
-
-    .badge-default {
-        background: #F1F5F9;
-        color: #475569;
-    }
-
-    .mode-badge {
-        display: inline-flex;
-        align-items: center;
-        border-radius: 999px;
-        padding: 6px 10px;
-        font-size: 10px;
-        font-weight: 950;
-        text-transform: uppercase;
-    }
-
-    .mode-wfo {
-        background: #EEF2FF;
-        color: #3730A3;
-    }
-
-    .mode-wfh {
-        background: #ECFEFF;
-        color: #155E75;
-    }
-
-    .flag {
-        display: inline-flex;
-        align-items: center;
-        border-radius: 999px;
-        padding: 4px 8px;
-        font-size: 9px;
-        font-weight: 950;
-        margin: 2px 4px 2px 0;
-    }
-
-    .flag-late {
-        background: #FFF7ED;
-        color: #C2410C;
-    }
-
-    .flag-early {
-        background: #FEF2F2;
-        color: #B42318;
-    }
-
-    .flag-blocked {
-        background: #FFE4E6;
-        color: #BE123C;
-    }
-
-    .flag-missed {
-        background: #FEF3C7;
-        color: #92400E;
-    }
-
-    .flag-clear {
-        background: #F1F5F9;
-        color: #475569;
-    }
-
-    .att-action-wrap {
-        display: flex;
-        justify-content: flex-end;
-    }
-
-    .action-dot {
-        width: 34px;
-        height: 34px;
-        border-radius: 12px;
-        border: 1px solid var(--orb-border);
-        background: #fff;
-        color: #475467;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .action-dot:hover {
-        background: var(--orb-soft);
-        color: var(--orb-primary);
-    }
-
-    .dropdown-menu.att-action-menu {
-        border: 1px solid var(--orb-border);
-        border-radius: 15px;
-        box-shadow: 0 18px 45px rgba(16, 24, 40, .14);
-        padding: 7px;
-        min-width: 180px;
-    }
-
-    .att-action-menu .dropdown-item {
-        border-radius: 11px;
-        padding: 8px 10px;
-        font-size: 13px;
-        font-weight: 800;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .att-action-menu .dropdown-item:hover {
-        background: var(--orb-soft);
-        color: var(--orb-primary);
-    }
-
-    .dataTables_wrapper>.row:first-child {
-        background: #fff;
-        border-bottom: 1px solid var(--orb-border);
-        padding: 12px 16px;
-        margin: 0 -16px 12px !important;
-    }
-
-    .dataTables_wrapper .dt-buttons .btn {
-        border-radius: 11px !important;
+    /* Export button CSS */
+    .orb-export-btn {
+        height: 34px !important;
+        padding: 0 12px !important;
+        border-radius: 10px !important;
+        background: #fff !important;
+        border: 1px solid #E7EAF3 !important;
         font-size: 12px !important;
         font-weight: 800 !important;
-        margin-right: 6px !important;
+        margin-left: 6px !important;
+        transition: all 0.2s ease !important;
+        color: #475467 !important;
     }
 
-    .page-link {
-        border-radius: 10px !important;
+    .orb-export-btn:hover {
+        background: var(--orb-soft) !important;
+        color: var(--orb-primary) !important;
+        border-color: rgba(75, 0, 232, 0.2) !important;
+        transform: translateY(-1px) !important;
     }
 
-    @media(max-width:1200px) {
+    /* Scroll structure */
+    .orb-table-scroll {
+        width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+
+    .orb-table-scroll table {
+        width: 100% !important;
+        margin-bottom: 0 !important;
+        border-collapse: separate !important;
+        border-spacing: 0 !important;
+    }
+
+    .orb-table-scroll table thead th {
+        background: #F8FAFC !important;
+        color: var(--orb-muted) !important;
+        font-size: 11px !important;
+        font-weight: 800 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05em !important;
+        padding: 14px 20px !important;
+        border-top: none !important;
+        border-bottom: 1px solid var(--orb-border) !important;
+        vertical-align: middle !important;
+        white-space: nowrap !important;
+    }
+
+    .orb-table-scroll table tbody td {
+        padding: 16px 20px !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        color: var(--orb-text) !important;
+        border-bottom: 1px solid var(--orb-border) !important;
+        vertical-align: middle !important;
+        background: #fff !important;
+    }
+
+    .orb-table-scroll table tbody tr:hover td {
+        background: #FDFDFF !important;
+    }
+
+    select,
+    select option,
+    .form-select,
+    .form-select option {
+        color: #101828 !important;
+        background: #fff !important;
+    }
+
+    @media (max-width: 1300px) {
         .att-filter-grid {
-            grid-template-columns: repeat(3, minmax(0, 1fr));
+            grid-template-columns: repeat(4, minmax(0, 1fr));
         }
     }
 
-    @media(max-width:768px) {
-        .att-header {
-            flex-direction: column;
-            align-items: flex-start;
+    @media (max-width: 991px) {
+        .att-header-premium {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            padding: 24px !important;
         }
+        .att-filter-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
 
+    @media (max-width: 575px) {
         .att-filter-grid {
             grid-template-columns: 1fr;
+        }
+        .att-btn-pill {
+            width: 100% !important;
+            justify-content: center !important;
         }
     }
 </style>
@@ -397,45 +291,53 @@
 <div class="att-page">
     <div class="att-container">
 
-        <div class="att-header">
-            <div>
-                <h3 class="att-title">Attendance Records</h3>
-                <p class="att-subtitle">
-                    Complete historical attendance records with late marks, blocked punch-ins, work duration and status tracking.
-                </p>
+        <!-- Premium Header Area -->
+        <div class="att-header-premium">
+            <div class="title-area">
+                <div class="header-kicker">
+                    <i class="fas fa-calendar-check"></i> Attendance Administration
+                </div>
+                <h3>Daily Attendance Sheet</h3>
+                <p>Monitor daily attendance records, working hours and status flags.</p>
             </div>
 
-            <div class="d-flex align-items-center" style="gap:10px;">
-                <a href="{{ route('attendances.index') }}" class="att-btn att-btn-light">
-                    <i class="fas fa-chart-line"></i>
-                    Dashboard
-                </a>
-
-                <a href="{{ route('attendances.export-pdf', request()->query()) }}" class="att-btn att-btn-light">
-                    <i class="fas fa-file-pdf text-danger"></i>
-                    Export
+            <div class="d-flex align-items-center" style="gap:12px;">
+                <a href="{{ route('attendances.index') }}" class="att-btn-pill text-white">
+                    <i class="fas fa-chart-pie"></i>
+                    Attendance Dashboard
                 </a>
             </div>
         </div>
 
-        <div class="att-card">
+        @if(session('success'))
+        <div class="alert alert-success border-0 shadow-sm mb-4 py-3" style="border-radius: 12px;">
+            <i class="fas fa-check-circle mr-2"></i> {{ session('success') }}
+        </div>
+        @endif
 
-            <div class="att-section-head">
+        @if(session('error'))
+        <div class="alert alert-danger border-0 shadow-sm mb-4 py-3" style="border-radius: 12px;">
+            <i class="fas fa-exclamation-circle mr-2"></i> {{ session('error') }}
+        </div>
+        @endif
 
-                <h5 class="att-section-title">
-                    <i class="fas fa-filter"></i>
-                    Attendance Filters
-                </h5>
+        <!-- Main Card -->
+        <div class="card orb-table-card">
 
-                <form method="GET" action="{{ route('attendances.daily') }}">
+            <div class="att-card-header">
+                <h5 class="att-card-title">Attendance Records List</h5>
+                <p class="att-card-subtitle">Review employee attendance, punch timings, working hours and status.</p>
+            </div>
 
+            <!-- Attached Filters inside the Card -->
+            <div class="att-filters-attached">
+                <form id="attendanceFilterForm" onsubmit="return false;">
                     <div class="att-filter-grid">
 
                         <div>
                             <label>Employee</label>
                             <select name="employee_id" class="form-control">
-                                <option value="">All Employees</option>
-
+                                <option value="">All Staff</option>
                                 @foreach($employees as $emp)
                                 <option value="{{ optional($emp->employee)->id }}"
                                     {{ request('employee_id') == optional($emp->employee)->id ? 'selected' : '' }}>
@@ -447,24 +349,18 @@
 
                         <div>
                             <label>From Date</label>
-                            <input type="date" name="from_date"
-                                class="form-control"
-                                value="{{ request('from_date') }}">
+                            <input type="date" name="from_date" class="form-control" value="{{ request('from_date') }}">
                         </div>
 
                         <div>
                             <label>To Date</label>
-                            <input type="date" name="to_date"
-                                class="form-control"
-                                value="{{ request('to_date') }}">
+                            <input type="date" name="to_date" class="form-control" value="{{ request('to_date') }}">
                         </div>
 
                         <div>
                             <label>Status</label>
-
                             <select name="attendance_type_id" class="form-control">
                                 <option value="">All Status</option>
-
                                 @foreach($attendanceTypes as $type)
                                 <option value="{{ $type->id }}"
                                     {{ request('attendance_type_id') == $type->id ? 'selected' : '' }}>
@@ -476,50 +372,38 @@
 
                         <div>
                             <label>Work Mode</label>
-
                             <select name="work_mode" class="form-control">
                                 <option value="">All</option>
-                                <option value="wfo" {{ request('work_mode') == 'wfo' ? 'selected' : '' }}>WFO</option>
-                                <option value="wfh" {{ request('work_mode') == 'wfh' ? 'selected' : '' }}>WFH</option>
+                                <option value="WFO">WFO</option>
+                                <option value="WFH">WFH</option>
                             </select>
                         </div>
 
                         <div>
                             <label>Flags</label>
-
                             <select name="flag" class="form-control">
                                 <option value="">All Records</option>
-                                <option value="late" {{ request('flag') == 'late' ? 'selected' : '' }}>Late</option>
-                                <option value="early_out" {{ request('flag') == 'early_out' ? 'selected' : '' }}>Early Out</option>
-                                <option value="blocked" {{ request('flag') == 'blocked' ? 'selected' : '' }}>Blocked</option>
-                                <option value="missed_punch" {{ request('flag') == 'missed_punch' ? 'selected' : '' }}>Missed Punch</option>
+                                <option value="Late">Late</option>
+                                <option value="Early Out">Early Out</option>
+                                <option value="Blocked">Blocked</option>
+                                <option value="Missed">Missed</option>
                             </select>
                         </div>
 
-                        <div class="d-flex align-items-end" style="gap:10px;">
-                            <button class="att-btn att-btn-primary w-100">
-                                <i class="fas fa-search"></i>
-                                Apply
+                        <div class="d-flex align-items-center" style="gap:8px;">
+                            <button type="button" class="btn btn-undo btn-secondary d-flex align-items-center justify-content-center w-100" style="height: 40px !important; border-radius: 9px !important;">
+                                <i class="fas fa-undo mr-2"></i> Reset Filters
                             </button>
-
-                            <a href="{{ route('attendances.daily') }}"
-                                class="att-btn att-btn-light">
-                                <i class="fas fa-undo"></i>
-                            </a>
                         </div>
 
                     </div>
-
                 </form>
-
             </div>
 
+            <!-- Table Section -->
             <div class="att-table-wrap">
-
-                <div class="att-table-responsive">
-
-                    <table class="att-table table" id="attendanceRecordsTable">
-
+                <div class="orb-table-scroll">
+                    <table class="att-table table mb-0" id="attendanceRecordsTable">
                         <thead>
                             <tr>
                                 <th>Employee</th>
@@ -533,37 +417,28 @@
                                 <th>Net Work</th>
                                 <th>Status</th>
                                 <th>Flags</th>
-                                <th class="text-right no-export">Action</th>
+                                <th class="text-right pr-4 no-export">Action</th>
                             </tr>
                         </thead>
 
                         <tbody>
-
                             @forelse($attendances as $attendance)
-
                             @php
                             $typeCode = optional($attendance->attendanceType)->code ?? 'default';
-
                             $modeCode = strtolower($attendance->work_mode ?? '');
-
-                            $modeClass = $modeCode === 'wfh'
-                            ? 'mode-wfh'
-                            : 'mode-wfo';
+                            $modeClass = $modeCode === 'wfh' ? 'mode-wfh' : 'mode-wfo';
                             @endphp
 
                             <tr>
-
                                 <td>
                                     <div class="att-emp">
                                         <div class="att-avatar">
                                             {{ strtoupper(substr(optional($attendance->user)->name ?? 'U',0,1)) }}
                                         </div>
-
                                         <div>
                                             <div class="att-emp-name">
                                                 {{ optional($attendance->user)->name ?? 'N/A' }}
                                             </div>
-
                                             <div class="att-emp-code">
                                                 {{ optional($attendance->employee)->employee_code ?? 'N/A' }}
                                             </div>
@@ -578,7 +453,8 @@
                                 </td>
 
                                 <td>
-                                    <span class="mode-badge {{ $modeClass }}">
+                                    <span class="eo-pill {{ $modeClass }}">
+                                        <span class="eo-dot"></span>
                                         {{ strtoupper($modeCode ?: '-') }}
                                     </span>
                                 </td>
@@ -614,35 +490,26 @@
                                 </td>
 
                                 <td>
-                                    <span class="att-badge badge-{{ $typeCode }}">
+                                    <span class="eo-pill badge-{{ $typeCode }}">
                                         {{ optional($attendance->attendanceType)->name ?? 'N/A' }}
                                     </span>
                                 </td>
 
                                 <td>
-
                                     @if($attendance->is_late)
-                                    <span class="flag flag-late">
-                                        Late
-                                    </span>
+                                    <span class="flag flag-late">Late</span>
                                     @endif
 
                                     @if($attendance->is_early_out)
-                                    <span class="flag flag-early">
-                                        Early Out
-                                    </span>
+                                    <span class="flag flag-early">Early Out</span>
                                     @endif
 
                                     @if($attendance->is_blocked)
-                                    <span class="flag flag-blocked">
-                                        Blocked
-                                    </span>
+                                    <span class="flag flag-blocked">Blocked</span>
                                     @endif
 
                                     @if($attendance->missed_punch)
-                                    <span class="flag flag-missed">
-                                        Missed Punch
-                                    </span>
+                                    <span class="flag flag-missed">Missed</span>
                                     @endif
 
                                     @if(
@@ -651,81 +518,46 @@
                                     !$attendance->is_blocked &&
                                     !$attendance->missed_punch
                                     )
-                                    <span class="flag flag-clear">
-                                        Clear
-                                    </span>
+                                    <span class="flag flag-clear">Clear</span>
                                     @endif
-
                                 </td>
 
-                                <td>
-
-                                    <div class="att-action-wrap dropdown">
-
-                                        <button class="action-dot"
-                                            type="button"
-                                            data-toggle="dropdown">
+                                <td class="text-right pr-4">
+                                    <div class="dropdown text-right">
+                                        <button class="btn btn-sm btn-light border-0 p-2" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="border-radius: 50% !important; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;">
                                             <i class="fas fa-ellipsis-v"></i>
                                         </button>
-
-                                        <div class="dropdown-menu dropdown-menu-right att-action-menu">
-
+                                        <div class="dropdown-menu dropdown-menu-right" style="border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid var(--orb-border); padding: 6px;">
                                             @if($attendance->is_blocked)
-                                            <button type="button"
-                                                class="dropdown-item"
-                                                data-toggle="modal"
-                                                data-target="#unlockModal{{ $attendance->id }}">
-                                                <i class="fas fa-unlock text-success"></i>
-                                                Unlock
+                                            <button type="button" class="dropdown-item d-flex align-items-center" data-toggle="modal" data-target="#unlockModal{{ $attendance->id }}" style="border-radius: 8px; font-weight: 600; padding: 8px 12px; font-size: 13px; gap: 8px;">
+                                                <i class="fas fa-unlock text-success"></i> Unlock
                                             </button>
                                             @endif
 
                                             @if($canManageAttendance ?? false)
-                                            <button type="button"
-                                                class="dropdown-item"
-                                                data-toggle="modal"
-                                                data-target="#editModal{{ $attendance->id }}">
-                                                <i class="fas fa-edit text-primary"></i>
-                                                Edit
+                                            <button type="button" class="dropdown-item d-flex align-items-center" data-toggle="modal" data-target="#editModal{{ $attendance->id }}" style="border-radius: 8px; font-weight: 600; padding: 8px 12px; font-size: 13px; gap: 8px;">
+                                                <i class="fas fa-edit text-primary"></i> Edit
                                             </button>
                                             @endif
-
                                         </div>
-
                                     </div>
-
                                 </td>
-
                             </tr>
-
                             @empty
-
-                            <tr>
-                                <td colspan="12" class="text-center py-5">
-                                    No attendance records found.
-                                </td>
-                            </tr>
-
+                            <!-- Empty block handled eloquently by DataTables -->
                             @endforelse
-
                         </tbody>
-
                     </table>
-
                 </div>
-
             </div>
 
         </div>
 
         @foreach($attendances as $attendance)
-
         @if($canManageAttendance ?? false)
         @include('hrms.attendance.partials.edit-modal', ['attendance' => $attendance])
         @endif
-
         @include('hrms.attendance.partials.unlock-modal', ['attendance' => $attendance])
-
         @endforeach
 
     </div>
@@ -735,78 +567,166 @@
 
 @section('_script')
 
-<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap4.min.js"></script>
-
+<script src="https://cdn.datatables.net/1.13.8/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/dataTables.bootstrap4.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap4.min.js"></script>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
-
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
 
 <script>
-    $(function() {
+    // Vanilla JS Date Parser
+    function parseDate(dateStr) {
+        if (!dateStr) return null;
+        var parts = dateStr.replace(/,/g, '').split(' ');
+        if (parts.length === 3) {
+            var day = parseInt(parts[0]);
+            var months = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+            var month = months[parts[1].toLowerCase().substring(0,3)];
+            var year = parseInt(parts[2]);
+            return new Date(year, month, day);
+        }
+        return new Date(dateStr);
+    }
 
-        $('#attendanceRecordsTable').DataTable({
+    $(function() {
+        if ($.fn.DataTable.isDataTable('#attendanceRecordsTable')) {
+            $('#attendanceRecordsTable').DataTable().destroy();
+        }
+
+        var table = $('#attendanceRecordsTable').DataTable({
             pageLength: 25,
             ordering: true,
             responsive: false,
             autoWidth: false,
-            scrollX: true,
+            scrollX: false,
             dom: "<'row align-items-center mb-3'<'col-md-6'l><'col-md-6 text-md-right'B>>" +
-                "<'row'<'col-md-12'tr>>" +
-                "<'row align-items-center mt-3'<'col-md-5'i><'col-md-7'p>>",
-
+                "<'row'<'col-md-12't>>" +
+                "<'row align-items-center mt-3 px-4 pb-4'<'col-md-5'i><'col-md-7'p>>",
             buttons: [
-
                 {
                     extend: 'csvHtml5',
-                    text: '<i class="fas fa-file-csv"></i> CSV',
-                    className: 'btn btn-light border',
-                    exportOptions: {
-                        columns: ':not(.no-export)'
-                    }
+                    text: '<i class="fas fa-file-csv text-info"></i> CSV',
+                    className: 'orb-export-btn',
+                    exportOptions: { columns: ':not(.no-export)' }
                 },
-
                 {
                     extend: 'excelHtml5',
-                    text: '<i class="fas fa-file-excel"></i> Excel',
-                    className: 'btn btn-light border',
-                    exportOptions: {
-                        columns: ':not(.no-export)'
-                    }
+                    text: '<i class="fas fa-file-excel text-success"></i> Excel',
+                    className: 'orb-export-btn',
+                    exportOptions: { columns: ':not(.no-export)' }
                 },
-
                 {
                     extend: 'pdfHtml5',
-                    text: '<i class="fas fa-file-pdf"></i> PDF',
-                    className: 'btn btn-light border',
+                    text: '<i class="fas fa-file-pdf text-danger"></i> PDF',
+                    className: 'orb-export-btn',
                     orientation: 'landscape',
                     pageSize: 'A4',
-                    title: 'Attendance Records',
-                    exportOptions: {
-                        columns: ':not(.no-export)'
-                    }
+                    title: 'Attendance Records List',
+                    exportOptions: { columns: ':not(.no-export)' }
                 },
-
                 {
                     extend: 'print',
-                    text: '<i class="fas fa-print"></i> Print',
-                    className: 'btn btn-light border',
-                    title: 'Attendance Records',
-                    exportOptions: {
-                        columns: ':not(.no-export)'
-                    }
+                    text: '<i class="fas fa-print text-primary"></i> Print',
+                    className: 'orb-export-btn',
+                    title: 'Attendance Records List',
+                    exportOptions: { columns: ':not(.no-export)' }
                 }
-
-            ]
+            ],
+            language: {
+                emptyTable: 'No records found.',
+                zeroRecords: 'No matching records found.',
+                paginate: {
+                    previous: '<i class="fas fa-angle-left"></i>',
+                    next: '<i class="fas fa-angle-right"></i>'
+                }
+            }
         });
 
+        // Auto-apply filters
+        $('select[name="employee_id"]').on('change', function() {
+            var val = $(this).val();
+            if (!val) {
+                table.column(0).search('').draw();
+            } else {
+                var text = $(this).find('option:selected').text().trim();
+                table.column(0).search(text).draw();
+            }
+        });
+
+        // From Date / To Date search logic
+        $.fn.dataTable.ext.search.push(
+            function(settings, data, dataIndex) {
+                if (settings.nTable.id !== 'attendanceRecordsTable') return true;
+                
+                var min = $('input[name="from_date"]').val();
+                var max = $('input[name="to_date"]').val();
+                var dateStr = data[1];
+                
+                if (!dateStr || dateStr === '-') return true;
+                
+                var date = parseDate(dateStr);
+                if (!date || isNaN(date.getTime())) return true;
+                
+                if (min) {
+                    var minDate = new Date(min);
+                    minDate.setHours(0,0,0,0);
+                    if (date < minDate) return false;
+                }
+                if (max) {
+                    var maxDate = new Date(max);
+                    maxDate.setHours(23,59,59,999);
+                    if (date > maxDate) return false;
+                }
+                return true;
+            }
+        );
+
+        $('input[name="from_date"], input[name="to_date"]').on('change', function() {
+            table.draw();
+        });
+
+        // Status filter
+        $('select[name="attendance_type_id"]').on('change', function() {
+            var val = $(this).val();
+            if (!val) {
+                table.column(9).search('').draw();
+            } else {
+                var text = $(this).find('option:selected').text().trim();
+                table.column(9).search(text).draw();
+            }
+        });
+
+        // Work Mode filter
+        $('select[name="work_mode"]').on('change', function() {
+            var val = $(this).val();
+            table.column(2).search(val ? val : '').draw();
+        });
+
+        // Flags filter
+        $('select[name="flag"]').on('change', function() {
+            var val = $(this).val();
+            if (!val) {
+                table.column(10).search('').draw();
+            } else {
+                table.column(10).search(val).draw();
+            }
+        });
+
+        // Reset Button
+        $('.btn-undo').on('click', function(e) {
+            e.preventDefault();
+            $('select[name="employee_id"]').val('');
+            $('input[name="from_date"]').val('');
+            $('input[name="to_date"]').val('');
+            $('select[name="attendance_type_id"]').val('');
+            $('select[name="work_mode"]').val('');
+            $('select[name="flag"]').val('');
+            table.search('').columns().search('').draw();
+        });
     });
 </script>
 

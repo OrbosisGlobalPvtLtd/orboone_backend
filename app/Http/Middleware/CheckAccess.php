@@ -12,6 +12,16 @@ class CheckAccess
 {
     public function handle(Request $request, Closure $next)
     {
+        $user = auth()->user();
+
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        if (method_exists($user, 'hasRole') && $user->hasRole('super_admin')) {
+            return $next($request);
+        }
+
         $route = $request->route();
         $routeName = $route ? $route->getName() : null;
 
@@ -81,13 +91,33 @@ class CheckAccess
          * ------------------------------------------
          */
 
-        $menu = Menu::where('name', $menuName)->first();
+        // 1. Try to find menu by exact route name
+        $menu = Menu::where('route', $routeName)->where('is_active', 1)->first();
+
+        // 2. If not found, try to find menu by route prefix (e.g. leave-approvals.*)
+        if (!$menu) {
+            $routePrefix = count($parts) > 1 ? implode('.', array_slice($parts, 0, -1)) : $routeName;
+            $menu = Menu::where(function($q) use ($routeName, $routePrefix) {
+                $q->where('route', 'like', $routePrefix . '.%')
+                  ->orWhere('route', 'like', $routePrefix . '%');
+            })->where('is_active', 1)->first();
+        }
+
+        // 3. Fallback to name-based lookup
+        if (!$menu) {
+            $menu = Menu::where('name', $menuName)->first();
+        }
 
         if (!$menu) {
-            // Menu record missing in DB. Log and allow the request
-            // so pages still open. Admins should still be able to access.
-            Log::warning("Menu not found (allowing access): {$menuName}");
-            return $next($request);
+            Log::warning('Menu not found. Access denied.', [
+                'menu' => $menuName,
+                'route' => $routeName,
+                'user_id' => $user->id,
+                'path' => $request->path(),
+            ]);
+
+            return redirect()->route('dashboard')
+                ->with('error', 'Access denied.');
         }
 
 
@@ -96,16 +126,6 @@ class CheckAccess
          * CHECK ROLE ACCESS
          * ------------------------------------------
          */
-
-        $user = auth()->user();
-
-        if (!$user) {
-            return redirect()->route('login');
-        }
-
-        if (method_exists($user, 'hasRole') && $user->hasRole('super_admin')) {
-            return $next($request);
-        }
 
         $roleIds = [];
 
@@ -128,10 +148,17 @@ class CheckAccess
                 ->with('error', 'Access denied.');
         }
 
-        $access = Access::where('menu_id', $menu->id)
+        $access = \Illuminate\Support\Facades\DB::table('role_menu_access')
+            ->where('menu_id', $menu->id)
             ->whereIn('role_id', $roleIds)
-            ->where('status', '>', 0)
             ->first();
+
+        if (!$access) {
+            $access = Access::where('menu_id', $menu->id)
+                ->whereIn('role_id', $roleIds)
+                ->where('status', '>', 0)
+                ->first();
+        }
 
         if (!$access) {
             return redirect()->route('dashboard')

@@ -16,7 +16,7 @@
                     {{ session('success') }}
                 </div>
             @endif
-            <form action="{{ route('pages.client_add') }}" method="POST" enctype="multipart/form-data" id="clientForm">
+            <form action="{{ route('pages.client_add.store') }}" method="POST" enctype="multipart/form-data" id="clientForm">
                 @csrf
                 <div class="mb-3">
                     <h6 class="font-weight-bold">Client Information</h6>

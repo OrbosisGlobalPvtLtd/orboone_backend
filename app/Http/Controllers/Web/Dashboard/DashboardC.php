@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Web\Dashboard;
 
 use App\Http\Controllers\Controller;
 use App\Services\HRMS\Dashboard\DashboardResolverS;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 
@@ -81,6 +82,13 @@ class DashboardC extends Controller
 
     public function generateStorageLink()
     {
+        $user = auth()->user();
+        $isSuperAdmin = $user && method_exists($user, 'hasRole') && $user->hasRole('super_admin');
+
+        if (! $isSuperAdmin || ! App::environment(['local', 'development'])) {
+            abort(403, 'Unauthorized action.');
+        }
+
         $link = public_path('storage');
 
         if (File::exists($link)) {

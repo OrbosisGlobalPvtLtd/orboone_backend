@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth')->group(function () {
     Route::get('/client_data', [ClientController::class, 'client_data'])->name('client_data');
     Route::get('/client_add', [ClientController::class, 'showForm'])->name('pages.client_add');
-    Route::post('/client_add', [ClientController::class, 'client_add'])->name('pages.client_add');
+    Route::post('/client_add', [ClientController::class, 'client_add'])->name('pages.client_add.store');
     Route::get('/client_data_print', [ClientController::class, 'client_data_print'])->name('pages.client_data_print');
 
     Route::get('/customer_data', [CustomerController::class, 'customer_data'])->name('customer_data');

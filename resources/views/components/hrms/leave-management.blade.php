@@ -2,7 +2,10 @@
     $user = auth()->user();
 
     $canLeaveAllocation = $user->hasPermission('leave.allocation.manage');
-    $canLeaveApply = $user->hasPermission('leave.apply');
+    $canLeaveApply = !$user->isAdmin() && (
+        $user->hasPermission('leave.my_requests.view') ||
+        $user->hasPermission('leave.apply')
+    );
     $canLeaveApproval = $user->hasPermission('leave.approve');
     $canLeaveBalance = $user->hasPermission('leave.balance.view');
     $canHolidayManage = $user->hasPermission('holiday.manage');

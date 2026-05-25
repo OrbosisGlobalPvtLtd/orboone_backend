@@ -4,7 +4,7 @@
 <div class="container-fluid py-4">
     <div class="row mb-4 align-items-center">
         <div class="col-md-6">
-            <a href="{{ route('hrms.documents.employee.index') }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+            <a href="{{ route('documents.employee.index') }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
                 <i class="fas fa-arrow-left me-1"></i> Back to List
             </a>
             <h4 class="fw-bold text-dark mt-3">Manage Digital File: {{ $employee->name }}</h4>
@@ -59,7 +59,7 @@
                     <h6 class="mb-0 fw-bold"><i class="fas fa-upload me-2 text-primary"></i> Upload New Documents</h6>
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="{{ route('hrms.documents.employee.store', $employee->id) }}" enctype="multipart/form-data" id="uploadForm">
+                    <form method="POST" action="{{ route('documents.employee.store', $employee->id) }}" enctype="multipart/form-data" id="uploadForm">
                         @csrf
                         <div class="row g-3">
                             <div class="col-12">
@@ -190,7 +190,7 @@
                                                     
                                                     <div class="dropdown-divider"></div>
                                                     <h6 class="dropdown-header">Approval Actions</h6>
-                                                    <form method="POST" action="{{ route('hrms.documents.employee.approve', $doc->id) }}">
+                                                    <form method="POST" action="{{ route('documents.employee.approve', $doc->id) }}">
                                                         @csrf
                                                         <button class="dropdown-item text-success small" type="submit"><i class="fas fa-check-circle me-2"></i>Verify All</button>
                                                     </form>
@@ -202,7 +202,7 @@
                                             <div class="modal fade" id="rejectModal{{ $doc->id }}" tabindex="-1" role="dialog" aria-hidden="true">
                                                 <div class="modal-dialog modal-dialog-centered" role="document">
                                                     <div class="modal-content orb-modal">
-                                                        <form method="POST" action="{{ route('hrms.documents.employee.reject', $doc->id) }}" style="width: 100%;">
+                                                        <form method="POST" action="{{ route('documents.employee.reject', $doc->id) }}" style="width: 100%;">
                                                             @csrf
                                                             <div class="orb-modal-header">
                                                                 <div>

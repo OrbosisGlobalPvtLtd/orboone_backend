@@ -1372,7 +1372,7 @@ $rejectedDocs = $documents->where('verification_status', 'rejected')->count();
 
                                         @if($isDocEditMode)
                                         @if($documentTypeId && Route::has('hrms.documents.employee.upload_from_profile'))
-                                        <form action="{{ route('hrms.documents.employee.upload_from_profile', [$profile->employee_id, $documentTypeId]) }}"
+                                        <form action="{{ route('documents.employee.upload_from_profile', [$profile->employee_id, $documentTypeId]) }}"
                                             method="POST"
                                             enctype="multipart/form-data"
                                             class="doc-upload-card-form js-auto-upload-form">
@@ -1404,7 +1404,7 @@ $rejectedDocs = $documents->where('verification_status', 'rejected')->count();
                                         </button>
                                         @else
                                         @if(Route::has('hrms.documents.employee.verify'))
-                                        <form action="{{ route('hrms.documents.employee.verify', $doc->id) }}" method="POST" style="display:inline-block;margin:0;">
+                                        <form action="{{ route('documents.employee.verify', $doc->id) }}" method="POST" style="display:inline-block;margin:0;">
                                             @csrf
                                             <button type="submit" class="doc-action-btn doc-verify-btn" onclick="return confirm('Verify this document?')">
                                                 <i class="fas fa-check"></i> Verify
@@ -1413,7 +1413,7 @@ $rejectedDocs = $documents->where('verification_status', 'rejected')->count();
                                         @endif
 
                                         @if(Route::has('hrms.documents.employee.reject'))
-                                        <form action="{{ route('hrms.documents.employee.reject', $doc->id) }}" method="POST" style="display:inline-block;margin:0;">
+                                        <form action="{{ route('documents.employee.reject', $doc->id) }}" method="POST" style="display:inline-block;margin:0;">
                                             @csrf
                                             <input type="hidden" name="rejection_reason" value="Document rejected by HR">
                                             <button type="submit" class="doc-action-btn doc-reject-btn" onclick="return confirm('Reject this document?')">

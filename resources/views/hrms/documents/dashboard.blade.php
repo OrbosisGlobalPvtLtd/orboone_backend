@@ -27,7 +27,7 @@ $compliance = $totalEmployees > 0 ? round(($verifiedEmployees / max($totalEmploy
             <a href="{{ route('documents.hr.index') }}" class="dm-btn dm-btn-primary">
                 <i class="fas fa-user-check"></i> Pending Verification
             </a>
-            <a href="{{ route('hrms.documents.employee.index') }}" class="dm-btn dm-btn-light">
+            <a href="{{ route('documents.employee.index') }}" class="dm-btn dm-btn-light">
                 <i class="fas fa-folder-open"></i> Employee Documents
             </a>
         </div>
@@ -193,7 +193,7 @@ $compliance = $totalEmployees > 0 ? round(($verifiedEmployees / max($totalEmploy
                             <p class="dm-table-subtitle">Employees whose required documents are missing.</p>
                         </div>
                     </div>
-                    <a href="{{ route('hrms.documents.employee.index') }}" class="dm-action-btn-pill dm-action-btn-light">
+                    <a href="{{ route('documents.employee.index') }}" class="dm-action-btn-pill dm-action-btn-light">
                         View All <i class="fas fa-arrow-right ml-1"></i>
                     </a>
                 </div>
@@ -243,7 +243,7 @@ $compliance = $totalEmployees > 0 ? round(($verifiedEmployees / max($totalEmploy
                             <p class="dm-table-subtitle">Documents expiring within next 30 days.</p>
                         </div>
                     </div>
-                    <a href="{{ route('hrms.documents.expiring') }}" class="dm-action-btn-pill dm-action-btn-light">
+                    <a href="{{ route('documents.expiring') }}" class="dm-action-btn-pill dm-action-btn-light">
                         View All <i class="fas fa-arrow-right ml-1"></i>
                     </a>
                 </div>

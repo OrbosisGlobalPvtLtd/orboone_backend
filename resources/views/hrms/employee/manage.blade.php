@@ -1880,7 +1880,7 @@ if ($user) {
                                     @endif
 
                                     @if($doc->id && Route::has('hrms.documents.employee.download'))
-                                    <a href="{{ route('hrms.documents.employee.download', $doc->id) }}" class="btn-doc-action btn-doc-download" title="Download Document">
+                                    <a href="{{ route('documents.employee.download', $doc->id) }}" class="btn-doc-action btn-doc-download" title="Download Document">
                                         <i class="fas fa-download mr-1"></i> Download
                                     </a>
                                     @endif
@@ -1892,7 +1892,7 @@ if ($user) {
 
                                         <input type="file"
                                             name="file"
-                                            data-action="{{ route('hrms.documents.employee.upload_from_profile', [$employeeData->id, $documentTypeId]) }}"
+                                            data-action="{{ route('documents.employee.upload_from_profile', [$employeeData->id, $documentTypeId]) }}"
                                             class="js-ajax-doc-upload"
                                             accept=".pdf,.jpg,.jpeg,.png,.webp"
                                             required>
@@ -1900,10 +1900,10 @@ if ($user) {
                                     @endif
 
                                     @if($docStatus === 'pending' && $doc->id && auth()->user()->can('company_documents.manage'))
-                                    <button type="button" class="btn-doc-action btn-doc-verify js-ajax-doc-verify" data-action="{{ route('hrms.documents.employee.verify', $doc->id) }}" data-doc-title="{{ $docTitle }}" title="Verify Document">
+                                    <button type="button" class="btn-doc-action btn-doc-verify js-ajax-doc-verify" data-action="{{ route('documents.employee.verify', $doc->id) }}" data-doc-title="{{ $docTitle }}" title="Verify Document">
                                         <i class="fas fa-check-circle mr-1"></i> Verify
                                     </button>
-                                    <button type="button" class="btn-doc-action btn-doc-reject js-ajax-doc-reject" data-action="{{ route('hrms.documents.employee.reject', $doc->id) }}" data-doc-title="{{ $docTitle }}" title="Reject Document">
+                                    <button type="button" class="btn-doc-action btn-doc-reject js-ajax-doc-reject" data-action="{{ route('documents.employee.reject', $doc->id) }}" data-doc-title="{{ $docTitle }}" title="Reject Document">
                                         <i class="fas fa-times-circle mr-1"></i> Reject
                                     </button>
                                     @endif
@@ -1930,7 +1930,7 @@ if ($user) {
 
         @if($documentTypeId && Route::has('hrms.documents.employee.upload_from_profile'))
         <form id="docUploadForm{{ $loop->iteration }}"
-            action="{{ route('hrms.documents.employee.upload_from_profile', [$employeeData->id, $documentTypeId]) }}"
+            action="{{ route('documents.employee.upload_from_profile', [$employeeData->id, $documentTypeId]) }}"
             method="POST"
             enctype="multipart/form-data"
             class="d-none">

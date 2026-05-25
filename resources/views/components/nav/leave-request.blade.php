@@ -23,11 +23,13 @@
     @endif
 
     {{-- Sub-module: Leave Application (Employee/Both) --}}
+    @if (!auth()->user()->isAdmin() && auth()->user()->hasPermission('leave.my_requests.view'))
     <li>
         <a href="{{ route('leave-requests.index') }}" class="nav-link sub-nav-link {{ request()->routeIs('leave-requests.index') ? 'active' : '' }}">
             <i class="fas fa-paper-plane small mr-2"></i> Apply for Leave
         </a>
     </li>
+    @endif
 
     {{-- Sub-module: Leave Approval (Admin Only) --}}
     @if ($isAdmin)

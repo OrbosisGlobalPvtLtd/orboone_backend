@@ -2,6 +2,10 @@
 
 @section('page_title', 'Pending Profiles')
 
+@section('_head')
+@include('hrms.employee.partials.styles')
+@endsection
+
 @section('_content')
 <style>
     :root {
@@ -609,74 +613,213 @@
             width: 100%;
         }
     }
+
+    /* Modern Compact Metric Cards Overrides */
+    .eo-page.pp-page {
+        width: 100% !important;
+        overflow: hidden !important;
+        box-sizing: border-box !important;
+    }
+
+    .pp-page .eo-stat-grid {
+        display: grid !important;
+        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+        gap: 14px !important;
+        margin-bottom: 24px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .pp-page .eo-stat {
+        min-height: 110px !important;
+        padding: 18px !important;
+        border-radius: 20px !important;
+        background: #fff !important;
+        border: 1px solid var(--orb-border) !important;
+        box-shadow: 0 14px 35px rgba(16,24,40,.07) !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+        box-sizing: border-box !important;
+        transition: all 0.3s ease !important;
+    }
+
+    .pp-page .eo-stat:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 18px 45px rgba(16,24,40,.1) !important;
+    }
+
+    .pp-page .eo-stat.border-bottom-primary {
+        border-bottom: 4px solid var(--orb-primary) !important;
+    }
+    .pp-page .eo-stat.border-bottom-warning {
+        border-bottom: 4px solid #F79009 !important;
+    }
+    .pp-page .eo-stat.border-bottom-info {
+        border-bottom: 4px solid #15B79E !important;
+    }
+    .pp-page .eo-stat.border-bottom-success {
+        border-bottom: 4px solid #12B76A !important;
+    }
+    .pp-page .eo-stat.border-bottom-danger {
+        border-bottom: 4px solid #F04438 !important;
+    }
+
+    .pp-page .eo-stat-icon {
+        width: 44px !important;
+        height: 44px !important;
+        border-radius: 12px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 16px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .pp-page .eo-stat-icon.primary {
+        background: rgba(75, 0, 232, 0.08) !important;
+        color: var(--orb-primary) !important;
+    }
+    .pp-page .eo-stat-icon.warning {
+        background: rgba(247, 144, 9, 0.08) !important;
+        color: #F79009 !important;
+    }
+    .pp-page .eo-stat-icon.info {
+        background: rgba(21, 183, 158, 0.08) !important;
+        color: #15B79E !important;
+    }
+    .pp-page .eo-stat-icon.success {
+        background: rgba(18, 183, 106, 0.08) !important;
+        color: #12B76A !important;
+    }
+    .pp-page .eo-stat-icon.danger {
+        background: rgba(240, 68, 56, 0.08) !important;
+        color: #F04438 !important;
+    }
+
+    .pp-page .eo-stat-label {
+        margin: 0 0 4px 0 !important;
+        font-size: 11px !important;
+        font-weight: 800 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        color: var(--orb-muted) !important;
+        line-height: 1.2 !important;
+    }
+
+    .pp-page .eo-stat-value {
+        margin: 0 !important;
+        font-size: 24px !important;
+        font-weight: 900 !important;
+        color: var(--orb-text) !important;
+        line-height: 1 !important;
+    }
+
+    @media (max-width: 1400px) {
+        .pp-page .eo-stat {
+            padding: 14px 12px !important;
+        }
+        .pp-page .eo-stat-value {
+            font-size: 20px !important;
+        }
+    }
+
+    @media (max-width: 1200px) {
+        .pp-page .eo-stat-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        }
+    }
+
+    @media (max-width: 992px) {
+        .pp-page .eo-stat-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .pp-page .eo-stat-grid {
+            grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+        }
+    }
 </style>
 
-<div class="pp-page">
-    <div class="pp-container">
+<div class="eo-page pp-page">
+    <div class="eo-container">
 
         @if (session('success'))
-        <div class="alert alert-success rounded-4">{{ session('success') }}</div>
+        <div class="alert alert-success border-0 shadow-sm mb-3" style="border-radius:14px;font-weight:800;">
+            <i class="fas fa-check-circle mr-2"></i>{{ session('success') }}
+        </div>
         @endif
 
         @if (session('error'))
-        <div class="alert alert-danger rounded-4">{{ session('error') }}</div>
+        <div class="alert alert-danger border-0 shadow-sm mb-3" style="border-radius:14px;font-weight:800;">
+            <i class="fas fa-exclamation-circle mr-2"></i>{{ session('error') }}
+        </div>
         @endif
 
-        <div class="pp-header">
-            <div>
-                <h3 class="pp-title">Profile Review Management</h3>
-                <p class="pp-subtitle">Pending, submitted and rejected profiles appear here. Approved profiles move to
-                    Employee Directory.</p>
+        <div class="orb-page-header">
+            <div class="orb-page-header-content">
+                <div class="orb-page-kicker">
+                    <i class="fas fa-user-clock"></i> HRMS &bull; Review
+                </div>
+                <h1 class="orb-page-title">Profile Review Management</h1>
+                <p class="orb-page-subtitle">Pending, submitted and rejected profiles appear here. Approved profiles move to Employee Directory.</p>
             </div>
 
-            <div class="pp-header-actions">
+            <div class="orb-page-actions">
                 @if (Route::has('hrms.employees.index'))
-                <a href="{{ route('hrms.employees.index') }}" class="pp-btn pp-btn-light">
+                <a href="{{ route('hrms.employees.index') }}" class="orb-btn-light">
                     <i class="fas fa-users"></i> Employee Directory
                 </a>
                 @endif
-                <div class="pp-chip"><i class="fas fa-lock mr-1"></i> Approved profiles are hidden</div>
+                <div class="orb-btn-light" style="pointer-events: none; opacity: 0.85;"><i class="fas fa-lock mr-1"></i> Approved profiles are hidden</div>
             </div>
         </div>
 
-        <div class="pp-stats">
-            <div class="pp-stat">
-                <div class="pp-stat-icon"><i class="fas fa-users"></i></div>
+        <div class="eo-stat-grid">
+            <div class="eo-stat border-bottom-primary">
+                <div class="eo-stat-icon primary"><i class="fas fa-users"></i></div>
                 <div>
-                    <h4>{{ $total ?? 0 }}</h4><small>Total Active</small>
+                    <p class="eo-stat-label">Total Active</p>
+                    <h3 class="eo-stat-value">{{ $total ?? 0 }}</h3>
                 </div>
             </div>
-            <div class="pp-stat">
-                <div class="pp-stat-icon"><i class="fas fa-clock"></i></div>
+            <div class="eo-stat border-bottom-warning">
+                <div class="eo-stat-icon warning"><i class="fas fa-clock"></i></div>
                 <div>
-                    <h4>{{ $pending ?? 0 }}</h4><small>Pending</small>
+                    <p class="eo-stat-label">Pending</p>
+                    <h3 class="eo-stat-value">{{ $pending ?? 0 }}</h3>
                 </div>
             </div>
-            <div class="pp-stat">
-                <div class="pp-stat-icon"><i class="fas fa-paper-plane"></i></div>
+            <div class="eo-stat border-bottom-info">
+                <div class="eo-stat-icon info"><i class="fas fa-paper-plane"></i></div>
                 <div>
-                    <h4>{{ $submitted ?? 0 }}</h4><small>Submitted</small>
+                    <p class="eo-stat-label">Submitted</p>
+                    <h3 class="eo-stat-value">{{ $submitted ?? 0 }}</h3>
                 </div>
             </div>
-            <div class="pp-stat">
-                <div class="pp-stat-icon"><i class="fas fa-check-circle"></i></div>
+            <div class="eo-stat border-bottom-success">
+                <div class="eo-stat-icon success"><i class="fas fa-check-circle"></i></div>
                 <div>
-                    <h4>{{ $approved ?? 0 }}</h4><small>Approved</small>
+                    <p class="eo-stat-label">Approved</p>
+                    <h3 class="eo-stat-value">{{ $approved ?? 0 }}</h3>
                 </div>
             </div>
-            <div class="pp-stat">
-                <div class="pp-stat-icon"><i class="fas fa-times-circle"></i></div>
+            <div class="eo-stat border-bottom-danger">
+                <div class="eo-stat-icon danger"><i class="fas fa-times-circle"></i></div>
                 <div>
-                    <h4>{{ $rejected ?? 0 }}</h4><small>Rejected</small>
+                    <p class="eo-stat-label">Rejected</p>
+                    <h3 class="eo-stat-value">{{ $rejected ?? 0 }}</h3>
                 </div>
             </div>
         </div>
 
-        <div class="pp-card">
-            <div class="pp-card-head">
+        <div class="orb-table-card">
+            <div class="orb-table-toolbar">
                 <div>
-                    <h5 class="pp-card-title">Employee Profiles</h5>
-                    <p class="pp-card-sub">Approve completed profiles or reject with reason for correction.</p>
+                    <h5 class="pp-card-title m-0" style="font-size:18px; font-weight:900; color:var(--orb-text);">Employee Profiles</h5>
+                    <p class="pp-card-sub m-0 mt-1" style="font-size:13px; color:var(--orb-muted);">Approve completed profiles or reject with reason for correction.</p>
                 </div>
             </div>
 

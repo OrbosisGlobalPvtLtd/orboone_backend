@@ -887,30 +887,39 @@
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         if (window.jQuery && $.fn.DataTable) {
-            $('.js-leave-approval-datatable').DataTable({
-                pageLength: 25,
-                scrollX: true,
-                autoWidth: false,
-                language: {
-                    emptyTable: '<div class="py-4"><i class="fas fa-folder-open fa-3x mb-3 text-muted opacity-50"></i><br>No records found</div>',
-                    loadingRecords: '<div class="spinner-border text-primary" role="status"><span class="sr-only">Loading...</span></div>'
-                },
-                dom: "<'row'<'col-sm-12 col-md-4'l><'col-sm-12 col-md-4 text-center'B><'col-sm-12 col-md-4'f>>" +
-                     "<'row'<'col-sm-12'tr>>" +
-                     "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
-                buttons: [
-                    { extend: 'excel', className: 'btn btn-light border shadow-sm d-none' },
-                    { extend: 'csv', className: 'btn btn-light border shadow-sm d-none' },
-                    { extend: 'pdf', className: 'btn btn-light border shadow-sm d-none' },
-                    { extend: 'print', className: 'btn btn-light border shadow-sm d-none' }
-                ],
-                columnDefs: [
-                    { targets: 0, width: "60px", orderable: false, searchable: false }, // S.No
-                    { targets: 6, width: "130px" }, // Status
-                    { targets: 7, width: "190px", orderable: false, searchable: false } // Actions
-                ],
-                drawCallback: function() {
-                    $('.dataTables_paginate > .pagination').addClass('pagination-rounded justify-content-end mb-0');
+            // Set error mode to throw/none to prevent ugly browser alert boxes
+            $.fn.dataTable.ext.errMode = 'none';
+
+            $('.js-leave-approval-datatable').each(function() {
+                var $table = $(this);
+                // Only initialize DataTable if the table is not empty (no td with colspan, and has rows)
+                if ($table.find('tbody tr').length > 0 && $table.find('tbody td[colspan]').length === 0) {
+                    $table.DataTable({
+                        pageLength: 25,
+                        scrollX: true,
+                        autoWidth: false,
+                        language: {
+                            emptyTable: '<div class="py-4"><i class="fas fa-folder-open fa-3x mb-3 text-muted opacity-50"></i><br>No records found</div>',
+                            loadingRecords: '<div class="spinner-border text-primary" role="status"><span class="sr-only">Loading...</span></div>'
+                        },
+                        dom: "<'row'<'col-sm-12 col-md-4'l><'col-sm-12 col-md-4 text-center'B><'col-sm-12 col-md-4'f>>" +
+                             "<'row'<'col-sm-12'tr>>" +
+                             "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+                        buttons: [
+                            { extend: 'excel', className: 'btn btn-light border shadow-sm d-none' },
+                            { extend: 'csv', className: 'btn btn-light border shadow-sm d-none' },
+                            { extend: 'pdf', className: 'btn btn-light border shadow-sm d-none' },
+                            { extend: 'print', className: 'btn btn-light border shadow-sm d-none' }
+                        ],
+                        columnDefs: [
+                            { targets: 0, width: "60px", orderable: false, searchable: false }, // S.No
+                            { targets: 6, width: "130px" }, // Status
+                            { targets: 7, width: "190px", orderable: false, searchable: false } // Actions
+                        ],
+                        drawCallback: function() {
+                            $('.dataTables_paginate > .pagination').addClass('pagination-rounded justify-content-end mb-0');
+                        }
+                    });
                 }
             });
         }
@@ -921,17 +930,21 @@
     });
 
     function triggerLeaveExport(type) {
-        let table = $('.js-leave-approval-datatable').DataTable();
+        if ($.fn.DataTable.isDataTable('.js-leave-approval-datatable')) {
+            let table = $('.js-leave-approval-datatable').DataTable();
 
-        let buttons = {
-            csv: '.buttons-csv',
-            excel: '.buttons-excel',
-            pdf: '.buttons-pdf',
-            print: '.buttons-print'
-        };
+            let buttons = {
+                csv: '.buttons-csv',
+                excel: '.buttons-excel',
+                pdf: '.buttons-pdf',
+                print: '.buttons-print'
+            };
 
-        if (buttons[type]) {
-            table.button(buttons[type]).trigger();
+            if (buttons[type]) {
+                table.button(buttons[type]).trigger();
+            }
+        } else {
+            alert('No records available to export.');
         }
     }
 </script>

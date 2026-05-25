@@ -1,6 +1,6 @@
 @extends('layouts.admin', ['accesses' => $accesses, 'active' => 'employee-policies'])
 
-@section('page_title', 'Company Policies')
+@section('page_title', 'Company Documents & Policies')
 
 @section('_head')
 @include('settings.partials.styles')
@@ -157,16 +157,16 @@
         <div class="set-header">
             <div>
                 <div class="set-kicker">
-                    <i class="fas fa-shield-alt"></i> EMPLOYEE &bull; POLICIES
+                    <i class="fas fa-folder-open"></i> EMPLOYEE &bull; DOCUMENTS &amp; POLICIES
                 </div>
-                <h1 class="set-title">Company Policies</h1>
-                <p class="set-subtitle">Access updated HR guidelines, employee handbooks, and operational compliance documents.</p>
+                <h1 class="set-title">Company Documents &amp; Policies</h1>
+                <p class="set-subtitle">Access organizational handbooks, forms, guidelines, templates, and HR policies.</p>
             </div>
             
             <!-- Compact Right-Aligned Search Box -->
             <div class="header-search-wrap">
                 <i class="fas fa-search header-search-icon"></i>
-                <input type="text" id="policySearchInput" class="header-search-input" placeholder="Search policies...">
+                <input type="text" id="policySearchInput" class="header-search-input" placeholder="Search documents & policies...">
             </div>
         </div>
 
@@ -219,9 +219,9 @@
                         <div class="mb-4 d-inline-flex align-items-center justify-content-center" style="background: rgba(75, 0, 232, 0.05); border-radius: 50%; width: 80px; height: 80px; color: var(--set-primary); font-size: 28px;">
                             <i class="fas fa-folder-open"></i>
                         </div>
-                        <h4 class="font-weight-black" style="color: var(--set-text); font-size: 18px;">Policy Repository is Empty</h4>
+                        <h4 class="font-weight-black" style="color: var(--set-text); font-size: 18px;">Repository is Empty</h4>
                         <p class="text-muted mt-2" style="max-width: 360px; margin: 0 auto; font-size: 13px; line-height: 1.5;">
-                            There are currently no active policies uploaded. Please contact HR for assistance.
+                            There are currently no active documents or policies uploaded. Please contact HR for assistance.
                         </p>
                     </div>
                 </div>
@@ -233,9 +233,9 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center" style="background: rgba(239, 68, 68, 0.05); border-radius: 50%; width: 80px; height: 80px; color: #EF4444; font-size: 28px;">
                         <i class="fas fa-search-minus"></i>
                     </div>
-                    <h4 class="font-weight-black" style="color: var(--set-text); font-size: 18px;">No Matching Policies</h4>
+                    <h4 class="font-weight-black" style="color: var(--set-text); font-size: 18px;">No Matching Documents or Policies</h4>
                     <p class="text-muted mt-2" style="max-width: 360px; margin: 0 auto; font-size: 13px; line-height: 1.5;">
-                        We couldn't find any policies matching your search term. Try checking for spelling mistakes or simplified terms.
+                        We couldn't find any documents or policies matching your search term. Try checking for spelling mistakes or simplified terms.
                     </p>
                 </div>
             </div>

@@ -5,258 +5,232 @@
 @section('_head')
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap4.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap4.min.css">
+@include('hrms.employee.partials.styles')
 @endsection
 
 @section('_content')
 <style>
-    :root {
-        --orb-primary: #4B00E8;
-        --orb-secondary: #8600EE;
-        --orb-bg: #F6F7FB;
-        --orb-card: #FFFFFF;
-        --orb-border: #E7EAF3;
-        --orb-text: #101828;
-        --orb-muted: #667085;
-        --orb-soft: #F4F2FF;
-        --orb-success: #12B76A;
-        --orb-warning: #F79009;
-        --orb-danger: #EC4E74;
-        --orb-info: #06AED4;
-        --orb-shadow: 0 14px 35px rgba(16, 24, 40, .07);
-    }
-
-    .eo-page {
-        min-height: calc(100vh - 90px);
-        padding: 16px 10px 30px;
-        background:
-            radial-gradient(circle at top left, rgba(75, 0, 232, .08), transparent 30%),
-            var(--orb-bg);
-    }
-
-    .eo-container {
-        max-width: 1420px;
-        margin: 0 auto;
-    }
-
-    .eo-hero {
-        background: linear-gradient(135deg, #4B00E8, #8600EE);
-        border-radius: 24px;
-        padding: 20px;
-        color: #fff;
-        box-shadow: 0 18px 45px rgba(75, 0, 232, .22);
-        margin-bottom: 14px;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .eo-hero:before {
-        content: "";
-        position: absolute;
-        width: 260px;
-        height: 260px;
-        border-radius: 999px;
-        background: rgba(255, 255, 255, .12);
-        right: -90px;
-        top: -120px;
-    }
-
-    .eo-hero-content {
-        position: relative;
-        z-index: 1;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-    }
-
-    .eo-title {
-        margin: 0;
-        font-size: 26px;
-        font-weight: 900;
-        letter-spacing: -.5px;
-    }
-
-    .eo-subtitle {
-        margin: 5px 0 0;
-        color: rgba(255, 255, 255, .82);
-        font-size: 13px;
-        font-weight: 650;
-    }
-
-    .eo-hero-actions {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-    }
-
-    .eo-btn {
-        min-height: 40px;
-        border-radius: 13px;
-        padding: 9px 14px;
-        font-size: 13px;
-        font-weight: 900;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        border: 1px solid transparent;
-        text-decoration: none !important;
-        cursor: pointer;
-        white-space: nowrap;
-    }
-
-    .eo-btn-primary {
-        color: #fff !important;
-        background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary));
-        box-shadow: 0 10px 22px rgba(75, 0, 232, .16);
-    }
-
-    .eo-btn-white {
-        color: var(--orb-primary) !important;
-        background: #fff;
-        border-color: rgba(255, 255, 255, .45);
-    }
-
-    .eo-btn-light {
-        background: #fff;
-        color: var(--orb-text);
-        border-color: var(--orb-border);
-    }
-
-    .eo-btn-warning {
-        background: #FFF7E8;
-        color: #B54708 !important;
-        border-color: #FEDF89;
-    }
-
+    /* 1. Metric card grid & card overrides */
     .eo-stat-grid {
-        display: grid;
-        grid-template-columns: repeat(5, 1fr);
-        gap: 12px;
-        margin-bottom: 14px;
+        display: grid !important;
+        grid-template-columns: repeat(5, minmax(170px, 1fr)) !important;
+        gap: 12px !important;
+        margin-bottom: 24px !important;
     }
 
     .eo-stat {
-        background: #fff;
-        border: 1px solid var(--orb-border);
-        border-radius: 20px;
-        box-shadow: var(--orb-shadow);
-        padding: 14px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
+        background: #fff !important;
+        border-radius: 18px !important;
+        border: 1px solid var(--orb-border, #E7EAF3) !important;
+        padding: 12px 16px !important; /* Reduced padding slightly */
+        box-shadow: 0 10px 24px rgba(16, 24, 40, .045) !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important; /* Reduced gap slightly */
+        transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+        min-height: 72px !important; /* Reduced height slightly */
     }
 
     .eo-stat-icon {
-        width: 42px;
-        height: 42px;
-        border-radius: 15px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 16px;
-        flex: 0 0 auto;
-    }
-
-    .eo-stat-icon.primary {
-        background: #F4F2FF;
-        color: var(--orb-primary);
-    }
-
-    .eo-stat-icon.success {
-        background: rgba(18, 183, 106, .10);
-        color: var(--orb-success);
-    }
-
-    .eo-stat-icon.warning {
-        background: rgba(247, 144, 9, .12);
-        color: var(--orb-warning);
-    }
-
-    .eo-stat-icon.info {
-        background: rgba(6, 174, 212, .10);
-        color: var(--orb-info);
-    }
-
-    .eo-stat-icon.danger {
-        background: rgba(236, 78, 116, .10);
-        color: var(--orb-danger);
-    }
-
-    .eo-stat-label {
-        margin: 0;
-        font-size: 11px;
-        color: var(--orb-muted);
-        font-weight: 900;
-        text-transform: uppercase;
-        letter-spacing: .4px;
+        width: 38px !important; /* Reduced icon size slightly */
+        height: 38px !important;
+        border-radius: 10px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 16px !important;
+        flex-shrink: 0 !important;
     }
 
     .eo-stat-value {
-        margin: 2px 0 0;
-        font-size: 20px;
-        color: var(--orb-text);
-        font-weight: 950;
+        font-size: 18px !important; /* Reduced slightly */
+        font-weight: 900 !important;
+        color: var(--orb-text, #101828) !important;
+        margin: 0 !important;
+        letter-spacing: -.5px !important;
     }
 
-    .eo-card {
-        background: #fff;
-        border: 1px solid var(--orb-border);
-        border-radius: 22px;
-        box-shadow: var(--orb-shadow);
-        overflow: hidden;
+    .eo-stat-label {
+        font-size: 10px !important; /* Reduced slightly */
+        font-weight: 800 !important;
+        text-transform: uppercase !important;
+        color: var(--orb-muted, #667085) !important;
+        margin: 0 0 2px 0 !important;
+        letter-spacing: .5px !important;
     }
 
-    .eo-filter-inside {
-        padding: 15px 16px;
-        border-bottom: 1px solid var(--orb-border);
-        background: #FCFCFD;
+    /* Media query responsiveness for Metric Card Grid */
+    @media (max-width: 1400px) {
+        .eo-stat-grid {
+            grid-template-columns: repeat(4, minmax(180px, 1fr)) !important;
+        }
+    }
+
+    @media (max-width: 991px) {
+        .eo-stat-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+        }
+    }
+
+    @media (max-width: 575px) {
+        .eo-stat-grid {
+            grid-template-columns: 1fr !important;
+        }
+    }
+
+    /* 2. Reset Button Custom Styling */
+    #resetFilter {
+        background: #fff !important;
+        border: 1px solid #E7EAF3 !important;
+        color: #4B00E8 !important;
+        box-shadow: 0 8px 18px rgba(16, 24, 40, .06) !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 6px !important;
+        font-weight: 800 !important;
+        font-size: 13px !important;
+        height: 38px !important;
+        padding: 0 16px !important;
+        border-radius: 12px !important;
+        transition: all .2s ease !important;
+        cursor: pointer !important;
+    }
+
+    #resetFilter:hover {
+        background: #F4F2FF !important; /* Hover stays soft purple/gray */
+        color: #4B00E8 !important;
+        border-color: rgba(75, 0, 232, 0.2) !important;
+        transform: translateY(-1px) !important;
     }
 
     .eo-filter-grid {
-        display: grid;
-        grid-template-columns: 1.8fr 1fr 1fr 1fr 1fr auto;
-        gap: 10px;
-        align-items: end;
+        display: grid !important;
+        grid-template-columns: repeat(5, 1fr) !important;
+        gap: 12px !important;
+    }
+
+    @media (max-width: 1200px) {
+        .eo-filter-grid {
+            grid-template-columns: repeat(3, 1fr) !important;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .eo-filter-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+        }
+    }
+
+    @media (max-width: 575px) {
+        .eo-filter-grid {
+            grid-template-columns: 1fr !important;
+        }
+    }
+
+    .eo-field {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 6px !important;
     }
 
     .eo-field label {
-        display: block;
-        margin: 0 0 6px;
-        color: var(--orb-muted);
-        font-size: 11px;
-        font-weight: 900;
-        text-transform: uppercase;
-        letter-spacing: .4px;
+        font-size: 11px !important;
+        font-weight: 800 !important;
+        text-transform: uppercase !important;
+        color: var(--orb-muted, #667085) !important;
+        margin: 0 !important;
+        letter-spacing: .4px !important;
     }
 
     .eo-control {
-        width: 100%;
-        height: 42px;
-        border-radius: 13px !important;
-        border: 1px solid var(--orb-border) !important;
-        background: #F9FAFB !important;
-        color: var(--orb-text) !important;
-        font-size: 13px;
-        font-weight: 750;
-        padding: 8px 12px;
-        outline: none;
+        height: 38px !important;
+        border: 1px solid #DDE3EE !important;
+        border-radius: 12px !important;
+        padding: 8px 12px !important;
+        font-size: 13px !important;
+        font-weight: 650 !important;
+        color: var(--orb-text, #101828) !important;
+        background: #fff !important;
+        outline: none !important;
+        transition: all .2s !important;
+        width: 100% !important;
     }
 
     .eo-control:focus {
-        border-color: rgba(75, 0, 232, .45) !important;
-        background: #fff !important;
-        box-shadow: 0 0 0 4px rgba(75, 0, 232, .08) !important;
+        border-color: var(--orb-secondary, #8600EE) !important;
+        box-shadow: 0 0 0 4px rgba(134, 0, 238, .08) !important;
     }
 
-    .eo-table-toolbar {
-        padding: 14px 16px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        border-bottom: 1px solid var(--orb-border);
-        background: #fff;
+    select.eo-control {
+        cursor: pointer !important;
+        padding-right: 28px !important;
+        appearance: none !important;
+        background: url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5 7.5L10 12.5L15 7.5' stroke='%23667085' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 12px center #fff !important;
+    }
+
+    .orb-table-card {
+        background: #fff !important;
+        border: 1px solid var(--orb-border, #E7EAF3) !important;
+        border-radius: 22px !important;
+        box-shadow: var(--orb-shadow, 0 10px 28px rgba(16, 24, 40, .06)) !important;
+        overflow: hidden !important;
+        margin-bottom: 24px !important;
+    }
+
+    .orb-table-head {
+        padding: 20px 24px !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        border-bottom: 1px solid var(--orb-border, #E7EAF3) !important;
+        background: #fff !important;
+    }
+
+    .orb-table-title-wrap {
+        display: flex !important;
+        align-items: center !important;
+        gap: 15px !important;
+    }
+
+    .orb-table-icon {
+        width: 42px !important;
+        height: 42px !important;
+        background: #F4F2FF !important;
+        color: #4B00E8 !important;
+        border-radius: 12px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 18px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .orb-table-title-wrap h3 {
+        margin: 0 !important;
+        font-size: 18px !important;
+        font-weight: 800 !important;
+        color: var(--orb-text, #101828) !important;
+    }
+
+    .orb-table-title-wrap p {
+        margin: 4px 0 0 0 !important;
+        font-size: 13px !important;
+        color: var(--orb-muted, #667085) !important;
+        font-weight: 500 !important;
+    }
+
+    .orb-table-tools {
+        padding: 16px 24px !important;
+        background: #fff !important;
+        border-bottom: 1px solid var(--orb-border, #E7EAF3) !important;
+    }
+
+    .orb-table-wrap {
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        overflow-x: auto !important;
     }
 
     #employeesTable {
@@ -482,111 +456,261 @@
         font-weight: 950 !important;
         padding: 8px 12px !important;
         box-shadow: 0 6px 16px rgba(16, 24, 40, .045) !important;
-    }
-
     .dt-buttons .btn:hover {
         color: #fff !important;
         border-color: var(--orb-primary) !important;
-        background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary)) !important;
+        background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary)) !important    }
+
+    #employeesTable {
+        width: 100% !important;
+        margin: 0 !important;
+        border-collapse: collapse !important;
+    }
+
+    #employeesTable thead th {
+        background: #F8FAFC !important;
+        color: #475467 !important;
+        font-size: 11px !important;
+        font-weight: 900 !important;
+        text-transform: uppercase !important;
+        letter-spacing: .5px !important;
+        border-bottom: 1px solid var(--orb-border, #E7EAF3) !important;
+        padding: 14px 18px !important;
+        border-top: 0 !important;
+        white-space: nowrap !important;
+    }
+
+    #employeesTable tbody td {
+        padding: 14px 18px !important;
+        font-size: 13px !important;
+        font-weight: 650 !important;
+        color: var(--orb-text, #101828) !important;
+        border-bottom: 1px solid #F2F4F7 !important;
+        vertical-align: middle !important;
+        white-space: nowrap !important;
+    }
+
+    #employeesTable tbody tr:hover td {
+        background: #FDFDFF !important;
     }
 
     .eo-table-footer {
-        padding: 14px 16px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        background: #fff;
+        padding: 16px 24px !important;
+        border-top: 1px solid var(--orb-border, #E7EAF3) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 12px !important;
+        flex-wrap: wrap !important;
+        background: #fff !important;
     }
 
-    .page-link {
-        border-radius: 10px !important;
-        margin: 0 3px;
-        border: 1px solid var(--orb-border);
-        color: var(--orb-primary);
-        font-weight: 850;
+    #employeeLengthBox select {
+        height: 34px !important;
+        border: 1px solid var(--orb-border, #E7EAF3) !important;
+        border-radius: 8px !important;
+        padding: 2px 8px !important;
+        font-size: 12px !important;
+        font-weight: 700 !important;
+        outline: none !important;
+    }
+
+    #employeeLengthBox {
+        font-size: 13px !important;
+        font-weight: 700 !important;
+        color: var(--orb-muted, #667085) !important;
+    }
+
+    #employeeExportButtons {
+        display: flex !important;
+        gap: 6px !important;
+    }
+
+    #employeeExportButtons .btn {
+        height: 34px !important;
+        padding: 0 12px !important;
+        font-size: 12px !important;
+        font-weight: 800 !important;
+        border: 1px solid var(--orb-border, #E7EAF3) !important;
+        background: #fff !important;
+        color: var(--orb-text, #101828) !important;
+        border-radius: 8px !important;
+        transition: all .2s !important;
+    }
+
+    #employeeExportButtons .btn:hover {
+        background: var(--orb-soft, #F4F2FF) !important;
+        color: var(--orb-primary, #4B00E8) !important;
+        border-color: rgba(75, 0, 232, 0.2) !important;
+    }
+
+    #employeeInfoBox {
+        font-size: 13px !important;
+        font-weight: 750 !important;
+        color: var(--orb-muted, #667085) !important;
+    }
+
+    .pagination {
+        margin: 0 !important;
+        gap: 4px !important;
+    }
+
+    .page-item .page-link {
+        border-radius: 8px !important;
+        border: 1px solid var(--orb-border, #E7EAF3) !important;
+        color: var(--orb-text, #101828) !important;
+        font-size: 13px !important;
+        font-weight: 800 !important;
+        padding: 6px 12px !important;
+        min-width: 32px !important;
+        text-align: center !important;
     }
 
     .page-item.active .page-link {
-        background: var(--orb-primary);
-        border-color: var(--orb-primary);
+        background: linear-gradient(135deg, var(--orb-primary, #4B00E8), var(--orb-secondary, #8600EE)) !important;
+        border-color: transparent !important;
+        color: #fff !important;
     }
 
-    @media(max-width:1200px) {
-        .eo-stat-grid {
-            grid-template-columns: repeat(3, 1fr);
-        }
-
-        .eo-filter-grid {
-            grid-template-columns: 1fr 1fr 1fr;
-        }
+    .page-item:not(.active) .page-link:hover {
+        background: var(--orb-soft, #F4F2FF) !important;
+        color: var(--orb-primary, #4B00E8) !important;
+        border-color: rgba(75, 0, 232, .2) !important;
     }
 
-    @media(max-width:991px) {
-        .eo-hero-content {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-
-        .eo-table-toolbar,
-        .eo-table-footer {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-
-        #employeeExportButtons,
-        #employeeLengthBox,
-        #employeeInfoBox,
-        #employeePaginationBox {
-            width: 100%;
-        }
+    .emp-profile-cell {
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+        min-width: 240px !important;
     }
 
-    @media(max-width:576px) {
-        .eo-page {
-            padding: 12px 8px 22px;
-        }
+    .emp-avatar {
+        width: 40px !important;
+        height: 40px !important;
+        border-radius: 12px !important;
+        background: var(--orb-soft, #F4F2FF) !important;
+        color: var(--orb-primary, #4B00E8) !important;
+        font-size: 15px !important;
+        font-weight: 900 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex-shrink: 0 !important;
+        overflow: hidden !important;
+    }
 
-        .eo-hero {
-            border-radius: 18px;
-            padding: 16px;
-        }
+    .emp-avatar img {
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover !important;
+    }
 
-        .eo-title {
-            font-size: 22px;
-        }
+    .emp-info {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 2px !important;
+    }
 
-        .eo-stat-grid {
-            grid-template-columns: 1fr;
-        }
+    .emp-name-link {
+        font-size: 14px !important;
+        font-weight: 900 !important;
+        color: var(--orb-text, #101828) !important;
+        text-decoration: none !important;
+        transition: color .2s !important;
+    }
 
-        .eo-filter-grid {
-            grid-template-columns: 1fr;
-        }
+    .emp-name-link:hover {
+        color: var(--orb-primary, #4B00E8) !important;
+    }
 
-        .eo-btn {
-            width: 100%;
-        }
+    .emp-code {
+        font-size: 11px !important;
+        font-weight: 750 !important;
+        color: var(--orb-muted, #667085) !important;
+    }
 
-        .eo-hero-actions {
-            width: 100%;
-        }
+    .emp-sub-info {
+        font-size: 11px !important;
+        font-weight: 600 !important;
+        color: var(--orb-muted, #667085) !important;
+        margin-top: 1px !important;
+    }
 
-        #employeeExportButtons {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 8px;
-        }
+    .eo-pill {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 5px !important;
+        border-radius: 999px !important;
+        padding: 4px 10px !important;
+        font-size: 11px !important;
+        font-weight: 800 !important;
+        white-space: nowrap !important;
+    }
 
-        .dt-buttons {
-            display: contents;
-        }
+    .eo-dot {
+        width: 6px !important;
+        height: 6px !important;
+        border-radius: 50% !important;
+        display: inline-block !important;
+    }
 
-        .dt-buttons .btn {
-            width: 100%;
-            font-size: 11px !important;
-            padding: 8px 6px !important;
-        }
+    .eo-pill-default { background: #F2F4F7 !important; color: #344054 !important; }
+    .eo-pill-default .eo-dot { background: #475467 !important; }
+
+    .eo-pill-active { background: #ECFDF5 !important; color: #027A48 !important; }
+    .eo-pill-active .eo-dot { background: #12B76A !important; }
+
+    .eo-pill-pending { background: #FFFAEB !important; color: #B54708 !important; }
+    .eo-pill-pending .eo-dot { background: #F79009 !important; }
+
+    .eo-pill-danger { background: #FEF2F2 !important; color: #B42318 !important; }
+    .eo-pill-danger .eo-dot { background: #F04438 !important; }
+
+    .eo-pill-wfh { background: #EFF8FF !important; color: #175CD3 !important; }
+    .eo-pill-wfh .eo-dot { background: #2E90FA !important; }
+
+    .eo-pill-wfo { background: #FDF2FA !important; color: #C11574 !important; }
+    .eo-pill-wfo .eo-dot { background: #EE46BC !important; }
+
+    .eo-pill-hybrid { background: #F4F3FF !important; color: #5925DC !important; }
+    .eo-pill-hybrid .eo-dot { background: #84ADFF !important; }
+
+    .eo-pill-blue { background: #F0F9FF !important; color: #026AA2 !important; }
+    .eo-pill-blue .eo-dot { background: #06AED4 !important; }
+
+    .action-btn-group {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+    }
+
+    .btn-act {
+        width: 32px !important;
+        height: 32px !important;
+        border-radius: 9px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        color: #475467 !important;
+        background: #F8FAFC !important;
+        border: 1px solid var(--orb-border, #E7EAF3) !important;
+        font-size: 13px !important;
+        transition: all .2s !important;
+        text-decoration: none !important;
+    }
+
+    .btn-act:hover {
+        background: var(--orb-soft, #F4F2FF) !important;
+        color: var(--orb-primary, #4B00E8) !important;
+        border-color: rgba(75, 0, 232, .2) !important;
+        transform: translateY(-1px) !important;
+    }
+
+    .btn-act.danger:hover {
+        background: #FEF2F2 !important;
+        color: #DC2626 !important;
+        border-color: rgba(220, 38, 38, .2) !important;
     }
 </style>
 
@@ -630,7 +754,7 @@
         @endphp
 
         <div class="eo-stat-grid">
-            <div class="eo-stat">
+            <div class="eo-stat border-bottom-primary">
                 <div class="eo-stat-icon primary"><i class="fas fa-users"></i></div>
                 <div>
                     <p class="eo-stat-label">Total Employees</p>
@@ -638,7 +762,7 @@
                 </div>
             </div>
 
-            <div class="eo-stat">
+            <div class="eo-stat border-bottom-success">
                 <div class="eo-stat-icon success"><i class="fas fa-user-check"></i></div>
                 <div>
                     <p class="eo-stat-label">Active</p>
@@ -646,7 +770,7 @@
                 </div>
             </div>
 
-            <div class="eo-stat">
+            <div class="eo-stat border-bottom-warning">
                 <div class="eo-stat-icon warning"><i class="fas fa-hourglass-half"></i></div>
                 <div>
                     <p class="eo-stat-label">Probation</p>
@@ -654,7 +778,7 @@
                 </div>
             </div>
 
-            <div class="eo-stat">
+            <div class="eo-stat border-bottom-info">
                 <div class="eo-stat-icon info"><i class="fas fa-laptop-house"></i></div>
                 <div>
                     <p class="eo-stat-label">WFH / Hybrid</p>
@@ -662,7 +786,7 @@
                 </div>
             </div>
 
-            <div class="eo-stat">
+            <div class="eo-stat border-bottom-danger">
                 <div class="eo-stat-icon danger"><i class="fas fa-file-signature"></i></div>
                 <div>
                     <p class="eo-stat-label">Docs Pending</p>
@@ -684,17 +808,35 @@
         @endif
 
         <div class="orb-table-card">
-            <div class="orb-table-toolbar d-block">
-                <div class="eo-filter-grid mb-3">
+            <!-- 2. Fix table card structure: Table Card Header -->
+            <div class="orb-table-head d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <!-- LEFT: circular icon, title, subtitle -->
+                <div class="orb-table-title-wrap">
+                    <span class="orb-table-icon"><i class="fas fa-users-cog"></i></span>
+                    <div>
+                        <h3>Employee Directory List</h3>
+                        <p>Manage active employees, verification status, work mode, and HR lifecycle.</p>
+                    </div>
+                </div>
+                <!-- RIGHT: Reset button -->
+                <div class="d-flex align-items-center">
+                    <button type="button" id="resetFilter" class="orb-btn-light py-2 px-3 h-auto">
+                        <i class="fas fa-undo mr-1"></i> Reset
+                    </button>
+                </div>
+            </div>
+
+            <!-- 3. Filters: attached under table header -->
+            <div class="orb-table-tools border-bottom">
+                <div class="eo-filter-grid">
                     <div class="eo-field">
                         <label>Search</label>
-                        <input type="text" id="filterSearch" class="eo-control"
-                            placeholder="Search name, employee code, email, phone...">
+                        <input type="text" id="filterSearch" class="eo-control" style="height: 38px !important;" placeholder="Search name, code, email, phone...">
                     </div>
 
                     <div class="eo-field">
                         <label>Department</label>
-                        <select id="filterDepartment" class="eo-control">
+                        <select id="filterDepartment" class="eo-control" style="height: 38px !important;">
                             <option value="">All Departments</option>
                             @foreach ($departments ?? [] as $dept)
                             <option value="{{ $dept->id }}">{{ $dept->name ?? '-' }}</option>
@@ -704,7 +846,7 @@
 
                     <div class="eo-field">
                         <label>Work Mode</label>
-                        <select id="filterWorkMode" class="eo-control">
+                        <select id="filterWorkMode" class="eo-control" style="height: 38px !important;">
                             <option value="">All Mode</option>
                             <option value="wfo">WFO</option>
                             <option value="wfh">WFH</option>
@@ -714,7 +856,7 @@
 
                     <div class="eo-field">
                         <label>Employment Type</label>
-                        <select id="filterEmploymentType" class="eo-control">
+                        <select id="filterEmploymentType" class="eo-control" style="height: 38px !important;">
                             <option value="">All Type</option>
                             <option value="full_time">Full Time</option>
                             <option value="intern">Intern</option>
@@ -725,7 +867,7 @@
 
                     <div class="eo-field">
                         <label>Status</label>
-                        <select id="filterStatus" class="eo-control">
+                        <select id="filterStatus" class="eo-control" style="height: 38px !important;">
                             <option value="">All Status</option>
                             <option value="active">Active</option>
                             <option value="probation">Probation</option>
@@ -734,23 +876,17 @@
                             <option value="inactive">Inactive</option>
                         </select>
                     </div>
-
-                    <div class="eo-field">
-                        <label>&nbsp;</label>
-                        <button type="button" id="resetFilter" class="orb-btn-light py-2 px-3 h-auto" style="min-height: 42px !important; border-radius: 13px !important;">
-                            <i class="fas fa-undo"></i>
-                            Reset
-                        </button>
-                    </div>
-                </div>
-
-                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 pt-3 border-top">
-                    <div id="employeeLengthBox"></div>
-                    <div id="employeeExportButtons"></div>
                 </div>
             </div>
 
-            <div class="orb-table-wrapper table-responsive">
+            <!-- 4. DataTable toolbar: single clean row, length LEFT, export RIGHT -->
+            <div class="orb-table-tools py-2 px-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div id="employeeLengthBox" class="d-flex align-items-center"></div>
+                <div id="employeeExportButtons" class="d-flex align-items-center gap-1"></div>
+            </div>
+
+            <!-- 6. Table wrapper -->
+            <div class="orb-table-wrap table-responsive">
                 <table id="employeesTable" class="table table-hover">
                     <thead>
                         <tr>
@@ -772,6 +908,7 @@
                 </table>
             </div>
 
+            <!-- Pagination below table -->
             <div class="eo-table-footer">
                 <div id="employeeInfoBox"></div>
                 <div id="employeePaginationBox"></div>

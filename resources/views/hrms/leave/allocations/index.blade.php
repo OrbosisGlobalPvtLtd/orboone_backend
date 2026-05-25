@@ -715,17 +715,21 @@
 
 <script>
     function triggerLeaveExport(type) {
-        let table = $('.js-datatable').DataTable();
+        if ($.fn.DataTable.isDataTable('.js-datatable')) {
+            let table = $('.js-datatable').DataTable();
 
-        let buttons = {
-            csv: '.buttons-csv',
-            excel: '.buttons-excel',
-            pdf: '.buttons-pdf',
-            print: '.buttons-print'
-        };
+            let buttons = {
+                csv: '.buttons-csv',
+                excel: '.buttons-excel',
+                pdf: '.buttons-pdf',
+                print: '.buttons-print'
+            };
 
-        if (buttons[type]) {
-            table.button(buttons[type]).trigger();
+            if (buttons[type]) {
+                table.button(buttons[type]).trigger();
+            }
+        } else {
+            alert('No records available to export.');
         }
     }
 </script>

@@ -2,6 +2,10 @@
 
 @section('page_title', 'Employee Onboarding')
 
+@section('_head')
+@include('hrms.employee.partials.styles')
+@endsection
+
 @section('_content')
 <style>
     :root {
@@ -394,12 +398,17 @@
 <div class="eo-page">
     <div class="eo-container">
 
-        <div class="eo-header">
-            <div>
-                <h1 class="eo-title">Employee Onboarding</h1>
-                <p class="eo-subtitle">Create employee account, lifecycle, department, role and salary setup.</p>
+        <div class="orb-page-header">
+            <div class="orb-page-header-content">
+                <div class="orb-page-kicker">
+                    <i class="fas fa-user-plus"></i> HRMS &bull; Onboarding
+                </div>
+                <h1 class="orb-page-title">Employee Onboarding</h1>
+                <p class="orb-page-subtitle">Create employee account, lifecycle, department, role and salary setup.</p>
             </div>
-            <div class="eo-code-badge">Code: {{ $nextEmployeeCode }}</div>
+            <div class="orb-page-actions">
+                <div class="orb-btn-light" style="pointer-events: none; opacity: 0.95;"><i class="fas fa-fingerprint mr-1"></i> Code: {{ $nextEmployeeCode }}</div>
+            </div>
         </div>
 
         @if (session('error'))

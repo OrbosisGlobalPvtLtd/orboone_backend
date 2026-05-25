@@ -32,7 +32,7 @@
     {{-- Sub-module: HR Policies / Company Doc (Both) --}}
     <li>
         <a href="{{ route('documents.policies.self') }}" class="nav-link sub-nav-link {{ request()->routeIs('documents.policies.self') ? 'active' : '' }}">
-            <i class="fas fa-file-contract small mr-2 text-info"></i> Company Documents
+            <i class="fas fa-folder-open small mr-2 text-info"></i> Company Documents & Policies
         </a>
     </li>
 </ul>

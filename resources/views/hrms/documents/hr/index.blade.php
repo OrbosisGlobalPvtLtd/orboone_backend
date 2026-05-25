@@ -394,7 +394,7 @@
                 <i class="fas fa-file-alt mr-1"></i> Document Types
             </a>
             <a href="{{ route('documents.policies.index') }}" class="btn btn-sm" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: #fff; font-weight: 700; border-radius: 8px; padding: 6px 16px; backdrop-filter: blur(4px);">
-                <i class="fas fa-building mr-1"></i> Company Documents
+                <i class="fas fa-folder-open mr-1"></i> Company Documents & Policies
             </a>
             <button onclick="$('.buttons-excel').click()" class="btn btn-sm shadow-sm" style="background: #fff; color: var(--dm-primary); font-weight: 800; border-radius: 8px; padding: 6px 16px;">
                 <i class="fas fa-file-export mr-1"></i> Export Report

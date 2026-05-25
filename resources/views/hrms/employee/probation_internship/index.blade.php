@@ -12,12 +12,12 @@
         --orb-text: #101828;
         --orb-muted: #667085;
         --orb-soft: #F4F2FF;
-        --orb-shadow: 0 10px 28px rgba(16, 24, 40, .06);
+        --orb-shadow: 0 14px 35px rgba(16, 24, 40, .07);
     }
 
     .eo-page {
         min-height: calc(100vh - 90px);
-        padding: 16px 10px 30px;
+        padding: 24px 20px 30px;
         background: var(--orb-bg);
     }
 
@@ -26,43 +26,96 @@
         margin: 0 auto;
     }
 
-    .eo-header,
-    .eo-card {
-        background: #fff;
-        border: 1px solid var(--orb-border);
-        border-radius: 20px;
-        box-shadow: var(--orb-shadow);
-    }
-
-    .eo-header {
-        padding: 16px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        margin-bottom: 14px;
-    }
-
-    .eo-title {
-        margin: 0;
-        color: var(--orb-text);
-        font-size: 24px;
-        font-weight: 900;
-    }
-
-    .eo-subtitle {
-        margin: 4px 0 0;
-        color: var(--orb-muted);
-        font-size: 13px;
-        font-weight: 600;
-    }
-
-    .eo-card {
+    /* Premium Hero Header */
+    .eo-header-premium {
+        background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary));
+        border-radius: 26px;
+        padding: 32px 36px;
+        color: #fff;
+        margin-bottom: 24px;
+        box-shadow: 0 14px 35px rgba(75, 0, 232, 0.15);
+        position: relative;
         overflow: hidden;
     }
 
+    .eo-header-kicker {
+        font-size: 11px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: rgba(255, 255, 255, 0.85);
+        margin-bottom: 8px;
+    }
+
+    .eo-header-title {
+        font-size: 28px;
+        font-weight: 950;
+        margin: 0 0 8px 0;
+        color: #fff;
+    }
+
+    .eo-header-subtitle {
+        font-size: 14px;
+        font-weight: 650;
+        color: rgba(255, 255, 255, 0.85);
+        margin: 0;
+        max-width: 700px;
+    }
+
+    .eo-card {
+        background: #fff;
+        border: 1px solid var(--orb-border);
+        border-radius: 22px;
+        box-shadow: var(--orb-shadow);
+        overflow: hidden;
+        margin-bottom: 24px;
+    }
+
+    /* Card Header Premium */
+    .eo-card-header-premium {
+        padding: 24px 28px;
+        border-bottom: 1px solid var(--orb-border);
+        background: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .eo-card-header-left {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .eo-header-icon-circle {
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        background: var(--orb-soft);
+        color: var(--orb-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+    }
+
+    .eo-card-title-premium {
+        font-size: 18px;
+        font-weight: 950;
+        color: var(--orb-text);
+        margin: 0;
+    }
+
+    .eo-card-subtitle-premium {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--orb-muted);
+        margin: 4px 0 0 0;
+    }
+
+    /* Filters Layout */
     .eo-filter-inside {
-        padding: 14px 16px;
+        padding: 20px 28px;
         border-bottom: 1px solid var(--orb-border);
         background: #FCFCFD;
     }
@@ -70,7 +123,7 @@
     .eo-filter-grid {
         display: grid;
         grid-template-columns: 1.6fr 1fr 1fr 1fr auto;
-        gap: 10px;
+        gap: 14px;
         align-items: end;
     }
 
@@ -82,21 +135,22 @@
         font-size: 11px;
         font-weight: 900;
         text-transform: uppercase;
-        letter-spacing: .4px;
+        letter-spacing: .5px;
     }
 
     .eo-control,
     .eo-date {
         width: 100%;
-        height: 42px;
-        border-radius: 12px !important;
+        height: 40px;
+        border-radius: 10px !important;
         border: 1px solid var(--orb-border) !important;
-        background: #F9FAFB !important;
+        background: #fff !important;
         color: var(--orb-text) !important;
         font-size: 13px;
         font-weight: 700;
         padding: 8px 12px;
         outline: none;
+        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
     }
 
     .eo-control:focus,
@@ -112,9 +166,9 @@
     }
 
     .eo-btn {
-        min-height: 42px;
-        border-radius: 12px;
-        padding: 9px 14px;
+        min-height: 40px;
+        border-radius: 10px;
+        padding: 9px 16px;
         font-size: 13px;
         font-weight: 800;
         display: inline-flex;
@@ -129,13 +183,90 @@
 
     .eo-btn-light {
         background: #fff;
-        color: var(--orb-text);
+        color: #344054;
         border-color: var(--orb-border);
+        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
     }
 
-    .eo-table-wrap {
+    .eo-btn-light:hover {
+        background: #F8FAFC;
+        color: var(--orb-text);
+        border-color: #D0D5DD;
+    }
+
+    /* Custom Toolbar for Exports/Length */
+    .eo-toolbar {
+        padding: 14px 28px;
+        border-bottom: 1px solid var(--orb-border);
+        background: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .eo-toolbar-left {
+        display: flex;
+        align-items: center;
+    }
+
+    .eo-entries-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .eo-entries-label {
+        font-size: 12px;
+        color: var(--orb-muted);
+        font-weight: 600;
+    }
+
+    .eo-entries-select {
+        height: 32px;
+        border-radius: 8px;
+        border: 1px solid var(--orb-border);
+        padding: 0 8px;
+        font-size: 13px;
+        font-weight: 700;
+        background: #fff;
+        color: var(--orb-text);
+        outline: none;
+    }
+
+    .eo-toolbar-right {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .eo-export-btn {
+        height: 32px;
+        padding: 0 12px;
+        border-radius: 9px;
+        font-size: 12px;
+        font-weight: 700;
+        background: #fff;
+        color: #344054;
+        border: 1px solid var(--orb-border);
+        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: 0.15s ease;
+    }
+
+    .eo-export-btn:hover {
+        background: #F8FAFC;
+        color: var(--orb-text);
+        border-color: #D0D5DD;
+    }
+
+    /* Horizontal Table Scroll ONLY for the table */
+    .lifecycle-table-wrap {
         width: 100%;
         overflow-x: auto;
+        overflow-y: hidden;
         -webkit-overflow-scrolling: touch;
     }
 
@@ -153,7 +284,7 @@
         letter-spacing: .45px;
         border-bottom: 1px solid var(--orb-border);
         white-space: nowrap;
-        padding: 12px 14px;
+        padding: 16px 20px;
     }
 
     .eo-table td {
@@ -162,7 +293,7 @@
         font-size: 13px;
         font-weight: 650;
         border-bottom: 1px solid #F1F3F8;
-        padding: 12px 14px;
+        padding: 16px 20px;
     }
 
     .eo-table tbody tr:hover {
@@ -232,7 +363,7 @@
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        padding: 6px 9px;
+        padding: 6px 10px;
         border-radius: 999px;
         font-size: 11px;
         font-weight: 900;
@@ -345,6 +476,7 @@
         margin: 0;
         font-size: 18px;
         font-weight: 950;
+        color: #fff;
     }
 
     .eo-modal-subtitle {
@@ -460,20 +592,104 @@
         background: #DC2626;
     }
 
+    /* Custom DataTables Premium Styling */
+    .dataTables_wrapper {
+        position: relative;
+        width: 100%;
+    }
+
+    .orb-dt-toolbar,
+    .orb-dt-footer,
+    .dataTables_info,
+    .dataTables_paginate {
+        overflow: visible !important;
+    }
+
+    .dataTables_wrapper .row,
+    .dataTables_wrapper .dataTables_paginate {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    .orb-dt-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 28px;
+        border-top: 1px solid var(--orb-border);
+        background: #fff;
+        flex-wrap: wrap;
+    }
+
+    .dataTables_paginate {
+        padding: 0 !important;
+        display: flex;
+        align-items: center;
+    }
+
+    .dataTables_info {
+        padding: 0 !important;
+        font-size: 13px;
+        color: var(--orb-muted);
+        font-weight: 600;
+    }
+
+    .dataTables_wrapper .dataTables_paginate .paginate_button {
+        padding: 6px 12px !important;
+        margin-left: 4px !important;
+        border: 1px solid var(--orb-border) !important;
+        border-radius: 8px !important;
+        background: #fff !important;
+        color: #344054 !important;
+        font-weight: 700 !important;
+        font-size: 13px !important;
+        cursor: pointer !important;
+        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05) !important;
+        display: inline-block !important;
+        transition: 0.15s ease;
+    }
+
+    .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+        background: #F8FAFC !important;
+        color: var(--orb-text) !important;
+        border-color: #D0D5DD !important;
+    }
+
+    .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+        background: var(--orb-primary) !important;
+        color: #fff !important;
+        border-color: var(--orb-primary) !important;
+    }
+
+    .dataTables_wrapper .dataTables_paginate .paginate_button.disabled,
+    .dataTables_wrapper .dataTables_paginate .paginate_button.disabled:hover {
+        background: #F9FAFB !important;
+        color: #D0D5DD !important;
+        border-color: #EAECF0 !important;
+        cursor: not-allowed !important;
+    }
+
     @media(max-width:1100px) {
         .eo-filter-grid {
-            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-columns: repeat(3, 1fr);
         }
     }
 
     @media(max-width:991px) {
-        .eo-header {
-            flex-direction: column;
-            align-items: flex-start;
+        .eo-filter-grid {
+            grid-template-columns: repeat(2, 1fr);
         }
 
-        .eo-filter-grid {
-            grid-template-columns: 1fr 1fr;
+        .eo-toolbar {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .eo-toolbar-right {
+            width: 100%;
+            justify-content: flex-start;
         }
     }
 
@@ -482,17 +698,22 @@
             padding: 12px 8px 22px;
         }
 
-        .eo-header {
-            border-radius: 16px;
-            padding: 14px;
+        .eo-header-premium {
+            border-radius: 18px;
+            padding: 24px;
+            margin-bottom: 16px;
         }
 
-        .eo-title {
-            font-size: 21px;
+        .eo-header-title {
+            font-size: 22px;
         }
 
-        .eo-subtitle {
+        .eo-header-subtitle {
             font-size: 12px;
+        }
+
+        .eo-card-header-premium {
+            padding: 18px;
         }
 
         .eo-filter-grid {
@@ -504,7 +725,7 @@
         }
 
         .eo-filter-inside {
-            padding: 12px;
+            padding: 16px;
         }
 
         .eo-life-modal .modal-dialog {
@@ -520,12 +741,10 @@
 <div class="eo-page">
     <div class="eo-container">
 
-        <div class="eo-header">
-            <div>
-                <h1 class="eo-title">Probation / Internship</h1>
-                <p class="eo-subtitle">Track active probation, internships, extensions, conversion and permanent status.
-                </p>
-            </div>
+        <div class="eo-header-premium">
+            <div class="eo-header-kicker">HRMS • EMPLOYEE LIFECYCLE</div>
+            <h1 class="eo-header-title">Probation / Internship</h1>
+            <p class="eo-header-subtitle">Track active probation, internships, extensions, conversion and permanent status.</p>
         </div>
 
         @if (session('success'))
@@ -547,6 +766,19 @@
         @endif
 
         <div class="eo-card">
+            <!-- Card Header Premium -->
+            <div class="eo-card-header-premium">
+                <div class="eo-card-header-left">
+                    <div class="eo-header-icon-circle">
+                        <i class="fas fa-history"></i>
+                    </div>
+                    <div>
+                        <h4 class="eo-card-title-premium">Probation & Internship List</h4>
+                        <p class="eo-card-subtitle-premium">Manage employee lifecycle stages, probation timelines, internships and conversion status.</p>
+                    </div>
+                </div>
+            </div>
+
             <div class="eo-filter-inside">
                 <div class="eo-filter-grid">
                     <div class="eo-field">
@@ -594,7 +826,30 @@
                 </div>
             </div>
 
-            <div class="eo-table-wrap">
+            <!-- Custom Premium Toolbar for exports and length menu -->
+            <div class="eo-toolbar">
+                <div class="eo-toolbar-left">
+                    <div class="eo-entries-wrapper">
+                        <span class="eo-entries-label">Show</span>
+                        <select id="customLengthMenu" class="eo-entries-select">
+                            <option value="10">10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                        <span class="eo-entries-label">entries</span>
+                    </div>
+                </div>
+
+                <div class="eo-toolbar-right">
+                    <button type="button" class="btn eo-export-btn js-export-csv" title="Export CSV"><i class="fas fa-file-csv mr-1"></i>CSV</button>
+                    <button type="button" class="btn eo-export-btn js-export-excel" title="Export Excel"><i class="fas fa-file-excel mr-1"></i>Excel</button>
+                    <button type="button" class="btn eo-export-btn js-export-pdf" title="Export PDF"><i class="fas fa-file-pdf mr-1"></i>PDF</button>
+                    <button type="button" class="btn eo-export-btn js-export-print" title="Print"><i class="fas fa-print mr-1"></i>Print</button>
+                </div>
+            </div>
+
+            <div class="lifecycle-table-wrap">
                 <table class="table table-hover eo-table" id="probationInternshipTable">
                     <thead>
                         <tr>
@@ -611,7 +866,7 @@
                     </thead>
 
                     <tbody>
-                        @forelse($employees as $employee)
+                        @foreach($employees as $employee)
                         @php
                         $stage = strtolower($employee->employee_stage ?? '');
                         $type = strtolower($employee->employment_type ?? '');
@@ -712,15 +967,7 @@
                                 </div>
                             </td>
                         </tr>
-                        @empty
-                        <tr id="serverEmptyRow">
-                            <td colspan="9" class="eo-empty">No probation or internship records found.</td>
-                        </tr>
-                        @endforelse
-
-                        <tr id="filterEmptyRow" style="display:none;">
-                            <td colspan="9" class="eo-empty">No matching probation or internship record found.</td>
-                        </tr>
+                        @endforeach
                     </tbody>
                 </table>
             </div>
@@ -984,6 +1231,21 @@
     </div>
 </div>
 
+<!-- DataTables CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap4.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap4.min.css">
+
+<!-- DataTables JS & Buttons Extensions -->
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap4.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap4.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const searchInput = document.getElementById('filterSearch');
@@ -991,36 +1253,127 @@
         const statusFilter = document.getElementById('filterStatus');
         const employmentTypeFilter = document.getElementById('filterEmploymentType');
         const resetBtn = document.getElementById('resetFilter');
-        const rows = document.querySelectorAll('#probationInternshipTable tbody tr[data-search]');
-        const filterEmptyRow = document.getElementById('filterEmptyRow');
 
         const urlParams = new URLSearchParams(window.location.search);
         const highlightEmployeeId = urlParams.get('highlight_employee');
 
-        function applyFilters() {
-            const search = (searchInput.value || '').toLowerCase().trim();
-            const department = (departmentFilter.value || '').toLowerCase().trim();
-            const status = (statusFilter.value || '').toLowerCase().trim();
-            const employmentType = (employmentTypeFilter.value || '').toLowerCase().trim();
+        // Debug check
+        const $table = $('#probationInternshipTable');
+        console.log('TH count:', $table.find('thead tr:first th').length);
+        $table.find('tbody tr').each(function(index) {
+            console.log('Row', index, 'TD count:', $(this).children('td').length);
+        });
 
-            let visibleCount = 0;
+        // Initialize DataTable
+        const table = $('#probationInternshipTable').DataTable({
+            dom: 't<"d-none"ip>', // Generate pagination & info in a hidden wrapper, then move them manually
+            pageLength: 10,
+            ordering: true,
+            order: [], // Disable initial sort to keep server order
+            columnDefs: [{
+                    orderable: false,
+                    targets: [8]
+                } // Actions column not sortable
+            ],
+            language: {
+                emptyTable: "No probation or internship records found."
+            },
+            buttons: [{
+                    extend: 'csv',
+                    className: 'd-none',
+                    exportOptions: {
+                        columns: [0, 1, 2, 3, 4, 5, 6, 7]
+                    }
+                },
+                {
+                    extend: 'excel',
+                    className: 'd-none',
+                    exportOptions: {
+                        columns: [0, 1, 2, 3, 4, 5, 6, 7]
+                    }
+                },
+                {
+                    extend: 'pdf',
+                    className: 'd-none',
+                    exportOptions: {
+                        columns: [0, 1, 2, 3, 4, 5, 6, 7]
+                    }
+                },
+                {
+                    extend: 'print',
+                    className: 'd-none',
+                    exportOptions: {
+                        columns: [0, 1, 2, 3, 4, 5, 6, 7]
+                    }
+                }
+            ],
+            initComplete: function () {
+                const api = this.api();
+                const $wrapper = $(api.table().container());
+                const $card = $('#probationInternshipTable').closest('.eo-card');
 
-            rows.forEach(function(row) {
-                const matchSearch = !search || (row.dataset.search || '').includes(search);
-                const matchDepartment = !department || (row.dataset.department || '') === department;
-                const matchStatus = !status || (row.dataset.status || '') === status;
-                const matchEmploymentType = !employmentType || (row.dataset.employmentType || '') ===
-                    employmentType;
+                let $footer = $card.find('.orb-dt-footer');
+                if (!$footer.length) {
+                    $footer = $('<div class="orb-dt-footer"></div>');
+                    $card.append($footer);
+                }
 
-                const show = matchSearch && matchDepartment && matchStatus && matchEmploymentType;
-                row.style.display = show ? '' : 'none';
-                if (show) visibleCount++;
-            });
-
-            if (filterEmptyRow) {
-                filterEmptyRow.style.display = rows.length > 0 && visibleCount === 0 ? '' : 'none';
+                $footer.empty();
+                
+                // Pluck the pagination and info and append to footer
+                const $info = $wrapper.find('.dataTables_info');
+                const $paginate = $wrapper.find('.dataTables_paginate');
+                
+                $footer.append($info);
+                $footer.append($paginate);
             }
+        });
+
+        // Custom search filtering pipeline
+        $.fn.dataTable.ext.search.push(
+            function(settings, data, dataIndex) {
+                const row = table.row(dataIndex).node();
+                if (!row) return true;
+
+                const search = (searchInput.value || '').toLowerCase().trim();
+                const department = (departmentFilter.value || '').toLowerCase().trim();
+                const status = (statusFilter.value || '').toLowerCase().trim();
+                const employmentType = (employmentTypeFilter.value || '').toLowerCase().trim();
+
+                const matchSearch = !search || (row.getAttribute('data-search') || '').includes(search);
+                const matchDepartment = !department || (row.getAttribute('data-department') || '') === department;
+                const matchStatus = !status || (row.getAttribute('data-status') || '') === status;
+                const matchEmploymentType = !employmentType || (row.getAttribute('data-employment-type') || '') === employmentType;
+
+                return matchSearch && matchDepartment && matchStatus && matchEmploymentType;
+            }
+        );
+
+        function applyFilters() {
+            table.draw();
         }
+
+        // Custom length menu binding
+        const customLength = document.getElementById('customLengthMenu');
+        if (customLength) {
+            customLength.addEventListener('change', function() {
+                table.page.len(parseInt(this.value)).draw();
+            });
+        }
+
+        // Bind export actions
+        $('.js-export-csv').on('click', function() {
+            table.button('.buttons-csv').trigger();
+        });
+        $('.js-export-excel').on('click', function() {
+            table.button('.buttons-excel').trigger();
+        });
+        $('.js-export-pdf').on('click', function() {
+            table.button('.buttons-pdf').trigger();
+        });
+        $('.js-export-print').on('click', function() {
+            table.button('.buttons-print').trigger();
+        });
 
         function highlightEmployeeFromNotification() {
             if (!highlightEmployeeId) return;

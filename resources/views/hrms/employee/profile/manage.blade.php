@@ -1061,9 +1061,21 @@ $rejectedDocs = $documents->where('verification_status', 'rejected')->count();
                             </div>
 
                             <div class="profile-info">
-                                <span class="profile-label">Experience</span>
+                                <span class="profile-label">Experience Type</span>
                                 @if($isEditMode)
-                                <input type="text" name="total_experience" class="form-control profile-edit-control"
+                                <select name="experience_type" id="view_experience_type" class="form-select profile-edit-control" onchange="toggleViewExperienceFields(this.value)">
+                                    <option value="fresher" {{ old('experience_type', $profile->experience_type ?? 'fresher') == 'fresher' ? 'selected' : '' }}>Fresher</option>
+                                    <option value="experienced" {{ old('experience_type', $profile->experience_type) == 'experienced' ? 'selected' : '' }}>Experienced</option>
+                                </select>
+                                @else
+                                <div class="profile-value {{ empty($profile->experience_type) ? 'muted' : '' }}">{{ !empty($profile->experience_type) ? ucfirst($profile->experience_type) : 'Fresher' }}</div>
+                                @endif
+                            </div>
+
+                            <div class="profile-info" id="view_total_experience_container">
+                                <span class="profile-label">Total Experience</span>
+                                @if($isEditMode)
+                                <input type="text" name="total_experience" id="view_total_experience" class="form-control profile-edit-control"
                                     value="{{ old('total_experience', $profile->total_experience ?? '') }}">
                                 @else
                                 <div class="profile-value {{ empty($profile->total_experience) ? 'muted' : '' }}">{{ $profile->total_experience ?? '-' }}</div>
@@ -1452,6 +1464,36 @@ $rejectedDocs = $documents->where('verification_status', 'rejected')->count();
             body.innerHTML = '';
             resetDialogClass();
         });
+
+        function toggleViewExperienceFields(value) {
+            const container = document.getElementById('view_total_experience_container');
+            const input = document.getElementById('view_total_experience');
+            if (value === 'fresher') {
+                if (container) container.style.display = 'none';
+                if (input) {
+                    input.removeAttribute('required');
+                    input.value = '0';
+                }
+            } else {
+                if (container) container.style.display = 'block';
+                if (input) {
+                    input.setAttribute('required', 'required');
+                    if (input.value === '0') input.value = '';
+                }
+            }
+        }
+        window.toggleViewExperienceFields = toggleViewExperienceFields;
+        
+        const expSelect = document.getElementById('view_experience_type');
+        if (expSelect) {
+            toggleViewExperienceFields(expSelect.value);
+        } else {
+            const currentExpType = '{{ strtolower($profile->experience_type ?? "fresher") }}';
+            if (currentExpType === 'fresher') {
+                const container = document.getElementById('view_total_experience_container');
+                if (container) container.style.display = 'none';
+            }
+        }
     });
 </script>
 @endsection

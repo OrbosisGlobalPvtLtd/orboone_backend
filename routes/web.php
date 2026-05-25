@@ -4,6 +4,7 @@ require __DIR__ . '/Web/hrms/employee-self.php';
 require __DIR__ . '/Web/hrms/organization.php';
 require __DIR__ . '/Web/hrms/asset.php';
 require __DIR__ . '/Web/hrms/document.php';
+require __DIR__ . '/Web/hrms/document_generation.php';
 require __DIR__ . '/Web/hrms/notification.php';
 require __DIR__ . '/Web/hrms/announcements.php';
 require __DIR__ . '/Web/hrms/recruitment.php';

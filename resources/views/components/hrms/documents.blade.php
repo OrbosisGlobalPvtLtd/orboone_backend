@@ -53,8 +53,8 @@
         @if ($canCompanyDocumentsView)
             <a href="{{ route('documents.policies.self') }}"
                class="sub-link {{ request()->routeIs('documents.policies.self') ? 'active' : '' }}">
-                <span class="sub-link-icon"><i class="fas fa-file-contract"></i></span>
-                <span class="sub-link-text">Company Documents</span>
+                <span class="sub-link-icon"><i class="fas fa-folder-open"></i></span>
+                <span class="sub-link-text">Company Documents & Policies</span>
             </a>
         @endif
 

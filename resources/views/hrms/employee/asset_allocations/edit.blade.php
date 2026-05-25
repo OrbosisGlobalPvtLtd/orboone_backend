@@ -1,55 +1,7 @@
 @extends('layouts.admin', ['accesses' => $accesses ?? [], 'active' => 'data'])
 
 @section('_content')
-<style>
-    :root {
-        --primary-orb: #1560ab;
-        --secondary-orb: #0099cc;
-    }
-
-    .custom-card {
-        border: none;
-        border-radius: 20px;
-        box-shadow: 0 15px 35px rgba(0,0,0,0.05);
-        background: white;
-        overflow: hidden;
-    }
-
-    .btn-orb {
-        background: linear-gradient(135deg, var(--primary-orb), var(--secondary-orb));
-        color: white !important;
-        border-radius: 50px;
-        padding: 10px 30px;
-        font-weight: 600;
-        border: none;
-        transition: all 0.3s;
-        box-shadow: 0 4px 15px rgba(21, 96, 171, 0.2);
-    }
-
-    .btn-orb:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(21, 96, 171, 0.3);
-    }
-
-.form-control {
-    border-radius: -175px;
-    padding: 9px 15px;
-    border: 1px solid #e3e6f0;
-    font-size: 0.9rem;
-}
-
-    .form-control:focus {
-        box-shadow: 0 0 0 0.2rem rgba(21, 96, 171, 0.25);
-        border-color: var(--primary-orb);
-    }
-
-    label {
-        font-weight: 600;
-        color: #4a5568;
-        font-size: 0.9rem;
-        margin-bottom: 8px;
-    }
-</style>
+@include('hrms.employee.partials.styles')
 
 <div class="container-fluid py-4 px-4">
     <!-- Page Header -->

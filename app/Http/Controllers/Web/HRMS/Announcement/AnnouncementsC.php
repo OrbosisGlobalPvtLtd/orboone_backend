@@ -329,6 +329,27 @@ class AnnouncementsC extends Controller
         return view('hrms.announcements.show', compact('announcement'));
     }
 
+    public function show(AnnouncementM $announcement)
+    {
+        if (!Auth::user()->hasPermission('announcements.view') && !Auth::user()->hasPermission('announcements.manage')) {
+            abort(403, 'Unauthorized access.');
+        }
+
+        $user = Auth::user();
+        $accesses = collect();
+        if (Schema::hasTable('role_menu_access')) {
+            $roleIds = $user->roles()->pluck('roles.id')->toArray();
+            if ($user->system_role_id) {
+                $roleIds[] = $user->system_role_id;
+            }
+            $accesses = DB::table('role_menu_access')
+                ->whereIn('role_id', array_unique($roleIds))
+                ->get();
+        }
+
+        return view('hrms.announcements.show', compact('announcement', 'accesses'));
+    }
+
     private function validated(Request $request, bool $update = false): array
     {
         $allowedTargetTypes = ['all', 'employee', 'admin', 'hr'];

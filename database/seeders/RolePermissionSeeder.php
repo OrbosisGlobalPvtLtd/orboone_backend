@@ -243,6 +243,7 @@ class RolePermissionSeeder extends Seeder
                 'announcements.view','announcements.create','announcements.edit','announcements.delete','announcements.publish','announcements.print',
                 'settings.profile.view','settings.profile.update','settings.policy_change_logs.view','settings.employee_policy_assignments.view','settings.employee_policy_assignments.manage','settings.notification_retention.manage',
                 'mobile_app_versions.view','mobile_app_versions.manage','mobile_app_versions.upload','mobile_app_versions.delete',
+                'document_generation.view','document_generation.template_create','document_generation.template_edit','document_generation.generate','document_generation.preview','document_generation.download','document_generation.email','document_generation.review','document_generation.delete',
             ],
             'hr_admin' => [
                 'dashboard.view',
@@ -254,6 +255,7 @@ class RolePermissionSeeder extends Seeder
                 'settings.profile.view','settings.profile.update','settings.policy_change_logs.view','settings.employee_policy_assignments.view','settings.employee_policy_assignments.manage','settings.notification_retention.manage',
                 'mobile_app_versions.view','mobile_app_versions.manage','mobile_app_versions.upload','mobile_app_versions.delete',
                 'employee_documents.view','company_documents.manage','documents_self.view','documents_self.upload','employee.view',
+                'document_generation.view','document_generation.template_create','document_generation.template_edit','document_generation.generate','document_generation.preview','document_generation.download','document_generation.email','document_generation.review','document_generation.delete',
             ],
             'manager' => [
                 'dashboard.view','employees.view','attendance.dashboard.view','attendance.my.view','attendance.regularization.view_own','attendance.regularization.view_team','attendance.regularization.create','attendance.regularization.approve','attendance.regularization.reject','attendance.monthly_report.view_own','attendance.monthly_report.view_team',

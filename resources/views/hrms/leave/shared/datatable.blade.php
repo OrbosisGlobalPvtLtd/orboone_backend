@@ -50,35 +50,47 @@ table.dataTable.dtr-inline.collapsed>tbody>tr>td.dtr-control:before, table.dataT
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         if (window.jQuery && $.fn.DataTable) {
-            $('.js-datatable').DataTable({
-                pageLength: 25,
-                responsive: true,
-                language: {
-                    emptyTable: '<div class="py-4"><i class="fas fa-folder-open fa-3x mb-3 text-muted opacity-50"></i><br>No records found</div>',
-                    loadingRecords: '<div class="spinner-border text-primary" role="status"><span class="sr-only">Loading...</span></div>'
-                },
-                dom: "<'row'<'col-sm-12 col-md-4'l><'col-sm-12 col-md-4 text-center'B><'col-sm-12 col-md-4'f>>" +
-                     "<'row'<'col-sm-12'tr>>" +
-                     "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
-                buttons: [
-                    { extend: 'excel', className: 'btn btn-light border shadow-sm' },
-                    { extend: 'csv', className: 'btn btn-light border shadow-sm' },
-                    { extend: 'pdf', className: 'btn btn-light border shadow-sm' },
-                    { extend: 'print', className: 'btn btn-light border shadow-sm' }
-                ],
-                drawCallback: function() {
-                    $('.dataTables_paginate > .pagination').addClass('pagination-rounded justify-content-end mb-0');
+            // Set error mode to throw/none to prevent ugly browser alert boxes
+            $.fn.dataTable.ext.errMode = 'none';
+
+            $('.js-datatable').each(function() {
+                var $table = $(this);
+                // Only initialize DataTable if the table is not empty (no td with colspan, and has rows)
+                if ($table.find('tbody tr').length > 0 && $table.find('tbody td[colspan]').length === 0) {
+                    $table.DataTable({
+                        pageLength: 25,
+                        responsive: true,
+                        language: {
+                            emptyTable: '<div class="py-4"><i class="fas fa-folder-open fa-3x mb-3 text-muted opacity-50"></i><br>No records found</div>',
+                            loadingRecords: '<div class="spinner-border text-primary" role="status"><span class="sr-only">Loading...</span></div>'
+                        },
+                        dom: "<'row'<'col-sm-12 col-md-4'l><'col-sm-12 col-md-4 text-center'B><'col-sm-12 col-md-4'f>>" +
+                             "<'row'<'col-sm-12'tr>>" +
+                             "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+                        buttons: [
+                            { extend: 'excel', className: 'btn btn-light border shadow-sm' },
+                            { extend: 'csv', className: 'btn btn-light border shadow-sm' },
+                            { extend: 'pdf', className: 'btn btn-light border shadow-sm' },
+                            { extend: 'print', className: 'btn btn-light border shadow-sm' }
+                        ],
+                        drawCallback: function() {
+                            $('.dataTables_paginate > .pagination').addClass('pagination-rounded justify-content-end mb-0');
+                        }
+                    });
                 }
             });
 
             // Auto-filter for dropdowns with class .auto-filter
             $('.auto-filter').on('change', function() {
                 var table = $('.js-datatable').DataTable();
-                var colIdx = $(this).data('column-index');
-                if (colIdx !== undefined) {
-                    table.column(colIdx).search($(this).val()).draw();
+                if ($.fn.DataTable.isDataTable(table)) {
+                    var colIdx = $(this).data('column-index');
+                    if (colIdx !== undefined) {
+                        table.column(colIdx).search($(this).val()).draw();
+                    } else {
+                        $(this).closest('form').submit();
+                    }
                 } else {
-                    // if it's a form, we might submit it or use custom logic
                     $(this).closest('form').submit();
                 }
             });
@@ -86,7 +98,9 @@ table.dataTable.dtr-inline.collapsed>tbody>tr>td.dtr-control:before, table.dataT
             // Reset filters
             $('.btn-reset-filters').on('click', function() {
                 var table = $('.js-datatable').DataTable();
-                table.search('').columns().search('').draw();
+                if ($.fn.DataTable.isDataTable(table)) {
+                    table.search('').columns().search('').draw();
+                }
                 $('.auto-filter').val('').trigger('change.select2'); // if using select2
             });
         }

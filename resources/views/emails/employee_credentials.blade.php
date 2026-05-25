@@ -1,341 +1,339 @@
+@php
+$loginUrl = rtrim(config('app.url'), '/') . '/login';
+@endphp
+
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Welcome to OrboOne HRMS</title>
+    <meta charset="UTF-8">
+    <title>Welcome to OrboOne</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<style>
-body{
-    margin:0;
-    padding:0;
-    background:#eef2f7;
-    font-family:Arial, Helvetica, sans-serif;
-    color:#1f2937;
-}
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #F5F7FC;
+            font-family: Arial, Helvetica, sans-serif;
+            color: #101828;
+        }
 
-.email-wrapper{
-    width:100%;
-    padding:28px 12px;
-    box-sizing:border-box;
-}
+        .wrapper {
+            width: 100%;
+            padding: 24px 10px;
+            box-sizing: border-box;
+        }
 
-.email-container{
-    width:100%;
-    max-width:680px;
-    margin:0 auto;
-    background:#ffffff;
-    border-radius:18px;
-    overflow:hidden;
-    box-shadow:0 18px 45px rgba(15,23,42,0.12);
-    border:1px solid #e5e7eb;
-}
+        .container {
+            max-width: 720px;
+            width: 100%;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 24px;
+            overflow: hidden;
+            border: 1px solid #E7EAF3;
+        }
 
-.header{
-    background:linear-gradient(135deg,#4B00E8,#1560ab,#8600EE);
-    padding:34px 28px;
-    text-align:center;
-}
+        .hero {
+            text-align: center;
+            padding: 32px 20px 36px;
+            background: linear-gradient(135deg, #2600A8 0%, #5B00E8 45%, #A100F2 100%);
+        }
 
-.logo-box{
-    width:82px;
-    height:82px;
-    margin:0 auto 14px;
-    background:#ffffff;
-    border-radius:22px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    box-shadow:0 12px 28px rgba(0,0,0,0.18);
-}
+        .logo-glass {
+            width: 190px;
+            height: 112px;
+            margin: 0 auto 22px;
+            border-radius: 28px;
+            background: rgba(255, 255, 255, .88);
+            border: 1px solid rgba(255, 255, 255, .95);
+            box-shadow: 0 16px 34px rgba(0, 0, 0, .20);
+            text-align: center;
+        }
 
-.logo-box img{
-    max-height:58px;
-    max-width:58px;
-}
+        .logo-glass img {
+            width: 160px;
+            max-width: 160px;
+            height: auto;
+            margin: 22px auto 0;
+            display: block;
+            border: 0;
+        }
 
-.header h1{
-    margin:0;
-    color:#ffffff;
-    font-size:26px;
-    font-weight:700;
-    letter-spacing:.2px;
-}
+        .hero h1 {
+            margin: 0;
+            font-size: 30px;
+            line-height: 1.2;
+            font-weight: 800;
+            color: #fff;
+        }
 
-.header p{
-    margin:8px 0 0;
-    color:rgba(255,255,255,.88);
-    font-size:14px;
-}
+        .hero p {
+            margin: 10px 0 0;
+            font-size: 14px;
+            line-height: 1.55;
+            color: rgba(255, 255, 255, .90);
+        }
 
-.content{
-    padding:34px 34px 30px;
-}
+        .content {
+            padding: 34px;
+        }
 
-.badge{
-    display:inline-block;
-    background:#f4f2ff;
-    color:#4B00E8;
-    border:1px solid #e6ddff;
-    padding:7px 13px;
-    border-radius:999px;
-    font-size:12px;
-    font-weight:700;
-    letter-spacing:.4px;
-    text-transform:uppercase;
-    margin-bottom:18px;
-}
+        .badge {
+            display: inline-block;
+            padding: 10px 16px;
+            border-radius: 999px;
+            background: #F4EDFF;
+            border: 1px solid #E4D4FF;
+            color: #4B00E8;
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .4px;
+            margin-bottom: 22px;
+        }
 
-.content h2{
-    margin:0 0 14px;
-    color:#101828;
-    font-size:24px;
-    line-height:1.35;
-}
+        h2 {
+            margin: 0 0 14px;
+            font-size: 28px;
+            line-height: 1.25;
+            color: #101828;
+        }
 
-.content p{
-    margin:0 0 14px;
-    font-size:15px;
-    line-height:1.7;
-    color:#556070;
-}
+        p {
+            margin: 0 0 14px;
+            font-size: 15px;
+            line-height: 1.75;
+            color: #596579;
+        }
 
-.employee-name{
-    color:#101828;
-    font-weight:700;
-}
+        .credentials {
+            margin: 26px 0 22px;
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid #D8C8FF;
+            background: #fff;
+        }
 
-.credential-card{
-    margin:26px 0;
-    border-radius:16px;
-    border:1px solid #e7eaf3;
-    background:linear-gradient(180deg,#ffffff,#fafbff);
-    box-shadow:0 10px 28px rgba(16,24,40,.07);
-    overflow:hidden;
-}
+        .credentials-head {
+            padding: 20px 22px;
+            background: linear-gradient(135deg, #F7F2FF, #FFF);
+            border-bottom: 1px solid #E6DAFF;
+        }
 
-.credential-title{
-    padding:18px 22px;
-    background:#f8f7ff;
-    border-bottom:1px solid #e7eaf3;
-}
+        .credentials-head h3 {
+            margin: 0;
+            font-size: 18px;
+            color: #101828;
+        }
 
-.credential-title h3{
-    margin:0;
-    color:#101828;
-    font-size:17px;
-}
+        .credentials-head p {
+            margin: 5px 0 0;
+            font-size: 13px;
+            color: #667085;
+        }
 
-.credential-title p{
-    margin:4px 0 0;
-    font-size:13px;
-    color:#667085;
-}
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
 
-.credential-table{
-    width:100%;
-    border-collapse:collapse;
-}
+        .info-table td {
+            padding: 17px 22px;
+            border-bottom: 1px solid #EEF0F6;
+            font-size: 14px;
+            vertical-align: middle;
+        }
 
-.credential-table td{
-    padding:16px 22px;
-    border-bottom:1px solid #eef0f5;
-    font-size:14px;
-    vertical-align:middle;
-}
+        .info-table tr:last-child td {
+            border-bottom: 0;
+        }
 
-.credential-table tr:last-child td{
-    border-bottom:none;
-}
+        .label {
+            width: 42%;
+            color: #667085;
+            font-weight: 700;
+        }
 
-.credential-label{
-    width:42%;
-    color:#667085;
-    font-weight:600;
-}
+        .value {
+            color: #101828;
+            font-weight: 800;
+            word-break: break-word;
+        }
 
-.credential-value{
-    color:#101828;
-    font-weight:700;
-    word-break:break-word;
-}
+        .password {
+            display: inline-block;
+            padding: 9px 14px;
+            border-radius: 11px;
+            background: #F1E8FF;
+            border: 1px solid #DECFFF;
+            color: #4B00E8;
+            font-weight: 800;
+        }
 
-.password-value{
-    color:#4B00E8;
-    background:#f4f2ff;
-    padding:8px 12px;
-    border-radius:8px;
-    display:inline-block;
-    letter-spacing:.3px;
-}
+        .note {
+            padding: 16px 18px;
+            border-radius: 16px;
+            background: #FFF8E8;
+            border: 1px solid #FFDFA8;
+            color: #7A4B00;
+            font-size: 14px;
+            line-height: 1.65;
+        }
 
-.security-note{
-    background:#fff8e6;
-    border:1px solid #ffe3a3;
-    color:#7a4b00;
-    padding:14px 16px;
-    border-radius:12px;
-    font-size:14px;
-    line-height:1.6;
-    margin-top:18px;
-}
+        .btn-wrap {
+            text-align: center;
+            margin-top: 30px;
+        }
 
-.btn-wrap{
-    text-align:center;
-    margin-top:28px;
-}
+        .btn {
+            display: inline-block;
+            padding: 15px 34px;
+            border-radius: 999px;
+            background: linear-gradient(135deg, #4B00E8, #8600EE);
+            color: #fff !important;
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: 800;
+        }
 
-.login-btn{
-    display:inline-block;
-    background:linear-gradient(135deg,#4B00E8,#1560ab);
-    color:#ffffff !important;
-    padding:14px 30px;
-    border-radius:10px;
-    text-decoration:none;
-    font-size:15px;
-    font-weight:700;
-    box-shadow:0 10px 22px rgba(75,0,232,.25);
-}
+        .help {
+            margin-top: 18px;
+            text-align: center;
+            font-size: 13px;
+            color: #7B8494;
+        }
 
-.help-text{
-    text-align:center;
-    margin-top:18px !important;
-    font-size:13px !important;
-    color:#7b8494 !important;
-}
+        .footer {
+            text-align: center;
+            padding: 24px;
+            background: #FAFBFF;
+            border-top: 1px solid #E7EAF3;
+        }
 
-.footer{
-    background:#f8fafc;
-    border-top:1px solid #e7eaf3;
-    text-align:center;
-    padding:22px 26px;
-}
+        .footer strong {
+            display: block;
+            font-size: 14px;
+            color: #101828;
+            margin-bottom: 6px;
+        }
 
-.footer strong{
-    color:#101828;
-    font-size:14px;
-}
+        .footer p {
+            margin: 0;
+            font-size: 12px;
+            line-height: 1.7;
+            color: #7B8494;
+        }
 
-.footer p{
-    margin:6px 0 0;
-    font-size:12px;
-    color:#7b8494;
-    line-height:1.6;
-}
+        @media only screen and (max-width:600px) {
+            .hero {
+                padding: 24px 14px 30px !important;
+            }
 
-@media only screen and (max-width:600px){
-    .content{
-        padding:26px 20px;
-    }
+            .logo-glass {
+                width: 160px !important;
+                height: 94px !important;
+                border-radius: 22px !important;
+                margin-bottom: 18px !important;
+                background: rgba(255, 255, 255, .92) !important;
+            }
 
-    .header{
-        padding:30px 20px;
-    }
+            .logo-glass img {
+                width: 132px !important;
+                max-width: 132px !important;
+                margin-top: 18px !important;
+            }
 
-    .credential-table td{
-        display:block;
-        width:100%;
-        padding:10px 18px;
-        box-sizing:border-box;
-    }
+            .hero h1 {
+                font-size: 23px !important;
+            }
 
-    .credential-label{
-        padding-bottom:3px !important;
-    }
-
-    .credential-value{
-        padding-top:3px !important;
-    }
-}
-</style>
+            .hero p {
+                font-size: 12px !important;
+            }
+        }
+    </style>
 </head>
 
 <body>
+    <div class="wrapper">
+        <div class="container">
 
-<div class="email-wrapper">
-    <div class="email-container">
-
-        <div class="header">
-            <div class="logo-box">
-                <img src="https://orbosis.in/public/images/Picsart_26-04-02_12-19-10-396.png" alt="Orbosis Logo">
-            </div>
-            <!-- <h1>OrboOne HRMS</h1> -->
-            <!-- <p>Powered by Orbosis Global Pvt, Ltd</p> -->
-        </div>
-
-        <div class="content">
-
-            <span class="badge">Employee Account Created</span>
-
-            <h2>Welcome to Orbosis Global Pvt, Ltd</h2>
-
-            <p>Hello <span class="employee-name">{{ $name }}</span>,</p>
-
-            <p>
-                We are pleased to welcome you to <strong>Orbosis Global Pvt, Ltd</strong>.
-                Your employee account has been successfully created on <strong>OrboOne HRMS</strong>.
-            </p>
-
-            <p>
-                Please use the credentials below to access your employee portal.
-            </p>
-
-            <div class="credential-card">
-
-                <div class="credential-title">
-                    <h3>Your Login Credentials</h3>
-                    <p>Use these details to securely access your OrboOne HRMS account.</p>
+            <div class="hero">
+                <div class="logo-glass">
+                    <img src="https://orbosis.in/public/images/Picsart_26-04-02_12-19-10-396.png" alt="Orbosis Logo">
                 </div>
 
-                <table class="credential-table">
-                    <tr>
-                        <td class="credential-label">Email Address</td>
-                        <td class="credential-value">{{ $email }}</td>
-                    </tr>
-
-                    <tr>
-                        <td class="credential-label">Employee Number</td>
-                        <td class="credential-value">{{ $empid }}</td>
-                    </tr>
-
-                    <tr>
-                        <td class="credential-label">Temporary Password</td>
-                        <td class="credential-value">
-                            <span class="password-value">{{ $password }}</span>
-                        </td>
-                    </tr>
-                </table>
-
+                <h1>Welcome to OrboOne HRMS</h1>
+                <p>
+                    Premium Human Resource Management System<br>
+                    Powered by Orbosis Global Pvt. Ltd.
+                </p>
             </div>
 
-            <div class="security-note">
-                For your account security, please change your password after your first login and do not share your credentials with anyone.
+            <div class="content">
+                <span class="badge">Employee Account Created</span>
+
+                <h2>Hello {{ $name }},</h2>
+
+                <p>
+                    Welcome to <strong>Orbosis Global Pvt. Ltd.</strong>.
+                    Your employee account has been created successfully on
+                    <strong>OrboOne HRMS</strong>.
+                </p>
+
+                <p>
+                    Please use the login credentials below to access your employee portal.
+                </p>
+
+                <div class="credentials">
+                    <div class="credentials-head">
+                        <h3>Your OrboOne Login Credentials</h3>
+                        <p>Use these details to securely access your HRMS account.</p>
+                    </div>
+
+                    <table class="info-table">
+                        <tr>
+                            <td class="label">Email Address</td>
+                            <td class="value">{{ $email }}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Employee Number</td>
+                            <td class="value">{{ $empid }}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Temporary Password</td>
+                            <td class="value">
+                                <span class="password">{{ $password }}</span>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div class="note">
+                    For security reasons, please change your password after your first login and do not share your credentials with anyone.
+                </div>
+
+                <div class="btn-wrap">
+                    <a href="{{ $loginUrl }}" class="btn">Login to OrboOne HRMS</a>
+                </div>
+
+                <div class="help">
+                    If you face any issue while logging in, please contact the HR department.
+                </div>
             </div>
 
-            <div class="btn-wrap">
-                @if(! empty($passwordSetupUrl))
-                    <a href="{{ $passwordSetupUrl }}" class="login-btn">Set Your Password</a>
-                @else
-                    <a href="{{ route('login') }}" class="login-btn">Login to OrboOne HRMS</a>
-                @endif
+            <div class="footer">
+                <strong>Orbosis Global Pvt. Ltd.</strong>
+                <p>
+                    © {{ date('Y') }} Orbosis Global Pvt. Ltd. All rights reserved.<br>
+                    OrboOne Human Resource Management System
+                </p>
             </div>
-
-            <p class="help-text">
-                If you face any issue while logging in, please contact the HR department.
-            </p>
 
         </div>
-
-        <div class="footer">
-            <strong>Orbosis Global Pvt, Ltd</strong>
-            <p>
-                © {{ date('Y') }} Orbosis Global Pvt, Ltd. All rights reserved.<br>
-                OrboOne Human Resource Management System
-            </p>
-        </div>
-
     </div>
-</div>
-
 </body>
+
 </html>

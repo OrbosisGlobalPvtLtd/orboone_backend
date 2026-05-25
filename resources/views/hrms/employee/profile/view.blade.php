@@ -2,6 +2,10 @@
 
 @section('page_title', 'View Employee Profile')
 
+@section('_head')
+@include('hrms.employee.partials.styles')
+@endsection
+
 @section('_content')
 <style>
     :root {
@@ -17,8 +21,11 @@
 
     .profile-page {
         min-height: calc(100vh - 90px);
-        padding: 16px 10px 32px;
+        padding: 24px 24px 32px !important;
         background: var(--orb-bg);
+        width: 100% !important;
+        overflow: hidden !important;
+        box-sizing: border-box !important;
     }
 
     .profile-container {
@@ -27,38 +34,39 @@
     }
 
     .profile-hero {
-        border-radius: 26px;
-        padding: 22px;
-        color: var(--orb-text);
-        background: #fff;
-        border: 1px solid rgba(75, 0, 232, .14);
-        box-shadow: var(--orb-shadow);
-        margin-bottom: 16px;
-        display: grid;
-        grid-template-columns: 1fr auto;
-        gap: 18px;
-        align-items: center;
+        border-radius: 26px !important;
+        padding: 28px !important;
+        color: #ffffff !important;
+        background: linear-gradient(135deg, #4B00E8, #8600EE) !important;
+        border: none !important;
+        box-shadow: 0 14px 35px rgba(75, 0, 232, 0.15) !important;
+        margin-bottom: 24px !important;
+        display: grid !important;
+        grid-template-columns: 1fr auto !important;
+        gap: 20px !important;
+        align-items: center !important;
     }
 
     .profile-main {
         display: flex;
         align-items: center;
-        gap: 16px;
+        gap: 20px;
     }
 
     .profile-avatar {
-        width: 92px;
-        height: 92px;
-        border-radius: 26px;
-        background: #F4F2FF;
-        border: 1px solid rgba(75, 0, 232, .16);
-        overflow: hidden;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--orb-primary);
-        font-size: 30px;
-        font-weight: 950;
+        width: 96px !important;
+        height: 96px !important;
+        border-radius: 26px !important;
+        background: rgba(255, 255, 255, 0.15) !important;
+        border: 2px solid #ffffff !important;
+        overflow: hidden !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        color: #ffffff !important;
+        font-size: 32px !important;
+        font-weight: 950 !important;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12) !important;
         flex: 0 0 auto;
     }
 
@@ -69,64 +77,75 @@
     }
 
     .profile-name {
-        margin: 0;
-        font-size: 1.45rem;
-        font-weight: 950;
-        color: var(--orb-text);
+        margin: 0 !important;
+        font-size: 1.65rem !important;
+        font-weight: 950 !important;
+        color: #ffffff !important;
+        letter-spacing: -0.5px !important;
     }
 
     .profile-meta {
-        margin-top: 6px;
-        color: var(--orb-muted);
-        font-size: .86rem;
-        font-weight: 700;
+        margin-top: 6px !important;
+        color: rgba(255, 255, 255, 0.85) !important;
+        font-size: 0.88rem !important;
+        font-weight: 700 !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+    }
+
+    .profile-meta i {
+        color: rgba(255, 255, 255, 0.75) !important;
     }
 
     .status-panel {
-        min-width: 270px;
-        background: #FCFCFF;
-        border: 1px solid rgba(75, 0, 232, .12);
-        border-radius: 22px;
-        padding: 14px;
+        min-width: 280px !important;
+        background: rgba(255, 255, 255, 0.08) !important;
+        border: 1px solid rgba(255, 255, 255, 0.18) !important;
+        backdrop-filter: blur(12px) !important;
+        border-radius: 22px !important;
+        padding: 18px !important;
+        box-sizing: border-box !important;
     }
 
     .status-label {
-        font-size: .72rem;
-        text-transform: uppercase;
-        letter-spacing: .4px;
-        font-weight: 900;
-        color: var(--orb-muted);
+        font-size: 0.75rem !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.8px !important;
+        font-weight: 900 !important;
+        color: rgba(255, 255, 255, 0.75) !important;
     }
 
     .status-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 7px;
-        padding: 8px 12px;
-        border-radius: 999px;
-        font-size: .78rem;
-        font-weight: 950;
-        margin-top: 8px;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 7px !important;
+        padding: 8px 14px !important;
+        border-radius: 999px !important;
+        font-size: 0.78rem !important;
+        font-weight: 950 !important;
+        margin-top: 8px !important;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05) !important;
     }
 
     .status-pending {
-        background: #FFF4D6;
-        color: #B54708;
+        background: #FEF3C7 !important;
+        color: #D97706 !important;
     }
 
     .status-submitted {
-        background: #E0F2FE;
-        color: #0369A1;
+        background: #DBEAFE !important;
+        color: #2563EB !important;
     }
 
     .status-approved {
-        background: #DCFCE7;
-        color: #166534;
+        background: #D1FAE5 !important;
+        color: #059669 !important;
     }
 
     .status-rejected {
-        background: #FEE2E2;
-        color: #991B1B;
+        background: #FEE2E2 !important;
+        color: #DC2626 !important;
     }
 
     .profile-actions {
@@ -154,14 +173,34 @@
     }
 
     .btn-soft {
-        background: #F4F6FB;
-        color: #111827 !important;
-        border: 1px solid #E5E7EB;
+        background: rgba(255, 255, 255, 0.15) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255, 255, 255, 0.25) !important;
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.05) !important;
+        backdrop-filter: blur(8px) !important;
+        transition: all 0.25s ease !important;
+    }
+
+    .btn-soft:hover {
+        background: rgba(255, 255, 255, 0.25) !important;
+        border-color: rgba(255, 255, 255, 0.35) !important;
+        color: #ffffff !important;
+        transform: translateY(-1px) !important;
     }
 
     .btn-orb {
-        background: linear-gradient(135deg, #4B00E8, #8600EE);
-        color: #fff !important;
+        background: #ffffff !important;
+        color: #4B00E8 !important;
+        border: none !important;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12) !important;
+        transition: all 0.25s ease !important;
+    }
+
+    .btn-orb:hover {
+        background: #f8fafc !important;
+        color: #3f00c8 !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18) !important;
     }
 
     .btn-successx {
@@ -175,95 +214,105 @@
     }
 
     .section-two-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 16px;
-        align-items: stretch;
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 20px !important;
+        align-items: start !important;
     }
 
     .profile-card {
-        background: #fff;
-        border: 1px solid var(--orb-border);
-        box-shadow: var(--orb-shadow);
-        border-radius: 22px;
-        overflow: hidden;
-        margin-bottom: 16px;
+        background: #ffffff !important;
+        border: 1px solid #E7EAF3 !important;
+        box-shadow: var(--orb-shadow) !important;
+        border-radius: 22px !important;
+        overflow: hidden !important;
+        margin-bottom: 20px !important;
+        transition: transform 0.3s ease, box-shadow 0.3s ease !important;
+    }
+
+    .profile-card:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 18px 45px rgba(16, 24, 40, 0.1) !important;
     }
 
     .profile-card-head {
-        padding: 15px 17px;
-        border-bottom: 1px solid #EEF1F6;
-        display: flex;
-        align-items: center;
-        gap: 11px;
-        background: linear-gradient(180deg, #fff, #FCFCFF);
+        padding: 20px 24px !important;
+        border-bottom: 1px solid #E7EAF3 !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+        background: #ffffff !important;
     }
 
     .profile-icon {
-        width: 42px;
-        height: 42px;
-        border-radius: 15px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--orb-primary);
-        background: var(--orb-soft);
+        width: 44px !important;
+        height: 44px !important;
+        border-radius: 50% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        color: #4B00E8 !important;
+        background: rgba(75, 0, 232, 0.06) !important;
+        font-size: 16px !important;
         flex: 0 0 auto;
     }
 
     .profile-card-head h5 {
-        margin: 0;
-        color: var(--orb-text);
-        font-size: .98rem;
-        font-weight: 950;
+        margin: 0 !important;
+        color: var(--orb-text) !important;
+        font-size: 1.05rem !important;
+        font-weight: 950 !important;
     }
 
     .profile-card-head p {
-        margin: 2px 0 0;
-        color: var(--orb-muted);
-        font-size: .75rem;
-        font-weight: 650;
+        margin: 3px 0 0 !important;
+        color: var(--orb-muted) !important;
+        font-size: 0.78rem !important;
+        font-weight: 650 !important;
     }
 
     .profile-card-body {
-        padding: 17px;
+        padding: 24px !important;
     }
 
     .info-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 14px !important;
     }
 
     .bank-grid {
-        display: grid;
-        grid-template-columns: repeat(5, 1fr);
-        gap: 12px;
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 14px !important;
     }
 
     .profile-info {
-        padding: 13px;
-        border: 1px solid #EEF1F6;
-        border-radius: 15px;
-        background: #FCFCFD;
-        min-height: 78px;
+        padding: 14px 16px !important;
+        border: 1px solid #E7EAF3 !important;
+        border-radius: 14px !important;
+        background: #FAFAFB !important;
+        min-height: 74px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        box-sizing: border-box !important;
     }
 
     .profile-label {
-        display: block;
-        color: var(--orb-muted);
-        font-size: .68rem;
-        font-weight: 950;
-        text-transform: uppercase;
-        letter-spacing: .4px;
-        margin-bottom: 6px;
+        display: block !important;
+        color: var(--orb-muted) !important;
+        font-size: 11px !important;
+        font-weight: 800 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        margin-bottom: 4px !important;
     }
 
     .profile-value {
-        color: var(--orb-text);
-        font-size: .84rem;
-        font-weight: 850;
-        word-break: break-word;
+        color: var(--orb-text) !important;
+        font-size: 13px !important;
+        font-weight: 900 !important;
     }
 
     .muted {
@@ -271,7 +320,7 @@
     }
 
     .wide {
-        grid-column: 1 / -1;
+        grid-column: 1 / -1 !important;
     }
 
     .profile-edit-control {
@@ -291,19 +340,25 @@
     }
 
     .file-link {
-        display: inline-flex;
-        align-items: center;
-        gap: 7px;
-        padding: 8px 12px;
-        border-radius: 12px;
-        background: #F4F2FF;
-        color: var(--orb-primary);
-        border: 1px solid rgba(75, 0, 232, .14);
-        font-size: .78rem;
-        font-weight: 950;
-        text-decoration: none;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        padding: 6px 12px !important;
+        border-radius: 20px !important;
+        background: #EEF2FF !important;
+        color: #4F46E5 !important;
+        border: 1px solid #C7D2FE !important;
+        font-size: 12px !important;
+        font-weight: 800 !important;
+        transition: all 0.2s ease !important;
+        text-decoration: none !important;
         cursor: pointer;
         white-space: nowrap;
+    }
+
+    .file-link:hover {
+        background: #E0E7FF !important;
+        color: #4338CA !important;
     }
 
     .doc-table-wrap {
@@ -1132,9 +1187,21 @@ $rejectedDocs = $documents->where('verification_status', 'rejected')->count();
                             </div>
 
                             <div class="profile-info">
-                                <span class="profile-label">Experience</span>
+                                <span class="profile-label">Experience Type</span>
                                 @if($isProfileEditMode)
-                                <input type="text" name="total_experience" class="form-control profile-edit-control"
+                                <select name="experience_type" id="view_experience_type" class="form-select profile-edit-control" onchange="toggleViewExperienceFields(this.value)">
+                                    <option value="fresher" {{ old('experience_type', $profile->experience_type ?? 'fresher') == 'fresher' ? 'selected' : '' }}>Fresher</option>
+                                    <option value="experienced" {{ old('experience_type', $profile->experience_type) == 'experienced' ? 'selected' : '' }}>Experienced</option>
+                                </select>
+                                @else
+                                <div class="profile-value {{ empty($profile->experience_type) ? 'muted' : '' }}">{{ !empty($profile->experience_type) ? ucfirst($profile->experience_type) : 'Fresher' }}</div>
+                                @endif
+                            </div>
+
+                            <div class="profile-info" id="view_total_experience_container">
+                                <span class="profile-label">Total Experience</span>
+                                @if($isProfileEditMode)
+                                <input type="text" name="total_experience" id="view_total_experience" class="form-control profile-edit-control"
                                     value="{{ old('total_experience', $profile->total_experience ?? '') }}">
                                 @else
                                 <div class="profile-value {{ empty($profile->total_experience) ? 'muted' : '' }}">{{ $profile->total_experience ?? '-' }}</div>
@@ -1577,6 +1644,36 @@ $rejectedDocs = $documents->where('verification_status', 'rejected')->count();
             body.innerHTML = '';
             resetDialogClass();
         });
+
+        function toggleViewExperienceFields(value) {
+            const container = document.getElementById('view_total_experience_container');
+            const input = document.getElementById('view_total_experience');
+            if (value === 'fresher') {
+                if (container) container.style.display = 'none';
+                if (input) {
+                    input.removeAttribute('required');
+                    input.value = '0';
+                }
+            } else {
+                if (container) container.style.display = 'block';
+                if (input) {
+                    input.setAttribute('required', 'required');
+                    if (input.value === '0') input.value = '';
+                }
+            }
+        }
+        window.toggleViewExperienceFields = toggleViewExperienceFields;
+        
+        const expSelect = document.getElementById('view_experience_type');
+        if (expSelect) {
+            toggleViewExperienceFields(expSelect.value);
+        } else {
+            const currentExpType = '{{ strtolower($profile->experience_type ?? "fresher") }}';
+            if (currentExpType === 'fresher') {
+                const container = document.getElementById('view_total_experience_container');
+                if (container) container.style.display = 'none';
+            }
+        }
     });
 </script>
 @endsection

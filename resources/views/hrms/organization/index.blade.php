@@ -28,32 +28,63 @@
     margin:0 auto;
 }
 
-.org-header{
-    background:#fff;
-    border:1px solid var(--orb-border);
-    border-radius:18px;
-    box-shadow:var(--orb-shadow);
-    padding:16px;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:16px;
-    margin-bottom:14px;
+.org-header-premium {
+    background: linear-gradient(135deg, #4B00E8, #8600EE);
+    border-radius: 26px;
+    padding: 26px 30px;
+    margin-bottom: 24px;
+    box-shadow: 0 14px 35px rgba(75, 0, 232, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    color: #fff;
 }
 
-.org-header h3{
-    margin:0;
-    color:var(--orb-text);
-    font-size:24px;
-    font-weight:900;
-    letter-spacing:-.4px;
+.org-header-kicker {
+    font-size: 11px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: rgba(255, 255, 255, 0.85);
+    margin-bottom: 8px;
 }
 
-.org-header p{
-    margin:4px 0 0;
-    color:var(--orb-muted);
-    font-size:13px;
-    font-weight:600;
+.org-header-title {
+    font-size: 28px;
+    font-weight: 950;
+    margin: 0 0 8px 0;
+    color: #fff;
+}
+
+.org-header-subtitle {
+    font-size: 14px;
+    font-weight: 650;
+    color: rgba(255, 255, 255, 0.85);
+    margin: 0;
+}
+
+.btn-white-pill {
+    background: #fff !important;
+    color: var(--orb-primary) !important;
+    border: 0 !important;
+    border-radius: 999px !important;
+    padding: 10px 22px !important;
+    font-size: 13px !important;
+    font-weight: 900 !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    cursor: pointer !important;
+    transition: 0.15s ease !important;
+}
+
+.btn-white-pill:hover {
+    background: #FAFAFA !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08) !important;
 }
 
 .org-layout{
@@ -441,12 +472,12 @@ textarea.form-control{
         max-height:none;
     }
 
-    .org-header{
+    .org-header-premium{
         flex-direction:column;
         align-items:flex-start;
     }
 
-    .org-header .btn-orb{
+    .org-header-premium .btn-white-pill{
         width:auto;
     }
 }
@@ -456,12 +487,12 @@ textarea.form-control{
         padding:10px 8px 24px;
     }
 
-    .org-header,
+    .org-header-premium,
     .org-card{
         border-radius:16px;
     }
 
-    .org-header h3{
+    .org-header-premium h3{
         font-size:21px;
     }
 
@@ -471,8 +502,8 @@ textarea.form-control{
     }
 
     .org-card-head .btn-orb,
-    .org-header .btn-orb{
-        width:100%;
+    .org-header-premium .btn-white-pill{
+        width:100% !important;
     }
 
     .selected-box{
@@ -522,13 +553,14 @@ textarea.form-control{
             </div>
         @endif
 
-        <div class="org-header">
+        <div class="org-header-premium">
             <div>
-                <h3>Department & Designation</h3>
-                <p>Manage departments and designation mapping for employee onboarding.</p>
+                <div class="org-header-kicker">HRMS • ORGANIZATION</div>
+                <h1 class="org-header-title">Department & Designation</h1>
+                <p class="org-header-subtitle">Manage departments and designation mapping for employee onboarding.</p>
             </div>
 
-            <button type="button" class="btn btn-orb" onclick="openDeptModal()">
+            <button type="button" class="btn-white-pill" onclick="openDeptModal()">
                 <i class="fas fa-plus mr-1"></i> Add Department
             </button>
         </div>

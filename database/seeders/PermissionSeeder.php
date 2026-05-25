@@ -662,6 +662,15 @@ class PermissionSeeder extends Seeder
             ['hrms', 'enterprise_payroll', 'fnf_view', 'enterprise_fnf.view', 'View enterprise FNF settlements'],
             ['hrms', 'enterprise_payroll', 'fnf_manage', 'enterprise_fnf.manage', 'Manage enterprise FNF settlements'],
             ['hrms', 'enterprise_payroll', 'reports_view', 'enterprise_payroll_reports.view', 'View enterprise payroll reports'],
+            ['hrms', 'document_generation', 'view', 'document_generation.view', 'View document generation module'],
+            ['hrms', 'document_generation', 'template_create', 'document_generation.template_create', 'Create document templates'],
+            ['hrms', 'document_generation', 'template_edit', 'document_generation.template_edit', 'Edit document templates'],
+            ['hrms', 'document_generation', 'generate', 'document_generation.generate', 'Generate documents'],
+            ['hrms', 'document_generation', 'preview', 'document_generation.preview', 'Preview documents'],
+            ['hrms', 'document_generation', 'download', 'document_generation.download', 'Download generated documents'],
+            ['hrms', 'document_generation', 'email', 'document_generation.email', 'Email generated documents'],
+            ['hrms', 'document_generation', 'review', 'document_generation.review', 'Review generated documents'],
+            ['hrms', 'document_generation', 'delete', 'document_generation.delete', 'Delete generated documents'],
         ];
 
         foreach ($runtimePermissions as [$module, $submodule, $action, $key, $description]) {

@@ -216,17 +216,18 @@ $announcementCards = [
         align-items: end;
         justify-content: space-between;
         gap: 16px;
-        margin-bottom: 14px;
+        margin-bottom: 10px;
     }
 
     .sa-section-title {
         margin: 0;
-        font-size: 20px;
-        font-weight: 900;
+        font-size: 18px;
+        font-weight: 950;
         color: var(--orb-text);
         display: flex;
         gap: 10px;
         align-items: center;
+        letter-spacing: -.02em;
     }
 
     .sa-section-title i {
@@ -234,22 +235,22 @@ $announcementCards = [
     }
 
     .sa-section-sub {
-        margin: 4px 0 0;
+        margin: 2px 0 0;
         color: var(--orb-muted);
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 600;
     }
 
     .sa-grid-4 {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 16px;
+        gap: 14px;
     }
 
     .sa-grid-3 {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 16px;
+        gap: 14px;
     }
 
     .sa-grid-main {
@@ -265,35 +266,62 @@ $announcementCards = [
     }
 
     .sa-card {
-        background: var(--orb-card);
+        background: #fff;
         border: 1px solid var(--orb-border);
-        border-radius: 24px;
+        border-radius: 18px;
         box-shadow: var(--orb-shadow-sm);
         height: 100%;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
     .sa-card:hover {
+        transform: translateY(-2px);
         box-shadow: var(--orb-shadow);
     }
 
     .sa-stat {
-        padding: 18px;
+        padding: 16px 18px;
         display: flex;
         gap: 14px;
         align-items: center;
         text-decoration: none;
         color: inherit;
-        min-height: 112px;
+        min-height: auto;
+        position: relative;
+        overflow: hidden;
     }
 
+    .sa-stat::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: transparent;
+    }
+
+    .sa-stat.tone-primary::after,
+    .sa-stat:has(.tone-primary)::after { background: var(--orb-primary); }
+    .sa-stat.tone-success::after,
+    .sa-stat:has(.tone-success)::after { background: #12B76A; }
+    .sa-stat.tone-warning::after,
+    .sa-stat:has(.tone-warning)::after { background: #F79009; }
+    .sa-stat.tone-danger::after,
+    .sa-stat:has(.tone-danger)::after { background: #F04438; }
+    .sa-stat.tone-info::after,
+    .sa-stat:has(.tone-info)::after { background: #0BA5EC; }
+    .sa-stat.tone-neutral::after,
+    .sa-stat:has(.tone-neutral)::after { background: #667085; }
+
     .sa-stat-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: 16px;
+        width: 42px;
+        height: 42px;
+        border-radius: 50% !important;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 20px;
+        font-size: 16px;
         flex: 0 0 auto;
     }
 
@@ -329,18 +357,18 @@ $announcementCards = [
 
     .sa-stat-value {
         font-size: 28px;
-        font-weight: 900;
-        line-height: 1;
+        font-weight: 950;
+        line-height: 1.1;
         color: var(--orb-text);
     }
 
     .sa-stat-label {
-        margin-top: 7px;
-        font-size: 12px;
+        margin-top: 4px;
+        font-size: 11px;
         color: var(--orb-muted);
         font-weight: 900;
         text-transform: uppercase;
-        letter-spacing: .03em;
+        letter-spacing: .04em;
     }
 
     .sa-panel-head {
@@ -586,8 +614,10 @@ $announcementCards = [
     }
 
     @media(max-width:1200px) {
-        .sa-grid-4 {
+        .sa-grid-4,
+        .sa-grid-3 {
             grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
         }
 
         .sa-grid-main,
@@ -618,6 +648,7 @@ $announcementCards = [
         .sa-grid-4,
         .sa-grid-3 {
             grid-template-columns: 1fr;
+            gap: 14px;
         }
 
         .sa-quick-grid {

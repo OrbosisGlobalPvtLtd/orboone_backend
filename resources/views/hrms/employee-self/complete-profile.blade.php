@@ -905,9 +905,7 @@ $disabled = $isReadOnly ? 'disabled' : '';
             }
         }
     }
-    toggleExperience('{{ old('
-        experience_type ', $profile?->experience_type ?? '
-        fresher ') }}');
+    toggleExperience('{{ old("experience_type", $profile?->experience_type ?? "fresher") }}');
 
     function uploadDoc(typeId) {
         let fileInput = document.getElementById('file_' + typeId);

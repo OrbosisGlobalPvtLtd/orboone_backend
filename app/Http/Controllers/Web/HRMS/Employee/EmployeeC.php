@@ -202,11 +202,9 @@ class EmployeeC extends Controller
                     $avatar = '<div class="eo-avatar">' . e($initial) . '</div>';
 
                     if (! empty($employee->profile_image)) {
-                        $imageUrl = Route::has('hrms.documents.file')
-                            ? route('hrms.documents.file', $employee->profile_image)
-                            : asset('storage/' . $employee->profile_image);
+                        $imageUrl = route('hrms.documents.file', ['path' => ltrim($employee->profile_image, '/')]);
 
-                        $avatar = '<div class="eo-avatar"><img src="' . e($imageUrl) . '" alt="' . e($name) . '"></div>';
+                        $avatar = '<div class="eo-avatar"><img src="' . e($imageUrl) . '" alt="' . e($name) . '" onerror="this.onerror=null; this.outerHTML=\'' . e($initial) . '\';"></div>';
                     }
 
                     $employmentType = ucfirst(str_replace('_', ' ', $employee->employment_type ?? '-'));
@@ -559,50 +557,7 @@ class EmployeeC extends Controller
 
     public function manage($employee)
     {
-        $phoneSelect = Schema::hasColumn('users', 'phone')
-            ? 'users.phone'
-            : DB::raw('NULL as phone');
-
-        $roleNameExpression = Schema::hasColumn('roles', 'name')
-            ? 'roles.name'
-            : (Schema::hasColumn('roles', 'title') ? 'roles.title' : DB::raw("CONCAT('Role ', roles.id)"));
-
-        $employeeData = DB::table($this->employeeTable)
-            ->join('users', 'users.id', '=', $this->employeeTable . '.user_id')
-            ->leftJoin('departments', 'departments.id', '=', $this->employeeTable . '.department_id')
-            ->leftJoin('designations', 'designations.id', '=', $this->employeeTable . '.designation_id')
-            ->leftJoin('roles', 'roles.id', '=', $this->employeeTable . '.system_role_id')
-            ->leftJoin($this->profileTable, $this->profileTable . '.employee_id', '=', $this->employeeTable . '.id')
-            ->where($this->employeeTable . '.id', $employee)
-            ->select(
-                $this->employeeTable . '.*',
-                'users.name',
-                'users.email',
-                $phoneSelect,
-                'departments.name as department_name',
-                'designations.name as designation_name',
-                DB::raw($roleNameExpression . ' as role_name'),
-                $this->profileTable . '.date_of_birth',
-                $this->profileTable . '.gender',
-                $this->profileTable . '.address',
-                $this->profileTable . '.highest_qualification',
-                $this->profileTable . '.cgpa_percentage',
-                $this->profileTable . '.total_experience',
-                $this->profileTable . '.bank_account_no',
-                $this->profileTable . '.bank_account_type',
-                $this->profileTable . '.bank_holder_name',
-                $this->profileTable . '.ifsc_code',
-                $this->profileTable . '.bank_branch',
-                $this->profileTable . '.profile_image',
-                $this->profileTable . '.resume_file',
-                $this->profileTable . '.profile_status',
-                $this->profileTable . '.is_profile_completed',
-                $this->profileTable . '.approved_by_user_id',
-                $this->profileTable . '.approved_at',
-                $this->profileTable . '.rejection_reason'
-            )
-            ->first();
-
+        $employeeData = $this->findEmployeeProfileRecord($employee);
         abort_if(! $employeeData, 404);
 
         $departments = DB::table('departments')->select('id', 'name')->orderBy('name')->get();
@@ -632,17 +587,97 @@ class EmployeeC extends Controller
         }
 
         $roles = $rolesQuery->orderBy('id')->get();
-        $salaryHistories = DB::table('employee_salary_histories')
-            ->where('employee_id', $employee)
-            ->orderByDesc('effective_from')
-            ->orderByDesc('id')
+
+        $reportingManagers = DB::table($this->employeeTable)
+            ->join('users', 'users.id', '=', $this->employeeTable . '.user_id')
+            ->select($this->employeeTable . '.id', 'users.name', $this->employeeTable . '.employee_code')
+            ->where($this->employeeTable . '.id', '!=', $employee)
+            ->where($this->employeeTable . '.employment_status', 'active')
+            ->orderBy('users.name')
             ->get();
+
+        $salaryHistories = DB::table('employee_salary_histories')
+            ->leftJoin('users as creator', 'creator.id', '=', 'employee_salary_histories.created_by')
+            ->where('employee_salary_histories.employee_id', $employee)
+            ->select('employee_salary_histories.*', 'creator.name as creator_name')
+            ->orderByDesc('employee_salary_histories.effective_from')
+            ->orderByDesc('employee_salary_histories.id')
+            ->get();
+
+        // Load employee documents
+        $expType = 'fresher';
+        $expVal = strtolower(trim((string) ($employeeData->experience_type ?? '')));
+        if (in_array($expVal, ['fresher', 'experienced'], true)) {
+            $expType = $expVal;
+        } else {
+            $expText = strtolower(trim((string) ($employeeData->total_experience ?? '')));
+            if ($expText !== '' && preg_match('/\d+(\.\d+)?/', $expText, $matches)) {
+                $expType = ((float) $matches[0]) > 0 ? 'experienced' : 'fresher';
+            }
+        }
+
+        $docTypes = collect();
+        if (Schema::hasTable('document_types')) {
+            $query = DB::table('document_types')->where('scope', 'employee');
+            if (Schema::hasColumn('document_types', 'is_active')) {
+                $query->where('is_active', 1);
+            }
+            if (Schema::hasColumn('document_types', 'applies_to')) {
+                $query->whereIn('applies_to', ['all', $expType]);
+            }
+            $docTypes = $query->get();
+        }
+
+        $uploadedDocs = collect();
+        if (Schema::hasTable('employee_documents_new')) {
+            $uploadedDocs = DB::table('employee_documents_new')
+                ->leftJoin('users as verifier', 'verifier.id', '=', 'employee_documents_new.verified_by_user_id')
+                ->where('employee_documents_new.employee_id', $employee)
+                ->select('employee_documents_new.*', 'verifier.name as verifier_name')
+                ->get();
+        }
+
+        $documentsList = [];
+        foreach ($uploadedDocs as $uploaded) {
+            $type = $docTypes->firstWhere('id', $uploaded->document_type_id);
+            if (!$type && $uploaded->document_type_id) {
+                $type = DB::table('document_types')->where('id', $uploaded->document_type_id)->first();
+            }
+
+            $typeName = $type->name ?? $uploaded->title ?? 'Document';
+            $typeCode = $type->code ?? null;
+            $isMandatory = $type->is_mandatory ?? false;
+
+            $documentsList[] = (object)[
+                'id' => $uploaded->id,
+                'document_type_id' => $uploaded->document_type_id,
+                'document_type_name' => $typeName,
+                'code' => $typeCode,
+                'is_required' => $isMandatory,
+                'title' => $uploaded->title ?: $typeName,
+                'file_path' => $uploaded->file_path,
+                'file_original_name' => $uploaded->file_original_name,
+                'verification_status' => $uploaded->verification_status,
+                'rejection_reason' => $uploaded->rejection_reason,
+                'verified_at' => $uploaded->verified_at,
+                'verified_by_user_id' => $uploaded->verified_by_user_id,
+                'verifier_name' => $uploaded->verifier_name,
+                'uploaded_at' => $uploaded->created_at ?? null,
+                'created_at' => $uploaded->created_at ?? null,
+                'is_uploaded' => true,
+            ];
+        }
+
+        $employeeDocuments = collect($documentsList);
+
         return view('hrms.employee.manage', compact(
             'employeeData',
             'departments',
             'designations',
             'roles',
-            'salaryHistories'
+            'reportingManagers',
+            'salaryHistories',
+            'employeeDocuments'
         ));
     }
 
@@ -686,6 +721,7 @@ class EmployeeC extends Controller
             'highest_qualification' => ['nullable', 'string'],
             'cgpa_percentage' => ['nullable', 'string'],
             'total_experience' => ['nullable', 'string'],
+            'emergency_contact_number' => ['nullable', 'string', 'max:255'],
 
             'bank_account_no' => ['nullable', 'string'],
             'bank_account_type' => ['nullable', 'string'],
@@ -823,6 +859,7 @@ class EmployeeC extends Controller
                 'highest_qualification' => $request->highest_qualification,
                 'cgpa_percentage' => $request->cgpa_percentage,
                 'total_experience' => $request->total_experience,
+                'emergency_contact_number' => $request->emergency_contact_number,
                 'bank_account_no' => $request->bank_account_no,
                 'bank_account_type' => $request->bank_account_type,
                 'bank_holder_name' => $request->bank_holder_name,
@@ -907,12 +944,83 @@ class EmployeeC extends Controller
         abort_if(! $employeeData, 404);
 
         $salaryHistories = DB::table('employee_salary_histories')
-            ->where('employee_id', $employee)
-            ->orderByDesc('effective_from')
-            ->orderByDesc('id')
+            ->leftJoin('users as creator', 'creator.id', '=', 'employee_salary_histories.created_by')
+            ->where('employee_salary_histories.employee_id', $employee)
+            ->select('employee_salary_histories.*', 'creator.name as creator_name')
+            ->orderByDesc('employee_salary_histories.effective_from')
+            ->orderByDesc('employee_salary_histories.id')
             ->get();
 
-        return view('hrms.employee.show', compact('employeeData', 'salaryHistories'));
+        // 1. Calculate experience type
+        $expType = 'fresher';
+        $expVal = strtolower(trim((string) ($employeeData->experience_type ?? '')));
+        if (in_array($expVal, ['fresher', 'experienced'], true)) {
+            $expType = $expVal;
+        } else {
+            $expText = strtolower(trim((string) ($employeeData->total_experience ?? '')));
+            if ($expText !== '' && preg_match('/\d+(\.\d+)?/', $expText, $matches)) {
+                $expType = ((float) $matches[0]) > 0 ? 'experienced' : 'fresher';
+            }
+        }
+
+        // 2. Fetch all active document types for scope = employee
+        $docTypes = collect();
+        if (Schema::hasTable('document_types')) {
+            $query = DB::table('document_types')->where('scope', 'employee');
+            if (Schema::hasColumn('document_types', 'is_active')) {
+                $query->where('is_active', 1);
+            }
+            if (Schema::hasColumn('document_types', 'applies_to')) {
+                $query->whereIn('applies_to', ['all', $expType]);
+            }
+            $docTypes = $query->get();
+        }
+
+        // 3. Fetch uploaded documents
+        $uploadedDocs = collect();
+        if (Schema::hasTable('employee_documents_new')) {
+            $uploadedDocs = DB::table('employee_documents_new')
+                ->leftJoin('users as verifier', 'verifier.id', '=', 'employee_documents_new.verified_by_user_id')
+                ->where('employee_documents_new.employee_id', $employee)
+                ->select('employee_documents_new.*', 'verifier.name as verifier_name')
+                ->get();
+        }
+
+        // 4. Map only uploaded documents
+        $documentsList = [];
+        foreach ($uploadedDocs as $uploaded) {
+            // Find corresponding document type if it exists
+            $type = $docTypes->firstWhere('id', $uploaded->document_type_id);
+            if (!$type && $uploaded->document_type_id) {
+                $type = DB::table('document_types')->where('id', $uploaded->document_type_id)->first();
+            }
+
+            $typeName = $type->name ?? $uploaded->title ?? 'Document';
+            $typeCode = $type->code ?? null;
+            $isMandatory = $type->is_mandatory ?? false;
+
+            $documentsList[] = [
+                'id' => $uploaded->id,
+                'document_type_id' => $uploaded->document_type_id,
+                'name' => $typeName,
+                'code' => $typeCode,
+                'is_mandatory' => $isMandatory,
+                'title' => $uploaded->title ?: $typeName,
+                'file_path' => $uploaded->file_path,
+                'file_original_name' => $uploaded->file_original_name,
+                'verification_status' => $uploaded->verification_status,
+                'rejection_reason' => $uploaded->rejection_reason,
+                'verified_at' => $uploaded->verified_at,
+                'verified_by_user_id' => $uploaded->verified_by_user_id,
+                'verifier_name' => $uploaded->verifier_name,
+                'uploaded_at' => $uploaded->created_at ?? null,
+                'is_uploaded' => true,
+            ];
+        }
+
+        $documents = collect($documentsList);
+
+        return view('hrms.employee.show', compact('employeeData', 'salaryHistories', 'documents'));
     }
 
     public function edit($employee)
@@ -1055,7 +1163,8 @@ class EmployeeC extends Controller
             'address' => ['required', 'string'],
             'highest_qualification' => ['required', 'string'],
             'cgpa_percentage' => ['required', 'string'],
-            'total_experience' => ['required', 'string'],
+            'experience_type' => ['required', 'string', 'in:fresher,experienced'],
+            'total_experience' => [$request->experience_type === 'fresher' ? 'nullable' : 'required', 'string'],
             'bank_account_no' => ['required', 'string'],
             'bank_account_type' => ['required', 'string'],
             'bank_holder_name' => ['required', 'string'],
@@ -1077,7 +1186,8 @@ class EmployeeC extends Controller
                 'address' => $request->address,
                 'highest_qualification' => $request->highest_qualification,
                 'cgpa_percentage' => $request->cgpa_percentage,
-                'total_experience' => $request->total_experience,
+                'experience_type' => $request->experience_type,
+                'total_experience' => $request->experience_type === 'fresher' ? '0' : $request->total_experience,
                 'bank_account_no' => $request->bank_account_no,
                 'bank_account_type' => $request->bank_account_type,
                 'bank_holder_name' => $request->bank_holder_name,
@@ -1396,36 +1506,41 @@ class EmployeeC extends Controller
         return view('hrms.employee.exit.index', compact('employees'));
     }
 
-    public function reportingStructure()
+    public function reportingStructure(Request $request)
     {
-        $teamCounts = DB::table($this->employeeTable)
-            ->select('reporting_manager_employee_id', DB::raw('COUNT(*) as team_members_count'))
-            ->whereNotNull('reporting_manager_employee_id')
-            ->groupBy('reporting_manager_employee_id');
+        $employeeTable = $this->employeeTable;
+        $profileTable = $this->profileTable;
 
-        $employees = DB::table($this->employeeTable . ' as e')
-            ->join('users as u', 'u.id', '=', 'e.user_id')
-            ->leftJoin('departments as d', 'd.id', '=', 'e.department_id')
-            ->leftJoin('designations as dg', 'dg.id', '=', 'e.designation_id')
-            ->leftJoin($this->employeeTable . ' as rm', 'rm.id', '=', 'e.reporting_manager_employee_id')
-            ->leftJoin('users as ru', 'ru.id', '=', 'rm.user_id')
-            ->leftJoinSub($teamCounts, 'team_counts', function ($join) {
-                $join->on('team_counts.reporting_manager_employee_id', '=', 'e.id');
-            })
-            ->select(
-                'e.id',
-                'e.employee_code',
-                'u.name as employee_name',
-                'd.name as department_name',
-                'dg.name as designation_name',
-                'ru.name as manager_name',
-                'rm.employee_code as manager_code',
-                DB::raw('COALESCE(team_counts.team_members_count, 0) as team_members_count')
-            )
-            ->orderBy('u.name')
-            ->get();
+        $query = DB::table($employeeTable)
+            ->join('users', 'users.id', '=', $employeeTable . '.user_id')
+            ->leftJoin('departments', 'departments.id', '=', $employeeTable . '.department_id')
+            ->leftJoin('designations', 'designations.id', '=', $employeeTable . '.designation_id')
+            ->leftJoin($profileTable, $profileTable . '.employee_id', '=', $employeeTable . '.id');
 
-        return view('hrms.employee.reporting.index', compact('employees'));
+        $query->select(
+            $employeeTable . '.id',
+            $employeeTable . '.employee_code',
+            $employeeTable . '.reporting_manager_employee_id',
+            $employeeTable . '.employment_status',
+            'users.name',
+            'users.email',
+            'departments.name as department_name',
+            'designations.name as designation_name',
+            $profileTable . '.profile_image'
+        );
+
+        if (Schema::hasColumn($employeeTable, 'is_active')) {
+            $query->where($employeeTable . '.is_active', 1);
+        }
+        
+        $query->where($employeeTable . '.employment_status', 'active');
+
+        $employees = $query->get();
+
+        $departments = $employees->pluck('department_name')->filter()->unique()->values();
+        $designations = $employees->pluck('designation_name')->filter()->unique()->values();
+
+        return view('hrms.employee.reporting_structure.index', compact('employees', 'departments', 'designations'));
     }
 
     public function markPermanent(Request $request, $employee)
@@ -1856,6 +1971,8 @@ class EmployeeC extends Controller
                 $this->profileTable . '.highest_qualification',
                 $this->profileTable . '.cgpa_percentage',
                 $this->profileTable . '.total_experience',
+                $this->profileTable . '.experience_type',
+                $this->profileTable . '.emergency_contact_number',
                 $this->profileTable . '.bank_account_no',
                 $this->profileTable . '.bank_account_type',
                 $this->profileTable . '.bank_holder_name',
@@ -1921,6 +2038,7 @@ class EmployeeC extends Controller
 
             'highest_qualification' => ['nullable', 'string', 'max:255'],
             'cgpa_percentage' => ['nullable', 'string', 'max:50'],
+            'experience_type' => ['nullable', 'string', 'in:fresher,experienced'],
             'total_experience' => ['nullable', 'string', 'max:50'],
 
             'bank_account_no' => ['nullable', 'string', 'max:50'],
@@ -1948,7 +2066,8 @@ class EmployeeC extends Controller
                     'address' => $request->address,
                     'highest_qualification' => $request->highest_qualification,
                     'cgpa_percentage' => $request->cgpa_percentage,
-                    'total_experience' => $request->total_experience,
+                    'experience_type' => $request->experience_type,
+                    'total_experience' => $request->experience_type === 'fresher' ? '0' : $request->total_experience,
                     'bank_account_no' => $request->bank_account_no,
                     'bank_account_type' => $request->bank_account_type,
                     'bank_holder_name' => $request->bank_holder_name,

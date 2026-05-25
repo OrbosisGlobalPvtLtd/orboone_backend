@@ -71,11 +71,13 @@ class MenuSeeder extends Seeder
 
             ['id' => 52, 'name' => 'Upload Documents', 'route' => 'hrms.documents.self.index', 'icon' => 'fas fa-file-upload', 'module_key' => 'employee.documents', 'parent_id' => 50, 'sort_order' => 2],
 
-            ['id' => 53, 'name' => 'Company Documents', 'route' => 'documents.policies.index', 'icon' => 'fas fa-file-contract', 'module_key' => 'documents', 'parent_id' => 50, 'sort_order' => 3],
+            ['id' => 53, 'name' => 'Company Documents & Policies', 'route' => 'documents.policies.index', 'icon' => 'fas fa-folder-open', 'module_key' => 'documents', 'parent_id' => 50, 'sort_order' => 3],
 
             ['id' => 148, 'name' => 'Document Types', 'route' => 'documents.types.index', 'icon' => 'fas fa-file-alt', 'module_key' => 'documents', 'parent_id' => 50, 'sort_order' => 4],
 
             ['id' => 149, 'name' => 'Document Verification', 'route' => 'documents.verification.index', 'icon' => 'fas fa-clipboard-check', 'module_key' => 'documents', 'parent_id' => 50, 'sort_order' => 5],
+            ['id' => 160, 'name' => 'Document Generation', 'route' => 'hrms.document-generation.dashboard', 'icon' => 'fas fa-file-signature', 'module_key' => 'document_generation', 'parent_id' => 50, 'sort_order' => 6],
+            ['id' => 161, 'name' => 'My Documents', 'route' => 'hrms.document-generation.self.index', 'icon' => 'fas fa-folder', 'module_key' => 'employee.documents', 'parent_id' => 50, 'sort_order' => 7],
 
             ['id' => 60, 'name' => 'Notice / Announcement', 'route' => 'announcements.index', 'icon' => 'fas fa-bullhorn', 'module_key' => 'announcements', 'parent_id' => null, 'sort_order' => 60],
             ['id' => 154, 'name' => 'My Announcements', 'route' => 'employee.announcements.index', 'icon' => 'fas fa-bullhorn', 'module_key' => 'employee.announcements', 'parent_id' => null, 'sort_order' => 61],

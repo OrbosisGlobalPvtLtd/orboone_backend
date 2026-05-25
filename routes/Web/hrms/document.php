@@ -24,38 +24,101 @@ Route::middleware(['auth', 'module:hrms'])
     ->group(function () {
         Route::get('/employee/file/{path}', function ($path) {
             $user = auth()->user();
+            if (!$user) {
+                abort(401, 'Unauthenticated.');
+            }
             
-            // Authorization: Parse employee_id from directory structure: "employee-documents/ID/file"
-            if (preg_match('/employee-documents[\\/](\d+)/', $path, $matches)) {
-                $employeeId = (int)$matches[1];
-                $employee = DB::table('employees_new')->where('id', $employeeId)->first();
-                
-                if ($employee) {
-                    $hasPermission = false;
-                    
-                    if ($employee->user_id == $user->id) {
+            if (strpos($path, '..') !== false) {
+                abort(403, 'Unauthorized path traversal check failed.');
+            }
+
+            $employeeId = null;
+            $isProfileImage = false;
+
+            if (str_contains($path, '/profile/')) {
+                $isProfileImage = true;
+                $profileRecord = DB::table('employee_profiles')
+                    ->where('profile_image', $path)
+                    ->first();
+                if ($profileRecord) {
+                    $employeeId = $profileRecord->employee_id;
+                }
+            }
+
+            if (!$isProfileImage) {
+                // 1. Resolve employeeId from document database record using file_path
+                $docRecord = DB::table('employee_documents_new')
+                    ->where('file_path', $path)
+                    ->first();
+                if ($docRecord) {
+                    $employeeId = $docRecord->employee_id;
+                }
+
+                // 2. Fallback: Parse employee_id from directory structure: "employee-documents/ID/file"
+                if (!$employeeId && preg_match('/employee-documents[\\/](\d+)/', $path, $matches)) {
+                    $employeeId = (int)$matches[1];
+                }
+            }
+
+            if (!$employeeId) {
+                abort(403, 'Unauthorized access: Unknown document owner.');
+            }
+
+            $employee = DB::table('employees_new')->where('id', $employeeId)->first();
+            if (!$employee) {
+                abort(404, 'Employee profile not found.');
+            }
+
+            $hasPermission = false;
+
+            // Check 1: Is user the owner employee?
+            if ($employee->user_id == $user->id) {
+                $hasPermission = true;
+            } 
+            // Check 2: Does user have allowed admin roles?
+            else {
+                if (method_exists($user, 'hasRole')) {
+                    $allowedRoles = ['super_admin', 'super-admin', 'admin', 'hr_admin', 'hr-admin', 'finance_admin', 'finance-admin', 'operations_admin', 'hr'];
+                    if ($user->hasRole($allowedRoles)) {
                         $hasPermission = true;
-                    } else {
-                        $userRole = DB::table('roles')
-                            ->join('user_roles', 'roles.id', '=', 'user_roles.role_id')
-                            ->where('user_roles.user_id', $user->id)
-                            ->whereIn('roles.slug', ['super_admin', 'admin', 'hr_admin', 'finance_admin', 'operations_admin'])
-                            ->exists();
-                        if ($userRole) {
-                            $hasPermission = true;
-                        }
                     }
-                    
-                    if (!$hasPermission) {
-                        abort(403, 'Unauthorized access to employee document.');
+                }
+                
+                // Check 3: Check permissions keys using native isSuperAdmin / hasPermission checks
+                if (!$hasPermission && method_exists($user, 'hasPermission')) {
+                    $allowedPermissions = [
+                        'hrms.employees.edit',
+                        'employees.edit',
+                        'company_documents.manage',
+                        'employee_documents.view',
+                        'documents.verification.view',
+                        'documents.verification.approve'
+                    ];
+
+                    if ($isProfileImage) {
+                        $allowedPermissions[] = 'employee.view';
+                        $allowedPermissions[] = 'employees.view';
+                        $allowedPermissions[] = 'hrms.employees.view';
+                        $allowedPermissions[] = 'employee.manage';
+                    }
+
+                    foreach ($allowedPermissions as $perm) {
+                        if ($user->hasPermission($perm)) {
+                            $hasPermission = true;
+                            break;
+                        }
                     }
                 }
             }
 
+            if (!$hasPermission) {
+                abort(403, 'Unauthorized access to employee document.');
+            }
+
             $filePath = storage_path('app/private/' . $path);
 
-            if (! file_exists($filePath)) {
-                abort(404);
+            if (!file_exists($filePath)) {
+                abort(404, 'File not found.');
             }
 
             $mime = mime_content_type($filePath) ?: 'application/octet-stream';

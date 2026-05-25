@@ -12,6 +12,7 @@ use App\Http\Controllers\Web\HRMS\Leave\LeaveRequestC;
 use App\Http\Controllers\Web\HRMS\Leave\LeaveTypeC;
 use App\Http\Controllers\Web\HRMS\Leave\LeaveBalanceLogC;
 use App\Http\Controllers\Web\HRMS\Leave\WeekoffRuleC;
+use App\Http\Controllers\Web\HRMS\Leave\TeamLeaveCalendarC;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'check.access'])->group(function () {
@@ -57,7 +58,7 @@ Route::middleware(['auth', 'check.access'])->group(function () {
 
     Route::get('/leave-balance-logs', [LeaveBalanceLogC::class, 'index'])->middleware('permission:leave.balance_logs.view')->name('hrms.leave.balance_logs.index');
 
-    Route::get('/team-leave-calendar', [LeaveApprovalC::class, 'index'])->name('hrms.leave.team_calendar.index');
+    Route::get('/team-leave-calendar', [TeamLeaveCalendarC::class, 'index'])->name('hrms.leave.team_calendar.index');
 
     Route::get('/employees-leave-request/summary', [LeaveBalanceC::class, 'index'])->name('employees-leave-request.summary');
 });

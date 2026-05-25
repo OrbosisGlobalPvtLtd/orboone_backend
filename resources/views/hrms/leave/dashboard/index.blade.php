@@ -785,17 +785,21 @@
 
 <script>
     function triggerLeaveExport(type) {
-        var table = $('.js-datatable').DataTable();
+        if ($.fn.DataTable.isDataTable('.js-datatable')) {
+            var table = $('.js-datatable').DataTable();
 
-        var buttonMap = {
-            csv: '.buttons-csv',
-            excel: '.buttons-excel',
-            pdf: '.buttons-pdf',
-            print: '.buttons-print'
-        };
+            var buttonMap = {
+                csv: '.buttons-csv',
+                excel: '.buttons-excel',
+                pdf: '.buttons-pdf',
+                print: '.buttons-print'
+            };
 
-        if (buttonMap[type]) {
-            table.button(buttonMap[type]).trigger();
+            if (buttonMap[type]) {
+                table.button(buttonMap[type]).trigger();
+            }
+        } else {
+            alert('No records available to export.');
         }
     }
 </script>

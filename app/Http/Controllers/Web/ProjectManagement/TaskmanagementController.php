@@ -47,7 +47,18 @@ class TaskmanagementController extends Controller
         $tasks = $query->orderBy('id', 'DESC')->get();
         
         // For employee dropdown
-        $employees = EmployeeM::with('user')->get();
+        $employees = EmployeeM::query()
+            ->join('users', 'users.id', '=', 'employees_new.user_id')
+            ->select(
+                'employees_new.id',
+                'employees_new.user_id',
+                'employees_new.employee_code',
+                'users.name'
+            )
+            ->where('employees_new.is_active', 1)
+            ->where('employees_new.employment_status', 'active')
+            ->orderBy('users.name')
+            ->get();
         $accesses  = \App\Models\Core\AccessM::where('role_id', auth()->user()->role_id)->with('menu')->get();
 
         return view('project_management.task_management', compact('tasks', 'employees', 'accesses'));

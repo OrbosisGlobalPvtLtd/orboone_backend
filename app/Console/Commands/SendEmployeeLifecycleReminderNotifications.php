@@ -20,19 +20,19 @@ class SendEmployeeLifecycleReminderNotifications extends Command
             return self::SUCCESS;
         }
 
-        $today = now()->startOfDay()->toDateString();
-        $until = now()->startOfDay()->addDays(5)->toDateString();
+        $today = now()->startOfDay();
 
-        $internshipCount = $this->sendInternshipReminders($notificationService, $today, $until);
-        $probationCount = $this->sendProbationReminders($notificationService, $today, $until);
+        $internshipCount = $this->sendInternshipReminders($notificationService, $today);
+        $probationCount = $this->sendProbationReminders($notificationService, $today);
 
         $this->info("Lifecycle reminder notifications processed. Internship: {$internshipCount}, Probation: {$probationCount}");
 
         return self::SUCCESS;
     }
 
-    private function sendInternshipReminders(NotificationS $notificationService, string $today, string $until): int
+    private function sendInternshipReminders(NotificationS $notificationService, Carbon $today): int
     {
+        $until = $today->copy()->addDays(10)->toDateString();
         $query = DB::table('employees_new')
             ->join('users', 'users.id', '=', 'employees_new.user_id')
             ->select(
@@ -57,7 +57,7 @@ class SendEmployeeLifecycleReminderNotifications extends Command
         $employees = $query
             ->whereRaw(
                 "COALESCE(employees_new.internship_extended_to, employees_new.internship_end_date) BETWEEN ? AND ?",
-                [$today, $until]
+                [$today->toDateString(), $until]
             )
             ->get();
 
@@ -71,24 +71,37 @@ class SendEmployeeLifecycleReminderNotifications extends Command
             }
 
             $target = Carbon::parse($targetDate)->startOfDay();
-            $remainingDays = now()->startOfDay()->diffInDays($target, false);
+            $remainingDays = $today->diffInDays($target, false);
 
-            if ($remainingDays < 0 || $remainingDays > 5) {
+            if ($remainingDays < 0 || $remainingDays > 10) {
                 continue;
             }
+
+            $actionUrl = route('hrms.employees.probation_internship', [
+                'highlight' => (int) $employee->id,
+                'highlight_employee' => (int) $employee->id,
+                'stage' => 'internship',
+            ]);
 
             $notificationService->notifyHrAndSuperAdmin(
                 title: 'Internship ending soon',
                 message: ($employee->name ?? 'Employee') . ' internship is going to complete on ' . $target->format('d M Y') . '.',
-                type: 'internship_ending_soon',
+                type: 'internship_ending_reminder',
                 routeName: 'hrms.employees.probation_internship',
                 routeParams: [],
                 data: [
                     'employee_id' => (int) $employee->id,
                     'employee_code' => $employee->employee_code,
+                    'employee_name' => $employee->name,
+                    'lifecycle_type' => 'internship',
+                    'end_date' => $target->toDateString(),
                     'target_date' => $target->toDateString(),
+                    'days_left' => $remainingDays,
                     'days_remaining' => $remainingDays,
-                    'action' => 'internship',
+                    'action_url' => $actionUrl,
+                    'highlight_employee_id' => (int) $employee->id,
+                    'stage' => 'internship',
+                    'reminder_date' => $today->toDateString(),
                 ]
             );
 
@@ -98,8 +111,9 @@ class SendEmployeeLifecycleReminderNotifications extends Command
         return $count;
     }
 
-    private function sendProbationReminders(NotificationS $notificationService, string $today, string $until): int
+    private function sendProbationReminders(NotificationS $notificationService, Carbon $today): int
     {
+        $until = $today->copy()->addDays(5)->toDateString();
         $query = DB::table('employees_new')
             ->join('users', 'users.id', '=', 'employees_new.user_id')
             ->select(
@@ -117,9 +131,9 @@ class SendEmployeeLifecycleReminderNotifications extends Command
             })
             ->where(function ($q) {
                 $q->whereNull('employees_new.probation_status')
-                    ->orWhereNotIn('employees_new.probation_status', ['completed', 'confirmed']);
+                    ->orWhereNotIn('employees_new.probation_status', ['scheduled_permanent', 'completed', 'confirmed']);
             })
-            ->whereBetween('employees_new.probation_end_date', [$today, $until]);
+            ->whereBetween('employees_new.probation_end_date', [$today->toDateString(), $until]);
 
         if (Schema::hasColumn('employees_new', 'is_active')) {
             $query->where('employees_new.is_active', 1);
@@ -135,24 +149,37 @@ class SendEmployeeLifecycleReminderNotifications extends Command
             }
 
             $target = Carbon::parse($employee->probation_end_date)->startOfDay();
-            $remainingDays = now()->startOfDay()->diffInDays($target, false);
+            $remainingDays = $today->diffInDays($target, false);
 
             if ($remainingDays < 0 || $remainingDays > 5) {
                 continue;
             }
 
+            $actionUrl = route('hrms.employees.probation_internship', [
+                'highlight' => (int) $employee->id,
+                'highlight_employee' => (int) $employee->id,
+                'stage' => 'probation',
+            ]);
+
             $notificationService->notifyHrAndSuperAdmin(
                 title: 'Probation ending soon',
                 message: ($employee->name ?? 'Employee') . ' probation is ending on ' . $target->format('d M Y') . '.',
-                type: 'probation_ending_soon',
+                type: 'probation_ending_reminder',
                 routeName: 'hrms.employees.probation_internship',
                 routeParams: [],
                 data: [
                     'employee_id' => (int) $employee->id,
                     'employee_code' => $employee->employee_code,
+                    'employee_name' => $employee->name,
+                    'lifecycle_type' => 'probation',
+                    'end_date' => $target->toDateString(),
                     'target_date' => $target->toDateString(),
+                    'days_left' => $remainingDays,
                     'days_remaining' => $remainingDays,
-                    'action' => 'probation',
+                    'action_url' => $actionUrl,
+                    'highlight_employee_id' => (int) $employee->id,
+                    'stage' => 'probation',
+                    'reminder_date' => $today->toDateString(),
                 ]
             );
 

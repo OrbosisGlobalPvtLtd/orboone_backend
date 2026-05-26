@@ -131,14 +131,14 @@
     .asset-filters-attached {
         background: #F8FAFC !important;
         border-bottom: 1px solid var(--orb-border) !important;
-        padding: 20px 24px !important;
+        padding: 20px 26px 12px !important;
     }
 
     .asset-filter-grid {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 12px;
-        align-items: flex-end;
+        display: grid !important;
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 12px !important;
+        align-items: flex-end !important;
     }
 
     .asset-filter-grid label {
@@ -146,13 +146,13 @@
         font-weight: 800 !important;
         color: var(--orb-muted) !important;
         text-transform: uppercase !important;
-        letter-spacing: 0.05em !important;
+        letter-spacing: 0.08em !important;
         margin-bottom: 6px !important;
         display: block !important;
     }
 
     .asset-filter-grid .form-control {
-        height: 40px !important;
+        height: 44px !important;
         border-radius: 9px !important;
         border: 1px solid var(--orb-border) !important;
         background: #fff !important;
@@ -256,11 +256,9 @@
     }
 
     .dataTables_length select {
-        width: auto !important;
-        min-width: 64px !important;
-        max-width: 80px !important;
+        width: 72px !important;
         height: 34px !important;
-        padding: 4px 24px 4px 10px !important;
+        padding: 4px 10px !important;
         border-radius: 8px !important;
         border: 1px solid var(--orb-border) !important;
         outline: none !important;
@@ -287,36 +285,55 @@
         transform: translateY(-1px) !important;
     }
 
-    /* Scroll structure */
-    .orb-table-scroll {
-        width: 100% !important;
-        overflow-x: auto !important;
-        -webkit-overflow-scrolling: touch !important;
+    .btn-undo:hover {
+        background: #F8FAFC !important;
+        border-color: #cbd5e1 !important;
+        color: #4B00E8 !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
     }
 
-    .orb-table-scroll table {
+    /* Table Card Layout styling */
+    .asset-table-card {
+        overflow: hidden !important;
+        background: #fff !important;
+        border-radius: 24px !important;
+        border: 1px solid #E7EAF3 !important;
+        box-shadow: 0 14px 35px rgba(16,24,40,.07) !important;
+    }
+
+    .asset-table-scroll {
+        width: 100% !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        border: none !important;
+    }
+
+    .asset-table-scroll table {
+        min-width: 1100px !important;
         width: 100% !important;
         margin-bottom: 0 !important;
         border-collapse: separate !important;
         border-spacing: 0 !important;
     }
 
-    .orb-table-scroll table thead th {
+    .asset-table-scroll table thead th {
         background: #F8FAFC !important;
-        color: var(--orb-muted) !important;
-        font-size: 11px !important;
-        font-weight: 800 !important;
+        color: #101828 !important;
+        font-size: 12px !important;
+        font-weight: 700 !important;
         text-transform: uppercase !important;
         letter-spacing: 0.05em !important;
-        padding: 14px 20px !important;
+        padding: 16px 18px !important;
         border-top: none !important;
         border-bottom: 1px solid var(--orb-border) !important;
         vertical-align: middle !important;
         white-space: nowrap !important;
     }
 
-    .orb-table-scroll table tbody td {
-        padding: 16px 20px !important;
+    .asset-table-scroll table tbody td {
+        padding: 16px 18px !important;
         font-size: 13px !important;
         font-weight: 600 !important;
         color: var(--orb-text) !important;
@@ -325,8 +342,67 @@
         background: #fff !important;
     }
 
-    .orb-table-scroll table tbody tr:hover td {
-        background: #FDFDFF !important;
+    .asset-table-scroll table tbody tr:hover td {
+        background: #FAFBFF !important;
+    }
+
+    .asset-dt-toolbar,
+    .asset-dt-footer,
+    .asset-filter-wrap,
+    .asset-table-head {
+        overflow: visible !important;
+        background: #fff !important;
+    }
+
+    .asset-dt-toolbar {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        gap: 16px !important;
+        flex-wrap: wrap !important;
+        padding: 16px 26px !important;
+        border-top: 1px solid #F1F5F9 !important;
+        border-bottom: 1px solid #F1F5F9 !important;
+        background: #fff !important;
+    }
+
+    .asset-dt-toolbar .toolbar-left {
+        display: flex !important;
+        align-items: center !important;
+    }
+
+    .asset-dt-toolbar .toolbar-right {
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+    }
+
+    .asset-dt-footer {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 12px !important;
+        padding: 18px 26px 24px !important;
+        border-top: 1px solid #E7EAF3 !important;
+        flex-wrap: wrap !important;
+        background: #fff !important;
+    }
+
+    .asset-dt-footer .footer-left {
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        color: var(--orb-muted) !important;
+    }
+
+    .asset-dt-footer .footer-right {
+        display: flex !important;
+        align-items: center !important;
+    }
+
+    .dataTables_info,
+    .dataTables_paginate {
+        float: none !important;
+        overflow: visible !important;
     }
 
     /* Modal inputs select fixes */
@@ -349,13 +425,13 @@
             padding: 24px !important;
         }
         .asset-filter-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
         }
     }
 
     @media (max-width: 575px) {
         .asset-filter-grid {
-            grid-template-columns: 1fr;
+            grid-template-columns: 1fr !important;
         }
         .asset-btn-pill {
             width: 100% !important;
@@ -376,12 +452,6 @@
                 <h3>Asset Allocation</h3>
                 <p>Manage company assets assigned to employees</p>
             </div>
-
-            <div>
-                <button type="button" class="asset-btn-pill asset-btn-pill-primary" data-toggle="modal" data-target="#assignAssetModal">
-                    <i class="fas fa-plus-circle mr-2"></i> Assign Asset
-                </button>
-            </div>
         </div>
 
         @if (session('success'))
@@ -391,17 +461,34 @@
         @endif
 
         <!-- Main Content Card -->
-        <div class="card orb-table-card">
+        <div class="card orb-table-card asset-table-card">
             
-            <div class="eo-card-head">
-                <div>
-                    <h5 class="eo-section-title"><i class="fas fa-list-ul"></i> Asset Allocation Records</h5>
-                    <p class="eo-section-title-sub text-muted small mb-0">Manage company assets assigned to employees.</p>
+            <div class="orb-table-card-header asset-table-head d-flex align-items-center justify-content-between" style="padding: 24px 26px 18px; border-bottom: 1px solid #EEF2F7; background: #fff; flex-wrap: wrap; gap: 16px;">
+                <div class="orb-title-wrap d-flex align-items-center" style="gap: 16px;">
+                    <span class="orb-card-icon" style="width: 46px; height: 46px; border-radius: 12px; background: #F4F2FF; color: #4B00E8; display: inline-flex; align-items: center; justify-content: center; font-size: 18px;">
+                        <i class="fas fa-list-ul"></i>
+                    </span>
+                    <div>
+                        <h3 style="margin: 0; font-size: 18px; font-weight: 800; color: #101828;">Asset Allocation Records</h3>
+                        <p style="margin: 4px 0 0 0; font-size: 13px; color: #667085;">Manage company assets assigned to employees.</p>
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-center" style="gap: 12px;">
+                    <!-- Reset Filters Button -->
+                    <button type="button" class="btn btn-undo btn-outline-secondary btn-sm d-flex align-items-center" style="height: 40px !important; border-radius: 10px !important; padding: 0 16px !important; font-size: 13px !important; font-weight: 700 !important; border: 1px solid #e2e8f0 !important; color: #475467 !important; background: #fff !important; transition: all 0.2s ease !important; cursor: pointer;">
+                        <i class="fas fa-undo mr-2" style="font-size: 11px;"></i> Reset Filters
+                    </button>
+
+                    <!-- Assign Asset Button -->
+                    <button type="button" class="btn btn-primary btn-sm d-flex align-items-center" data-toggle="modal" data-target="#assignAssetModal" style="height: 40px !important; border-radius: 10px !important; padding: 0 16px !important; font-size: 13px !important; font-weight: 700 !important; background: var(--orb-primary) !important; border-color: var(--orb-primary) !important; color: #fff !important; transition: all 0.2s ease !important; cursor: pointer; box-shadow: 0 4px 12px rgba(75, 0, 232, 0.15) !important;">
+                        <i class="fas fa-plus-circle mr-2" style="font-size: 13px;"></i> Assign Asset
+                    </button>
                 </div>
             </div>
 
             <!-- Attached Filters inside table card -->
-            <div class="asset-filters-attached">
+            <div class="asset-filters-attached asset-filter-wrap">
                 <form id="assetFilterForm" onsubmit="return false;">
                     <div class="asset-filter-grid">
                         
@@ -429,19 +516,18 @@
                             </select>
                         </div>
 
-                        <div class="d-flex align-items-center" style="gap:8px;">
-                            <button type="button" class="btn btn-undo btn-secondary d-flex align-items-center justify-content-center w-100" style="height: 40px !important; border-radius: 9px !important;">
-                                <i class="fas fa-undo mr-2"></i> Reset Filters
-                            </button>
-                        </div>
-
                     </div>
                 </form>
             </div>
+
+            <!-- Custom DataTables Toolbar Row -->
+            <div class="asset-dt-toolbar">
+                <div class="toolbar-left"></div>
+                <div class="toolbar-right"></div>
+            </div>
             
             <!-- Table Section -->
-            <div class="att-table-wrap">
-                <div class="orb-table-scroll">
+            <div class="asset-table-scroll">
                     <table class="table mb-0" id="assetAllocationsTable">
                         <thead>
                             <tr>
@@ -512,8 +598,14 @@
                         </tbody>
                     </table>
                 </div>
+
+                <!-- Footer for Pagination & Info -->
+                <div class="asset-dt-footer">
+                    <div class="footer-left"></div>
+                    <div class="footer-right"></div>
+                </div>
+
             </div>
-        </div>
     </div>
 </div>
 
@@ -881,7 +973,7 @@
             autoWidth: false,
             scrollX: false,
             dom: "<'row align-items-center mb-3'<'col-md-6'l><'col-md-6 text-md-right'B>>" +
-                "<'row'<'col-md-12't>>" +
+                "<'row'<'col-md-12 orb-table-scroll't>>" +
                 "<'row align-items-center mt-3 px-4 pb-4'<'col-md-5'i><'col-md-7'p>>",
             buttons: [
                 {
@@ -922,6 +1014,12 @@
                 }
             }
         });
+
+        // Relocate the generated controls to the custom asset-dt-toolbar and asset-dt-footer containers!
+        $('.asset-dt-toolbar .toolbar-left').append($('.dataTables_length'));
+        $('.asset-dt-toolbar .toolbar-right').append($('.dt-buttons'));
+        $('.asset-dt-footer .footer-left').append($('.dataTables_info'));
+        $('.asset-dt-footer .footer-right').append($('.dataTables_paginate'));
 
         // Auto-apply filters
         $('input[name="employee_name"]').on('keyup', function() {

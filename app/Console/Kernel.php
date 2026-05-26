@@ -59,6 +59,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('hrms:leave-recalculate-balances')->dailyAt('00:40')->timezone('Asia/Kolkata')->withoutOverlapping();
         $schedule->command('notifications:cleanup')->dailyAt('02:30')->timezone('Asia/Kolkata')->withoutOverlapping();
         $schedule->command('hrms:lifecycle-reminders')->dailyAt('09:00')->timezone('Asia/Kolkata')->withoutOverlapping();
+        $schedule->command('hrms:activate-scheduled-permanent')->dailyAt('00:10')->timezone('Asia/Kolkata')->withoutOverlapping();
         $schedule->command('hrms:leave-lapse-year-end')->yearlyOn(12, 31, '23:50')->timezone('Asia/Kolkata');
         $schedule->command('hrms:attendance-monthly-summary')->monthlyOn(1, '01:00')->timezone('Asia/Kolkata');
     }

@@ -48,9 +48,26 @@ class NotificationC extends Controller
 
         if (! empty($routeName) && Route::has($routeName)) {
             $url = route($routeName, $routeParams);
+            $queryParts = [];
 
             if (! empty($data['employee_id'])) {
-                $url .= (str_contains($url, '?') ? '&' : '?') . 'highlight_employee=' . $data['employee_id'];
+                $queryParts['highlight_employee'] = $data['employee_id'];
+                $queryParts['highlight'] = $data['employee_id'];
+            }
+
+            if (! empty($data['highlight_employee_id'])) {
+                $queryParts['highlight_employee'] = $data['highlight_employee_id'];
+                $queryParts['highlight'] = $data['highlight_employee_id'];
+            }
+
+            if (! empty($data['stage'])) {
+                $queryParts['stage'] = $data['stage'];
+            } elseif (! empty($data['lifecycle_type'])) {
+                $queryParts['stage'] = $data['lifecycle_type'];
+            }
+
+            if (! empty($queryParts)) {
+                $url .= (str_contains($url, '?') ? '&' : '?') . http_build_query($queryParts);
             }
 
             return redirect($url);

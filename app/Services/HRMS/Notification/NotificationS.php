@@ -28,13 +28,20 @@ class NotificationS
         foreach ($users as $user) {
             $employeeId = $data['employee_id'] ?? null;
             $targetDate = $data['target_date'] ?? null;
+            $reminderDate = $data['reminder_date'] ?? null;
 
             if (
                 $employeeId
-                && $targetDate
-                && $this->unresolvedReminderExists($type, (int) $employeeId, (string) $targetDate, (int) $user->id)
+                && $reminderDate
+                && $this->alreadySentByReminderDate($type, (int) $employeeId, (string) $reminderDate, (int) $user->id)
             ) {
                 continue;
+            }
+
+            if (! $reminderDate && $employeeId && $targetDate) {
+                if ($this->unresolvedReminderExists($type, (int) $employeeId, (string) $targetDate, (int) $user->id)) {
+                    continue;
+                }
             }
 
             $this->createNotification(
@@ -340,6 +347,30 @@ class NotificationS
         if (Schema::hasColumn($this->notificationsTable, 'data')) {
             $query->where('data', 'like', '%"employee_id":' . $employeeId . '%')
                 ->where('data', 'like', '%"target_date":"' . $targetDate . '"%');
+        }
+
+        return $query->exists();
+    }
+
+    public function alreadySentByReminderDate(
+        string $type,
+        int $employeeId,
+        string $reminderDate,
+        int $userId
+    ): bool {
+        if (! Schema::hasTable($this->notificationsTable)) {
+            return true;
+        }
+
+        $query = DB::table($this->notificationsTable)->where('user_id', $userId);
+
+        if (Schema::hasColumn($this->notificationsTable, 'type')) {
+            $query->where('type', $type);
+        }
+
+        if (Schema::hasColumn($this->notificationsTable, 'data')) {
+            $query->where('data', 'like', '%"employee_id":' . $employeeId . '%')
+                ->where('data', 'like', '%"reminder_date":"' . $reminderDate . '"%');
         }
 
         return $query->exists();

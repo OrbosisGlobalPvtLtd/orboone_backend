@@ -34,12 +34,27 @@ class EmployeeLifecycleService
 
         if ($employeeStage === 'probation' && $joiningDate) {
             $probationStart = $joiningDate->copy()->format('Y-m-d');
-            $probationEnd = $joiningDate->copy()->addMonths(3)->format('Y-m-d');
+            $probationMonths = isset($input['probation_months']) ? (int)$input['probation_months'] : 3;
+            if ($probationMonths < 1) {
+                $probationMonths = 3;
+            }
+            $probationEnd = $joiningDate->copy()->addMonthsNoOverflow($probationMonths - 1)->endOfMonth()->format('Y-m-d');
             $probationStatus = in_array($existingProbationStatus, ['completed', 'confirmed'], true)
                 ? $existingProbationStatus
                 : 'ongoing';
         } elseif ($employeeStage === 'permanent') {
             $probationStatus = 'completed';
+        }
+
+        $internshipStart = $isInternshipStage ? Arr::get($input, 'internship_start_date') : null;
+        $internshipEnd = $isInternshipStage ? Arr::get($input, 'internship_end_date') : null;
+
+        if ($isInternshipStage && $internshipStart && !$internshipEnd) {
+            $duration = isset($input['internship_duration_months']) && is_numeric($input['internship_duration_months'])
+                ? (int)$input['internship_duration_months']
+                : 3;
+            $startDateObj = Carbon::parse($internshipStart);
+            $internshipEnd = $startDateObj->copy()->addMonthsNoOverflow($duration - 1)->endOfMonth()->format('Y-m-d');
         }
 
         return [
@@ -50,8 +65,8 @@ class EmployeeLifecycleService
             'probation_start_date' => $probationStart,
             'probation_end_date' => $probationEnd,
             'probation_status' => $probationStatus,
-            'internship_start_date' => $isInternshipStage ? Arr::get($input, 'internship_start_date') : null,
-            'internship_end_date' => $isInternshipStage ? Arr::get($input, 'internship_end_date') : null,
+            'internship_start_date' => $internshipStart,
+            'internship_end_date' => $internshipEnd,
             'is_paid_intern' => $isInternshipStage
                 ? (Arr::has($input, 'is_paid_intern') ? (int) $input['is_paid_intern'] : null)
                 : null,

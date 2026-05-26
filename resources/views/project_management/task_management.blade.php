@@ -288,9 +288,15 @@
     select,
     select option,
     .form-select,
-    .form-select option {
+    .form-select option,
+    .modal-body select,
+    .modal-body select option,
+    .modal-body .custom-select,
+    .modal-body .custom-select option,
+    .modal-body .form-control option {
         color: #101828 !important;
-        background: #fff !important;
+        background-color: #ffffff !important;
+        background: #ffffff !important;
     }
 
     .select2-container .select2-selection__rendered {
@@ -342,6 +348,14 @@
         transform: translateY(-1px) !important;
     }
 
+    .btn-undo:hover {
+        background: #F8FAFC !important;
+        border-color: #cbd5e1 !important;
+        color: #1e293b !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+    }
+
     /* Scroll structure */
     .orb-table-scroll {
         width: 100% !important;
@@ -382,6 +396,95 @@
 
     .orb-table-scroll table tbody tr:hover td {
         background: #FDFDFF !important;
+    }
+
+    /* Table card header */
+    .task-card-head,
+    .orb-card-head {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: 24px !important;
+        border-bottom: 1px solid var(--orb-border) !important;
+        background: #fff !important;
+        border-top-left-radius: 24px !important;
+        border-top-right-radius: 24px !important;
+        flex-wrap: wrap !important;
+        gap: 16px !important;
+    }
+
+    .orb-title-wrap {
+        display: flex !important;
+        align-items: center !important;
+        gap: 16px !important;
+    }
+
+    .orb-card-icon {
+        width: 46px !important;
+        height: 46px !important;
+        border-radius: 12px !important;
+        background: var(--orb-soft) !important;
+        color: var(--orb-primary) !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 18px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .orb-title-wrap h3 {
+        font-size: 18px !important;
+        font-weight: 900 !important;
+        color: var(--orb-text) !important;
+        margin: 0 !important;
+        line-height: 1.2 !important;
+    }
+
+    .orb-title-wrap p {
+        font-size: 13px !important;
+        color: var(--orb-muted) !important;
+        margin: 4px 0 0 0 !important;
+        font-weight: 500 !important;
+        line-height: 1.2 !important;
+    }
+
+    /* Custom Toolbar and Footer Layout */
+    .task-dt-toolbar {
+        background: #fff !important;
+        padding: 16px 24px !important;
+        border-bottom: 1px solid var(--orb-border) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        flex-wrap: wrap !important;
+        gap: 12px !important;
+    }
+
+    .task-dt-footer {
+        padding: 16px 24px !important;
+        background: #F8FAFC !important;
+        border-top: 1px solid var(--orb-border) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        flex-wrap: wrap !important;
+        gap: 12px !important;
+        border-bottom-left-radius: 24px !important;
+        border-bottom-right-radius: 24px !important;
+    }
+
+    .task-dt-toolbar .dataTables_length,
+    .task-dt-toolbar .dt-buttons,
+    .task-dt-footer .dataTables_info,
+    .task-dt-footer .dataTables_paginate {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* Hide the default DataTables wrapper row outputs to avoid duplications */
+    .dataTables_wrapper .row:first-child,
+    .dataTables_wrapper .row:last-child {
+        display: none !important;
     }
 
     @media (max-width: 1200px) {
@@ -438,32 +541,28 @@
             </div>
         </div>
 
-        <!-- Status Filter Tabs -->
-        <div class="d-flex mb-4 overflow-auto pb-2" style="white-space: nowrap;">
-            <a href="#" class="status-tab active" data-status="all">
-                <i class="fas fa-list-ul mr-2"></i> ALL TASKS
-            </a>
-            <a href="#" class="status-tab" data-status="pending">
-                <i class="fas fa-clock mr-2"></i> PENDING
-            </a>
-            <a href="#" class="status-tab" data-status="in_progress">
-                <i class="fas fa-spinner fa-spin mr-2"></i> IN PROGRESS
-            </a>
-            <a href="#" class="status-tab" data-status="completed">
-                <i class="fas fa-check-double mr-2"></i> COMPLETED
-            </a>
-        </div>
-
         <!-- Main Card -->
-        <div class="card orb-table-card">
+        <div class="card orb-table-card task-table-card">
 
-            <div class="att-card-header">
-                <h5 class="att-card-title">Task List Records</h5>
-                <p class="att-card-subtitle">Manage project deadlines, assignments and progress status.</p>
+            <div class="orb-card-head task-card-head">
+                <div class="orb-title-wrap">
+                    <span class="orb-card-icon">
+                        <i class="fas fa-tasks"></i>
+                    </span>
+                    <div>
+                        <h3>Task List Records</h3>
+                        <p>Manage project deadlines, assignments and progress status.</p>
+                    </div>
+                </div>
+
+                <!-- Reset Filters Button in Card Header -->
+                <button type="button" class="btn btn-undo btn-outline-secondary btn-sm d-flex align-items-center" style="height: 38px !important; border-radius: 10px !important; padding: 0 16px !important; font-size: 13px !important; font-weight: 700 !important; border: 1px solid #e2e8f0 !important; color: #475467 !important; background: #fff !important; transition: all 0.2s ease !important; cursor: pointer;">
+                    <i class="fas fa-undo mr-2" style="font-size: 11px;"></i> Reset Filters
+                </button>
             </div>
 
             <!-- Attached Filters inside the Card -->
-            <div class="task-filters-attached">
+            <div class="task-filters-attached task-filter-wrap">
                 <form id="taskFilterForm" onsubmit="return false;">
                     <div class="task-filter-grid">
 
@@ -474,13 +573,23 @@
 
                         <div>
                             <label>Employee</label>
-                            <select name="user_id" class="form-control">
-                                <option value="all">All Staff</option>
-                                @foreach($employees as $emp)
-                                    <option value="{{ $emp->user->id }}" {{ request('user_id') == $emp->user->id ? 'selected' : '' }}>
-                                        {{ $emp->employeeDetail->name ?? $emp->name }}
+                            <select id="employeeFilter" class="form-select">
+                                <option value="">All Staff</option>
+                                @foreach($employees ?? [] as $employee)
+                                    <option value="{{ $employee->id }}" data-name="{{ $employee->name }}">
+                                        {{ $employee->name }} - {{ $employee->employee_code }}
                                     </option>
                                 @endforeach
+                            </select>
+                        </div>
+
+                        <div>
+                            <label>Status</label>
+                            <select id="statusFilter" class="form-select">
+                                <option value="">All Tasks</option>
+                                <option value="pending">Pending</option>
+                                <option value="in_progress">In Progress</option>
+                                <option value="completed">Completed</option>
                             </select>
                         </div>
 
@@ -494,19 +603,19 @@
                             <input type="date" name="end_date" class="form-control" value="{{ request('end_date') }}">
                         </div>
 
-                        <div class="d-flex align-items-center" style="gap:8px;">
-                            <button type="button" class="btn btn-undo btn-secondary d-flex align-items-center justify-content-center w-100" style="height: 40px !important; border-radius: 9px !important;">
-                                <i class="fas fa-undo mr-2"></i> Reset Filters
-                            </button>
-                        </div>
-
                     </div>
                 </form>
             </div>
 
+            <!-- Toolbar: entries left + CSV/Excel/PDF/Print right -->
+            <div class="task-dt-toolbar">
+                <div class="toolbar-left"></div>
+                <div class="toolbar-right"></div>
+            </div>
+
             <!-- Table -->
             <div class="att-table-wrap">
-                <div class="orb-table-scroll">
+                <div class="orb-table-scroll task-table-scroll">
                     <table class="table mb-0" id="taskTable">
                         <thead>
                             <tr>
@@ -584,6 +693,12 @@
                 </div>
             </div>
 
+            <!-- Footer: info + pagination -->
+            <div class="task-dt-footer">
+                <div class="footer-left"></div>
+                <div class="footer-right"></div>
+            </div>
+
         </div>
 
     </div>
@@ -620,11 +735,11 @@
                         <div class="col-md-4 mb-3">
                             <div class="form-group">
                                 <label>Assign To <span class="text-danger">*</span></label>
-                                <select name="user_id" class="form-control custom-select" required>
+                                <select name="employee_id" class="form-select" required>
                                     <option value="">Select Employee</option>
-                                    @foreach($employees as $employee)
-                                        <option value="{{ $employee->user->id }}">
-                                            {{ $employee->employeeDetail->name ?? $employee->name }}
+                                    @foreach($employees ?? [] as $employee)
+                                        <option value="{{ $employee->id }}" data-user-id="{{ $employee->user_id }}">
+                                            {{ $employee->name }} - {{ $employee->employee_code }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -699,11 +814,11 @@
                         <div class="col-md-4 mb-3">
                             <div class="form-group">
                                 <label>Assign To <span class="text-danger">*</span></label>
-                                <select name="user_id" class="form-control custom-select" required>
+                                <select name="employee_id" class="form-select" required>
                                     <option value="">Select Employee</option>
-                                    @foreach($employees as $employee)
-                                        <option value="{{ $employee->user->id }}" {{ $task->user_id == $employee->user->id ? 'selected' : '' }}>
-                                            {{ $employee->employeeDetail->name ?? $employee->name }}
+                                    @foreach($employees ?? [] as $employee)
+                                        <option value="{{ $employee->id }}" data-user-id="{{ $employee->user_id }}" {{ $task->user_id == $employee->user_id ? 'selected' : '' }}>
+                                            {{ $employee->name }} - {{ $employee->employee_code }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -792,7 +907,7 @@
             autoWidth: false,
             scrollX: false,
             dom: "<'row align-items-center mb-3'<'col-md-6'l><'col-md-6 text-md-right'B>>" +
-                "<'row'<'col-md-12't>>" +
+                "<'row'<'col-md-12 orb-table-scroll't>>" +
                 "<'row align-items-center mt-3 px-4 pb-4'<'col-md-5'i><'col-md-7'p>>",
             buttons: [
                 {
@@ -834,19 +949,39 @@
             }
         });
 
+        // Relocate the generated controls to the custom task-dt-toolbar and task-dt-footer containers!
+        $('.task-dt-toolbar .toolbar-left').append($('.dataTables_length'));
+        $('.task-dt-toolbar .toolbar-right').append($('.dt-buttons'));
+        $('.task-dt-footer .footer-left').append($('.dataTables_info'));
+        $('.task-dt-footer .footer-right').append($('.dataTables_paginate'));
+
         // Search Task keyup
         $('input[name="search"]').on('keyup', function() {
             table.search(this.value).draw();
         });
 
         // Employee change
-        $('select[name="user_id"]').on('change', function() {
+        $('#employeeFilter').on('change', function() {
             var val = $(this).val();
-            if (val === 'all') {
+            if (!val || val === 'all') {
                 table.column(2).search('').draw();
             } else {
-                var text = $(this).find('option:selected').text().trim();
-                table.column(2).search(text).draw();
+                var name = $(this).find('option:selected').data('name');
+                table.column(2).search(name).draw();
+            }
+        });
+
+        // Intercept form submissions to populate user_id from selected employee option
+        $(document).on('submit', 'form', function() {
+            var $select = $(this).find('select[name="employee_id"]');
+            if ($select.length) {
+                var userId = $select.find('option:selected').data('user-id');
+                if (userId) {
+                    // Remove any existing user_id hidden inputs to avoid duplication
+                    $(this).find('input[name="user_id"]').remove();
+                    // Append the correct user_id
+                    $(this).append('<input type="hidden" name="user_id" value="' + userId + '">');
+                }
             }
         });
 
@@ -882,28 +1017,25 @@
             table.draw();
         });
 
-        // Status Tabs click
-        $('.status-tab').on('click', function(e) {
-            e.preventDefault();
-            $('.status-tab').removeClass('active');
-            $(this).addClass('active');
-            
-            var status = $(this).data('status');
-            if (status === 'all') {
+        // Status Filter change
+        $('#statusFilter').on('change', function() {
+            var val = $(this).val();
+            if (!val || val === 'all') {
                 table.column(4).search('').draw();
             } else {
-                table.column(4).search(status).draw();
+                var searchTerm = val.replace('_', ' ');
+                table.column(4).search(searchTerm).draw();
             }
         });
 
-        // Reset button visible
+        // Reset button click
         $('.btn-undo').on('click', function(e) {
             e.preventDefault();
             $('input[name="search"]').val('');
-            $('select[name="user_id"]').val('all');
+            $('#employeeFilter').val('');
+            $('#statusFilter').val('');
             $('input[name="start_date"]').val('');
             $('input[name="end_date"]').val('');
-            $('.status-tab[data-status="all"]').trigger('click');
             table.search('').columns().search('').draw();
         });
     });

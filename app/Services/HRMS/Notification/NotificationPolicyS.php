@@ -37,6 +37,9 @@ class NotificationPolicyS
             case 'announcement_published':
                 $priority = strtolower((string) ($context['priority'] ?? 'normal'));
                 return in_array($priority, ['urgent', 'important', 'high'], true);
+            case 'probation_ending_reminder':
+            case 'internship_ending_reminder':
+                return false;
 
             case 'leave_rejected':
                 // Calculate duration if not present

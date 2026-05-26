@@ -534,15 +534,19 @@ class EmployeeC extends Controller
             DB::commit();
 
             try {
-                Mail::to($request->email)->send(new EmployeeCredentialMail(
+                Mail::to($request->email)->queue(new EmployeeCredentialMail(
                     $request->name,
                     $request->email,
                     $employeeCode,
                     $plainPassword,
                     $passwordSetupUrl
                 ));
-            } catch (\Exception $mailEx) {
-                FacadesLog::error('Mail failed: ' . $mailEx->getMessage());
+            } catch (\Throwable $mailEx) {
+                FacadesLog::error('Employee credential mail dispatch failed', [
+                    'employee_code' => $employeeCode,
+                    'email' => $request->email,
+                    'error' => $mailEx->getMessage(),
+                ]);
             }
 
             return redirect()
@@ -1554,58 +1558,146 @@ class EmployeeC extends Controller
         ]);
 
         $probationEnd = $employeeData->probation_end_date
-            ? Carbon::parse($employeeData->probation_end_date)
-            : now();
+            ? \Carbon\Carbon::parse($employeeData->probation_end_date)
+            : \Carbon\Carbon::now();
 
         $permanentEffectiveDate = $probationEnd->copy()->addDay()->toDateString();
+        $isFuture = $employeeData->probation_end_date && \Carbon\Carbon::now()->lt(\Carbon\Carbon::parse($employeeData->probation_end_date));
 
         DB::beginTransaction();
 
         try {
-            $updateData = [
-                'probation_status' => 'completed',
-                'employee_stage' => 'permanent',
-                'updated_by' => auth()->id(),
-                'updated_at' => now(),
-            ];
+            if ($isFuture) {
+                // Future confirmation: Schedule it!
+                $updateData = [
+                    'probation_status' => 'scheduled_permanent',
+                    'confirmation_effective_date' => $permanentEffectiveDate,
+                    'permanent_scheduled_by_user_id' => auth()->id(),
+                    'permanent_scheduled_at' => now(),
+                    'updated_by' => auth()->id(),
+                    'updated_at' => now(),
+                ];
 
-            if (Schema::hasColumn($this->employeeTable, 'is_permanent')) {
-                $updateData['is_permanent'] = 1;
-            }
+                DB::table($this->employeeTable)->where('id', $employee)->update($updateData);
 
-            if (Schema::hasColumn($this->employeeTable, 'permanent_at')) {
-                $updateData['permanent_at'] = $permanentEffectiveDate;
-            }
+                // Notify HR/Super Admin & Employee
+                $empName = DB::table('users')->where('id', $employeeData->user_id)->value('name') ?: 'Employee';
+                
+                app(\App\Services\HRMS\Notification\NotificationS::class)
+                    ->notifyEmployee(
+                        'Permanent Confirmation Scheduled',
+                        'Your permanent confirmation has been scheduled from ' . \Carbon\Carbon::parse($permanentEffectiveDate)->format('d M Y') . '.',
+                        'permanent_scheduled',
+                        null,
+                        [],
+                        [],
+                        $employeeData->user_id
+                    );
 
-            DB::table($this->employeeTable)->where('id', $employee)->update($updateData);
+                app(\App\Services\HRMS\Notification\NotificationS::class)
+                    ->notifyHrAndSuperAdmin(
+                        'Permanent Confirmation Scheduled',
+                        'Permanent confirmation has been scheduled for ' . $empName . ' from ' . \Carbon\Carbon::parse($permanentEffectiveDate)->format('d M Y') . '.',
+                        'permanent_scheduled',
+                        null,
+                        [],
+                        ['employee_id' => $employee]
+                    );
 
-            if ($request->filled('actual_salary')) {
-                $this->salaryHistoryService->syncSalary(
-                    (int) $employee,
-                    'permanent',
-                    $request->actual_salary,
-                    $permanentEffectiveDate,
-                    $request->salary_change_reason ?: 'Permanent salary update',
-                    auth()->id()
+                $this->logLifecycle(
+                    $employee,
+                    'scheduled permanent',
+                    $employeeData,
+                    $updateData,
+                    'Employee scheduled for permanent status effective from ' . $permanentEffectiveDate
                 );
+
+                DB::commit();
+
+                return redirect()
+                    ->route('hrms.employees.probation_internship')
+                    ->with('success', 'Permanent confirmation scheduled. Effective from ' . \Carbon\Carbon::parse($permanentEffectiveDate)->format('d M Y') . '.');
+            } else {
+                // Immediate confirmation: Activate now!
+                $updateData = [
+                    'probation_status' => 'completed',
+                    'employee_stage' => 'permanent',
+                    'confirmation_date' => today()->toDateString(),
+                    'permanent_activated_at' => now(),
+                    'updated_by' => auth()->id(),
+                    'updated_at' => now(),
+                ];
+
+                if (Schema::hasColumn($this->employeeTable, 'is_permanent')) {
+                    $updateData['is_permanent'] = 1;
+                }
+
+                if (Schema::hasColumn($this->employeeTable, 'permanent_at')) {
+                    $updateData['permanent_at'] = today()->toDateString();
+                }
+
+                DB::table($this->employeeTable)->where('id', $employee)->update($updateData);
+
+                // Run leave allocation immediately
+                $empModel = \App\Models\HRMS\Employee\EmployeeM::find($employee);
+                if ($empModel) {
+                    $empModel->confirmation_date = $updateData['confirmation_date'];
+                    $empModel->employee_stage = 'permanent';
+                    app(\App\Services\HRMS\Leave\LeaveAllocationService::class)->generateForEmployee($empModel, (int) now()->year, auth()->id());
+                }
+
+                if ($request->filled('actual_salary')) {
+                    $this->salaryHistoryService->syncSalary(
+                        (int) $employee,
+                        'permanent',
+                        $request->actual_salary,
+                        today()->toDateString(),
+                        $request->salary_change_reason ?: 'Permanent salary update',
+                        auth()->id()
+                    );
+                }
+
+                app(\App\Services\HRMS\Notification\NotificationS::class)
+                    ->markEmployeeLifecycleNotificationsResolved((int) $employee, ['probation_ending_soon', 'probation_ending_reminder']);
+
+                // Notify HR/Super Admin & Employee
+                $empName = DB::table('users')->where('id', $employeeData->user_id)->value('name') ?: 'Employee';
+                
+                app(\App\Services\HRMS\Notification\NotificationS::class)
+                    ->notifyEmployee(
+                        'Permanent Confirmation Activated',
+                        'Your permanent confirmation has been activated successfully.',
+                        'permanent_activated',
+                        null,
+                        [],
+                        [],
+                        $employeeData->user_id
+                    );
+
+                app(\App\Services\HRMS\Notification\NotificationS::class)
+                    ->notifyHrAndSuperAdmin(
+                        'Permanent Confirmation Activated',
+                        'Permanent confirmation has been activated for ' . $empName . '.',
+                        'permanent_activated',
+                        null,
+                        [],
+                        ['employee_id' => $employee]
+                    );
+
+                $this->logLifecycle(
+                    $employee,
+                    'marked permanent',
+                    $employeeData,
+                    $updateData,
+                    'Employee marked permanent immediately effective from ' . today()->toDateString()
+                );
+
+                DB::commit();
+
+                return redirect()
+                    ->route('hrms.employees.probation_internship')
+                    ->with('success', 'Employee marked permanent successfully.');
             }
-
-            app(\App\Services\HRMS\Notification\NotificationS::class)
-                ->markEmployeeLifecycleNotificationsResolved((int) $employee, ['probation_ending_soon']);
-
-            $this->logLifecycle(
-                $employee,
-                'marked permanent',
-                $employeeData,
-                $updateData,
-                'Employee marked permanent effective from ' . $permanentEffectiveDate
-            );
-
-            DB::commit();
-
-            return redirect()
-                ->route('hrms.employees.probation_internship')
-                ->with('success', 'Employee marked permanent. Effective from ' . Carbon::parse($permanentEffectiveDate)->format('d M Y') . '.');
         } catch (\Throwable $e) {
             DB::rollBack();
             return back()->with('error', $e->getMessage());
@@ -1683,7 +1775,7 @@ class EmployeeC extends Controller
             }
 
             app(\App\Services\HRMS\Notification\NotificationS::class)
-                ->markEmployeeLifecycleNotificationsResolved((int) $employee, ['internship_ending_soon']);
+                ->markEmployeeLifecycleNotificationsResolved((int) $employee, ['internship_ending_soon', 'internship_ending_reminder']);
 
             $this->logLifecycle(
                 $employee,
@@ -1747,7 +1839,7 @@ class EmployeeC extends Controller
                 $updateData['employee_stage'] = 'probation';
                 $updateData['joining_date'] = $effectiveDate;
                 $updateData['probation_start_date'] = $effectiveDate;
-                $updateData['probation_end_date'] = Carbon::parse($effectiveDate)->addMonths($probationMonths)->toDateString();
+                $updateData['probation_end_date'] = Carbon::parse($effectiveDate)->addMonthsNoOverflow($probationMonths - 1)->endOfMonth()->toDateString();
                 $updateData['probation_status'] = 'active';
 
                 if (Schema::hasColumn($this->employeeTable, 'internship_status')) {
@@ -1769,7 +1861,7 @@ class EmployeeC extends Controller
             }
 
             app(\App\Services\HRMS\Notification\NotificationS::class)
-                ->markEmployeeLifecycleNotificationsResolved((int) $employee, ['internship_ending_soon']);
+                ->markEmployeeLifecycleNotificationsResolved((int) $employee, ['internship_ending_soon', 'internship_ending_reminder']);
 
             $this->logLifecycle(
                 $employee,

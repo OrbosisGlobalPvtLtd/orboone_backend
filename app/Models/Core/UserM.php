@@ -163,6 +163,11 @@ class UserM extends Authenticatable
             return true;
         }
 
+        // Fallback mapping: treat employees.update as employees.edit
+        if ($permissionKey === 'employees.update') {
+            $permissionKey = 'employees.edit';
+        }
+
         // collect role ids
         $roleIds = $this->roles()->pluck('roles.id')->toArray();
 

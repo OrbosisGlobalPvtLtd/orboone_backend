@@ -736,6 +736,89 @@
             padding: 14px;
         }
     }
+
+    /* Premium Internship Action Tabs Styling */
+    .eo-action-tabs {
+        display: flex;
+        gap: 8px;
+        background: #F8FAFC;
+        padding: 6px;
+        border-radius: 20px;
+        margin-bottom: 20px;
+        border: 1px solid #E2E8F0;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+    
+    .eo-action-tabs::-webkit-scrollbar {
+        display: none;
+    }
+    
+    .eo-action-tab {
+        flex: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 18px;
+        font-size: 13px;
+        font-weight: 800;
+        color: #64748B;
+        background: transparent;
+        border: none;
+        border-radius: 14px;
+        cursor: pointer;
+        transition: all 0.22s ease-in-out;
+        white-space: nowrap;
+        text-align: center;
+        outline: none !important;
+    }
+    
+    .eo-action-tab:hover {
+        color: var(--orb-primary);
+        background: rgba(255, 255, 255, 0.7);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+    }
+    
+    .eo-action-tab.active {
+        color: #fff;
+        background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary));
+        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.25);
+    }
+    
+    .eo-tab-pane {
+        display: none;
+    }
+    
+    .eo-tab-pane.active {
+        display: block;
+        animation: fadeInTab 0.3s ease-in-out;
+    }
+    
+    @keyframes fadeInTab {
+        from {
+            opacity: 0;
+            transform: translateY(4px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    @media (max-width: 576px) {
+        .eo-action-tabs {
+            border-radius: 14px;
+            gap: 4px;
+            padding: 4px;
+            margin-bottom: 16px;
+        }
+        
+        .eo-action-tab {
+            padding: 8px 12px;
+            font-size: 11px;
+            border-radius: 10px;
+        }
+    }
 </style>
 
 <div class="eo-page">
@@ -1069,7 +1152,37 @@
                         </div>
                         @endif
 
+                        @if ($isIntern)
+                            @php
+                                $hasExtend = Route::has('hrms.employees.internship.extend');
+                                $hasComplete = Route::has('hrms.employees.internship.complete');
+                                $hasExit = Route::has('hrms.employees.exit.mark');
+                                $firstTab = $hasExtend ? 'extend' : ($hasComplete ? 'complete' : ($hasExit ? 'exit' : ''));
+                            @endphp
+                            
+                            @if ($hasExtend || $hasComplete || $hasExit)
+                            <div class="eo-action-tabs">
+                                @if ($hasExtend)
+                                <button type="button" class="eo-action-tab {{ $firstTab === 'extend' ? 'active' : '' }}" data-target="extend-internship-{{ $employee->id }}">
+                                    Extend Internship
+                                </button>
+                                @endif
+                                @if ($hasComplete)
+                                <button type="button" class="eo-action-tab {{ $firstTab === 'complete' ? 'active' : '' }}" data-target="complete-internship-{{ $employee->id }}">
+                                    Complete / Convert Internship
+                                </button>
+                                @endif
+                                @if ($hasExit)
+                                <button type="button" class="eo-action-tab {{ $firstTab === 'exit' ? 'active' : '' }}" data-target="exit-internship-{{ $employee->id }}">
+                                    Internship Exit
+                                </button>
+                                @endif
+                            </div>
+                            @endif
+                        @endif
+
                         @if ($isIntern && Route::has('hrms.employees.internship.extend'))
+                        <div class="eo-tab-pane {{ $firstTab === 'extend' ? 'active' : '' }}" id="extend-internship-{{ $employee->id }}">
                         <div class="eo-action-card">
                             <div class="eo-action-card-head">
                                 <div class="eo-action-icon"><i class="fas fa-calendar-plus"></i></div>
@@ -1123,9 +1236,11 @@
                                 </div>
                             </form>
                         </div>
+                        </div>
                         @endif
 
                         @if ($isIntern && Route::has('hrms.employees.internship.complete'))
+                        <div class="eo-tab-pane {{ $firstTab === 'complete' ? 'active' : '' }}" id="complete-internship-{{ $employee->id }}">
                         <div class="eo-action-card">
                             <div class="eo-action-card-head">
                                 <div class="eo-action-icon"><i class="fas fa-check-circle"></i></div>
@@ -1180,9 +1295,11 @@
                                 </div>
                             </form>
                         </div>
+                        </div>
                         @endif
 
                         @if ($isIntern && Route::has('hrms.employees.exit.mark'))
+                        <div class="eo-tab-pane {{ $firstTab === 'exit' ? 'active' : '' }}" id="exit-internship-{{ $employee->id }}">
                         <div class="eo-action-card mb-0">
                             <div class="eo-action-card-head">
                                 <div class="eo-action-icon" style="background:#FEE2E2;color:#DC2626;">
@@ -1221,6 +1338,7 @@
                                 </div>
                             </form>
                         </div>
+                        </div>
                         @endif
                     </div>
                 </div>
@@ -1255,7 +1373,8 @@
         const resetBtn = document.getElementById('resetFilter');
 
         const urlParams = new URLSearchParams(window.location.search);
-        const highlightEmployeeId = urlParams.get('highlight_employee');
+        const highlightEmployeeId = urlParams.get('highlight_employee') || urlParams.get('highlight');
+        const stageFromNotification = (urlParams.get('stage') || '').toLowerCase();
 
         // Debug check
         const $table = $('#probationInternshipTable');
@@ -1381,7 +1500,13 @@
             searchInput.value = '';
             departmentFilter.value = '';
             statusFilter.value = '';
-            employmentTypeFilter.value = '';
+            if (stageFromNotification === 'probation') {
+                employmentTypeFilter.value = 'probation';
+            } else if (stageFromNotification === 'internship') {
+                employmentTypeFilter.value = 'intern';
+            } else {
+                employmentTypeFilter.value = '';
+            }
 
             applyFilters();
 
@@ -1418,6 +1543,33 @@
         });
 
         highlightEmployeeFromNotification();
+
+        // Vanilla JS Tab Switcher for Internship Action Modal (scoped to active modal)
+        document.addEventListener('click', function(event) {
+            const tabButton = event.target.closest('.eo-action-tab');
+            if (!tabButton) return;
+
+            const modal = tabButton.closest('.eo-life-modal') || tabButton.closest('.modal');
+            if (!modal) return;
+
+            // Remove active class from all tabs inside this specific modal
+            const tabs = modal.querySelectorAll('.eo-action-tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+
+            // Add active class to clicked tab
+            tabButton.classList.add('active');
+
+            // Hide all tab panes inside this specific modal
+            const targetId = tabButton.getAttribute('data-target');
+            const panes = modal.querySelectorAll('.eo-tab-pane');
+            panes.forEach(pane => pane.classList.remove('active'));
+
+            // Show the target tab pane
+            const targetPane = modal.querySelector('#' + targetId);
+            if (targetPane) {
+                targetPane.classList.add('active');
+            }
+        });
     });
 </script>
 @endsection

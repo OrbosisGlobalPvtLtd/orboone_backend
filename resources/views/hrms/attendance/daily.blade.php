@@ -122,18 +122,52 @@
         text-decoration: none !important;
     }
 
+    /* Table card styling */
+    .orb-table-card {
+        background: #fff !important;
+        border-radius: 24px !important;
+        border: 1px solid #E7EAF3 !important;
+        box-shadow: 0 14px 35px rgba(16,24,40,.07) !important;
+        overflow: hidden !important;
+        margin-bottom: 30px !important;
+    }
+
+    /* Table Toolbar */
+    .orb-table-toolbar {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        gap: 16px !important;
+        flex-wrap: wrap !important;
+        padding: 16px 26px !important;
+        border-top: 1px solid #F1F5F9 !important;
+        border-bottom: 1px solid #F1F5F9 !important;
+        background: #fff !important;
+    }
+
+    .orb-table-toolbar .toolbar-left {
+        display: flex !important;
+        align-items: center !important;
+    }
+
+    .orb-table-toolbar .toolbar-right {
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+    }
+
     /* Attached Filters Area inside Table Card */
     .att-filters-attached {
         background: #F8FAFC !important;
         border-bottom: 1px solid var(--orb-border) !important;
-        padding: 20px 24px !important;
+        padding: 20px 26px 12px !important;
     }
 
     .att-filter-grid {
-        display: grid;
-        grid-template-columns: repeat(7, minmax(0, 1fr));
-        gap: 12px;
-        align-items: flex-end;
+        display: grid !important;
+        grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+        gap: 12px !important;
+        align-items: flex-end !important;
     }
 
     .att-filter-grid label {
@@ -141,13 +175,13 @@
         font-weight: 800 !important;
         color: var(--orb-muted) !important;
         text-transform: uppercase !important;
-        letter-spacing: 0.05em !important;
+        letter-spacing: 0.08em !important;
         margin-bottom: 6px !important;
         display: block !important;
     }
 
     .att-filter-grid .form-control {
-        height: 40px !important;
+        height: 44px !important;
         border-radius: 9px !important;
         border: 1px solid var(--orb-border) !important;
         background: #fff !important;
@@ -179,11 +213,9 @@
     }
 
     .dataTables_length select {
-        width: auto !important;
-        min-width: 64px !important;
-        max-width: 80px !important;
+        width: 72px !important;
         height: 34px !important;
-        padding: 4px 24px 4px 10px !important;
+        padding: 4px 10px !important;
         border-radius: 8px !important;
         border: 1px solid var(--orb-border) !important;
         outline: none !important;
@@ -210,28 +242,32 @@
         transform: translateY(-1px) !important;
     }
 
-    /* Scroll structure */
+    /* Table Scroll area */
     .orb-table-scroll {
         width: 100% !important;
         overflow-x: auto !important;
+        overflow-y: hidden !important;
         -webkit-overflow-scrolling: touch !important;
+        border: none !important;
     }
 
     .orb-table-scroll table {
+        min-width: 1400px !important;
         width: 100% !important;
         margin-bottom: 0 !important;
         border-collapse: separate !important;
         border-spacing: 0 !important;
     }
 
+    /* Table Header CSS */
     .orb-table-scroll table thead th {
         background: #F8FAFC !important;
-        color: var(--orb-muted) !important;
-        font-size: 11px !important;
-        font-weight: 800 !important;
+        color: #101828 !important;
+        font-size: 12px !important;
+        font-weight: 700 !important;
         text-transform: uppercase !important;
         letter-spacing: 0.05em !important;
-        padding: 14px 20px !important;
+        padding: 16px 18px !important;
         border-top: none !important;
         border-bottom: 1px solid var(--orb-border) !important;
         vertical-align: middle !important;
@@ -239,7 +275,7 @@
     }
 
     .orb-table-scroll table tbody td {
-        padding: 16px 20px !important;
+        padding: 16px 18px !important;
         font-size: 13px !important;
         font-weight: 600 !important;
         color: var(--orb-text) !important;
@@ -249,7 +285,30 @@
     }
 
     .orb-table-scroll table tbody tr:hover td {
-        background: #FDFDFF !important;
+        background: #FAFBFF !important;
+    }
+
+    /* Table Footer styling */
+    .orb-table-footer {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        gap: 16px !important;
+        flex-wrap: wrap !important;
+        padding: 18px 26px 24px !important;
+        background: #fff !important;
+        border-top: 1px solid var(--orb-border) !important;
+    }
+
+    .orb-table-footer .footer-left {
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        color: var(--orb-muted) !important;
+    }
+
+    .orb-table-footer .footer-right {
+        display: flex !important;
+        align-items: center !important;
     }
 
     select,
@@ -260,9 +319,17 @@
         background: #fff !important;
     }
 
+    .btn-undo:hover {
+        background: #F8FAFC !important;
+        border-color: #cbd5e1 !important;
+        color: #4B00E8 !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+    }
+
     @media (max-width: 1300px) {
         .att-filter-grid {
-            grid-template-columns: repeat(4, minmax(0, 1fr));
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
         }
     }
 
@@ -273,13 +340,13 @@
             padding: 24px !important;
         }
         .att-filter-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
         }
     }
 
     @media (max-width: 575px) {
         .att-filter-grid {
-            grid-template-columns: 1fr;
+            grid-template-columns: 1fr !important;
         }
         .att-btn-pill {
             width: 100% !important;
@@ -324,9 +391,21 @@
         <!-- Main Card -->
         <div class="card orb-table-card">
 
-            <div class="att-card-header">
-                <h5 class="att-card-title">Attendance Records List</h5>
-                <p class="att-card-subtitle">Review employee attendance, punch timings, working hours and status.</p>
+            <div class="orb-table-card-header d-flex align-items-center justify-content-between" style="padding: 24px 26px 18px; border-bottom: 1px solid #EEF2F7; background: #fff; flex-wrap: wrap; gap: 16px;">
+                <div class="orb-title-wrap d-flex align-items-center" style="gap: 16px;">
+                    <span class="orb-card-icon" style="width: 46px; height: 46px; border-radius: 12px; background: #F4F2FF; color: #4B00E8; display: inline-flex; align-items: center; justify-content: center; font-size: 18px;">
+                        <i class="fas fa-calendar-check"></i>
+                    </span>
+                    <div>
+                        <h3 style="margin: 0; font-size: 18px; font-weight: 800; color: #101828;">Attendance Records List</h3>
+                        <p style="margin: 4px 0 0 0; font-size: 13px; color: #667085;">Review employee attendance, punch timings, working hours and status.</p>
+                    </div>
+                </div>
+
+                <!-- Reset Filters Button in Card Header -->
+                <button type="button" class="btn btn-undo btn-outline-secondary btn-sm d-flex align-items-center" style="height: 40px !important; border-radius: 10px !important; padding: 0 16px !important; font-size: 13px !important; font-weight: 700 !important; border: 1px solid #e2e8f0 !important; color: #475467 !important; background: #fff !important; transition: all 0.2s ease !important; cursor: pointer;">
+                    <i class="fas fa-undo mr-2" style="font-size: 11px;"></i> Reset Filters
+                </button>
             </div>
 
             <!-- Attached Filters inside the Card -->
@@ -390,19 +469,18 @@
                             </select>
                         </div>
 
-                        <div class="d-flex align-items-center" style="gap:8px;">
-                            <button type="button" class="btn btn-undo btn-secondary d-flex align-items-center justify-content-center w-100" style="height: 40px !important; border-radius: 9px !important;">
-                                <i class="fas fa-undo mr-2"></i> Reset Filters
-                            </button>
-                        </div>
-
                     </div>
                 </form>
             </div>
 
-            <!-- Table Section -->
-            <div class="att-table-wrap">
-                <div class="orb-table-scroll">
+            <!-- Custom DataTables Toolbar Row -->
+            <div class="orb-table-toolbar">
+                <div class="toolbar-left"></div>
+                <div class="toolbar-right"></div>
+            </div>
+
+            <!-- Scrollable Table Body Only -->
+            <div class="orb-table-scroll">
                     <table class="att-table table mb-0" id="attendanceRecordsTable">
                         <thead>
                             <tr>
@@ -551,6 +629,12 @@
                 </div>
             </div>
 
+            <!-- Footer for Pagination & Info -->
+            <div class="orb-table-footer">
+                <div class="footer-left"></div>
+                <div class="footer-right"></div>
+            </div>
+
         </div>
 
         @foreach($attendances as $attendance)
@@ -604,7 +688,7 @@
             autoWidth: false,
             scrollX: false,
             dom: "<'row align-items-center mb-3'<'col-md-6'l><'col-md-6 text-md-right'B>>" +
-                "<'row'<'col-md-12't>>" +
+                "<'row'<'col-md-12 orb-table-scroll't>>" +
                 "<'row align-items-center mt-3 px-4 pb-4'<'col-md-5'i><'col-md-7'p>>",
             buttons: [
                 {
@@ -645,6 +729,12 @@
                 }
             }
         });
+
+        // Relocate the generated controls to the custom orb-table-toolbar and orb-table-footer containers!
+        $('.orb-table-toolbar .toolbar-left').append($('.dataTables_length'));
+        $('.orb-table-toolbar .toolbar-right').append($('.dt-buttons'));
+        $('.orb-table-footer .footer-left').append($('.dataTables_info'));
+        $('.orb-table-footer .footer-right').append($('.dataTables_paginate'));
 
         // Auto-apply filters
         $('select[name="employee_id"]').on('change', function() {

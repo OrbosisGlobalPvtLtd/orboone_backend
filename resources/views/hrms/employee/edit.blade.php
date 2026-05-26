@@ -839,14 +839,9 @@ $probationMonths = old('probation_months', $employeeData->probation_months ?? 3)
 
         function addMonths(dateString, months) {
             const date = new Date(dateString + 'T00:00:00');
-            const day = date.getDate();
-            date.setMonth(date.getMonth() + Number(months));
-
-            if (date.getDate() !== day) {
-                date.setDate(0);
-            }
-
-            date.setDate(date.getDate() - 1);
+            date.setMonth(date.getMonth() + Number(months) - 1);
+            date.setMonth(date.getMonth() + 1);
+            date.setDate(0);
             return date;
         }
 

@@ -288,7 +288,7 @@ class DashboardResolverS
                 $this->card('Employee Total', $employee['total'] ?? 0, 'fas fa-users', 'HRMS employee base'),
                 $this->card('Active Employees', $employee['active'] ?? 0, 'fas fa-user-check', 'Active workforce'),
                 $this->card('Pending Onboarding', $cards['pending_profiles'], 'fas fa-id-badge', 'Profiles needing review'),
-                $this->card('Probation Ending Soon', $cards['probation'], 'fas fa-hourglass-half', 'Next 30 days'),
+                $this->card('Probation Ending Soon', $this->probationEndingSoonCount(), 'fas fa-hourglass-half', 'Next 30 days'),
                 $this->card('Leave Pending', $leave['pending'] ?? 0, 'fas fa-calendar-alt', 'Approvals waiting'),
                 $this->card('Documents Pending', $documents['pending'] ?? 0, 'fas fa-folder-open', 'Document approval queue'),
                 $this->card('Announcements', $announcements['total'] ?? 0, 'fas fa-bullhorn', 'Communication stats'),
@@ -2150,18 +2150,30 @@ class DashboardResolverS
 
     private function probationEndingSoonCount(): int
     {
-        if (! $this->columnExists('employees_new', 'probation_end_date')) {
+        if (! $this->tableExists('employees_new') || ! $this->columnExists('employees_new', 'probation_end_date')) {
             return 0;
         }
 
-        return DB::table('employees_new')
-            ->whereBetween('probation_end_date', [today()->toDateString(), today()->addDays(30)->toDateString()])
-            ->where(function ($q) {
-                if ($this->columnExists('employees_new', 'probation_status')) {
-                    $q->whereIn('probation_status', ['pending', 'ongoing']);
-                }
-            })
-            ->count();
+        $query = DB::table('employees_new')
+            ->whereBetween('probation_end_date', [today()->toDateString(), today()->addDays(30)->toDateString()]);
+
+        if ($this->columnExists('employees_new', 'employee_stage')) {
+            $query->where('employee_stage', 'probation');
+        }
+
+        if ($this->columnExists('employees_new', 'status')) {
+            $query->where('status', 'active');
+        }
+
+        if ($this->columnExists('employees_new', 'employment_status')) {
+            $query->where('employment_status', 'active');
+        }
+
+        if ($this->columnExists('employees_new', 'is_active')) {
+            $query->where('is_active', 1);
+        }
+
+        return (int) $query->count();
     }
 
     private function exitEmployeesCount(): int
@@ -3024,6 +3036,19 @@ class DashboardResolverS
                     'icon' => 'fas fa-user-lock',
                     'tone' => 'danger',
                     'url' => $this->routeUrl('attendances.pending-approval'),
+                ];
+            }
+
+            // 5. Probation Ending Soon Action Required
+            $probationSoon = $this->probationEndingSoonCount();
+            if ($probationSoon > 0) {
+                $actions[] = [
+                    'title' => 'Probation Ending Soon',
+                    'subtitle' => 'Employees require confirmation or extension decision',
+                    'count' => $probationSoon,
+                    'icon' => 'fas fa-hourglass-half',
+                    'tone' => 'warning',
+                    'url' => $this->routeUrl('hrms.employees.probation_internship'),
                 ];
             }
         } catch (\Throwable $e) {

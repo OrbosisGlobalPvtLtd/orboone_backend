@@ -7,13 +7,16 @@ use App\Http\Controllers\Web\HRMS\Concerns\HrmsCrudPage;
 use App\Models\HRMS\EnterprisePayroll\EnterprisePayrollRunM;
 use App\Models\HRMS\EnterprisePayroll\EnterprisePayslipM;
 use App\Services\HRMS\EnterprisePayroll\EnterprisePayslipService;
-use Illuminate\Support\Facades\Storage;
+use App\Services\HRMS\Storage\HrmsFileResolverS;
 
 class PayslipC extends Controller
 {
     use HrmsCrudPage;
 
-    public function __construct(private EnterprisePayslipService $payslipService)
+    public function __construct(
+        private EnterprisePayslipService $payslipService,
+        private HrmsFileResolverS $resolver
+    )
     {
     }
 
@@ -68,8 +71,9 @@ class PayslipC extends Controller
             abort_unless($payslip->employee_id === $this->ownEmployeeId() && $payslip->is_visible_to_employee, 403);
         }
 
-        abort_unless(Storage::disk('public')->exists($payslip->pdf_path), 404);
+        $resolved = $this->resolver->resolve($payslip->pdf_path);
+        abort_unless($resolved, 404);
 
-        return Storage::disk('public')->download($payslip->pdf_path, basename($payslip->pdf_path));
+        return response()->download($resolved['absolute'], basename($resolved['absolute']));
     }
 }

@@ -7,11 +7,15 @@ use App\Models\HRMS\EnterprisePayroll\EnterprisePayrollM;
 use App\Models\HRMS\EnterprisePayroll\EnterprisePayslipM;
 use App\Models\HRMS\EnterprisePayroll\EnterpriseReimbursementM;
 use App\Models\HRMS\EnterprisePayroll\EnterpriseSalaryStructureM;
+use App\Services\HRMS\Storage\HrmsFileResolverS;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Storage;
 
 class EnterprisePayrollApiS
 {
+    public function __construct(private HrmsFileResolverS $resolver)
+    {
+    }
+
     public function employeeForUser(?int $userId): ?EmployeeM
     {
         if (! $userId) {
@@ -160,7 +164,7 @@ class EnterprisePayrollApiS
             return $path;
         }
 
-        return Storage::disk('public')->url($path);
+        return $this->resolver->secureFileUrl($path);
     }
 
     public function amount(mixed $value): float

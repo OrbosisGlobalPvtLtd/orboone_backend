@@ -23,8 +23,8 @@ class FcmNotificationS
         }
 
         try {
-            $projectId = env('FIREBASE_PROJECT_ID');
-            $serverKey = env('FIREBASE_SERVER_KEY');
+            $projectId = (string) config('services.firebase.project_id');
+            $serverKey = (string) config('services.firebase.server_key');
 
             if (!empty($projectId)) {
                 return $this->sendHttpV1($projectId, $token, $title, $body, $data);
@@ -273,21 +273,17 @@ class FcmNotificationS
 
     private function getOAuthToken(): ?string
     {
-        $credentialsPath = env('FIREBASE_CREDENTIALS');
+        $credentialsPath = config('services.firebase.credentials_path');
 
         if (!$credentialsPath) {
-            Log::warning('FCM OAuth: FIREBASE_CREDENTIALS missing.');
+            Log::warning('FCM OAuth: firebase credentials path missing.');
             return null;
         }
 
         $fullPath = $this->resolveCredentialsPath($credentialsPath);
 
         if (!file_exists($fullPath)) {
-            $fullPath = storage_path('app/firebase-service-account.json');
-        }
-
-        if (!file_exists($fullPath)) {
-            Log::warning('FCM OAuth: credentials file not found at ' . $credentialsPath);
+            Log::warning('FCM OAuth: credentials file not found at ' . $fullPath);
             return null;
         }
 
@@ -377,7 +373,7 @@ class FcmNotificationS
             return $path;
         }
 
-        return base_path($path);
+        return storage_path('app/private/firebase/firebase-service-account.json');
     }
 
     private function base64UrlEncode(string $value): string

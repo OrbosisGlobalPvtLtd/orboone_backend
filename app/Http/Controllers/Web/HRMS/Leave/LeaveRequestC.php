@@ -11,10 +11,13 @@ use App\Models\HRMS\Leave\LeaveRequestM;
 use App\Models\HRMS\Leave\LeaveTypeM;
 use App\Services\HRMS\Leave\LeaveApprovalService;
 use App\Services\HRMS\Leave\LeaveCalculationService;
+use App\Services\HRMS\Storage\HrmsFileResolverS;
+use App\Services\HRMS\Storage\HrmsStoragePathS;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class LeaveRequestC extends Controller
 {
@@ -22,7 +25,9 @@ class LeaveRequestC extends Controller
 
     public function __construct(
         private LeaveCalculationService $calculationService,
-        private LeaveApprovalService $approvalService
+        private LeaveApprovalService $approvalService,
+        private HrmsStoragePathS $paths,
+        private HrmsFileResolverS $resolver
     ) {
     }
 
@@ -138,15 +143,12 @@ class LeaveRequestC extends Controller
         }
 
         $file = $request->file('attachment');
-        $directory = public_path('uploads/leave_attachments');
-        if (! is_dir($directory)) {
-            mkdir($directory, 0775, true);
-        }
+        $employeeId = (int) ($this->ownEmployeeId() ?: 0);
+        $directory = $employeeId > 0
+            ? $this->paths->employeeLeave($employeeId, 'attachments')
+            : $this->paths->temp('previews');
 
-        $fileName = 'leave_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-        $file->move($directory, $fileName);
-
-        return 'uploads/leave_attachments/' . $fileName;
+        return $file->store($directory, 'private');
     }
 
     private function notifyLeaveApplied(LeaveRequestM $leaveRequest): void
@@ -186,7 +188,7 @@ class LeaveRequestC extends Controller
             return '';
         }
 
-        return preg_match('/^https?:\/\//i', $path) ? $path : asset(ltrim($path, '/'));
+        return preg_match('/^https?:\/\//i', $path) ? $path : $this->resolver->secureFileUrl($path);
     }
 
     private function attachmentType(string $path): string

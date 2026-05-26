@@ -614,6 +614,9 @@ class PermissionSeeder extends Seeder
         }
 
         $runtimePermissions = [
+            ['settings', 'hrms_exit_policy', 'view', 'hrms_exit_policy.view', 'View HRMS exit policies'],
+            ['settings', 'hrms_exit_policy', 'manage', 'hrms_exit_policy.manage', 'Manage HRMS exit policies'],
+            ['settings', 'hrms_exit_policy', 'update', 'hrms_exit_policy.update', 'Update HRMS exit policies'],
             ['hrms', 'attendance_records', 'view_all', 'attendance.records.view_all', 'View all attendance records'],
             ['hrms', 'attendance_regularization', 'view_own', 'attendance.regularization.view_own', 'View own regularization requests'],
             ['hrms', 'attendance_regularization', 'view_team', 'attendance.regularization.view_team', 'View team regularization requests'],

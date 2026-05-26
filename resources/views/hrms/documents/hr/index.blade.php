@@ -384,9 +384,9 @@
     <div class="dm-hero" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px; padding: 24px; border-radius: 16px; margin-bottom: 24px;">
         <div style="max-width: 600px;">
             <div class="dm-kicker" style="margin-bottom: 8px; font-size: 11px; font-weight: 800; letter-spacing: 1px; color: rgba(255,255,255,0.9);">
-                <i class="fas fa-shield-check mr-1"></i> HRMS &bull; COMPLIANCE MANAGEMENT
+                <i class="fas fa-file-signature mr-1"></i> HRMS &bull; DOCUMENT VERIFICATION
             </div>
-            <h1 style="margin-bottom: 8px; font-size: 24px; font-weight: 800; color: #fff;">Compliance Management</h1>
+            <h1 style="margin-bottom: 8px; font-size: 24px; font-weight: 800; color: #fff; text-transform: uppercase;">HR Document Review</h1>
             <p style="margin-bottom: 0; font-size: 13px; color: rgba(255,255,255,0.8); line-height: 1.5;">Manage employee KYC, mandatory documents, verification lifecycle and compliance tracking.</p>
         </div>
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
@@ -719,6 +719,10 @@
                                 <a href="{{ route('documents.hr.show', $employee->user_id) }}"
                                     class="btn btn-sm shadow-sm" style="background: #fff; border: 1px solid var(--dm-border); color: var(--dm-primary); font-size: 11px; font-weight: 800; border-radius: 6px; padding: 4px 10px; white-space: nowrap;">
                                     View Details
+                                </a>
+                                <a href="{{ route('hrms.employees.profile.view', $employee->id) }}"
+                                    class="btn btn-sm shadow-sm" style="background: rgba(75, 0, 232, 0.05); border: 1px solid rgba(75, 0, 232, 0.1); color: var(--dm-primary); font-size: 11px; font-weight: 800; border-radius: 6px; padding: 4px 10px; white-space: nowrap;">
+                                    <i class="fas fa-user mr-1"></i> View Profile
                                 </a>
                             </div>
                         </td>

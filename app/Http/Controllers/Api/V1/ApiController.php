@@ -28,16 +28,26 @@ use App\Models\HRMS\Payroll\FnFM as FnF;
 use App\Models\HRMS\Payroll\SalaryStructureM as SalaryStructure;
 use App\Models\HRMS\Document\EmployeeDocumentM as EmployeeDocumentModal;
 use App\Models\HRMS\Document\DocumentTypeM as DocumentTypeModal;
+use App\Services\HRMS\Storage\HrmsFileResolverS;
+use App\Services\HRMS\Storage\HrmsStoragePathS;
 
 use App\Services\Shared\AttendanceService;
 
 class ApiController extends Controller
 {
     protected $attendanceService;
+    private HrmsStoragePathS $paths;
+    private HrmsFileResolverS $resolver;
 
-    public function __construct(AttendanceService $attendanceService)
+    public function __construct(
+        AttendanceService $attendanceService,
+        HrmsStoragePathS $paths,
+        HrmsFileResolverS $resolver
+    )
     {
         $this->attendanceService = $attendanceService;
+        $this->paths = $paths;
+        $this->resolver = $resolver;
     }
     // ------------------------------------------------
     // 1. LOGIN
@@ -161,15 +171,7 @@ class ApiController extends Controller
         $imageUrl = null;
 
         if ($detail && $detail->image) {
-
-            $publicPath  = public_path('uploads/employee/' . $detail->image);
-            $storagePath = storage_path('app/public/' . $detail->image);
-
-            if (file_exists($publicPath)) {
-                $imageUrl = asset('uploads/employee/' . $detail->image);
-            } elseif (file_exists($storagePath)) {
-                $imageUrl = asset('storage/' . $detail->image);
-            }
+            $imageUrl = $this->resolver->secureFileUrl($detail->image);
         }
 
         //-----------------------------
@@ -192,13 +194,7 @@ class ApiController extends Controller
         $birthdays = $rawBirthdays->map(function ($emp) {
             $empImageUrl = null;
             if ($emp->employeeDetail && $emp->employeeDetail->image) {
-                $publicPath  = public_path('uploads/employee/' . $emp->employeeDetail->image);
-                $storagePath = storage_path('app/public/' . $emp->employeeDetail->image);
-                if (file_exists($publicPath)) {
-                    $empImageUrl = asset('uploads/employee/' . $emp->employeeDetail->image);
-                } elseif (file_exists($storagePath)) {
-                    $empImageUrl = asset('storage/' . $emp->employeeDetail->image);
-                }
+                $empImageUrl = $this->resolver->secureFileUrl($emp->employeeDetail->image);
             }
 
             return [
@@ -239,8 +235,8 @@ class ApiController extends Controller
                 'work_experience_in_years' => $detail->work_experience_in_years,
                 'education_history'        => $detail->education_history ? json_decode($detail->education_history, true) : [],
                 'experience_history'       => $detail->experience_history ? json_decode($detail->experience_history, true) : [],
-                'photo_url'                => $detail->photo ? asset($detail->photo) : null,
-                'cv_url'                   => $detail->cv ? asset($detail->cv) : null,
+                'photo_url'                => $this->resolver->secureFileUrl($detail->photo),
+                'cv_url'                   => $this->resolver->secureFileUrl($detail->cv),
             ] : (object)[],
             'image_url'     => $imageUrl,
             'today_status'  => $todayStatus
@@ -390,20 +386,8 @@ class ApiController extends Controller
             // Profile photo  →  employees.image  &  employee_details.photo
             $photoFile = $request->file('image') ?: $request->file('photo');
             if ($photoFile) {
-                // Remove old files
-                if ($employee->image && file_exists(public_path($employee->image))) {
-                    @unlink(public_path($employee->image));
-                }
-                if ($detail && $detail->photo && file_exists(public_path($detail->photo))) {
-                    @unlink(public_path($detail->photo));
-                }
-
                 $photoName = $employee->id . '_photo_' . time() . '.' . $photoFile->getClientOriginalExtension();
-                $photoDir  = public_path('uploads/employees/photo');
-                if (!file_exists($photoDir)) mkdir($photoDir, 0777, true);
-
-                $photoFile->move($photoDir, $photoName);
-                $photoPath = 'uploads/employees/photo/' . $photoName;
+                $photoPath = $photoFile->storeAs($this->paths->employeeProfile($employee->id, 'avatar'), $photoName, 'private');
 
                 $empChanges['image']     = $photoPath;   // employees.image
                 $detailChanges['photo']  = $photoPath;   // employee_details.photo
@@ -411,20 +395,9 @@ class ApiController extends Controller
 
             // CV  →  employees.cv  &  employee_details.cv
             if ($request->hasFile('cv')) {
-                if ($employee->cv && file_exists(public_path($employee->cv))) {
-                    @unlink(public_path($employee->cv));
-                }
-                if ($detail && $detail->cv && file_exists(public_path($detail->cv))) {
-                    @unlink(public_path($detail->cv));
-                }
-
                 $cvFile = $request->file('cv');
                 $cvName = $employee->id . '_cv_' . time() . '.' . $cvFile->getClientOriginalExtension();
-                $cvDir  = public_path('uploads/employees/cv');
-                if (!file_exists($cvDir)) mkdir($cvDir, 0777, true);
-
-                $cvFile->move($cvDir, $cvName);
-                $cvPath = 'uploads/employees/cv/' . $cvName;
+                $cvPath = $cvFile->storeAs($this->paths->employeeOnboarding($employee->id, 'resume'), $cvName, 'private');
 
                 $empChanges['cv']    = $cvPath;   // employees.cv
                 $detailChanges['cv'] = $cvPath;   // employee_details.cv
@@ -509,8 +482,8 @@ class ApiController extends Controller
                     'ifsc_code'        => $employee->ifsc_code,
                     'branch_name'      => $employee->branch_name,
                     // File URLs
-                    'image_url'        => $employee->image ? asset($employee->image) : null,
-                    'cv_url'           => $employee->cv    ? asset($employee->cv)    : null,
+                    'image_url'        => $this->resolver->secureFileUrl($employee->image),
+                    'cv_url'           => $this->resolver->secureFileUrl($employee->cv),
                 ],
 
                 // ── employee_details TABLE ───────────────────────
@@ -533,8 +506,8 @@ class ApiController extends Controller
                     'experience_history'       => $detail?->experience_history
                                                     ? json_decode($detail->experience_history, true)
                                                     : [],
-                    'photo_url'                => $detail?->photo ? asset($detail->photo) : null,
-                    'cv_url'                   => $detail?->cv    ? asset($detail->cv)    : null,
+                    'photo_url'                => $this->resolver->secureFileUrl($detail?->photo),
+                    'cv_url'                   => $this->resolver->secureFileUrl($detail?->cv),
                 ],
             ], 200);
 
@@ -864,7 +837,11 @@ class ApiController extends Controller
             }
 
             $attachmentPath = $request->hasFile('attachment')
-                ? $request->file('attachment')->store('leave_attachments', 'public')
+                ? $request->file('attachment')->storeAs(
+                    $this->paths->employeeLeave($employee->id, $request->leave_type === 'SL' ? 'medical-certificates' : 'attachments'),
+                    'leave_' . time() . '_' . uniqid() . '.' . $request->file('attachment')->getClientOriginalExtension(),
+                    'private'
+                )
                 : null;
 
             $isRestricted = in_array($employee->employment_type, ['Internship', 'Probation'])
@@ -946,7 +923,7 @@ class ApiController extends Controller
                     'total_days'     => $totalDays,
                     'lwp_days'       => $lwpDays,
                     'status'         => 'pending',
-                    'attachment_url' => $attachmentPath ? asset('storage/' . $attachmentPath) : null,
+                    'attachment_url' => $this->resolver->secureFileUrl($attachmentPath),
                 ],
             ], 200);
 
@@ -1002,7 +979,7 @@ class ApiController extends Controller
                     'reason'         => $app->reason,
                     'status'         => $app->status,
                     'admin_remark'   => $app->admin_remark,
-                    'attachment_url' => $app->attachment ? asset('storage/' . $app->attachment) : null,
+                    'attachment_url' => $this->resolver->secureFileUrl($app->attachment),
                     'applied_on'     => $app->created_at->format('d M Y'),
                 ]);
 
@@ -1372,7 +1349,11 @@ class ApiController extends Controller
 
         $filePath = null;
         if ($request->hasFile('file')) {
-            $filePath = $request->file('file')->store('claims', 'public');
+            $filePath = $request->file('file')->storeAs(
+                $this->paths->employeePayroll($employee->id, 'reimbursements'),
+                'claim_' . time() . '_' . uniqid() . '.' . $request->file('file')->getClientOriginalExtension(),
+                'private'
+            );
         }
 
         $claim = Claim::create([
@@ -1512,7 +1493,7 @@ class ApiController extends Controller
                 return [
                     'id' => $item->id,
                     'period' => date('F Y', mktime(0, 0, 0, $item->month, 1, $item->year)),
-                    'file_url' => asset('storage/' . $item->file_path),
+                    'file_url' => $this->resolver->secureFileUrl($item->file_path),
                     'month' => $item->month,
                     'year' => $item->year
                 ];
@@ -1688,7 +1669,15 @@ class ApiController extends Controller
 
         $type = DocumentTypeModal::findOrFail($request->document_type_id);
 
-        $path = $request->file('file')->store('employee-documents', 'public');
+        $employee = Employee::where('user_id', $user->id)->first();
+        $basePath = $employee
+            ? $this->paths->mapEmployeeDocumentType($employee->id, $this->paths->normalizeDocType((string) ($type->code ?: $type->name)))
+            : 'hrms/company/templates/document-generation';
+        $path = $request->file('file')->storeAs(
+            $basePath,
+            'doc_' . time() . '_' . uniqid() . '.' . $request->file('file')->getClientOriginalExtension(),
+            'private'
+        );
 
         $document = EmployeeDocumentModal::updateOrCreate(
             [
@@ -1773,7 +1762,7 @@ class ApiController extends Controller
             ], 403);
         }
 
-        Storage::disk('public')->delete($doc->file_path);
+        Storage::disk('private')->delete($doc->file_path);
         $doc->delete();
 
         return response()->json(['message' => 'Document deleted']);
@@ -1812,7 +1801,11 @@ class ApiController extends Controller
             'file'  => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
         ]);
 
-        $path = $request->file('file')->store('policies', 'public');
+        $path = $request->file('file')->storeAs(
+            $this->paths->companyPolicy('general'),
+            'policy_' . time() . '_' . uniqid() . '.' . $request->file('file')->getClientOriginalExtension(),
+            'private'
+        );
 
         $doc = EmployeeDocument::create([
             'employee_id' => null,
@@ -2109,7 +2102,7 @@ class ApiController extends Controller
 
             $documents = [];
             foreach ($fields as $field) {
-                $documents[$field] = $documentRecord->{$field} ? asset($documentRecord->{$field}) : null;
+                $documents[$field] = $this->resolver->secureFileUrl($documentRecord->{$field});
             }
 
             return response()->json([
@@ -2173,20 +2166,24 @@ class ApiController extends Controller
             }
 
             // 3. Optimized Upload Helper (Professional Storage)
-            $uploadFile = function ($key) use ($request) {
+            $uploadFile = function ($key) use ($request, $employee) {
                 if ($request->hasFile($key)) {
                     $file = $request->file($key);
-                    
-                    // Custom naming: doc_time_uniqid.extension
                     $fileName = 'doc_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                    $destination = public_path('uploads/employee_docs');
-
-                    if (!file_exists($destination)) {
-                        mkdir($destination, 0777, true);
-                    }
-
-                    $file->move($destination, $fileName);
-                    return 'uploads/employee_docs/' . $fileName;
+                    $map = [
+                        'aadhar_card' => $this->paths->employeeIdentity($employee->id, 'aadhaar'),
+                        'pan_card' => $this->paths->employeeIdentity($employee->id, 'pan'),
+                        'bank_proof' => $this->paths->employeeBanking($employee->id, 'bank-proof'),
+                        'passport_photo' => $this->paths->employeeIdentity($employee->id, 'passport'),
+                        'educational_documents' => $this->paths->employeeEducation($employee->id, 'documents'),
+                        'offer_letter' => $this->paths->employeeExperience($employee->id, 'offer-letter'),
+                        'salary_slip_3_months' => $this->paths->employeeExperience($employee->id, 'salary-slips'),
+                        'experience_letter' => $this->paths->employeeExperience($employee->id, 'experience-letter'),
+                        'relieving_letter' => $this->paths->employeeExperience($employee->id, 'relieving-letter'),
+                        'nda_agreement_mou' => $this->paths->employeeOnboarding($employee->id, 'nda'),
+                    ];
+                    $folder = $map[$key] ?? $this->paths->employeeEducation($employee->id, 'documents');
+                    return $file->storeAs($folder, $fileName, 'private');
                 }
                 return null;
             };
@@ -2233,12 +2230,12 @@ class ApiController extends Controller
                         'employee_id'   => $employee->id,
                         'employee_name' => $employee->name,
                         'documents'     => [
-                            'aadhar_card'           => asset($documentRecord->aadhar_card),
-                            'pan_card'              => asset($documentRecord->pan_card),
-                            'bank_proof'            => asset($documentRecord->bank_proof),
-                            'passport_photo'        => asset($documentRecord->passport_photo),
-                            'educational_documents' => asset($documentRecord->educational_documents),
-                            'offer_letter'          => $documentRecord->offer_letter ? asset($documentRecord->offer_letter) : null,
+                            'aadhar_card'           => $this->resolver->secureFileUrl($documentRecord->aadhar_card),
+                            'pan_card'              => $this->resolver->secureFileUrl($documentRecord->pan_card),
+                            'bank_proof'            => $this->resolver->secureFileUrl($documentRecord->bank_proof),
+                            'passport_photo'        => $this->resolver->secureFileUrl($documentRecord->passport_photo),
+                            'educational_documents' => $this->resolver->secureFileUrl($documentRecord->educational_documents),
+                            'offer_letter'          => $this->resolver->secureFileUrl($documentRecord->offer_letter),
                         ]
                     ]
                 ], 200);

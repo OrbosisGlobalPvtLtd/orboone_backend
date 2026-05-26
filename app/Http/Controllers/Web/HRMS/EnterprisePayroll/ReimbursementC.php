@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Web\HRMS\Concerns\HrmsCrudPage;
 use App\Models\HRMS\EnterprisePayroll\EnterpriseReimbursementM;
 use App\Services\HRMS\Notification\NotificationS;
+use App\Services\HRMS\Storage\HrmsStoragePathS;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -13,7 +14,10 @@ class ReimbursementC extends Controller
 {
     use HrmsCrudPage;
 
-    public function __construct(private NotificationS $notificationService)
+    public function __construct(
+        private NotificationS $notificationService,
+        private HrmsStoragePathS $paths
+    )
     {
     }
 
@@ -76,7 +80,7 @@ class ReimbursementC extends Controller
 
         $attachmentPath = null;
         if ($request->hasFile('attachment')) {
-            $attachmentPath = $request->file('attachment')->store('enterprise-reimbursements', 'public');
+            $attachmentPath = $request->file('attachment')->store($this->paths->employeePayroll((int) $employeeId, 'reimbursements'), 'private');
         }
 
         EnterpriseReimbursementM::create([

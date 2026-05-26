@@ -5,13 +5,17 @@ namespace App\Http\Controllers\Api\V1\HRMS\EnterprisePayroll;
 use App\Http\Controllers\Controller;
 use App\Models\HRMS\EnterprisePayroll\EnterpriseReimbursementM;
 use App\Services\HRMS\EnterprisePayroll\EnterprisePayrollApiS;
+use App\Services\HRMS\Storage\HrmsStoragePathS;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
 class EnterpriseReimbursementApiC extends Controller
 {
-    public function __construct(private EnterprisePayrollApiS $service)
+    public function __construct(
+        private EnterprisePayrollApiS $service,
+        private HrmsStoragePathS $paths
+    )
     {
     }
 
@@ -52,7 +56,7 @@ class EnterpriseReimbursementApiC extends Controller
 
         $attachmentPath = null;
         if ($request->hasFile('attachment')) {
-            $attachmentPath = $request->file('attachment')->store('enterprise-reimbursements', 'public');
+            $attachmentPath = $request->file('attachment')->store($this->paths->employeePayroll((int) $employee->id, 'reimbursements'), 'private');
         }
 
         $reimbursement = EnterpriseReimbursementM::create([

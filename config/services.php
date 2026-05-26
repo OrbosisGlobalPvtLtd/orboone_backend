@@ -36,4 +36,10 @@ return [
         'radius'    => env('OFFICE_RADIUS', 500), // in meters
     ],
 
+    'firebase' => [
+        'project_id' => env('FIREBASE_PROJECT_ID'),
+        'server_key' => env('FIREBASE_SERVER_KEY'),
+        'credentials_path' => env('FIREBASE_CREDENTIALS', storage_path('app/private/firebase/firebase-service-account.json')),
+    ],
+
 ];

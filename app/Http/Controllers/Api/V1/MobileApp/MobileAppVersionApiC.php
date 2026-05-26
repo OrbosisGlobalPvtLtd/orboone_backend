@@ -4,11 +4,15 @@ namespace App\Http\Controllers\Api\V1\MobileApp;
 
 use App\Http\Controllers\Controller;
 use App\Models\HRMS\MobileApp\MobileAppVersionM;
+use App\Services\HRMS\Storage\HrmsFileResolverS;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class MobileAppVersionApiC extends Controller
 {
+    public function __construct(private HrmsFileResolverS $resolver)
+    {
+    }
+
     public function latest(Request $request)
     {
         $platform = strtolower($request->query('platform', 'android'));
@@ -19,7 +23,8 @@ class MobileAppVersionApiC extends Controller
             ->orderByDesc('version_code')
             ->first();
 
-        if (! $latest || ! $latest->apk_file || ! Storage::disk('public')->exists($latest->apk_file)) {
+        $resolvedApk = $latest && $latest->apk_file ? $this->resolver->resolve($latest->apk_file) : null;
+        if (! $latest || ! $latest->apk_file || ! $resolvedApk) {
             return response()->json([
                 'success' => true,
                 'message' => 'APK not available. Please contact admin.',
@@ -49,7 +54,7 @@ class MobileAppVersionApiC extends Controller
                 'update_available' => $updateAvailable,
                 'force_update_required' => $forceUpdateRequired,
                 'release_notes' => $this->releaseNotesAsArray($latest->release_notes),
-                'apk_url' => $latest->apk_url ?: asset('storage/' . $latest->apk_file),
+                'apk_url' => $latest->apk_url ?: $this->resolver->secureFileUrl($latest->apk_file),
                 'apk_size' => $latest->apk_size,
                 'release_date' => optional($latest->release_date)->toIso8601String(),
             ],

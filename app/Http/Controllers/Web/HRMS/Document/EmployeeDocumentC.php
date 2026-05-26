@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web\HRMS\Document;
 use App\Http\Controllers\Controller;
 use App\Models\HRMS\Document\DocumentTypeM;
 use App\Models\HRMS\Document\EmployeeDocumentM;
+use App\Services\HRMS\Storage\HrmsStoragePathS;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -12,6 +13,10 @@ use Illuminate\Support\Facades\Storage;
 
 class EmployeeDocumentC extends Controller
 {
+    public function __construct(private HrmsStoragePathS $paths)
+    {
+    }
+
     public function index()
     {
         $user = Auth::user();
@@ -80,7 +85,8 @@ class EmployeeDocumentC extends Controller
         $documentType = DocumentTypeM::findOrFail($request->document_type_id);
         $file = $request->file('file');
 
-        $path = $file->store('employee-documents/' . $employee->id, 'private');
+        $targetDir = $this->paths->mapEmployeeDocumentType($employee->id, $this->normalizeTypeKey($documentType));
+        $path = $file->store($targetDir, 'private');
 
         EmployeeDocumentM::updateOrCreate(
             [
@@ -133,7 +139,9 @@ class EmployeeDocumentC extends Controller
         }
 
         $file = $request->file('file');
-        $path = $file->store('employee-documents/' . $employee->id, 'private');
+        $documentType = DocumentTypeM::find($document->document_type_id);
+        $targetDir = $this->paths->mapEmployeeDocumentType($employee->id, $this->normalizeTypeKey($documentType));
+        $path = $file->store($targetDir, 'private');
 
         $document->update([
             'file_path' => $path,
@@ -231,5 +239,14 @@ class EmployeeDocumentC extends Controller
         );
 
         return back()->with('success', 'Profile and documents submitted for verification.');
+    }
+
+    private function normalizeTypeKey(?DocumentTypeM $type): string
+    {
+        if (! $type) {
+            return 'misc';
+        }
+
+        return $this->paths->normalizeDocType((string) ($type->code ?: $type->name));
     }
 }

@@ -26,24 +26,39 @@ class NotificationC extends Controller
      */
     public function open(NotificationM $notification)
     {
-        // Ensure the notification belongs to the authenticated user
         if ($notification->user_id !== auth()->id()) {
             abort(403);
         }
 
-        // Mark as read
         $notification->markAsRead();
 
         $routeName = $notification->route_name;
-        $routeParams = $notification->route_params ?? [];
-        $data = $notification->data ?? [];
+        $routeParams = is_array($notification->route_params) ? $notification->route_params : [];
+        $data = is_array($notification->data) ? $notification->data : [];
 
-        // Support for route_name + route_params
+        if (!empty($data['action_url'])) {
+            return redirect((string) $data['action_url']);
+        }
+
+        if (empty($routeName) && !empty($data['route_name']) && Route::has((string) $data['route_name'])) {
+            $routeName = (string) $data['route_name'];
+            $routeParams = is_array($data['route_params'] ?? null) ? $data['route_params'] : $routeParams;
+        }
+
+        if (empty($routeName) && ! empty($data['notification_type'])) {
+            $type = (string) $data['notification_type'];
+            if ($type === 'profile_submitted' && ! empty($data['employee_id']) && Route::has('hrms.employees.profile.view')) {
+                return redirect()->route('hrms.employees.profile.view', ['employee' => $data['employee_id']]);
+            }
+            if (in_array($type, ['document_uploaded', 'document_reuploaded'], true) && ! empty($data['employee_id']) && Route::has('documents.employee.show')) {
+                return redirect()->route('documents.employee.show', ['employee' => $data['employee_id']]);
+            }
+        }
+
         if (!empty($routeName) && Route::has($routeName)) {
             try {
                 $url = route($routeName, $routeParams);
 
-                // Existing logic for highlighting employee
                 if (!empty($data['employee_id'])) {
                     $url .= (str_contains($url, '?') ? '&' : '?') . 'highlight_employee=' . $data['employee_id'];
                 }

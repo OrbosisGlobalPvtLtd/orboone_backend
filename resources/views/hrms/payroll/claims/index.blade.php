@@ -45,7 +45,7 @@
                 <td>{{ ucfirst($c->status) }}</td>
                 <td>
                     @if($c->file)
-                        <a href="{{ asset('storage/'.$c->file) }}" target="_blank">View</a>
+                        <a href="{{ route('hrms.documents.file', ['path' => $c->file]) }}" target="_blank">View</a>
                     @else
                         -
                     @endif

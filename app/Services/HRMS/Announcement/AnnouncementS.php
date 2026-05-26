@@ -5,12 +5,17 @@ namespace App\Services\HRMS\Announcement;
 use App\Models\Core\UserM as User;
 use App\Models\HRMS\Announcement\AnnouncementM as Announcement;
 use App\Models\HRMS\Department\DepartmentM as Department;
+use App\Services\HRMS\Storage\HrmsStoragePathS;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class AnnouncementS
 {
+    public function __construct(private HrmsStoragePathS $paths)
+    {
+    }
+
     public function paginate(int $count = 10)
     {
         return Announcement::with(['creator', 'department'])
@@ -62,7 +67,7 @@ class AnnouncementS
             return null;
         }
 
-        return $file->store('attachments', 'public');
+        return $file->store($this->paths->announcement((int) now()->format('Y'), (int) now()->format('m'), 'attachments'), 'private');
     }
 
     /**

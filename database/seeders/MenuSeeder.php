@@ -67,7 +67,7 @@ class MenuSeeder extends Seeder
             ['id' => 155, 'name' => 'Payroll Adjustments', 'route' => 'hrms.payroll.adjustments.index', 'icon' => 'fas fa-sliders-h', 'module_key' => 'payroll', 'parent_id' => 40, 'sort_order' => 9],
 
             ['id' => 50, 'name' => 'Document Management', 'route' => null, 'icon' => 'fas fa-folder-open', 'module_key' => 'documents', 'parent_id' => null, 'sort_order' => 50],
-            ['id' => 51, 'name' => 'Compliance Management', 'route' => 'documents.hr.index', 'icon' => 'fas fa-shield-alt', 'module_key' => 'documents', 'parent_id' => 50, 'sort_order' => 1],
+            ['id' => 51, 'name' => 'Compliance Management', 'route' => 'documents.compliance.index', 'icon' => 'fas fa-shield-alt', 'module_key' => 'documents', 'parent_id' => 50, 'sort_order' => 1],
 
             ['id' => 52, 'name' => 'Upload Documents', 'route' => 'hrms.documents.self.index', 'icon' => 'fas fa-file-upload', 'module_key' => 'employee.documents', 'parent_id' => 50, 'sort_order' => 2],
 
@@ -95,6 +95,7 @@ class MenuSeeder extends Seeder
             ['id' => 144, 'name' => 'Employee Policy Assignments', 'route' => 'hrms.employee_policy_assignments.index', 'icon' => 'fas fa-user-shield', 'module_key' => 'settings', 'parent_id' => 80, 'sort_order' => 5],
             ['id' => 150, 'name' => 'Notification Retention', 'route' => 'settings.notification_retention.index', 'icon' => 'fas fa-bell-slash', 'module_key' => 'settings', 'parent_id' => 80, 'sort_order' => 6],
             ['id' => 151, 'name' => 'Mobile App Updates', 'route' => 'hrms.mobile-app-versions.index', 'icon' => 'fas fa-mobile-alt', 'module_key' => 'settings', 'parent_id' => 80, 'sort_order' => 7],
+            ['id' => 162, 'name' => 'Exit Policy', 'route' => 'settings.hrms_exit_policies.index', 'icon' => 'fas fa-user-clock', 'module_key' => 'settings', 'parent_id' => 80, 'sort_order' => 8],
 
             ['id' => 90, 'name' => 'CRM', 'route' => 'module.crm', 'icon' => 'fas fa-handshake', 'module_key' => 'crm', 'parent_id' => null, 'sort_order' => 90],
             ['id' => 320, 'name' => 'Project Management', 'route' => null, 'icon' => 'fas fa-project-diagram', 'module_key' => 'project_management', 'parent_id' => null, 'sort_order' => 65],

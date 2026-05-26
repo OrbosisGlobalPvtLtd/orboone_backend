@@ -3,11 +3,16 @@
 namespace App\Http\Controllers\Core;
 
 use App\Http\Controllers\Controller;
+use App\Services\HRMS\Storage\HrmsFileResolverS;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class FileController extends Controller
 {
+    public function __construct(private HrmsFileResolverS $resolver)
+    {
+    }
+
     public function show(Request $request)
     {
         return $this->view($request);
@@ -15,7 +20,7 @@ class FileController extends Controller
 
     public function view(Request $request)
 {
-    $path = $request->query('path');
+    $path = $this->resolver->normalizeDbPath($request->query('path'));
 
     if (!$path) {
         return response()->json([
@@ -25,42 +30,52 @@ class FileController extends Controller
     }
 
     $user = auth()->user();
-    $employee = $user->employee ?? null;
-
-    if (!$employee) {
-        abort(403, 'Employee not found');
+    if (! $user) {
+        abort(401);
     }
 
-    $employee->loadMissing('profile', 'documents');
+    $isAdmin = method_exists($user, 'hasPermission') && (
+        $user->hasPermission('employee_documents.view') ||
+        $user->hasPermission('documents.verification.view') ||
+        $user->hasPermission('payroll.payslips.view_all') ||
+        $user->hasPermission('enterprise_reimbursement.manage') ||
+        $user->hasPermission('company_documents.manage')
+    );
 
-    $profile = $employee->profile;
-
-    $allowedPaths = [];
-
-    if ($profile) {
-        if (!empty($profile->profile_image)) {
-            $allowedPaths[] = $profile->profile_image;
+    if (! $isAdmin) {
+        $employee = $user->employee ?? null;
+        if (! $employee) {
+            abort(403, 'Employee not found');
         }
 
-        if (!empty($profile->resume_file)) {
-            $allowedPaths[] = $profile->resume_file;
+        $isOwnProfile = DB::table('employee_profiles')
+            ->where('employee_id', $employee->id)
+            ->where(function ($q) use ($path) {
+                $q->where('profile_image', $path)
+                    ->orWhere('resume_file', $path);
+            })
+            ->exists();
+
+        $isOwnDoc = DB::table('employee_documents_new')
+            ->where('employee_id', $employee->id)
+            ->where('file_path', $path)
+            ->exists();
+
+        $isOwnPayslip = DB::table('payslips')
+            ->where('employee_id', $employee->id)
+            ->where('file_path', $path)
+            ->exists();
+
+        if (! ($isOwnProfile || $isOwnDoc || $isOwnPayslip)) {
+            abort(403, 'Unauthorized access');
         }
     }
 
-    foreach ($employee->documents ?? [] as $doc) {
-        if (!empty($doc->file_path)) {
-            $allowedPaths[] = $doc->file_path;
-        }
-    }
-
-    if (!in_array($path, $allowedPaths, true)) {
-        abort(403, 'Unauthorized access');
-    }
-
-    if (!Storage::disk('private')->exists($path)) {
+    $resolved = $this->resolver->resolve($path);
+    if (! $resolved) {
         abort(404);
     }
 
-    return response()->file(Storage::disk('private')->path($path));
+    return response()->file($resolved['absolute']);
 }
 }

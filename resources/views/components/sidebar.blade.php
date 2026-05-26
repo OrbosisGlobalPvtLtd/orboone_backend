@@ -4,80 +4,7 @@ use Illuminate\Support\Facades\Route;
 $menus = isset($menus) ? $menus : collect();
 $active = isset($active) ? $active : '';
 
-$isEmployeeRole = auth()->check() && optional(auth()->user()->role)->slug === 'employee';
-
-$employeeOnlyMenus = [
-    'my documents',
-    'my generated documents',
-    'my attendance',
-    'my leave requests',
-    'my payslips',
-    'my salary slips',
-];
-
-$isEmployeeOnly = function($menu) use ($employeeOnlyMenus) {
-    $name = strtolower(trim($menu->name ?? ''));
-    $slug = strtolower(trim($menu->slug ?? ''));
-
-    if (in_array($name, $employeeOnlyMenus, true) || in_array($slug, $employeeOnlyMenus, true)) {
-        return true;
-    }
-
-    $prefixes = [
-        'employee.self', 'employee.profile', 'employee.documents', 
-        'employee.attendance', 'employee.leave', 'employee.salary', 
-        'employee.announcements', 'my.profile', 'my.documents', 
-        'my.attendance', 'my.leave'
-    ];
-
-    if (!empty($menu->module_key)) {
-        foreach ($prefixes as $prefix) {
-            if (str_starts_with(strtolower($menu->module_key), $prefix)) return true;
-        }
-    }
-
-    if (!empty($menu->permission_key)) {
-        foreach ($prefixes as $prefix) {
-            if (str_starts_with(strtolower($menu->permission_key), $prefix)) return true;
-        }
-    }
-
-    if (!empty($menu->route)) {
-        foreach ($prefixes as $prefix) {
-            if (str_starts_with(strtolower($menu->route), $prefix)) return true;
-        }
-    }
-
-    if (!empty($menu->url)) {
-        foreach ($prefixes as $prefix) {
-            if (str_starts_with(strtolower($menu->url), $prefix)) return true;
-        }
-    }
-
-    return false;
-};
-
-if (empty($isEmployeeUser) || !$isEmployeeRole) {
-    $menus = $menus->map(function($children) use ($isEmployeeOnly) {
-        return collect($children)->reject(function($menu) use ($isEmployeeOnly) {
-            return $isEmployeeOnly($menu);
-        });
-    });
-}
-
 $parentMenus = $menus[null] ?? collect();
-
-if (empty($isEmployeeUser) || !$isEmployeeRole) {
-    $parentMenus = $parentMenus->reject(function($menu) use ($isEmployeeOnly, $menus) {
-        if ($isEmployeeOnly($menu)) return true;
-        // If parent has no route, and all children were filtered out, hide parent
-        if (empty($menu->route)) {
-            $children = $menus[$menu->id] ?? collect();
-            if ($children->isEmpty()) return true;
-        }
-        return false;
-    });
-}
 
 $isMenuActive = function($item) use ($active) {
     $activeViewVar = $active ?? '';
@@ -115,6 +42,28 @@ $isMenuActive = function($item) use ($active) {
 };
 
 $currentRoute = optional(request()->route())->getName() ?? '';
+
+$resolveRouteName = function (?string $routeName): ?string {
+    if (empty($routeName)) {
+        return null;
+    }
+    if (Route::has($routeName)) {
+        return $routeName;
+    }
+
+    $variants = [
+        str_replace('-', '_', $routeName),
+        str_replace('_', '-', $routeName),
+    ];
+
+    foreach ($variants as $variant) {
+        if ($variant && Route::has($variant)) {
+            return $variant;
+        }
+    }
+
+    return null;
+};
 @endphp
 
 <aside class="sidebar" id="sidebar">
@@ -138,16 +87,6 @@ $currentRoute = optional(request()->route())->getName() ?? '';
         <nav class="menu" id="sidebarMenu">
             @forelse($parentMenus as $menu)
             @php
-            $name = strtolower(trim($menu->name ?? ''));
-            $slug = strtolower(trim($menu->slug ?? ''));
-
-            $isEmployeeOnlyMenu = in_array($name, $employeeOnlyMenus, true)
-                || in_array($slug, $employeeOnlyMenus, true);
-
-            if ($isEmployeeOnlyMenu && !$isEmployeeRole) {
-                continue;
-            }
-
             $children = $menus[$menu->id] ?? collect();
             $hasChildren = $children->count() > 0;
             $isParentMenu = $hasChildren || empty($menu->route);
@@ -186,21 +125,12 @@ $currentRoute = optional(request()->route())->getName() ?? '';
                     data-parent="#sidebarMenu">
                     @forelse($children as $child)
                     @php
-                    $childName = strtolower(trim($child->name ?? ''));
-                    $childSlug = strtolower(trim($child->slug ?? ''));
-
-                    $childIsEmployeeOnly = in_array($childName, $employeeOnlyMenus, true)
-                        || in_array($childSlug, $employeeOnlyMenus, true);
-
-                    if ($childIsEmployeeOnly && !$isEmployeeRole) {
-                        continue;
-                    }
-
-                    $childHasRoute = $child->route && Route::has($child->route);
+                    $resolvedChildRoute = $resolveRouteName($child->route);
+                    $childHasRoute = ! empty($resolvedChildRoute);
                     $childActive = $isMenuActive($child);
                     @endphp
 
-                    <a href="{{ $childHasRoute ? route($child->route) : 'javascript:void(0)' }}"
+                    <a href="{{ $childHasRoute ? route($resolvedChildRoute) : 'javascript:void(0)' }}"
                         class="sub-link {{ $childActive ? 'active' : '' }}"
                         @if(! $childHasRoute) data-sidebar-empty-link @endif>
                         <span class="sub-link-icon"><i class="{{ $child->icon ?? 'fas fa-circle' }}"></i></span>
@@ -216,11 +146,12 @@ $currentRoute = optional(request()->route())->getName() ?? '';
             </div>
             @else
             @php
-            $hasRoute = $menu->route && Route::has($menu->route);
+            $resolvedMenuRoute = $resolveRouteName($menu->route);
+            $hasRoute = ! empty($resolvedMenuRoute);
             $activeState = $isMenuActive($menu);
             @endphp
 
-            <a href="{{ $hasRoute ? route($menu->route) : 'javascript:void(0)' }}"
+            <a href="{{ $hasRoute ? route($resolvedMenuRoute) : 'javascript:void(0)' }}"
                 class="{{ $activeState ? 'active' : '' }}"
                 @if(! $hasRoute) data-sidebar-empty-link @endif>
                 <span class="menu-icon"><i class="{{ $menu->icon ?? 'fas fa-circle' }}"></i></span>

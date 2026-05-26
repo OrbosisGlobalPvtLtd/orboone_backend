@@ -50,8 +50,23 @@ Route::middleware(['auth', 'web.admin.access', 'module:hrms'])
                 ->name('internship.complete');
 
             Route::post('/{employee}/mark-exit', [EmployeeC::class, 'markExit'])
-                ->middleware('permission:employees.update')
+                ->middleware('permission:employee_exit.initiate|employees.update')
                 ->name('exit.mark');
+            Route::post('/{employee}/exit-initiate', [EmployeeC::class, 'markExit'])
+                ->middleware('permission:employee_exit.initiate|employees.update')
+                ->name('exit.initiate');
+            Route::post('/{employee}/exit-refresh', [EmployeeC::class, 'refreshExit'])
+                ->middleware('permission:employee_exit.update|employees.update')
+                ->name('exit.refresh');
+            Route::post('/{employee}/exit-clearance-update', [EmployeeC::class, 'updateExitClearance'])
+                ->middleware('permission:employee_exit.update|employees.update|employee_exit.asset_clearance|employee_exit.fnf_process|employee_exit.document_generate')
+                ->name('exit.clearance.update');
+            Route::post('/{employee}/exit-complete', [EmployeeC::class, 'completeExit'])
+                ->middleware('permission:employee_exit.complete|employees.update')
+                ->name('exit.complete');
+            Route::post('/{employee}/exit-cancel', [EmployeeC::class, 'cancelExit'])
+                ->middleware('permission:employee_exit.cancel|employees.update')
+                ->name('exit.cancel');
 
             Route::get('/export', [EmployeeC::class, 'print'])
                 ->middleware('permission:employees.view')

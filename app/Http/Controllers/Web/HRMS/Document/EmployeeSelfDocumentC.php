@@ -9,10 +9,15 @@ use App\Models\HRMS\Employee\EmployeeM;
 use App\Models\HRMS\Document\EmployeeDocumentM;
 use App\Models\HRMS\Document\DocumentTypeM;
 use App\Services\HRMS\Employee\EmployeeProfileCompletionS;
+use App\Services\HRMS\Storage\HrmsStoragePathS;
 use Illuminate\Support\Facades\Auth;
 
 class EmployeeSelfDocumentC extends Controller
 {
+    public function __construct(private HrmsStoragePathS $paths)
+    {
+    }
+
     private function getCurrentEmployee()
     {
         return EmployeeM::with(['user', 'profile'])->where('user_id', Auth::id())->first();
@@ -46,7 +51,7 @@ class EmployeeSelfDocumentC extends Controller
         
         $file = $request->file('file');
         $fileName = time() . '_' . str_replace(' ', '_', $file->getClientOriginalName());
-        $path = $file->storeAs("employee_documents/{$employee->id}", $fileName, 'private');
+        $path = $file->storeAs($this->paths->mapEmployeeDocumentType($employee->id, $this->paths->normalizeDocType((string) ($docType->code ?: $docType->name))), $fileName, 'private');
         
         EmployeeDocumentM::updateOrCreate(
             [
@@ -85,7 +90,8 @@ class EmployeeSelfDocumentC extends Controller
         
         $file = $request->file('file');
         $fileName = time() . '_' . str_replace(' ', '_', $file->getClientOriginalName());
-        $path = $file->storeAs("employee_documents/{$employee->id}", $fileName, 'private');
+        $docType = DocumentTypeM::find($document->document_type_id);
+        $path = $file->storeAs($this->paths->mapEmployeeDocumentType($employee->id, $this->paths->normalizeDocType((string) (($docType->code ?? null) ?: ($docType->name ?? 'misc')))), $fileName, 'private');
         
         $document->update([
             'file_path' => $path,

@@ -96,7 +96,7 @@
                             <td class="text-right">₹{{ number_format((float) $row->amount, 2) }}</td>
                             <td class="text-right">₹{{ number_format((float) $row->approved_amount, 2) }}</td>
                             <td>@include('hrms.enterprise-payroll.partials.status-badge', ['status' => $row->status])</td>
-                            <td>@if($row->attachment_path)<a class="btn btn-sm btn-link font-weight-bold" href="{{ asset('storage/'.$row->attachment_path) }}" target="_blank"><i class="fas fa-paperclip"></i> Preview</a>@else - @endif</td>
+                            <td>@if($row->attachment_path)<a class="btn btn-sm btn-link font-weight-bold" href="{{ route('hrms.documents.file', ['path' => $row->attachment_path]) }}" target="_blank"><i class="fas fa-paperclip"></i> Preview</a>@else - @endif</td>
                             <td>
                                 @if($canManage && $row->status === 'pending')
                                 <form method="POST" action="{{ route('enterprise-payroll.reimbursements.approve', $row->id) }}" class="d-inline">@csrf<input type="hidden" name="approved_amount" value="{{ $row->amount }}"><button class="ep-btn ep-btn-light" style="height: 30px; padding: 0 8px;" title="Approve"><i class="fas fa-check text-success"></i></button></form>

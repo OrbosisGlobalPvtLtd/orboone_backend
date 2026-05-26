@@ -610,7 +610,7 @@ $disabled = $isReadOnly ? 'disabled' : '';
             <div class="profile-hero-left">
                 <div class="avatar-container">
                     @if($profile->profile_image)
-                    <img src="{{ \Illuminate\Support\Facades\Storage::url($profile->profile_image) }}" alt="{{ $employee->user->name ?? '' }}" class="profile-avatar-img">
+                    <img src="{{ route('hrms.documents.file', ['path' => $profile->profile_image]) }}" alt="{{ $employee->user->name ?? '' }}" class="profile-avatar-img">
                     @else
                     {{ substr($employee->user->name ?? 'U', 0, 1) }}
                     @endif
@@ -749,7 +749,7 @@ $disabled = $isReadOnly ? 'disabled' : '';
                                 @if($profile?->resume_file)
                                 <div class="doc-file mb-2">
                                     <span class="doc-file-name"><i class="fas fa-file-pdf text-danger mr-1"></i> Uploaded</span>
-                                    <a href="{{ \Illuminate\Support\Facades\Storage::url($profile->resume_file) }}" target="_blank" class="profile-btn" style="min-height:30px;padding:4px 10px;font-size:11px;"><i class="fas fa-eye"></i> View</a>
+                                    <a href="{{ route('hrms.documents.file', ['path' => $profile->resume_file]) }}" target="_blank" class="profile-btn" style="min-height:30px;padding:4px 10px;font-size:11px;"><i class="fas fa-eye"></i> View</a>
                                 </div>
                                 @endif
                                 <input type="file" name="resume_file" class="profile-control" accept=".pdf,.doc,.docx" {{ $disabled }} style="padding-top:6px;">

@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\HRMS\Document\DocumentTypeM;
 use App\Models\HRMS\Document\EmployeeDocumentM;
 use App\Models\HRMS\Employee\EmployeeM;
+use App\Services\HRMS\Storage\HrmsStoragePathS;
+use App\Services\HRMS\Storage\HrmsFileResolverS;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -14,13 +16,20 @@ use Illuminate\Support\Facades\Storage;
 
 class EmployeeDocumentsC extends Controller
 {
+    public function __construct(
+        private HrmsStoragePathS $paths,
+        private HrmsFileResolverS $resolver
+    ) {
+    }
+
     public function index(Request $request)
     {
-        $query = EmployeeM::with(['user', 'profile', 'documents.documentType']);
+        $documentTypes = DocumentTypeM::where('scope', 'employee')->where('is_active', 1)->get();
+        $departments = \App\Models\HRMS\Department\DepartmentM::where('is_active', 1)->orderBy('name')->get();
+        $query = EmployeeM::with(['user', 'profile', 'department', 'documents.documentType']);
 
-        if ($request->filled('search')) {
-            $search = $request->search;
-
+        $search = $request->get('search', $request->get('employee'));
+        if (!empty($search)) {
             $query->where(function ($q) use ($search) {
                 $q->where('employee_code', 'like', "%{$search}%")
                     ->orWhereHas('user', function ($userQuery) use ($search) {
@@ -30,42 +39,209 @@ class EmployeeDocumentsC extends Controller
             });
         }
 
-        if ($request->filled('status')) {
-            if ($request->status === 'verified') {
-                $query->whereHas('documents')
-                    ->whereDoesntHave('documents', function ($q) {
-                        $q->where('verification_status', '!=', 'verified');
-                    });
-            }
-
-            if ($request->status === 'pending') {
-                $query->where(function ($q) {
-                    $q->whereDoesntHave('documents')
-                        ->orWhereHas('documents', function ($docQuery) {
-                            $docQuery->where('verification_status', '!=', 'verified');
-                        });
-                });
-            }
+        if ($request->filled('department_id')) {
+            $query->where('department_id', (int) $request->department_id);
         }
 
-        $employees = $query->latest()->paginate(20)->withQueryString();
+        $stage = $request->get('employee_stage', $request->get('stage'));
+        if (!empty($stage)) {
+            $query->where('employee_stage', $stage);
+        }
 
-        $employees->getCollection()->transform(function ($employee) {
+        if ($request->filled('profile_status')) {
+            $query->whereHas('profile', fn($q) => $q->where('profile_status', $request->profile_status));
+        }
+
+        $allEmployees = $query->latest()->get();
+
+        $calculatedEmployees = $allEmployees->map(function ($employee) use ($documentTypes) {
             $documents = $employee->documents;
+            $experienceType = strtolower(trim((string) ($employee->experience_type ?? 'fresher')));
+            $requiredDocs = $documentTypes->where('is_mandatory', 1)->filter(function ($type) use ($experienceType) {
+                $applies = strtolower(trim((string) ($type->applies_to ?: 'all')));
+                return in_array($applies, ['all', 'both', 'employee', 'employees', $experienceType], true);
+            });
+            $requiredIds = $requiredDocs->pluck('id');
+            $relevantDocs = $documents->whereIn('document_type_id', $requiredIds);
+            
+            // Unique relevant uploaded documents to find missing count
+            $uploadedRelevant = $relevantDocs->where('verification_status', '!=', 'rejected')->unique('document_type_id')->count();
 
-            $employee->doc_total = $documents->count();
-            $employee->doc_verified = $documents->where('verification_status', 'verified')->count();
-            $employee->doc_pending = $documents->where('verification_status', 'pending')->count();
-            $employee->doc_rejected = $documents->where('verification_status', 'rejected')->count();
+            // Setup required counters
+            $employee->total_required_docs = $requiredDocs->count();
+            $employee->uploaded_docs = $documents->count();
+            $employee->verified_docs = $relevantDocs->where('verification_status', 'verified')->count();
+            $employee->pending_docs = $relevantDocs->where('verification_status', 'pending')->count();
+            $employee->rejected_docs = $relevantDocs->where('verification_status', 'rejected')->count();
+            $employee->missing_docs = max(0, $employee->total_required_docs - $uploadedRelevant);
+            $employee->expired_docs = $relevantDocs->whereNotNull('expiry_date')->filter(fn($doc) => now()->gt(\Carbon\Carbon::parse($doc->expiry_date)))->count();
 
-            $employee->verification_status = ($employee->doc_total > 0 && $employee->doc_verified === $employee->doc_total)
-                ? 'verified'
-                : 'pending';
+            // Supporting older template keys
+            $employee->doc_total = $employee->uploaded_docs;
+            $employee->doc_required = $employee->total_required_docs;
+            $employee->doc_verified = $employee->verified_docs;
+            $employee->doc_pending = $employee->pending_docs;
+            $employee->doc_rejected = $employee->rejected_docs;
+            $employee->doc_missing = $employee->missing_docs;
+            $employee->doc_expired = $employee->expired_docs;
+
+            $employee->profile_status = $employee->profile->profile_status ?? 'pending';
+
+            // Additional fields requested by the user
+            $employee->name = $employee->user->name ?? '';
+            $employee->email = $employee->user->email ?? '';
+            $employee->code = $employee->employee_code ?? '';
+            $employee->department_name = $employee->department?->name ?? '';
+            $employee->stage = $employee->employee_stage ?? '';
+
+            // Compliance status logic
+            if ($employee->expired_docs > 0) {
+                $employee->compliance_status = 'expired';
+            } elseif ($employee->rejected_docs > 0) {
+                $employee->compliance_status = 'rejected';
+            } elseif ($employee->missing_docs > 0) {
+                $employee->compliance_status = 'missing';
+            } elseif ($employee->pending_docs > 0) {
+                $employee->compliance_status = 'pending';
+            } else {
+                $employee->compliance_status = 'compliant';
+            }
+
+            // verification_status mapping
+            $employee->verification_status = ($employee->compliance_status === 'compliant') ? 'compliant' : 'non_compliant';
+
+            // compliance_percentage
+            $employee->compliance_percentage = $employee->total_required_docs > 0
+                ? round(($employee->verified_docs / $employee->total_required_docs) * 100)
+                : 100;
+            $employee->compliance_percentage = min(100, max(0, $employee->compliance_percentage));
+
+            $employee->last_verified_at = $documents->where('verification_status', 'verified')->max('verified_at');
+            $employee->actions = ''; // custom placeholder
 
             return $employee;
         });
 
-        return view('hrms.documents.employee-documents.index', compact('employees'));
+        // Compute dashboard analytics (organization-wide stats)
+        $totalEmployeesCount = $calculatedEmployees->count();
+        $fullyCompliantCount = $calculatedEmployees->where('compliance_status', 'compliant')->count();
+        $nonCompliantCount = $totalEmployeesCount - $fullyCompliantCount;
+        $pendingVerificationCount = $calculatedEmployees->where('compliance_status', 'pending')->count();
+        $missingDocsCount = $calculatedEmployees->where('compliance_status', 'missing')->count();
+        $rejectedDocsCount = $calculatedEmployees->where('compliance_status', 'rejected')->count();
+        $expiredDocsCount = $calculatedEmployees->where('compliance_status', 'expired')->count();
+        $complianceRate = $totalEmployeesCount > 0 ? round(($fullyCompliantCount / $totalEmployeesCount) * 100) : 0;
+
+        // Stage-wise Compliance computation
+        $stages = ['internship', 'probation', 'permanent', 'exit'];
+        $stageCompliance = [];
+        foreach ($stages as $stg) {
+            $stageEmployees = $calculatedEmployees->filter(function ($emp) use ($stg) {
+                return strtolower(trim((string) ($emp->employee_stage))) === $stg;
+            });
+            $totalStg = $stageEmployees->count();
+            $compliantStg = $stageEmployees->where('compliance_status', 'compliant')->count();
+            $stageCompliance[$stg] = [
+                'total' => $totalStg,
+                'compliant' => $compliantStg,
+                'rate' => $totalStg > 0 ? round(($compliantStg / $totalStg) * 100) : 100,
+            ];
+        }
+
+        // Summary array for view
+        $summary = [
+            'total_employees' => $totalEmployeesCount,
+            'fully_compliant' => $fullyCompliantCount,
+            'non_compliant' => $nonCompliantCount,
+            'pending_verification' => $pendingVerificationCount,
+            'missing_documents' => $missingDocsCount,
+            'rejected_documents' => $rejectedDocsCount,
+            'expired_documents' => $expiredDocsCount,
+            'compliance_rate' => $complianceRate,
+        ];
+
+        // Risk panels for view
+        $riskPanels = [
+            'high_risk' => [
+                'count' => $calculatedEmployees->filter(function ($emp) {
+                    return ($emp->missing_docs > 2 || $emp->rejected_docs > 0 || $emp->expired_docs > 0);
+                })->count(),
+                'employees' => $calculatedEmployees->filter(function ($emp) {
+                    return ($emp->missing_docs > 2 || $emp->rejected_docs > 0 || $emp->expired_docs > 0);
+                })->take(3)->values(),
+            ],
+            'missing_mandatory' => [
+                'count' => $calculatedEmployees->filter(function ($emp) {
+                    return $emp->missing_docs > 0;
+                })->count(),
+                'employees' => $calculatedEmployees->filter(function ($emp) {
+                    return $emp->missing_docs > 0;
+                })->take(3)->values(),
+            ],
+            'rejected' => [
+                'count' => $calculatedEmployees->filter(function ($emp) {
+                    return $emp->rejected_docs > 0;
+                })->count(),
+                'employees' => $calculatedEmployees->filter(function ($emp) {
+                    return $emp->rejected_docs > 0;
+                })->take(3)->values(),
+            ],
+            'expired' => [
+                'count' => $calculatedEmployees->filter(function ($emp) {
+                    return $emp->expired_docs > 0;
+                })->count(),
+                'employees' => $calculatedEmployees->filter(function ($emp) {
+                    return $emp->expired_docs > 0;
+                })->take(3)->values(),
+            ],
+        ];
+
+        // Filter collection by compliance status
+        $complianceStatusFilter = $request->get('compliance_status');
+        $filtered = $calculatedEmployees;
+        if (!empty($complianceStatusFilter)) {
+            $filtered = $filtered->filter(function ($emp) use ($complianceStatusFilter) {
+                if ($complianceStatusFilter === 'non_compliant') {
+                    return $emp->compliance_status !== 'compliant';
+                }
+                return $emp->compliance_status === $complianceStatusFilter;
+            });
+        }
+
+        // Filter collection by Risk Type
+        $riskTypeFilter = $request->get('risk_type');
+        if (!empty($riskTypeFilter)) {
+            $filtered = $filtered->filter(function ($emp) use ($riskTypeFilter) {
+                return match ($riskTypeFilter) {
+                    'high_risk' => ($emp->missing_docs > 2 || $emp->rejected_docs > 0 || $emp->expired_docs > 0),
+                    'missing_mandatory' => $emp->missing_docs > 0,
+                    'rejected' => $emp->rejected_docs > 0,
+                    'expired' => $emp->expired_docs > 0,
+                    default => true,
+                };
+            });
+        }
+
+        // Paginate filtered results
+        $currentPage = \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPage();
+        $perPage = 20;
+        $currentPageItems = $filtered->slice(($currentPage - 1) * $perPage, $perPage)->values();
+        $employees = new \Illuminate\Pagination\LengthAwarePaginator(
+            $currentPageItems,
+            $filtered->count(),
+            $perPage,
+            $currentPage,
+            ['path' => \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPath()]
+        );
+        $employees->withQueryString();
+
+        return view('hrms.documents.employee-documents.index', compact(
+            'employees',
+            'departments',
+            'summary',
+            'riskPanels',
+            'stageCompliance'
+        ));
     }
 
     public function show(EmployeeM $employee)
@@ -126,10 +302,7 @@ class EmployeeDocumentsC extends Controller
 
         $file = $request->file('file');
 
-        $path = $file->store(
-            'employee-documents/' . $employee->id,
-            'private'
-        );
+        $path = $file->store($this->paths->mapEmployeeDocumentType($employee->id, $this->normalizeTypeKey($documentType)), 'private');
 
         EmployeeDocumentM::updateOrCreate(
             [
@@ -181,7 +354,7 @@ class EmployeeDocumentsC extends Controller
 
         foreach ($request->employee_ids as $employeeId) {
             $file = $request->file('file');
-            $path = $file->store('employee-documents/' . $employeeId, 'private');
+            $path = $file->store($this->paths->mapEmployeeDocumentType((int) $employeeId, $this->normalizeTypeKey($documentType)), 'private');
 
             EmployeeDocumentM::create([
                 'employee_id' => $employeeId,
@@ -227,11 +400,6 @@ class EmployeeDocumentsC extends Controller
             'verification_status' => 'rejected',
             'verified_by_user_id' => Auth::id(),
             'verified_at' => now(),
-            'rejection_reason' => $request->rejection_reason,
-        ]);
-
-        $document->employee?->profile()->update([
-            'profile_status' => 'rejected',
             'rejection_reason' => $request->rejection_reason,
         ]);
 
@@ -284,11 +452,6 @@ class EmployeeDocumentsC extends Controller
             'updated_at' => now(),
         ]);
 
-        $doc->employee?->profile()->update([
-            'profile_status' => 'rejected',
-            'rejection_reason' => $request->rejection_reason ?: 'Document rejected by HR',
-        ]);
-
         $this->notifyDocumentStatus($doc->fresh(['employee.user', 'documentType']), 'document_rejected', $request->rejection_reason ?: 'Document rejected by HR');
 
         return back()->with('success', 'Document rejected successfully.');
@@ -318,7 +481,7 @@ class EmployeeDocumentsC extends Controller
         }
 
         $file = $request->file('file');
-        $path = $file->store('employee-documents/' . $employee, 'private');
+        $path = $file->store($this->paths->mapEmployeeDocumentType((int) $employee, $this->normalizeTypeKeyFromRow($type)), 'private');
 
         $data = [
             'employee_id' => $employee,
@@ -354,70 +517,8 @@ class EmployeeDocumentsC extends Controller
 
     private function syncEmployeeVerification($employeeId)
     {
-        $employee = DB::table('employees_new')->where('id', $employeeId)->first();
-
-        if (! $employee) {
-            return;
-        }
-
-        $experienceType = strtolower(trim($employee->experience_type ?? 'fresher'));
-
-        if (in_array($experienceType, ['experience', 'experienced', 'exp', 'senior'])) {
-            $experienceType = 'experienced';
-        } else {
-            $experienceType = 'fresher';
-        }
-
-        $appliesTo = ['all', 'both', 'employee', $experienceType];
-
-        if ($experienceType === 'experienced') {
-            $appliesTo = array_merge($appliesTo, ['experience', 'experienced']);
-        }
-
-        $requiredTypeIds = DB::table('document_types')
-            ->where('scope', 'employee')
-            ->where('is_active', 1)
-            ->where('is_mandatory', 1)
-            ->where(function ($q) use ($appliesTo) {
-                $q->whereNull('applies_to')
-                    ->orWhereIn('applies_to', $appliesTo);
-            })
-            ->pluck('id');
-
-        if ($requiredTypeIds->count() <= 0) {
-            return;
-        }
-
-        $verifiedRequiredDocs = DB::table('employee_documents_new')
-            ->where('employee_id', $employeeId)
-            ->whereIn('document_type_id', $requiredTypeIds)
-            ->where('verification_status', 'verified')
-            ->distinct('document_type_id')
-            ->count('document_type_id');
-
-        if ($verifiedRequiredDocs === $requiredTypeIds->count()) {
-            DB::table('employee_profiles')
-                ->where('employee_id', $employeeId)
-                ->update([
-                    'profile_status' => 'approved',
-                    'is_profile_completed' => 1,
-                    'profile_completed_at' => now(),
-                    'approved_by_user_id' => auth()->id(),
-                    'approved_at' => now(),
-                    'rejection_reason' => null,
-                    'updated_at' => now(),
-                ]);
-
-            return;
-        }
-
-        DB::table('employee_profiles')
-            ->where('employee_id', $employeeId)
-            ->update([
-                'profile_status' => 'pending',
-                'is_profile_completed' => 0,
-                'updated_at' => now(),
-            ]);
+        // Verification flow must not auto-approve/reject profile status.
+        return;
     }
 
     private function notifyDocumentStatus(EmployeeDocumentM $document, string $type, ?string $reason = null): void
@@ -465,10 +566,7 @@ class EmployeeDocumentsC extends Controller
             return '';
         }
 
-        return url('/api/v1/file') . '?' . http_build_query([
-            'disk' => 'private',
-            'path' => $path,
-        ]);
+        return $this->resolver->secureFileUrl($path);
     }
 
     private function attachmentType(?string $mime, ?string $name): string
@@ -485,5 +583,23 @@ class EmployeeDocumentsC extends Controller
         }
 
         return 'document';
+    }
+
+    private function normalizeTypeKey(?DocumentTypeM $type): string
+    {
+        if (! $type) {
+            return 'misc';
+        }
+
+        return $this->paths->normalizeDocType((string) ($type->code ?: $type->name));
+    }
+
+    private function normalizeTypeKeyFromRow(?object $type): string
+    {
+        if (! $type) {
+            return 'misc';
+        }
+
+        return $this->paths->normalizeDocType((string) (($type->code ?? null) ?: ($type->name ?? 'misc')));
     }
 }

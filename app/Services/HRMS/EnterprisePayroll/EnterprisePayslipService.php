@@ -5,6 +5,7 @@ namespace App\Services\HRMS\EnterprisePayroll;
 use App\Models\HRMS\EnterprisePayroll\EnterprisePayrollM;
 use App\Models\HRMS\EnterprisePayroll\EnterprisePayslipM;
 use App\Services\HRMS\Notification\NotificationS;
+use App\Services\HRMS\Storage\HrmsStoragePathS;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
@@ -12,7 +13,10 @@ use Illuminate\Validation\ValidationException;
 
 class EnterprisePayslipService
 {
-    public function __construct(private NotificationS $notificationService)
+    public function __construct(
+        private NotificationS $notificationService,
+        private HrmsStoragePathS $paths
+    )
     {
     }
 
@@ -30,11 +34,11 @@ class EnterprisePayslipService
 
         $monthName = Carbon::create($payroll->year, $payroll->month, 1)->format('F');
         $payslipNo = sprintf('ORB-EP-%04d-%02d-%05d', $payroll->year, $payroll->month, $payroll->employee_id);
-        $directory = "payslips/{$payroll->year}/{$payroll->month}";
+        $directory = $this->paths->employeePayroll((int) $payroll->employee_id, 'payslips');
         $fileName = "{$payslipNo}.pdf";
         $path = "{$directory}/{$fileName}";
 
-        Storage::disk('public')->makeDirectory($directory);
+        Storage::disk('private')->makeDirectory($directory);
 
         $pdf = Pdf::loadView('hrms.enterprise-payroll.payslips.pdf', [
             'payroll' => $payroll,
@@ -43,7 +47,7 @@ class EnterprisePayslipService
             'payslipNo' => $payslipNo,
         ])->setPaper('a4');
 
-        Storage::disk('public')->put($path, $pdf->output());
+        Storage::disk('private')->put($path, $pdf->output());
 
         $payslip = EnterprisePayslipM::updateOrCreate(
             ['employee_id' => $payroll->employee_id, 'month' => $payroll->month, 'year' => $payroll->year],
@@ -51,12 +55,14 @@ class EnterprisePayslipService
                 'payroll_id' => $payroll->id,
                 'payslip_no' => $payslipNo,
                 'pdf_path' => $path,
-                'pdf_url' => Storage::url($path),
+                'pdf_url' => null,
                 'generated_by_user_id' => $actorId,
                 'generated_at' => Carbon::now('Asia/Kolkata'),
                 'is_visible_to_employee' => true,
             ]
         );
+        $payslip->pdf_url = url("/api/v1/hrms/enterprise-payroll/payslips/{$payslip->id}/download");
+        $payslip->save();
 
         $this->notificationService->notifyEmployee(
             'Payslip Available',

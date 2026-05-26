@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Web\HRMS\Announcement;
 use App\Http\Controllers\Controller;
 use App\Models\Core\UserM;
 use App\Models\HRMS\Announcement\AnnouncementM;
+use App\Services\HRMS\Storage\HrmsFileResolverS;
+use App\Services\HRMS\Storage\HrmsStoragePathS;
 use App\Services\HRMS\Notification\NotificationS;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,6 +18,12 @@ use Illuminate\Support\Str;
 
 class AnnouncementsC extends Controller
 {
+    public function __construct(
+        private HrmsStoragePathS $paths,
+        private HrmsFileResolverS $resolver
+    ) {
+    }
+
     public function index(Request $request)
     {
         if (!Auth::user()->hasPermission('announcements.view') && !Auth::user()->hasPermission('announcements.manage')) {
@@ -107,7 +115,7 @@ class AnnouncementsC extends Controller
                             'is_active' => (bool) $item->is_active,
                             'created_by' => optional($item->creator)->name ?? 'System',
                             'created_at' => optional($item->created_at)->format('d M Y, h:i A'),
-                            'attachment_url' => $item->attachment ? asset('storage/' . $item->attachment) : null,
+                            'attachment_url' => $item->attachment ? $this->resolver->secureFileUrl($item->attachment) : null,
                             'edit_data' => [
                                 'id' => $item->id,
                                 'title' => $item->title,
@@ -194,7 +202,10 @@ class AnnouncementsC extends Controller
         $data = $this->validated($request);
 
         if ($request->hasFile('attachment')) {
-            $data['attachment'] = $request->file('attachment')->store('announcements', 'public');
+            $data['attachment'] = $request->file('attachment')->store(
+                $this->paths->announcement((int) now()->format('Y'), (int) now()->format('m'), 'attachments'),
+                'private'
+            );
         }
 
         $data['created_by_user_id'] = Auth::id();
@@ -221,10 +232,13 @@ class AnnouncementsC extends Controller
 
         if ($request->hasFile('attachment')) {
             if ($announcement->attachment) {
-                Storage::disk('public')->delete($announcement->attachment);
+                Storage::disk('private')->delete($announcement->attachment);
             }
 
-            $data['attachment'] = $request->file('attachment')->store('announcements', 'public');
+            $data['attachment'] = $request->file('attachment')->store(
+                $this->paths->announcement((int) now()->format('Y'), (int) now()->format('m'), 'attachments'),
+                'private'
+            );
         }
 
         $data['is_active'] = $request->boolean('is_active');
@@ -246,7 +260,7 @@ class AnnouncementsC extends Controller
         }
 
         if ($announcement->attachment) {
-            Storage::disk('public')->delete($announcement->attachment);
+            Storage::disk('private')->delete($announcement->attachment);
         }
 
         $announcement->delete();
@@ -404,7 +418,7 @@ class AnnouncementsC extends Controller
                         'announcement_id' => $announcement->id,
                         'announcement_type' => $announcement->type,
                         'priority' => $announcement->priority,
-                        'attachment_url' => $announcement->attachment ? asset('storage/' . $announcement->attachment) : '',
+                        'attachment_url' => $announcement->attachment ? $this->resolver->secureFileUrl($announcement->attachment) : '',
                         'attachment_type' => $announcement->attachment ? $this->attachmentType($announcement->attachment) : '',
                         'attachment_name' => $announcement->attachment ? basename($announcement->attachment) : '',
                     ]

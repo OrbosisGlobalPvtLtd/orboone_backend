@@ -114,7 +114,7 @@ class HRDocumentC extends Controller
 
     public function show($user)
     {
-        $employee = EmployeeM::with(['user', 'documents.documentType'])
+        $employee = EmployeeM::with(['user', 'profile', 'documents.documentType', 'documents.verifiedBy'])
             ->where('user_id', $user)
             ->firstOrFail();
 
@@ -123,12 +123,33 @@ class HRDocumentC extends Controller
             ->orderBy('name')
             ->get();
 
-        $documents = $employee->documents->keyBy('document_type_id');
+        $experienceType = $employee->experience_type ?? 'fresher';
+        
+        $requiredDocs = $documentTypes->where('is_mandatory', 1)->filter(function ($type) use ($experienceType) {
+            return $type->applies_to === 'all' || $type->applies_to === $experienceType;
+        });
+        
+        $requiredIds = $requiredDocs->pluck('id');
+        $documents = $employee->documents;
+
+        $doc_total = $documents->count();
+        $doc_required = $requiredDocs->count();
+        $doc_verified = $documents->where('verification_status', 'verified')->count();
+        $doc_pending = $documents->where('verification_status', 'pending')->count();
+        $doc_rejected = $documents->where('verification_status', 'rejected')->count();
+
+        $uploadedRelevant = $documents->whereIn('document_type_id', $requiredIds)->where('verification_status', '!=', 'rejected')->unique('document_type_id')->count();
+        $doc_missing = max(0, $requiredDocs->count() - $uploadedRelevant);
 
         return view('hrms.documents.hr.show', compact(
             'employee',
-            'documentTypes',
-            'documents'
+            'documents',
+            'doc_total',
+            'doc_required',
+            'doc_verified',
+            'doc_pending',
+            'doc_rejected',
+            'doc_missing'
         ));
     }
 
@@ -164,10 +185,8 @@ class HRDocumentC extends Controller
             'rejection_reason' => $request->rejection_reason,
         ]);
 
-        $document->employee?->profile()->update([
-            'profile_status' => 'rejected',
-            'rejection_reason' => $request->rejection_reason,
-        ]);
+        // Decoupled document verification from employee profile lifecycle
+        // We no longer reject the employee profile when a document is rejected.
 
         $this->notifyDocumentStatus($document->fresh(['employee.user', 'documentType']), 'document_rejected', $request->rejection_reason);
 
@@ -214,42 +233,8 @@ class HRDocumentC extends Controller
 
     private function syncEmployeeVerification($employeeId)
     {
-        $employee = EmployeeM::with('profile')->find($employeeId);
-
-        if (! $employee) {
-            return;
-        }
-
-        $experienceType = $employee->experience_type ?? 'fresher';
-
-        $requiredIds = DocumentTypeM::where('scope', 'employee')
-            ->where('is_active', 1)
-            ->where('is_mandatory', 1)
-            ->where(function ($q) use ($experienceType) {
-                $q->where('applies_to', 'all')
-                    ->orWhere('applies_to', $experienceType);
-            })
-            ->pluck('id');
-
-        if ($requiredIds->count() <= 0) {
-            return;
-        }
-
-        $verifiedCount = EmployeeDocumentM::where('employee_id', $employee->id)
-            ->whereIn('document_type_id', $requiredIds)
-            ->where('verification_status', 'verified')
-            ->distinct('document_type_id')
-            ->count('document_type_id');
-
-        if ($verifiedCount === $requiredIds->count()) {
-            $employee->profile()->update([
-                'is_profile_completed' => 1,
-                'profile_status' => 'approved',
-                'approved_at' => now(),
-                'approved_by_user_id' => Auth::id(),
-                'rejection_reason' => null,
-            ]);
-        }
+        // Decoupled document verification from employee profile lifecycle
+        return;
     }
 
     private function notifyDocumentStatus(EmployeeDocumentM $document, string $type, ?string $reason = null): void

@@ -239,7 +239,7 @@ class RolePermissionSeeder extends Seeder
                 'attendance.dashboard.view','attendance.records.view_all','attendance.monthly_report.view_all','attendance.monthly_summary.view','attendance.export',
                 'leave.dashboard.view','leave.approvals.view_all','leave.approvals.approve','leave.approvals.reject','leave.balance.view_all','leave.allocation.view_all','leave.allocation.manage','leave.balance_logs.view',
                 'payroll.dashboard.view','payroll.salary_structure.view','payroll.salary_structure.manage','payroll.attendance_impacts.view','payroll.generate.view','payroll.generate.process','payroll.approve','payroll.payslips.view_all','payroll.claims.view_all','payroll.claims.manage','payroll.adjustments.manage','payroll.fnf.view','payroll.fnf.manage','payroll.bonus.view','payroll.bonus.manage','payroll.monthly_summary.view',
-                'documents.compliance.view','documents.upload.self','documents.company.view','documents.types.manage','documents.verification.view','documents.verification.approve','documents.verification.reject',
+                'documents.upload.self','documents.company.view','documents.types.manage',
                 'announcements.view','announcements.create','announcements.edit','announcements.delete','announcements.publish','announcements.print',
                 'settings.profile.view','settings.profile.update','settings.policy_change_logs.view','settings.employee_policy_assignments.view','settings.employee_policy_assignments.manage','settings.notification_retention.manage',
                 'mobile_app_versions.view','mobile_app_versions.manage','mobile_app_versions.upload','mobile_app_versions.delete',

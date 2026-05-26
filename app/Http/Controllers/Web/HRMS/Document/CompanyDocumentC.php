@@ -3,10 +3,15 @@
 namespace App\Http\Controllers\Web\HRMS\Document;
 
 use App\Http\Controllers\Controller;
+use App\Services\HRMS\Storage\HrmsStoragePathS;
 use Illuminate\Http\Request;
 use App\Models\HRMS\Document\CompanyDocumentM as CompanyDocumentModal;
 class CompanyDocumentC extends Controller
 {
+    public function __construct(private HrmsStoragePathS $paths)
+    {
+    }
+
     public function index()
     {
         $docs = CompanyDocumentModal::latest()->get();
@@ -26,7 +31,7 @@ class CompanyDocumentC extends Controller
         CompanyDocumentModal::create([
             'title' => $request->title,
             'category' => $request->category,
-            'file_path' => $request->file('file')->store('policies', 'public'),
+            'file_path' => $request->file('file')->store($this->paths->companyPolicy((string) $request->category), 'private'),
             'uploaded_by' => auth()->id(),
             'visible_to' => $request->visible_to ?? ['employee', 'admin'],
             'download_allowed' => $request->has('download_allowed') ? (bool)$request->download_allowed : true

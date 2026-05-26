@@ -80,7 +80,7 @@
                             <div class="d-flex align-items-center" style="gap:16px;">
                                 <div class="set-preview">
                                     @if(! empty($company?->logo))
-                                        <img src="{{ asset('storage/'.$company->logo) }}" alt="Company Logo">
+                                        <img src="{{ route('hrms.documents.file', ['path' => $company->logo]) }}" alt="Company Logo">
                                     @else
                                         <span>Logo</span>
                                     @endif
@@ -97,7 +97,7 @@
                             <div class="d-flex align-items-center" style="gap:16px;">
                                 <div class="set-preview">
                                     @if(! empty($company?->seal))
-                                        <img src="{{ asset('storage/'.$company->seal) }}" alt="Company Seal">
+                                        <img src="{{ route('hrms.documents.file', ['path' => $company->seal]) }}" alt="Company Seal">
                                     @else
                                         <span>Seal</span>
                                     @endif

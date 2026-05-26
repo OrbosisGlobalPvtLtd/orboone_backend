@@ -267,6 +267,8 @@ class MobileDashboardController extends Controller
             // Fallback
         }
 
+        $exitStatusCard = $this->getExitStatusCard((int) $employee->id);
+
         return response()->json([
             'success' => true,
             'message' => 'Dashboard bootstrap data fetched successfully.',
@@ -282,10 +284,40 @@ class MobileDashboardController extends Controller
                 'profile_gate_status' => $profileGateStatus,
                 'attendance_today' => $attendanceToday,
                 'leave_summary' => $leaveSummary,
+                'exit_status' => $exitStatusCard,
                 'latest_announcements' => $latestAnnouncements,
                 'unread_notification_count' => $unreadNotificationCount,
             ]
         ]);
+    }
+
+    private function getExitStatusCard(int $employeeId): ?array
+    {
+        if (! Schema::hasTable('employee_exit_processes')) {
+            return null;
+        }
+
+        $exit = DB::table('employee_exit_processes')
+            ->where('employee_id', $employeeId)
+            ->whereNotIn('status', ['cancelled'])
+            ->orderByDesc('id')
+            ->first();
+
+        if (! $exit) {
+            return null;
+        }
+
+        return [
+            'exit_type' => $exit->exit_type,
+            'status' => $exit->status,
+            'notice_period_days' => $exit->notice_period_days,
+            'last_working_day' => $exit->last_working_day ?: $exit->last_working_date,
+            'asset_status' => $exit->asset_status ?: $exit->asset_handover_status,
+            'fnf_status' => $exit->fnf_status,
+            'document_status' => $exit->document_status,
+            'handover_status' => $exit->handover_status,
+            'fnf_due_date' => property_exists($exit, 'fnf_due_date') ? $exit->fnf_due_date : null,
+        ];
     }
 
     private function buildCompletionStatus(Employee $employee, $profile): array

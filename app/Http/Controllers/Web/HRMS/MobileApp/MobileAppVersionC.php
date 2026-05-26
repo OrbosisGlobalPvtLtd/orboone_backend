@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Web\HRMS\MobileApp;
 
 use App\Http\Controllers\Controller;
 use App\Models\HRMS\MobileApp\MobileAppVersionM;
+use App\Services\HRMS\Storage\HrmsFileResolverS;
+use App\Services\HRMS\Storage\HrmsStoragePathS;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -13,6 +15,12 @@ use Illuminate\Support\Facades\Storage;
 
 class MobileAppVersionC extends Controller
 {
+    public function __construct(
+        private HrmsStoragePathS $paths,
+        private HrmsFileResolverS $resolver
+    ) {
+    }
+
     public function index()
     {
         $this->authorizePermission('mobile_app_versions.view', 'mobile_app_versions.manage');
@@ -89,7 +97,7 @@ class MobileAppVersionC extends Controller
 
         $file = $request->file('apk_file');
         $filename = 'orboone-hrms-v' . $versionCode . '-' . now()->format('YmdHis') . '.apk';
-        $path = $file->storeAs('mobile-apps', $filename, 'public');
+        $path = $file->storeAs($this->paths->apk($platform), $filename, 'private');
 
         $version = DB::transaction(function () use ($validated, $platform, $versionCode, $file, $path, $filename) {
             MobileAppVersionM::where('platform', $platform)->update(['is_active' => false]);
@@ -104,7 +112,7 @@ class MobileAppVersionC extends Controller
                 'apk_original_name' => $file->getClientOriginalName(),
                 'apk_size' => $file->getSize(),
                 'apk_mime_type' => $file->getClientMimeType(),
-                'apk_url' => asset('storage/mobile-apps/' . $filename),
+                'apk_url' => $this->resolver->secureFileUrl($path),
                 'release_notes' => $validated['release_notes'] ?? null,
                 'is_force_update' => (bool) ($validated['is_force_update'] ?? false),
                 'is_active' => true,
@@ -153,7 +161,7 @@ class MobileAppVersionC extends Controller
             $wasActive = (bool) $version->is_active;
             $platform = $version->platform;
 
-            Storage::disk('public')->delete($version->apk_file);
+            Storage::disk('private')->delete($version->apk_file);
             $version->delete();
 
             if ($wasActive) {
@@ -199,7 +207,7 @@ class MobileAppVersionC extends Controller
     {
         if (! $this->apkExists($version)) {
             if ($backOnMissing) {
-                return back()->with('error', 'APK file is missing. Please verify storage/app/public/mobile-apps and run php artisan storage:link if needed.');
+                return back()->with('error', 'APK file is missing in private storage. Please verify storage/app/private/hrms/apk/android.');
             }
 
             return response('APK not available. Please contact admin.', 404)
@@ -208,9 +216,16 @@ class MobileAppVersionC extends Controller
 
         $downloadName = 'OrboOne-v' . $version->version_name . '.apk';
 
-        $path = storage_path('app/public/' . $version->apk_file);
+        $resolved = $this->resolver->resolve($version->apk_file);
+        if (! $resolved) {
+            if ($backOnMissing) {
+                return back()->with('error', 'APK file is missing.');
+            }
+            return response('APK not available. Please contact admin.', 404)
+                ->header('Content-Type', 'text/plain');
+        }
 
-        return response()->download($path, $downloadName, [
+        return response()->download($resolved['absolute'], $downloadName, [
             'Content-Type' => 'application/vnd.android.package-archive',
             'Content-Disposition' => 'attachment; filename="' . $downloadName . '"',
             'X-Content-Type-Options' => 'nosniff',
@@ -219,7 +234,7 @@ class MobileAppVersionC extends Controller
 
     private function apkExists(?MobileAppVersionM $version): bool
     {
-        return $version && $version->apk_file && Storage::disk('public')->exists($version->apk_file);
+        return (bool) ($version && $version->apk_file && $this->resolver->resolve($version->apk_file));
     }
 
     private function authorizePermission(string ...$permissions): void
@@ -253,8 +268,8 @@ class MobileAppVersionC extends Controller
             'version_code' => $version->version_code,
             'changelog' => $version->release_notes,
             'release_notes' => preg_split('/\r\n|\r|\n/', (string) $version->release_notes),
-            'apk_url' => $version->apk_url ?: asset('storage/' . $version->apk_file),
-            'attachment_url' => $version->apk_url ?: asset('storage/' . $version->apk_file),
+            'apk_url' => $version->apk_url ?: $this->resolver->secureFileUrl($version->apk_file),
+            'attachment_url' => $version->apk_url ?: $this->resolver->secureFileUrl($version->apk_file),
             'attachment_type' => 'apk',
             'attachment_name' => $version->apk_original_name ?: basename((string) $version->apk_file),
             'force_update_required' => (bool) $version->is_force_update,

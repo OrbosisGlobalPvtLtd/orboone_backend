@@ -103,7 +103,7 @@
                                 </td>
                                 <td class="text-right" style="padding-right: 24px;">
                                     <div class="d-flex justify-content-end gap-2 align-items-center">
-                                        <a href="{{ asset('storage/'.$doc->file_path) }}" target="_blank" class="btn btn-sm btn-light border mr-2" style="border-radius: 10px; height: 36px; width: 36px; display: inline-flex; align-items: center; justify-content: center; padding: 0;">
+                                        <a href="{{ route('hrms.documents.file', ['path' => $doc->file_path]) }}" target="_blank" class="btn btn-sm btn-light border mr-2" style="border-radius: 10px; height: 36px; width: 36px; display: inline-flex; align-items: center; justify-content: center; padding: 0;">
                                             <i class="fas fa-eye text-primary"></i>
                                         </a>
                                         <form action="{{ route('documents.policies.destroy', $doc->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this document/policy?')" style="margin: 0; display: inline-block;">

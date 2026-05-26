@@ -8,6 +8,7 @@ use App\Http\Controllers\Web\HRMS\Document\EmployeeDocumentsC;
 use App\Http\Controllers\Web\HRMS\Document\EmployeePolicyC;
 use App\Http\Controllers\Web\HRMS\Document\HRDocumentC;
 use App\Http\Controllers\Web\HRMS\Employee\EmployeeC;
+use App\Services\HRMS\Storage\HrmsFileResolverS;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 
@@ -28,36 +29,43 @@ Route::middleware(['auth', 'module:hrms'])
                 abort(401, 'Unauthenticated.');
             }
             
-            if (strpos($path, '..') !== false) {
+            if (str_contains($path, '..')) {
                 abort(403, 'Unauthorized path traversal check failed.');
             }
 
             $employeeId = null;
             $isProfileImage = false;
 
-            if (str_contains($path, '/profile/')) {
-                $isProfileImage = true;
+            // 1. Resolve employeeId from document database record using file_path
+            $docRecord = DB::table('employee_documents_new')
+                ->where('file_path', $path)
+                ->first();
+            if ($docRecord) {
+                $employeeId = $docRecord->employee_id;
+            }
+
+            // 2. Resolve from employee_profiles using profile_image or resume_file
+            if (!$employeeId) {
                 $profileRecord = DB::table('employee_profiles')
                     ->where('profile_image', $path)
+                    ->orWhere('resume_file', $path)
                     ->first();
                 if ($profileRecord) {
                     $employeeId = $profileRecord->employee_id;
+                    if ($profileRecord->profile_image === $path) {
+                        $isProfileImage = true;
+                    }
                 }
             }
 
-            if (!$isProfileImage) {
-                // 1. Resolve employeeId from document database record using file_path
-                $docRecord = DB::table('employee_documents_new')
-                    ->where('file_path', $path)
-                    ->first();
-                if ($docRecord) {
-                    $employeeId = $docRecord->employee_id;
-                }
+            // 3. Fallback: Parse employee_id from directory structure: "employee-documents/ID/file"
+            if (!$employeeId && preg_match('/employee-documents[\\/](\d+)/', $path, $matches)) {
+                $employeeId = (int)$matches[1];
+            }
 
-                // 2. Fallback: Parse employee_id from directory structure: "employee-documents/ID/file"
-                if (!$employeeId && preg_match('/employee-documents[\\/](\d+)/', $path, $matches)) {
-                    $employeeId = (int)$matches[1];
-                }
+            // 4. Fallback 2: Parse employee_id from directory structure: "hrms/employees/ID/file"
+            if (!$employeeId && preg_match('/hrms[\\/]employees[\\/](\d+)/', $path, $matches)) {
+                $employeeId = (int)$matches[1];
             }
 
             if (!$employeeId) {
@@ -115,17 +123,17 @@ Route::middleware(['auth', 'module:hrms'])
                 abort(403, 'Unauthorized access to employee document.');
             }
 
-            $filePath = storage_path('app/private/' . $path);
-
-            if (!file_exists($filePath)) {
+            $resolver = app(HrmsFileResolverS::class);
+            $resolved = $resolver->resolve($path);
+            if (! $resolved) {
                 abort(404, 'File not found.');
             }
 
-            $mime = mime_content_type($filePath) ?: 'application/octet-stream';
+            $mime = mime_content_type($resolved['absolute']) ?: 'application/octet-stream';
 
-            return response()->file($filePath, [
+            return response()->file($resolved['absolute'], [
                 'Content-Type' => $mime,
-                'Content-Disposition' => 'inline; filename="' . basename($filePath) . '"',
+                'Content-Disposition' => 'inline; filename="' . basename($resolved['absolute']) . '"',
             ]);
         })
             ->where('path', '.*')
@@ -148,6 +156,10 @@ Route::middleware(['auth', 'check.access'])
                 Route::get('/dashboard', [DocumentDashboardC::class, 'index'])
                     ->middleware('permission:documents.compliance.view')
                     ->name('dashboard');
+
+                Route::get('/compliance', [EmployeeDocumentsC::class, 'index'])
+                    ->middleware('permission:documents.compliance.view')
+                    ->name('compliance.index');
 
                 Route::get('/pending-verification', [HRDocumentC::class, 'index'])
                     ->middleware('permission:documents.verification.view')

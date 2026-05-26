@@ -2,12 +2,16 @@
 
 namespace App\Services\HRMS\Employee;
 
+use App\Services\HRMS\Storage\HrmsStoragePathS;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class EmployeeFileS
 {
+    public function __construct(private HrmsStoragePathS $paths)
+    {
+    }
+
     public function upload(
         UploadedFile $file,
         int $employeeId,
@@ -46,14 +50,11 @@ class EmployeeFileS
            🔒 SECURE PATH
         ========================= */
 
-        $secureHash = substr(md5($employeeId . $employeeCode), 0, 10);
-        $basePath = "hrms/employees/{$secureHash}";
-
         $path = match ($type) {
-            'profile' => "{$basePath}/profile",
-            'resume' => "{$basePath}/resumes",
-            'document' => "{$basePath}/documents/" . ($category ?: 'other'),
-            default => "{$basePath}/other",
+            'profile' => $this->paths->employeeProfile($employeeId, 'avatar'),
+            'resume' => $this->paths->employeeOnboarding($employeeId, 'resume'),
+            'document' => $this->paths->mapEmployeeDocumentType($employeeId, $category),
+            default => $this->paths->employeeHrDocument($employeeId, 'misc'),
         };
 
         /* =========================

@@ -10,6 +10,7 @@ use App\Http\Controllers\Web\Settings\NotificationRetentionC;
 use App\Http\Controllers\Web\Settings\ScoreCategoriesController;
 use App\Http\Controllers\Web\Settings\SystemSettingsController;
 use App\Http\Controllers\Web\Settings\UsersController;
+use App\Http\Controllers\Web\Settings\HrmsExitPolicyC;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -86,4 +87,14 @@ Route::middleware(['auth', 'web.admin.access'])->group(function () {
 
     Route::get('/settings/company', [CompanySettingsController::class, 'index'])->name('settings.company.index');
     Route::put('/settings/company', [CompanySettingsController::class, 'update'])->name('settings.company.update');
+
+    Route::get('/settings/hrms-exit-policies', [HrmsExitPolicyC::class, 'index'])
+        ->middleware('permission:hrms_exit_policy.view|hrms_exit_policy.manage|hrms_exit_policy.update')
+        ->name('settings.hrms_exit_policies.index');
+    Route::post('/settings/hrms-exit-policies', [HrmsExitPolicyC::class, 'store'])
+        ->middleware('permission:hrms_exit_policy.manage|hrms_exit_policy.update')
+        ->name('settings.hrms_exit_policies.store');
+    Route::put('/settings/hrms-exit-policies/{policy}', [HrmsExitPolicyC::class, 'update'])
+        ->middleware('permission:hrms_exit_policy.update|hrms_exit_policy.manage')
+        ->name('settings.hrms_exit_policies.update');
 });

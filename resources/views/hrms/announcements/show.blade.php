@@ -195,7 +195,7 @@
                         <small class="text-muted">Attachment File</small>
                     </div>
                 </div>
-                <a href="{{ asset('storage/' . $announcement->attachment) }}" target="_blank" class="set-btn" style="height: 38px; border-radius: 10px; padding: 0 16px;">
+                <a href="{{ route('hrms.documents.file', ['path' => $announcement->attachment]) }}" target="_blank" class="set-btn" style="height: 38px; border-radius: 10px; padding: 0 16px;">
                     <i class="fas fa-download mr-1"></i> View / Download
                 </a>
             </div>

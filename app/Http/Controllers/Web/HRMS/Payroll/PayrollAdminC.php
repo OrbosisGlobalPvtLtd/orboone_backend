@@ -14,6 +14,8 @@ use Illuminate\Http\Request;
 use App\Models\HRMS\Payroll\StatutorySettingM as StatutorySetting;
 use App\Models\HRMS\Attendance\AttendanceM as Attendance;
 use App\Services\HRMS\Payroll\PayrollCalculationService;
+use App\Services\HRMS\Storage\HrmsFileResolverS;
+use App\Services\HRMS\Storage\HrmsStoragePathS;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -26,6 +28,12 @@ class PayrollAdminC extends Controller
      * App\Http\Controllers\Web\HRMS\EnterprisePayroll.
      */
     use HrmsCrudPage;
+
+    public function __construct(
+        private HrmsStoragePathS $paths,
+        private HrmsFileResolverS $resolver
+    ) {
+    }
 
       public function structuresIndex()
     {
@@ -294,11 +302,11 @@ public function payslipsGenerate($monthInput, PayrollCalculationService $payroll
             'month' => $monthInput,
         ]);
 
-        $dir = 'payslips/' . $year . '/' . str_pad($month, 2, '0', STR_PAD_LEFT);
+        $dir = $this->paths->employeePayroll((int) $p->employee_id, 'payslips');
         $fileName = 'salary-slip-' . $monthInput . '-employee-' . $p->employee_id . '.pdf';
         $filePath = $dir . '/' . $fileName;
 
-        Storage::disk('public')->put($filePath, $pdf->output());
+        Storage::disk('private')->put($filePath, $pdf->output());
 
         Payslip::updateOrCreate(
             [
@@ -403,7 +411,8 @@ public function download($id, PayrollCalculationService $payrollService)
     }
 
     // Check file exists in storage
-    if (!Storage::disk('public')->exists($payslip->file_path)) {
+    $resolved = $this->resolver->resolve($payslip->file_path);
+    if (! $resolved) {
         return back()->with('error', 'Payslip PDF file not found in storage.');
     }
 
@@ -414,8 +423,8 @@ public function download($id, PayrollCalculationService $payrollService)
     }
     */
 
-    return Storage::disk('public')->download(
-        $payslip->file_path,
+    return response()->download(
+        $resolved['absolute'],
         'Payslip_'.$payslip->month.'_'.$payslip->year.'.pdf'
     );
 }
@@ -450,17 +459,17 @@ public function downloadByEmployeeMonth($employee_id, $monthInput, PayrollCalcul
         ->where('year', $year)
         ->first();
 
-    if (!$payslip || !Storage::disk('public')->exists($payslip->file_path ?? '')) {
+    if (!$payslip || ! $this->resolver->resolve($payslip->file_path ?? '')) {
         $pdf = Pdf::loadView('hrms.payroll.payslip_pdf', [
             'p' => $payroll,
             'month' => $monthInput,
         ]);
 
-        $dir = 'payslips/' . $year . '/' . str_pad($month, 2, '0', STR_PAD_LEFT);
+        $dir = $this->paths->employeePayroll((int) $employee->id, 'payslips');
         $fileName = 'salary-slip-' . $monthInput . '-employee-' . $employee->id . '.pdf';
         $filePath = $dir . '/' . $fileName;
 
-        Storage::disk('public')->put($filePath, $pdf->output());
+        Storage::disk('private')->put($filePath, $pdf->output());
 
         $payslip = Payslip::updateOrCreate(
             [
@@ -477,8 +486,11 @@ public function downloadByEmployeeMonth($employee_id, $monthInput, PayrollCalcul
         );
     }
 
-    return Storage::disk('public')->download(
-        $payslip->file_path,
+    $resolved = $this->resolver->resolve($payslip->file_path);
+    abort_if(! $resolved, 404, 'Payslip PDF file not found in storage.');
+
+    return response()->download(
+        $resolved['absolute'],
         'Salary Slip-' . date('F-Y', strtotime($monthInput . '-01')) . '-' . ($employee->display_name ?? $employee->employee_code ?? $employee->id) . '.pdf'
     );
 }

@@ -5,13 +5,16 @@ namespace App\Http\Controllers\Api\V1\HRMS\EnterprisePayroll;
 use App\Http\Controllers\Controller;
 use App\Models\HRMS\EnterprisePayroll\EnterprisePayslipM;
 use App\Services\HRMS\EnterprisePayroll\EnterprisePayrollApiS;
+use App\Services\HRMS\Storage\HrmsFileResolverS;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class EnterprisePayslipApiC extends Controller
 {
-    public function __construct(private EnterprisePayrollApiS $service)
+    public function __construct(
+        private EnterprisePayrollApiS $service,
+        private HrmsFileResolverS $resolver
+    )
     {
     }
 
@@ -67,11 +70,12 @@ class EnterprisePayslipApiC extends Controller
             return $this->apiResponse(false, 'Payslip not found.', null, null, 404);
         }
 
-        if (! $payslip->pdf_path || ! Storage::disk('public')->exists($payslip->pdf_path)) {
+        $resolved = $this->resolver->resolve($payslip->pdf_path);
+        if (! $resolved) {
             return $this->apiResponse(false, 'Payslip PDF not found.', null, null, 404);
         }
 
-        return Storage::disk('public')->download($payslip->pdf_path, basename($payslip->pdf_path));
+        return response()->download($resolved['absolute'], basename($resolved['absolute']));
     }
 
     private function apiResponse(bool $success, string $message, mixed $data = null, mixed $errors = null, int $status = 200): JsonResponse

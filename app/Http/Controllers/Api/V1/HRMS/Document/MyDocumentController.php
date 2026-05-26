@@ -9,6 +9,7 @@ use App\Models\HRMS\Document\EmployeeDocumentM;
 use App\Services\HRMS\Document\DocumentS;
 use App\Services\HRMS\Document\EmployeeDocumentCompletionS;
 use App\Services\HRMS\Notification\NotificationS;
+use App\Services\HRMS\Storage\HrmsFileResolverS;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -19,6 +20,7 @@ class MyDocumentController extends Controller
     public function __construct(
         private EmployeeDocumentCompletionS $completionService,
         private DocumentS $documentService,
+        private HrmsFileResolverS $resolver,
     ) {}
 
     public function requiredDocuments()
@@ -146,14 +148,18 @@ class MyDocumentController extends Controller
             'Employee Document Uploaded',
             ($employee->user?->name ?: $employee->employee_code) . ' uploaded ' . ($freshDocument->title ?: $type->name) . ' for verification.',
             'document_uploaded',
-            'documents',
-            ['document_id' => $freshDocument->id, 'employee_id' => $employee->id],
+            'documents.employee.show',
+            ['employee' => $employee->id],
             $this->documentNotificationPayload($freshDocument, [
                 'employee_id' => $employee->id,
                 'user_id' => $employee->user_id,
                 'employee_name' => $employee->user?->name ?: $employee->employee_code,
                 'document_id' => $freshDocument->id,
                 'document_title' => $freshDocument->title,
+                'notification_type' => 'document_uploaded',
+                'action_url' => route('documents.employee.show', ['employee' => $employee->id]),
+                'route_name' => 'documents.employee.show',
+                'route_params' => ['employee' => $employee->id],
             ])
         );
 
@@ -243,12 +249,16 @@ class MyDocumentController extends Controller
                 'Profile Verification Request',
                 $employeeName . ' submitted profile and documents for verification.',
                 'profile_submitted',
-                'hrms.documents.employee.show',
+                'hrms.employees.profile.view',
                 ['employee' => $employee->id],
                 [
                     'employee_id' => $employee->id,
                     'user_id' => $employee->user_id,
                     'employee_code' => $employee->employee_code,
+                    'notification_type' => 'profile_submitted',
+                    'action_url' => route('hrms.employees.profile.view', ['employee' => $employee->id]),
+                    'route_name' => 'hrms.employees.profile.view',
+                    'route_params' => ['employee' => $employee->id],
                 ]
             );
         }
@@ -366,7 +376,7 @@ class MyDocumentController extends Controller
                 $path = (string) $policy->file_path;
                 $url = preg_match('/^https?:\/\//i', $path)
                     ? $path
-                    : asset('storage/' . ltrim($path, '/'));
+                    : $this->resolver->secureFileUrl($path);
 
                 return [
                     'id' => $policy->id,

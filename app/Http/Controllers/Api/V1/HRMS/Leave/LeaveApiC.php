@@ -11,6 +11,8 @@ use App\Models\HRMS\Leave\LeaveRequestM;
 use App\Models\HRMS\Leave\LeaveTypeM;
 use App\Services\HRMS\Leave\LeaveApprovalService;
 use App\Services\HRMS\Leave\LeaveCalculationService;
+use App\Services\HRMS\Storage\HrmsFileResolverS;
+use App\Services\HRMS\Storage\HrmsStoragePathS;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -23,7 +25,9 @@ class LeaveApiC extends Controller
 {
     public function __construct(
         private LeaveCalculationService $calculationService,
-        private LeaveApprovalService $approvalService
+        private LeaveApprovalService $approvalService,
+        private HrmsStoragePathS $paths,
+        private HrmsFileResolverS $resolver
     ) {
     }
 
@@ -250,7 +254,7 @@ class LeaveApiC extends Controller
             return '';
         }
 
-        return preg_match('/^https?:\/\//i', $path) ? $path : asset(ltrim($path, '/'));
+        return preg_match('/^https?:\/\//i', $path) ? $path : $this->resolver->secureFileUrl($path);
     }
 
     private function attachmentType(string $path): string
@@ -548,7 +552,7 @@ class LeaveApiC extends Controller
             'half_day_type' => $leaveRequest->half_day_type,
             'attachments' => $attachmentPath ? [[
                 'path' => $attachmentPath,
-                'url' => asset($attachmentPath),
+                'url' => $this->resolver->secureFileUrl($attachmentPath),
             ]] : [],
             'attachment_path' => $attachmentPath,
         ];
@@ -616,16 +620,9 @@ class LeaveApiC extends Controller
             return null;
         }
 
-        $directory = public_path('uploads/leave_attachments');
-        if (! is_dir($directory)) {
-            mkdir($directory, 0775, true);
-        }
-
         $file = $request->file('attachment');
-        $fileName = 'leave_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-        $file->move($directory, $fileName);
-
-        return 'uploads/leave_attachments/' . $fileName;
+        $employee = $this->employee();
+        return $file->store($this->paths->employeeLeave((int) $employee->id, 'attachments'), 'private');
     }
 
     private function ok(string $message, $data = [], int $code = 200)

@@ -571,7 +571,7 @@
             return route('hrms.documents.file', ['path' => $path]);
         }
 
-        return asset('storage/'.$path);
+        return route('hrms.documents.file', ['path' => $path]);
     };
 
     $employmentStatus = strtolower($employeeData->employment_status ?? 'active');

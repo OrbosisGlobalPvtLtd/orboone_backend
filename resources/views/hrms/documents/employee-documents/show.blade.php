@@ -4,6 +4,143 @@
 
 @section('_head')
 @include('hrms.documents.partials.styles')
+<style>
+    .dm-table-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+    }
+
+    .dm-header-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .dm-header-edit-btn,
+    .dm-header-verify-btn {
+        border: 0;
+        border-radius: 14px;
+        padding: 11px 18px;
+        font-weight: 800;
+        font-size: 13px;
+        color: #fff;
+        transition: .2s ease;
+        white-space: nowrap;
+    }
+
+    .dm-header-edit-btn {
+        background: linear-gradient(135deg, var(--dm-primary), #7c3aed);
+        box-shadow: 0 10px 24px rgba(124, 58, 237, .22);
+    }
+
+    .dm-header-verify-btn {
+        background: linear-gradient(135deg, #16a34a, #22c55e);
+        box-shadow: 0 10px 24px rgba(34, 197, 94, .22);
+    }
+
+    .dm-header-edit-btn:hover,
+    .dm-header-verify-btn:hover {
+        transform: translateY(-1px);
+        color: #fff;
+    }
+
+    .dm-header-edit-btn.is-active {
+        background: linear-gradient(135deg, #ef4444, #f97316);
+    }
+
+    .dm-upload-row {
+        align-items: end;
+    }
+
+    .dm-line-upload {
+        height: 46px;
+        width: 100%;
+        border: 1px solid #e5e7eb;
+        background: #fff;
+        border-radius: 10px;
+        padding: 0 12px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        transition: .2s ease;
+    }
+
+    .dm-line-upload:hover {
+        border-color: var(--dm-primary);
+        box-shadow: 0 8px 18px rgba(124, 58, 237, .10);
+    }
+
+    .dm-line-upload-left {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        min-width: 0;
+        flex: 1;
+    }
+
+    .dm-line-upload-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        background: var(--dm-soft);
+        color: var(--dm-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+        font-size: 12px;
+    }
+
+    .dm-line-upload-name {
+        font-size: 13px;
+        font-weight: 800;
+        color: var(--dm-text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-width: 0;
+    }
+
+    .dm-line-upload-format {
+        font-size: 10px;
+        font-weight: 800;
+        color: var(--dm-muted);
+        white-space: nowrap;
+        flex: 0 0 auto;
+    }
+
+    .dm-file-input-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .dm-reupload-action {
+        display: none !important;
+    }
+
+    body.dm-edit-mode .dm-normal-action {
+        display: none !important;
+    }
+
+    body.dm-edit-mode .dm-reupload-action {
+        display: inline-flex !important;
+    }
+
+    .dm-action-stack {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+</style>
 @endsection
 
 @section('_content')
@@ -15,13 +152,13 @@ $pendingDocs = 0;
 $rejectedDocs = 0;
 
 foreach($documentTypes as $type){
-    $doc = $documents->get($type->id);
-    if($doc){
-        $uploadedDocs++;
-        if($doc->verification_status === 'verified') $verifiedDocs++;
-        elseif($doc->verification_status === 'rejected') $rejectedDocs++;
-        else $pendingDocs++;
-    }
+$doc = $documents->get($type->id);
+if($doc){
+$uploadedDocs++;
+if($doc->verification_status === 'verified') $verifiedDocs++;
+elseif($doc->verification_status === 'rejected') $rejectedDocs++;
+else $pendingDocs++;
+}
 }
 
 $missingDocs = max($totalDocs - $uploadedDocs, 0);
@@ -29,7 +166,6 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
 @endphp
 
 <div class="dm-page">
-    <!-- Premium Purple Gradient Hero -->
     <div class="dm-hero">
         <div>
             <div class="dm-kicker">
@@ -57,7 +193,6 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
     </div>
     @endif
 
-    <!-- Metrics Cards Grid -->
     <div class="row dm-metrics-grid">
         <div class="col-xl-3 col-lg-3 col-md-6 col-12 mb-3">
             <div class="dm-metric-card border-bottom-primary">
@@ -68,6 +203,7 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
                 </div>
             </div>
         </div>
+
         <div class="col-xl-3 col-lg-3 col-md-6 col-12 mb-3">
             <div class="dm-metric-card border-bottom-info">
                 <div class="dm-metric-icon dm-icon-info"><i class="fas fa-cloud-upload-alt"></i></div>
@@ -77,6 +213,7 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
                 </div>
             </div>
         </div>
+
         <div class="col-xl-3 col-lg-3 col-md-6 col-12 mb-3">
             <div class="dm-metric-card border-bottom-success">
                 <div class="dm-metric-icon dm-icon-success"><i class="fas fa-check-circle"></i></div>
@@ -86,6 +223,7 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
                 </div>
             </div>
         </div>
+
         <div class="col-xl-3 col-lg-3 col-md-6 col-12 mb-3">
             <div class="dm-metric-card border-bottom-warning">
                 <div class="dm-metric-icon dm-icon-warning"><i class="fas fa-hourglass-half"></i></div>
@@ -97,7 +235,6 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
         </div>
     </div>
 
-    <!-- Upload/Re-upload Card -->
     <div class="dm-card" id="uploadCard">
         <div class="dm-table-header">
             <div class="dm-table-head-left">
@@ -116,7 +253,7 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
                 id="documentUploadForm">
                 @csrf
 
-                <div class="row align-items-end">
+                <div class="row dm-upload-row">
                     <div class="col-xl-4 col-lg-4 col-md-6 col-12 mb-3">
                         <div class="dm-form-group">
                             <label>Document Type</label>
@@ -148,20 +285,16 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
                     <div class="col-xl-3 col-lg-3 col-md-6 col-12 mb-3">
                         <div class="dm-form-group">
                             <label>Upload File</label>
-                            <label class="eo-file-upload" style="margin: 0;">
-                                <div class="eo-file-left">
-                                    <div class="eo-file-icon"><i class="fas fa-paperclip"></i></div>
-                                    <div class="eo-file-title selected-file-name" id="selectedFileName" style="font-weight: 700;">Choose file...</div>
+                            <label class="dm-line-upload" style="margin: 0;">
+                                <div class="dm-line-upload-left">
+                                    <span class="dm-line-upload-icon"><i class="fas fa-paperclip"></i></span>
+                                    <span class="dm-line-upload-name selected-file-name" id="selectedFileName">Choose document</span>
                                 </div>
-
-                                <span class="eo-file-browse">
-                                    <i class="fas fa-folder-open"></i> Browse
-                                </span>
-
+                                <span class="dm-line-upload-format">PDF/JPG/PNG</span>
                                 <input type="file"
                                     name="file"
                                     id="documentFileInput"
-                                    class="eo-file-input"
+                                    class="dm-file-input-hidden"
                                     required
                                     accept=".pdf,.jpg,.jpeg,.png,.webp">
                             </label>
@@ -185,15 +318,32 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
         </div>
     </div>
 
-    <!-- Document Checklist Table -->
     <div class="dm-card">
         <div class="dm-table-header">
             <div class="dm-table-head-left">
                 <div class="dm-icon-box"><i class="fas fa-clipboard-list"></i></div>
                 <div>
                     <h5 class="dm-table-title">Document Checklist Requirements</h5>
-                    <p class="dm-table-subtitle">Review, verify, reject, or edit individual files uploaded by the employee.</p>
+                    <p class="dm-table-subtitle">Review, verify, reject, or re-upload individual files uploaded by the employee.</p>
                 </div>
+            </div>
+
+            <div class="dm-header-actions">
+                @if($documents->whereIn('verification_status', ['pending', 'rejected'])->count() > 0)
+                <form action="{{ route('documents.hr.verify_employee', $employee->id) }}"
+                    method="POST"
+                    onsubmit="return confirm('Are you sure you want to verify all uploaded documents?');"
+                    style="display: inline-block; margin: 0;">
+                    @csrf
+                    <button type="submit" class="dm-header-verify-btn">
+                        <i class="fas fa-check-double mr-1"></i> Verify All
+                    </button>
+                </form>
+                @endif
+
+                <button type="button" class="dm-header-edit-btn" id="toggleChecklistEdit">
+                    <i class="fas fa-pen-to-square mr-1"></i> Edit
+                </button>
             </div>
         </div>
 
@@ -211,98 +361,121 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
                 <tbody>
                     @foreach($documentTypes as $type)
                     @php $doc = $documents->get($type->id); @endphp
+
+                    @if($doc && $doc->file_path)
                     <tr>
                         <td>
-                            <span class="d-inline-flex align-items-center justify-content-center" style="width: 32px; height: 32px; border-radius: 10px; background: var(--dm-soft); color: var(--dm-primary); font-weight: 800; font-size: 12px;">
+                            <span class="d-inline-flex align-items-center justify-content-center"
+                                style="width: 32px; height: 32px; border-radius: 10px; background: var(--dm-soft); color: var(--dm-primary); font-weight: 800; font-size: 12px;">
                                 {{ $loop->iteration }}
                             </span>
                         </td>
 
                         <td>
-                            <div style="font-weight: 800; color: var(--dm-text); font-size: 14px;">{{ $type->name }}</div>
+                            <div style="font-weight: 800; color: var(--dm-text); font-size: 14px;">
+                                {{ $type->name }}
+                            </div>
+
                             <div class="d-flex flex-wrap gap-2 mt-1">
                                 @if($type->is_mandatory)
-                                <span class="dm-badge dm-badge-danger" style="font-size: 9px; padding: 2px 8px;">Mandatory</span>
+                                <span class="dm-badge dm-badge-danger"
+                                    style="font-size: 9px; padding: 2px 8px;">
+                                    Mandatory
+                                </span>
                                 @else
-                                <span class="dm-badge dm-badge-secondary" style="font-size: 9px; padding: 2px 8px;">Optional</span>
-                                @endif
-
-                                @if($type->has_expiry_date ?? false)
-                                <span class="dm-badge dm-badge-warning" style="font-size: 9px; padding: 2px 8px;">Expiry Required</span>
+                                <span class="dm-badge dm-badge-secondary"
+                                    style="font-size: 9px; padding: 2px 8px;">
+                                    Optional
+                                </span>
                                 @endif
                             </div>
                         </td>
 
                         <td>
-                            @if($doc)
-                                @if($doc->verification_status == 'verified')
-                                <span class="dm-badge dm-badge-success"><i class="fas fa-check-circle mr-1"></i> Verified</span>
-                                @elseif($doc->verification_status == 'rejected')
-                                <span class="dm-badge dm-badge-danger"><i class="fas fa-times-circle mr-1"></i> Rejected</span>
-                                @else
-                                <span class="dm-badge dm-badge-warning"><i class="fas fa-hourglass-half mr-1"></i> Pending</span>
-                                @endif
+                            @if($doc->verification_status == 'verified')
+                            <span class="dm-badge dm-badge-success">
+                                <i class="fas fa-check-circle mr-1"></i> Verified
+                            </span>
+                            @elseif($doc->verification_status == 'rejected')
+                            <span class="dm-badge dm-badge-danger">
+                                <i class="fas fa-times-circle mr-1"></i> Rejected
+                            </span>
                             @else
-                            <span class="dm-badge dm-badge-secondary"><i class="fas fa-minus-circle mr-1"></i> Missing</span>
+                            <span class="dm-badge dm-badge-warning">
+                                <i class="fas fa-hourglass-half mr-1"></i> Pending
+                            </span>
                             @endif
                         </td>
 
                         <td>
-                            @if($doc && $doc->file_path)
-                            <div style="font-weight: 800; color: var(--dm-text); font-size: 13px;">{{ $doc->file_original_name ?? $doc->title ?? 'Document File' }}</div>
+                            <div style="font-weight: 800; color: var(--dm-text); font-size: 13px;">
+                                {{ $doc->file_original_name ?? $doc->title ?? 'Document File' }}
+                            </div>
+
                             <div style="font-size: 11px; color: var(--dm-muted); font-weight: 700; margin-top: 3px;">
                                 @if($doc->expiry_date)
-                                <i class="fas fa-calendar-alt mr-1"></i> Expiry: {{ \Carbon\Carbon::parse($doc->expiry_date)->format('d M Y') }}
+                                <i class="fas fa-calendar-alt mr-1"></i>
+                                Expiry: {{ \Carbon\Carbon::parse($doc->expiry_date)->format('d M Y') }}
                                 @else
-                                <i class="fas fa-calendar-times mr-1"></i> No expiry date set
+                                <i class="fas fa-calendar-times mr-1"></i>
+                                No expiry date set
                                 @endif
                             </div>
-                            @else
-                            <span class="text-muted" style="font-size: 12px;">No file uploaded</span>
-                            @endif
                         </td>
 
                         <td>
-                            <div class="d-flex align-items-center gap-2">
-                                @if($doc && $doc->file_path)
+                            <div class="dm-action-stack">
+
                                 <a href="{{ route('hrms.documents.file', $doc->file_path) }}"
                                     target="_blank"
-                                    class="dm-action-btn-pill dm-action-btn-primary">
+                                    class="dm-action-btn-pill dm-action-btn-primary dm-normal-action">
                                     <i class="fas fa-eye"></i> View File
                                 </a>
 
-                                <button type="button"
-                                    class="dm-action-btn-pill dm-action-btn-light js-edit-doc"
-                                    data-type-id="{{ $type->id }}"
-                                    data-file="{{ $doc->file_original_name ?? $doc->title ?? 'Current document' }}"
-                                    data-expiry="{{ $doc->expiry_date ? \Carbon\Carbon::parse($doc->expiry_date)->format('Y-m-d') : '' }}">
-                                    <i class="fas fa-edit text-warning"></i> Edit
-                                </button>
-
                                 @if($doc->verification_status != 'verified')
-                                <form action="{{ route('documents.employee.verify', $doc->id) }}" method="POST" style="display:inline;">
+                                <form action="{{ route('documents.employee.verify', $doc->id) }}"
+                                    method="POST"
+                                    style="display:inline;"
+                                    class="dm-normal-action">
                                     @csrf
-                                    <button type="submit" class="dm-action-btn-pill dm-action-btn-success">
+                                    <button type="submit"
+                                        class="dm-action-btn-pill dm-action-btn-success">
                                         <i class="fas fa-check"></i> Verify
                                     </button>
                                 </form>
                                 @endif
 
                                 @if($doc->verification_status != 'rejected')
-                                <form action="{{ route('documents.employee.reject', $doc->id) }}" method="POST" style="display:inline;">
+                                <form action="{{ route('documents.employee.reject', $doc->id) }}"
+                                    method="POST"
+                                    style="display:inline;"
+                                    class="dm-normal-action js-reject-form">
                                     @csrf
-                                    <input type="hidden" name="rejection_reason" value="Rejected by admin.">
-                                    <button type="submit" class="dm-action-btn-pill dm-action-btn-danger">
+
+                                    <input type="hidden"
+                                        name="rejection_reason"
+                                        value="Rejected by admin.">
+
+                                    <button type="button"
+                                        class="dm-action-btn-pill dm-action-btn-danger js-reject-btn">
                                         <i class="fas fa-times"></i> Reject
                                     </button>
                                 </form>
                                 @endif
-                                @else
-                                <span class="text-muted" style="font-size: 12px;">Upload from form above</span>
-                                @endif
+
+                                <button type="button"
+                                    class="dm-action-btn-pill dm-action-btn-light dm-reupload-action js-reupload-doc"
+                                    data-type-id="{{ $type->id }}"
+                                    data-file="{{ $doc->file_original_name ?? $doc->title ?? 'Current document' }}"
+                                    data-expiry="{{ $doc->expiry_date ? \Carbon\Carbon::parse($doc->expiry_date)->format('Y-m-d') : '' }}">
+
+                                    <i class="fas fa-sync-alt text-warning"></i> Re-upload
+                                </button>
+
                             </div>
                         </td>
                     </tr>
+                    @endif
                     @endforeach
                 </tbody>
             </table>
@@ -318,13 +491,48 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
     const uploadTitle = document.getElementById('uploadTitle');
     const uploadSubtitle = document.getElementById('uploadSubtitle');
     const uploadSubmitBtn = document.getElementById('uploadSubmitBtn');
+    const uploadForm = document.getElementById('documentUploadForm');
+    const toggleEditBtn = document.getElementById('toggleChecklistEdit');
+
+    let autoSubmitAfterPick = false;
+
+    function resetUploadCard() {
+        autoSubmitAfterPick = false;
+        fileNameBox.textContent = 'Choose document';
+        uploadTitle.textContent = 'Upload Document';
+        uploadSubtitle.textContent = 'Select a missing document type from the list to upload a file on behalf of the employee.';
+        uploadSubmitBtn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Upload';
+        uploadSubmitBtn.style.display = '';
+
+        Array.from(typeSelect.options).forEach(function(option) {
+            if (option.dataset.mode === 'edit') option.style.display = 'none';
+        });
+    }
 
     fileInput?.addEventListener('change', function() {
-        fileNameBox.textContent = this.files && this.files.length ? this.files[0].name : 'Choose file...';
+        fileNameBox.textContent = this.files && this.files.length ? this.files[0].name : 'Choose document';
+
+        if (autoSubmitAfterPick && this.files && this.files.length) {
+            uploadSubmitBtn.disabled = true;
+            uploadSubmitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+            uploadForm.submit();
+        }
     });
 
-    document.querySelectorAll('.js-edit-doc').forEach(function(btn) {
+    toggleEditBtn?.addEventListener('click', function() {
+        const isEditMode = document.body.classList.toggle('dm-edit-mode');
+        this.classList.toggle('is-active', isEditMode);
+        this.innerHTML = isEditMode ?
+            '<i class="fas fa-times mr-1"></i> Cancel Edit' :
+            '<i class="fas fa-pen-to-square mr-1"></i> Edit';
+
+        if (!isEditMode) resetUploadCard();
+    });
+
+    document.querySelectorAll('.js-reupload-doc').forEach(function(btn) {
         btn.addEventListener('click', function() {
+            if (!document.body.classList.contains('dm-edit-mode')) return;
+
             const typeId = this.dataset.typeId;
             const fileName = this.dataset.file || 'Current document selected';
             const expiry = this.dataset.expiry || '';
@@ -339,14 +547,32 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
             expiryInput.value = expiry;
             fileNameBox.textContent = fileName;
             uploadTitle.textContent = 'Re-upload Document';
-            uploadSubtitle.textContent = 'You are replacing the selected document. Please select a new file and upload.';
+            uploadSubtitle.textContent = 'Select a replacement file. File choose karte hi document automatically upload ho jayega.';
             uploadSubmitBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Re-upload';
+            uploadSubmitBtn.style.display = 'none';
+            autoSubmitAfterPick = true;
 
-            document.getElementById('uploadCard').scrollIntoView({
-                behavior: 'smooth',
-                block: 'start'
-            });
-            setTimeout(() => fileInput.click(), 350);
+            fileInput.value = '';
+            fileInput.click();
+        });
+    });
+</script>
+<script>
+    document.querySelectorAll('.js-reject-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const isConfirmed = confirm('Are you sure you want to reject this document?');
+
+            if (!isConfirmed) {
+                return false;
+            }
+
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Rejecting...';
+
+            this.closest('form').submit();
         });
     });
 </script>

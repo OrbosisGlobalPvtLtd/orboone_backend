@@ -1,6 +1,6 @@
 @php
     $isAdmin = auth()->user()->isAdmin();
-    $docOpen = request()->routeIs('documents.hr.*') || request()->routeIs('hrms.hrms.documents.self.index') || request()->routeIs('hrms.hrms.documents.self.index');
+    $docOpen = request()->routeIs('documents.hr.*') || request()->routeIs('documents.compliance.index') || request()->routeIs('hrms.documents.self.index') || request()->routeIs('hrms.documents.self.index') || request()->routeIs('documents.policies.self');
 @endphp
 
 {{-- ========== SECTION: 5. DOCUMENT MANAGEMENT ========== --}}
@@ -14,10 +14,16 @@
 <ul class="collapse list-unstyled {{ $docOpen ? 'show' : '' }}" id="docSubmenu" data-parent="#sidebarMenu">
     
     @if ($isAdmin)
-    {{-- Sub-module: Document Approval (Admin) --}}
+    {{-- Sub-module: Compliance Management (Admin) --}}
+    <li>
+        <a href="{{ route('documents.compliance.index') }}" class="nav-link sub-nav-link {{ request()->routeIs('documents.compliance.index') ? 'active' : '' }}">
+            <i class="fas fa-chart-line small mr-2 text-success"></i> Compliance Management
+        </a>
+    </li>
+    {{-- Sub-module: Document Verification (Admin) --}}
     <li>
         <a href="{{ route('documents.hr.index') }}" class="nav-link sub-nav-link {{ request()->routeIs('documents.hr.index') ? 'active' : '' }}">
-            <i class="fas fa-shield-alt small mr-2 text-warning"></i> Compliance Management
+            <i class="fas fa-shield-alt small mr-2 text-warning"></i> Document Verification
         </a>
     </li>
     @endif

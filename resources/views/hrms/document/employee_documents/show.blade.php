@@ -182,11 +182,11 @@
                                                 </button>
                                                 <div class="dropdown-menu dropdown-menu-right shadow-sm border-0">
                                                     <h6 class="dropdown-header">View Documents</h6>
-                                                    @if($doc->passport_photo) <a class="dropdown-item small" href="{{ asset('storage/'.$doc->passport_photo) }}" target="_blank"><i class="fas fa-image me-2"></i>Photo</a> @endif
-                                                    @if($doc->aadhar_card) <a class="dropdown-item small" href="{{ asset('storage/'.$doc->aadhar_card) }}" target="_blank"><i class="fas fa-id-card me-2"></i>Aadhar</a> @endif
-                                                    @if($doc->pan_card) <a class="dropdown-item small" href="{{ asset('storage/'.$doc->pan_card) }}" target="_blank"><i class="fas fa-credit-card me-2"></i>PAN</a> @endif
-                                                    @if($doc->bank_proof) <a class="dropdown-item small" href="{{ asset('storage/'.$doc->bank_proof) }}" target="_blank"><i class="fas fa-university me-2"></i>Bank Proof</a> @endif
-                                                    @if($doc->educational_documents) <a class="dropdown-item small" href="{{ asset('storage/'.$doc->educational_documents) }}" target="_blank"><i class="fas fa-graduation-cap me-2"></i>Edu Docs</a> @endif
+                                                    @if($doc->passport_photo) <a class="dropdown-item small" href="{{ route('hrms.documents.file', ['path' => $doc->passport_photo]) }}" target="_blank"><i class="fas fa-image me-2"></i>Photo</a> @endif
+                                                    @if($doc->aadhar_card) <a class="dropdown-item small" href="{{ route('hrms.documents.file', ['path' => $doc->aadhar_card]) }}" target="_blank"><i class="fas fa-id-card me-2"></i>Aadhar</a> @endif
+                                                    @if($doc->pan_card) <a class="dropdown-item small" href="{{ route('hrms.documents.file', ['path' => $doc->pan_card]) }}" target="_blank"><i class="fas fa-credit-card me-2"></i>PAN</a> @endif
+                                                    @if($doc->bank_proof) <a class="dropdown-item small" href="{{ route('hrms.documents.file', ['path' => $doc->bank_proof]) }}" target="_blank"><i class="fas fa-university me-2"></i>Bank Proof</a> @endif
+                                                    @if($doc->educational_documents) <a class="dropdown-item small" href="{{ route('hrms.documents.file', ['path' => $doc->educational_documents]) }}" target="_blank"><i class="fas fa-graduation-cap me-2"></i>Edu Docs</a> @endif
                                                     
                                                     <div class="dropdown-divider"></div>
                                                     <h6 class="dropdown-header">Approval Actions</h6>

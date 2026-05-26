@@ -569,7 +569,7 @@
             return route('hrms.documents.file', ['path' => $path]);
         }
 
-        return asset('storage/' . $path);
+        return route('hrms.documents.file', ['path' => $path]);
     };
 
     $profileViewUrl = function ($id) {

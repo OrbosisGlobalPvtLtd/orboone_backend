@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Web\HRMS\Employee;
 use App\Http\Controllers\Controller;
 use App\Mail\EmployeeCredentialMail;
 use App\Services\HRMS\Employee\EmployeeFileS;
+use App\Services\HRMS\Employee\EmployeeExitProcessS;
 use App\Services\HRMS\Employee\EmployeeLifecycleService;
+use App\Services\HRMS\Employee\EmployeePermanentDeleteS;
 use App\Services\HRMS\Employee\EmployeeSalaryHistoryService;
 use App\Services\HRMS\Employee\EmployeeS;
 use Carbon\Carbon;
@@ -27,15 +29,21 @@ class EmployeeC extends Controller
     private EmployeeS $employeeService;
     private EmployeeLifecycleService $lifecycleService;
     private EmployeeSalaryHistoryService $salaryHistoryService;
+    private EmployeePermanentDeleteS $permanentDeleteService;
+    private EmployeeExitProcessS $exitProcessService;
 
     public function __construct(
         EmployeeS $employeeService,
         EmployeeLifecycleService $lifecycleService,
-        EmployeeSalaryHistoryService $salaryHistoryService
+        EmployeeSalaryHistoryService $salaryHistoryService,
+        EmployeePermanentDeleteS $permanentDeleteService,
+        EmployeeExitProcessS $exitProcessService
     ) {
         $this->employeeService = $employeeService;
         $this->lifecycleService = $lifecycleService;
         $this->salaryHistoryService = $salaryHistoryService;
+        $this->permanentDeleteService = $permanentDeleteService;
+        $this->exitProcessService = $exitProcessService;
     }
 
     public function index(Request $request)
@@ -261,13 +269,29 @@ class EmployeeC extends Controller
                     </a>';
                     }
 
-                    if (Route::has('hrms.employees.destroy')) {
+                    $canInitiateExit = auth()->user() && method_exists(auth()->user(), 'hasPermission')
+                        && (auth()->user()->hasPermission('employee_exit.initiate') || auth()->user()->hasPermission('employees.update'));
+                    if ($canInitiateExit && Route::has('hrms.employees.exit.initiate')) {
                         $actions .= '
-                        <form action="' . route('hrms.employees.destroy', $employee->id) . '" method="POST" style="margin:0;" onsubmit="return confirm(\'Are you sure you want to delete this employee?\')">
+                        <form action="' . route('hrms.employees.exit.initiate', $employee->id) . '" method="POST" style="margin:0;">
+                            ' . csrf_field() . '
+                            <input type="hidden" name="exit_type" value="resignation">
+                            <input type="hidden" name="last_working_day" value="' . e(now()->toDateString()) . '">
+                            <button type="submit" class="dropdown-item text-warning" onclick="return confirm(\'Initiate exit process for this employee?\')">
+                                <i class="fas fa-sign-out-alt"></i> Initiate Exit
+                            </button>
+                        </form>';
+                    }
+
+                    if (auth()->user() && method_exists(auth()->user(), 'isSuperAdmin') && auth()->user()->isSuperAdmin() && Route::has('hrms.employees.destroy')) {
+                        $actions .= '
+                        <form action="' . route('hrms.employees.destroy', $employee->id) . '" method="POST" style="margin:0;" onsubmit="var c=prompt(\'Type DELETE EMPLOYEE to permanently delete this wrong/test/duplicate employee.\'); if(c===null){return false;} this.querySelector(\'input[name=confirm_text]\').value=c; return c===\'DELETE EMPLOYEE\';">
                             ' . csrf_field() . '
                             ' . method_field('DELETE') . '
+                            <input type="hidden" name="delete_mode" value="permanent">
+                            <input type="hidden" name="confirm_text" value="">
                             <button type="submit" class="dropdown-item text-danger">
-                                <i class="fas fa-trash"></i> Delete
+                                <i class="fas fa-trash"></i> Permanent Delete
                             </button>
                         </form>';
                     }
@@ -1254,7 +1278,11 @@ class EmployeeC extends Controller
                         'employee_id' => $id,
                         'user_id' => $employeeData->user_id,
                         'employee_code' => $employeeData->employee_code,
-                        'redirect_type' => 'profile_view'
+                        'redirect_type' => 'profile_view',
+                        'notification_type' => 'profile_submitted',
+                        'action_url' => route('hrms.employees.profile.view', ['employee' => $id]),
+                        'route_name' => 'hrms.employees.profile.view',
+                        'route_params' => ['employee' => $id],
                     ]
                 );
             }
@@ -1494,15 +1522,19 @@ class EmployeeC extends Controller
                 $this->employeeTable . '.joining_date',
                 $this->employeeTable . '.relieving_date',
                 $this->employeeTable . '.is_active',
+                'employee_exit_processes.id as exit_process_id',
                 'employee_exit_processes.exit_type',
+                'employee_exit_processes.status as exit_status',
                 'employee_exit_processes.final_status',
+                'employee_exit_processes.document_status',
+                'employee_exit_processes.handover_status',
                 'employee_exit_processes.asset_handover_status',
                 'employee_exit_processes.fnf_status'
             )
             ->where(function ($q) {
-                $q->whereIn($this->employeeTable . '.employment_status', ['resigned', 'terminated', 'inactive'])
-                    ->orWhereNotNull($this->employeeTable . '.relieving_date')
-                    ->orWhere($this->employeeTable . '.is_active', 0);
+                $q->whereNotNull('employee_exit_processes.id')
+                    ->orWhereIn('employee_exit_processes.status', ['exit_initiated', 'notice_period', 'handover_pending', 'asset_pending', 'fnf_pending', 'document_pending', 'ready_for_final_approval', 'exit_completed', 'terminated', 'absconded'])
+                    ->orWhereIn($this->employeeTable . '.employment_status', ['terminated', 'absconded']);
             })
             ->orderByDesc($this->employeeTable . '.id')
             ->get();
@@ -1884,122 +1916,176 @@ class EmployeeC extends Controller
     }
     public function markExit(Request $request, $employee)
     {
-        $employeeData = DB::table($this->employeeTable)->where('id', $employee)->first();
-        abort_if(! $employeeData, 404);
+        $actor = auth()->user();
+        abort_if(! $actor, 401);
+
+        $isSuperAdmin = method_exists($actor, 'isSuperAdmin') && $actor->isSuperAdmin();
 
         $request->validate([
-            'employment_status' => ['required', Rule::in(['resigned', 'terminated', 'inactive'])],
-            'relieving_date' => ['nullable', 'date'],
+            'exit_type' => ['required', Rule::in(['resignation', 'termination', 'internship_completed', 'internship_exit', 'contract_end', 'absconding'])],
+            'resignation_date' => ['nullable', 'date'],
+            'termination_date' => ['nullable', 'date'],
+            'last_working_day' => ['nullable', 'date'],
+            'notice_period_days' => ['nullable', 'integer', 'min:0', 'max:365'],
             'reason' => ['nullable', 'string', 'max:1000'],
+            'remarks' => ['nullable', 'string', 'max:1000'],
+            'notice_waived' => ['nullable', 'boolean'],
+            'immediate_exit' => ['nullable', 'boolean'],
+            'buyout_recovery' => ['nullable', 'boolean'],
+            'immediate_disable_login' => ['nullable', 'boolean'],
         ]);
 
-        DB::beginTransaction();
-
         try {
-            $relievingDate = $request->relieving_date ?: now()->toDateString();
-
-            $employeeUpdateData = [
-                'employment_status' => $request->employment_status,
-                'relieving_date' => $relievingDate,
-                'is_active' => 0,
-                'updated_by' => auth()->id(),
-                'updated_at' => now(),
-            ];
-
-            if (($employeeData->employee_stage ?? null) === 'internship' && Schema::hasColumn($this->employeeTable, 'internship_status')) {
-                $employeeUpdateData['internship_status'] = 'exited';
-            }
-
-            DB::table($this->employeeTable)->where('id', $employee)->update($employeeUpdateData);
-
-            if (! empty($employeeData->user_id) && Schema::hasColumn('users', 'is_active')) {
-                DB::table('users')->where('id', $employeeData->user_id)->update([
-                    'is_active' => 0,
-                    'updated_at' => now(),
-                ]);
-            }
-
-            if (Schema::hasTable('employee_exit_processes')) {
-                $exitType = match ($request->employment_status) {
-                    'terminated' => 'termination',
-                    default => (($employeeData->employee_stage ?? null) === 'internship' ? 'internship_completed_exit' : 'resignation'),
-                };
-
-                DB::table('employee_exit_processes')->updateOrInsert(
-                    [
-                        'employee_id' => $employee,
-                        'final_status' => 'pending',
-                    ],
-                    [
-                        'exit_type' => $exitType,
-                        'resignation_date' => now()->toDateString(),
-                        'last_working_date' => $relievingDate,
-                        'reason' => $request->reason,
-                        'asset_handover_status' => 'pending',
-                        'fnf_status' => 'pending',
-                        'experience_letter_status' => 'pending',
-                        'relieving_letter_status' => 'pending',
-                        'initiated_by_user_id' => auth()->id(),
-                        'updated_at' => now(),
-                        'created_at' => now(),
-                    ]
-                );
-            }
-
-            if (Schema::hasTable('asset_allocations') && Schema::hasColumn('asset_allocations', 'handover_status')) {
-                DB::table('asset_allocations')
-                    ->where('employee_id', $employee)
-                    ->whereIn('handover_status', ['allocated'])
-                    ->update([
-                        'handover_status' => 'pending_return',
-                        'updated_at' => now(),
-                    ]);
-            }
-
-            $this->logLifecycle(
-                $employee,
-                'resignation initiated',
+            $this->exitProcessService->initiate(
+                (int) $employee,
                 [
-                    'employment_status' => $employeeData->employment_status,
-                    'is_active' => $employeeData->is_active ?? null,
+                    'exit_type' => $request->exit_type,
+                    'resignation_date' => $request->resignation_date,
+                    'termination_date' => $request->termination_date,
+                    'last_working_day' => $request->last_working_day,
+                    'notice_period_days' => $request->notice_period_days,
+                    'reason' => $request->reason,
+                    'remarks' => $request->remarks,
+                    'notice_waived' => (bool) $request->boolean('notice_waived'),
+                    'immediate_exit' => (bool) $request->boolean('immediate_exit'),
+                    'buyout_recovery' => (bool) $request->boolean('buyout_recovery'),
+                    'actor_is_super_admin' => $isSuperAdmin,
+                    'immediate_disable_login' => (bool) $request->boolean('immediate_disable_login'),
                 ],
-                $employeeUpdateData,
-                $request->reason
+                (int) auth()->id()
             );
-
-            DB::commit();
 
             return redirect()
                 ->route('hrms.employees.exit')
-                ->with('success', 'Employee exit status updated successfully.');
+                ->with('success', 'Employee exit process initiated successfully.');
         } catch (\Throwable $e) {
-            DB::rollBack();
-
             return back()->with('error', $e->getMessage());
         }
     }
 
-    public function destroy($employee)
+    public function completeExit(Request $request, $employee)
     {
-        DB::beginTransaction();
+        $request->validate([
+            'exit_process_id' => ['required', 'integer'],
+            'waive_incomplete' => ['nullable', 'boolean'],
+        ]);
+
+        $this->exitProcessService->complete(
+            (int) $request->exit_process_id,
+            (int) auth()->id(),
+            (bool) $request->boolean('waive_incomplete')
+        );
+
+        return back()->with('success', 'Exit completed successfully.');
+    }
+
+    public function cancelExit(Request $request, $employee)
+    {
+        $request->validate([
+            'exit_process_id' => ['required', 'integer'],
+            'remarks' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $this->exitProcessService->cancel(
+            (int) $request->exit_process_id,
+            (int) auth()->id(),
+            $request->remarks
+        );
+
+        return back()->with('success', 'Exit process cancelled.');
+    }
+
+    public function refreshExit(Request $request, $employee)
+    {
+        $request->validate([
+            'exit_process_id' => ['required', 'integer'],
+        ]);
+
+        $this->exitProcessService->refreshStatus((int) $request->exit_process_id);
+
+        return back()->with('success', 'Exit checklist refreshed.');
+    }
+
+    public function updateExitClearance(Request $request, $employee)
+    {
+        $request->validate([
+            'exit_process_id' => ['required', 'integer'],
+            'asset_status' => ['nullable', Rule::in(['pending', 'cleared', 'waived'])],
+            'fnf_status' => ['nullable', Rule::in(['pending', 'processing', 'approved', 'paid', 'completed', 'waived'])],
+            'document_status' => ['nullable', Rule::in(['pending', 'generated', 'sent', 'completed', 'waived'])],
+            'handover_status' => ['nullable', Rule::in(['pending', 'cleared', 'completed', 'waived'])],
+            'remarks' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $actor = auth()->user();
+        abort_if(! $actor, 401);
+
+        $assetStatus = $request->input('asset_status');
+        $fnfStatus = $request->input('fnf_status');
+        $documentStatus = $request->input('document_status');
+        $handoverStatus = $request->input('handover_status');
+
+        $isSuperAdmin = method_exists($actor, 'isSuperAdmin') && $actor->isSuperAdmin();
+        $canFnf = $isSuperAdmin || (method_exists($actor, 'hasPermission') && $actor->hasPermission('employee_exit.fnf_process'));
+        $canAsset = $isSuperAdmin || (method_exists($actor, 'hasPermission') && $actor->hasPermission('employee_exit.asset_clearance'));
+        $canDocument = $isSuperAdmin || (method_exists($actor, 'hasPermission') && $actor->hasPermission('employee_exit.document_generate'));
+        $canUpdate = $isSuperAdmin || (method_exists($actor, 'hasPermission') && $actor->hasPermission('employee_exit.update'));
+
+        abort_if(! $canUpdate, 403, 'You are not allowed to update exit clearance.');
+        abort_if($assetStatus !== null && ! $canAsset, 403, 'You are not allowed to update asset clearance.');
+        abort_if($documentStatus !== null && ! $canDocument, 403, 'You are not allowed to update document clearance.');
+        abort_if($fnfStatus !== null && ! $canFnf, 403, 'You are not allowed to update FnF clearance.');
+
+        $this->exitProcessService->updateClearance(
+            (int) $request->exit_process_id,
+            [
+                'asset_status' => $assetStatus,
+                'fnf_status' => $fnfStatus,
+                'document_status' => $documentStatus,
+                'handover_status' => $handoverStatus,
+                'remarks' => $request->remarks,
+            ],
+            (int) auth()->id()
+        );
+
+        return back()->with('success', 'Exit clearance updated successfully.');
+    }
+
+    public function destroy(Request $request, $employee)
+    {
+        $actor = auth()->user();
+        abort_if(! $actor, 401);
+
+        $mode = strtolower((string) $request->input('delete_mode', ''));
+        abort_if($mode !== 'permanent', 422, 'Invalid delete mode. Use Exit Process for separation.');
 
         try {
             $employeeData = DB::table($this->employeeTable)->where('id', $employee)->first();
             abort_if(! $employeeData, 404);
 
-            DB::table($this->profileTable)->where('employee_id', $employee)->delete();
-            DB::table('user_roles')->where('user_id', $employeeData->user_id)->delete();
-            DB::table($this->employeeTable)->where('id', $employee)->delete();
-            DB::table('users')->where('id', $employeeData->user_id)->delete();
+            abort_if((int) ($employeeData->user_id ?? 0) === (int) $actor->id, 403, 'Self-delete is not allowed.');
 
-            DB::commit();
+            $isSuperAdmin = method_exists($actor, 'isSuperAdmin') && $actor->isSuperAdmin();
+            abort_if(! $isSuperAdmin, 403, 'Only Super Admin can permanently delete employee.');
 
-            return redirect()
-                ->route('hrms.employees.index')
-                ->with('success', 'Employee deleted successfully.');
+            $confirmation = (string) $request->input('confirm_text', '');
+            abort_if(trim($confirmation) !== 'DELETE EMPLOYEE', 422, 'Typed confirmation mismatch.');
+
+            $impact = $this->permanentDeleteService->impactReport((int) $employee);
+            if ($request->boolean('impact_only')) {
+                return back()->with('success', 'Impact report generated.')->with('delete_impact_report', $impact);
+            }
+
+            $result = $this->permanentDeleteService->permanentDelete(
+                (int) $employee,
+                (int) $actor->id,
+                (bool) $request->boolean('force_locked_records')
+            );
+
+            return redirect()->route('hrms.employees.index')
+                ->with('success', 'Employee permanently deleted successfully.')
+                ->with('delete_result', $result);
         } catch (\Throwable $e) {
-            DB::rollBack();
-
             return back()->with('error', $e->getMessage());
         }
     }

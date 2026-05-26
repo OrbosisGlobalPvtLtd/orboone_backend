@@ -100,7 +100,7 @@ class RoleMenuAccessSeeder extends Seeder
                 10,11,
                 20,21,26,134,
                 30,31,33,
-                50,51,149,
+                50,
                 60,
             ],
             'hr_admin' => [
@@ -117,7 +117,7 @@ class RoleMenuAccessSeeder extends Seeder
                 10,11,
                 20,21,26,134,
                 30,33,146,
-                50,51,149,
+                50,
                 60,
             ],
             'finance_admin' => [

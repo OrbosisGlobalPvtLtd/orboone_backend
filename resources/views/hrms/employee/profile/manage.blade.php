@@ -1183,7 +1183,7 @@ $rejectedDocs = $documents->where('verification_status', 'rejected')->count();
                             } elseif (!empty($docPath) && Route::has('hrms.documents.file')) {
                             $docUrl = route('hrms.documents.file', $docPath);
                             } elseif (!empty($docPath)) {
-                            $docUrl = asset('storage/' . $docPath);
+                            $docUrl = route('hrms.documents.file', ['path' => $docPath]);
                             }
 
                             $ext = strtolower(pathinfo($doc->file_original_name ?: $docPath, PATHINFO_EXTENSION));

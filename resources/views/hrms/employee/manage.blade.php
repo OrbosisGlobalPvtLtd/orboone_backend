@@ -1828,7 +1828,7 @@ if ($user) {
                             $docPath = $doc->file_path ?? null;
                             $docUrl = !empty($docPath) && Route::has('hrms.documents.file')
                                 ? route('hrms.documents.file', $docPath)
-                                : (!empty($docPath) ? asset('storage/'.$docPath) : null);
+                                : (!empty($docPath) ? route('hrms.documents.file', ['path' => $docPath]) : null);
 
                             $documentTypeId = $doc->document_type_id ?? $doc->category_id ?? null;
                             $fileName = $doc->file_original_name ?? null;

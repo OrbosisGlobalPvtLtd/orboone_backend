@@ -46,6 +46,25 @@ class NotificationC extends Controller
             ? json_decode($notificationData->data, true)
             : [];
 
+        if (! empty($data['action_url'])) {
+            return redirect((string) $data['action_url']);
+        }
+
+        if (empty($routeName) && ! empty($data['route_name']) && Route::has((string) $data['route_name'])) {
+            $routeName = (string) $data['route_name'];
+            $routeParams = is_array($data['route_params'] ?? null) ? $data['route_params'] : $routeParams;
+        }
+
+        if (empty($routeName) && ! empty($data['notification_type'])) {
+            $type = (string) $data['notification_type'];
+            if ($type === 'profile_submitted' && ! empty($data['employee_id']) && Route::has('hrms.employees.profile.view')) {
+                return redirect()->route('hrms.employees.profile.view', ['employee' => $data['employee_id']]);
+            }
+            if (in_array($type, ['document_uploaded', 'document_reuploaded'], true) && ! empty($data['employee_id']) && Route::has('documents.employee.show')) {
+                return redirect()->route('documents.employee.show', ['employee' => $data['employee_id']]);
+            }
+        }
+
         if (! empty($routeName) && Route::has($routeName)) {
             $url = route($routeName, $routeParams);
             $queryParts = [];

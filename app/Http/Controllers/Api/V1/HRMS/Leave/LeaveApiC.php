@@ -465,6 +465,8 @@ class LeaveApiC extends Controller
                 'used_days' => $compOff->status === 'used' ? (float) $compOff->earned_days : 0.0,
                 'earned_days' => (float) $compOff->earned_days,
                 'remarks' => $compOff->remarks,
+                'expiry_message' => $compOff->expiry_date ? "This comp off expires on " . Carbon::parse($compOff->expiry_date)->format('d M') : null,
+                'expires_soon' => ($compOff->status === 'earned' && $compOff->expiry_date) ? Carbon::parse($compOff->expiry_date)->isCurrentMonth() : false,
             ])
             ->values();
     }

@@ -31,6 +31,9 @@ class NotificationPolicyS
             case 'payslip':
             case 'payslip_available':
             case 'enterprise_payslip_available':
+            case 'holiday_work_request_submitted':
+            case 'holiday_work_request_approved':
+            case 'holiday_work_request_rejected':
                 return true;
 
             case 'announcement':

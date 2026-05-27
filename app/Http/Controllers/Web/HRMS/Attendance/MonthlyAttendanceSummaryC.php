@@ -50,4 +50,45 @@ class MonthlyAttendanceSummaryC extends Controller
         DB::table('monthly_attendance_summaries')->where('id', $id)->update(['is_locked' => 0, 'locked_by_user_id' => null, 'locked_at' => null, 'updated_at' => now()]);
         return back()->with('success', 'Summary unlocked.');
     }
+
+    public function exportExcel(Request $request)
+    {
+        abort_unless($this->userHasPermission('attendance.export'), 403);
+
+        $query = $this->employeeJoinedQuery('monthly_attendance_summaries');
+        $this->applyCommonFilters($query, $request, [
+            'filterMap' => [
+                'employee_id' => 'monthly_attendance_summaries.employee_id',
+                'month' => 'monthly_attendance_summaries.month',
+                'year' => 'monthly_attendance_summaries.year',
+                'locked' => 'monthly_attendance_summaries.is_locked',
+            ],
+        ]);
+        $rows = $query->orderByDesc('year')->orderByDesc('month')->get();
+
+        return response()->stream(function () use ($rows) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['Employee', 'Month', 'Year', 'Present', 'Paid Leave', 'Half Days', 'LWP', 'Payable Days', 'Late', 'Early Out', 'Missed Punch', 'Locked']);
+            foreach ($rows as $row) {
+                fputcsv($handle, [
+                    $row->employee_display_name,
+                    $row->month,
+                    $row->year,
+                    $row->present_days,
+                    $row->paid_leave_days,
+                    $row->half_days,
+                    $row->lwp_days,
+                    $row->payable_days,
+                    $row->late_count,
+                    $row->early_out_count,
+                    $row->missed_punch_count,
+                    (int) $row->is_locked,
+                ]);
+            }
+            fclose($handle);
+        }, 200, [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="monthly_attendance_summary.csv"',
+        ]);
+    }
 }

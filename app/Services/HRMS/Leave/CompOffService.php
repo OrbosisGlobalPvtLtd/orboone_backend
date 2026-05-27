@@ -15,30 +15,49 @@ class CompOffService
     {
     }
 
-    public function generateFromHolidayWork(HolidayWorkRequestM $request, ?int $approvedByUserId = null): CompOffM
+    public function generateFromHolidayWork(HolidayWorkRequestM $request, ?int $approvedByUserId = null): ?CompOffM
     {
         return DB::transaction(function () use ($request, $approvedByUserId) {
             $employee = $request->employee;
-            $policy = $this->policyService->forEmployee($employee, Carbon::parse($request->worked_date, 'Asia/Kolkata'));
             $workedDate = Carbon::parse($request->worked_date, 'Asia/Kolkata');
-            $expiryDate = $policy->comp_off_expiry_same_month ? $workedDate->copy()->endOfMonth() : null;
 
-            $compOff = CompOffM::updateOrCreate(
-                ['employee_id' => $employee->id, 'worked_date' => $workedDate->toDateString()],
-                [
-                    'earned_days' => 1,
-                    'expiry_date' => $expiryDate?->toDateString(),
-                    'status' => 'earned',
-                    'approved_by_user_id' => $approvedByUserId,
-                    'approved_at' => Carbon::now('Asia/Kolkata'),
-                    'remarks' => 'Generated from approved holiday/weekoff work.',
-                ]
-            );
+            // 1. Prevent duplicate comp off generation
+            if ($request->comp_off_generated || $request->status === 'completed') {
+                if ($request->comp_off_id) {
+                    return CompOffM::find($request->comp_off_id);
+                }
+                return null;
+            }
+
+            $duplicateCompOff = CompOffM::where('employee_id', $employee->id)
+                ->whereDate('worked_date', $workedDate->toDateString())
+                ->first();
+
+            if ($duplicateCompOff) {
+                $request->update([
+                    'status' => 'approved',
+                    'comp_off_generated' => true,
+                    'comp_off_id' => $duplicateCompOff->id,
+                ]);
+                return $duplicateCompOff;
+            }
+
+            // Expiry date is the end of the worked date's month
+            $expiryDate = $workedDate->copy()->endOfMonth();
+
+            $compOff = CompOffM::create([
+                'employee_id' => $employee->id,
+                'worked_date' => $workedDate->toDateString(),
+                'earned_days' => 1.0,
+                'expiry_date' => $expiryDate->toDateString(),
+                'status' => 'earned',
+                'approved_by_user_id' => $approvedByUserId ?: $request->approved_by_user_id,
+                'approved_at' => Carbon::now('Asia/Kolkata'),
+                'remarks' => "Generated from approved holiday/weekoff work request #{$request->id}.",
+            ]);
 
             $request->update([
                 'status' => 'approved',
-                'approved_by_user_id' => $approvedByUserId,
-                'approved_at' => Carbon::now('Asia/Kolkata'),
                 'comp_off_generated' => true,
                 'comp_off_id' => $compOff->id,
             ]);
@@ -50,6 +69,48 @@ class CompOffService
 
             return $compOff;
         });
+    }
+
+    public function validateAndProcessRequest(HolidayWorkRequestM $request): bool
+    {
+        if ($request->status !== 'approved' || $request->comp_off_generated) {
+            return false;
+        }
+
+        $workedDate = Carbon::parse($request->worked_date, 'Asia/Kolkata');
+        $today = Carbon::now('Asia/Kolkata')->startOfDay();
+        if ($workedDate->greaterThan($today)) {
+            return false;
+        }
+
+        $attendance = \App\Models\HRMS\Attendance\AttendanceM::where('employee_id', $request->employee_id)
+            ->whereDate('attendance_date', $workedDate->toDateString())
+            ->first();
+
+        if (!$attendance || !$attendance->punch_in_time || !$attendance->punch_out_time) {
+            return false;
+        }
+
+        $resolver = app(\App\Services\HRMS\Attendance\AttendanceRuleResolverService::class);
+        $policy = $resolver->getPolicyForEmployee($request->employee, $workedDate->toDateString());
+        $requiredMinutes = $policy->required_work_minutes ?? 480;
+
+        $hasEligibleStatus = in_array(
+            strtolower((string) ($attendance->status ?? $attendance->attendance_status ?? 'present')),
+            ['present', 'approved', 'completed'],
+            true
+        );
+
+        if ($hasEligibleStatus && (int) ($attendance->total_work_minutes ?? 0) >= (int) $requiredMinutes) {
+            if (!$request->attendance_id) {
+                $request->update(['attendance_id' => $attendance->id]);
+            }
+
+            $this->generateFromHolidayWork($request, $request->approved_by_user_id);
+            return true;
+        }
+
+        return false;
     }
 
     public function expireDue(?Carbon $date = null): int

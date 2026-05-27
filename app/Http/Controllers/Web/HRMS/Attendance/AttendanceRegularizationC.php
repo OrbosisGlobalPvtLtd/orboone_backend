@@ -122,6 +122,44 @@ class AttendanceRegularizationC extends Controller
         return back()->with('success', 'Regularization deleted.');
     }
 
+    public function exportExcel(Request $request)
+    {
+        abort_unless($this->userHasPermission('attendance.export'), 403);
+
+        $query = $this->employeeJoinedQuery('attendance_regularizations')
+            ->whereNull('attendance_regularizations.deleted_at');
+        $this->scopeEmployeeVisibility($query, 'attendance.regularization.view_all', 'attendance.regularization.view_team', 'attendance_regularizations.employee_id');
+        $this->applyCommonFilters($query, $request, [
+            'dateColumn' => 'attendance_regularizations.created_at',
+            'filterMap' => [
+                'employee_id' => 'attendance_regularizations.employee_id',
+                'status' => 'attendance_regularizations.status',
+                'request_type' => 'attendance_regularizations.request_type',
+            ],
+        ]);
+        $rows = $query->latest('attendance_regularizations.id')->get();
+
+        return response()->stream(function () use ($rows) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['Employee', 'Code', 'Type', 'Requested In', 'Requested Out', 'Status', 'Created At']);
+            foreach ($rows as $row) {
+                fputcsv($handle, [
+                    $row->employee_display_name,
+                    $row->employee_code,
+                    $row->request_type,
+                    $row->requested_punch_in,
+                    $row->requested_punch_out,
+                    $row->status,
+                    $row->created_at,
+                ]);
+            }
+            fclose($handle);
+        }, 200, [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="attendance_regularizations.csv"',
+        ]);
+    }
+
     private function pageData($rows, Request $request): array
     {
         $employees = $this->scopedEmployeeOptions('attendance.regularization.view_all', 'attendance.regularization.view_team')->pluck('display_name', 'id')->toArray();

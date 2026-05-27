@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\HRMS\Attendance\AttendanceController;
 use App\Http\Controllers\Api\V1\HRMS\Attendance\AttendanceRegularizationController;
 use App\Http\Controllers\Api\V1\HRMS\Attendance\AttendanceConfigController;
+use App\Http\Controllers\Api\V1\HRMS\Attendance\HolidayWorkRequestController;
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('hrms/attendance')->group(function () {
@@ -31,9 +32,18 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::post('/attendance/regularize', [AttendanceRegularizationController::class, 'requestRegularization']);
         Route::get('/attendance/regularize/my-requests', [AttendanceRegularizationController::class, 'myRegularizationRequests']);
+        Route::get('/attendance/regularize/{id}', [AttendanceRegularizationController::class, 'showRegularizationRequest']);
+
+        Route::post('/attendance/holiday-work', [HolidayWorkRequestController::class, 'store']);
+        Route::get('/attendance/holiday-work/my-requests', [HolidayWorkRequestController::class, 'index']);
+        Route::get('/attendance/holiday-work/{id}', [HolidayWorkRequestController::class, 'show']);
     });
 
     Route::post('/attendance/regularize/{id}/approve', [AttendanceRegularizationController::class, 'approveRegularization']);
+    Route::post('/attendance/regularize/{id}/reject', [AttendanceRegularizationController::class, 'rejectRegularization']);
+
+    Route::post('/attendance/holiday-work/{id}/approve', [HolidayWorkRequestController::class, 'approve']);
+    Route::post('/attendance/holiday-work/{id}/reject', [HolidayWorkRequestController::class, 'reject']);
 
     Route::post('/attendance/config/geofence', [AttendanceConfigController::class, 'configureGeofence']);
     Route::post('/attendance/config/allowed-ips', [AttendanceConfigController::class, 'configureAllowedIps']);

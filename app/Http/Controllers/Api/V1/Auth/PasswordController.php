@@ -7,6 +7,7 @@ use App\Services\Auth\PasswordOtpService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
@@ -15,6 +16,11 @@ class PasswordController extends Controller
 {
     public function sendOtp(Request $request, PasswordOtpService $service)
     {
+        Log::info('[ForgotPassword] request received', [
+            'ip' => (string) $request->ip(),
+            'email' => strtolower((string) $request->input('email', '')),
+        ]);
+
         $validator = Validator::make($request->all(), [
             'email' => ['required', 'email'],
         ]);
@@ -24,14 +30,22 @@ class PasswordController extends Controller
         }
 
         $data = $validator->validated();
+        $email = strtolower($data['email']);
+        $ip = (string) $request->ip();
+
+        if (! $this->allowOtpRequest($email, $ip)) {
+            return $this->apiResponse(false, 'Too many requests. Please try again shortly.', [
+                'rate_limit' => ['Too many requests. Please try again shortly.'],
+            ], [], 429);
+        }
 
         try {
-            $service->sendOtp(strtolower($data['email']));
+            $service->sendOtp($email, $ip, (string) $request->userAgent());
         } catch (\Throwable $e) {
             Log::error('API password reset OTP failed: '.$e->getMessage());
         }
 
-        return $this->apiResponse(true, 'If this email exists, an OTP has been sent.');
+        return $this->apiResponse(true, 'If this email is registered, an OTP has been sent.', null, []);
     }
 
     public function verifyOtp(Request $request, PasswordOtpService $service)
@@ -47,11 +61,14 @@ class PasswordController extends Controller
 
         $data = $validator->validated();
 
-        if (! $service->verifyOtp(strtolower($data['email']), $data['otp'])) {
-            return $this->apiResponse(false, 'Invalid or expired OTP.', ['otp' => ['Invalid or expired OTP.']], null, 422);
+        $result = $service->verifyOtp(strtolower($data['email']), $data['otp']);
+        if (! ($result['success'] ?? false)) {
+            return $this->apiResponse(false, (string) ($result['message'] ?? 'Invalid or expired OTP.'), [
+                'otp' => [(string) ($result['message'] ?? 'Invalid or expired OTP.')],
+            ], [], 422);
         }
 
-        return $this->apiResponse(true, 'OTP verified successfully.');
+        return $this->apiResponse(true, 'OTP verified successfully.', null, []);
     }
 
     public function reset(Request $request, PasswordOtpService $service)
@@ -68,11 +85,12 @@ class PasswordController extends Controller
 
         $data = $validator->validated();
 
-        if (! $service->resetPassword(strtolower($data['email']), $data['otp'], $data['password'])) {
-            return $this->apiResponse(false, 'Unable to reset password. Please request a new OTP.', null, null, 422);
+        $result = $service->resetPassword(strtolower($data['email']), $data['otp'], $data['password']);
+        if (! ($result['success'] ?? false)) {
+            return $this->apiResponse(false, (string) ($result['message'] ?? 'Unable to reset password. Please request a new OTP.'), null, [], 422);
         }
 
-        return $this->apiResponse(true, 'Password reset successfully.');
+        return $this->apiResponse(true, 'Password reset successfully. Please login.', null, []);
     }
 
     public function changePassword(Request $request)
@@ -112,9 +130,28 @@ class PasswordController extends Controller
     {
         return response()->json([
             'success' => $success,
+            'status' => $success,
             'message' => $message,
             'errors' => $errors,
             'data' => $data,
         ], $status);
+    }
+
+    private function allowOtpRequest(string $email, string $ip): bool
+    {
+        $emailKey = 'forgot-password:email:' . sha1($email);
+        $ipKey = 'forgot-password:ip:' . sha1($ip);
+
+        $emailAllowed = ! RateLimiter::tooManyAttempts($emailKey, 5);
+        $ipAllowed = ! RateLimiter::tooManyAttempts($ipKey, 20);
+
+        if (! $emailAllowed || ! $ipAllowed) {
+            return false;
+        }
+
+        RateLimiter::hit($emailKey, 60);
+        RateLimiter::hit($ipKey, 60);
+
+        return true;
     }
 }

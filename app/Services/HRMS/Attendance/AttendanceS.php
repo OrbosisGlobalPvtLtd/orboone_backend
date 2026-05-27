@@ -90,6 +90,13 @@ class AttendanceS
             && ! optional($existing)->is_admin_unlocked;
 
         if ($isBlocked) {
+            if ($existing) {
+                $this->recordAttendanceViolation($existing, 'blocked_punch', $today, [
+                    'source' => 'mobile',
+                    'policy_action' => 'blocked',
+                    'remarks' => 'Punch-in blocked after allowed time.',
+                ]);
+            }
             $this->notifyAttendance($employee, 'punch_blocked', 'Punch In Blocked', 'Your punch-in is blocked after ' . $blockAfter->format('h:i A') . '. Please contact HR/Admin.', $today);
             return ['status' => 'error', 'message' => 'Punch in is blocked after ' . $blockAfter->format('h:i A') . '. Please contact HR/Admin.'];
         }
@@ -361,6 +368,11 @@ class AttendanceS
                 ['employee_id' => $employee->id, 'attendance_date' => $date],
                 $payload
             );
+            $this->recordAttendanceViolation($attendance, 'blocked_punch', $date, [
+                'source' => 'system_auto',
+                'policy_action' => 'blocked',
+                'remarks' => $reason,
+            ]);
 
             $this->notifyAttendance($employee, 'punch_blocked', 'Punch In Blocked', 'Your punch-in was auto-blocked because you did not punch in before the allowed time.', $date, [
                 'attendance_id' => $attendance->id,
@@ -546,6 +558,11 @@ class AttendanceS
             }
 
             $attendance->fill($updates)->save();
+            $this->recordAttendanceViolation($attendance, 'blocked_punch', $date, [
+                'source' => 'system_auto',
+                'policy_action' => 'blocked',
+                'remarks' => $reason,
+            ]);
 
             $counts['marked_absent']++;
         }
@@ -622,6 +639,7 @@ class AttendanceS
 
         if (! $attendance->is_blocked && ! $attendance->is_punch_blocked) {
             $attendance->attendance_type_id = $this->attendanceType($typeCode)?->id ?: $attendance->attendance_type_id;
+            $attendance->attendance_status = $typeCode;
         }
 
         $attendance->save();
@@ -634,11 +652,28 @@ class AttendanceS
         }
 
         if ($isEarly) {
+            $this->recordAttendanceViolation($attendance, 'early_logout', $date, [
+                'minutes' => $attendance->early_out_minutes ?? 0,
+                'source' => 'system',
+                'policy_action' => 'early_logout',
+                'remarks' => 'Early logout detected.',
+            ]);
             $this->notifyAttendance($employee, 'early_logout', 'Early Logout Recorded', 'Your punch-out was earlier than the target time.', $date, [
                 'attendance_id' => $attendance->id,
                 'early_out_minutes' => $attendance->early_out_minutes,
             ]);
         }
+
+        if ($attendance->is_late) {
+            $this->recordAttendanceViolation($attendance, 'late_login', $date, [
+                'minutes' => $attendance->late_minutes ?? 0,
+                'source' => 'system',
+                'policy_action' => 'late_mark',
+                'remarks' => 'Late login detected.',
+            ]);
+        }
+
+        $this->applyCombinedViolationHalfDay($attendance, $date);
 
         return $attendance;
     }
@@ -860,17 +895,15 @@ class AttendanceS
             $isBlocked = false;
         }
 
-        $statusCodeVal = $typeCode ?? 'not_punched';
-        $statusName = optional($attendance?->attendanceType)->name ?? 'Not Punched';
+        $resolved = $this->resolveFinalStatus($attendance);
+        $statusCodeVal = $resolved['status_code'];
+        $statusName = $resolved['status_name'];
         if ($isBlocked) {
             $statusCodeVal = 'punch_blocked';
             $statusName = 'Punch Blocked';
         } elseif ($isUnlocked && ! $attendance?->punch_in_time) {
             $statusCodeVal = 'unlocked';
             $statusName = 'Unlocked';
-        } elseif ($attendance?->punch_in_time) {
-            $statusCodeVal = 'present';
-            $statusName = 'Present';
         } elseif ($statusCodeVal === 'pending_hr') {
             $statusCodeVal = 'not_punched';
             $statusName = 'Not Punched';
@@ -904,6 +937,48 @@ class AttendanceS
             'dynamic_timer_enabled' => (bool) ($attendance?->punch_in_time && ! $attendance?->punch_out_time),
             'office_location' => $this->officeLocationPayload(),
         ];
+    }
+
+    public function resolveFinalStatus(?Attendance $attendance): array
+    {
+        if (! $attendance) {
+            return ['status_code' => 'not_punched', 'status_name' => 'Not Punched'];
+        }
+
+        $typeCode = strtolower((string) optional($attendance->attendanceType)->code);
+        $statusCode = strtolower((string) ($attendance->attendance_status ?? ''));
+        $hasPunchIn = (bool) $attendance->punch_in_time;
+        $hasPunchOut = (bool) $attendance->punch_out_time;
+        $isBlocked = (bool) ($attendance->is_blocked || $attendance->is_punch_blocked || $typeCode === 'punch_blocked' || $statusCode === 'punch_blocked');
+
+        $resolvedCode = 'absent';
+
+        if (in_array($typeCode, ['holiday'], true) || in_array($statusCode, ['holiday'], true)) {
+            $resolvedCode = 'holiday';
+        } elseif (in_array($typeCode, ['week_off'], true) || in_array($statusCode, ['week_off'], true)) {
+            $resolvedCode = 'week_off';
+        } elseif (in_array($typeCode, ['leave'], true) || in_array($statusCode, ['leave'], true)) {
+            $resolvedCode = 'leave';
+        } elseif ($isBlocked) {
+            $resolvedCode = 'punch_blocked';
+        } elseif ((bool) ($attendance->missed_punch || $attendance->is_missed_punch) || in_array($typeCode, ['missed_punch'], true) || in_array($statusCode, ['missed_punch'], true)) {
+            $resolvedCode = (bool) $attendance->is_lwp ? 'lwp' : 'missed_punch';
+        } elseif ((bool) $attendance->is_lwp || in_array($typeCode, ['lwp'], true) || in_array($statusCode, ['lwp'], true)) {
+            $resolvedCode = 'lwp';
+        } elseif ((bool) $attendance->is_half_day || in_array($typeCode, ['half_day'], true) || in_array($statusCode, ['half_day'], true)) {
+            $resolvedCode = 'half_day';
+        } elseif ($hasPunchIn) {
+            $resolvedCode = 'present';
+        } elseif (! $hasPunchIn && ! $hasPunchOut) {
+            $resolvedCode = 'absent';
+        }
+
+        $statusName = optional($attendance->attendanceType)->name;
+        if (! $statusName || optional($attendance->attendanceType)->code !== $resolvedCode) {
+            $statusName = $this->attendanceType($resolvedCode)?->name ?: ucwords(str_replace('_', ' ', $resolvedCode));
+        }
+
+        return ['status_code' => $resolvedCode, 'status_name' => $statusName];
     }
 
     public function defaultOfficeLocation(): ?AttendanceLocation
@@ -1123,6 +1198,34 @@ class AttendanceS
         ]);
 
         return true;
+    }
+
+    private function applyCombinedViolationHalfDay(Attendance $attendance, string $date): void
+    {
+        if ($attendance->is_lwp || $attendance->is_blocked || $attendance->is_punch_blocked) {
+            return;
+        }
+
+        $count = AttendanceViolationM::where('employee_id', $attendance->employee_id)
+            ->whereDate('violation_date', $date)
+            ->whereIn('type', ['late_login', 'early_logout', 'missed_punch'])
+            ->count();
+
+        if ($count < 3) {
+            return;
+        }
+
+        $halfDayType = $this->attendanceType('half_day');
+        $updates = [
+            'is_half_day' => true,
+            'half_day_reason' => 'Auto half-day due to 3 combined violations.',
+            'violation_count' => max((int) $attendance->violation_count, $count),
+        ];
+        if ($halfDayType) {
+            $updates['attendance_type_id'] = $halfDayType->id;
+            $updates['attendance_status'] = 'half_day';
+        }
+        $attendance->fill($this->attendancePayload($updates))->save();
     }
 
     private function validateWfoOfficeLocation(array $meta): array

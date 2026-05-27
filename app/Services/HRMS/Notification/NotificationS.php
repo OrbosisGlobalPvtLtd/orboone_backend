@@ -3,6 +3,7 @@
 namespace App\Services\HRMS\Notification;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
@@ -226,6 +227,59 @@ class NotificationS
         }
 
         try {
+            $payload = is_array($payload) ? $payload : (array) $payload;
+            $payloadData = data_get($payload, 'data', []);
+            $payloadData = is_array($payloadData) ? $payloadData : (array) $payloadData;
+
+            $type = $payload['type'] ?? null;
+            if (in_array($type, ['holiday_work_request_submitted', 'holiday_work_request_approved', 'holiday_work_request_rejected'], true)) {
+                $requestId = data_get($payload, 'request_id') ?? data_get($payloadData, 'request_id');
+                if ($requestId) {
+                    $holidayRequest = \App\Models\HRMS\Attendance\HolidayWorkRequestM::with(['employee.department'])->find($requestId);
+                    if ($holidayRequest) {
+                        $mailKey = 'holiday_work_mail:' . $type . ':' . $requestId . ':' . $userId;
+                        if (! Cache::add($mailKey, 1, now()->addMinutes(5))) {
+                            Log::info('Holiday work request email skipped (duplicate in cooldown window)', [
+                                'user_id' => $userId,
+                                'type' => $type,
+                                'request_id' => $requestId,
+                            ]);
+                            return;
+                        }
+
+                        $rejectionReason = data_get($payload, 'rejection_reason') ?? data_get($payloadData, 'rejection_reason');
+                        $reviewerName = data_get($payload, 'reviewer_name') ?? data_get($payloadData, 'reviewer_name');
+                        $actionUrl = data_get($payload, 'action_url') ?? data_get($payloadData, 'action_url');
+                        if (empty($actionUrl)) {
+                            try {
+                                $actionUrl = route('hrms.attendance.holiday_work.index');
+                            } catch (\Throwable $e) {
+                                $actionUrl = url('/hrms/attendance/holiday-work');
+                            }
+                        }
+                        
+                        Mail::to($user->email)->queue(
+                            (new \App\Mail\HolidayWorkRequestMail(
+                                $holidayRequest,
+                                $type === 'holiday_work_request_submitted' ? 'submitted' : ($type === 'holiday_work_request_approved' ? 'approved' : 'rejected'),
+                                $actionUrl,
+                                $rejectionReason,
+                                $reviewerName
+                            ))->onQueue('default')
+                        );
+                        
+                        Log::info('Holiday work request email queued', [
+                            'user_id' => $userId,
+                            'type' => $type,
+                            'request_id' => $requestId,
+                            'queue_connection' => config('queue.default'),
+                            'queue_name' => 'default',
+                        ]);
+                        return;
+                    }
+                }
+            }
+
             $lines = [
                 $message,
                 '',

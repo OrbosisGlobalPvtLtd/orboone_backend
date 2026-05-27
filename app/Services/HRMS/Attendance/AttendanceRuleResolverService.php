@@ -112,7 +112,7 @@ class AttendanceRuleResolverService
                     $canPunchIn = true;
                     $nextAction = 'punch_in';
                 } else {
-                    $statusCodeVal = 'present';
+                    $statusCodeVal = $typeCode ?: ($statusCode ?: 'present');
                     $canPunchIn = false;
                     $canPunchOut = ! $hasPunchOut;
                     $nextAction = ! $hasPunchOut ? 'punch_out' : 'completed';
@@ -148,7 +148,7 @@ class AttendanceRuleResolverService
                         $nextAction = $canPunchIn ? 'punch_in' : 'none';
                     }
                 } else {
-                    $statusCodeVal = 'present';
+                    $statusCodeVal = $typeCode ?: ($statusCode ?: 'present');
                     $canPunchIn = false;
                     $canPunchOut = ! $hasPunchOut;
                     $nextAction = ! $hasPunchOut ? 'punch_out' : 'completed';
@@ -185,10 +185,36 @@ class AttendanceRuleResolverService
             $blockedMessage = null;
         }
 
+        $requiredWorkMinutes = 0;
+        if ($policy) {
+            $requiredWorkMinutes = (int) ($policy->required_work_minutes ?? 0);
+        }
+        if ($requiredWorkMinutes <= 0) {
+            $shift = $this->policyFromDefaultShift();
+            if ($shift) {
+                $requiredWorkMinutes = (int) ($shift->required_work_minutes ?? 0);
+            }
+        }
+        if ($requiredWorkMinutes <= 0) {
+            if (Schema::hasTable('attendance_policy_rules')) {
+                $requiredWorkMinutes = (int) (DB::table('attendance_policy_rules')->where('required_work_minutes', '>', 0)->value('required_work_minutes') ?? 0);
+            }
+        }
+        if ($requiredWorkMinutes <= 0) {
+            if (Schema::hasTable('attendance_times')) {
+                $requiredWorkMinutes = (int) (DB::table('attendance_times')->where('required_work_minutes', '>', 0)->value('required_work_minutes') ?? 0);
+            }
+        }
+
+        if ($policy) {
+            $policy->required_work_minutes = $requiredWorkMinutes;
+        }
+
         return [
             'server_time' => $now->format('Y-m-d H:i:s'),
             'timezone' => self::TIMEZONE,
             'policy' => $this->policyPayload($policy),
+            'required_work_minutes' => $requiredWorkMinutes,
             'day_context' => $dayContext,
             'attendance' => $attendance,
             'ui' => [

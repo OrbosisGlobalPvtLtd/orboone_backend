@@ -27,6 +27,7 @@ Route::middleware(['auth', 'check.access', 'check.profile.complete'])
 
         Route::get('/print', [AttendancesC::class, 'print'])->middleware('permission:attendance.export')->name('print');
         Route::get('/export-pdf', [AttendancesC::class, 'exportPdf'])->middleware('permission:attendance.export')->name('export-pdf');
+        Route::get('/export-excel', [AttendancesC::class, 'exportExcel'])->middleware('permission:attendance.export')->name('export-excel');
 
         Route::post('/', [AttendancesC::class, 'store'])->name('store');
         Route::put('/', [AttendancesC::class, 'update'])->name('update');
@@ -62,6 +63,7 @@ Route::middleware(['auth', 'check.access'])
     ->name('hrms.attendance.')
     ->group(function () {
         Route::get('/regularizations', [AttendanceRegularizationC::class, 'index'])->middleware('permission:attendance.regularization.view_all|attendance.regularization.view_team|attendance.regularization.view_own|attendance.regularization.view')->name('regularizations.index');
+        Route::get('/regularizations/export-excel', [AttendanceRegularizationC::class, 'exportExcel'])->middleware('permission:attendance.export')->name('regularizations.export-excel');
         Route::post('/regularizations', [AttendanceRegularizationC::class, 'store'])->middleware('permission:attendance.regularization.create')->name('regularizations.store');
         Route::put('/regularizations/{id}', [AttendanceRegularizationC::class, 'update'])->middleware('permission:attendance.regularization.create')->name('regularizations.update');
         Route::delete('/regularizations/{id}', [AttendanceRegularizationC::class, 'destroy'])->middleware('permission:attendance.regularization.create')->name('regularizations.destroy');
@@ -76,10 +78,12 @@ Route::middleware(['auth', 'check.access'])
         Route::post('/holiday-work/{id}/reject', [HolidayWorkRequestC::class, 'reject'])->middleware('permission:attendance.holiday_work.manage')->name('holiday_work.reject');
 
         Route::get('/monthly-summary', [MonthlyAttendanceSummaryC::class, 'index'])->middleware('permission:attendance.monthly_summary.view')->name('monthly_summary.index');
+        Route::get('/monthly-summary/export-excel', [MonthlyAttendanceSummaryC::class, 'exportExcel'])->middleware('permission:attendance.export')->name('monthly_summary.export-excel');
         Route::post('/monthly-summary/{id}/lock', [MonthlyAttendanceSummaryC::class, 'lock'])->middleware('permission:attendance.monthly_summary.view')->name('monthly_summary.lock');
         Route::post('/monthly-summary/{id}/unlock', [MonthlyAttendanceSummaryC::class, 'unlock'])->middleware('permission:attendance.monthly_summary.view')->name('monthly_summary.unlock');
 
-        Route::get('/violations', [AttendanceViolationC::class, 'index'])->name('violations.index');
+        Route::get('/violations', [AttendanceViolationC::class, 'index'])->middleware('permission:attendance.violations.view')->name('violations.index');
+        Route::get('/violations/export-excel', [AttendanceViolationC::class, 'exportExcel'])->middleware('permission:attendance.export')->name('violations.export-excel');
 
         Route::get('/policy-overrides', [AttendancePolicyOverrideC::class, 'index'])->middleware('permission:attendance.policy_overrides.manage')->name('policy_overrides.index');
         Route::post('/policy-overrides', [AttendancePolicyOverrideC::class, 'store'])->middleware('permission:attendance.policy_overrides.manage')->name('policy_overrides.store');

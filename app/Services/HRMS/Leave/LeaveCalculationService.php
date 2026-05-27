@@ -134,6 +134,20 @@ class LeaveCalculationService
         $compOff = 0.0;
 
         if ($leaveType->is_comp_off) {
+            if ($compCapacity <= 0) {
+                $hasApprovedPendingWorkRequest = DB::table('holiday_work_requests')
+                    ->where('employee_id', $employee->id)
+                    ->where('status', 'approved')
+                    ->where('comp_off_generated', 0)
+                    ->whereNull('deleted_at')
+                    ->exists();
+
+                if ($hasApprovedPendingWorkRequest) {
+                    throw ValidationException::withMessages([
+                        'leave_type_id' => 'You cannot use comp-off leave before completing approved holiday/weekoff work.',
+                    ]);
+                }
+            }
             $compOff = min($deductedDays, $compCapacity);
         } elseif ($leaveType->is_sick) {
             $sick = min($deductedDays, $sickCapacity);

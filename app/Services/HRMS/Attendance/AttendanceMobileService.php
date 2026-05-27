@@ -156,17 +156,15 @@ class AttendanceMobileService
         $hasPunchIn = ! empty($data['punch_in_time']);
         $hasPunchOut = ! empty($data['punch_out_time']);
 
-        $statusCode = $typeCode ?: ($data['attendance_status'] ?? 'not_punched');
-        $statusName = $data['attendance_type']['name'] ?? ucwords(str_replace('_', ' ', $statusCode));
+        $resolved = $this->attendanceService->resolveFinalStatus(is_array($attendance) ? (new Attendance($data)) : $attendance);
+        $statusCode = $resolved['status_code'] ?? ($typeCode ?: ($data['attendance_status'] ?? 'not_punched'));
+        $statusName = $resolved['status_name'] ?? ($data['attendance_type']['name'] ?? ucwords(str_replace('_', ' ', $statusCode)));
         if ($isBlocked) {
             $statusCode = 'punch_blocked';
             $statusName = 'Punch Blocked';
         } elseif ($isUnlocked && ! $hasPunchIn) {
             $statusCode = 'unlocked';
             $statusName = 'Unlocked';
-        } elseif ($hasPunchIn) {
-            $statusCode = 'present';
-            $statusName = 'Present';
         } elseif ($statusCode === 'pending_hr') {
             $statusCode = 'not_punched';
             $statusName = 'Not Punched';

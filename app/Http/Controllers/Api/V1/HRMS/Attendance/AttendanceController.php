@@ -320,7 +320,7 @@ class AttendanceController extends Controller
             'leave' => $records->filter(fn ($item) => $code($item) === 'leave')->count(),
             'week_off' => $records->filter(fn ($item) => $code($item) === 'week_off')->count(),
             'holiday' => $records->filter(fn ($item) => $code($item) === 'holiday')->count(),
-            'pending_hr' => 0,
+            'pending_hr' => $records->filter(fn ($item) => (string) ($item->attendance_status ?? '') === 'pending_hr')->count(),
             'punch_blocked' => $records->filter(fn ($item) => $item->is_blocked || $item->is_punch_blocked || $item->attendance_status === 'punch_blocked')->count(),
             'late' => $records->where('is_late', true)->count(),
             'early_out' => $records->where('is_early_out', true)->count(),

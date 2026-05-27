@@ -16,6 +16,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 
 class AttendancesC extends Controller
@@ -142,6 +143,7 @@ class AttendancesC extends Controller
         $query = $this->scopeAttendanceQuery($this->applyFilters($this->baseQuery(), $request), 'attendance.records.view_all', 'attendance.regularization.view_team');
         $todayRecordsQuery = Attendance::with('attendanceType')->whereDate('attendance_date', $today);
         $todayRecords = $this->scopeAttendanceQuery($todayRecordsQuery, 'attendance.records.view_all', 'attendance.regularization.view_team')->get();
+        $this->normalizeAttendanceCollection($todayRecords);
 
         $stats = [
             'present_today' => $todayRecords->filter(fn($item) => optional($item->attendanceType)->code === 'present')->count(),
@@ -151,7 +153,7 @@ class AttendancesC extends Controller
             'half_day' => $todayRecords->where('is_half_day', true)->count(),
             'lwp' => $todayRecords->where('is_lwp', true)->count(),
             'punch_blocked' => $todayRecords->filter(fn($item) => $item->is_punch_blocked || $item->is_blocked || $item->attendance_status === 'punch_blocked')->count(),
-            'pending_hr' => 0,
+            'pending_hr' => $todayRecords->where('attendance_status', 'pending_hr')->count(),
             'missed_punches' => $todayRecords->where('missed_punch', true)->count(),
             'currently_working' => $todayRecords->whereNotNull('punch_in_time')->whereNull('punch_out_time')->where('is_blocked', false)->count(),
             'pending_punch_out' => $todayRecords->whereNotNull('punch_in_time')->whereNull('punch_out_time')->count(),
@@ -161,7 +163,7 @@ class AttendancesC extends Controller
             'total_hours' => round($todayRecords->sum('total_work_minutes') / 60, 1),
             'total_late' => $todayRecords->where('is_late', true)->count(),
             'total_early_out' => $todayRecords->where('is_early_out', true)->count(),
-            'total_pending_hr' => 0,
+            'total_pending_hr' => $todayRecords->where('attendance_status', 'pending_hr')->count(),
             'total_blocked' => $todayRecords->filter(fn($item) => $item->is_punch_blocked || $item->is_blocked || $item->attendance_status === 'punch_blocked')->count(),
         ];
 
@@ -169,6 +171,7 @@ class AttendancesC extends Controller
             ->orderByDesc('id')
             ->paginate(20)
             ->appends($request->query());
+        $this->normalizeAttendanceCollection($attendances->getCollection());
 
         $employees = $this->attendanceEmployees();
         $attendanceTypes = $this->activeAttendanceTypes();
@@ -184,6 +187,7 @@ class AttendancesC extends Controller
             })
             ->orderBy('id')
             ->get();
+        $this->normalizeAttendanceCollection($blockedAttendances);
 
         return view('hrms.attendance.index', compact(
             'attendances',
@@ -203,6 +207,7 @@ class AttendancesC extends Controller
         $query = $this->scopeAttendanceQuery($this->applyFilters($this->baseQuery(), $request), 'attendance.records.view_all');
 
         $attendances = $query->orderByDesc('attendance_date')->orderByDesc('id')->paginate(50)->appends($request->query());
+        $this->normalizeAttendanceCollection($attendances->getCollection());
         $employees = $this->attendanceEmployees();
         $attendanceTypes = $this->activeAttendanceTypes();
         $attendanceTimes = AttendanceTime::where('is_active', true)->orderByDesc('is_default')->orderBy('name')->get();
@@ -226,6 +231,7 @@ class AttendancesC extends Controller
         $query = $this->scopeAttendanceQuery($this->applyFilters($this->baseQuery(), $request), $allPermission, $teamPermission);
 
         $attendances = $query->orderByDesc('attendance_date')->orderByDesc('id')->paginate(50)->appends($request->query());
+        $this->normalizeAttendanceCollection($attendances->getCollection());
         $employees = $this->attendanceEmployees();
         $attendanceTypes = $this->activeAttendanceTypes();
         $attendanceTimes = AttendanceTime::where('is_active', true)->orderByDesc('is_default')->orderBy('name')->get();
@@ -372,6 +378,7 @@ class AttendancesC extends Controller
         $attendances = $this->applyFilters($query, $request)
             ->orderByDesc('attendance_date')
             ->paginate(20);
+        $this->normalizeAttendanceCollection($attendances->getCollection());
 
         $employees = $this->attendanceEmployees();
         $attendanceTypes = $this->activeAttendanceTypes();
@@ -382,7 +389,7 @@ class AttendancesC extends Controller
         $stats = [
             'total_blocked' => $approvalRecords->filter(fn($item) => $item->is_punch_blocked || $item->is_blocked || $item->attendance_status === 'punch_blocked')->count(),
             'pending_unlock' => $approvalRecords->filter(fn($item) => ($item->is_blocked || $item->is_punch_blocked || $item->attendance_status === 'punch_blocked') && ! $item->is_admin_unlocked)->count(),
-            'pending_hr' => 0,
+            'pending_hr' => $approvalRecords->where('attendance_status', 'pending_hr')->count(),
             'missed_punch' => $approvalRecords->where('missed_punch', true)->count(),
             'manual_punch' => $approvalRecords->where('unlock_type', 'manual_punch_in')->count(),
             'unlocked_today' => $approvalRecords->filter(fn($item) => $item->unlocked_at && Carbon::parse($item->unlocked_at)->toDateString() === $today)->count(),
@@ -417,6 +424,7 @@ class AttendancesC extends Controller
         $attendances = $this->applyFilters($query, $request)
             ->orderBy('attendance_date')
             ->get();
+        $this->normalizeAttendanceCollection($attendances);
 
         $summary = [
             'present' => 0,
@@ -608,6 +616,47 @@ class AttendancesC extends Controller
         return $pdf->download('attendance_report.pdf');
     }
 
+    public function exportExcel(Request $request)
+    {
+        abort_unless($this->userHasPermission('attendance.export'), 403);
+        $rows = $this->scopeAttendanceQuery(
+            $this->applyFilters($this->baseQuery(), $request),
+            'attendance.records.view_all',
+            'attendance.monthly_report.view_team'
+        )->orderByDesc('attendance_date')->get();
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="attendance_report.csv"',
+        ];
+
+        $callback = function () use ($rows) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['Date', 'Employee', 'Code', 'Type', 'Status', 'Punch In', 'Punch Out', 'Total Minutes', 'Late', 'Early Out', 'Half Day', 'LWP', 'Blocked', 'Missed Punch']);
+            foreach ($rows as $row) {
+                fputcsv($handle, [
+                    optional($row->attendance_date)->format('Y-m-d'),
+                    optional($row->employee)->display_name ?? optional($row->user)->name,
+                    optional($row->employee)->employee_code,
+                    optional($row->attendanceType)->name,
+                    $row->attendance_status,
+                    $row->punch_in_time,
+                    $row->punch_out_time,
+                    $row->total_work_minutes,
+                    (int) $row->is_late,
+                    (int) $row->is_early_out,
+                    (int) $row->is_half_day,
+                    (int) $row->is_lwp,
+                    (int) ($row->is_blocked || $row->is_punch_blocked),
+                    (int) ($row->missed_punch || $row->is_missed_punch),
+                ]);
+            }
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
     public function destroy(Request $request)
     {
         abort_unless($this->canManageAttendance(), 403, 'Only Super Admin can delete attendance history.');
@@ -686,5 +735,30 @@ class AttendancesC extends Controller
         }
 
         return $data;
+    }
+
+    private function normalizeAttendanceCollection(Collection $items): void
+    {
+        $typeCache = [];
+
+        foreach ($items as $attendance) {
+            $resolved = $this->attendanceService->resolveFinalStatus($attendance);
+            $resolvedCode = (string) ($resolved['status_code'] ?? '');
+            if ($resolvedCode === '') {
+                continue;
+            }
+
+            $attendance->attendance_status = $resolvedCode;
+            $attendance->status_code = $resolvedCode;
+            $attendance->status_name = $resolved['status_name'] ?? ucwords(str_replace('_', ' ', $resolvedCode));
+
+            if (! isset($typeCache[$resolvedCode])) {
+                $typeCache[$resolvedCode] = AttendanceType::where('code', $resolvedCode)->first();
+            }
+
+            if ($typeCache[$resolvedCode]) {
+                $attendance->setRelation('attendanceType', $typeCache[$resolvedCode]);
+            }
+        }
     }
 }

@@ -24,4 +24,41 @@ class AttendanceViolationC extends Controller
             'canCreate' => false,
         ]);
     }
+
+    public function exportExcel(Request $request)
+    {
+        abort_unless($this->userHasPermission('attendance.export'), 403);
+
+        $query = $this->employeeJoinedQuery('attendance_violations');
+        $this->applyCommonFilters($query, $request, [
+            'dateColumn' => 'attendance_violations.violation_date',
+            'filterMap' => [
+                'employee_id' => 'attendance_violations.employee_id',
+                'type' => 'attendance_violations.type',
+                'converted_to_lwp' => 'attendance_violations.converted_to_lwp',
+            ],
+        ]);
+        $rows = $query->latest('attendance_violations.id')->get();
+
+        return response()->stream(function () use ($rows) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['Date', 'Employee', 'Type', 'Minutes', 'Converted Half Day', 'Converted LWP', 'Policy Action', 'Source']);
+            foreach ($rows as $row) {
+                fputcsv($handle, [
+                    $row->violation_date,
+                    $row->employee_display_name,
+                    $row->type,
+                    $row->minutes,
+                    (int) $row->converted_to_half_day,
+                    (int) $row->converted_to_lwp,
+                    $row->policy_action,
+                    $row->source,
+                ]);
+            }
+            fclose($handle);
+        }, 200, [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="attendance_violations.csv"',
+        ]);
+    }
 }

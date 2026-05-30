@@ -277,10 +277,14 @@ class EmployeeDocumentsC extends Controller
             ->orderBy('name')
             ->get();
 
-        $documents = EmployeeDocumentM::with('documentType')
-            ->where('employee_id', $employee->id)
-            ->get()
-            ->keyBy('document_type_id');
+        $query = EmployeeDocumentM::with('documentType')
+            ->where('employee_id', $employee->id);
+
+        if (\Illuminate\Support\Facades\Schema::hasColumn('employee_documents_new', 'is_active')) {
+            $query->where('is_active', 1);
+        }
+
+        $documents = $query->get()->keyBy('document_type_id');
 
         return view('hrms.documents.employee-documents.show', compact(
             'employee',
@@ -302,20 +306,26 @@ class EmployeeDocumentsC extends Controller
 
         $file = $request->file('file');
 
-        $path = $file->store($this->paths->mapEmployeeDocumentType($employee->id, $this->normalizeTypeKey($documentType)), 'private');
+        $storageService = app(\App\Services\HRMS\Document\HrmsFileStorageS::class);
+        $meta = $storageService->archiveOrReplaceEmployeeDocument($employee, $documentType, $file);
+
+        $search = [
+            'employee_id' => $employee->id,
+            'document_type_id' => $documentType->id,
+        ];
+        if (\Illuminate\Support\Facades\Schema::hasColumn('employee_documents_new', 'is_active')) {
+            $search['is_active'] = 1;
+        }
 
         EmployeeDocumentM::updateOrCreate(
-            [
-                'employee_id' => $employee->id,
-                'document_type_id' => $documentType->id,
-            ],
+            $search,
             [
                 'title' => $request->title ?? $documentType->name,
 
-                'file_path' => $path,
-                'file_original_name' => $file->getClientOriginalName(),
-                'file_mime_type' => $file->getClientMimeType(),
-                'file_size' => $file->getSize(),
+                'file_path' => $meta['file_path'],
+                'file_original_name' => $meta['original_name'],
+                'file_mime_type' => $meta['mime_type'],
+                'file_size' => $meta['file_size'],
 
                 // Admin / HR upload = Auto Verified
                 'verification_status' => 'verified',
@@ -328,6 +338,7 @@ class EmployeeDocumentsC extends Controller
 
                 'expiry_date' => $request->expiry_date,
                 'is_required' => $documentType->is_mandatory,
+                'is_active' => true,
             ]
         );
 
@@ -351,19 +362,21 @@ class EmployeeDocumentsC extends Controller
         ]);
 
         $documentType = DocumentTypeM::findOrFail($request->document_type_id);
+        $storageService = app(\App\Services\HRMS\Document\HrmsFileStorageS::class);
 
         foreach ($request->employee_ids as $employeeId) {
+            $employee = EmployeeM::findOrFail($employeeId);
             $file = $request->file('file');
-            $path = $file->store($this->paths->mapEmployeeDocumentType((int) $employeeId, $this->normalizeTypeKey($documentType)), 'private');
+            $meta = $storageService->archiveOrReplaceEmployeeDocument($employee, $documentType, $file);
 
             EmployeeDocumentM::create([
                 'employee_id' => $employeeId,
                 'document_type_id' => $documentType->id,
                 'title' => $request->title ?? $documentType->name,
-                'file_path' => $path,
-                'file_original_name' => $file->getClientOriginalName(),
-                'file_mime_type' => $file->getClientMimeType(),
-                'file_size' => $file->getSize(),
+                'file_path' => $meta['file_path'],
+                'file_original_name' => $meta['original_name'],
+                'file_mime_type' => $meta['mime_type'],
+                'file_size' => $meta['file_size'],
                 'verification_status' => 'pending',
                 'uploaded_by_user_id' => Auth::id(),
                 'expiry_date' => $request->expiry_date,
@@ -464,39 +477,27 @@ class EmployeeDocumentsC extends Controller
             'expiry_date' => ['nullable', 'date'],
         ]);
 
-        $employeeData = DB::table('employees_new')->where('id', $employee)->first();
-        abort_if(! $employeeData, 404);
-
-        $type = DB::table('document_types')->where('id', $documentType)->first();
-        abort_if(! $type, 404);
-
-        $oldDocument = DB::table('employee_documents_new')
-            ->where('employee_id', $employee)
-            ->where('document_type_id', $documentType)
-            ->orderByDesc('id')
-            ->first();
-
-        if ($oldDocument && ! empty($oldDocument->file_path) && Storage::disk('private')->exists($oldDocument->file_path)) {
-            Storage::disk('private')->delete($oldDocument->file_path);
-        }
+        $employeeModel = EmployeeM::findOrFail($employee);
+        $typeModel = DocumentTypeM::findOrFail($documentType);
 
         $file = $request->file('file');
-        $path = $file->store($this->paths->mapEmployeeDocumentType((int) $employee, $this->normalizeTypeKeyFromRow($type)), 'private');
+        $storageService = app(\App\Services\HRMS\Document\HrmsFileStorageS::class);
+        $meta = $storageService->archiveOrReplaceEmployeeDocument($employeeModel, $typeModel, $file);
 
         $data = [
             'employee_id' => $employee,
             'document_type_id' => $documentType,
-            'title' => $type->name,
-            'file_path' => $path,
-            'file_original_name' => $file->getClientOriginalName(),
-            'file_mime_type' => $file->getClientMimeType(),
-            'file_size' => $file->getSize(),
+            'title' => $typeModel->name,
+            'file_path' => $meta['file_path'],
+            'file_original_name' => $meta['original_name'],
+            'file_mime_type' => $meta['mime_type'],
+            'file_size' => $meta['file_size'],
             'verification_status' => 'pending',
             'verified_by_user_id' => null,
             'verified_at' => null,
             'rejection_reason' => null,
             'expiry_date' => $request->expiry_date,
-            'is_required' => (int) ($type->is_mandatory ?? 0),
+            'is_required' => (int) ($typeModel->is_mandatory ?? 0),
             'uploaded_at' => now(),
             'updated_at' => now(),
         ];
@@ -504,6 +505,20 @@ class EmployeeDocumentsC extends Controller
         if (Schema::hasColumn('employee_documents_new', 'uploaded_by_user_id')) {
             $data['uploaded_by_user_id'] = auth()->id();
         }
+
+        if (Schema::hasColumn('employee_documents_new', 'is_active')) {
+            $data['is_active'] = 1;
+        }
+
+        $oldQuery = DB::table('employee_documents_new')
+            ->where('employee_id', $employee)
+            ->where('document_type_id', $documentType);
+
+        if (Schema::hasColumn('employee_documents_new', 'is_active')) {
+            $oldQuery->where('is_active', 1);
+        }
+
+        $oldDocument = $oldQuery->orderByDesc('id')->first();
 
         if ($oldDocument) {
             DB::table('employee_documents_new')->where('id', $oldDocument->id)->update($data);

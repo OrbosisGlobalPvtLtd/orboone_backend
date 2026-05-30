@@ -106,42 +106,51 @@ class MyDocumentController extends Controller
             return $this->apiResponse(false, 'Validation failed.', null, 422, $validator->errors());
         }
 
-        $verifiedExists = EmployeeDocumentM::where('employee_id', $employee->id)
-            ->where('document_type_id', $type->id)
-            ->where('verification_status', 'verified')
-            ->exists();
+        $hasActiveColumn = \Illuminate\Support\Facades\Schema::hasColumn('employee_documents_new', 'is_active');
+        if (!$hasActiveColumn) {
+            $verifiedExists = EmployeeDocumentM::where('employee_id', $employee->id)
+                ->where('document_type_id', $type->id)
+                ->where('verification_status', 'verified')
+                ->exists();
 
-        if ($verifiedExists) {
-            return $this->apiResponse(false, 'Verified documents cannot be replaced.', null, 422, [
-                'document_type_id' => ['This document type is already verified.'],
-            ]);
+            if ($verifiedExists) {
+                return $this->apiResponse(false, 'Verified documents cannot be replaced.', null, 422, [
+                    'document_type_id' => ['This document type is already verified.'],
+                ]);
+            }
         }
 
         $file = $request->file('file');
+        $storageService = app(\App\Services\HRMS\Document\HrmsFileStorageS::class);
+        $meta = $storageService->archiveOrReplaceEmployeeDocument($employee, $type, $file);
 
-        $path = $this->documentService->storePrivateEmployeeDocumentFile(
-            $file,
-            (int) $employee->id,
-            (string) ($type->code ?: $type->name)
-        );
-
-        $document = EmployeeDocumentM::create([
+        $search = [
             'employee_id' => $employee->id,
             'document_type_id' => $type->id,
-            'uploaded_by_user_id' => auth()->id(),
-            'title' => $request->input('title') ?: $type->name,
-            'file_path' => $path,
-            'file_original_name' => $file->getClientOriginalName(),
-            'file_mime_type' => $file->getClientMimeType(),
-            'file_size' => $file->getSize(),
-            'verification_status' => 'pending',
-            'verified_by_user_id' => null,
-            'verified_at' => null,
-            'rejection_reason' => null,
-            'expiry_date' => $request->input('expiry_date'),
-            'is_required' => (bool) $type->is_mandatory,
-            'uploaded_at' => now(),
-        ]);
+        ];
+        if ($hasActiveColumn) {
+            $search['is_active'] = 1;
+        }
+
+        $document = EmployeeDocumentM::updateOrCreate(
+            $search,
+            [
+                'uploaded_by_user_id' => auth()->id(),
+                'title' => $request->input('title') ?: $type->name,
+                'file_path' => $meta['file_path'],
+                'file_original_name' => $meta['original_name'],
+                'file_mime_type' => $meta['mime_type'],
+                'file_size' => $meta['file_size'],
+                'verification_status' => 'pending',
+                'verified_by_user_id' => null,
+                'verified_at' => null,
+                'rejection_reason' => null,
+                'expiry_date' => $request->input('expiry_date'),
+                'is_required' => (bool) $type->is_mandatory,
+                'uploaded_at' => now(),
+                'is_active' => true,
+            ]
+        );
 
         $freshDocument = $document->fresh(['type', 'uploadedBy', 'verifiedBy', 'employee.user']);
         app(NotificationS::class)->notifyHrAndSuperAdmin(

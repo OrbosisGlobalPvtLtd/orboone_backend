@@ -2,14 +2,18 @@
 
 namespace App\Services\HRMS\Employee;
 
+use App\Models\HRMS\Employee\EmployeeM;
+use App\Services\HRMS\Document\HrmsFileStorageS;
 use App\Services\HRMS\Storage\HrmsStoragePathS;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
 class EmployeeFileS
 {
-    public function __construct(private HrmsStoragePathS $paths)
-    {
+    public function __construct(
+        private HrmsStoragePathS $paths,
+        private HrmsFileStorageS $storageService
+    ) {
     }
 
     public function upload(
@@ -47,6 +51,17 @@ class EmployeeFileS
         }
 
         /* =========================
+           ♻️ OVERWRITE PROFILE ONLY
+        ========================= */
+
+        if ($type === 'profile') {
+            $employee = EmployeeM::find($employeeId);
+            if ($employee) {
+                return $this->storageService->replaceProfileAvatar($employee, $file);
+            }
+        }
+
+        /* =========================
            🔒 SECURE PATH
         ========================= */
 
@@ -75,16 +90,6 @@ class EmployeeFileS
         };
 
         $fullPath = "{$path}/{$filename}";
-
-        /* =========================
-           ♻️ OVERWRITE PROFILE ONLY
-        ========================= */
-
-        if ($type === 'profile') {
-            foreach (Storage::disk('private')->files($path) as $oldFile) {
-                Storage::disk('private')->delete($oldFile);
-            }
-        }
 
         /* =========================
            📤 UPLOAD

@@ -145,7 +145,21 @@ class EmployeeM extends Model
 
     public function documents()
     {
+        $relation = $this->hasMany(EmployeeDocumentM::class, 'employee_id');
+        if (\Illuminate\Support\Facades\Schema::hasColumn('employee_documents_new', 'is_active')) {
+            $relation->where('is_active', 1);
+        }
+        return $relation;
+    }
+
+    public function allDocuments()
+    {
         return $this->hasMany(EmployeeDocumentM::class, 'employee_id');
+    }
+
+    public function archivedDocuments()
+    {
+        return $this->hasMany(EmployeeDocumentM::class, 'employee_id')->where('is_active', 0);
     }
 
     public function payrolls()

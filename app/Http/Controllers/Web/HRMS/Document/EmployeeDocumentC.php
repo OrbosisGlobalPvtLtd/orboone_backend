@@ -53,9 +53,11 @@ class EmployeeDocumentC extends Controller
             ->orderBy('name')
             ->get();
 
-        $documents = EmployeeDocumentM::where('employee_id', $employee->id)
-            ->get()
-            ->keyBy('document_type_id');
+        $query = EmployeeDocumentM::where('employee_id', $employee->id);
+        if (\Illuminate\Support\Facades\Schema::hasColumn('employee_documents_new', 'is_active')) {
+            $query->where('is_active', 1);
+        }
+        $documents = $query->get()->keyBy('document_type_id');
 
         return view('hrms.documents.employee.index', compact(
             'employee',
@@ -85,20 +87,25 @@ class EmployeeDocumentC extends Controller
         $documentType = DocumentTypeM::findOrFail($request->document_type_id);
         $file = $request->file('file');
 
-        $targetDir = $this->paths->mapEmployeeDocumentType($employee->id, $this->normalizeTypeKey($documentType));
-        $path = $file->store($targetDir, 'private');
+        $storageService = app(\App\Services\HRMS\Document\HrmsFileStorageS::class);
+        $meta = $storageService->archiveOrReplaceEmployeeDocument($employee, $documentType, $file);
+
+        $search = [
+            'employee_id' => $employee->id,
+            'document_type_id' => $documentType->id,
+        ];
+        if (\Illuminate\Support\Facades\Schema::hasColumn('employee_documents_new', 'is_active')) {
+            $search['is_active'] = 1;
+        }
 
         EmployeeDocumentM::updateOrCreate(
-            [
-                'employee_id' => $employee->id,
-                'document_type_id' => $documentType->id,
-            ],
+            $search,
             [
                 'title' => $request->title ?? $documentType->name,
-                'file_path' => $path,
-                'file_original_name' => $file->getClientOriginalName(),
-                'file_mime_type' => $file->getClientMimeType(),
-                'file_size' => $file->getSize(),
+                'file_path' => $meta['file_path'],
+                'file_original_name' => $meta['original_name'],
+                'file_mime_type' => $meta['mime_type'],
+                'file_size' => $meta['file_size'],
 
                 // Employee upload = always pending
                 'verification_status' => 'pending',
@@ -110,6 +117,7 @@ class EmployeeDocumentC extends Controller
                 'expiry_date' => $request->expiry_date,
                 'uploaded_at' => now(),
                 'is_required' => $documentType->is_mandatory,
+                'is_active' => true,
             ]
         );
 
@@ -134,31 +142,45 @@ class EmployeeDocumentC extends Controller
             'expiry_date' => 'nullable|date',
         ]);
 
-        if ($document->file_path && Storage::disk('private')->exists($document->file_path)) {
-            Storage::disk('private')->delete($document->file_path);
-        }
-
         $file = $request->file('file');
-        $documentType = DocumentTypeM::find($document->document_type_id);
-        $targetDir = $this->paths->mapEmployeeDocumentType($employee->id, $this->normalizeTypeKey($documentType));
-        $path = $file->store($targetDir, 'private');
+        $documentType = DocumentTypeM::findOrFail($document->document_type_id);
+        $storageService = app(\App\Services\HRMS\Document\HrmsFileStorageS::class);
+        $meta = $storageService->archiveOrReplaceEmployeeDocument($employee, $documentType, $file);
 
-        $document->update([
-            'file_path' => $path,
-            'file_original_name' => $file->getClientOriginalName(),
-            'file_mime_type' => $file->getClientMimeType(),
-            'file_size' => $file->getSize(),
+        if ($document->verification_status === 'verified') {
+            EmployeeDocumentM::create([
+                'employee_id' => $employee->id,
+                'document_type_id' => $document->document_type_id,
+                'title' => $document->title,
+                'file_path' => $meta['file_path'],
+                'file_original_name' => $meta['original_name'],
+                'file_mime_type' => $meta['mime_type'],
+                'file_size' => $meta['file_size'],
+                'verification_status' => 'pending',
+                'uploaded_by_user_id' => $user->id,
+                'expiry_date' => $request->expiry_date,
+                'is_required' => $document->is_required,
+                'uploaded_at' => now(),
+                'is_active' => true,
+            ]);
+        } else {
+            $document->update([
+                'file_path' => $meta['file_path'],
+                'file_original_name' => $meta['original_name'],
+                'file_mime_type' => $meta['mime_type'],
+                'file_size' => $meta['file_size'],
 
-            // Employee replace = again pending
-            'verification_status' => 'pending',
-            'uploaded_by_user_id' => $user->id,
-            'verified_by_user_id' => null,
-            'verified_at' => null,
-            'rejection_reason' => null,
+                // Employee replace = again pending
+                'verification_status' => 'pending',
+                'uploaded_by_user_id' => $user->id,
+                'verified_by_user_id' => null,
+                'verified_at' => null,
+                'rejection_reason' => null,
 
-            'expiry_date' => $request->expiry_date,
-            'uploaded_at' => now(),
-        ]);
+                'expiry_date' => $request->expiry_date,
+                'uploaded_at' => now(),
+            ]);
+        }
 
         return back()->with('success', 'Document replaced successfully. It is pending for HR verification.');
     }

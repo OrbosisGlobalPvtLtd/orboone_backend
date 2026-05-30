@@ -115,9 +115,14 @@ class EmployeeDocumentCompletionS
 
     public function uploadedDocuments(EmployeeM $employee): Collection
     {
-        return EmployeeDocumentM::with(['type', 'uploadedBy', 'verifiedBy'])
-            ->where('employee_id', $employee->id)
-            ->orderByDesc('uploaded_at')
+        $query = EmployeeDocumentM::with(['type', 'uploadedBy', 'verifiedBy'])
+            ->where('employee_id', $employee->id);
+
+        if (\Illuminate\Support\Facades\Schema::hasColumn('employee_documents_new', 'is_active')) {
+            $query->where('is_active', 1);
+        }
+
+        return $query->orderByDesc('uploaded_at')
             ->orderByDesc('id')
             ->get();
     }

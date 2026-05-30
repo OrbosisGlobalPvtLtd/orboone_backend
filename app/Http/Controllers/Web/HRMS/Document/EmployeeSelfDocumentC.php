@@ -50,27 +50,33 @@ class EmployeeSelfDocumentC extends Controller
         $docType = DocumentTypeM::findOrFail($request->document_type_id);
         
         $file = $request->file('file');
-        $fileName = time() . '_' . str_replace(' ', '_', $file->getClientOriginalName());
-        $path = $file->storeAs($this->paths->mapEmployeeDocumentType($employee->id, $this->paths->normalizeDocType((string) ($docType->code ?: $docType->name))), $fileName, 'private');
+        $storageService = app(\App\Services\HRMS\Document\HrmsFileStorageS::class);
+        $meta = $storageService->archiveOrReplaceEmployeeDocument($employee, $docType, $file);
         
+        $search = [
+            'employee_id' => $employee->id,
+            'document_type_id' => $docType->id,
+        ];
+        if (\Illuminate\Support\Facades\Schema::hasColumn('employee_documents_new', 'is_active')) {
+            $search['is_active'] = 1;
+        }
+
         EmployeeDocumentM::updateOrCreate(
-            [
-                'employee_id' => $employee->id,
-                'document_type_id' => $docType->id,
-            ],
+            $search,
             [
                 'title' => $docType->name,
-                'file_path' => $path,
-                'file_original_name' => $file->getClientOriginalName(),
-                'file_mime_type' => $file->getClientMimeType(),
-                'file_size' => $file->getSize(),
+                'file_path' => $meta['file_path'],
+                'file_original_name' => $meta['original_name'],
+                'file_mime_type' => $meta['mime_type'],
+                'file_size' => $meta['file_size'],
                 'verification_status' => 'pending',
                 'verified_by_user_id' => null,
                 'verified_at' => null,
                 'rejection_reason' => null,
                 'uploaded_by_user_id' => Auth::id(),
                 'uploaded_at' => now(),
-                'is_required' => $docType->is_mandatory
+                'is_required' => $docType->is_mandatory,
+                'is_active' => true
             ]
         );
         
@@ -89,22 +95,40 @@ class EmployeeSelfDocumentC extends Controller
         ]);
         
         $file = $request->file('file');
-        $fileName = time() . '_' . str_replace(' ', '_', $file->getClientOriginalName());
-        $docType = DocumentTypeM::find($document->document_type_id);
-        $path = $file->storeAs($this->paths->mapEmployeeDocumentType($employee->id, $this->paths->normalizeDocType((string) (($docType->code ?? null) ?: ($docType->name ?? 'misc')))), $fileName, 'private');
+        $docType = DocumentTypeM::findOrFail($document->document_type_id);
+        $storageService = app(\App\Services\HRMS\Document\HrmsFileStorageS::class);
+        $meta = $storageService->archiveOrReplaceEmployeeDocument($employee, $docType, $file);
         
-        $document->update([
-            'file_path' => $path,
-            'file_original_name' => $file->getClientOriginalName(),
-            'file_mime_type' => $file->getClientMimeType(),
-            'file_size' => $file->getSize(),
-            'verification_status' => 'pending',
-            'verified_by_user_id' => null,
-            'verified_at' => null,
-            'rejection_reason' => null,
-            'uploaded_by_user_id' => Auth::id(),
-            'uploaded_at' => now()
-        ]);
+        if ($document->verification_status === 'verified') {
+            EmployeeDocumentM::create([
+                'employee_id' => $employee->id,
+                'document_type_id' => $document->document_type_id,
+                'title' => $document->title,
+                'file_path' => $meta['file_path'],
+                'file_original_name' => $meta['original_name'],
+                'file_mime_type' => $meta['mime_type'],
+                'file_size' => $meta['file_size'],
+                'verification_status' => 'pending',
+                'uploaded_by_user_id' => Auth::id(),
+                'expiry_date' => $document->expiry_date,
+                'is_required' => $document->is_required,
+                'uploaded_at' => now(),
+                'is_active' => true,
+            ]);
+        } else {
+            $document->update([
+                'file_path' => $meta['file_path'],
+                'file_original_name' => $meta['original_name'],
+                'file_mime_type' => $meta['mime_type'],
+                'file_size' => $meta['file_size'],
+                'verification_status' => 'pending',
+                'verified_by_user_id' => null,
+                'verified_at' => null,
+                'rejection_reason' => null,
+                'uploaded_by_user_id' => Auth::id(),
+                'uploaded_at' => now()
+            ]);
+        }
         
         return response()->json(['success' => true, 'message' => 'Document replaced successfully.']);
     }

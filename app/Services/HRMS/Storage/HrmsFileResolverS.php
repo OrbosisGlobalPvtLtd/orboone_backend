@@ -52,4 +52,23 @@ class HrmsFileResolverS
 
         return url('/api/v1/file?path=' . urlencode($normalized));
     }
+
+    /**
+     * Stream file with correct headers for private disk.
+     */
+    public function secureFileStream(?string $dbPath): ?\Symfony\Component\HttpFoundation\BinaryFileResponse
+    {
+        $resolved = $this->resolve($dbPath);
+        if (!$resolved) {
+            return null;
+        }
+
+        $absolute = $resolved['absolute'];
+        $mime = mime_content_type($absolute) ?: 'application/octet-stream';
+
+        return response()->file($absolute, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'inline; filename="' . basename($absolute) . '"',
+        ]);
+    }
 }

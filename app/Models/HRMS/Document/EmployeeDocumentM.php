@@ -30,6 +30,10 @@ class EmployeeDocumentM extends Model
         'expiry_date',
         'uploaded_at',
         'is_required',
+        'is_active',
+        'archived_at',
+        'archived_by',
+        'archive_reason',
     ];
 
     protected $casts = [
@@ -37,6 +41,8 @@ class EmployeeDocumentM extends Model
         'uploaded_at' => 'datetime',
         'expiry_date' => 'date',
         'is_required' => 'boolean',
+        'is_active' => 'boolean',
+        'archived_at' => 'datetime',
     ];
 
     /*

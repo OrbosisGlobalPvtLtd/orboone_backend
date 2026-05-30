@@ -906,25 +906,24 @@ $kpis = [
                                 <td>
                                     <div class="att-emp">
                                         @php
-                                            $passportPhotoUrl = resolveEmployeePassportPhoto($blocked);
-                                            $blockedName = optional($blocked->user)->name ?? 'Employee';
-                                            $employeeInitial = resolveEmployeeInitials($blocked);
+                                        $passportPhotoUrl = resolveEmployeePassportPhoto($blocked);
+                                        $blockedName = optional($blocked->user)->name ?? 'Employee';
+                                        $employeeInitial = resolveEmployeeInitials($blocked);
                                         @endphp
                                         <span class="hrms-emp-avatar hrms-emp-avatar-sm mr-2">
                                             @if($passportPhotoUrl)
-                                                <img
-                                                    src="{{ $passportPhotoUrl }}"
-                                                    alt="{{ $blockedName }}"
-                                                    class="hrms-emp-avatar-img"
-                                                    onerror="this.style.display='none'; this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.remove('is-hidden'); this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.add('is-visible');"
-                                                >
-                                                <span class="hrms-emp-avatar-fallback is-hidden">
-                                                    {{ $employeeInitial }}
-                                                </span>
+                                            <img
+                                                src="{{ $passportPhotoUrl }}"
+                                                alt="{{ $blockedName }}"
+                                                class="hrms-emp-avatar-img"
+                                                onerror="this.style.display='none'; this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.remove('is-hidden'); this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.add('is-visible');">
+                                            <span class="hrms-emp-avatar-fallback is-hidden">
+                                                {{ $employeeInitial }}
+                                            </span>
                                             @else
-                                                <span class="hrms-emp-avatar-fallback is-visible">
-                                                    {{ $employeeInitial }}
-                                                </span>
+                                            <span class="hrms-emp-avatar-fallback is-visible">
+                                                {{ $employeeInitial }}
+                                            </span>
                                             @endif
                                         </span>
                                         <div>
@@ -996,7 +995,7 @@ $kpis = [
                         <thead>
                             <tr>
                                 <th>Employee</th>
-                                <th>Employee Code</th>
+                                <!-- <th>Employee Code</th> -->
                                 <th>Department</th>
                                 <th>Mode</th>
                                 <th>Shift</th>
@@ -1027,25 +1026,24 @@ $kpis = [
                                 <td>
                                     <div class="att-emp">
                                         @php
-                                            $passportPhotoUrl = resolveEmployeePassportPhoto($attendance);
-                                            $employeeName = optional($attendance->user)->name ?? 'Employee';
-                                            $employeeInitial = resolveEmployeeInitials($attendance);
+                                        $passportPhotoUrl = resolveEmployeePassportPhoto($attendance);
+                                        $employeeName = optional($attendance->user)->name ?? 'Employee';
+                                        $employeeInitial = resolveEmployeeInitials($attendance);
                                         @endphp
                                         <span class="hrms-emp-avatar hrms-emp-avatar-sm mr-2">
                                             @if($passportPhotoUrl)
-                                                <img
-                                                    src="{{ $passportPhotoUrl }}"
-                                                    alt="{{ $employeeName }}"
-                                                    class="hrms-emp-avatar-img"
-                                                    onerror="this.style.display='none'; this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.remove('is-hidden'); this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.add('is-visible');"
-                                                >
-                                                <span class="hrms-emp-avatar-fallback is-hidden">
-                                                    {{ $employeeInitial }}
-                                                </span>
+                                            <img
+                                                src="{{ $passportPhotoUrl }}"
+                                                alt="{{ $employeeName }}"
+                                                class="hrms-emp-avatar-img"
+                                                onerror="this.style.display='none'; this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.remove('is-hidden'); this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.add('is-visible');">
+                                            <span class="hrms-emp-avatar-fallback is-hidden">
+                                                {{ $employeeInitial }}
+                                            </span>
                                             @else
-                                                <span class="hrms-emp-avatar-fallback is-visible">
-                                                    {{ $employeeInitial }}
-                                                </span>
+                                            <span class="hrms-emp-avatar-fallback is-visible">
+                                                {{ $employeeInitial }}
+                                            </span>
                                             @endif
                                         </span>
                                         <div>
@@ -1054,7 +1052,7 @@ $kpis = [
                                         </div>
                                     </div>
                                 </td>
-                                <td>{{ optional($attendance->employee)->employee_code ?? 'N/A' }}</td>
+                                <!-- <td>{{ optional($attendance->employee)->employee_code ?? 'N/A' }}</td> -->
                                 <td>
                                     <div class="att-small">{{ optional(optional($attendance->employee)->department)->name ?? 'N/A' }}</div>
                                 </td>

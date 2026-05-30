@@ -50,5 +50,11 @@
             <i class="fas fa-gift small mr-2 text-warning"></i> Bonus Management
         </a>
     </li>
+
+    <li>
+        <a href="{{ route('enterprise-payroll.policies.index') }}" class="nav-link sub-nav-link {{ request()->routeIs('enterprise-payroll.policies.*') ? 'active' : '' }}">
+            <i class="fas fa-cogs small mr-2 text-primary"></i> Payroll Policy Settings
+        </a>
+    </li>
     @endif
 </ul>

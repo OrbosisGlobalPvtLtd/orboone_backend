@@ -216,25 +216,8 @@ $topbarNotifications = collect();
 
                 @auth
                 @php
-                $topbarEmployee = $topbarUser?->employee;
-                $topbarUserImage = trim((string) data_get($topbarUser, 'profile_image'));
-                $topbarEmployeeImage = trim((string) data_get($topbarEmployee, 'profile.profile_image'));
-
-                if ($topbarEmployee && $topbarEmployeeImage !== '') {
-                    $topbarAvatar = route('employee.profile-image', ['employee' => $topbarEmployee->id]);
-                } elseif ($topbarUserImage !== '') {
-                    if (preg_match('/^https?:\/\//i', $topbarUserImage) || substr($topbarUserImage, 0, 1) === '/') {
-                        $topbarAvatar = $topbarUserImage;
-                    } elseif (substr($topbarUserImage, 0, 8) === 'storage/') {
-                        $topbarAvatar = asset($topbarUserImage);
-                    } else {
-                        $topbarAvatar = asset('storage/'.$topbarUserImage);
-                    }
-                } else {
-                    $topbarAvatar = null;
-                }
-
-                $topbarInitial = strtoupper(substr(trim($topbarUser?->name ?? ''), 0, 1));
+                $topbarAvatar = resolveEmployeeAvatar($topbarUser);
+                $topbarInitial = resolveEmployeeInitials($topbarUser);
                 @endphp
 
                 <div class="dropdown">

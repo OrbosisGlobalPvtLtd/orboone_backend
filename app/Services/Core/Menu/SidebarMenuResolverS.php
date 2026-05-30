@@ -30,6 +30,7 @@ class SidebarMenuResolverS
             $filtered = $this->filterByRoleMenuAccess($menus, $roleIds, $isSuperAdmin);
             $filtered = $this->filterByPermission($filtered, $user, $isSuperAdmin);
             $filtered = $this->filterByEmployeeOnlyVisibility($filtered, $isEmployeeContext);
+            $filtered = $this->filterRetiredLegacyPayrollMenus($filtered);
             $filtered = $this->filterByRouteValidity($filtered);
             $filtered = $this->repairParentVisibility($filtered);
             $filtered = $this->deduplicateMenus($filtered);
@@ -140,6 +141,11 @@ class SidebarMenuResolverS
     private function filterByEmployeeOnlyVisibility(Collection $menus, bool $isEmployeeContext): Collection
     {
         return $menus->filter(function ($menu) use ($isEmployeeContext) {
+            // Dashboard is always visible to everyone
+            if ($menu->id === 1 || ($menu->route ?? '') === 'dashboard') {
+                return true;
+            }
+
             $isEmployeeOnly = $this->isEmployeeOnlyMenu($menu);
 
             if ($isEmployeeContext) {
@@ -162,6 +168,20 @@ class SidebarMenuResolverS
         }
 
         return $menus->whereIn('id', $validIds)->values();
+    }
+
+    private function filterRetiredLegacyPayrollMenus(Collection $menus): Collection
+    {
+        // Legacy Payroll retired. Enterprise Payroll is the only active payroll engine.
+        return $menus->filter(function ($menu) {
+            $route = strtolower(trim((string) ($menu->route ?? '')));
+            if ($route === '') {
+                return true;
+            }
+
+            return ! str_starts_with($route, 'pages.payroll.')
+                && ! str_starts_with($route, 'hrms.payroll.');
+        })->values();
     }
 
     private function repairParentVisibility(Collection $menus): Collection
@@ -283,6 +303,11 @@ class SidebarMenuResolverS
             'roles.index' => ['access.roles.manage'],
             'permissions.index' => ['access.permissions.manage'],
             'admins.index' => ['admins.manage'],
+            'hrms.attendance.work-reports' => ['attendance.work_reports.view_all', 'attendance.work_reports.view_team'],
+            'hrms.attendance.my-work-reports' => ['attendance.work_reports.view_own'],
+            'enterprise-payroll.policies.index' => ['enterprise_payroll.policy.view'],
+            'hrms.attendance.wfh.index' => ['attendance.wfh.view', 'attendance.wfh.own'],
+            'hrms.attendance.my-wfh.index' => ['attendance.wfh.own'],
         ];
     }
 
@@ -314,6 +339,7 @@ class SidebarMenuResolverS
         $moduleKey = strtolower(trim((string) ($menu->module_key ?? '')));
 
         $employeeRoutePrefixes = [
+            'hrms.attendance.my-wfh.',
             'hrms.documents.self.',
             'employee.announcements.',
             'enterprise-payroll.self.',

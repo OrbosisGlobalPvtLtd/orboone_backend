@@ -34,6 +34,14 @@ class NotificationPolicyS
             case 'holiday_work_request_submitted':
             case 'holiday_work_request_approved':
             case 'holiday_work_request_rejected':
+            case 'profile_submitted':
+            case 'profile_approved':
+            case 'profile_rejected':
+            case 'payroll_released':
+            case 'employee_exit_initiated':
+            case 'employee_exit_approved':
+            case 'employee_exit_completed':
+            case 'fnf_completed':
                 return true;
 
             case 'announcement':

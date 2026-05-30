@@ -285,20 +285,38 @@ class DashboardResolverS
 
         if ($role === 'hr_admin') {
             $cards = [
-                $this->card('Employee Total', $employee['total'] ?? 0, 'fas fa-users', 'HRMS employee base'),
-                $this->card('Active Employees', $employee['active'] ?? 0, 'fas fa-user-check', 'Active workforce'),
-                $this->card('Pending Onboarding', $cards['pending_profiles'], 'fas fa-id-badge', 'Profiles needing review'),
-                $this->card('Probation Ending Soon', $this->probationEndingSoonCount(), 'fas fa-hourglass-half', 'Next 30 days'),
-                $this->card('Leave Pending', $leave['pending'] ?? 0, 'fas fa-calendar-alt', 'Approvals waiting'),
-                $this->card('Documents Pending', $documents['pending'] ?? 0, 'fas fa-folder-open', 'Document approval queue'),
-                $this->card('Announcements', $announcements['total'] ?? 0, 'fas fa-bullhorn', 'Communication stats'),
+                'active_employees' => (int) ($employee['active'] ?? 0),
+                'present_today' => (int) ($attendance['present'] ?? 0),
+                'absent_today' => (int) ($attendance['absent'] ?? 0),
+                'late_today' => (int) ($attendance['late'] ?? 0),
+                'early_logout' => (int) ($attendance['early_out'] ?? 0),
+                'pending_leaves' => (int) ($leave['pending'] ?? 0),
+                'pending_documents' => (int) ($documents['pending'] ?? 0),
+                'pending_profiles' => (int) ($employee['lifecycle']['pending_profiles'] ?? 0),
+                'wfh_requests' => $this->wfhRequestsPendingCount(),
+                'attendance_regularization' => $this->attendanceRegularizationPendingCount(),
+                'holiday_work_requests' => $this->holidayWorkPendingCount(),
+                'punch_blocked' => (int) ($attendance['punch_blocked'] ?? 0),
+                'pending_unlock' => $this->pendingUnlockCount(),
+                'pending_punch_out' => $this->pendingPunchOutCount(),
+                'new_joiners' => $this->newJoinersCount(),
             ];
-            array_splice($cards, 4, 0, $this->attendanceAdminCards($attendance));
         }
 
         $liveAttendance = $this->buildLiveAttendance();
         $actionRequired = $this->buildActionRequired();
         $charts = $this->buildCharts();
+
+        $tables = [];
+        if ($role === 'hr_admin') {
+            $tables = [
+                'blocked_employees' => $this->getBlockedEmployeesTable(),
+                'pending_leaves' => $this->getPendingLeavesTable(),
+                'pending_wfh' => $this->getPendingWfhTable(),
+                'pending_profiles' => $this->getPendingProfilesTable(),
+                'pending_documents' => $this->getPendingDocumentsTable(),
+            ];
+        }
 
         return [
             'cards' => $cards,
@@ -313,6 +331,10 @@ class DashboardResolverS
             'system_health' => [],
             'announcements' => $announcements,
             'charts' => $charts,
+            'recent_activities' => $role === 'hr_admin'
+                ? $this->buildRecentActivities()
+                : ($this->recentActivities() ?? []),
+            'tables' => $role === 'hr_admin' ? $tables : [],
         ];
     }
 
@@ -1542,8 +1564,14 @@ class DashboardResolverS
         $total = DB::table('employees_new')->count();
         
         $active = $total;
-        if ($this->columnExists('employees_new', 'status')) {
-            $active = DB::table('employees_new')->where('status', 'active')->count();
+        if ($this->columnExists('employees_new', 'employment_status')) {
+            $active = DB::table('employees_new')->where('employment_status', 'active')->count();
+        }
+        if ($this->columnExists('employees_new', 'is_active')) {
+            $active = DB::table('employees_new')
+                ->when($this->columnExists('employees_new', 'employment_status'), fn ($q) => $q->where('employment_status', 'active'))
+                ->where('is_active', 1)
+                ->count();
         }
 
         $pending_profiles = 0;
@@ -1569,8 +1597,8 @@ class DashboardResolverS
         }
 
         $exit_process = 0;
-        if ($this->columnExists('employees_new', 'status')) {
-            $exit_process = DB::table('employees_new')->whereIn('status', ['exit_process', 'exited', 'terminated'])->count();
+        if ($this->columnExists('employees_new', 'employment_status')) {
+            $exit_process = DB::table('employees_new')->whereIn('employment_status', ['exit_process', 'exited', 'terminated'])->count();
         }
 
         return [
@@ -1768,15 +1796,13 @@ class DashboardResolverS
         $total_deductions = 0;
         $payslips_generated = 0;
         
+        // Legacy Payroll retired. Enterprise Payroll is the only active payroll engine.
         if ($this->tableExists('enterprise_payrolls')) {
              $payslips_generated = DB::table('enterprise_payrolls')->where('month', $month)->where('year', $year)->count();
              $gross_payroll = DB::table('enterprise_payrolls')->where('month', $month)->where('year', $year)->sum('gross_salary');
              $net_payroll = DB::table('enterprise_payrolls')->where('month', $month)->where('year', $year)->sum('net_salary');
              $total_deductions = DB::table('enterprise_payrolls')->where('month', $month)->where('year', $year)->sum('total_deductions');
-        }
-
-        if ($this->tableExists('payrolls')) {
-            $statusRows = DB::table('payrolls')
+             $statusRows = DB::table('enterprise_payrolls')
                 ->where('month', $month)
                 ->where('year', $year)
                 ->select('status', DB::raw('COUNT(*) as total'))
@@ -1784,11 +1810,6 @@ class DashboardResolverS
                 ->get();
 
             $status = optional($statusRows->sortByDesc('total')->first())->status ?: 'Not Run';
-            
-            if ($payslips_generated == 0) {
-                 $payslips_generated = DB::table('payrolls')->where('month', $month)->where('year', $year)->count();
-                 $net_payroll = DB::table('payrolls')->where('month', $month)->where('year', $year)->sum('net_salary');
-            }
         }
 
         return [
@@ -2029,11 +2050,12 @@ class DashboardResolverS
 
     private function latestPayslip($employeeId): array
     {
-        if (! $this->tableExists('payslips') || ! $employeeId) {
+        // Legacy Payroll retired. Enterprise Payroll is the only active payroll engine.
+        if (! $this->tableExists('enterprise_payslips') || ! $employeeId) {
             return ['label' => '-', 'subtitle' => 'No payslip available'];
         }
 
-        $payslip = DB::table('payslips')
+        $payslip = DB::table('enterprise_payslips')
             ->where('employee_id', $employeeId)
             ->orderByDesc('year')
             ->orderByDesc('month')
@@ -2271,6 +2293,29 @@ class DashboardResolverS
     {
         $activities = collect();
 
+        if ($this->tableExists('notifications')) {
+            $notifCols = [
+                'id',
+                $this->columnExists('notifications', 'title') ? 'title' : DB::raw("'Notification' as title"),
+                $this->columnExists('notifications', 'message') ? 'message' : DB::raw("'' as message"),
+                $this->columnExists('notifications', 'created_at') ? 'created_at' : DB::raw('NOW() as created_at'),
+            ];
+
+            DB::table('notifications')
+                ->orderByDesc('created_at')
+                ->limit(4)
+                ->select($notifCols)
+                ->get()
+                ->each(function ($row) use ($activities) {
+                    $activities->push([
+                        'title' => (string) ($row->title ?: 'Notification'),
+                        'description' => (string) ($row->message ?: 'HRMS notification update'),
+                        'time' => $row->created_at,
+                        'icon' => 'fas fa-bell',
+                    ]);
+                });
+        }
+
         if ($this->tableExists('employees_new')) {
             DB::table('employees_new as e')
                 ->leftJoin('users as u', 'u.id', '=', 'e.user_id')
@@ -2288,10 +2333,98 @@ class DashboardResolverS
                 });
         }
 
+        if ($this->tableExists('leave_requests')) {
+            DB::table('leave_requests as lr')
+                ->leftJoin('employees_new as e', 'e.id', '=', 'lr.employee_id')
+                ->leftJoin('users as u', 'u.id', '=', 'e.user_id')
+                ->leftJoin('leave_types as lt', 'lt.id', '=', 'lr.leave_type_id')
+                ->whereRaw('LOWER(COALESCE(lr.status, "")) IN ("pending", "manager_pending", "hr_pending")')
+                ->orderByDesc('lr.created_at')
+                ->limit(4)
+                ->select('u.name', 'lt.name as leave_type', 'lr.created_at')
+                ->get()
+                ->each(function ($row) use ($activities) {
+                    $activities->push([
+                        'title' => 'Leave request submitted',
+                        'description' => trim(($row->name ?: 'Employee') . ' - ' . ($row->leave_type ?: 'Leave')),
+                        'time' => $row->created_at,
+                        'icon' => 'fas fa-calendar-check',
+                    ]);
+                });
+        }
+
+        if ($this->tableExists('wfh_requests')) {
+            DB::table('wfh_requests as w')
+                ->leftJoin('employees_new as e', 'e.id', '=', 'w.employee_id')
+                ->leftJoin('users as u', 'u.id', '=', 'e.user_id')
+                ->whereIn('w.status', ['pending', 'manager_approved', 'hr_approved'])
+                ->orderByDesc('w.created_at')
+                ->limit(4)
+                ->select('u.name', 'w.request_type', 'w.created_at')
+                ->get()
+                ->each(function ($row) use ($activities) {
+                    $activities->push([
+                        'title' => 'WFH request raised',
+                        'description' => trim(($row->name ?: 'Employee') . ' - ' . ucwords(str_replace('_', ' ', (string) $row->request_type))),
+                        'time' => $row->created_at,
+                        'icon' => 'fas fa-home',
+                    ]);
+                });
+        }
+
+        if ($this->tableExists('attendance_regularizations')) {
+            DB::table('attendance_regularizations as ar')
+                ->leftJoin('employees_new as e', 'e.id', '=', 'ar.employee_id')
+                ->leftJoin('users as u', 'u.id', '=', 'e.user_id')
+                ->whereRaw('LOWER(ar.status) = ?', ['pending'])
+                ->orderByDesc('ar.created_at')
+                ->limit(4)
+                ->select('u.name', 'ar.created_at')
+                ->get()
+                ->each(function ($row) use ($activities) {
+                    $activities->push([
+                        'title' => 'Regularization submitted',
+                        'description' => trim((string) ($row->name ?: 'Employee')),
+                        'time' => $row->created_at,
+                        'icon' => 'fas fa-user-check',
+                    ]);
+                });
+        }
+
+        if ($this->tableExists('employee_documents_new')) {
+            $documentLabelSelect = "'Document' as document_label";
+            if ($this->columnExists('employee_documents_new', 'document_name') && $this->columnExists('employee_documents_new', 'document_type')) {
+                $documentLabelSelect = "COALESCE(d.document_name, d.document_type, 'Document') as document_label";
+            } elseif ($this->columnExists('employee_documents_new', 'document_name')) {
+                $documentLabelSelect = "COALESCE(d.document_name, 'Document') as document_label";
+            } elseif ($this->columnExists('employee_documents_new', 'document_type')) {
+                $documentLabelSelect = "COALESCE(d.document_type, 'Document') as document_label";
+            } elseif ($this->columnExists('employee_documents_new', 'name')) {
+                $documentLabelSelect = "COALESCE(d.name, 'Document') as document_label";
+            }
+
+            DB::table('employee_documents_new as d')
+                ->leftJoin('employees_new as e', 'e.id', '=', 'd.employee_id')
+                ->leftJoin('users as u', 'u.id', '=', 'e.user_id')
+                ->where('d.verification_status', 'pending')
+                ->orderByDesc('d.created_at')
+                ->limit(4)
+                ->select('u.name', DB::raw($documentLabelSelect), 'd.created_at')
+                ->get()
+                ->each(function ($row) use ($activities) {
+                    $activities->push([
+                        'title' => 'Document uploaded',
+                        'description' => trim(($row->name ?: 'Employee') . ' - ' . ($row->document_label ?: 'Document')),
+                        'time' => $row->created_at,
+                        'icon' => 'fas fa-file-signature',
+                    ]);
+                });
+        }
+
         if ($this->tableExists('attendance_work_logs')) {
             DB::table('attendance_work_logs')
                 ->orderByDesc('created_at')
-                ->limit(4)
+                ->limit(2)
                 ->select('work_summary', 'created_at')
                 ->get()
                 ->each(function ($row) use ($activities) {
@@ -2304,7 +2437,11 @@ class DashboardResolverS
                 });
         }
 
-        return $activities->sortByDesc('time')->take(6)->values();
+        return $activities
+            ->filter(fn ($activity) => ! empty($activity['title']) && ! empty($activity['time']))
+            ->sortByDesc('time')
+            ->take(10)
+            ->values();
     }
 
     private function latestAnnouncements()
@@ -3153,14 +3290,33 @@ class DashboardResolverS
             }
             $query = DB::table('attendances as a')
                 ->join('employees_new as e', 'e.id', '=', 'a.employee_id')
+                ->leftJoin('departments as d', 'd.id', '=', 'e.department_id')
                 ->leftJoin('users as u', 'u.id', '=', 'e.user_id')
                 ->whereDate('a.attendance_date', Carbon::today(config('app.timezone', 'Asia/Kolkata'))->toDateString());
-            if ($this->columnExists('attendances', 'is_blocked')) {
-                $query->where('a.is_blocked', 1);
-            } else {
+            $hasBlockedFlag = $this->columnExists('attendances', 'is_blocked');
+            $hasType = $this->columnExists('attendances', 'attendance_type_id') && $this->tableExists('attendance_types');
+            if (! $hasBlockedFlag && ! $hasType) {
                 return [];
             }
-            return $query->select('u.name as employee_name', 'e.employee_code', 'a.punch_in_time', 'a.punch_out_time')->get()->map(fn($r) => (array) $r)->all();
+            if ($hasType) {
+                $query->leftJoin('attendance_types as t', 't.id', '=', 'a.attendance_type_id');
+            }
+            $query->where(function ($q) use ($hasBlockedFlag, $hasType) {
+                if ($hasBlockedFlag) {
+                    $q->orWhere('a.is_blocked', 1);
+                }
+                if ($hasType) {
+                    $q->orWhere('t.code', 'punch_blocked');
+                }
+            });
+
+            return $query->select(
+                'u.name as employee_name',
+                'e.employee_code',
+                DB::raw("COALESCE(d.name, '-') as department_name"),
+                DB::raw("COALESCE(DATE_FORMAT(a.auto_blocked_at, '%Y-%m-%d %H:%i:%s'), DATE_FORMAT(a.updated_at, '%Y-%m-%d %H:%i:%s'), DATE_FORMAT(a.created_at, '%Y-%m-%d %H:%i:%s')) as auto_blocked_at"),
+                DB::raw("COALESCE(a.block_reason, 'Punch blocked by attendance policy cutoff') as block_reason")
+            )->orderByDesc('a.updated_at')->limit(20)->get()->map(fn($r) => (array) $r)->all();
         } catch (\Throwable $e) {
             return [];
         }
@@ -3169,22 +3325,28 @@ class DashboardResolverS
     private function getPendingLeavesTable(): array
     {
         try {
-            if (!$this->tableExists('leave_applications') || !$this->tableExists('employees_new') || !$this->tableExists('users')) {
+            if (!$this->tableExists('leave_requests') || !$this->tableExists('employees_new') || !$this->tableExists('users')) {
                 return [];
             }
-            $query = DB::table('leave_applications as l')
+            $query = DB::table('leave_requests as l')
                 ->join('employees_new as e', 'e.id', '=', 'l.employee_id')
-                ->leftJoin('users as u', 'u.id', '=', 'e.user_id');
-            if ($this->columnExists('leave_applications', 'status')) {
-                $query->whereRaw('LOWER(l.status) = ?', ['pending']);
+                ->leftJoin('users as u', 'u.id', '=', 'e.user_id')
+                ->leftJoin('leave_types as lt', 'lt.id', '=', 'l.leave_type_id');
+            if ($this->columnExists('leave_requests', 'status')) {
+                $query->whereRaw('LOWER(COALESCE(l.status, "")) IN ("pending", "manager_pending", "hr_pending")');
             } else {
                 return [];
             }
-            $select = ['u.name as employee_name', 'e.employee_code'];
-            if ($this->columnExists('leave_applications', 'start_date')) $select[] = 'l.start_date';
-            if ($this->columnExists('leave_applications', 'end_date')) $select[] = 'l.end_date';
-            if ($this->columnExists('leave_applications', 'reason')) $select[] = 'l.reason';
-            return $query->select($select)->get()->map(fn($r) => (array) $r)->all();
+            $select = [
+                'u.name as employee_name',
+                'e.employee_code',
+                DB::raw("COALESCE(lt.name, '-') as leave_type"),
+                'l.status',
+            ];
+            if ($this->columnExists('leave_requests', 'start_date')) $select[] = 'l.start_date';
+            if ($this->columnExists('leave_requests', 'end_date')) $select[] = 'l.end_date';
+            if ($this->columnExists('leave_requests', 'deducted_days')) $select[] = 'l.deducted_days';
+            return $query->select($select)->orderByDesc('l.created_at')->limit(20)->get()->map(fn($r) => (array) $r)->all();
         } catch (\Throwable $e) {
             return [];
         }
@@ -3200,11 +3362,18 @@ class DashboardResolverS
                 ->join('employees_new as e', 'e.id', '=', 'p.employee_id')
                 ->leftJoin('users as u', 'u.id', '=', 'e.user_id');
             if ($this->columnExists('employee_profiles', 'profile_status')) {
-                $query->whereIn('p.profile_status', ['pending', 'submitted']);
+                $query->whereIn('p.profile_status', ['pending', 'submitted', 'rejected']);
+            } elseif ($this->columnExists('employee_profiles', 'is_profile_completed')) {
+                $query->where('p.is_profile_completed', 0);
             } else {
                 return [];
             }
-            return $query->select('u.name as employee_name', 'e.employee_code', 'p.profile_status')->get()->map(fn($r) => (array) $r)->all();
+            return $query->select(
+                'u.name as employee_name',
+                'e.employee_code',
+                DB::raw("COALESCE(p.profile_status, IF(p.is_profile_completed = 1, 'approved', 'pending')) as profile_status"),
+                DB::raw("COALESCE(e.employee_stage, e.employment_type, '-') as employee_stage")
+            )->orderByDesc('p.updated_at')->limit(20)->get()->map(fn($r) => (array) $r)->all();
         } catch (\Throwable $e) {
             return [];
         }
@@ -3221,12 +3390,149 @@ class DashboardResolverS
                 ->leftJoin('users as u', 'u.id', '=', 'e.user_id');
             if ($this->columnExists('employee_documents_new', 'verification_status')) {
                 $query->where('d.verification_status', 'pending');
+            } elseif ($this->columnExists('employee_documents_new', 'is_verified')) {
+                $query->where('d.is_verified', 0);
             } else {
                 return [];
             }
-            return $query->select('u.name as employee_name', 'e.employee_code', 'd.document_name', 'd.verification_status')->get()->map(fn($r) => (array) $r)->all();
+            $documentLabelSelect = "'-' as document_name";
+            if ($this->columnExists('employee_documents_new', 'document_name') && $this->columnExists('employee_documents_new', 'document_type')) {
+                $documentLabelSelect = "COALESCE(d.document_name, d.document_type, '-') as document_name";
+            } elseif ($this->columnExists('employee_documents_new', 'document_name')) {
+                $documentLabelSelect = "COALESCE(d.document_name, '-') as document_name";
+            } elseif ($this->columnExists('employee_documents_new', 'document_type')) {
+                $documentLabelSelect = "COALESCE(d.document_type, '-') as document_name";
+            } elseif ($this->columnExists('employee_documents_new', 'name')) {
+                $documentLabelSelect = "COALESCE(d.name, '-') as document_name";
+            }
+
+            return $query->select(
+                'u.name as employee_name',
+                'e.employee_code',
+                DB::raw($documentLabelSelect),
+                DB::raw("COALESCE(DATE_FORMAT(d.uploaded_at, '%Y-%m-%d %H:%i:%s'), DATE_FORMAT(d.created_at, '%Y-%m-%d %H:%i:%s')) as uploaded_at"),
+                DB::raw("COALESCE(d.verification_status, IF(d.is_verified = 1, 'verified', 'pending')) as verification_status")
+            )->orderByDesc('d.created_at')->limit(20)->get()->map(fn($r) => (array) $r)->all();
         } catch (\Throwable $e) {
             return [];
         }
+    }
+
+    private function getPendingWfhTable(): array
+    {
+        try {
+            if (! $this->tableExists('wfh_requests') || ! $this->tableExists('employees_new') || ! $this->tableExists('users')) {
+                return [];
+            }
+
+            $query = DB::table('wfh_requests as w')
+                ->join('employees_new as e', 'e.id', '=', 'w.employee_id')
+                ->leftJoin('users as u', 'u.id', '=', 'e.user_id');
+
+            if (! $this->columnExists('wfh_requests', 'status')) {
+                return [];
+            }
+
+            $query->whereIn('w.status', ['pending', 'manager_approved', 'hr_approved']);
+
+            return $query->select(
+                'w.id',
+                'u.name as employee_name',
+                'e.employee_code',
+                'w.request_date',
+                DB::raw("COALESCE(w.reason_category, '-') as reason_category"),
+                DB::raw("CASE WHEN w.counts_in_monthly_quota = 1 THEN 'Counts in Quota' ELSE 'Non-Quota' END as quota_impact"),
+                'w.status'
+            )->orderByDesc('w.created_at')->limit(20)->get()->map(fn ($r) => (array) $r)->all();
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
+    private function wfhRequestsPendingCount(): int
+    {
+        if (! $this->tableExists('wfh_requests') || ! $this->columnExists('wfh_requests', 'status')) {
+            return 0;
+        }
+
+        return (int) DB::table('wfh_requests')
+            ->whereIn('status', ['pending', 'manager_approved', 'hr_approved'])
+            ->count();
+    }
+
+    private function attendanceRegularizationPendingCount(): int
+    {
+        if (! $this->tableExists('attendance_regularizations') || ! $this->columnExists('attendance_regularizations', 'status')) {
+            return 0;
+        }
+
+        return (int) DB::table('attendance_regularizations')
+            ->whereRaw('LOWER(status) = ?', ['pending'])
+            ->count();
+    }
+
+    private function holidayWorkPendingCount(): int
+    {
+        if (! $this->tableExists('holiday_work_requests') || ! $this->columnExists('holiday_work_requests', 'status')) {
+            return 0;
+        }
+
+        return (int) DB::table('holiday_work_requests')
+            ->whereRaw('LOWER(status) = ?', ['pending'])
+            ->count();
+    }
+
+    private function newJoinersCount(): int
+    {
+        if (! $this->tableExists('employees_new') || ! $this->columnExists('employees_new', 'joining_date')) {
+            return 0;
+        }
+
+        $start = now(config('app.timezone', 'Asia/Kolkata'))->startOfMonth()->toDateString();
+        $end = now(config('app.timezone', 'Asia/Kolkata'))->endOfMonth()->toDateString();
+
+        $query = DB::table('employees_new')->whereBetween('joining_date', [$start, $end]);
+        if ($this->columnExists('employees_new', 'employment_status')) {
+            $query->where('employment_status', 'active');
+        }
+        if ($this->columnExists('employees_new', 'is_active')) {
+            $query->where('is_active', 1);
+        }
+
+        return (int) $query->count();
+    }
+
+    private function pendingUnlockCount(): int
+    {
+        if (! $this->tableExists('attendances')) {
+            return 0;
+        }
+
+        $query = DB::table('attendances as a')
+            ->whereDate('a.attendance_date', Carbon::today(config('app.timezone', 'Asia/Kolkata'))->toDateString());
+
+        $query->where(function ($q) {
+            if ($this->columnExists('attendances', 'is_blocked')) {
+                $q->orWhere('a.is_blocked', 1);
+            }
+            if ($this->tableExists('attendance_types') && $this->columnExists('attendances', 'attendance_type_id')) {
+                $q->orWhereIn('a.attendance_type_id', DB::table('attendance_types')->whereIn('code', ['punch_blocked', 'pending_hr'])->select('id'));
+            }
+        });
+
+        return (int) $query->count();
+    }
+
+    private function pendingPunchOutCount(): int
+    {
+        if (! $this->tableExists('attendances') || ! $this->columnExists('attendances', 'punch_in_time') || ! $this->columnExists('attendances', 'punch_out_time')) {
+            return 0;
+        }
+
+        return (int) DB::table('attendances')
+            ->whereDate('attendance_date', Carbon::today(config('app.timezone', 'Asia/Kolkata'))->toDateString())
+            ->whereNotNull('punch_in_time')
+            ->whereNull('punch_out_time')
+            ->count();
     }
 }

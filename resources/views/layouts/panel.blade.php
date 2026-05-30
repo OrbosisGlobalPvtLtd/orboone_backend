@@ -703,6 +703,82 @@
             min-height:46px;
         }
     }
+
+    /* HRMS Passport Photo Avatar Standard Sizing & Fallback styling */
+    .hrms-emp-avatar {
+        width: 42px !important;
+        height: 42px !important;
+        min-width: 42px !important;
+        max-width: 42px !important;
+        border-radius: 14px !important;
+        overflow: hidden !important;
+        position: relative !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: #F4F2FF !important;
+        color: #4B00E8 !important;
+        font-weight: 800 !important;
+        flex-shrink: 0 !important;
+    }
+
+    .hrms-emp-avatar img,
+    .hrms-emp-avatar-img {
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100% !important;
+        max-height: 100% !important;
+        object-fit: cover !important;
+        display: block !important;
+        border-radius: inherit !important;
+    }
+
+    .hrms-emp-avatar-fallback {
+        width: 100% !important;
+        height: 100% !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 14px !important;
+        font-weight: 900 !important;
+        text-transform: uppercase !important;
+    }
+
+    .hrms-emp-avatar-fallback.is-visible {
+        display: flex !important;
+    }
+
+    .hrms-emp-avatar-fallback.is-hidden {
+        display: none !important;
+    }
+
+    .hrms-emp-avatar-sm {
+        width: 36px !important;
+        height: 36px !important;
+        min-width: 36px !important;
+        max-width: 36px !important;
+        border-radius: 12px !important;
+        overflow: hidden !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: #F4F2FF !important;
+        color: #4B00E8 !important;
+        font-weight: 800 !important;
+        flex-shrink: 0 !important;
+    }
+
+    .hrms-emp-avatar-sm img,
+    .hrms-emp-avatar-sm .hrms-emp-avatar-img {
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover !important;
+        display: block !important;
+        border-radius: inherit !important;
+    }
+
+    .hrms-emp-avatar-sm .hrms-emp-avatar-fallback {
+        font-size: 12px !important;
+    }
 </style>
 @yield('_head')
 @endsection

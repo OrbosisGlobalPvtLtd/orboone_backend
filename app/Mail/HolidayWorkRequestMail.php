@@ -65,6 +65,7 @@ class HolidayWorkRequestMail extends Mailable implements ShouldQueue
         }
 
         return $this->subject($subjectText)
+            ->from(config('hrms.emails.noreply'), config('mail.from.name'))
             ->view('emails.holiday_work_request')
             ->with([
                 'employee_name' => $employeeName,

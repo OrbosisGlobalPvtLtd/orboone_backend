@@ -232,6 +232,52 @@ class NotificationS
             $payloadData = is_array($payloadData) ? $payloadData : (array) $payloadData;
 
             $type = $payload['type'] ?? null;
+
+            // 1. Centralized HR workflow emails sent to the collective HR inbox (hr@orbosis.com)
+            if (in_array($type, ['profile_submitted', 'employee_exit_initiated'], true)) {
+                $employeeId = data_get($payload, 'employee_id') ?? data_get($payloadData, 'employee_id');
+                if ($employeeId) {
+                    $hrMailKey = 'hr_collective_mail:' . $type . ':' . $employeeId;
+                    // Cache lock for 1 hour to prevent duplicate triggers
+                    if (Cache::add($hrMailKey, 1, now()->addHour())) {
+                        $hrEmail = config('hrms.emails.hr');
+                        if ($hrEmail) {
+                            $actionUrl = null;
+                            if (! empty($payload['route_name'])) {
+                                try {
+                                    $actionUrl = route($payload['route_name'], (array) ($payload['route_params'] ?? []));
+                                } catch (\Throwable $e) {}
+                            }
+                            if (empty($actionUrl) && !empty($payload['action_url'])) {
+                                $actionUrl = $payload['action_url'];
+                            }
+
+                            Mail::to($hrEmail)->queue(
+                                new \App\Mail\HrWorkflowAlertMail(
+                                    subjectText: $title,
+                                    workflowTitle: $title,
+                                    details: [
+                                        'Event' => $title,
+                                        'Message' => $message,
+                                        'Employee Code' => data_get($payload, 'employee_code') ?? data_get($payloadData, 'employee_code') ?? 'N/A',
+                                        'Date' => now()->toDateTimeString(),
+                                    ],
+                                    actionUrl: $actionUrl
+                                )
+                            );
+                            
+                            Log::info('Collective HR email queued successfully', [
+                                'type' => $type,
+                                'employee_id' => $employeeId,
+                                'hr_email' => $hrEmail,
+                            ]);
+                        }
+                    }
+                }
+                return; // Prevent fall-through to individual admin emails
+            }
+
+            // 2. Custom Mailable for Holiday Work Requests
             if (in_array($type, ['holiday_work_request_submitted', 'holiday_work_request_approved', 'holiday_work_request_rejected'], true)) {
                 $requestId = data_get($payload, 'request_id') ?? data_get($payloadData, 'request_id');
                 if ($requestId) {
@@ -280,24 +326,35 @@ class NotificationS
                 }
             }
 
-            $lines = [
-                $message,
-                '',
-                'Notification Type: ' . ($payload['type'] ?? 'general'),
-            ];
-
+            // 3. Fallback beautifully-styled HTML email that uses our enterprise layout!
+            $details = [];
             if (! empty($payload['attachment_url'])) {
-                $lines[] = 'Attachment: ' . $payload['attachment_url'];
+                $details['Attachment'] = $payload['attachment_url'];
+            }
+            
+            $actionUrl = null;
+            if (! empty($payload['route_name'])) {
+                try {
+                    $actionUrl = route($payload['route_name'], (array) ($payload['route_params'] ?? []));
+                } catch (\Throwable $e) {}
+            }
+            if (empty($actionUrl) && !empty($payload['action_url'])) {
+                $actionUrl = $payload['action_url'];
             }
 
-            Mail::raw(implode(PHP_EOL, $lines), function ($mail) use ($user, $title) {
-                $mail->to($user->email, $user->name ?: null)->subject($title);
-            });
+            Mail::to($user->email)->queue(
+                new \App\Mail\HrWorkflowAlertMail(
+                    subjectText: $title,
+                    workflowTitle: $title,
+                    details: array_merge(['Message' => $message], $details),
+                    actionUrl: $actionUrl
+                )
+            );
 
-            Log::info('Notification email sent', [
+            Log::info('Styled notification email queued', [
                 'user_id' => $userId,
                 'email' => $user->email,
-                'type' => $payload['type'] ?? null,
+                'type' => $type,
             ]);
         } catch (\Throwable $e) {
             Log::error('Notification email failed', [
@@ -317,10 +374,19 @@ class NotificationS
         array $routeParams,
         array $data
     ): array {
+        // Resolve attachment details from input data
         $attachmentUrl = $data['attachment_url']
+            ?? $data['web_attachment_url']
             ?? $data['file_url']
             ?? $data['document_url']
             ?? $data['apk_url']
+            ?? $data['image_url']
+            ?? '';
+
+        $attachmentApiUrl = $data['attachment_api_url']
+            ?? $data['api_attachment_url']
+            ?? $data['file_api_url']
+            ?? $data['image_api_url']
             ?? '';
 
         $attachmentName = $data['attachment_name']
@@ -333,6 +399,66 @@ class NotificationS
             ?? $data['mime_type']
             ?? $this->attachmentTypeFromName((string) $attachmentName, (string) $attachmentUrl);
 
+        // Resolve reference ID and Module
+        $module = $data['module'] ?? '';
+        if (empty($module)) {
+            if (str_contains($type, 'announcement') || str_contains($routeName, 'announcements')) {
+                $module = 'announcement';
+            } elseif (str_contains($type, 'document') || str_contains($routeName, 'documents')) {
+                $module = 'document';
+            } elseif (str_contains($type, 'leave') || str_contains($routeName, 'leave')) {
+                $module = 'leave';
+            } elseif (str_contains($type, 'payroll') || str_contains($routeName, 'payroll') || str_contains($type, 'payslip')) {
+                $module = 'payroll';
+            }
+        }
+
+        $referenceId = $data['reference_id']
+            ?? $data['announcement_id']
+            ?? $data['id']
+            ?? $routeParams['id']
+            ?? null;
+
+        // If it is an announcement, we can build URLs dynamically if missing
+        if ($module === 'announcement' && $referenceId) {
+            if (empty($attachmentUrl)) {
+                try {
+                    $attachmentUrl = route('hrms.announcements.attachment', $referenceId);
+                } catch (\Throwable $e) {
+                    $attachmentUrl = url("/hrms/announcements/attachment/{$referenceId}");
+                }
+            }
+            if (empty($attachmentApiUrl)) {
+                $attachmentApiUrl = url("/api/v1/announcements/{$referenceId}/attachment");
+            }
+        }
+
+        $hasAttachment = !empty($attachmentUrl) || !empty($attachmentApiUrl);
+        $isImage = $attachmentType === 'image';
+
+        // Mime Type fallback
+        $mimeType = $data['mime_type'] ?? $data['file_mime_type'] ?? '';
+        if (empty($mimeType)) {
+            if ($isImage) {
+                $mimeType = 'image/png';
+            } elseif ($attachmentType === 'pdf') {
+                $mimeType = 'application/pdf';
+            }
+        }
+
+        // Construct standardized attachment object
+        $attachmentObj = null;
+        if ($hasAttachment) {
+            $attachmentObj = [
+                'name' => (string) $attachmentName,
+                'type' => (string) $attachmentType,
+                'mime_type' => (string) $mimeType,
+                'is_image' => $isImage,
+                'web_url' => (string) $attachmentUrl,
+                'api_url' => (string) $attachmentApiUrl,
+            ];
+        }
+
         $payload = [
             'type' => $type,
             'title' => $title,
@@ -340,7 +466,21 @@ class NotificationS
             'route_name' => $routeName ?: '',
             'route_params' => (object) $routeParams,
             'data' => (object) $data,
+            
+            // Structured attachment payload
+            'module' => $module,
+            'reference_id' => $referenceId,
+            'has_attachment' => $hasAttachment,
+            'attachment' => $attachmentObj,
+
+            // Legacy/fallback flat fields
             'attachment_url' => (string) ($attachmentUrl ?: ''),
+            'attachment_api_url' => (string) ($attachmentApiUrl ?: ''),
+            'api_attachment_url' => (string) ($attachmentApiUrl ?: ''),
+            'web_attachment_url' => (string) ($attachmentUrl ?: ''),
+            'file_url' => (string) ($attachmentUrl ?: ''),
+            'file_api_url' => (string) ($attachmentApiUrl ?: ''),
+            'image_url' => $isImage ? (string) $attachmentUrl : '',
             'attachment_type' => (string) ($attachmentType ?: ''),
             'attachment_name' => (string) ($attachmentName ?: ''),
         ];

@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 
 class PermissionSeeder extends Seeder
@@ -674,6 +675,17 @@ class PermissionSeeder extends Seeder
             ['hrms', 'document_generation', 'email', 'document_generation.email', 'Email generated documents'],
             ['hrms', 'document_generation', 'review', 'document_generation.review', 'Review generated documents'],
             ['hrms', 'document_generation', 'delete', 'document_generation.delete', 'Delete generated documents'],
+            ['hrms', 'attendance_work_reports', 'view_all', 'attendance.work_reports.view_all', 'View all employee work reports'],
+            ['hrms', 'attendance_work_reports', 'view_team', 'attendance.work_reports.view_team', 'View team employee work reports'],
+            ['hrms', 'attendance_work_reports', 'view_own', 'attendance.work_reports.view_own', 'View own daily work reports'],
+            ['hrms', 'attendance_wfh', 'view', 'attendance.wfh.view', 'View WFH requests'],
+            ['hrms', 'attendance_wfh', 'approve', 'attendance.wfh.approve', 'Approve WFH requests'],
+            ['hrms', 'attendance_wfh', 'reject', 'attendance.wfh.reject', 'Reject WFH requests'],
+            ['hrms', 'attendance_wfh', 'assign', 'attendance.wfh.assign', 'Assign company WFH requests'],
+            ['hrms', 'attendance_wfh', 'own', 'attendance.wfh.own', 'View own WFH requests'],
+            ['hrms', 'attendance_wfh', 'mark_lwp', 'attendance.wfh.mark_lwp', 'Manually mark approved WFH as LWP'],
+            ['hrms', 'enterprise_payroll', 'policy_view', 'enterprise_payroll.policy.view', 'View payroll policy settings'],
+            ['hrms', 'enterprise_payroll', 'policy_update', 'enterprise_payroll.policy.update', 'Update payroll policy settings'],
         ];
 
         foreach ($runtimePermissions as [$module, $submodule, $action, $key, $description]) {
@@ -688,6 +700,20 @@ class PermissionSeeder extends Seeder
                     'created_at' => DB::raw('COALESCE(created_at, NOW())'),
                 ]
             );
+        }
+
+        // Legacy Payroll retired. Enterprise Payroll is the only active payroll engine.
+        // Keep legacy permission rows for backward compatibility/history, but deactivate them.
+        if (Schema::hasColumn('permissions', 'is_active')) {
+            DB::table('permissions')
+                ->where(function ($query) {
+                    $query->where('key', 'like', 'payroll.%')
+                        ->orWhere('key', 'payroll_self.view_payslip');
+                })
+                ->update([
+                    'is_active' => 0,
+                    'updated_at' => $now,
+                ]);
         }
     }
 }

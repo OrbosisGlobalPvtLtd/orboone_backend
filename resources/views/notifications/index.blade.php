@@ -647,7 +647,7 @@
 
                             <!-- Attachment Chip badge -->
                             @if(!empty($attUrl))
-                                <a href="{{ asset('storage/' . $attUrl) }}" target="_blank" class="notif-attachment-badge {{ $attType }}" onclick="event.stopPropagation()">
+                                <a href="{{ (str_starts_with($attUrl, 'http://') || str_starts_with($attUrl, 'https://') || str_starts_with($attUrl, '/')) ? $attUrl : asset('storage/' . $attUrl) }}" target="_blank" class="notif-attachment-badge {{ $attType }}" onclick="event.stopPropagation()">
                                     @if($attType === 'pdf')
                                         <i class="fas fa-file-pdf"></i> [PDF Attachment]
                                     @elseif($attType === 'image')

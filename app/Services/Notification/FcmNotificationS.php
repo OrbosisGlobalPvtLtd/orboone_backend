@@ -242,6 +242,11 @@ class FcmNotificationS
             return null;
         }
 
+        $path = parse_url($imageUrl, PHP_URL_PATH) ?: '';
+        if (str_contains($path, '/api/v1/')) {
+            return null;
+        }
+
         return $imageUrl;
     }
 

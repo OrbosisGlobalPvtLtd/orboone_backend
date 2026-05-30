@@ -52,8 +52,8 @@ class RoleMenuAccessSeeder extends Seeder
             34,     // Balance Tracker
             132,    // Holiday List
 
-            40,     // Payroll Management
-            43,     // My Salary Slips
+            300,    // Enterprise Payroll
+            309,    // My Payslips (Enterprise)
 
             50,     // Document Management
             52,     // Upload Documents
@@ -97,16 +97,18 @@ class RoleMenuAccessSeeder extends Seeder
             'super_admin' => $allMenuIds,
             'admin' => [
                 1,
+                300,301,302,303,304,305,306,307,308,311,
                 10,11,
-                20,21,26,134,
+                20,21,26,134,156,
                 30,31,33,
                 50,
                 60,
             ],
             'hr_admin' => [
                 1,
+                300,311,
                 10,11,12,13,15,16,17,18,
-                20,21,22,145,23,28,29,26,134,135,24,25,136,152,153,27,
+                20,21,22,145,23,28,29,156,26,134,135,24,25,136,152,153,27,
                 30,31,32,137,33,146,34,35,130,131,132,138,133,139,140,
                 50,51,52,53,148,149,160,
                 60,
@@ -114,15 +116,16 @@ class RoleMenuAccessSeeder extends Seeder
             ],
             'manager' => [
                 1,
+                300,301,302,303,304,305,306,307,308,
                 10,11,
-                20,21,26,134,
+                20,21,26,134,156,
                 30,33,146,
                 50,
                 60,
             ],
             'finance_admin' => [
                 1,
-                300,301,302,303,304,305,306,308,
+                300,301,302,303,304,305,306,307,308,311,
             ],
             'project_admin' => [
                 1,
@@ -143,9 +146,9 @@ class RoleMenuAccessSeeder extends Seeder
             ],
             'employee' => [
                 1,
-                20,145,28,26,
+                20,145,28,163,26,
                 30,32,137,34,133,
-                40,43,
+                300,309,310,
                 50,52,53,161,
                 154,
                 80,83,

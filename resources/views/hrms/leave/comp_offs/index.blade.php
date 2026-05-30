@@ -315,6 +315,16 @@
         justify-content: center;
         font-weight: 900;
         border: 1px solid rgba(75, 0, 232, .12);
+        overflow: hidden !important;
+    }
+
+    .approval-avatar img,
+    .employee-avatar img {
+        width: 100% !important;
+        height: 100% !important;
+        border-radius: inherit !important;
+        object-fit: cover !important;
+        display: block !important;
     }
 
     .approval-name,
@@ -633,12 +643,32 @@
             @foreach($holidayWorkRequests as $request)
             @php
             $employeeName = optional($request->employee)->display_name ?? optional(optional($request->employee)->user)->name ?? 'Unknown Employee';
-            $initial = strtoupper(substr(trim($employeeName), 0, 1));
+            $initial = resolveEmployeeInitials($request->employee);
             @endphp
 
             <div class="approval-card">
                 <div class="approval-employee">
-                    <div class="approval-avatar">{{ $initial }}</div>
+                    @php
+                        $passportPhotoUrl = resolveEmployeePassportPhoto($request->employee);
+                        $employeeInitial = $initial;
+                    @endphp
+                    <span class="hrms-emp-avatar hrms-emp-avatar-sm mr-2">
+                        @if($passportPhotoUrl)
+                            <img
+                                src="{{ $passportPhotoUrl }}"
+                                alt="{{ $employeeName }}"
+                                class="hrms-emp-avatar-img"
+                                onerror="this.style.display='none'; this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.remove('is-hidden'); this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.add('is-visible');"
+                            >
+                            <span class="hrms-emp-avatar-fallback is-hidden">
+                                {{ $employeeInitial }}
+                            </span>
+                        @else
+                            <span class="hrms-emp-avatar-fallback is-visible">
+                                {{ $employeeInitial }}
+                            </span>
+                        @endif
+                    </span>
                     <div>
                         <div class="approval-name">{{ $employeeName }}</div>
                         <div class="approval-meta">
@@ -709,7 +739,7 @@
                         @php
                         $employeeName = optional($compOff->employee)->display_name ?? optional(optional($compOff->employee)->user)->name ?? 'Unknown Employee';
                         $employeeCode = optional($compOff->employee)->employee_code ?? optional($compOff->employee)->code ?? 'EMP';
-                        $initial = strtoupper(substr(trim($employeeName), 0, 1));
+                        $initial = resolveEmployeeInitials($compOff->employee);
 
                         $status = strtolower($compOff->status ?? 'available');
                         $statusClass = 'pill-muted';
@@ -723,7 +753,27 @@
 
                             <td>
                                 <div class="employee-cell">
-                                    <div class="employee-avatar">{{ $initial }}</div>
+                                    @php
+                                        $passportPhotoUrl = resolveEmployeePassportPhoto($compOff->employee);
+                                        $employeeInitial = $initial;
+                                    @endphp
+                                    <span class="hrms-emp-avatar hrms-emp-avatar-sm mr-2">
+                                        @if($passportPhotoUrl)
+                                            <img
+                                                src="{{ $passportPhotoUrl }}"
+                                                alt="{{ $employeeName }}"
+                                                class="hrms-emp-avatar-img"
+                                                onerror="this.style.display='none'; this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.remove('is-hidden'); this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.add('is-visible');"
+                                            >
+                                            <span class="hrms-emp-avatar-fallback is-hidden">
+                                                {{ $employeeInitial }}
+                                            </span>
+                                        @else
+                                            <span class="hrms-emp-avatar-fallback is-visible">
+                                                {{ $employeeInitial }}
+                                            </span>
+                                        @endif
+                                    </span>
                                     <div>
                                         <div class="employee-name">{{ $employeeName }}</div>
                                         <div class="employee-meta">{{ $employeeCode }}</div>

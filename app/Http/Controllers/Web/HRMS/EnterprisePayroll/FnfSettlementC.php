@@ -62,6 +62,23 @@ class FnfSettlementC extends Controller
             'approved_at' => Carbon::now('Asia/Kolkata'),
         ]);
 
+        $employee = \App\Models\HRMS\Employee\EmployeeM::with('user')->find($settlement->employee_id);
+        if ($employee && $employee->user_id) {
+            app(\App\Services\HRMS\Notification\NotificationS::class)->notifyEmployee(
+                'Full & Final Settlement Approved',
+                'Your Full & Final Settlement has been approved and completed by HR.',
+                'fnf_completed',
+                null,
+                [],
+                [
+                    'employee_id' => $employee->id,
+                    'settlement_id' => $settlement->id,
+                    'final_payable' => $settlement->final_payable,
+                ],
+                (int) $employee->user_id
+            );
+        }
+
         return back()->with('success', 'FNF settlement approved.');
     }
 }

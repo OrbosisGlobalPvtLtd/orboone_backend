@@ -88,9 +88,22 @@
                                     <tr>
                                         <td class="px-4 text-left">
                                             <div class="d-flex align-items-center">
-                                                <div class="avatar-circle mr-3" style="width: 40px; height: 40px; border-radius: 50%; background: #f4f6f9; display: flex; align-items: center; justify-content: center; color: #4e73df; font-weight: bold; border: 1px solid #eaecf4;">
-                                                    {{ strtoupper(substr($employee->display_name, 0, 1)) }}
-                                                </div>
+                                                @php
+                                                    $passportPhotoUrl = resolveEmployeeAdminAvatar($employee);
+                                                    $initial = strtoupper(substr($employee->display_name ?? 'E', 0, 1));
+                                                @endphp
+                                                @if($passportPhotoUrl)
+                                                    <div class="avatar-circle mr-3" style="width: 40px; height: 40px; border-radius: 50%; background: #f4f6f9; display: flex; align-items: center; justify-content: center; color: #4e73df; font-weight: bold; border: 1px solid #eaecf4; overflow: hidden !important;">
+                                                        <img src="{{ $passportPhotoUrl }}"
+                                                             alt="{{ $employee->display_name }}"
+                                                             onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                                                        <span style="display: none;">{{ $initial }}</span>
+                                                    </div>
+                                                @else
+                                                    <div class="avatar-circle mr-3" style="width: 40px; height: 40px; border-radius: 50%; background: #f4f6f9; display: flex; align-items: center; justify-content: center; color: #4e73df; font-weight: bold; border: 1px solid #eaecf4;">
+                                                        {{ $initial }}
+                                                    </div>
+                                                @endif
                                                 <div>
                                                     <span class="font-weight-bold d-block text-dark">{{ $employee->display_name }}</span>
                                                     <small class="text-muted">{{ $employee->department->name ?? 'N/A' }}</small>

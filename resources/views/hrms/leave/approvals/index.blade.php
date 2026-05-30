@@ -306,6 +306,15 @@
         justify-content: center;
         font-weight: 900;
         border: 1px solid rgba(75, 0, 232, .12);
+        overflow: hidden !important;
+    }
+
+    .leave-avatar img {
+        width: 100% !important;
+        height: 100% !important;
+        border-radius: inherit !important;
+        object-fit: cover !important;
+        display: block !important;
     }
 
     .leave-employee-name {
@@ -633,7 +642,19 @@
 
                             <td>
                                 <div class="leave-employee">
-                                    <div class="leave-avatar">{{ $initial }}</div>
+                                    @php
+                                        $passportPhotoUrl = resolveEmployeeAdminAvatar($request->employee);
+                                    @endphp
+                                    @if($passportPhotoUrl)
+                                        <div class="leave-avatar">
+                                            <img src="{{ $passportPhotoUrl }}"
+                                                 alt="{{ $employeeName }}"
+                                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                                            <span style="display: none;">{{ $initial }}</span>
+                                        </div>
+                                    @else
+                                        <div class="leave-avatar">{{ $initial }}</div>
+                                    @endif
                                     <div>
                                         <div class="leave-employee-name">{{ $employeeName }}</div>
                                         <div class="leave-employee-meta">{{ $employeeCode }}</div>
@@ -760,7 +781,20 @@
                     <div class="modal-body leave-modal-body">
                         <div class="leave-modal-section mb-0">
                             <div class="d-flex align-items-center mb-4">
-                                <div class="leave-avatar mr-3" style="width:48px; height:48px; font-size:18px; display: flex; align-items: center; justify-content: center;">{{ $initial }}</div>
+                                @php
+                                    $passportPhotoUrl = resolveEmployeeAdminAvatar($request->employee);
+                                @endphp
+                                @if($passportPhotoUrl)
+                                    <div class="leave-avatar mr-3" style="width:48px; height:48px; font-size:18px; display: flex; align-items: center; justify-content: center; overflow: hidden !important;">
+                                        <img src="{{ $passportPhotoUrl }}"
+                                             alt="{{ $employeeName }}"
+                                             style="width: 100% !important; height: 100% !important; object-fit: cover !important; border-radius: inherit !important; display: block !important;"
+                                             onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                                        <span style="display: none;">{{ $initial }}</span>
+                                    </div>
+                                @else
+                                    <div class="leave-avatar mr-3" style="width:48px; height:48px; font-size:18px; display: flex; align-items: center; justify-content: center;">{{ $initial }}</div>
+                                @endif
                                 <div>
                                     <h6 class="mb-0" style="font-weight:900; color:var(--leave-text); font-size:15px;">{{ $employeeName }}</h6>
                                     <small class="text-muted" style="font-weight:700;">Employee Code: {{ $employeeCode }}</small>

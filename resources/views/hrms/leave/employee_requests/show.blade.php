@@ -35,10 +35,24 @@
                         <div class="col-md-6">
                             <label class="text-muted small font-weight-bold text-uppercase mb-1 d-block">Employee</label>
                             <div class="d-flex align-items-center">
-                                <div class="avatar-circle mr-2" style="width: 30px; height: 30px; border-radius: 50%; background: #f4f6f9; display: flex; align-items: center; justify-content: center; color: #4e73df; font-weight: bold; font-size: 0.8rem;">
-                                    {{ strtoupper(substr(optional($employeeLeaveRequest->employee)->display_name ?? 'N', 0, 1)) }}
-                                </div>
-                                <span class="h6 font-weight-bold mb-0 text-dark">{{ optional($employeeLeaveRequest->employee)->display_name }}</span>
+                                @php
+                                    $passportPhotoUrl = resolveEmployeeAdminAvatar($employeeLeaveRequest->employee);
+                                    $employeeName = optional($employeeLeaveRequest->employee)->display_name ?? 'Employee';
+                                    $initial = strtoupper(substr($employeeName, 0, 1));
+                                @endphp
+                                @if($passportPhotoUrl)
+                                    <div class="avatar-circle mr-2" style="width: 30px; height: 30px; border-radius: 50%; background: #f4f6f9; display: flex; align-items: center; justify-content: center; color: #4e73df; font-weight: bold; font-size: 0.8rem; overflow: hidden !important;">
+                                        <img src="{{ $passportPhotoUrl }}"
+                                             alt="{{ $employeeName }}"
+                                             onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                                        <span style="display: none;">{{ $initial }}</span>
+                                    </div>
+                                @else
+                                    <div class="avatar-circle mr-2" style="width: 30px; height: 30px; border-radius: 50%; background: #f4f6f9; display: flex; align-items: center; justify-content: center; color: #4e73df; font-weight: bold; font-size: 0.8rem;">
+                                        {{ $initial }}
+                                    </div>
+                                @endif
+                                <span class="h6 font-weight-bold mb-0 text-dark">{{ $employeeName }}</span>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -236,7 +250,14 @@
     .bg-soft-info { background-color: rgba(78, 115, 223, 0.05); }
     .modal-content { border-radius: 20px; }
     .btn-lg { border-radius: 12px; }
-    .avatar-circle { box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .avatar-circle { box-shadow: 0 2px 4px rgba(0,0,0,0.05); overflow: hidden !important; }
+    .avatar-circle img {
+        width: 100% !important;
+        height: 100% !important;
+        border-radius: inherit !important;
+        object-fit: cover !important;
+        display: block !important;
+    }
 </style>
 @endpush
 @endsection

@@ -11,16 +11,37 @@ use Illuminate\Support\Facades\DB;
 
 class LeaveAllocationService
 {
+    private const PERMANENT_PRORATION_BY_MONTH = [
+        1 => 25,
+        2 => 23,
+        3 => 21,
+        4 => 19,
+        5 => 17,
+        6 => 15,
+        7 => 13,
+        8 => 10,
+        9 => 8,
+        10 => 6,
+        11 => 4,
+        12 => 2,
+    ];
+
     public function __construct(private LeavePolicyService $policyService)
     {
     }
 
-    public function generateForEmployee(EmployeeM $employee, int $year, ?int $userId = null): LeaveAllocationM
+    public function generateForEmployee(
+        EmployeeM $employee,
+        int $year,
+        ?int $userId = null,
+        ?string $forceStage = null,
+        ?Carbon $effectiveDate = null
+    ): LeaveAllocationM
     {
-        return DB::transaction(function () use ($employee, $year, $userId) {
+        return DB::transaction(function () use ($employee, $year, $userId, $forceStage, $effectiveDate) {
             $policy = $this->policyService->forEmployee($employee, Carbon::create($year, 1, 1, 0, 0, 0, 'Asia/Kolkata'));
-            $stage = $this->stageFor($employee);
-            $fromDate = $this->allocationStartDate($employee, $stage, $year);
+            $stage = $forceStage ? strtolower($forceStage) : $this->stageFor($employee);
+            $fromDate = $this->allocationStartDate($employee, $stage, $year, $effectiveDate);
             $toDate = Carbon::create($year, 12, 31, 0, 0, 0, 'Asia/Kolkata');
 
             [$total, $paid, $sick] = $this->allocationAmounts($policy, $stage, $fromDate, $toDate);
@@ -46,7 +67,7 @@ class LeaveAllocationService
                 'paid_allocated' => $paid,
                 'sick_allocated' => $sick,
                 'comp_off_allocated' => (float) ($allocation->comp_off_allocated ?? 0),
-                'allocation_reason' => 'Auto allocation for ' . $year,
+                'allocation_reason' => $this->allocationReason($stage),
                 'created_by_user_id' => $userId,
             ]);
 
@@ -134,18 +155,22 @@ class LeaveAllocationService
             return [0.0, 0.0, 0.0];
         }
 
-        $months = 12 - ((int) $fromDate->month) + 1;
-        $total = $this->roundByPolicy(((float) $policy->annual_total_leaves / 12) * $months, $policy->rounding_method);
-        $paid = $this->roundByPolicy(((float) $policy->annual_paid_leaves / 12) * $months, $policy->rounding_method);
-        $sick = $this->roundByPolicy(((float) $policy->annual_sick_leaves / 12) * $months, $policy->rounding_method);
+        $month = (int) $fromDate->month;
+        $total = (float) (self::PERMANENT_PRORATION_BY_MONTH[$month] ?? 0);
+        $paidRatio = (float) $policy->annual_paid_leaves / max(1.0, (float) $policy->annual_total_leaves);
+        $paid = (float) round($total * $paidRatio);
+        $sick = (float) max(0, $total - $paid);
 
-        return [$total, min($paid, $total), min($sick, max(0, $total - min($paid, $total)))];
+        return [$total, $paid, $sick];
     }
 
-    private function allocationStartDate(EmployeeM $employee, string $stage, int $year): ?Carbon
+    private function allocationStartDate(EmployeeM $employee, string $stage, int $year, ?Carbon $effectiveDate = null): ?Carbon
     {
         if ($stage === 'permanent') {
-            $date = $employee->confirmation_date ?: $employee->joining_date;
+            $date = $employee->confirmation_date
+                ?: (property_exists($employee, 'permanent_effective_date') ? $employee->permanent_effective_date : null)
+                ?: ($effectiveDate?->toDateString())
+                ?: $employee->joining_date;
         } elseif ($stage === 'internship') {
             $date = $employee->internship_start_date ?: $employee->joining_date;
         } else {
@@ -183,6 +208,15 @@ class LeaveAllocationService
             'floor' => floor($value * 2) / 2,
             'ceil' => ceil($value * 2) / 2,
             default => round($value, 2),
+        };
+    }
+
+    private function allocationReason(string $stage): string
+    {
+        return match ($stage) {
+            'internship' => 'Auto allocation for internship',
+            'probation' => 'Auto allocation for probation',
+            default => 'Auto allocation after confirmation',
         };
     }
 }

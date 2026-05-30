@@ -341,6 +341,15 @@
         justify-content: center;
         font-weight: 900;
         border: 1px solid rgba(75, 0, 232, .12);
+        overflow: hidden !important;
+    }
+
+    .leave-avatar img {
+        width: 100% !important;
+        height: 100% !important;
+        border-radius: inherit !important;
+        object-fit: cover !important;
+        display: block !important;
     }
 
     .leave-employee-name {
@@ -630,9 +639,21 @@
                         <tr>
                             <td><strong>{{ $loop->iteration }}</strong></td>
 
-                            <td>
-                                <div class="leave-employee">
-                                    <div class="leave-avatar">{{ $initial }}</div>
+                             <td>
+                                 <div class="leave-employee">
+                                     @php
+                                         $passportPhotoUrl = resolveEmployeeAdminAvatar($allocation->employee);
+                                     @endphp
+                                     @if($passportPhotoUrl)
+                                         <div class="leave-avatar">
+                                             <img src="{{ $passportPhotoUrl }}"
+                                                  alt="{{ $employeeName }}"
+                                                  onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                                             <span style="display: none;">{{ $initial }}</span>
+                                         </div>
+                                     @else
+                                         <div class="leave-avatar">{{ $initial }}</div>
+                                     @endif
                                     <div>
                                         <div class="leave-employee-name">{{ $employeeName }}</div>
                                         <div class="leave-employee-meta">{{ $employeeCode }}</div>

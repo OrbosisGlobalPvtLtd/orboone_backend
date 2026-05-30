@@ -46,11 +46,13 @@ class EnterpriseAttendanceLeaveResolverS
 
         $totalWorkingDays = $this->totalWorkingDays($days);
         $this->guardWorkingDays($totalWorkingDays);
+        $calendarDays = Carbon::create($summary->year, $summary->month, 1)->daysInMonth;
 
         return $days + [
             'total_working_days' => $totalWorkingDays,
             'payable_days' => $this->payableDays($days),
             'unpaid_days' => $this->unpaidDays($days),
+            'calendar_days' => $calendarDays,
             'source' => 'monthly_attendance_summaries',
         ];
     }
@@ -125,11 +127,13 @@ class EnterpriseAttendanceLeaveResolverS
 
         $totalWorkingDays = $this->totalWorkingDays($days);
         $this->guardWorkingDays($totalWorkingDays);
+        $calendarDays = $start->daysInMonth;
 
         return $days + [
             'total_working_days' => $totalWorkingDays,
             'payable_days' => $this->payableDays($days),
             'unpaid_days' => $this->unpaidDays($days),
+            'calendar_days' => $calendarDays,
             'source' => 'attendances_and_approved_leaves',
         ];
     }

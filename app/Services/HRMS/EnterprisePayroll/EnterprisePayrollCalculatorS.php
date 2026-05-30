@@ -14,11 +14,13 @@ use App\Services\HRMS\Notification\NotificationS;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use App\Models\HRMS\Attendance\AttendanceM;
 
 class EnterprisePayrollCalculatorS
 {
     public function __construct(
         private EnterpriseAttendanceLeaveResolverS $attendanceResolver,
+        private EnterprisePayrollPolicyS $policyService,
         private NotificationS $notificationService
     ) {
     }
@@ -208,6 +210,26 @@ class EnterprisePayrollCalculatorS
                 'locked_at' => $lockedAt,
             ]);
 
+            $run->load('payrolls.employee.user');
+            foreach ($run->payrolls as $payroll) {
+                if ($payroll->employee && $payroll->employee->user_id) {
+                    $monthName = Carbon::create($payroll->year, $payroll->month, 1)->format('F');
+                    $this->notificationService->notifyEmployee(
+                        'Payroll Released',
+                        "Your payroll for {$monthName} {$payroll->year} has been released and processed.",
+                        'payroll_released',
+                        'enterprise-payroll.self.payslips',
+                        [],
+                        [
+                            'payroll_id' => $payroll->id,
+                            'month' => $payroll->month,
+                            'year' => $payroll->year,
+                        ],
+                        (int) $payroll->employee->user_id
+                    );
+                }
+            }
+
             $this->audit('locked', $run, null, null, null, ['status' => 'locked'], $actorId);
 
             return $run->fresh('payrolls');
@@ -242,13 +264,40 @@ class EnterprisePayrollCalculatorS
 
     public function calculateEmployee(EmployeeM $employee, int $month, int $year): array
     {
+        $unresolvedCount = AttendanceM::query()
+            ->where('employee_id', $employee->id)
+            ->whereMonth('attendance_date', $month)
+            ->whereYear('attendance_date', $year)
+            ->where(function ($q) {
+                $q->where('attendance_status', 'pending_hr')
+                    ->orWhere('attendance_status', 'punch_blocked')
+                    ->orWhere('is_punch_blocked', true)
+                    ->orWhere('is_blocked', true)
+                    ->orWhere('is_missed_punch', true)
+                    ->orWhere('missed_punch', true);
+            })
+            ->count();
+        if ($unresolvedCount > 0) {
+            throw ValidationException::withMessages([
+                'attendance' => 'Attendance contains unresolved records. Please resolve before payroll processing.',
+            ]);
+        }
+
         $salary = $this->activeSalaryStructure($employee, $month, $year);
         $attendance = $this->attendanceResolver->resolve($employee, $month, $year);
+        $policy = $this->policyService->getActivePolicy();
 
-        $perDaySalary = round((float) $salary->monthly_ctc / (float) $attendance['total_working_days'], 4);
-        $lwpDeduction = round((float) $attendance['lwp_days'] * $perDaySalary, 2);
-        $halfDayDeduction = round(((float) $attendance['half_days'] * 0.5) * $perDaySalary, 2);
-        $absentDeduction = round((float) $attendance['absent_days'] * $perDaySalary, 2);
+        $grossMonthlyForBasis = round(
+            (float) $salary->basic_monthly
+            + (float) $salary->hra_monthly
+            + (float) $salary->special_allowance_monthly,
+            2
+        );
+        $policyWorkingDays = $this->policyService->policyWorkingDays($policy, $attendance, $month, $year);
+        $perDaySalary = $this->policyService->perDaySalary($grossMonthlyForBasis, $policyWorkingDays);
+        $lwpDeduction = $this->policyService->deductionByRatio($perDaySalary, (float) $attendance['lwp_days'], (float) $policy->lwp_payable_ratio);
+        $halfDayDeduction = $this->policyService->deductionByRatio($perDaySalary, (float) $attendance['half_days'], (float) $policy->half_day_payable_ratio);
+        $absentDeduction = $this->policyService->deductionByRatio($perDaySalary, (float) $attendance['absent_days'], (float) $policy->absent_payable_ratio);
         $attendanceDeduction = round($lwpDeduction + $halfDayDeduction + $absentDeduction, 2);
 
         $bonusAmount = $this->approvedBonusIncentiveAmount($employee->id, $month, $year, 'bonus');
@@ -265,15 +314,36 @@ class EnterprisePayrollCalculatorS
             2
         );
 
+        $professionalTax = (bool) $policy->professional_tax_enabled ? (float) $policy->professional_tax_amount : 0.0;
+        $pfAmount = (bool) $policy->pf_enabled ? round($grossMonthlyForBasis * ((float) $policy->pf_percentage / 100), 2) : 0.0;
+        $esiAmount = (bool) $policy->esi_enabled ? round($grossMonthlyForBasis * ((float) $policy->esi_percentage / 100), 2) : 0.0;
+        $tdsSource = $this->policyService->tdsSource($policy);
+        if (! (bool) $policy->tds_enabled) {
+            $tdsAmount = 0.0;
+        } elseif ($tdsSource === 'salary_structure') {
+            $tdsAmount = round((float) $salary->tds_monthly, 2);
+        } else {
+            $tdsAmount = round($grossMonthlyForBasis * ((float) $policy->tds_percentage / 100), 2);
+        }
+
+        $policyPayableDays = $this->policyService->payableDays($policy, $attendance);
+
         $totalDeductions = round(
-            (float) $salary->professional_tax_monthly
-            + (float) $salary->tds_monthly
+            $professionalTax
+            + $pfAmount
+            + $esiAmount
+            + $tdsAmount
             + $attendanceDeduction
             + (float) $salary->other_deduction_monthly,
             2
         );
 
         $netSalary = round($grossSalary - $totalDeductions, 2);
+        if (! (bool) $policy->allow_negative_salary && $netSalary < 0) {
+            $netSalary = 0;
+        }
+
+        $policySnapshot = $this->policyService->snapshot($policy, $month, $year, $policyWorkingDays, $perDaySalary);
 
         return [
             'employee_id' => $employee->id,
@@ -283,12 +353,16 @@ class EnterprisePayrollCalculatorS
             'annual_ctc' => (float) $salary->annual_ctc,
             'monthly_ctc' => (float) $salary->monthly_ctc,
             'per_day_salary' => $perDaySalary,
+            'policy_working_days' => $policyWorkingDays,
+            'calendar_days' => (int) ($attendance['calendar_days'] ?? Carbon::create($year, $month, 1)->daysInMonth),
             'basic_salary' => (float) $salary->basic_monthly,
             'hra' => (float) $salary->hra_monthly,
             'special_allowance' => (float) $salary->special_allowance_monthly,
             'gross_salary' => $grossSalary,
-            'professional_tax' => (float) $salary->professional_tax_monthly,
-            'tds' => (float) $salary->tds_monthly,
+            'professional_tax' => $professionalTax,
+            'pf' => $pfAmount,
+            'esi' => $esiAmount,
+            'tds' => $tdsAmount,
             'attendance_deduction' => $attendanceDeduction,
             'lwp_deduction' => $lwpDeduction,
             'half_day_deduction' => $halfDayDeduction,
@@ -300,6 +374,8 @@ class EnterprisePayrollCalculatorS
             'reimbursement_amount' => $reimbursementAmount,
             'net_salary' => $netSalary,
             'net_salary_words' => $this->amountInWords($netSalary),
+            'payable_days' => $policyPayableDays,
+            'policy_snapshot' => $policySnapshot,
         ];
     }
 
@@ -327,7 +403,7 @@ class EnterprisePayrollCalculatorS
             'late_count' => $attendance['late_count'],
             'early_out_count' => $attendance['early_out_count'],
             'missed_punch_count' => $attendance['missed_punch_count'],
-            'payable_days' => $attendance['payable_days'],
+            'payable_days' => $calculation['payable_days'],
             'annual_ctc' => $calculation['annual_ctc'],
             'monthly_ctc' => $calculation['monthly_ctc'],
             'per_day_salary' => $calculation['per_day_salary'],
@@ -423,6 +499,8 @@ class EnterprisePayrollCalculatorS
             ['item_type' => 'earning', 'item_code' => 'incentive', 'item_name' => 'Incentive', 'amount' => $calculation['incentive_amount'], 'is_taxable' => true],
             ['item_type' => 'earning', 'item_code' => 'reimbursement', 'item_name' => 'Reimbursement', 'amount' => $calculation['reimbursement_amount'], 'is_taxable' => false],
             ['item_type' => 'deduction', 'item_code' => 'professional_tax', 'item_name' => 'Professional Tax', 'amount' => $calculation['professional_tax'], 'is_taxable' => false],
+            ['item_type' => 'deduction', 'item_code' => 'pf', 'item_name' => 'PF', 'amount' => $calculation['pf'] ?? 0, 'is_taxable' => false],
+            ['item_type' => 'deduction', 'item_code' => 'esi', 'item_name' => 'ESI', 'amount' => $calculation['esi'] ?? 0, 'is_taxable' => false],
             ['item_type' => 'deduction', 'item_code' => 'tds', 'item_name' => 'TDS', 'amount' => $calculation['tds'], 'is_taxable' => false],
             ['item_type' => 'deduction', 'item_code' => 'attendance_deduction', 'item_name' => 'Attendance Deduction', 'amount' => $calculation['attendance_deduction'], 'is_taxable' => false],
             ['item_type' => 'deduction', 'item_code' => 'other_deduction', 'item_name' => 'Other Deduction', 'amount' => $calculation['other_deduction'], 'is_taxable' => false],

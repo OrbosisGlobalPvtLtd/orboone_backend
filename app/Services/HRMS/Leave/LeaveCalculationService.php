@@ -57,7 +57,7 @@ class LeaveCalculationService
         }
 
         $this->ensureNoDuplicateDates($employee, $dateRows, $existingRequest);
-        $this->ensureSickAttachment($leaveType, $policy, $deductedDays, $payload);
+        $this->ensureSickAttachment($employee, $leaveType, $policy, $deductedDays, $payload, $dateRows);
 
         [$paid, $sick, $compOff, $lwp] = $this->splitDays(
             $employee,
@@ -122,12 +122,11 @@ class LeaveCalculationService
             }
         }
 
-        if (! $policy->allow_monthly_balance_accumulation) {
-            $monthlyAvailable = $this->remainingMonthlyLimit($employee, $policy, $dateRows);
-            $paidCapacity = min($paidCapacity, $monthlyAvailable);
-            $sickCapacity = min($sickCapacity, $monthlyAvailable);
-            $compCapacity = min($compCapacity, $monthlyAvailable);
-        }
+        // Monthly leave limit must be enforced independent of accumulation behavior.
+        $monthlyAvailable = $this->remainingMonthlyLimit($employee, $policy, $dateRows);
+        $paidCapacity = min($paidCapacity, $monthlyAvailable);
+        $sickCapacity = min($sickCapacity, $monthlyAvailable);
+        $compCapacity = min($compCapacity, $monthlyAvailable);
 
         $paid = 0.0;
         $sick = 0.0;
@@ -164,6 +163,11 @@ class LeaveCalculationService
 
     private function remainingMonthlyLimit(EmployeeM $employee, $policy, array $dateRows): float
     {
+        $limit = (float) ($policy->monthly_leave_limit ?? 0);
+        if ($limit <= 0) {
+            return INF;
+        }
+
         $firstDeductedDate = collect($dateRows)->firstWhere('deduct_as_leave', true)['leave_date'] ?? null;
         if (! $firstDeductedDate) {
             return 0.0;
@@ -179,7 +183,7 @@ class LeaveCalculationService
             ->where('leave_request_dates.deduct_as_leave', 1)
             ->sum(DB::raw('paid_day + sick_day + comp_off_day'));
 
-        return max(0, (float) $policy->monthly_leave_limit - (float) $used);
+        return max(0, $limit - (float) $used);
     }
 
     private function ensureNoDuplicateDates(EmployeeM $employee, array $dateRows, ?LeaveRequestM $existingRequest): void
@@ -205,16 +209,73 @@ class LeaveCalculationService
         }
     }
 
-    private function ensureSickAttachment(LeaveTypeM $leaveType, $policy, float $deductedDays, array $payload): void
+    private function ensureSickAttachment(EmployeeM $employee, LeaveTypeM $leaveType, $policy, float $deductedDays, array $payload, array $dateRows): void
     {
         if (! $leaveType->is_sick) {
             return;
         }
 
-        $certificateAfter = $leaveType->medical_certificate_after_days ?: $policy->medical_certificate_after_days;
-        if ($certificateAfter && $deductedDays > (float) $certificateAfter && empty($payload['attachment_path']) && empty($payload['attachment'])) {
+        $certificateAfter = (int) ($leaveType->medical_certificate_after_days ?: $policy->medical_certificate_after_days ?: 0);
+        if ($certificateAfter <= 0) {
+            return;
+        }
+
+        $requiresCertificate = $deductedDays > (float) $certificateAfter
+            || $this->maxConsecutiveSickDaysIncludingRequest($employee, $dateRows) > $certificateAfter;
+
+        if ($requiresCertificate && empty($payload['attachment_path']) && empty($payload['attachment'])) {
             throw ValidationException::withMessages(['attachment' => 'Medical certificate is required for this sick leave duration.']);
         }
+    }
+
+    private function maxConsecutiveSickDaysIncludingRequest(EmployeeM $employee, array $dateRows): int
+    {
+        $requestedDates = collect($dateRows)
+            ->filter(fn (array $row) => (bool) ($row['deduct_as_leave'] ?? false))
+            ->pluck('leave_date')
+            ->filter()
+            ->map(fn ($date) => Carbon::parse($date, 'Asia/Kolkata')->toDateString())
+            ->values()
+            ->all();
+
+        if (empty($requestedDates)) {
+            return 0;
+        }
+
+        $approvedSickDates = DB::table('leave_request_dates')
+            ->join('leave_requests', 'leave_requests.id', '=', 'leave_request_dates.leave_request_id')
+            ->join('leave_types', 'leave_types.id', '=', 'leave_requests.leave_type_id')
+            ->where('leave_request_dates.employee_id', $employee->id)
+            ->where('leave_requests.status', 'approved')
+            ->where(function ($query) {
+                $query->where('leave_types.is_sick', 1)
+                    ->orWhere('leave_types.code', 'sick_leave');
+            })
+            ->where('leave_request_dates.sick_day', '>', 0)
+            ->pluck('leave_request_dates.leave_date')
+            ->map(fn ($date) => Carbon::parse($date, 'Asia/Kolkata')->toDateString())
+            ->all();
+
+        $allDates = collect(array_merge($approvedSickDates, $requestedDates))
+            ->unique()
+            ->sort()
+            ->values();
+
+        $maxRun = 0;
+        $currentRun = 0;
+        $prev = null;
+        foreach ($allDates as $date) {
+            $current = Carbon::parse($date, 'Asia/Kolkata');
+            if ($prev && $prev->copy()->addDay()->isSameDay($current)) {
+                $currentRun++;
+            } else {
+                $currentRun = 1;
+            }
+            $maxRun = max($maxRun, $currentRun);
+            $prev = $current;
+        }
+
+        return $maxRun;
     }
 
     private function applySplitToDates(array $dateRows, float $unit, float $paid, float $sick, float $compOff, float $lwp): array

@@ -8,6 +8,7 @@ use App\Http\Controllers\Web\HRMS\EnterprisePayroll\BonusIncentiveC;
 use App\Http\Controllers\Web\HRMS\EnterprisePayroll\ReimbursementC;
 use App\Http\Controllers\Web\HRMS\EnterprisePayroll\ReportC;
 use App\Http\Controllers\Web\HRMS\EnterprisePayroll\FnfSettlementC;
+use App\Http\Controllers\Web\HRMS\EnterprisePayroll\PolicyC;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('enterprise-payroll')->middleware(['auth', 'check.access'])->name('enterprise-payroll.')->group(function () {
@@ -115,4 +116,11 @@ Route::prefix('enterprise-payroll')->middleware(['auth', 'check.access'])->name(
     Route::get('/my-reimbursements', [ReimbursementC::class, 'self'])
         ->middleware('permission:enterprise_payroll.my_reimbursements.view')
         ->name('self.reimbursements');
+
+    Route::get('/policies', [PolicyC::class, 'index'])
+        ->middleware('permission:enterprise_payroll.policy.view')
+        ->name('policies.index');
+    Route::post('/policies', [PolicyC::class, 'update'])
+        ->middleware('permission:enterprise_payroll.policy.update')
+        ->name('policies.update');
 });

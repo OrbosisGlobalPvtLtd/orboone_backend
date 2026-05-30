@@ -53,11 +53,25 @@
                             <tr>
                                 <td class="px-4">
                                     <div class="d-flex align-items-center">
-                                        <div class="avatar-sm mr-3">
-                                            <div class="rounded-circle bg-soft-primary d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background-color: rgba(29, 44, 162, 0.1); color: #1d2ca2;">
-                                                <i class="fas fa-user"></i>
+                                        @php
+                                            $passportPhotoUrl = resolveEmployeeAdminAvatar($p->employee);
+                                            $employeeName = $p->employee->name ?? 'Employee';
+                                            $initial = strtoupper(substr($employeeName, 0, 1));
+                                        @endphp
+                                        @if($passportPhotoUrl)
+                                            <div class="avatar-sm mr-3" style="width: 40px; height: 40px; border-radius: 50%;">
+                                                <img src="{{ $passportPhotoUrl }}"
+                                                     alt="{{ $employeeName }}"
+                                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                                                <span style="display: none;">{{ $initial }}</span>
                                             </div>
-                                        </div>
+                                        @else
+                                            <div class="avatar-sm mr-3">
+                                                <div class="rounded-circle bg-soft-primary d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background-color: rgba(29, 44, 162, 0.1); color: #1d2ca2; font-weight: bold;">
+                                                    {{ $initial }}
+                                                </div>
+                                            </div>
+                                        @endif
                                         <div>
                                             <span class="font-weight-bold d-block text-dark">{{ $p->employee->name }}</span>
                                             <small class="text-muted">ID: {{ $p->employee->id }} | {{ $p->employee->position->name ?? 'N/A' }}</small>
@@ -105,7 +119,14 @@
 
 @push('styles')
 <style>
-    .card { border-radius: 12px; }
+    .avatar-sm { overflow: hidden !important; border-radius: 50% !important; }
+    .avatar-sm img {
+        width: 100% !important;
+        height: 100% !important;
+        border-radius: inherit !important;
+        object-fit: cover !important;
+        display: block !important;
+    }
     .table thead th { border-top: 0; letter-spacing: 0.5px; }
     .badge-success-soft { background-color: rgba(40, 167, 69, 0.1); }
     .badge-warning-soft { background-color: rgba(255, 193, 7, 0.1); }

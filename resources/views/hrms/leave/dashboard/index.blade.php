@@ -385,6 +385,15 @@
         justify-content: center;
         font-weight: 950;
         border: 1px solid rgba(75, 0, 232, .12);
+        overflow: hidden !important;
+    }
+
+    .leave-avatar img {
+        width: 100% !important;
+        height: 100% !important;
+        border-radius: inherit !important;
+        object-fit: cover !important;
+        display: block !important;
     }
 
     .leave-employee-name {
@@ -702,7 +711,7 @@
                             $badgeClass = 'status-cancelled';
                             }
 
-                            $initial = strtoupper(substr(trim($employeeName), 0, 1));
+                            $initial = resolveEmployeeInitials($request->employee);
                             @endphp
 
                             <tr>
@@ -712,7 +721,27 @@
 
                                 <td>
                                     <div class="leave-employee">
-                                        <div class="leave-avatar">{{ $initial }}</div>
+                                        @php
+                                            $passportPhotoUrl = resolveEmployeePassportPhoto($request->employee);
+                                            $employeeInitial = $initial;
+                                        @endphp
+                                        <span class="hrms-emp-avatar hrms-emp-avatar-sm mr-2">
+                                            @if($passportPhotoUrl)
+                                                <img
+                                                    src="{{ $passportPhotoUrl }}"
+                                                    alt="{{ $employeeName }}"
+                                                    class="hrms-emp-avatar-img"
+                                                    onerror="this.style.display='none'; this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.remove('is-hidden'); this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.add('is-visible');"
+                                                >
+                                                <span class="hrms-emp-avatar-fallback is-hidden">
+                                                    {{ $employeeInitial }}
+                                                </span>
+                                            @else
+                                                <span class="hrms-emp-avatar-fallback is-visible">
+                                                    {{ $employeeInitial }}
+                                                </span>
+                                            @endif
+                                        </span>
                                         <div>
                                             <div class="leave-employee-name">{{ $employeeName }}</div>
                                             <div class="leave-employee-meta">{{ $employeeCode }}</div>

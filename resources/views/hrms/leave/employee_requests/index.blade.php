@@ -78,10 +78,27 @@
                                     <td>
                                         <div class="d-flex align-items-center">
                                             @php
-                                                $empPhoto = $leaveReq->employee->employeeDetail->photo ?? 'profile.png';
-                                                $empFinalUrl = (strpos($empPhoto, 'http') === 0) ? $empPhoto : asset('storage/' . $empPhoto);
+                                                $passportPhotoUrl = resolveEmployeePassportPhoto($leaveReq->employee);
+                                                $employeeInitial = resolveEmployeeInitials($leaveReq->employee);
+                                                $employeeName = optional($leaveReq->employee)->display_name ?? 'Employee';
                                             @endphp
-                                            <img src="{{ $empFinalUrl }}" onerror="this.src='{{ asset('images/profile.png') }}'; this.onerror=null;" class="mr-2 border" style="width: 36px; height: 36px; border-radius: 12px; object-fit: cover;">
+                                            <span class="hrms-emp-avatar hrms-emp-avatar-sm mr-2">
+                                                @if($passportPhotoUrl)
+                                                    <img
+                                                        src="{{ $passportPhotoUrl }}"
+                                                        alt="{{ $employeeName }}"
+                                                        class="hrms-emp-avatar-img"
+                                                        onerror="this.style.display='none'; this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.remove('is-hidden'); this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.add('is-visible');"
+                                                    >
+                                                    <span class="hrms-emp-avatar-fallback is-hidden">
+                                                        {{ $employeeInitial }}
+                                                    </span>
+                                                @else
+                                                    <span class="hrms-emp-avatar-fallback is-visible">
+                                                        {{ $employeeInitial }}
+                                                    </span>
+                                                @endif
+                                            </span>
                                             <div>
                                                 <div style="font-weight: 800; color: var(--orb-text);">{{ optional($leaveReq->employee)->display_name }}</div>
                                                 <div class="small text-muted">{{ $leaveReq->employee->employee_id ?? 'N/A' }}</div>

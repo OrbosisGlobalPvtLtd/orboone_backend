@@ -319,6 +319,11 @@
         background: #fff !important;
     }
 
+    .badge-awaiting_punch_in {
+        background: #F4F2FF !important;
+        color: #4B00E8 !important;
+    }
+
     .btn-undo:hover {
         background: #F8FAFC !important;
         border-color: #cbd5e1 !important;
@@ -502,7 +507,32 @@
                         <tbody>
                             @forelse($attendances as $attendance)
                             @php
-                            $typeCode = optional($attendance->attendanceType)->code ?? 'default';
+                            $attStatus = strtolower((string) ($attendance->attendance_status ?? ''));
+                            $punchInTime = $attendance->punch_in_time;
+                            $isAdminUnlocked = (bool) ($attendance->is_admin_unlocked ?? false);
+                            
+                            if (in_array($attStatus, ['unlocked', 'awaiting_punch_in'], true) || ($isAdminUnlocked && is_null($punchInTime))) {
+                                $typeCode = 'awaiting_punch_in';
+                                $statusName = 'Awaiting Punch In';
+                            } elseif ($attStatus === 'punch_blocked' || ($attendance->is_punch_blocked ?? false) || ($attendance->is_blocked ?? false)) {
+                                $typeCode = 'punch_blocked';
+                                $statusName = 'Punch Blocked';
+                            } elseif ($attStatus === 'half_day' || ($attendance->is_half_day ?? false)) {
+                                $typeCode = 'half_day';
+                                $statusName = 'Half Day';
+                            } elseif ($attStatus === 'lwp' || ($attendance->is_lwp ?? false)) {
+                                $typeCode = 'lwp';
+                                $statusName = 'LWP';
+                            } elseif ($attStatus === 'present' || ! is_null($punchInTime)) {
+                                $typeCode = 'present';
+                                $statusName = 'Present';
+                            } elseif ($attStatus === 'absent') {
+                                $typeCode = 'absent';
+                                $statusName = 'Absent';
+                            } else {
+                                $typeCode = optional($attendance->attendanceType)->code ?? 'default';
+                                $statusName = optional($attendance->attendanceType)->name ?? 'Pending';
+                            }
                             $modeCode = strtolower($attendance->work_mode ?? '');
                             $modeClass = $modeCode === 'wfh' ? 'mode-wfh' : 'mode-wfo';
                             @endphp
@@ -510,9 +540,28 @@
                             <tr>
                                 <td>
                                     <div class="att-emp">
-                                        <div class="att-avatar">
-                                            {{ strtoupper(substr(optional($attendance->user)->name ?? 'U',0,1)) }}
-                                        </div>
+                                        @php
+                                            $passportPhotoUrl = resolveEmployeePassportPhoto($attendance->employee ?? $attendance);
+                                            $employeeName = optional($attendance->user)->name ?? 'Employee';
+                                            $employeeInitial = resolveEmployeeInitials($attendance->employee ?? $attendance);
+                                        @endphp
+                                        <span class="hrms-emp-avatar hrms-emp-avatar-sm mr-2">
+                                            @if($passportPhotoUrl)
+                                                <img
+                                                    src="{{ $passportPhotoUrl }}"
+                                                    alt="{{ $employeeName }}"
+                                                    class="hrms-emp-avatar-img"
+                                                    onerror="this.style.display='none'; this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.remove('is-hidden'); this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.add('is-visible');"
+                                                >
+                                                <span class="hrms-emp-avatar-fallback is-hidden">
+                                                    {{ $employeeInitial }}
+                                                </span>
+                                            @else
+                                                <span class="hrms-emp-avatar-fallback is-visible">
+                                                    {{ $employeeInitial }}
+                                                </span>
+                                            @endif
+                                        </span>
                                         <div>
                                             <div class="att-emp-name">
                                                 {{ optional($attendance->user)->name ?? 'N/A' }}
@@ -569,7 +618,7 @@
 
                                 <td>
                                     <span class="eo-pill badge-{{ $typeCode }}">
-                                        {{ optional($attendance->attendanceType)->name ?? 'N/A' }}
+                                        {{ $statusName }}
                                     </span>
                                 </td>
 

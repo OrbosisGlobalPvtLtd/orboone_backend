@@ -570,7 +570,7 @@
                     HRMS &bull; ATTENDANCE SETTINGS
                 </div>
                 <h1>Attendance Types</h1>
-                <p>Manage paid/unpaid attendance statuses used by reports, automated rule allocations and payroll workflows.</p>
+                <p>Manage attendance status identifiers and payroll impact guidance used by attendance, leave, and payroll workflows.</p>
             </div>
 
             <div class="orb-hero-actions">
@@ -603,7 +603,7 @@
                         </div>
                         <div>
                             <h3 class="orb-table-title">Attendance Types</h3>
-                            <p class="orb-table-subtitle">System and custom status identifiers mapped to employee regularizations and rosters.</p>
+                            <p class="orb-table-subtitle">Final payroll payable days are calculated by policy, leave type, and monthly summary.</p>
                         </div>
                     </div>
 
@@ -617,7 +617,7 @@
                                 <tr>
                                     <th>Name</th>
                                     <th>Code</th>
-                                    <th>Paid Status</th>
+                                    <th>Payroll Impact</th>
                                     <th>Branding Color</th>
                                     <th>Linked Records</th>
                                     <th>System Status</th>
@@ -631,10 +631,24 @@
                                         <td><strong>{{ $type->name }}</strong></td>
                                         <td><code>{{ $type->code }}</code></td>
 
+                                        @php
+                                            $impactMap = [
+                                                'present' => ['Fully Paid', 'badge-paid'],
+                                                'holiday' => ['Fully Paid', 'badge-paid'],
+                                                'week_off' => ['Fully Paid', 'badge-paid'],
+                                                'leave' => ['Leave Type Based', 'badge-muted'],
+                                                'half_day' => ['Partial Paid (0.5 day)', 'badge-muted'],
+                                                'late' => ['Policy Based / Violation Flag', 'badge-muted'],
+                                                'early_leave' => ['Policy Based / Violation Flag', 'badge-muted'],
+                                                'pending_hr' => ['Requires Resolution', 'badge-unpaid'],
+                                                'punch_blocked' => ['Requires Resolution / Unpaid Until Resolved', 'badge-unpaid'],
+                                                'absent' => ['Unpaid', 'badge-unpaid'],
+                                                'lwp' => ['Unpaid', 'badge-unpaid'],
+                                            ];
+                                            $impact = $impactMap[$type->code] ?? [($type->is_paid ? 'Policy Based (Paid Default)' : 'Policy Based (Unpaid Default)'), ($type->is_paid ? 'badge-paid' : 'badge-unpaid')];
+                                        @endphp
                                         <td>
-                                            <span class="att-badge {{ $type->is_paid ? 'badge-paid' : 'badge-unpaid' }}">
-                                                {{ $type->is_paid ? 'Paid' : 'Unpaid' }}
-                                            </span>
+                                            <span class="att-badge {{ $impact[1] }}">{{ $impact[0] }}</span>
                                         </td>
 
                                         <td>

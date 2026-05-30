@@ -18,7 +18,10 @@ use Illuminate\Support\Facades\Schema;
 
 class AttendanceS
 {
-    public function __construct(private AttendanceRuleResolverService $ruleResolver)
+    public function __construct(
+        private AttendanceRuleResolverService $ruleResolver,
+        private ?WfhRequestService $wfhRequestService = null
+    )
     {
     }
 
@@ -45,6 +48,10 @@ class AttendanceS
         }
 
         $workMode = strtolower($workMode);
+        $approvedWfh = $this->wfhRequestService?->approvedForDate((int) $employee->id, $today);
+        if ($approvedWfh && $approvedWfh->status === 'approved') {
+            $workMode = 'wfh';
+        }
         if ($enforceEmployeeRules && $workMode === 'wfo') {
             $locationValidation = $this->validateWfoOfficeLocation($meta);
             if (($locationValidation['status'] ?? null) === 'error') {
@@ -237,6 +244,8 @@ class AttendanceS
         );
 
         $this->calculateAttendanceStats($attendance);
+
+        $this->wfhRequestService?->applyLwpConversionIfRequired($attendance->fresh());
 
         return [
             'status' => true,
@@ -479,6 +488,7 @@ class AttendanceS
             'skipped_payroll_processed' => 0,
             'skipped_approved_or_unlocked' => 0,
             'skipped_protected_status' => 0,
+            'skipped_pending_regularization' => 0,
             'skipped_policy_disabled' => 0,
             'skipped_not_due' => 0,
             'skipped_has_punch_in' => 0,
@@ -512,7 +522,7 @@ class AttendanceS
                 continue;
             }
 
-            if ($attendance->punch_in_time) {
+            if ($attendance->punch_in_time || $attendance->punch_out_time) {
                 $counts['skipped_has_punch_in']++;
                 continue;
             }
@@ -527,13 +537,23 @@ class AttendanceS
                 continue;
             }
 
+            if ($employee && $this->employeeOnLeave($employee, $date)) {
+                $counts['skipped_protected_status']++;
+                continue;
+            }
+
+            if ($this->hasPendingRegularization($attendance, $date)) {
+                $counts['skipped_pending_regularization']++;
+                continue;
+            }
+
             $typeCode = optional($attendance->attendanceType)->code;
             if (in_array($attendance->attendance_type_id, $skipTypeIds, true) || in_array($typeCode, ['leave', 'holiday', 'week_off'], true) || in_array($attendance->attendance_status, ['leave', 'holiday', 'week_off'], true)) {
                 $counts['skipped_protected_status']++;
                 continue;
             }
 
-            $reason = 'Marked absent because employee did not punch in today before allowed time.';
+            $reason = 'Auto marked absent at day-end due to unresolved punch block.';
 
             $updates = $this->attendancePayload([
                 'attendance_type_id' => $absentType->id,
@@ -542,13 +562,14 @@ class AttendanceS
                 'is_blocked' => false,
                 'is_punch_blocked' => false,
                 'is_locked' => true,
-                'is_lwp' => true,
-                'lwp_reason' => $reason,
-                'block_reason' => $reason,
-                'auto_block_reason' => $attendance->auto_block_reason ?: $reason,
-                'blocked_reason' => $reason,
-                'punch_in_note' => $reason,
-                'punch_out_note' => $reason,
+                'is_lwp' => false,
+                'lwp_reason' => null,
+                'is_half_day' => false,
+                'half_day_reason' => null,
+                'missed_punch' => false,
+                'is_missed_punch' => false,
+                'missed_punch_reason' => null,
+                'remarks' => $reason,
                 'pending_hr_reason' => null,
             ]);
 
@@ -570,6 +591,37 @@ class AttendanceS
         Log::info('HRMS auto-close blocked attendance completed.', $counts + ['date' => $date]);
 
         return $counts;
+    }
+
+    private function hasPendingRegularization(Attendance $attendance, string $date): bool
+    {
+        if (! Schema::hasTable('attendance_regularizations')) {
+            return false;
+        }
+
+        $query = DB::table('attendance_regularizations')
+            ->where('employee_id', $attendance->employee_id)
+            ->where('status', 'pending');
+
+        if (Schema::hasColumn('attendance_regularizations', 'deleted_at')) {
+            $query->whereNull('deleted_at');
+        }
+
+        $query->where(function ($q) use ($attendance, $date) {
+            $q->where('attendance_id', $attendance->id);
+
+            if (Schema::hasColumn('attendance_regularizations', 'requested_punch_in')) {
+                $q->orWhereDate('requested_punch_in', $date);
+            }
+            if (Schema::hasColumn('attendance_regularizations', 'requested_punch_out')) {
+                $q->orWhereDate('requested_punch_out', $date);
+            }
+            if (Schema::hasColumn('attendance_regularizations', 'created_at')) {
+                $q->orWhereDate('created_at', $date);
+            }
+        });
+
+        return $query->exists();
     }
 
     public function calculateAttendanceStats(Attendance $attendance): Attendance
@@ -712,6 +764,7 @@ class AttendanceS
         $date = $date ?: $now->toDateString();
         $absentType = $this->attendanceType('absent');
         $lwpType = $this->attendanceType('lwp');
+        $pendingHrType = $this->attendanceType('pending_hr');
         $skipTypeIds = AttendanceType::whereIn('code', ['leave', 'holiday', 'week_off', 'punch_blocked'])->pluck('id')->all();
         $counts = [
             'dry_run' => $dryRun ? 1 : 0,
@@ -720,6 +773,7 @@ class AttendanceS
             'would_mark_missed_punch' => 0,
             'marked_absent' => 0,
             'marked_lwp' => 0,
+            'marked_warning' => 0,
             'violations_created' => 0,
             'skipped_not_due' => 0,
             'skipped_payroll_processed' => 0,
@@ -788,23 +842,25 @@ class AttendanceS
 
             $allowedMissedPunches = (int) ($policy->allowed_missed_punches ?? 0);
             $limitExceeded = $allowedMissedPunches >= 0 && $missedCount > $allowedMissedPunches;
-            $type = $limitExceeded && $lwpType ? $lwpType : $absentType;
+            $warningIndex = min($missedCount, max(1, $allowedMissedPunches));
+            $type = $limitExceeded && $lwpType ? $lwpType : ($pendingHrType ?: $attendance->attendanceType ?: $absentType);
             $reason = $limitExceeded
-                ? 'Marked LWP because missed punch limit exceeded.'
-                : 'Marked absent because employee did not punch out.';
+                ? '3rd missed punch converted to LWP'
+                : "Missed punch warning {$warningIndex} of {$allowedMissedPunches}. No deduction applied.";
 
             $updates = $this->attendancePayload([
                 'missed_punch' => true,
                 'is_missed_punch' => true,
-                'missed_punch_reason' => 'Marked missed punch because employee did not punch out.',
+                'missed_punch_reason' => $reason,
                 'attendance_type_id' => $type->id,
-                'attendance_status' => $limitExceeded && $lwpType ? 'lwp' : 'absent',
+                'attendance_status' => $limitExceeded && $lwpType ? 'lwp' : 'pending_hr',
                 'attendance_source' => 'system_auto',
                 'is_lwp' => $limitExceeded,
-                'lwp_reason' => $reason,
+                'lwp_reason' => $limitExceeded ? $reason : null,
                 'punch_out_note' => $reason,
-                'pending_hr_reason' => null,
-                'is_locked' => true,
+                'pending_hr_reason' => $limitExceeded ? null : $reason,
+                'is_locked' => $limitExceeded,
+                'is_half_day' => false,
             ]);
 
             if ($dryRun) {
@@ -815,7 +871,7 @@ class AttendanceS
             $attendance->fill($updates)->save();
             if ($this->recordAttendanceViolation($attendance, 'missed_punch', $date, [
                 'source' => 'system_auto',
-                'policy_action' => $limitExceeded ? 'lwp' : 'absent',
+                'policy_action' => $limitExceeded ? 'lwp' : 'warning',
                 'converted_to_lwp' => $limitExceeded,
                 'remarks' => $reason,
             ])) {
@@ -826,7 +882,7 @@ class AttendanceS
             if ($limitExceeded && $lwpType) {
                 $counts['marked_lwp']++;
             } else {
-                $counts['marked_absent']++;
+                $counts['marked_warning']++;
             }
         }
 
@@ -902,11 +958,8 @@ class AttendanceS
             $statusCodeVal = 'punch_blocked';
             $statusName = 'Punch Blocked';
         } elseif ($isUnlocked && ! $attendance?->punch_in_time) {
-            $statusCodeVal = 'unlocked';
-            $statusName = 'Unlocked';
-        } elseif ($statusCodeVal === 'pending_hr') {
-            $statusCodeVal = 'not_punched';
-            $statusName = 'Not Punched';
+            $statusCodeVal = 'awaiting_punch_in';
+            $statusName = 'Awaiting Punch In';
         }
 
         $canPunchIn = ! $isBlocked && ! $attendance?->punch_in_time;
@@ -960,13 +1013,21 @@ class AttendanceS
         } elseif (in_array($typeCode, ['leave'], true) || in_array($statusCode, ['leave'], true)) {
             $resolvedCode = 'leave';
         } elseif ($isBlocked) {
-            $resolvedCode = 'punch_blocked';
+            $attendanceDate = Carbon::parse($attendance->attendance_date, $this->attendanceTimezone());
+            $isToday = $attendanceDate->isToday();
+            if (! $hasPunchIn && ! $hasPunchOut && ! $isToday) {
+                $resolvedCode = $this->hasPendingRegularization($attendance, $attendanceDate->toDateString()) ? 'pending_hr' : 'absent';
+            } else {
+                $resolvedCode = 'punch_blocked';
+            }
         } elseif ((bool) ($attendance->missed_punch || $attendance->is_missed_punch) || in_array($typeCode, ['missed_punch'], true) || in_array($statusCode, ['missed_punch'], true)) {
-            $resolvedCode = (bool) $attendance->is_lwp ? 'lwp' : 'missed_punch';
+            $resolvedCode = 'missed_punch';
         } elseif ((bool) $attendance->is_lwp || in_array($typeCode, ['lwp'], true) || in_array($statusCode, ['lwp'], true)) {
             $resolvedCode = 'lwp';
         } elseif ((bool) $attendance->is_half_day || in_array($typeCode, ['half_day'], true) || in_array($statusCode, ['half_day'], true)) {
             $resolvedCode = 'half_day';
+        } elseif (((bool) ($attendance->is_admin_unlocked ?? false) || $statusCode === 'unlocked') && ! $hasPunchIn && Carbon::parse($attendance->attendance_date, $this->attendanceTimezone())->isToday()) {
+            $resolvedCode = 'awaiting_punch_in';
         } elseif ($hasPunchIn) {
             $resolvedCode = 'present';
         } elseif (! $hasPunchIn && ! $hasPunchOut) {
@@ -1206,19 +1267,30 @@ class AttendanceS
             return;
         }
 
+        $asOfDate = Carbon::parse($date, $this->attendanceTimezone());
         $count = AttendanceViolationM::where('employee_id', $attendance->employee_id)
-            ->whereDate('violation_date', $date)
-            ->whereIn('type', ['late_login', 'early_logout', 'missed_punch'])
+            ->whereYear('violation_date', $asOfDate->year)
+            ->whereMonth('violation_date', $asOfDate->month)
+            ->whereIn('type', ['late_login', 'early_logout'])
             ->count();
 
         if ($count < 3) {
             return;
         }
 
+        $effectiveCode = strtolower((string) (optional($attendance->attendanceType)->code ?: $attendance->attendance_status));
+        if (
+            (bool) $attendance->is_lwp
+            || in_array($effectiveCode, ['lwp', 'absent', 'half_day'], true)
+            || (bool) $attendance->is_half_day
+        ) {
+            return;
+        }
+
         $halfDayType = $this->attendanceType('half_day');
         $updates = [
             'is_half_day' => true,
-            'half_day_reason' => 'Auto half-day due to 3 combined violations.',
+            'half_day_reason' => 'Auto half-day due to 3 monthly combined violations (late + early logout).',
             'violation_count' => max((int) $attendance->violation_count, $count),
         ];
         if ($halfDayType) {

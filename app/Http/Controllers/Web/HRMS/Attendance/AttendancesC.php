@@ -459,6 +459,7 @@ class AttendancesC extends Controller
             $empId = $att->employee_id;
             if (!isset($employeeData[$empId])) {
                 $employeeData[$empId] = [
+                    'employee_id' => $empId,
                     'employee_name' => optional($att->user)->name ?? 'N/A',
                     'employee_code' => optional($att->employee)->employee_code ?? 'N/A',
                     'department_name' => optional(optional($att->employee)->department)->name ?? 'N/A',
@@ -569,8 +570,12 @@ class AttendancesC extends Controller
         $data = $request->validate([
             'name' => 'required|string',
             'code' => 'required|string|unique:attendance_types,code',
+            'is_paid' => 'nullable|boolean',
+            'color' => 'nullable|string|max:20',
             'is_active' => 'boolean',
         ]);
+        $data['is_paid'] = $request->boolean('is_paid');
+        $data['is_active'] = $request->boolean('is_active');
 
         AttendanceType::create($data);
         return back()->with('status', 'Attendance type created successfully.');
@@ -583,8 +588,12 @@ class AttendancesC extends Controller
         $data = $request->validate([
             'name' => 'required|string',
             'code' => ['required', 'string', Rule::unique('attendance_types')->ignore($attendanceType->id)],
+            'is_paid' => 'nullable|boolean',
+            'color' => 'nullable|string|max:20',
             'is_active' => 'boolean',
         ]);
+        $data['is_paid'] = $request->boolean('is_paid');
+        $data['is_active'] = $request->boolean('is_active');
 
         $attendanceType->update($data);
         return back()->with('status', 'Attendance type updated successfully.');

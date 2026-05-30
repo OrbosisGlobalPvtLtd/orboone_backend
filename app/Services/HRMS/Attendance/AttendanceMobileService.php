@@ -10,7 +10,8 @@ class AttendanceMobileService
 {
     public function __construct(
         private AttendanceS $attendanceService,
-        private AttendanceRuleResolverService $resolver
+        private AttendanceRuleResolverService $resolver,
+        private ?WfhRequestService $wfhRequestService = null
     ) {
     }
 
@@ -64,11 +65,16 @@ class AttendanceMobileService
         $payload['next_action'] = $attendanceData['next_action'] ?? ($payload['ui']['next_action'] ?? 'none');
         $payload['office_location'] = $this->attendanceService->officeLocationPayload();
 
+        $wfhApproved = false;
+        if ($employee && $this->wfhRequestService) {
+            $wfhApproved = (bool) $this->wfhRequestService->approvedForDate((int) $employee->id, Carbon::now(AttendanceRuleResolverService::TIMEZONE)->toDateString());
+        }
+
         return [
             'success' => true,
             'status' => true,
             'message' => 'Today attendance status fetched successfully.',
-            'data' => $payload,
+            'data' => $payload + ['wfh_approved_today' => $wfhApproved],
             'errors' => null
         ];
     }
@@ -144,7 +150,7 @@ class AttendanceMobileService
         $data = is_array($attendance) ? $attendance : $attendance->toArray();
         $rawDate = $data['attendance_date'] ?? null;
         $typeCode = $data['attendance_type']['code'] ?? null;
-        $isUnlocked = (bool) ($data['is_admin_unlocked'] ?? false);
+        $isUnlocked = (bool) ($data['is_admin_unlocked'] ?? false) || ($data['attendance_status'] ?? null) === 'unlocked';
         $isBlocked = (bool) (
             ($data['is_blocked'] ?? false)
             || ($data['is_punch_blocked'] ?? false)
@@ -163,11 +169,12 @@ class AttendanceMobileService
             $statusCode = 'punch_blocked';
             $statusName = 'Punch Blocked';
         } elseif ($isUnlocked && ! $hasPunchIn) {
-            $statusCode = 'unlocked';
-            $statusName = 'Unlocked';
-        } elseif ($statusCode === 'pending_hr') {
-            $statusCode = 'not_punched';
-            $statusName = 'Not Punched';
+            $statusCode = 'awaiting_punch_in';
+            $statusName = 'Awaiting Punch In';
+            if (isset($data['attendance_type'])) {
+                $data['attendance_type']['code'] = 'awaiting_punch_in';
+                $data['attendance_type']['name'] = 'Awaiting Punch In';
+            }
         }
 
         $data['status_code'] = $statusCode;

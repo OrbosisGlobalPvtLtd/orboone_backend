@@ -15,24 +15,72 @@ class MonthlyAttendanceSummaryC extends Controller
     {
         abort_unless($this->userHasPermission('attendance.monthly_summary.view'), 403);
 
-        $query = $this->employeeJoinedQuery('monthly_attendance_summaries');
-        $this->applyCommonFilters($query, $request, ['filterMap' => ['employee_id' => 'monthly_attendance_summaries.employee_id', 'month' => 'monthly_attendance_summaries.month', 'year' => 'monthly_attendance_summaries.year', 'locked' => 'monthly_attendance_summaries.is_locked']]);
+        if (!$request->has('month') && !$request->has('year') && !$request->has('reset')) {
+            $request->merge([
+                'month' => (string) now()->month,
+                'year' => (string) now()->year,
+            ]);
+        }
+
+        $query = DB::table('monthly_attendance_summaries')
+            ->leftJoin('employees_new', 'employees_new.id', '=', 'monthly_attendance_summaries.employee_id')
+            ->leftJoin('users', 'users.id', '=', 'employees_new.user_id')
+            ->leftJoin('departments', 'departments.id', '=', 'employees_new.department_id')
+            ->select(
+                'monthly_attendance_summaries.*',
+                'employees_new.employee_code',
+                'departments.name as department_name',
+                DB::raw("COALESCE(users.name, employees_new.employee_code, 'N/A') as employee_display_name"),
+                DB::raw("(SELECT COUNT(*) FROM attendances a WHERE a.employee_id = monthly_attendance_summaries.employee_id AND MONTH(a.attendance_date) = monthly_attendance_summaries.month AND YEAR(a.attendance_date) = monthly_attendance_summaries.year AND (a.attendance_status IN ('pending_hr','punch_blocked') OR a.is_punch_blocked = 1 OR a.is_blocked = 1 OR a.is_missed_punch = 1 OR a.missed_punch = 1)) as unresolved_count")
+            );
+
+        if ($request->filled('employee_id')) {
+            $query->where('monthly_attendance_summaries.employee_id', $request->employee_id);
+        }
+        if ($request->filled('month')) {
+            $query->where('monthly_attendance_summaries.month', $request->month);
+        }
+        if ($request->filled('year')) {
+            $query->where('monthly_attendance_summaries.year', $request->year);
+        }
+        if ($request->filled('locked')) {
+            $query->where('monthly_attendance_summaries.is_locked', $request->locked);
+        }
+
         $rows = $query->orderByDesc('year')->orderByDesc('month')->paginate(50);
-        $employees = $this->employeeOptions()->pluck('display_name', 'id')->toArray();
+
+        $employees = DB::table('employees_new')
+            ->leftJoin('users', 'users.id', '=', 'employees_new.user_id')
+            ->select(
+                'employees_new.id',
+                'employees_new.employee_code',
+                DB::raw("COALESCE(users.name, employees_new.employee_code, 'N/A') as display_name")
+            )
+            ->orderByRaw("COALESCE(users.name, employees_new.employee_code)")
+            ->get();
 
         return view('hrms.attendance.monthly_summary.index', [
-            'accesses' => $this->accesses(), 'active' => 'attendance', 'pageTitle' => 'Monthly Attendance Summary',
-            'pageSubtitle' => 'Payroll-ready monthly attendance summaries with lock controls.',
+            'active' => 'attendances',
             'rows' => $rows,
-            'columns' => [
-                ['key' => 'employee_display_name', 'label' => 'Employee'], ['key' => 'month', 'label' => 'Month'], ['key' => 'year', 'label' => 'Year'], ['key' => 'present_days', 'label' => 'Present'], ['key' => 'paid_leave_days', 'label' => 'Paid Leave'], ['key' => 'lwp_days', 'label' => 'LWP'], ['key' => 'payable_days', 'label' => 'Payable'], ['key' => 'is_locked', 'label' => 'Locked', 'type' => 'badge'],
-            ],
-            'filters' => [
-                ['name' => 'employee_id', 'label' => 'Employee', 'type' => 'select', 'options' => $employees], ['name' => 'month', 'label' => 'Month', 'type' => 'select', 'options' => array_combine(range(1, 12), range(1, 12))], ['name' => 'year', 'label' => 'Year', 'type' => 'number'], ['name' => 'locked', 'label' => 'Locked', 'type' => 'select', 'options' => [1 => 'Locked', 0 => 'Unlocked']],
-            ],
-            'canCreate' => false, 'canEdit' => false,
-            'rowActions' => [['label' => 'Lock', 'route' => 'hrms.attendance.monthly_summary.lock', 'icon' => 'fas fa-lock', 'confirm' => 'Lock this summary?'], ['label' => 'Unlock', 'route' => 'hrms.attendance.monthly_summary.unlock', 'icon' => 'fas fa-unlock', 'confirm' => 'Unlock this summary?']],
+            'employees' => $employees,
         ]);
+    }
+
+    public function generate(Request $request, \App\Services\HRMS\Attendance\PayrollAttendanceSummaryService $summaryService)
+    {
+        abort_unless($this->userHasPermission('attendance.monthly_summary.view'), 403);
+
+        $month = (int) $request->input('month', now()->month);
+        $year = (int) $request->input('year', now()->year);
+        $employeeId = $request->filled('employee_id') ? (int) $request->employee_id : null;
+
+        $count = $summaryService->generate($month, $year, $employeeId);
+
+        return redirect()->route('hrms.attendance.monthly_summary.index', [
+            'month' => $month,
+            'year' => $year,
+            'employee_id' => $employeeId,
+        ])->with('success', "Generated monthly attendance summary for {$count} employee(s).");
     }
 
     public function lock($id)

@@ -145,6 +145,18 @@
             justify-content: center;
             font-weight: 900;
             color: var(--orb-primary);
+            position: relative !important;
+            overflow: hidden !important;
+        }
+
+        .att-avatar-img {
+            width: 40px !important;
+            height: 40px !important;
+            border-radius: 12px !important;
+            object-fit: cover !important;
+            display: block !important;
+            border: 1px solid rgba(75, 0, 232, 0.1) !important;
+            flex-shrink: 0 !important;
         }
 
         .att-emp {
@@ -408,9 +420,24 @@
                                 <tr>
                                     <td>
                                         <div class="att-emp">
-                                            <div class="att-avatar">
-                                                {{ strtoupper(substr(optional($attendance->user)->name ?? 'U', 0, 1)) }}
-                                            </div>
+                                            @php
+                                                $passportPhotoUrl = resolveEmployeeAdminAvatar($attendance);
+                                                $employeeName = optional($attendance->user)->name ?? 'N/A';
+                                                $initial = resolveEmployeeInitials($attendance);
+                                            @endphp
+                                            @if($passportPhotoUrl)
+                                                <img src="{{ $passportPhotoUrl }}"
+                                                     class="att-avatar-img"
+                                                     alt="{{ $employeeName }}"
+                                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                                <div class="att-avatar fallback-initial" style="display:none;">
+                                                    {{ $initial }}
+                                                </div>
+                                            @else
+                                                <div class="att-avatar">
+                                                    {{ $initial }}
+                                                </div>
+                                            @endif
                                             <div>
                                                 <div class="att-emp-name">{{ optional($attendance->user)->name ?? 'N/A' }}
                                                 </div>
@@ -506,8 +533,24 @@
                 <div class="mobile-att-card">
                     <div class="d-flex justify-content-between align-items-start">
                         <div class="att-emp">
-                            <div class="att-avatar">
-                                {{ strtoupper(substr(optional($attendance->user)->name ?? 'U', 0, 1)) }}</div>
+                                            @php
+                                                $passportPhotoUrl = resolveEmployeeAdminAvatar($attendance);
+                                                $employeeName = optional($attendance->user)->name ?? 'N/A';
+                                                $initial = resolveEmployeeInitials($attendance);
+                                            @endphp
+                                            @if($passportPhotoUrl)
+                                                <img src="{{ $passportPhotoUrl }}"
+                                                     class="att-avatar-img"
+                                                     alt="{{ $employeeName }}"
+                                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                                <div class="att-avatar fallback-initial" style="display:none;">
+                                                    {{ $initial }}
+                                                </div>
+                                            @else
+                                                <div class="att-avatar">
+                                                    {{ $initial }}
+                                                </div>
+                                            @endif
                             <div>
                                 <div class="att-emp-name">{{ optional($attendance->user)->name ?? 'N/A' }}</div>
                                 <div class="att-emp-code">{{ optional($attendance->employee)->employee_code ?? 'N/A' }}

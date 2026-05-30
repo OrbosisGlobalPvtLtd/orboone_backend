@@ -6,6 +6,7 @@ use App\Http\Controllers\Web\HRMS\Attendance\AttendanceRegularizationC;
 use App\Http\Controllers\Web\HRMS\Attendance\AttendanceViolationC;
 use App\Http\Controllers\Web\HRMS\Attendance\HolidayWorkRequestC;
 use App\Http\Controllers\Web\HRMS\Attendance\MonthlyAttendanceSummaryC;
+use App\Http\Controllers\Web\HRMS\Attendance\WfhRequestC;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -78,6 +79,7 @@ Route::middleware(['auth', 'check.access'])
         Route::post('/holiday-work/{id}/reject', [HolidayWorkRequestC::class, 'reject'])->middleware('permission:attendance.holiday_work.manage')->name('holiday_work.reject');
 
         Route::get('/monthly-summary', [MonthlyAttendanceSummaryC::class, 'index'])->middleware('permission:attendance.monthly_summary.view')->name('monthly_summary.index');
+        Route::post('/monthly-summary/generate', [MonthlyAttendanceSummaryC::class, 'generate'])->middleware('permission:attendance.monthly_summary.view')->name('monthly_summary.generate');
         Route::get('/monthly-summary/export-excel', [MonthlyAttendanceSummaryC::class, 'exportExcel'])->middleware('permission:attendance.export')->name('monthly_summary.export-excel');
         Route::post('/monthly-summary/{id}/lock', [MonthlyAttendanceSummaryC::class, 'lock'])->middleware('permission:attendance.monthly_summary.view')->name('monthly_summary.lock');
         Route::post('/monthly-summary/{id}/unlock', [MonthlyAttendanceSummaryC::class, 'unlock'])->middleware('permission:attendance.monthly_summary.view')->name('monthly_summary.unlock');
@@ -88,4 +90,17 @@ Route::middleware(['auth', 'check.access'])
         Route::get('/policy-overrides', [AttendancePolicyOverrideC::class, 'index'])->middleware('permission:attendance.policy_overrides.manage')->name('policy_overrides.index');
         Route::post('/policy-overrides', [AttendancePolicyOverrideC::class, 'store'])->middleware('permission:attendance.policy_overrides.manage')->name('policy_overrides.store');
         Route::put('/policy-overrides/{id}', [AttendancePolicyOverrideC::class, 'update'])->middleware('permission:attendance.policy_overrides.manage')->name('policy_overrides.update');
+
+        Route::get('/work-reports', [\App\Http\Controllers\Web\HRMS\Attendance\WorkReportC::class, 'index'])->middleware('permission:attendance.work_reports.view_all|attendance.work_reports.view_team|attendance.work_reports.view_own')->name('work-reports');
+        Route::get('/my-work-reports', [\App\Http\Controllers\Web\HRMS\Attendance\WorkReportC::class, 'index'])->middleware('permission:attendance.work_reports.view_own')->name('my-work-reports');
+
+        Route::get('/wfh', [WfhRequestC::class, 'index'])->middleware('permission:attendance.wfh.view|attendance.wfh.own')->name('wfh.index');
+        Route::post('/wfh/assign', [WfhRequestC::class, 'assign'])->middleware('permission:attendance.wfh.assign')->name('wfh.assign');
+        Route::post('/wfh/{id}/approve', [WfhRequestC::class, 'approve'])->middleware('permission:attendance.wfh.approve')->name('wfh.approve');
+        Route::post('/wfh/{id}/reject', [WfhRequestC::class, 'reject'])->middleware('permission:attendance.wfh.reject')->name('wfh.reject');
+        Route::post('/wfh/{id}/mark-lwp', [WfhRequestC::class, 'markLwp'])->middleware('permission:attendance.wfh.mark_lwp')->name('wfh.mark-lwp');
+
+        Route::get('/my-wfh', [WfhRequestC::class, 'myWfh'])->middleware('permission:attendance.wfh.own')->name('my-wfh.index');
+        Route::post('/my-wfh/apply', [WfhRequestC::class, 'apply'])->middleware('permission:attendance.wfh.own')->name('my-wfh.apply');
+        Route::post('/my-wfh/{id}/cancel', [WfhRequestC::class, 'cancel'])->middleware('permission:attendance.wfh.own')->name('my-wfh.cancel');
     });

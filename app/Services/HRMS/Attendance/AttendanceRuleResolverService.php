@@ -108,9 +108,10 @@ class AttendanceRuleResolverService
                 $showBlockedCard = false;
                 
                 if (! $hasPunchIn) {
-                    $statusCodeVal = 'unlocked';
+                    $statusCodeVal = 'awaiting_punch_in';
                     $canPunchIn = true;
                     $nextAction = 'punch_in';
+                    $attendanceState = 'unlocked_waiting_punch_in';
                 } else {
                     $statusCodeVal = $typeCode ?: ($statusCode ?: 'present');
                     $canPunchIn = false;
@@ -210,6 +211,19 @@ class AttendanceRuleResolverService
             $policy->required_work_minutes = $requiredWorkMinutes;
         }
 
+        if ($attendance && $isUnlocked && ! $hasPunchIn) {
+            $attendance->status_code = 'awaiting_punch_in';
+            $attendance->status_name = 'Awaiting Punch In';
+            $attendance->attendance_status = 'unlocked';
+            $attendance->display_status = 'Awaiting Punch In';
+            
+            $mockType = new \App\Models\HRMS\Attendance\AttendanceTypeM([
+                'code' => 'awaiting_punch_in',
+                'name' => 'Awaiting Punch In',
+            ]);
+            $attendance->setRelation('attendanceType', $mockType);
+        }
+
         return [
             'server_time' => $now->format('Y-m-d H:i:s'),
             'timezone' => self::TIMEZONE,
@@ -224,6 +238,7 @@ class AttendanceRuleResolverService
                 'is_blocked' => $isBlocked,
                 'is_punch_blocked' => $isPunchBlocked,
                 'status_code' => $statusCodeVal,
+                'status_name' => $isUnlocked && ! $hasPunchIn ? 'Awaiting Punch In' : ucwords(str_replace('_', ' ', $statusCodeVal)),
                 'next_action' => $nextAction,
                 'show_early_login_tag' => $window['is_before_shift_start'] && $canPunchIn,
                 'show_late_mark' => $window['is_late'],

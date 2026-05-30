@@ -559,6 +559,18 @@
         justify-content: center;
         flex-shrink: 0;
         border: 1px solid rgba(75, 0, 232, 0.08);
+        position: relative !important;
+        overflow: hidden !important;
+    }
+
+    .att-avatar-img {
+        width: 38px !important;
+        height: 38px !important;
+        border-radius: 12px !important;
+        object-fit: cover !important;
+        display: block !important;
+        border: 1px solid rgba(75, 0, 232, 0.1) !important;
+        flex-shrink: 0 !important;
     }
 
     .att-emp-name {
@@ -950,9 +962,29 @@
                             <tr>
                                 <td>
                                     <div class="d-flex align-items-center" style="gap: 10px;">
-                                        <div class="orb-avatar">
-                                            {{ strtoupper(substr($row['employee_name'] ?? 'EE', 0, 2)) }}
-                                        </div>
+                                        @php
+                                            $empModel = \App\Models\HRMS\Employee\EmployeeM::find($row['employee_id'] ?? null);
+                                            $passportPhotoUrl = resolveEmployeePassportPhoto($empModel);
+                                            $employeeName = $row['employee_name'] ?? 'Employee';
+                                            $employeeInitial = resolveEmployeeInitials($empModel);
+                                        @endphp
+                                        <span class="hrms-emp-avatar hrms-emp-avatar-sm">
+                                            @if($passportPhotoUrl)
+                                                <img
+                                                    src="{{ $passportPhotoUrl }}"
+                                                    alt="{{ $employeeName }}"
+                                                    class="hrms-emp-avatar-img"
+                                                    onerror="this.style.display='none'; this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.remove('is-hidden'); this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.add('is-visible');"
+                                                >
+                                                <span class="hrms-emp-avatar-fallback is-hidden">
+                                                    {{ $employeeInitial }}
+                                                </span>
+                                            @else
+                                                <span class="hrms-emp-avatar-fallback is-visible">
+                                                    {{ $employeeInitial }}
+                                                </span>
+                                            @endif
+                                        </span>
                                         <div>
                                             <div class="att-emp-name">{{ $row['employee_name'] }}</div>
                                             <div class="att-emp-sub">{{ $row['department_name'] }}</div>

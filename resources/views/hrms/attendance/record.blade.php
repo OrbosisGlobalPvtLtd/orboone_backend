@@ -349,7 +349,19 @@
         font-weight: 950;
         color: var(--orb-primary);
         border: 1px solid rgba(75, 0, 232, .08);
-        flex-shrink: 0
+        flex-shrink: 0;
+        position: relative !important;
+        overflow: hidden !important;
+    }
+
+    .att-avatar-img {
+        width: 40px !important;
+        height: 40px !important;
+        border-radius: 14px !important;
+        object-fit: cover !important;
+        display: block !important;
+        border: 1px solid rgba(75, 0, 232, 0.1) !important;
+        flex-shrink: 0 !important;
     }
 
     .att-emp-name {
@@ -966,9 +978,7 @@
                             <th>Status</th>
                             <th>Flags</th>
                             <th>Task Summary</th>
-                            @if(!$isMyAttendance)
                             <th class="no-export text-right">Action</th>
-                            @endif
                         </tr>
                     </thead>
 
@@ -1016,9 +1026,27 @@
                             @if(!$isMyAttendance)
                             <td>
                                 <div class="att-emp">
-                                    <div class="att-avatar">
-                                        {{ strtoupper(substr($employeeName, 0, 1)) }}
-                                    </div>
+                                    @php
+                                        $passportPhotoUrl = resolveEmployeePassportPhoto($attendance->employee ?? $attendance);
+                                        $employeeInitial = resolveEmployeeInitials($attendance->employee ?? $attendance);
+                                    @endphp
+                                    <span class="hrms-emp-avatar hrms-emp-avatar-sm mr-2">
+                                        @if($passportPhotoUrl)
+                                            <img
+                                                src="{{ $passportPhotoUrl }}"
+                                                alt="{{ $employeeName }}"
+                                                class="hrms-emp-avatar-img"
+                                                onerror="this.style.display='none'; this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.remove('is-hidden'); this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.add('is-visible');"
+                                            >
+                                            <span class="hrms-emp-avatar-fallback is-hidden">
+                                                {{ $employeeInitial }}
+                                            </span>
+                                        @else
+                                            <span class="hrms-emp-avatar-fallback is-visible">
+                                                {{ $employeeInitial }}
+                                            </span>
+                                        @endif
+                                    </span>
                                     <div>
                                         <div class="att-emp-name" title="{{ $employeeName }}">
                                             {{ $employeeName }}
@@ -1084,12 +1112,50 @@
                             </td>
 
                             <td>
-                                <div class="att-task" title="{{ $workSummary }}">
-                                    {{ $workSummary }}
-                                </div>
+                                @php
+                                    $firstLog = $attendance->workLogs->first();
+                                @endphp
+                                @if($firstLog)
+                                    @php
+                                        $tasks = $firstLog->work_summary_json;
+                                        if (is_string($tasks)) {
+                                            $tasks = json_decode($tasks, true);
+                                        }
+                                        $title = 'Work Report Submitted';
+                                        $status = 'Completed';
+                                        $requirementsList = [];
+                                        
+                                        if (is_array($tasks)) {
+                                            if (array_keys($tasks) !== range(0, count($tasks) - 1)) {
+                                                $title = $tasks['title'] ?? ($tasks['task_title'] ?? 'Work Report Submitted');
+                                                $status = $tasks['status'] ?? 'Completed';
+                                                $requirementsList = $tasks['requirements'] ?? ($tasks['tasks'] ?? []);
+                                            } else {
+                                                $requirementsList = $tasks;
+                                            }
+                                        }
+                                        $taskCount = is_array($requirementsList) ? count($requirementsList) : 0;
+                                        $tasksLabel = $taskCount . ' ' . \Illuminate\Support\Str::plural('Task', $taskCount);
+                                        $statusClass = strtolower($status) === 'completed' ? 'badge-present' : 'badge-half_day';
+                                    @endphp
+                                    <div class="d-flex flex-column gap-1" style="max-width: 200px;">
+                                        <div style="font-size: 12px; font-weight: 700; color: #1D2939; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ $title }}">
+                                            {{ $title }}
+                                        </div>
+                                        <div class="d-flex align-items-center gap-1 mt-1">
+                                            <span class="badge-premium-pill badge-wfo" style="font-size: 9px; padding: 3px 8px; font-weight: 800; border-radius: 6px;">
+                                                <i class="fas fa-list-check" style="font-size: 8px;"></i> {{ $tasksLabel }}
+                                            </span>
+                                            <span class="badge-premium-pill {{ $statusClass }}" style="font-size: 9px; padding: 3px 8px; font-weight: 800; border-radius: 6px; text-transform: uppercase;">
+                                                {{ $status }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                @else
+                                    <span class="text-muted" style="font-size: 12px; font-style: italic;">No Report</span>
+                                @endif
                             </td>
 
-                            @if(!$isMyAttendance)
                             <td>
                                 <div class="att-action-wrap dropdown">
                                     <button type="button" class="action-dot" data-toggle="dropdown">
@@ -1097,29 +1163,112 @@
                                     </button>
 
                                     <div class="dropdown-menu dropdown-menu-right att-action-menu">
-                                        @if($isBlocked)
-                                        <button type="button"
-                                            class="dropdown-item"
-                                            data-toggle="modal"
-                                            data-target="#unlockModal{{ $attendance->id }}">
-                                            <i class="fas fa-unlock text-success"></i>
-                                            Unlock
-                                        </button>
+                                        @if($firstLog)
+                                            @php
+                                                $tasks = $firstLog->work_summary_json;
+                                                if (is_string($tasks)) {
+                                                    $tasks = json_decode($tasks, true);
+                                                }
+                                                
+                                                $repTitle = 'Work Report Submitted';
+                                                $repDesc = $firstLog->work_summary;
+                                                $repStatus = 'Completed';
+                                                $requirementsList = [];
+                                                $testStatus = ['tested' => false, 'completed' => false];
+                                                $issues = [];
+                                                $notes = null;
+
+                                                if (is_array($tasks)) {
+                                                    if (array_keys($tasks) !== range(0, count($tasks) - 1)) {
+                                                        $repTitle = $tasks['title'] ?? ($tasks['task_title'] ?? 'Work Report Submitted');
+                                                        $repDesc = $tasks['description'] ?? $firstLog->work_summary;
+                                                        $repStatus = $tasks['status'] ?? 'Completed';
+                                                        $requirementsList = $tasks['requirements'] ?? ($tasks['tasks'] ?? []);
+                                                        
+                                                        // Extract test status
+                                                        if (isset($tasks['test_status']) && is_array($tasks['test_status'])) {
+                                                            $testStatus = [
+                                                                'tested' => $tasks['test_status']['tested'] ?? false,
+                                                                'completed' => $tasks['test_status']['completed'] ?? false
+                                                            ];
+                                                        } else {
+                                                            $testedVal = $tasks['tested'] ?? false;
+                                                            $testStatus = [
+                                                                'tested' => ($testedVal === true || $testedVal === 'yes' || $testedVal === 'tested' || $testedVal === 'Completed'),
+                                                                'completed' => ($testedVal === true || $testedVal === 'yes' || $testedVal === 'tested' || $testedVal === 'Completed')
+                                                            ];
+                                                        }
+                                                        
+                                                        $issues = $tasks['issues'] ?? [];
+                                                        $notes = $tasks['notes'] ?? null;
+                                                    } else {
+                                                        $requirementsList = $tasks;
+                                                    }
+                                                }
+
+                                                if (!is_array($issues)) {
+                                                    $issues = $issues ? [$issues] : [];
+                                                }
+
+                                                $logPayload = [
+                                                    'employee_name' => $employeeName,
+                                                    'employee_code' => $employeeCode,
+                                                    'passport_photo_url' => resolveEmployeePassportPhoto($attendance->employee ?? $attendance),
+                                                    'employee_initial' => resolveEmployeeInitials($attendance->employee ?? $attendance),
+                                                    'department' => optional(optional($attendance->employee)->department)->name ?? 'Staff',
+                                                    'designation' => optional(optional($attendance->employee)->designation)->name ?? 'Member',
+                                                    'work_date' => $attendance->attendance_date ? \Carbon\Carbon::parse($attendance->attendance_date)->format('d M Y') : '-',
+                                                    'shift_name' => optional($attendance->attendanceTime)->name ?? 'Default Shift',
+                                                    'attendance_status' => $attendance->attendance_status ?? 'present',
+                                                    'title' => $repTitle,
+                                                    'description' => $repDesc,
+                                                    'status' => $repStatus,
+                                                    'work_mode' => strtoupper($attendance->work_mode ?? 'WFO'),
+                                                    'submitted_time' => $firstLog->created_at ? $firstLog->created_at->format('h:i A') : '-',
+                                                    'requirements' => $requirementsList,
+                                                    'test_status' => $testStatus,
+                                                    'issues' => $issues,
+                                                    'notes' => $notes,
+                                                ];
+                                            @endphp
+                                            <button type="button"
+                                                class="dropdown-item"
+                                                data-work-log="{{ json_encode($logPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}"
+                                                onclick="parseAndOpenWorkReport(this)">
+                                                <i class="fas fa-clipboard-list text-primary"></i>
+                                                View Work Report
+                                            </button>
+                                        @else
+                                            <button type="button" class="dropdown-item disabled text-muted" disabled style="cursor: not-allowed; opacity: 0.6;">
+                                                <i class="fas fa-clipboard-list text-muted"></i>
+                                                No Work Report
+                                            </button>
                                         @endif
 
-                                        @if(($canManageAttendance ?? false) || (auth()->user() && method_exists(auth()->user(), 'hasRole') && auth()->user()->hasRole('super_admin')))
-                                        <button type="button"
-                                            class="dropdown-item"
-                                            data-toggle="modal"
-                                            data-target="#editModal{{ $attendance->id }}">
-                                            <i class="fas fa-edit text-primary"></i>
-                                            Edit
-                                        </button>
+                                        @if(!$isMyAttendance)
+                                            @if($isBlocked)
+                                            <button type="button"
+                                                class="dropdown-item"
+                                                data-toggle="modal"
+                                                data-target="#unlockModal{{ $attendance->id }}">
+                                                <i class="fas fa-unlock text-success"></i>
+                                                Unlock
+                                            </button>
+                                            @endif
+
+                                            @if(($canManageAttendance ?? false) || (auth()->user() && method_exists(auth()->user(), 'hasRole') && auth()->user()->hasRole('super_admin')))
+                                            <button type="button"
+                                                class="dropdown-item"
+                                                data-toggle="modal"
+                                                data-target="#editModal{{ $attendance->id }}">
+                                                <i class="fas fa-edit text-primary"></i>
+                                                Edit
+                                            </button>
+                                            @endif
                                         @endif
                                     </div>
                                 </div>
                             </td>
-                            @endif
                         </tr>
                         @endforeach
                     </tbody>
@@ -1139,6 +1288,9 @@
 
     </div>
 </div>
+
+<!-- Shared Premium Modal -->
+@include('hrms.attendance.partials.work-report-modal')
 @endsection
 
 @section('_script')

@@ -221,6 +221,18 @@
         color: var(--orb-primary);
         border: 1px solid rgba(75, 0, 232, .08);
         flex-shrink: 0;
+        position: relative !important;
+        overflow: hidden !important;
+    }
+
+    .att-avatar-img {
+        width: 42px !important;
+        height: 42px !important;
+        border-radius: 14px !important;
+        object-fit: cover !important;
+        display: block !important;
+        border: 1px solid rgba(75, 0, 232, 0.1) !important;
+        flex-shrink: 0 !important;
     }
 
     .att-emp-name {
@@ -689,16 +701,33 @@
                             ? 'mode-wfh'
                             : 'mode-wfo';
                             @endphp
-
                             <tr>
 
                                 <td>
 
                                     <div class="att-emp">
-
-                                        <div class="att-avatar">
-                                            {{ strtoupper(substr(optional($attendance->user)->name ?? 'U',0,1)) }}
-                                        </div>
+                                        @php
+                                            $passportPhotoUrl = resolveEmployeePassportPhoto($attendance->employee ?? $attendance);
+                                            $employeeName = optional($attendance->user)->name ?? 'Employee';
+                                            $employeeInitial = resolveEmployeeInitials($attendance->employee ?? $attendance);
+                                        @endphp
+                                        <span class="hrms-emp-avatar hrms-emp-avatar-sm mr-2">
+                                            @if($passportPhotoUrl)
+                                                <img
+                                                    src="{{ $passportPhotoUrl }}"
+                                                    alt="{{ $employeeName }}"
+                                                    class="hrms-emp-avatar-img"
+                                                    onerror="this.style.display='none'; this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.remove('is-hidden'); this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.add('is-visible');"
+                                                >
+                                                <span class="hrms-emp-avatar-fallback is-hidden">
+                                                    {{ $employeeInitial }}
+                                                </span>
+                                            @else
+                                                <span class="hrms-emp-avatar-fallback is-visible">
+                                                    {{ $employeeInitial }}
+                                                </span>
+                                            @endif
+                                        </span>
 
                                         <div>
 

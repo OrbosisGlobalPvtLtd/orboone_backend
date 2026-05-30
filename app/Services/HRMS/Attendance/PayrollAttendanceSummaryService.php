@@ -11,6 +11,10 @@ use Illuminate\Validation\ValidationException;
 
 class PayrollAttendanceSummaryService
 {
+    public function __construct(private AttendancePayableDayResolver $payableDayResolver)
+    {
+    }
+
     public function generate(int $month, int $year, ?int $employeeId = null): int
     {
         $employees = EmployeeM::query()
@@ -63,6 +67,9 @@ class PayrollAttendanceSummaryService
         $halfDays = $attendances->where('is_half_day', true)->count();
         $lwp = (float) ($leaveRows->lwp ?? 0) + (float) $attendances->where('is_lwp', true)->count();
 
+        $attendancePayableDays = $attendances->sum(function (AttendanceM $attendance) {
+            return (float) $this->payableDayResolver->resolve($attendance)['payable_day'];
+        });
         $summary->fill([
             'present_days' => $present,
             'paid_leave_days' => (float) ($leaveRows->paid ?? 0),
@@ -77,7 +84,13 @@ class PayrollAttendanceSummaryService
             'early_out_count' => $attendances->where('is_early_out', true)->count(),
             'missed_punch_count' => $attendances->where('is_missed_punch', true)->count() + $attendances->where('missed_punch', true)->count(),
             'total_work_minutes' => $attendances->sum('total_work_minutes'),
-            'payable_days' => max(0, $present + (float) ($leaveRows->paid ?? 0) + (float) ($leaveRows->sick ?? 0) + (float) ($leaveRows->comp ?? 0) + $holiday + $weekOff - ($halfDays * 0.5)),
+            'payable_days' => max(0, round(
+                $attendancePayableDays
+                + (float) ($leaveRows->paid ?? 0)
+                + (float) ($leaveRows->sick ?? 0)
+                + (float) ($leaveRows->comp ?? 0),
+                2
+            )),
         ]);
         $summary->save();
 

@@ -672,6 +672,8 @@
         justify-content: center !important;
         font-weight: 800 !important;
         flex-shrink: 0 !important;
+        position: relative !important;
+        overflow: hidden !important;
     }
 
     .att-emp-name {
@@ -1337,5 +1339,16 @@
 
     .em-reupload-label input {
         display: none !important;
+    }
+
+    /* Improved Premium Avatar rendering system styling */
+    .att-avatar-img {
+        width: 36px !important;
+        height: 36px !important;
+        border-radius: 10px !important;
+        object-fit: cover !important;
+        display: block !important;
+        border: 1px solid rgba(75, 0, 232, 0.1) !important;
+        flex-shrink: 0 !important;
     }
 </style>

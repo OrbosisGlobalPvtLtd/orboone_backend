@@ -35,6 +35,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/my-announcements/{announcement}', [AnnouncementsC::class, 'employeeShow'])
             ->name('employee.announcements.show');
     });
+
+    Route::get('/hrms/announcements/attachment/{announcement}', [AnnouncementsC::class, 'attachment'])
+        ->name('hrms.announcements.attachment');
     Route::get('/announcements/create', [AnnouncementsC::class, 'create'])
         ->name('announcements.create');
 

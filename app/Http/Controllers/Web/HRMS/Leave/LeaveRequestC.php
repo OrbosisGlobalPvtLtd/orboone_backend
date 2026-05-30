@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web\HRMS\Leave;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Web\HRMS\Concerns\HrmsCrudPage;
 use App\Http\Requests\Web\HRMS\Leave\StoreLeaveRequestRequest;
+use App\Mail\HrWorkflowAlertMail;
 use App\Models\Core\AccessM;
 use App\Models\HRMS\Employee\EmployeeM;
 use App\Models\HRMS\Leave\LeaveRequestM;
@@ -17,6 +18,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
 class LeaveRequestC extends Controller
@@ -110,7 +112,7 @@ class LeaveRequestC extends Controller
                 $leaveRequest->dates()->create(array_merge($row, ['employee_id' => $employee->id]));
             }
 
-            $this->notifyLeaveApplied($leaveRequest->fresh(['employee.user', 'leaveType', 'dates']));
+            $this->notifyLeaveApplied($leaveRequest->fresh(['employee.user', 'employee.department', 'leaveType', 'dates']));
 
             return redirect()->route('leave-requests.index')->with('success', 'Leave request submitted successfully.');
         } catch (\Throwable $e) {
@@ -180,6 +182,30 @@ class LeaveRequestC extends Controller
             ['leave_id' => $leaveRequest->id],
             $payload
         );
+
+        $hrEmail = config('hrms.emails.hr');
+        $employeeEmail = $leaveRequest->employee?->user?->email;
+        if ($hrEmail) {
+            $details = [
+                'Employee Name' => $employeeName,
+                'Employee Code' => $leaveRequest->employee?->employee_code ?: 'N/A',
+                'Department' => $leaveRequest->employee?->department?->name ?: 'N/A',
+                'Leave Type' => $leaveType,
+                'Start Date' => (string) $leaveRequest->start_date,
+                'End Date' => (string) $leaveRequest->end_date,
+                'Total Days' => (string) $leaveRequest->requested_days,
+                'Reason' => (string) ($leaveRequest->reason ?: '-'),
+                'Apply Date' => now()->toDateTimeString(),
+            ];
+
+            Mail::to($hrEmail)->queue(new HrWorkflowAlertMail(
+                subjectText: 'Leave Request Submitted - ' . $employeeName,
+                workflowTitle: 'New Leave Request',
+                details: $details,
+                actionUrl: route('leave-approvals.index', ['leave_id' => $leaveRequest->id]),
+                replyToEmail: $employeeEmail
+            ));
+        }
     }
 
     private function leaveAttachmentUrl(?string $path): string

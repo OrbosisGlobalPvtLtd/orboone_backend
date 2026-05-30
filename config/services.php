@@ -42,4 +42,13 @@ return [
         'credentials_path' => env('FIREBASE_CREDENTIALS', storage_path('app/private/firebase/firebase-service-account.json')),
     ],
 
+    'hrms' => [
+        'emails' => [
+            'hr' => env('HR_EMAIL'),
+            'support' => env('SUPPORT_EMAIL'),
+            'info' => env('INFO_EMAIL'),
+            'noreply' => env('MAIL_FROM_ADDRESS'),
+        ],
+    ],
+
 ];

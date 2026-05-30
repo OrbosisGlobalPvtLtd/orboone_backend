@@ -123,3 +123,220 @@ if (!function_exists('convertNumberToWords')) {
         return $string;
     }
 }
+
+if (!function_exists('resolveEmployeeAvatar')) {
+    /**
+     * Resolves the secure profile image URL for an employee or user.
+     * Priority:
+     * 1. Employee profile photo (via secure private route)
+     * 2. User profile image (public storage / absolute path)
+     * 3. Fallback to null
+     *
+     * @param mixed $entity
+     * @return string|null
+     */
+    function resolveEmployeeAvatar($entity)
+    {
+        if (empty($entity)) {
+            return null;
+        }
+
+        $employee = null;
+        $user = null;
+
+        // Determine if entity is employee, user, or has relations
+        if ($entity instanceof \App\Models\HRMS\Employee\EmployeeM) {
+            $employee = $entity;
+            $user = $entity->user;
+        } elseif ($entity instanceof \App\Models\Core\UserM) {
+            $user = $entity;
+            $employee = $entity->employee;
+        } elseif (is_object($entity)) {
+            // Check for common relations on general models (like Attendance, Leave request etc)
+            if (isset($entity->employee) && $entity->employee instanceof \App\Models\HRMS\Employee\EmployeeM) {
+                $employee = $entity->employee;
+            }
+            if (isset($entity->user) && $entity->user instanceof \App\Models\Core\UserM) {
+                $user = $entity->user;
+                if (!$employee && $user->employee) {
+                    $employee = $user->employee;
+                }
+            }
+            // Fallback for objects that might have user/employee properties but not Eloquent models
+            if (!$employee && isset($entity->employee_id)) {
+                try {
+                    $employee = \App\Models\HRMS\Employee\EmployeeM::find($entity->employee_id);
+                } catch (\Throwable $e) {}
+            }
+            if (!$user && isset($entity->user_id)) {
+                try {
+                    $user = \App\Models\Core\UserM::find($entity->user_id);
+                } catch (\Throwable $e) {}
+            }
+        }
+
+        // 1. Check Employee Profile Photo
+        if ($employee) {
+            // Ensure profile relation is loaded or queried
+            try {
+                $profile = $employee->profile ?: \App\Models\HRMS\Employee\EmployeeProfileM::where('employee_id', $employee->id)->first();
+                $profileImage = $profile ? trim((string)$profile->profile_image) : '';
+                if ($profileImage !== '') {
+                    // Return secure private file server route
+                    return route('employee.profile-image', ['employee' => $employee->id]);
+                }
+            } catch (\Throwable $e) {}
+        }
+
+        // 2. Check User Profile Photo
+        if ($user) {
+            try {
+                $userImage = trim((string)data_get($user, 'profile_image'));
+                if ($userImage !== '') {
+                    if (preg_match('/^https?:\/\//i', $userImage) || substr($userImage, 0, 1) === '/') {
+                        return $userImage;
+                    } elseif (substr($userImage, 0, 8) === 'storage/') {
+                        return asset($userImage);
+                    } else {
+                        return asset('storage/' . $userImage);
+                    }
+                }
+            } catch (\Throwable $e) {}
+        }
+
+        return null;
+    }
+}
+
+if (!function_exists('resolveEmployeePassportPhoto')) {
+    /**
+     * Resolves the secure passport size photo document URL for an employee.
+     * Matches "Passport Size Photo", "passport_size_photo", "Passport Photo", "passport_photo", "Photo", "Passport".
+     *
+     * @param mixed $employeeOrUser
+     * @return string|null
+     */
+    function resolveEmployeePassportPhoto($employeeOrUser)
+    {
+        if (empty($employeeOrUser)) {
+            return null;
+        }
+
+        $employee = null;
+        if ($employeeOrUser instanceof \App\Models\HRMS\Employee\EmployeeM) {
+            $employee = $employeeOrUser;
+        } elseif ($employeeOrUser instanceof \App\Models\Core\UserM) {
+            $employee = $employeeOrUser->employee;
+        } elseif (is_numeric($employeeOrUser)) {
+            try {
+                $employee = \App\Models\HRMS\Employee\EmployeeM::find($employeeOrUser);
+                if (!$employee) {
+                    $employee = \App\Models\HRMS\Employee\EmployeeM::where('user_id', $employeeOrUser)->first();
+                }
+            } catch (\Throwable $e) {}
+        } elseif (is_object($employeeOrUser)) {
+            if (isset($employeeOrUser->employee) && $employeeOrUser->employee instanceof \App\Models\HRMS\Employee\EmployeeM) {
+                $employee = $employeeOrUser->employee;
+            } elseif (isset($employeeOrUser->employee_id) && !empty($employeeOrUser->employee_id)) {
+                try {
+                    $employee = \App\Models\HRMS\Employee\EmployeeM::find($employeeOrUser->employee_id);
+                } catch (\Throwable $e) {}
+            } elseif (isset($employeeOrUser->user_id) && !empty($employeeOrUser->user_id)) {
+                try {
+                    $employee = \App\Models\HRMS\Employee\EmployeeM::where('user_id', $employeeOrUser->user_id)->first();
+                } catch (\Throwable $e) {}
+            } elseif (isset($employeeOrUser->id) && !empty($employeeOrUser->id)) {
+                try {
+                    $employee = \App\Models\HRMS\Employee\EmployeeM::find($employeeOrUser->id);
+                    if (!$employee) {
+                        $employee = \App\Models\HRMS\Employee\EmployeeM::where('user_id', $employeeOrUser->id)->first();
+                    }
+                } catch (\Throwable $e) {}
+            }
+        }
+
+        if (!$employee) {
+            return null;
+        }
+
+        static $passportPhotoCache = [];
+        if (array_key_exists($employee->id, $passportPhotoCache)) {
+            return $passportPhotoCache[$employee->id];
+        }
+
+        try {
+            $document = \App\Models\HRMS\Document\EmployeeDocumentM::where('employee_id', $employee->id)
+                ->whereHas('documentType', function ($query) {
+                    $query->where(function ($q) {
+                        $q->where('name', 'Passport Size Photo')
+                          ->orWhere('code', 'passport_size_photo')
+                          ->orWhere('name', 'Passport Photo')
+                          ->orWhere('code', 'passport_photo')
+                          ->orWhere('name', 'Photo')
+                          ->orWhere('name', 'Passport')
+                          ->orWhere('name', 'like', '%Passport%Photo%')
+                          ->orWhere('name', 'like', '%Passport%Size%Photo%');
+                    });
+                })
+                ->orderByRaw("CASE WHEN verification_status = 'verified' THEN 0 ELSE 1 END")
+                ->orderBy('id', 'desc')
+                ->first();
+
+            if ($document && $document->file_path) {
+                $url = route('hrms.documents.file', ['path' => $document->file_path]);
+                $passportPhotoCache[$employee->id] = $url;
+                return $url;
+            }
+        } catch (\Throwable $e) {}
+
+        $passportPhotoCache[$employee->id] = null;
+        return null;
+    }
+}
+
+if (!function_exists('resolveEmployeeAdminAvatar')) {
+    /**
+     * Resolves the passport-size photo URL for admin-facing views.
+     *
+     * @param mixed $employeeOrUser
+     * @return string|null
+     */
+    function resolveEmployeeAdminAvatar($employeeOrUser)
+    {
+        return resolveEmployeePassportPhoto($employeeOrUser);
+    }
+}
+
+if (!function_exists('resolveEmployeeInitials')) {
+    /**
+     * Resolves fallback initials for a user or employee.
+     *
+     * @param mixed $entity
+     * @return string
+     */
+    function resolveEmployeeInitials($entity)
+    {
+        if (empty($entity)) {
+            return 'U';
+        }
+
+        $name = '';
+        if ($entity instanceof \App\Models\HRMS\Employee\EmployeeM) {
+            $name = $entity->display_name ?: ($entity->user ? $entity->user->name : '');
+        } elseif ($entity instanceof \App\Models\Core\UserM) {
+            $name = $entity->name;
+        } elseif (is_object($entity)) {
+            if (isset($entity->user) && $entity->user) {
+                $name = $entity->user->name;
+            } elseif (isset($entity->employee) && $entity->employee) {
+                $name = $entity->employee->display_name;
+            } elseif (isset($entity->name)) {
+                $name = $entity->name;
+            }
+        }
+
+        $name = trim($name);
+        return $name !== '' ? strtoupper(substr($name, 0, 1)) : 'U';
+    }
+}
+

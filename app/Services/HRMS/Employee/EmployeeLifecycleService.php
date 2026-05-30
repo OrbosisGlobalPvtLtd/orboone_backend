@@ -2,6 +2,8 @@
 
 namespace App\Services\HRMS\Employee;
 
+use App\Models\HRMS\Employee\EmployeeM;
+use App\Services\HRMS\Leave\LeaveAllocationService;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -9,6 +11,10 @@ use Illuminate\Support\Facades\Schema;
 
 class EmployeeLifecycleService
 {
+    public function __construct(private LeaveAllocationService $leaveAllocationService)
+    {
+    }
+
     public function buildLifecyclePayload(
         array $input,
         ?string $existingProbationStatus = null,
@@ -211,5 +217,23 @@ class EmployeeLifecycleService
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+    }
+
+    public function autoAllocateForStage(int $employeeId, ?string $forceStage = null, ?string $effectiveDate = null, ?int $actorId = null): void
+    {
+        $employee = EmployeeM::find($employeeId);
+        if (! $employee) {
+            return;
+        }
+
+        $stage = $forceStage ? strtolower($forceStage) : strtolower((string) ($employee->employee_stage ?: $employee->employment_type));
+        if ($stage === 'intern') {
+            $stage = 'internship';
+        }
+
+        $date = $effectiveDate ? Carbon::parse($effectiveDate, 'Asia/Kolkata') : null;
+        $year = (int) ($date?->year ?: Carbon::now('Asia/Kolkata')->year);
+
+        $this->leaveAllocationService->generateForEmployee($employee, $year, $actorId, $stage, $date);
     }
 }

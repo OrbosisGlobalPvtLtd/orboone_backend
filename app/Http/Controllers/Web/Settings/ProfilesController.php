@@ -117,7 +117,23 @@ class ProfilesController extends Controller
             'ifsc_code' => ['nullable', 'string', 'max:50'],
             'bank_branch' => ['nullable', 'string', 'max:150'],
             
-            'emergency_contact_number' => ['nullable', 'string', 'max:30'],
+            'emergency_contact_number' => [
+                'nullable',
+                'regex:/^(?:\+91)?[6-9]\d{9}$/',
+                function ($attribute, $value, $fail) use ($user) {
+                    if ($value === null || trim((string) $value) === '') {
+                        return;
+                    }
+
+                    $normalize = static fn ($phone) => preg_replace('/\D+/', '', (string) $phone);
+                    $normalizedEmergency = $normalize($value);
+                    $userPhone = $normalize($user->phone ?? null);
+
+                    if ($userPhone !== '' && $normalizedEmergency !== '' && str_ends_with($normalizedEmergency, $userPhone)) {
+                        $fail('Please enter a valid emergency contact number.');
+                    }
+                },
+            ],
             
             'profile_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'resume_file' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:5120'],
@@ -246,10 +262,17 @@ class ProfilesController extends Controller
                 ->withInput();
         }
 
-        DB::table('users')->where('id', $user->id)->update([
+        $updateData = [
             'password' => Hash::make($request->password),
             'updated_at' => now(),
-        ]);
+        ];
+
+        if (Schema::hasColumn('users', 'must_change_password')) {
+            $updateData['must_change_password'] = 0;
+        }
+
+        DB::table('users')->where('id', $user->id)->update($updateData);
+        $request->session()->forget('must_change_password');
 
         if (method_exists($user, 'tokens')) {
             $user->tokens()->delete();

@@ -137,6 +137,18 @@ class LoginC extends Controller
             return redirect('/login')->with('fail', 'Access denied. You do not have permission to login here.');
         }
 
+        $mustChangePassword = \Schema::hasColumn('users', 'must_change_password')
+            ? (bool) ($user->must_change_password ?? false)
+            : false;
+
+        $request->session()->put('must_change_password', $mustChangePassword);
+
+        if ($mustChangePassword) {
+            return redirect()
+                ->route('profile.index')
+                ->with('warning', 'Login with temporary password successful. Please change your password to continue.');
+        }
+
         $profileService = app(EmployeeProfileS::class);
         $incompleteEmployeeId = $profileService->getIncompleteEmployeeIdForUser((int) $user->id);
 

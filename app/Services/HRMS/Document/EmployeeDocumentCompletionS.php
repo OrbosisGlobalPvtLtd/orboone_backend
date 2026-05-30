@@ -39,6 +39,7 @@ class EmployeeDocumentCompletionS
     {
         if (! $profile) {
             return [
+                'emergency_contact_number',
                 'date_of_birth',
                 'gender',
                 'address',
@@ -56,6 +57,7 @@ class EmployeeDocumentCompletionS
         }
 
         $fields = [
+            'emergency_contact_number' => $profile->emergency_contact_number,
             'date_of_birth' => $profile->date_of_birth,
             'gender' => $profile->gender,
             'address' => $profile->address,
@@ -89,7 +91,7 @@ class EmployeeDocumentCompletionS
 
     public function profileCompletionPercentage(?EmployeeProfileM $profile, ?EmployeeM $employee = null): int
     {
-        $total = 13;
+        $total = 14;
         $missing = count($this->missingProfileFields($profile, $employee));
 
         return (int) floor((($total - $missing) / $total) * 100);

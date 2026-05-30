@@ -12,6 +12,7 @@ Route::prefix('v1')->group(function () {
         'hrms/attendance',
         'hrms/leave',
         'project_management/task',
+        // Legacy Payroll retired. Enterprise Payroll is the only active payroll engine.
         'hrms/payroll',
         'hrms/enterprise_payroll',
         'mobile_app',

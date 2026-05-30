@@ -264,6 +264,19 @@ class EmployeeExitProcessS
             ['employee_id' => $exit->employee_id, 'exit_process_id' => $exit->id]
         );
 
+        $employee = DB::table($this->employeeTable)->where('id', $exit->employee_id)->first();
+        if ($employee && ! empty($employee->user_id)) {
+            $this->notifications->notifyEmployee(
+                'Exit Approved & Processed',
+                'Your exit process has been successfully approved and completed by HR.',
+                'employee_exit_completed',
+                null,
+                [],
+                ['employee_id' => $exit->employee_id, 'exit_process_id' => $exit->id],
+                (int) $employee->user_id
+            );
+        }
+
         return (array) DB::table($this->exitTable)->where('id', $exitId)->first();
     }
 

@@ -219,6 +219,16 @@
         color: var(--orb-primary);
         font-weight: 900;
         flex: 0 0 auto;
+        border: 1px solid rgba(75, 0, 232, 0.08) !important;
+        overflow: hidden !important;
+    }
+
+    .emp-avatar img {
+        width: 100% !important;
+        height: 100% !important;
+        border-radius: inherit !important;
+        object-fit: cover !important;
+        display: block !important;
     }
 
     .emp-name {
@@ -856,14 +866,35 @@
                         'rejected' => 'Rejected',
                         default => 'Pending',
                         };
-                        $initial = strtoupper(substr($emp->name ?? 'E', 0, 1));
+                        $initial = resolveEmployeeInitials($emp);
                         @endphp
 
                         <tr>
                             <td>{{ $loop->iteration }}</td>
                             <td>
                                 <div class="emp-cell">
-                                    <div class="emp-avatar">{{ $initial }}</div>
+                                    @php
+                                        $passportPhotoUrl = resolveEmployeePassportPhoto($emp);
+                                        $employeeInitial = $initial;
+                                        $employeeName = $emp->name ?? 'Employee';
+                                    @endphp
+                                    <span class="hrms-emp-avatar hrms-emp-avatar-sm mr-2">
+                                        @if($passportPhotoUrl)
+                                            <img
+                                                src="{{ $passportPhotoUrl }}"
+                                                alt="{{ $employeeName }}"
+                                                class="hrms-emp-avatar-img"
+                                                onerror="this.style.display='none'; this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.remove('is-hidden'); this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.add('is-visible');"
+                                            >
+                                            <span class="hrms-emp-avatar-fallback is-hidden">
+                                                {{ $employeeInitial }}
+                                            </span>
+                                        @else
+                                            <span class="hrms-emp-avatar-fallback is-visible">
+                                                {{ $employeeInitial }}
+                                            </span>
+                                        @endif
+                                    </span>
                                     <div>
                                         <div class="emp-name">{{ $emp->name ?? '-' }}</div>
                                         <div class="emp-email">{{ $emp->email ?? '-' }}</div>
@@ -958,12 +989,33 @@
                 'rejected' => 'Rejected',
                 default => 'Pending',
                 };
-                $initial = strtoupper(substr($emp->name ?? 'E', 0, 1));
+                $initial = resolveEmployeeInitials($emp);
                 @endphp
 
                 <div class="pp-mobile-card">
                     <div class="pp-mobile-head">
-                        <div class="emp-avatar">{{ $initial }}</div>
+                        @php
+                            $passportPhotoUrl = resolveEmployeePassportPhoto($emp);
+                            $employeeInitial = $initial;
+                            $employeeName = $emp->name ?? 'Employee';
+                        @endphp
+                        <span class="hrms-emp-avatar hrms-emp-avatar-sm mr-2">
+                            @if($passportPhotoUrl)
+                                <img
+                                    src="{{ $passportPhotoUrl }}"
+                                    alt="{{ $employeeName }}"
+                                    class="hrms-emp-avatar-img"
+                                    onerror="this.style.display='none'; this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.remove('is-hidden'); this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.add('is-visible');"
+                                >
+                                <span class="hrms-emp-avatar-fallback is-hidden">
+                                    {{ $employeeInitial }}
+                                </span>
+                            @else
+                                <span class="hrms-emp-avatar-fallback is-visible">
+                                    {{ $employeeInitial }}
+                                </span>
+                            @endif
+                        </span>
                         <div class="pp-mobile-info">
                             <div class="emp-name">{{ $emp->name ?? '-' }}</div>
                             <div class="emp-email">{{ $emp->email ?? '-' }}</div>

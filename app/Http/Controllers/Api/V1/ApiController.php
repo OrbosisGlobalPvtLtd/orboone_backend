@@ -267,7 +267,23 @@ class ApiController extends Controller
                 'email'                    => 'nullable|email|max:255|unique:users,email,' . $user->id,
                 // employee_details table
                 'phone'                    => 'nullable|string|max:20',
-                'emergency_contact_number' => 'nullable|string|max:20',
+                'emergency_contact_number' => [
+                    'nullable',
+                    'regex:/^(?:\+91)?[6-9]\d{9}$/',
+                    function ($attribute, $value, $fail) use ($user) {
+                        if ($value === null || trim((string) $value) === '') {
+                            return;
+                        }
+
+                        $normalize = static fn ($phone) => preg_replace('/\D+/', '', (string) $phone);
+                        $normalizedEmergency = $normalize($value);
+                        $userPhone = $normalize($user->phone ?? null);
+
+                        if ($userPhone !== '' && $normalizedEmergency !== '' && str_ends_with($normalizedEmergency, $userPhone)) {
+                            $fail('Please enter a valid emergency contact number.');
+                        }
+                    },
+                ],
                 'address'                  => 'nullable|string|max:500',
                 'gender'                   => 'nullable|in:M,F,O,male,female,other',
                 'date_of_birth'            => 'nullable|date',

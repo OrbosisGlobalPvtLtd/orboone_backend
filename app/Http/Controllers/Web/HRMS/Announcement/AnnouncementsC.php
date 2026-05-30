@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class AnnouncementsC extends Controller
 {
@@ -115,7 +116,7 @@ class AnnouncementsC extends Controller
                             'is_active' => (bool) $item->is_active,
                             'created_by' => optional($item->creator)->name ?? 'System',
                             'created_at' => optional($item->created_at)->format('d M Y, h:i A'),
-                            'attachment_url' => $item->attachment ? $this->resolver->secureFileUrl($item->attachment) : null,
+                            'attachment_url' => $item->attachment ? route('hrms.announcements.attachment', $item->id) : null,
                             'edit_data' => [
                                 'id' => $item->id,
                                 'title' => $item->title,
@@ -308,9 +309,40 @@ class AnnouncementsC extends Controller
             abort(403, 'Unauthorized access.');
         }
 
+        $user = Auth::user();
+        $employee = $user->employee;
+        $departmentId = $employee ? $employee->department_id : null;
+        
+        $roleIds = $user->roles()->pluck('roles.id')->toArray();
+        if ($user->system_role_id) {
+            $roleIds[] = $user->system_role_id;
+        }
+        $roleIds = array_unique(array_filter($roleIds));
+
         $announcements = AnnouncementM::with('creator')
             ->where('is_active', true)
-            ->whereIn('target_type', ['all', 'employee'])
+            ->where(function ($q) use ($user, $departmentId, $roleIds) {
+                $q->whereIn('target_type', ['all', 'employee', 'employees']);
+                
+                if ($departmentId) {
+                    $q->orWhere(function ($sq) use ($departmentId) {
+                        $sq->where('target_type', 'department')
+                           ->where('target_department_id', $departmentId);
+                    });
+                }
+                
+                if (!empty($roleIds)) {
+                    $q->orWhere(function ($sq) use ($roleIds) {
+                        $sq->where('target_type', 'role')
+                           ->whereIn('target_role_id', $roleIds);
+                    });
+                }
+                
+                $q->orWhere(function ($sq) use ($user) {
+                    $sq->where('target_type', 'user')
+                       ->where('target_user_id', $user->id);
+                });
+            })
             ->where(function ($q) {
                 $q->whereNull('start_date')
                     ->orWhereDate('start_date', '<=', today());
@@ -333,9 +365,9 @@ class AnnouncementsC extends Controller
 
         if (
             ! (bool) $announcement->is_active ||
-            ! in_array($announcement->target_type, ['all', 'employee'], true) ||
-            ($announcement->start_date && $announcement->start_date->isAfter(today())) ||
-            ($announcement->end_date && $announcement->end_date->isBefore(today()))
+            ($announcement->start_date && $announcement->start_date->startOfDay()->isAfter(today())) ||
+            ($announcement->end_date && $announcement->end_date->endOfDay()->isBefore(today())) ||
+            ! $this->isUserInTarget(Auth::user(), $announcement)
         ) {
             abort(403, 'Unauthorized access to this announcement.');
         }
@@ -362,6 +394,34 @@ class AnnouncementsC extends Controller
         }
 
         return view('hrms.announcements.show', compact('announcement', 'accesses'));
+    }
+
+    public function attachment(AnnouncementM $announcement): BinaryFileResponse
+    {
+        $user = auth()->user();
+        $allowed = $this->userCanAccessAnnouncement($user, $announcement);
+
+        Log::info('Announcement attachment access check', [
+            'announcement_id' => $announcement->id,
+            'user_id' => auth()->id(),
+            'target_type' => $announcement->target_type,
+            'is_admin' => $user ? ($user->hasPermission('announcements.view') || $user->hasPermission('announcements.manage')) : false,
+            'is_employee' => $user ? $user->isEmployee() : false,
+            'allowed' => $allowed
+        ]);
+
+        abort_unless($allowed, 403, 'Unauthorized access.');
+        abort_if(empty($announcement->attachment), 404, 'Attachment not available.');
+
+        $resolved = $this->resolver->resolve($announcement->attachment);
+        abort_if(! $resolved, 404, 'Attachment not available.');
+
+        $mime = mime_content_type($resolved['absolute']) ?: 'application/octet-stream';
+
+        return response()->file($resolved['absolute'], [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'inline; filename="' . basename($resolved['absolute']) . '"',
+        ]);
     }
 
     private function validated(Request $request, bool $update = false): array
@@ -418,7 +478,9 @@ class AnnouncementsC extends Controller
                         'announcement_id' => $announcement->id,
                         'announcement_type' => $announcement->type,
                         'priority' => $announcement->priority,
-                        'attachment_url' => $announcement->attachment ? $this->resolver->secureFileUrl($announcement->attachment) : '',
+                        'attachment_url' => $announcement->attachment ? route('hrms.announcements.attachment', $announcement->id) : '',
+                        'web_attachment_url' => $announcement->attachment ? route('hrms.announcements.attachment', $announcement->id) : '',
+                        'api_attachment_url' => $announcement->attachment ? url('/api/v1/announcements/' . $announcement->id . '/attachment') : '',
                         'attachment_type' => $announcement->attachment ? $this->attachmentType($announcement->attachment) : '',
                         'attachment_name' => $announcement->attachment ? basename($announcement->attachment) : '',
                     ]
@@ -532,5 +594,71 @@ class AnnouncementsC extends Controller
         }
 
         return 'document';
+    }
+
+    private function userCanAccessAnnouncement($user, AnnouncementM $announcement): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        // 1. Super Admin / Admin / HR Admin with permission can always view/manage any announcement and its attachments,
+        // regardless of active state, date windows, or targeting.
+        if ($user->hasPermission('announcements.view') || $user->hasPermission('announcements.manage')) {
+            return true;
+        }
+
+        // 2. Otherwise (regular employees):
+        if (!(bool) $announcement->is_active) {
+            return false;
+        }
+
+        if (
+            ($announcement->start_date && $announcement->start_date->startOfDay()->isAfter(today())) ||
+            ($announcement->end_date && $announcement->end_date->endOfDay()->isBefore(today()))
+        ) {
+            return false;
+        }
+
+        return $this->isUserInTarget($user, $announcement);
+    }
+
+    private function isUserInTarget($user, AnnouncementM $announcement): bool
+    {
+        if ($announcement->target_type === 'all') {
+            return true;
+        }
+
+        if ($announcement->target_type === 'role' && $announcement->target_role_id) {
+            if ($user->system_role_id == $announcement->target_role_id) {
+                return true;
+            }
+            $tableName = Schema::hasTable('system_roles') ? 'system_roles' : 'roles';
+            $slug = DB::table($tableName)->where('id', $announcement->target_role_id)->value('slug');
+            return $slug && $user->hasRole($slug);
+        }
+
+        if ($announcement->target_type === 'department' && $announcement->target_department_id) {
+            return $user->employee && $user->employee->department_id == $announcement->target_department_id;
+        }
+
+        if ($announcement->target_type === 'user' && $announcement->target_user_id) {
+            return $user->id == $announcement->target_user_id;
+        }
+
+        // Legacy support
+        if (in_array($announcement->target_type, ['employee', 'employees', 'admin', 'hr'], true)) {
+            $roleSlugs = match ($announcement->target_type) {
+                'employee', 'employees' => ['employee'],
+                'admin' => ['super_admin', 'admin', 'finance_admin', 'project_admin', 'operations_admin', 'custom_admin'],
+                'hr' => ['super_admin', 'admin', 'hr_admin'],
+                default => [],
+            };
+            
+            $userRoleSlug = optional($user->role)->slug;
+            return in_array($userRoleSlug, $roleSlugs, true) || $user->hasRole($roleSlugs);
+        }
+
+        return false;
     }
 }

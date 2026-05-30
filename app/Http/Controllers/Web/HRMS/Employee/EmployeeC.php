@@ -204,15 +204,14 @@ class EmployeeC extends Controller
 
                 $data = $employees->map(function ($employee) {
                     $name = $employee->name ?: '-';
-                    $initial = strtoupper(substr($name, 0, 1));
                     $employeeCode = $employee->employee_code ?: 'EMP-' . $employee->id;
+                    $initial = resolveEmployeeInitials($employee);
+                    $passportPhotoUrl = resolveEmployeePassportPhoto($employee);
 
-                    $avatar = '<div class="eo-avatar">' . e($initial) . '</div>';
-
-                    if (! empty($employee->profile_image)) {
-                        $imageUrl = route('hrms.documents.file', ['path' => ltrim($employee->profile_image, '/')]);
-
-                        $avatar = '<div class="eo-avatar"><img src="' . e($imageUrl) . '" alt="' . e($name) . '" onerror="this.onerror=null; this.outerHTML=\'' . e($initial) . '\';"></div>';
+                    if ($passportPhotoUrl) {
+                        $avatar = '<span class="hrms-emp-avatar hrms-emp-avatar-sm mr-2"><img src="' . e($passportPhotoUrl) . '" alt="' . e($name) . '" class="hrms-emp-avatar-img" onerror="this.style.display=\'none\'; this.parentElement.querySelector(\'.hrms-emp-avatar-fallback\').classList.remove(\'is-hidden\'); this.parentElement.querySelector(\'.hrms-emp-avatar-fallback\').classList.add(\'is-visible\');"><span class="hrms-emp-avatar-fallback is-hidden">' . e($initial) . '</span></span>';
+                    } else {
+                        $avatar = '<span class="hrms-emp-avatar hrms-emp-avatar-sm mr-2"><span class="hrms-emp-avatar-fallback is-visible">' . e($initial) . '</span></span>';
                     }
 
                     $employmentType = ucfirst(str_replace('_', ' ', $employee->employment_type ?? '-'));
@@ -460,20 +459,6 @@ class EmployeeC extends Controller
             $userId = DB::table('users')->insertGetId($userData);
             $passwordSetupUrl = null;
 
-            if (Schema::hasTable('employee_password_setup_tokens') && Route::has('employee.password.setup')) {
-                $plainToken = Str::random(64);
-
-                DB::table('employee_password_setup_tokens')->insert([
-                    'user_id' => $userId,
-                    'token_hash' => hash('sha256', $plainToken),
-                    'expires_at' => now()->addHours(48),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-
-                $passwordSetupUrl = route('employee.password.setup', ['token' => $plainToken]);
-            }
-
             DB::table('user_roles')->updateOrInsert(
                 ['user_id' => $userId, 'role_id' => $request->system_role_id],
                 ['created_at' => now(), 'updated_at' => now()]
@@ -550,27 +535,56 @@ class EmployeeC extends Controller
                 'Employee onboarding created'
             );
 
-            $this->lifecycleService->autoAllocateLeaveAfterProbationIfEligible(
+            $allocationEffectiveDate = $lifecyclePayload['employee_stage'] === 'internship'
+                ? ($lifecyclePayload['internship_start_date'] ?: now()->toDateString())
+                : ($lifecyclePayload['employee_stage'] === 'probation'
+                    ? ($lifecyclePayload['probation_start_date'] ?: now()->toDateString())
+                    : ($request->confirmation_date ?: ($lifecyclePayload['joining_date'] ?: now()->toDateString())));
+
+            $this->lifecycleService->autoAllocateForStage(
                 (int) $employeeId,
-                $lifecyclePayload['probation_end_date']
+                $lifecyclePayload['employee_stage'],
+                $allocationEffectiveDate,
+                auth()->id()
             );
 
             DB::commit();
 
-            try {
-                Mail::to($request->email)->queue(new EmployeeCredentialMail(
-                    $request->name,
-                    $request->email,
-                    $employeeCode,
-                    $plainPassword,
-                    $passwordSetupUrl
-                ));
-            } catch (\Throwable $mailEx) {
-                FacadesLog::error('Employee credential mail dispatch failed', [
+            $recipientEmail = trim((string) $request->email);
+            if ($recipientEmail === '') {
+                FacadesLog::warning('Employee created without credential email dispatch: missing email', [
                     'employee_code' => $employeeCode,
-                    'email' => $request->email,
-                    'error' => $mailEx->getMessage(),
+                    'user_id' => $userId,
+                    'employee_id' => $employeeId,
                 ]);
+            } else {
+                try {
+                    FacadesLog::info('Sending employee credentials', [
+                        'email' => $recipientEmail,
+                        'employee_code' => $employeeCode,
+                        'queue_connection' => config('queue.default'),
+                        'mail_mailer' => config('mail.default'),
+                    ]);
+
+                    Mail::to($recipientEmail)->queue(new EmployeeCredentialMail(
+                        $request->name,
+                        $recipientEmail,
+                        $employeeCode,
+                        $plainPassword,
+                        $passwordSetupUrl
+                    ));
+
+                    FacadesLog::info('Employee credential mail queued successfully', [
+                        'email' => $recipientEmail,
+                        'employee_code' => $employeeCode,
+                    ]);
+                } catch (\Throwable $mailEx) {
+                    FacadesLog::error('Employee credential mail dispatch failed', [
+                        'employee_code' => $employeeCode,
+                        'email' => $recipientEmail,
+                        'error' => $mailEx->getMessage(),
+                    ]);
+                }
             }
 
             return redirect()
@@ -1362,6 +1376,8 @@ class EmployeeC extends Controller
 
             DB::commit();
 
+            app(\App\Services\HRMS\Employee\EmployeeProfileS::class)->checkAndSendAllDocumentsVerifiedEmail((int)$employee);
+
             return redirect()
                 ->route('hrms.employees.pending_profiles')
                 ->with('success', 'Profile approved and all uploaded documents verified successfully.');
@@ -1675,7 +1691,13 @@ class EmployeeC extends Controller
                 if ($empModel) {
                     $empModel->confirmation_date = $updateData['confirmation_date'];
                     $empModel->employee_stage = 'permanent';
-                    app(\App\Services\HRMS\Leave\LeaveAllocationService::class)->generateForEmployee($empModel, (int) now()->year, auth()->id());
+                    app(\App\Services\HRMS\Leave\LeaveAllocationService::class)->generateForEmployee(
+                        $empModel,
+                        (int) now()->year,
+                        auth()->id(),
+                        'permanent',
+                        \Carbon\Carbon::parse($updateData['confirmation_date'], 'Asia/Kolkata')
+                    );
                 }
 
                 if ($request->filled('actual_salary')) {
@@ -1880,6 +1902,15 @@ class EmployeeC extends Controller
             }
 
             DB::table($this->employeeTable)->where('id', $employee)->update($updateData);
+
+            if ($request->next_stage === 'probation') {
+                $this->lifecycleService->autoAllocateForStage(
+                    (int) $employee,
+                    'probation',
+                    $effectiveDate,
+                    auth()->id()
+                );
+            }
 
             if ($request->filled('actual_salary') && $request->next_stage === 'probation') {
                 $this->salaryHistoryService->syncSalary(

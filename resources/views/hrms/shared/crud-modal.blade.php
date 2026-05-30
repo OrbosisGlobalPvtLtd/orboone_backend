@@ -48,6 +48,9 @@
                                     @else
                                         <input type="{{ $field['type'] ?? 'text' }}" name="{{ $name }}" value="{{ $value }}" class="form-control" placeholder="{{ $field['placeholder'] ?? '' }}">
                                     @endif
+                                    @error($name)
+                                        <small class="text-danger d-block mt-1">{{ $message }}</small>
+                                    @enderror
                                 @endif
                             </div>
                         @endforeach

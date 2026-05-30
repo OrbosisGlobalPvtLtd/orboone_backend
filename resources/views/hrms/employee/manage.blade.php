@@ -1200,13 +1200,28 @@ if ($user) {
 
             <div class="ev-header">
                 <div class="ev-user">
-                    <div class="ev-avatar">
-                        @if (!empty($employeeData->profile_image))
-                        <img src="{{ $fileUrl($employeeData->profile_image) }}" alt="Profile">
+                    @php
+                        $passportPhotoUrl = resolveEmployeePassportPhoto($employeeData);
+                        $employeeInitial = $initial;
+                        $employeeName = $employeeData->name ?? 'Employee';
+                    @endphp
+                    <span class="hrms-emp-avatar mr-3">
+                        @if($passportPhotoUrl)
+                            <img
+                                src="{{ $passportPhotoUrl }}"
+                                alt="{{ $employeeName }}"
+                                class="hrms-emp-avatar-img"
+                                onerror="this.style.display='none'; this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.remove('is-hidden'); this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.add('is-visible');"
+                            >
+                            <span class="hrms-emp-avatar-fallback is-hidden">
+                                {{ $employeeInitial }}
+                            </span>
                         @else
-                        {{ $initial }}
+                            <span class="hrms-emp-avatar-fallback is-visible">
+                                {{ $employeeInitial }}
+                            </span>
                         @endif
-                    </div>
+                    </span>
 
                     <div>
                         <h1 class="ev-title">{{ $employeeData->name ?? 'Employee' }}</h1>

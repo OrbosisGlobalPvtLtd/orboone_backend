@@ -16,6 +16,7 @@ class EmployeeProfileM extends Model
 
     protected $fillable = [
         'employee_id',
+        'emergency_contact_number',
         'profile_image',
         'date_of_birth',
         'gender',

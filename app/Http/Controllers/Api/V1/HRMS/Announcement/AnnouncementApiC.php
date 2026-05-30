@@ -6,9 +6,18 @@ use App\Http\Controllers\Controller;
 use App\Models\HRMS\Announcement\AnnouncementM;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
+use App\Services\HRMS\Storage\HrmsFileResolverS;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class AnnouncementApiC extends Controller
 {
+    public function __construct(private HrmsFileResolverS $resolver)
+    {
+    }
+
     public function index()
     {
         $user = Auth::user();
@@ -38,10 +47,12 @@ class AnnouncementApiC extends Controller
                     'description' => $item->description,
                     'type' => $item->type,
                     'priority' => $item->priority,
-                    'attachment' => $item->attachment,
-                    'attachment_url' => $this->announcementAttachmentUrl($item->attachment),
+                    'has_attachment' => !empty($item->attachment),
+                    'attachment_url' => $item->attachment ? route('hrms.announcements.attachment', $item->id) : null,
+                    'attachment_api_url' => $this->announcementAttachmentUrl($item->id, $item->attachment),
                     'attachment_type' => $this->resolveAttachmentType($item->attachment),
                     'attachment_name' => $item->attachment ? basename($item->attachment) : null,
+                    'is_image' => $this->resolveAttachmentType($item->attachment) === 'image',
                     'created_at' => $item->created_at,
                     'created_by' => optional($item->creator)->name ?? 'System',
                     'target_role_id' => $item->target_role_id,
@@ -60,12 +71,21 @@ class AnnouncementApiC extends Controller
     {
         $user = Auth::user();
 
-        if (
-            ! (bool) $announcement->is_active ||
-            ($announcement->start_date && $announcement->start_date->isAfter(today())) ||
-            ($announcement->end_date && $announcement->end_date->isBefore(today())) ||
-            !$this->isUserInTarget($user, $announcement)
-        ) {
+        $allowed = false;
+        if ($user) {
+            if ($user->hasPermission('announcements.view') || $user->hasPermission('announcements.manage')) {
+                $allowed = true;
+            } elseif (
+                (bool) $announcement->is_active &&
+                (! $announcement->start_date || ! $announcement->start_date->startOfDay()->isAfter(today())) &&
+                (! $announcement->end_date || ! $announcement->end_date->endOfDay()->isBefore(today())) &&
+                $this->isUserInTarget($user, $announcement)
+            ) {
+                $allowed = true;
+            }
+        }
+
+        if (!$allowed) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized access to this announcement or it is inactive.'
@@ -86,14 +106,65 @@ class AnnouncementApiC extends Controller
                 'target_user_id' => $announcement->target_user_id,
                 'start_date' => $announcement->start_date,
                 'end_date' => $announcement->end_date,
-                'attachment' => $announcement->attachment,
-                'attachment_url' => $this->announcementAttachmentUrl($announcement->attachment),
+                'has_attachment' => !empty($announcement->attachment),
+                'attachment_url' => $announcement->attachment ? route('hrms.announcements.attachment', $announcement->id) : null,
+                'attachment_api_url' => $this->announcementAttachmentUrl($announcement->id, $announcement->attachment),
                 'attachment_type' => $this->resolveAttachmentType($announcement->attachment),
                 'attachment_name' => $announcement->attachment ? basename($announcement->attachment) : null,
+                'is_image' => $this->resolveAttachmentType($announcement->attachment) === 'image',
                 'created_at' => $announcement->created_at,
                 'updated_at' => $announcement->updated_at,
                 'created_by' => optional($announcement->creator)->name ?? 'System',
             ]
+        ]);
+    }
+
+    public function attachment(AnnouncementM $announcement): BinaryFileResponse
+    {
+        $user = Auth::user();
+
+        $allowed = false;
+        if ($user) {
+            if ($user->hasPermission('announcements.view') || $user->hasPermission('announcements.manage')) {
+                $allowed = true;
+            } elseif (
+                (bool) $announcement->is_active &&
+                (! $announcement->start_date || ! $announcement->start_date->startOfDay()->isAfter(today())) &&
+                (! $announcement->end_date || ! $announcement->end_date->endOfDay()->isBefore(today())) &&
+                $this->isUserInTarget($user, $announcement)
+            ) {
+                $allowed = true;
+            }
+        }
+
+        Log::info('Announcement attachment access check', [
+            'announcement_id' => $announcement->id,
+            'user_id' => auth()->id(),
+            'target_type' => $announcement->target_type,
+            'is_admin' => $user ? ($user->hasPermission('announcements.view') || $user->hasPermission('announcements.manage')) : false,
+            'is_employee' => $user ? $user->isEmployee() : false,
+            'allowed' => $allowed
+        ]);
+
+        if (! $allowed) {
+            abort(403, 'Unauthorized access to this announcement.');
+        }
+
+        if (empty($announcement->attachment)) {
+            abort(404, 'Attachment not available.');
+        }
+
+        $resolved = $this->resolver->resolve($announcement->attachment);
+
+        if (! $resolved) {
+            abort(404, 'Attachment not available.');
+        }
+
+        $mime = mime_content_type($resolved['absolute']) ?: 'application/octet-stream';
+
+        return response()->file($resolved['absolute'], [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'inline; filename="' . basename($resolved['absolute']) . '"',
         ]);
     }
 
@@ -104,7 +175,12 @@ class AnnouncementApiC extends Controller
         }
 
         if ($announcement->target_type === 'role' && $announcement->target_role_id) {
-            return $user->system_role_id == $announcement->target_role_id;
+            if ($user->system_role_id == $announcement->target_role_id) {
+                return true;
+            }
+            $tableName = Schema::hasTable('system_roles') ? 'system_roles' : 'roles';
+            $slug = DB::table($tableName)->where('id', $announcement->target_role_id)->value('slug');
+            return $slug && $user->hasRole($slug);
         }
 
         if ($announcement->target_type === 'department' && $announcement->target_department_id) {
@@ -116,32 +192,28 @@ class AnnouncementApiC extends Controller
         }
 
         // Legacy support
-        if (in_array($announcement->target_type, ['employee', 'admin', 'hr'])) {
+        if (in_array($announcement->target_type, ['employee', 'employees', 'admin', 'hr'], true)) {
             $roleSlugs = match ($announcement->target_type) {
-                'employee' => ['employee'],
+                'employee', 'employees' => ['employee'],
                 'admin' => ['super_admin', 'admin', 'finance_admin', 'project_admin', 'operations_admin', 'custom_admin'],
                 'hr' => ['super_admin', 'admin', 'hr_admin'],
                 default => [],
             };
             
             $userRoleSlug = optional($user->role)->slug;
-            return in_array($userRoleSlug, $roleSlugs);
+            return in_array($userRoleSlug, $roleSlugs, true) || $user->hasRole($roleSlugs);
         }
 
         return false;
     }
 
-    private function announcementAttachmentUrl(?string $path): ?string
+    private function announcementAttachmentUrl(int $announcementId, ?string $path): ?string
     {
         if (!$path) {
             return null;
         }
 
-        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
-            return $path;
-        }
-
-        return url('storage/' . ltrim($path, '/'));
+        return url('/api/v1/announcements/' . $announcementId . '/attachment');
     }
 
     private function resolveAttachmentType(?string $path): string

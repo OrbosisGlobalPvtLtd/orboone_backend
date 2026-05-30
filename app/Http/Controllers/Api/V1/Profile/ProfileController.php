@@ -42,6 +42,7 @@ class ProfileController extends Controller
     private function requiredProfileFields(EmployeeProfileM $profile): array
     {
         return [
+            'emergency_contact_number' => $profile->emergency_contact_number,
             'date_of_birth'         => $profile->date_of_birth,
             'gender'                => $profile->gender,
             'address'               => $profile->address,
@@ -296,6 +297,7 @@ class ProfileController extends Controller
                 'profile' => [
                     'id'                    => $profile->id,
                     'employee_id'           => $profile->employee_id,
+                    'emergency_contact_number' => $profile->emergency_contact_number,
                     'profile_image'         => $this->fileUrl($profile->profile_image),
                     'date_of_birth'         => $profile->date_of_birth,
                     'gender'                => $profile->gender,
@@ -330,6 +332,7 @@ class ProfileController extends Controller
                     'total_experience',
                     'resume_file',
                     'experience_type',
+                    'emergency_contact_number',
                     'bank_account_no',
                     'bank_account_type',
                     'bank_holder_name',
@@ -392,6 +395,24 @@ class ProfileController extends Controller
                 'bank_holder_name' => ['sometimes', 'nullable'],
                 'ifsc_code' => ['sometimes', 'nullable'],
                 'bank_branch' => ['sometimes', 'nullable'],
+                'emergency_contact_number' => [
+                    'sometimes',
+                    'nullable',
+                    'regex:/^(?:\+91)?[6-9]\d{9}$/',
+                    function ($attribute, $value, $fail) use ($employee) {
+                        if ($value === null || trim((string) $value) === '') {
+                            return;
+                        }
+
+                        $normalize = static fn ($phone) => preg_replace('/\D+/', '', (string) $phone);
+                        $normalizedEmergency = $normalize($value);
+                        $userPhone = $normalize($employee->user->phone ?? null);
+
+                        if ($userPhone !== '' && $normalizedEmergency !== '' && str_ends_with($normalizedEmergency, $userPhone)) {
+                            $fail('Please enter a valid emergency contact number.');
+                        }
+                    },
+                ],
 
                 'profile_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
                 'resume_file' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:5120'],
@@ -435,6 +456,7 @@ class ProfileController extends Controller
                     'highest_qualification',
                     'cgpa_percentage',
                     'total_experience',
+                    'emergency_contact_number',
                     'bank_account_no',
                     'bank_account_type',
                     'bank_holder_name',
@@ -606,6 +628,7 @@ class ProfileController extends Controller
                 'profile' => [
                     'id'                    => $profile->id,
                     'employee_id'           => $profile->employee_id,
+                    'emergency_contact_number' => $profile->emergency_contact_number,
                     'profile_image'         => $this->fileUrl($profile->profile_image),
                     'profile_status'        => $profile->profile_status ?? 'pending',
                     'rejection_reason'      => $profile->rejection_reason,

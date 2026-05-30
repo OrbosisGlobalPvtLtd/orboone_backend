@@ -108,6 +108,7 @@ class HRDocumentC extends Controller
             ]);
 
         $this->syncEmployeeVerification($employee->id);
+        app(\App\Services\HRMS\Employee\EmployeeProfileS::class)->checkAndSendAllDocumentsVerifiedEmail($employee->id);
 
         return back()->with('success', 'All documents for ' . ($employee->user->name ?? 'Employee') . ' have been verified successfully.');
     }
@@ -166,6 +167,7 @@ class HRDocumentC extends Controller
 
         $this->syncEmployeeVerification($document->employee_id);
         $this->notifyDocumentStatus($document->fresh(['employee.user', 'documentType']), 'document_approved');
+        app(\App\Services\HRMS\Employee\EmployeeProfileS::class)->checkAndSendAllDocumentsVerifiedEmail($document->employee_id);
 
         return back()->with('success', 'Document verified successfully.');
     }
@@ -212,6 +214,11 @@ class HRDocumentC extends Controller
 
             $this->syncEmployeeVerification($document->employee_id);
             $this->notifyDocumentStatus($document->fresh(['employee.user', 'documentType']), 'document_approved');
+        }
+
+        $employeeIds = $documents->pluck('employee_id')->unique();
+        foreach ($employeeIds as $empId) {
+            app(\App\Services\HRMS\Employee\EmployeeProfileS::class)->checkAndSendAllDocumentsVerifiedEmail($empId);
         }
 
         return back()->with('success', 'Selected documents verified successfully.');

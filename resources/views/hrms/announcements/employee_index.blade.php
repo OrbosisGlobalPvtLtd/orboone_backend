@@ -244,7 +244,7 @@
                 </div>
                 <div class="d-flex gap-2">
                     @if($item->attachment)
-                    <a href="{{ $item->attachment_url ?? route('hrms.documents.file', ['path' => $item->attachment]) }}" target="_blank" class="btn-view p-2" title="View Attachment" style="width: 34px; height: 34px; justify-content: center; padding: 0 !important;">
+                    <a href="{{ route('hrms.announcements.attachment', $item->id) }}" target="_blank" class="btn-view p-2" title="View Attachment" style="width: 34px; height: 34px; justify-content: center; padding: 0 !important;">
                         <i class="fas fa-paperclip"></i>
                     </a>
                     @endif

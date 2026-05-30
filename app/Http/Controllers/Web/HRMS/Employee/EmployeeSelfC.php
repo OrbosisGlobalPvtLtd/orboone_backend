@@ -85,6 +85,19 @@ class EmployeeSelfC extends Controller
             'date_of_birth' => 'required|date',
             'gender' => 'required|in:male,female,other',
             'address' => 'required|string',
+            'emergency_contact_number' => [
+                'required',
+                'regex:/^(?:\+91)?[6-9]\d{9}$/',
+                function ($attribute, $value, $fail) use ($employee) {
+                    $normalize = static fn ($phone) => preg_replace('/\D+/', '', (string) $phone);
+                    $normalizedEmergency = $normalize($value);
+                    $userPhone = $normalize($employee->user->phone ?? null);
+
+                    if ($userPhone !== '' && $normalizedEmergency !== '' && str_ends_with($normalizedEmergency, $userPhone)) {
+                        $fail('Please enter a valid emergency contact number.');
+                    }
+                },
+            ],
             'highest_qualification' => 'required|string',
             'cgpa_percentage' => 'nullable|string',
             'total_experience' => 'required|string',
@@ -163,6 +176,25 @@ class EmployeeSelfC extends Controller
                 'is_profile_completed' => 0,
                 'rejection_reason' => null
             ]);
+
+            $employeeName = $employee->user->name ?? $employee->employee_code ?: 'An employee';
+            app(\App\Services\HRMS\Notification\NotificationS::class)->notifyHrAndSuperAdmin(
+                'Profile Verification Request',
+                $employeeName . ' submitted profile for verification.',
+                'profile_submitted',
+                'hrms.employees.profile.view',
+                ['employee' => $employee->id],
+                [
+                    'employee_id' => $employee->id,
+                    'user_id' => $employee->user_id,
+                    'employee_code' => $employee->employee_code,
+                    'redirect_type' => 'profile_view',
+                    'notification_type' => 'profile_submitted',
+                    'action_url' => route('hrms.employees.profile.view', ['employee' => $employee->id]),
+                    'route_name' => 'hrms.employees.profile.view',
+                    'route_params' => ['employee' => $employee->id],
+                ]
+            );
             
             DB::commit();
             return redirect()->route('hrms.employee.my_profile')->with('success', 'Your profile and documents have been submitted for HR approval.');

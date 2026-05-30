@@ -235,10 +235,12 @@ class MobileDashboardController extends Controller
                     'description' => $item->description,
                     'type' => $item->type,
                     'priority' => $item->priority,
-                    'attachment' => $item->attachment,
-                    'attachment_url' => $this->announcementAttachmentUrl($item->attachment),
+                    'has_attachment' => !empty($item->attachment),
+                    'attachment_url' => $item->attachment ? route('hrms.announcements.attachment', $item->id) : null,
+                    'attachment_api_url' => $this->announcementAttachmentUrl($item->id, $item->attachment),
                     'attachment_type' => $this->resolveAttachmentType($item->attachment),
                     'attachment_name' => $item->attachment ? basename($item->attachment) : null,
+                    'is_image' => $this->resolveAttachmentType($item->attachment) === 'image',
                     'created_at' => $item->created_at,
                     'created_by' => optional($item->creator)->name ?? 'System',
                     'target_role_id' => $item->target_role_id,
@@ -395,7 +397,12 @@ class MobileDashboardController extends Controller
         }
 
         if ($announcement->target_type === 'role' && $announcement->target_role_id) {
-            return $user->system_role_id == $announcement->target_role_id;
+            if ($user->system_role_id == $announcement->target_role_id) {
+                return true;
+            }
+            $tableName = Schema::hasTable('system_roles') ? 'system_roles' : 'roles';
+            $slug = DB::table($tableName)->where('id', $announcement->target_role_id)->value('slug');
+            return $slug && $user->hasRole($slug);
         }
 
         if ($announcement->target_type === 'department' && $announcement->target_department_id) {
@@ -406,32 +413,28 @@ class MobileDashboardController extends Controller
             return $user->id == $announcement->target_user_id;
         }
 
-        if (in_array($announcement->target_type, ['employee', 'admin', 'hr'])) {
+        // Legacy support
+        if (in_array($announcement->target_type, ['employee', 'employees', 'admin', 'hr'], true)) {
             $roleSlugs = match ($announcement->target_type) {
-                'employee' => ['employee'],
+                'employee', 'employees' => ['employee'],
                 'admin' => ['super_admin', 'admin', 'finance_admin', 'project_admin', 'operations_admin', 'custom_admin'],
                 'hr' => ['super_admin', 'admin', 'hr_admin'],
                 default => [],
             };
             
             $userRoleSlug = optional($user->role)->slug;
-            return in_array($userRoleSlug, $roleSlugs);
+            return in_array($userRoleSlug, $roleSlugs, true) || $user->hasRole($roleSlugs);
         }
 
         return false;
     }
 
-    private function announcementAttachmentUrl(?string $path): ?string
+    private function announcementAttachmentUrl(int $announcementId, ?string $path): ?string
     {
         if (!$path) {
             return null;
         }
-
-        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
-            return $path;
-        }
-
-        return url('storage/' . ltrim($path, '/'));
+        return url('/api/v1/announcements/' . $announcementId . '/attachment');
     }
 
     private function resolveAttachmentType(?string $path): string

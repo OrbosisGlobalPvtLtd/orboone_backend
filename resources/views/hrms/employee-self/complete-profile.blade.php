@@ -719,6 +719,11 @@ $disabled = $isReadOnly ? 'disabled' : '';
                                 <label class="profile-label">Address *</label>
                                 <textarea name="address" class="profile-control" required {{ $disabled }}>{{ old('address', $profile?->address) }}</textarea>
                             </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="profile-label"><i class="fas fa-phone-alt mr-1"></i> Emergency Contact Number *</label>
+                                <input type="text" name="emergency_contact_number" class="profile-control" value="{{ old('emergency_contact_number', $profile?->emergency_contact_number) }}" placeholder="Enter emergency contact number" required {{ $disabled }}>
+                                <small class="text-muted d-block mt-1" style="font-size:11px;font-weight:700;">Family member or emergency contact phone number</small>
+                            </div>
                         </div>
                     </div>
 

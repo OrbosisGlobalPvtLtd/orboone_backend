@@ -97,7 +97,13 @@ class ActivateScheduledPermanentEmployees extends Command
                     $empModel->employee_stage = 'permanent';
                     
                     // Trigger pro-rata permanent leave allocation
-                    app(LeaveAllocationService::class)->generateForEmployee($empModel, (int) Carbon::now()->year);
+                    app(LeaveAllocationService::class)->generateForEmployee(
+                        $empModel,
+                        (int) Carbon::parse($effectiveDate, 'Asia/Kolkata')->year,
+                        null,
+                        'permanent',
+                        Carbon::parse($effectiveDate, 'Asia/Kolkata')
+                    );
                 }
 
                 // Sync salary structure if class exists and employee has actual_salary

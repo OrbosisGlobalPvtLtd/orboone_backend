@@ -6,7 +6,6 @@ use App\Http\Controllers\Web\Auth\ForgotPasswordController;
 use App\Http\Controllers\Web\Auth\WelcomeController;
 use App\Http\Controllers\Web\Auth\LoginC;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\DB;
 
 Route::middleware('guest')->group(function () {
     Route::get('/', [WelcomeController::class, 'index'])->name('welcome');
@@ -38,47 +37,3 @@ Route::post('/logout', [LoginC::class, 'logout'])->middleware('auth')->name('log
 
 Route::post('/recruitment-candidates', [RecruitmentCandidatesController::class, 'store'])
     ->name('recruitment-candidates.store');
-
-Route::get('/debug-prod-db-9824', function () {
-    $results = [];
-
-    // 1. Check admin users role slugs
-    $results['admin_users'] = DB::table('users as u')
-        ->leftJoin('roles as r', 'r.id', '=', 'u.system_role_id')
-        ->whereIn('u.email', [
-            'superadmin@orbosis.com',
-            'admin@orbosis.com',
-            'hradmin@orbosis.com',
-            'financeadmin@orbosis.com',
-            'projectadmin@orbosis.com',
-            'operationsadmin@orbosis.com'
-        ])
-        ->select('u.id', 'u.name', 'u.email', 'u.system_role_id', 'r.name as role_name', 'r.slug as role_slug')
-        ->get()
-        ->toArray();
-
-    // 2. Check if admin users are wrongly linked to employees_new
-    $results['linked_employees'] = DB::table('employees_new')
-        ->whereIn('user_id', [1, 2, 3, 9, 10, 11, 12, 13])
-        ->select('id', 'user_id', 'employee_code', 'employee_stage', 'employment_status', 'is_active')
-        ->get()
-        ->toArray();
-
-    // 3. Check employee profiles for admin users
-    $results['employee_profiles'] = DB::table('employee_profiles as ep')
-        ->join('employees_new as e', 'e.id', '=', 'ep.employee_id')
-        ->whereIn('e.user_id', [1, 2, 3, 9, 10, 11, 12, 13])
-        ->select('ep.*')
-        ->get()
-        ->toArray();
-
-    // 4. Compare production role slugs
-    $results['roles'] = DB::table('roles')
-        ->select('id', 'name', 'slug')
-        ->orderBy('id')
-        ->get()
-        ->toArray();
-
-    return response()->json($results, 200, [], JSON_PRETTY_PRINT);
-});
-

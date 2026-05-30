@@ -15,8 +15,26 @@ class EmployeeProfileCompletionS
         $this->documentCompletion = $documentCompletion;
     }
 
-    public function buildCompletionStatus(EmployeeM $employee, EmployeeProfileM $profile): array
+    public function buildCompletionStatus(?EmployeeM $employee, ?EmployeeProfileM $profile = null): array
     {
+        if (!$employee) {
+            return [
+                'is_profile_completed'         => true,
+                'profile_verification_status'  => 'approved',
+                'rejection_reason'             => null,
+                'document_verification_status' => 'verified',
+                'required_documents_verified'  => true,
+                'can_punch_attendance'         => true,
+                'attendance_blocked'           => false,
+                'next_route'                   => 'dashboard',
+                'must_complete_profile'        => false,
+                'completion_percentage'        => 100,
+                'missing_profile_fields'       => [],
+                'document_completion_status'   => [],
+                'experience_type'              => 'fresher',
+            ];
+        }
+
         $isEmployee = method_exists($employee->user, 'isEmployee')
             ? (bool) $employee->user->isEmployee()
             : true;

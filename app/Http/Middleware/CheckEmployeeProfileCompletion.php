@@ -26,14 +26,21 @@ class CheckEmployeeProfileCompletion
         }
 
         $user = Auth::user();
-
-        // Only apply to logged-in employees who are not admins
-        if (!$user || !method_exists($user, 'isEmployee') || !$user->isEmployee() || $user->isAdmin()) {
+        if (!$user) {
             return $next($request);
         }
 
+        // resolve employee by user_id from employees_new/current Employee model
         $employee = EmployeeM::with(['profile'])->where('user_id', $user->id)->first();
+
+        // if no employee found, skip middleware
         if (!$employee) {
+            return $next($request);
+        }
+
+        // if employee found, apply existing completion logic
+        // Only apply to logged-in employees who are not admins
+        if (!method_exists($user, 'isEmployee') || !$user->isEmployee() || $user->isAdmin()) {
             return $next($request);
         }
 

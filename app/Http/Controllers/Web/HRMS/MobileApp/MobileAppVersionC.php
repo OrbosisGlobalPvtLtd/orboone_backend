@@ -96,29 +96,44 @@ class MobileAppVersionC extends Controller
         }
 
         $file = $request->file('apk_file');
+        $folder = 'mobile-apps/hrms/android';
         $filename = 'orboone-hrms-v' . $versionCode . '-' . now()->format('YmdHis') . '.apk';
-        $path = $file->storeAs($this->paths->apk($platform), $filename, 'private');
 
-        $version = DB::transaction(function () use ($validated, $platform, $versionCode, $file, $path, $filename) {
+        $privateDir = storage_path('app/private/' . $folder);
+        if (! is_dir($privateDir)) {
+            mkdir($privateDir, 0755, true);
+        }
+
+        $file->move($privateDir, $filename);
+        $apkFile = $folder . '/' . $filename;
+        $apkSize = filesize($privateDir . '/' . $filename);
+
+        $version = DB::transaction(function () use ($validated, $platform, $versionCode, $file, $apkFile, $filename, $apkSize) {
             MobileAppVersionM::where('platform', $platform)->update(['is_active' => false]);
 
-            return MobileAppVersionM::create([
+            $version = MobileAppVersionM::create([
                 'app_name' => $validated['app_name'] ?: 'OrboOne HRMS',
                 'platform' => $platform,
                 'version_name' => $validated['version_name'],
                 'version_code' => $versionCode,
                 'min_supported_version_code' => (int) $validated['min_supported_version_code'],
-                'apk_file' => $path,
+                'apk_file' => $apkFile,
                 'apk_original_name' => $file->getClientOriginalName(),
-                'apk_size' => $file->getSize(),
-                'apk_mime_type' => $file->getClientMimeType(),
-                'apk_url' => $this->resolver->secureFileUrl($path),
+                'apk_size' => $apkSize,
+                'apk_mime_type' => 'application/vnd.android.package-archive',
+                'apk_url' => '',
                 'release_notes' => $validated['release_notes'] ?? null,
                 'is_force_update' => (bool) ($validated['is_force_update'] ?? false),
                 'is_active' => true,
                 'release_date' => now(),
                 'uploaded_by_user_id' => Auth::id(),
             ]);
+
+            $version->update([
+                'apk_url' => url('/mobile-app/download/' . $version->id),
+            ]);
+
+            return $version;
         });
 
         $this->notifyAppUpdate($version);
@@ -188,6 +203,29 @@ class MobileAppVersionC extends Controller
         return $this->downloadVersion($version, true);
     }
 
+    public function downloadPublic($id)
+    {
+        $version = MobileAppVersionM::where('id', $id)
+            ->where('platform', 'android')
+            ->firstOrFail();
+
+        $path = $this->resolveApkPath($version);
+
+        if (! $path || ! file_exists($path)) {
+            return response('APK not available. Please contact admin.', 404)
+                ->header('Content-Type', 'text/plain');
+        }
+
+        $downloadName = 'OrboOne-v' . $version->version_name . '.apk';
+
+        return response()->download($path, $downloadName, [
+            'Content-Type' => 'application/vnd.android.package-archive',
+            'Content-Disposition' => 'attachment; filename="' . $downloadName . '"',
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+        ]);
+    }
+
     public function downloadLatest()
     {
         $version = MobileAppVersionM::where('platform', 'android')
@@ -195,17 +233,19 @@ class MobileAppVersionC extends Controller
             ->orderByDesc('version_code')
             ->first();
 
-        if (! $version || ! $this->apkExists($version)) {
+        if (! $version) {
             return response('APK not available. Please contact admin.', 404)
                 ->header('Content-Type', 'text/plain');
         }
 
-        return $this->downloadVersion($version, false);
+        return $this->downloadPublic($version->id);
     }
 
     private function downloadVersion(MobileAppVersionM $version, bool $backOnMissing)
     {
-        if (! $this->apkExists($version)) {
+        $path = $this->resolveApkPath($version);
+
+        if (! $path || ! file_exists($path)) {
             if ($backOnMissing) {
                 return back()->with('error', 'APK file is missing in private storage. Please verify storage/app/private/hrms/apk/android.');
             }
@@ -216,25 +256,36 @@ class MobileAppVersionC extends Controller
 
         $downloadName = 'OrboOne-v' . $version->version_name . '.apk';
 
-        $resolved = $this->resolver->resolve($version->apk_file);
-        if (! $resolved) {
-            if ($backOnMissing) {
-                return back()->with('error', 'APK file is missing.');
-            }
-            return response('APK not available. Please contact admin.', 404)
-                ->header('Content-Type', 'text/plain');
-        }
-
-        return response()->download($resolved['absolute'], $downloadName, [
+        return response()->download($path, $downloadName, [
             'Content-Type' => 'application/vnd.android.package-archive',
             'Content-Disposition' => 'attachment; filename="' . $downloadName . '"',
             'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
         ]);
+    }
+
+    private function resolveApkPath(MobileAppVersionM $version): ?string
+    {
+        $relative = ltrim($version->apk_file ?? '', '/');
+
+        $candidates = [
+            storage_path('app/private/' . $relative),
+            storage_path('app/' . $relative),
+            storage_path('app/public/' . $relative),
+        ];
+
+        foreach ($candidates as $path) {
+            if ($relative && file_exists($path)) {
+                return $path;
+            }
+        }
+
+        return null;
     }
 
     private function apkExists(?MobileAppVersionM $version): bool
     {
-        return (bool) ($version && $version->apk_file && $this->resolver->resolve($version->apk_file));
+        return (bool) ($version && $version->apk_file && $this->resolveApkPath($version));
     }
 
     private function authorizePermission(string ...$permissions): void

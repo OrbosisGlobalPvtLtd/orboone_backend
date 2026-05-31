@@ -266,6 +266,9 @@
                     <!-- Export buttons placeholder -->
                     <div id="mobileAppExportButtons"></div>
                     
+                    <a href="{{ route('mobile-app.download-latest') }}" class="set-btn set-btn-soft" style="height: 38px; border-radius: 11px; padding: 0 16px; font-weight: 850; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--set-border);">
+                        <i class="fas fa-download"></i> Latest APK
+                    </a>
                     @if($permissions['canUpload'])
                         <button type="button" class="set-btn" data-toggle="modal" data-target="#uploadApkModal" style="background: linear-gradient(135deg, var(--set-primary), var(--set-secondary)) !important; color: #fff !important; height: 38px; border-radius: 11px; padding: 0 16px; font-weight: 850; font-size: 13px; display: inline-flex; align-items: center; gap: 8px;">
                             <i class="fas fa-upload"></i> Upload APK
@@ -336,7 +339,15 @@
                                 @foreach($versions as $version)
                                     <tr class="apk-data-row">
                                         <td>{{ $loop->iteration }}</td>
-                                        <td class="apk-version-cell"><span style="font-weight: 800; color: var(--set-text);">{{ $version->version_name }}</span></td>
+                                        <td class="apk-version-cell">
+                                            <span style="font-weight: 800; color: var(--set-text);">{{ $version->version_name }}</span>
+                                            <div style="font-size: 10px; color: var(--set-muted); margin-top: 4px; font-family: monospace;">
+                                                Path: {{ $version->apk_file }}
+                                            </div>
+                                            <div style="font-size: 10px; color: var(--set-primary); margin-top: 2px; font-family: monospace;">
+                                                URL: /mobile-app/download/{{ $version->id }}
+                                            </div>
+                                        </td>
                                         <td class="apk-code-cell">
                                             <span class="d-inline-flex" style="font-family: monospace; font-size: 11px; background: #F1F5F9; border: 1px solid var(--set-border); border-radius: 6px; padding: 2px 6px;">
                                                 {{ $version->version_code }}
@@ -363,7 +374,7 @@
                                         <td><span style="font-weight: 700;">{{ $version->apk_size ? number_format($version->apk_size / 1048576, 2) . ' MB' : '-' }}</span></td>
                                         <td>
                                             <div class="d-flex align-items-center justify-content-end" style="gap: 6px;">
-                                                <a href="{{ route('hrms.mobile-app-versions.download', $version->id) }}" class="apk-action-btn" title="Download APK">
+                                                <a href="{{ route('mobile-app.download-public', $version->id) }}" class="apk-action-btn" title="Download APK">
                                                     <i class="fas fa-download"></i>
                                                 </a>
                                                 @if($permissions['canManage'] && ! $version->is_active)

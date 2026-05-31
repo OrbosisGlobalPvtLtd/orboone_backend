@@ -4,15 +4,10 @@ namespace App\Http\Controllers\Api\V1\MobileApp;
 
 use App\Http\Controllers\Controller;
 use App\Models\HRMS\MobileApp\MobileAppVersionM;
-use App\Services\HRMS\Storage\HrmsFileResolverS;
 use Illuminate\Http\Request;
 
 class MobileAppVersionApiC extends Controller
 {
-    public function __construct(private HrmsFileResolverS $resolver)
-    {
-    }
-
     public function latest(Request $request)
     {
         $platform = strtolower($request->query('platform', 'android'));
@@ -23,8 +18,7 @@ class MobileAppVersionApiC extends Controller
             ->orderByDesc('version_code')
             ->first();
 
-        $resolvedApk = $latest && $latest->apk_file ? $this->resolver->resolve($latest->apk_file) : null;
-        if (! $latest || ! $latest->apk_file || ! $resolvedApk) {
+        if (! $latest) {
             return response()->json([
                 'success' => true,
                 'message' => 'APK not available. Please contact admin.',
@@ -36,9 +30,29 @@ class MobileAppVersionApiC extends Controller
             ]);
         }
 
+        $apkPath = $this->resolveApkPath($latest);
+
+        if (! $apkPath) {
+            return response()->json([
+                'success' => true,
+                'message' => 'APK file record exists but file is missing on server.',
+                'errors' => null,
+                'data' => [
+                    'update_available' => false,
+                    'force_update_required' => false,
+                    'debug_apk_file' => $latest->apk_file,
+                ],
+            ]);
+        }
+
         $updateAvailable = $latest->version_code > $installedVersionCode;
-        $forceUpdateRequired = $installedVersionCode < $latest->min_supported_version_code
-            || ($latest->is_force_update && $updateAvailable);
+
+        $forceUpdateRequired =
+            $updateAvailable &&
+            (
+                $latest->is_force_update ||
+                $installedVersionCode < $latest->min_supported_version_code
+            );
 
         return response()->json([
             'success' => true,
@@ -50,15 +64,41 @@ class MobileAppVersionApiC extends Controller
                 'version_name' => $latest->version_name,
                 'version_code' => $latest->version_code,
                 'min_supported_version_code' => $latest->min_supported_version_code,
-                'is_force_update' => (bool) $latest->is_force_update,
                 'update_available' => $updateAvailable,
                 'force_update_required' => $forceUpdateRequired,
-                'release_notes' => $this->releaseNotesAsArray($latest->release_notes),
-                'apk_url' => $latest->apk_url ?: $this->resolver->secureFileUrl($latest->apk_file),
+                'is_force_update' => (bool) $latest->is_force_update,
+                'apk_url' => url('/mobile-app/download/' . $latest->id),
+                'stored_apk_url' => $latest->apk_url,
                 'apk_size' => $latest->apk_size,
-                'release_date' => optional($latest->release_date)->toIso8601String(),
+                'release_notes' => $this->releaseNotesAsArray($latest->release_notes),
+                'release_date' => optional($latest->release_date)->toDateTimeString(),
             ],
         ]);
+    }
+
+    private function resolveApkPath(MobileAppVersionM $version): ?string
+    {
+        $relative = ltrim($version->apk_file ?? '', '/');
+
+        $candidates = [
+            storage_path('app/private/' . $relative),
+            storage_path('app/' . $relative),
+            storage_path('app/public/' . $relative),
+        ];
+
+        foreach ($candidates as $path) {
+            if ($relative && file_exists($path)) {
+                return $path;
+            }
+        }
+
+        \Log::error('Mobile App APK not found', [
+            'version_id' => $version->id,
+            'apk_file' => $version->apk_file,
+            'checked_paths' => $candidates,
+        ]);
+
+        return null;
     }
 
     private function releaseNotesAsArray(?string $notes): array

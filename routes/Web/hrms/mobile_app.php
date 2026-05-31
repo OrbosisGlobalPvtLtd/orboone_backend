@@ -30,3 +30,7 @@ Route::middleware(['web', 'auth'])
 
 Route::get('/mobile-app/download-latest', [MobileAppVersionC::class, 'downloadLatest'])
     ->name('mobile-app.download-latest');
+
+Route::get('/mobile-app/download/{id}', [MobileAppVersionC::class, 'downloadPublic'])
+    ->name('mobile-app.download-public');
+

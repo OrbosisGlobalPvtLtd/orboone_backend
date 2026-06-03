@@ -20,8 +20,8 @@ class PasswordResetOtpMail extends Mailable implements ShouldQueue
 
     public function build()
     {
-        return $this->subject('Your OrboOne HRMS Password Reset OTP')
-            ->from(config('hrms.emails.noreply'), config('mail.from.name'))
+        return $this->subject('Your ' . branding_name() . ' Password Reset OTP')
+            ->from(config('hrms.emails.noreply'), branding_name())
             ->view('emails.password_reset_otp');
     }
 }

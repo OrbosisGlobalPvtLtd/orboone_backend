@@ -287,6 +287,12 @@
         color: #BE123C;
     }
 
+    .badge-missed_punch {
+        background: #fffbeb;
+        color: #b45309;
+        border: 1px solid #fde68a;
+    }
+
     .badge-lwp {
         background: #FEE2E2;
         color: #B42318;

@@ -22,7 +22,7 @@
     <p>Dear <strong>{{ $employee_name ?? 'Employee' }}</strong>,</p>
 
     <p class="text-justify">
-        This letter serves as a formal written warning concerning your performance / conduct issues at <strong>{{ $company_name ?? 'Orbosis Global Pvt Ltd' }}</strong>. 
+        This letter serves as a formal written warning concerning your performance / conduct issues at <strong>{{ $company_name ?? branding_name() }}</strong>. 
         It has been brought to the attention of the management that you have committed a breach of company policies and guidelines.
     </p>
 
@@ -51,7 +51,7 @@
             <tr>
                 <td>
                     Sincerely,<br>
-                    <strong>For {{ $company_name ?? 'Orbosis Global Pvt Ltd' }}</strong>
+                    <strong>For {{ $company_name ?? branding_name() }}</strong>
                     <br><br><br><br>
                     <strong>{{ $signatory_name ?? $authorized_signatory ?? 'Authorized Signatory' }}</strong><br>
                     {{ $signatory_designation ?? 'Head of Human Resources' }}

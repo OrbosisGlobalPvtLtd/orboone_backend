@@ -190,6 +190,11 @@ class AttendanceRegularizationC extends Controller
         if ($row->requested_punch_out) {
             $attendance->punch_out_time = Carbon::parse($row->requested_punch_out)->format('H:i:s');
         }
+        $attendance->missed_punch = false;
+        $attendance->is_missed_punch = false;
+        $attendance->missed_punch_reason = null;
+        $attendance->pending_hr_reason = null;
+        $attendance->is_locked = false;
         $attendance->save();
         app(AttendanceS::class)->calculateAttendanceStats($attendance);
         DB::table('attendance_regularizations')->where('id', $id)->update([
@@ -220,7 +225,31 @@ class AttendanceRegularizationC extends Controller
         abort_unless($this->userHasPermission('attendance.regularization.reject'), 403);
         $this->authorizeRegularizationRow($id, false);
 
-        $note = request('rejection_note') ?: request('rejection_reason');
+        $row = DB::table('attendance_regularizations')->where('id', $id)->first();
+        $note = request('rejection_note') ?: request('rejection_reason') ?: 'Rejected by Admin';
+
+        if ($row) {
+            $attendance = $row->attendance_id ? AttendanceM::find($row->attendance_id) : null;
+            if (!$attendance) {
+                $attendance = AttendanceM::firstOrCreate(
+                    ['employee_id' => $row->employee_id, 'attendance_date' => Carbon::parse($row->created_at)->toDateString()]
+                );
+            }
+            if ($attendance && !$attendance->payroll_processed && !$attendance->is_locked) {
+                $lwpType = app(AttendanceS::class)->attendanceType('lwp');
+                $attendance->attendance_status = 'lwp';
+                if ($lwpType) {
+                    $attendance->attendance_type_id = $lwpType->id;
+                }
+                $attendance->is_lwp = true;
+                $attendance->lwp_reason = 'Missed punch regularization rejected';
+                $attendance->remarks = 'Missed punch regularization rejected';
+                $attendance->save();
+
+                app(AttendanceS::class)->syncAttendanceViolations($attendance);
+            }
+        }
+
         DB::table('attendance_regularizations')->where('id', $id)->update([
             'status' => 'rejected',
             'approved_by_user_id' => $this->actorId(),

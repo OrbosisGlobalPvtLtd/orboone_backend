@@ -613,6 +613,12 @@ $kpis = [
         color: #BE123C;
     }
 
+    .badge-missed_punch {
+        background: #fffbeb;
+        color: #b45309;
+        border: 1px solid #fde68a;
+    }
+
     .badge-default {
         background: #F1F5F9;
         color: #475569;

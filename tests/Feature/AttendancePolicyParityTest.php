@@ -142,9 +142,9 @@ class AttendancePolicyParityTest extends TestCase
         $d2 = AttendanceM::where('employee_id', $this->employee->id)->whereDate('attendance_date', '2026-06-02')->firstOrFail();
         $d3 = AttendanceM::where('employee_id', $this->employee->id)->whereDate('attendance_date', '2026-06-03')->firstOrFail();
 
-        $this->assertSame('pending_hr', $d1->attendance_status);
+        $this->assertSame('missed_punch', $d1->attendance_status);
         $this->assertFalse((bool) $d1->is_lwp);
-        $this->assertSame('pending_hr', $d2->attendance_status);
+        $this->assertSame('missed_punch', $d2->attendance_status);
         $this->assertFalse((bool) $d2->is_lwp);
         $this->assertSame('lwp', $d3->attendance_status);
         $this->assertTrue((bool) $d3->is_lwp);

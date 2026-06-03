@@ -57,7 +57,7 @@ $topbarNotifications = collect();
                         {{ ucfirst($active ?? 'dashboard') }}
                     </h5>
                     <small class="text-muted d-block" style="font-size:12px;">
-                        Orbosis HRMS Panel
+                        {{ $branding['company_name'] ?? config('app.name', 'OrboOne HRMS') }}
                     </small>
                 </div>
             </div>

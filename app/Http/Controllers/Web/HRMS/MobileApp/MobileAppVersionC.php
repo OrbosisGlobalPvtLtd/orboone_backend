@@ -112,7 +112,7 @@ class MobileAppVersionC extends Controller
             MobileAppVersionM::where('platform', $platform)->update(['is_active' => false]);
 
             $version = MobileAppVersionM::create([
-                'app_name' => $validated['app_name'] ?: 'OrboOne HRMS',
+                'app_name' => $validated['app_name'] ?: branding_name(),
                 'platform' => $platform,
                 'version_name' => $validated['version_name'],
                 'version_code' => $versionCode,

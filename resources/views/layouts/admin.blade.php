@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'OrboOne Panel')
+@section('title', $branding['company_name'] ?? config('app.name', 'OrboOne HRMS'))
 
 @section('head')
 <style>

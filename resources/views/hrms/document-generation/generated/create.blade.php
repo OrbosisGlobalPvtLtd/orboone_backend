@@ -305,7 +305,7 @@
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Company Name</label>
-                                <input type="text" name="manual_fields[company_name]" id="common_company_name" class="form-control" value="Orbosis Global Pvt Ltd">
+                                <input type="text" name="manual_fields[company_name]" id="common_company_name" class="form-control" value="{{ old('manual_fields.company_name', branding_name()) }}">
                             </div>
                         </div>
 

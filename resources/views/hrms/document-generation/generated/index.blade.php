@@ -443,7 +443,7 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label text-muted text-uppercase" style="font-size:11px; font-weight:600;">Subject</label>
-                        <input type="text" name="email_subject" class="form-control" style="height:42px; border-radius:10px;" required value="HR Document from Orbosis">
+                        <input type="text" name="email_subject" class="form-control" style="height:42px; border-radius:10px;" required value="HR Document from {{ branding_name() }}">
                     </div>
                     <div class="mb-0">
                         <label class="form-label text-muted text-uppercase" style="font-size:11px; font-weight:600;">Message Body</label>

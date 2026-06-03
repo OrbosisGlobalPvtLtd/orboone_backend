@@ -55,7 +55,7 @@
                     <div class="set-grid mb-4">
                         <div>
                             <label class="set-label">Company Name <span class="text-danger">*</span></label>
-                            <input type="text" name="company_name" class="set-control" value="{{ old('company_name', $company->company_name ?? '') }}" placeholder="e.g. Orbosis Global Pvt Ltd" required>
+                            <input type="text" name="company_name" class="set-control" value="{{ old('company_name', $company->company_name ?? '') }}" placeholder="e.g. {{ branding_name() }}" required>
                         </div>
                         <div>
                             <label class="set-label">Corporate Email Address</label>

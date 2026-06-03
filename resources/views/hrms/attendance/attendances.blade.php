@@ -220,6 +220,12 @@
             color: #9a3412;
         }
 
+        .badge-missed_punch {
+            background: #fffbeb;
+            color: #b45309;
+            border: 1px solid #fde68a;
+        }
+
         .badge-default {
             background: #f1f5f9;
             color: #475569;

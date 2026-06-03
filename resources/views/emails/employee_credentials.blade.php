@@ -7,7 +7,7 @@ $loginUrl = \Illuminate\Support\Facades\Route::has('login') ? route('login') : u
 @section('content')
 <span class="badge">Employee Account</span>
 <h2 style="margin:0 0 8px;">Welcome, {{ $name }}</h2>
-<p style="margin:0 0 12px;color:#475467;">Your OrboOne HRMS account has been created.</p>
+<p style="margin:0 0 12px;color:#475467;">Your {{ branding_name() }} account has been created.</p>
 <table class="meta">
     <tr><td class="label">Email</td><td class="value">{{ $email }}</td></tr>
     <tr><td class="label">Employee Code</td><td class="value">{{ $empid }}</td></tr>

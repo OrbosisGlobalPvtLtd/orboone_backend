@@ -281,6 +281,11 @@ class AttendanceRegularizationController extends ApiController
             if ($row->requested_punch_out) {
                 $attendance->punch_out_time = Carbon::parse($row->requested_punch_out, $attendanceService->attendanceTimezone())->format('H:i:s');
             }
+            $attendance->missed_punch = false;
+            $attendance->is_missed_punch = false;
+            $attendance->missed_punch_reason = null;
+            $attendance->pending_hr_reason = null;
+            $attendance->is_locked = false;
             $attendance->save();
             $attendanceService->calculateAttendanceStats($attendance);
 
@@ -332,16 +337,47 @@ class AttendanceRegularizationController extends ApiController
         if (! $row) {
             return response()->json(['success' => false, 'status' => false, 'message' => 'Regularization request not found.', 'data' => null], 404);
         }
-        if ($row->status !== 'pending') {
-            return response()->json(['success' => false, 'status' => false, 'message' => 'Only pending requests can be rejected.', 'data' => null], 422);
-        }
+        try {
+            DB::transaction(function () use ($row, $data) {
+                $attendanceService = app(AttendanceS::class);
+                $attendance = $row->attendance_id
+                    ? Attendance::where('id', $row->attendance_id)->where('employee_id', $row->employee_id)->first()
+                    : null;
 
-        $row->update([
-            'status' => 'rejected',
-            'approved_by_user_id' => auth()->id(),
-            'approved_at' => now(),
-            'rejection_reason' => $data['rejection_reason'],
-        ]);
+                if (!$attendance) {
+                    $date = $row->requested_punch_in
+                        ? Carbon::parse($row->requested_punch_in, $attendanceService->attendanceTimezone())->toDateString()
+                        : Carbon::parse($row->created_at, $attendanceService->attendanceTimezone())->toDateString();
+                    $attendance = Attendance::firstOrCreate(
+                        ['employee_id' => $row->employee_id, 'attendance_date' => $date],
+                        ['user_id' => optional(EmployeeM::find($row->employee_id))->user_id]
+                    );
+                }
+
+                if ($attendance && !$attendance->payroll_processed && !$attendance->is_locked) {
+                    $lwpType = $attendanceService->attendanceType('lwp');
+                    $attendance->attendance_status = 'lwp';
+                    if ($lwpType) {
+                        $attendance->attendance_type_id = $lwpType->id;
+                    }
+                    $attendance->is_lwp = true;
+                    $attendance->lwp_reason = 'Missed punch regularization rejected';
+                    $attendance->remarks = 'Missed punch regularization rejected';
+                    $attendance->save();
+
+                    $attendanceService->syncAttendanceViolations($attendance);
+                }
+
+                $row->update([
+                    'status' => 'rejected',
+                    'approved_by_user_id' => auth()->id(),
+                    'approved_at' => now(),
+                    'rejection_reason' => $data['rejection_reason'],
+                ]);
+            });
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'status' => false, 'message' => $e->getMessage(), 'data' => null], 422);
+        }
 
         $employee = EmployeeM::find($row->employee_id);
         if ($employee?->user_id) {

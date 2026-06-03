@@ -640,6 +640,7 @@
                                                 'late' => ['Policy Based / Violation Flag', 'badge-muted'],
                                                 'early_leave' => ['Policy Based / Violation Flag', 'badge-muted'],
                                                 'pending_hr' => ['Requires Resolution', 'badge-unpaid'],
+                                                'missed_punch' => ['Requires Resolution / Unpaid Until Resolved', 'badge-unpaid'],
                                                 'punch_blocked' => ['Requires Resolution / Unpaid Until Resolved', 'badge-unpaid'],
                                                 'absent' => ['Unpaid', 'badge-unpaid'],
                                                 'lwp' => ['Unpaid', 'badge-unpaid'],

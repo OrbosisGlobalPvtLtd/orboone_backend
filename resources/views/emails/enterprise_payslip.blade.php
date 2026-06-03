@@ -13,6 +13,6 @@
 </table>
 
 <p style="margin:16px 0 0;color:#475467;font-size:13px;">
-    Please find the attached PDF copy of your payslip for your records. You can also view it directly in your OrboOne HRMS portal.
+    Please find the attached PDF copy of your payslip for your records. You can also view it directly in your {{ branding_name() }} portal.
 </p>
 @endsection

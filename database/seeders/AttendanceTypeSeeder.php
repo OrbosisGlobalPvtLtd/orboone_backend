@@ -22,6 +22,7 @@ class AttendanceTypeSeeder extends Seeder
             ['name' => 'Leave Without Pay', 'code' => 'lwp', 'is_paid' => 0, 'color' => '#B42318', 'is_active' => 1],
             ['name' => 'Pending HR Approval', 'code' => 'pending_hr', 'is_paid' => 0, 'color' => '#7A5AF8', 'is_active' => 1],
             ['name' => 'Punch Blocked', 'code' => 'punch_blocked', 'is_paid' => 0, 'color' => '#344054', 'is_active' => 1],
+            ['name' => 'Missed Punch', 'code' => 'missed_punch', 'is_paid' => 0, 'color' => '#F97316', 'is_active' => 1],
         ];
 
         foreach ($types as $type) {

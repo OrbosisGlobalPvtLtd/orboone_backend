@@ -18,7 +18,7 @@
         <div class="dash-hero">
             <div class="dash-hero-inner">
                 <div>
-                    <div class="dash-eyebrow">Orbosis HRMS</div>
+                    <div class="dash-eyebrow">{{ $branding['company_name'] ?? config('app.name', 'OrboOne HRMS') }}</div>
                     <h1 class="dash-title">{{ $dashboard['role_title'] ?? 'Dashboard' }}</h1>
                     <p class="dash-subtitle">
                         Welcome back, {{ $dashboard['user_name'] ?? auth()->user()->name }}.
@@ -116,6 +116,7 @@
         'leave' => 'Leave',
         'week_off' => 'Week Off',
         'pending_hr' => 'Pending HR',
+        'missed_punches' => 'Missed Punch',
         'late' => 'Late',
         'early_out' => 'Early Out',
     ] as $key => $label)

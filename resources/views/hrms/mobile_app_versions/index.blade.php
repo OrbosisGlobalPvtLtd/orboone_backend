@@ -457,7 +457,7 @@
                         <div class="set-grid">
                             <div>
                                 <label class="set-label">App Name</label>
-                                <input type="text" name="app_name" class="set-control" value="{{ old('app_name', 'OrboOne HRMS') }}">
+                                <input type="text" name="app_name" class="set-control" value="{{ old('app_name', branding_name()) }}">
                             </div>
                             <div>
                                 <label class="set-label">Platform</label>

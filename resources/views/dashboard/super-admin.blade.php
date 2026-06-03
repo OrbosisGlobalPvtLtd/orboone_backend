@@ -1,6 +1,6 @@
 @extends('layouts.panel')
 
-@section('page_title', ($dashboard['meta']['title'] ?? 'Super Admin Dashboard') . ' | OrboOne HRMS')
+@section('page_title', ($dashboard['meta']['title'] ?? 'Super Admin Dashboard') . ' | ' . branding_name())
 
 @section('_content')
 @php
@@ -52,6 +52,7 @@ $attendanceCards = [
 ['label'=>'LWP','value'=>$cards['lwp_count'] ?? 0,'icon'=>'fa-ban','tone'=>'danger','url'=>$safeRoute(['attendances.index','attendance.index'])],
 ['label'=>'Punch Blocked','value'=>$cards['punch_blocked'] ?? 0,'icon'=>'fa-lock','tone'=>'danger','url'=>$safeRoute(['attendances.pending-approval','attendances.index'])],
 ['label'=>'Pending HR','value'=>$cards['pending_hr'] ?? 0,'icon'=>'fa-user-shield','tone'=>'primary','url'=>$safeRoute(['attendances.pending-approval','attendances.index'])],
+['label'=>'Missed Punch','value'=>$cards['missed_punch'] ?? 0,'icon'=>'fa-exclamation-triangle','tone'=>'warning','url'=>$safeRoute(['attendances.pending-approval','attendances.index'])],
 ];
 }
 

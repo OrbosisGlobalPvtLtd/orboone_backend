@@ -28,6 +28,7 @@ class AttendanceRuleSeeder extends Seeder
             ['name' => 'LWP', 'code' => 'lwp', 'color' => '#B42318', 'is_paid' => false, 'is_active' => true],
             ['name' => 'Pending HR', 'code' => 'pending_hr', 'color' => '#F97316', 'is_paid' => true, 'is_active' => true],
             ['name' => 'Punch Blocked', 'code' => 'punch_blocked', 'color' => '#DC2626', 'is_paid' => false, 'is_active' => true],
+            ['name' => 'Missed Punch', 'code' => 'missed_punch', 'color' => '#F97316', 'is_paid' => false, 'is_active' => true],
         ];
 
         foreach ($types as $type) {

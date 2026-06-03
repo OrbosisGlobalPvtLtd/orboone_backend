@@ -270,20 +270,28 @@ class EnterprisePayrollCalculatorS
 
     public function calculateEmployee(EmployeeM $employee, int $month, int $year): array
     {
-        $unresolvedCount = AttendanceM::query()
+        $unresolvedRecord = AttendanceM::query()
             ->where('employee_id', $employee->id)
             ->whereMonth('attendance_date', $month)
             ->whereYear('attendance_date', $year)
             ->where(function ($q) {
                 $q->where('attendance_status', 'pending_hr')
+                    ->orWhere('attendance_status', 'missed_punch')
                     ->orWhere('attendance_status', 'punch_blocked')
                     ->orWhere('is_punch_blocked', true)
                     ->orWhere('is_blocked', true)
                     ->orWhere('is_missed_punch', true)
                     ->orWhere('missed_punch', true);
             })
-            ->count();
-        if ($unresolvedCount > 0) {
+            ->first();
+
+        if ($unresolvedRecord) {
+            $formattedDate = Carbon::parse($unresolvedRecord->attendance_date)->format('Y-m-d');
+            if ($unresolvedRecord->attendance_status === 'missed_punch' || $unresolvedRecord->missed_punch || $unresolvedRecord->is_missed_punch) {
+                throw ValidationException::withMessages([
+                    'attendance' => "Unresolved missed punch exists for {$formattedDate}. Regularization approval or LWP conversion required.",
+                ]);
+            }
             throw ValidationException::withMessages([
                 'attendance' => 'Attendance contains unresolved records. Please resolve before payroll processing.',
             ]);

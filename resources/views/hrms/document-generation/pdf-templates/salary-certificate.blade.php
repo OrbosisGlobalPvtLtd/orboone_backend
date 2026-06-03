@@ -14,7 +14,7 @@
 
     <p class="text-justify" style="font-size: 13px; line-height: 1.8;">
         This is to certify that <strong>Mr./Ms. {{ $employee_name ?? 'Employee Name' }}</strong> (Employee Code: <strong>{{ $employee_code ?? 'EMP' }}</strong>) is a permanent employee of 
-        <strong>{{ $company_name ?? 'Orbosis Global Pvt Ltd' }}</strong>. 
+        <strong>{{ $company_name ?? branding_name() }}</strong>. 
     </p>
 
     <p class="text-justify" style="font-size: 13px; line-height: 1.8;">
@@ -58,7 +58,7 @@
             <tr>
                 <td>
                     Sincerely,<br>
-                    <strong>For {{ $company_name ?? 'Orbosis Global Pvt Ltd' }}</strong>
+                    <strong>For {{ $company_name ?? branding_name() }}</strong>
                     <br><br><br><br>
                     <strong>{{ $signatory_name ?? $authorized_signatory ?? 'Authorized Signatory' }}</strong><br>
                     Human Resources Manager

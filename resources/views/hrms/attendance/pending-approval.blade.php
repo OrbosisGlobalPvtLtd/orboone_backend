@@ -456,6 +456,12 @@
         color: #be123c;
     }
 
+    .badge-missed_punch {
+        background: #fffbeb;
+        color: #b45309;
+        border: 1px solid #fde68a;
+    }
+
     .badge-default {
         background: #f1f5f9;
         color: #475569;
@@ -986,7 +992,7 @@
                     className: 'btn btn-light border',
                     orientation: 'landscape',
                     pageSize: 'A3',
-                    title: 'Orbosis HRMS Pending Unlock & HR Approvals',
+                    title: '{{ branding_name() }} Pending Unlock & HR Approvals',
                     exportOptions: {
                         columns: ':not(.no-export)'
                     }
@@ -995,7 +1001,7 @@
                     extend: 'print',
                     text: '<i class="fas fa-print"></i> Print',
                     className: 'btn btn-light border',
-                    title: 'Orbosis HRMS Pending Unlock & HR Approvals',
+                    title: '{{ branding_name() }} Pending Unlock & HR Approvals',
                     exportOptions: {
                         columns: ':not(.no-export)'
                     }

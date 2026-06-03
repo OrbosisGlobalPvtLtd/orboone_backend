@@ -575,7 +575,7 @@
 
                     <div class="w-100 mt-4 p-3 text-left" style="background:#F8FAFC; border-radius:16px; border:1px dashed #E2E8F0;">
                         <small class="text-muted d-block font-weight-bold mb-1"><i class="fas fa-mobile-alt text-primary"></i> Punch Policy Notice</small>
-                        <span class="small text-muted d-block" style="font-size:11.5px; line-height:1.4;">Web punches are disabled. Please download the Orbosis HRMS Mobile Application to mark your daily attendance.</span>
+                        <span class="small text-muted d-block" style="font-size:11.5px; line-height:1.4;">Web punches are disabled. Please download the {{ $branding['company_name'] ?? config('app.name', 'OrboOne HRMS') }} Mobile Application to mark your daily attendance.</span>
                     </div>
                 </div>
             </div>

@@ -1399,7 +1399,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     className: 'btn btn-light border',
                     orientation: 'landscape',
                     pageSize: 'A4',
-                    title: 'Orbosis HRMS Attendance Regularizations',
+                    title: '{{ branding_name() }} Attendance Regularizations',
                     exportOptions: {
                         columns: ':not(.no-export)'
                     }
@@ -1408,7 +1408,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     extend: 'print',
                     text: '<i class="fas fa-print"></i> Print',
                     className: 'btn btn-light border',
-                    title: 'Orbosis HRMS Attendance Regularizations',
+                    title: '{{ branding_name() }} Attendance Regularizations',
                     exportOptions: {
                         columns: ':not(.no-export)'
                     }

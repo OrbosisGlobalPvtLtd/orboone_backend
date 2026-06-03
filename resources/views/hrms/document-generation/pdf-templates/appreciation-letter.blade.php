@@ -34,7 +34,7 @@
     <p>Dear <strong>{{ $employee_name ?? 'Employee' }}</strong>,</p>
 
     <p class="text-justify">
-        On behalf of the management at <strong>{{ $company_name ?? 'Orbosis Global Pvt Ltd' }}</strong>, we are writing to express our sincere appreciation for your outstanding dedication and exceptional performance.
+        On behalf of the management at <strong>{{ $company_name ?? branding_name() }}</strong>, we are writing to express our sincere appreciation for your outstanding dedication and exceptional performance.
     </p>
 
     <div class="appreciate-box text-justify">
@@ -58,7 +58,7 @@
             <tr>
                 <td>
                     Warm regards,<br>
-                    <strong>For {{ $company_name ?? 'Orbosis Global Pvt Ltd' }}</strong>
+                    <strong>For {{ $company_name ?? branding_name() }}</strong>
                     <br><br><br><br>
                     <strong>{{ $signatory_name ?? $authorized_signatory ?? 'Authorized Signatory' }}</strong><br>
                     {{ $signatory_designation ?? 'Director / Manager' }}

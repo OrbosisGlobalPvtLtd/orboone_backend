@@ -1109,13 +1109,13 @@
                         className: 'btn btn-sm',
                         orientation: 'landscape',
                         pageSize: 'A4',
-                        title: 'Orbosis HRMS Monthly Attendance Report'
+                        title: '{{ branding_name() }} Monthly Attendance Report'
                     },
                     {
                         extend: 'print',
                         text: '<i class="fas fa-print mr-1"></i> Print',
                         className: 'btn btn-sm',
-                        title: 'Orbosis HRMS Monthly Attendance Report'
+                        title: '{{ branding_name() }} Monthly Attendance Report'
                     }
                 ],
 

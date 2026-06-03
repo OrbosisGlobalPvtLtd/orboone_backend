@@ -153,7 +153,7 @@ class AttendancesC extends Controller
             'half_day' => $todayRecords->where('is_half_day', true)->count(),
             'lwp' => $todayRecords->where('is_lwp', true)->count(),
             'punch_blocked' => $todayRecords->filter(fn($item) => $item->is_punch_blocked || $item->is_blocked || $item->attendance_status === 'punch_blocked')->count(),
-            'pending_hr' => $todayRecords->where('attendance_status', 'pending_hr')->count(),
+            'pending_hr' => $todayRecords->filter(fn($item) => in_array($item->attendance_status, ['pending_hr', 'missed_punch'], true))->count(),
             'missed_punches' => $todayRecords->where('missed_punch', true)->count(),
             'currently_working' => $todayRecords->whereNotNull('punch_in_time')->whereNull('punch_out_time')->where('is_blocked', false)->count(),
             'pending_punch_out' => $todayRecords->whereNotNull('punch_in_time')->whereNull('punch_out_time')->count(),
@@ -163,7 +163,7 @@ class AttendancesC extends Controller
             'total_hours' => round($todayRecords->sum('total_work_minutes') / 60, 1),
             'total_late' => $todayRecords->where('is_late', true)->count(),
             'total_early_out' => $todayRecords->where('is_early_out', true)->count(),
-            'total_pending_hr' => $todayRecords->where('attendance_status', 'pending_hr')->count(),
+            'total_pending_hr' => $todayRecords->filter(fn($item) => in_array($item->attendance_status, ['pending_hr', 'missed_punch'], true))->count(),
             'total_blocked' => $todayRecords->filter(fn($item) => $item->is_punch_blocked || $item->is_blocked || $item->attendance_status === 'punch_blocked')->count(),
         ];
 

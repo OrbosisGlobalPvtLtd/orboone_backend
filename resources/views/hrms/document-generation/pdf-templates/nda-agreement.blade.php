@@ -14,7 +14,7 @@
     </p>
 
     <p style="margin-left: 20px;">
-        <strong>1. {{ $company_name ?? 'Orbosis Global Pvt Ltd' }}</strong>, a company incorporated under laws of India, having its principal place of business at {{ $company_address ?? 'Orbosis Corporate Office' }} (hereinafter referred to as the "Disclosing Party" or the "Company").
+        <strong>1. {{ $company_name ?? branding_name() }}</strong>, a company incorporated under laws of India, having its principal place of business at {{ $company_address ?? 'Corporate Office' }} (hereinafter referred to as the "Disclosing Party" or the "Company").
     </p>
 
     <p style="margin-left: 20px; margin-top: 5px;">
@@ -51,7 +51,7 @@
         <table class="signature-table">
             <tr>
                 <td>
-                    <strong>For {{ $company_name ?? 'Orbosis Global Pvt Ltd' }}</strong>
+                    <strong>For {{ $company_name ?? branding_name() }}</strong>
                     <br><br><br><br>
                     ___________________________<br>
                     <strong>{{ $signatory_name ?? $authorized_signatory ?? 'Authorized Signatory' }}</strong><br>

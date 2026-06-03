@@ -71,7 +71,7 @@ $resolveRouteName = function (?string $routeName): ?string {
         <div class="brand">
             <div class="brand-logo-box">
                 <img src="{{ $branding['logo_url'] ?? asset('images/Picsart_26-04-02_12-19-10-396.png') }}"
-                    alt="{{ $branding['company_name'] ?? 'Orbosis HRMS' }}"
+                    alt="{{ $branding['company_name'] ?? config('app.name', 'OrboOne HRMS') }}"
                     class="brand-logo">
             </div>
         </div>
@@ -167,7 +167,7 @@ $resolveRouteName = function (?string $routeName): ?string {
     </div>
 
     <div class="sidebar-footer">
-        <div class="sidebar-footer-title">Orbosis Business Suite</div>
+        <div class="sidebar-footer-title">{{ $branding['company_name'] ?? config('app.name', 'OrboOne HRMS') }}</div>
         <div class="sidebar-footer-sub">v1.0 · {{ date('Y') }}</div>
     </div>
 </aside>

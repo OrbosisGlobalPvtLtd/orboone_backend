@@ -138,7 +138,7 @@
 
 <body>
     <div class="header">
-        <h1>ORBOSIS Global Pvt Ltd</h1>
+        <h1>{{ branding_name() }}</h1>
         <p>Attendance Report: {{ $periodLabel ?? 'All Records' }}</p>
     </div>
 

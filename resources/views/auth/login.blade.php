@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login | {{ $branding['company_name'] ?? 'OrboOne HRMS' }}</title>
+    <title>Login | {{ $branding['company_name'] ?? config('app.name', 'OrboOne HRMS') }}</title>
     <link rel="shortcut icon" href="{{ $branding['favicon_url'] ?? asset('favicon.ico') }}" type="image/x-icon">
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -1549,15 +1549,15 @@
                 </div>
 
                 <h1 class="mobile-main-title">
-                    OrboOne is best experienced using our mobile app.
+                    {{ $branding['company_name'] ?? config('app.name', 'OrboOne HRMS') }} is best experienced using our mobile app.
                 </h1>
 
                 <p class="mobile-main-desc">
                     Our HRMS mobile app gives employees faster access to attendance, leave, tasks, and daily office updates on smaller screens.
                 </p>
 
-                <a href="{{ route('mobile-app.download-latest') }}" class="playstore-badge" aria-label="Download OrboOne HRMS App">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="Download OrboOne HRMS App">
+                <a href="{{ route('mobile-app.download-latest') }}" class="playstore-badge" aria-label="Download {{ $branding['company_name'] ?? config('app.name', 'OrboOne HRMS') }} App">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="Download {{ $branding['company_name'] ?? config('app.name', 'OrboOne HRMS') }} App">
                 </a>
 
                 <div class="mobile-phone-wrap">
@@ -1581,7 +1581,7 @@
                                             <i class="fa-solid fa-building"></i>
                                         </div>
                                         <div class="mock-app-text">
-                                            <strong>OrboOne</strong>
+                                            <strong>{{ $branding['company_name'] ?? config('app.name', 'OrboOne HRMS') }}</strong>
                                             <span>HRMS Dashboard</span>
                                         </div>
                                     </div>
@@ -1711,7 +1711,7 @@
                 </p>
 
                 <div class="mobile-apk-download">
-                    <div class="mobile-apk-title">Download OrboOne HRMS App</div>
+                    <div class="mobile-apk-title">Download {{ $branding['company_name'] ?? config('app.name', 'OrboOne HRMS') }} App</div>
                     <div class="mobile-apk-text">Get the latest secure HRMS Android app.</div>
                     <a href="{{ route('mobile-app.download-latest') }}" class="mobile-apk-btn">
                         <i class="fa-solid fa-download"></i>
@@ -1904,7 +1904,7 @@
                             <i class="fa-solid fa-circle-check"></i>
                             <span>Built for secure office workflow</span>
                         </div>
-                        <div>© {{ date('Y') }} OrboOne HRMS. Secure workforce platform.</div>
+                        <div>© {{ date('Y') }} {{ $branding['company_name'] ?? config('app.name', 'OrboOne HRMS') }}. Secure workforce platform.</div>
                     </div>
                 </div>
 

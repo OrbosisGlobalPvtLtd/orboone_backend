@@ -334,7 +334,7 @@
         </a>
 
         <p class="cs-footer-note mt-4">
-            Orbosis Business Suite &mdash;
+            {{ branding_name() }} &mdash;
             <a href="{{ route('dashboard') }}">HRMS</a> is live now.
             More modules launching soon.
         </p>

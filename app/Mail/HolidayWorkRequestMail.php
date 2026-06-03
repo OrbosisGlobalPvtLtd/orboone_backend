@@ -54,18 +54,19 @@ class HolidayWorkRequestMail extends Mailable implements ShouldQueue
         $reason = $this->holidayRequest->reason;
 
         // Set subject based on status
+        $bName = branding_name();
         if ($this->status === 'submitted') {
-            $subjectText = "New Work Request Submitted - {$employeeName}";
+            $subjectText = "{$bName} - New Work Request Submitted - {$employeeName}";
         } elseif ($this->status === 'approved') {
-            $subjectText = "Work Request Approved";
+            $subjectText = "{$bName} - Work Request Approved";
         } elseif ($this->status === 'rejected') {
-            $subjectText = "Work Request Rejected";
+            $subjectText = "{$bName} - Work Request Rejected";
         } else {
-            $subjectText = "Work Request Update";
+            $subjectText = "{$bName} - Work Request Update";
         }
 
         return $this->subject($subjectText)
-            ->from(config('hrms.emails.noreply'), config('mail.from.name'))
+            ->from(config('hrms.emails.noreply'), $bName)
             ->view('emails.holiday_work_request')
             ->with([
                 'employee_name' => $employeeName,

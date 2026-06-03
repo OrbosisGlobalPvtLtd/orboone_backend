@@ -844,7 +844,8 @@ class AttendanceS
             $allowedMissedPunches = (int) ($policy->allowed_missed_punches ?? 0);
             $limitExceeded = $allowedMissedPunches >= 0 && $missedCount > $allowedMissedPunches;
             $warningIndex = min($missedCount, max(1, $allowedMissedPunches));
-            $type = $limitExceeded && $lwpType ? $lwpType : ($pendingHrType ?: $attendance->attendanceType ?: $absentType);
+            $missedPunchType = $this->attendanceType('missed_punch');
+            $type = $limitExceeded && $lwpType ? $lwpType : ($missedPunchType ?: ($pendingHrType ?: $attendance->attendanceType ?: $absentType));
             $reason = $limitExceeded
                 ? '3rd missed punch converted to LWP'
                 : "Missed punch warning {$warningIndex} of {$allowedMissedPunches}. No deduction applied.";
@@ -854,7 +855,7 @@ class AttendanceS
                 'is_missed_punch' => true,
                 'missed_punch_reason' => $reason,
                 'attendance_type_id' => $type->id,
-                'attendance_status' => $limitExceeded && $lwpType ? 'lwp' : 'pending_hr',
+                'attendance_status' => $limitExceeded && $lwpType ? 'lwp' : 'missed_punch',
                 'attendance_source' => 'system_auto',
                 'is_lwp' => $limitExceeded,
                 'lwp_reason' => $limitExceeded ? $reason : null,
@@ -862,6 +863,9 @@ class AttendanceS
                 'pending_hr_reason' => $limitExceeded ? null : $reason,
                 'is_locked' => $limitExceeded,
                 'is_half_day' => false,
+                'total_work_minutes' => 0,
+                'gross_work_minutes' => 0,
+                'remarks' => $limitExceeded ? $reason : 'Missed punch-out. Regularization required.',
             ]);
 
             if ($dryRun) {
@@ -887,9 +891,79 @@ class AttendanceS
             }
         }
 
+        if (!$dryRun) {
+            $this->finalizeUnresolvedMissedPunches();
+        }
+
         Log::info('HRMS process missed punches completed.', $counts + ['date' => $date]);
 
         return $counts;
+    }
+
+    public function finalizeUnresolvedMissedPunches(): int
+    {
+        $timezone = $this->attendanceTimezone();
+        $today = Carbon::today($timezone);
+
+        $graceDays = 3;
+        if (Schema::hasTable('settings')) {
+            $setting = DB::table('settings')->where('key', 'missed_punch_grace_days')->first();
+            if ($setting) {
+                $graceDays = (int) $setting->value;
+            }
+        }
+
+        $cutoffDate = $today->copy()->subDays($graceDays)->toDateString();
+
+        $lwpType = $this->attendanceType('lwp');
+        if (!$lwpType) {
+            Log::error('LWP attendance type not found. Cannot finalize unresolved missed punches.');
+            return 0;
+        }
+
+        $records = Attendance::query()
+            ->whereDate('attendance_date', '<=', $cutoffDate)
+            ->where(function ($query) {
+                $query->where('attendance_status', 'missed_punch')
+                    ->orWhere(function ($q) {
+                        $q->where('attendance_status', 'pending_hr')
+                            ->where(function ($q2) {
+                                $q2->where('missed_punch', true)
+                                    ->orWhere('is_missed_punch', true);
+                            });
+                    });
+            })
+            ->get();
+
+        $updatedCount = 0;
+        foreach ($records as $attendance) {
+            $hasRegularization = DB::table('attendance_regularizations')
+                ->where('employee_id', $attendance->employee_id)
+                ->where('attendance_id', $attendance->id)
+                ->whereIn('status', ['pending', 'approved'])
+                ->whereNull('deleted_at')
+                ->exists();
+
+            if ($hasRegularization) {
+                continue;
+            }
+
+            $reason = 'Missed punch regularization not submitted within grace period';
+            $attendance->fill([
+                'attendance_status' => 'lwp',
+                'attendance_type_id' => $lwpType->id,
+                'is_lwp' => true,
+                'lwp_reason' => $reason,
+                'remarks' => $reason,
+            ]);
+            $attendance->save();
+
+            $this->syncAttendanceViolations($attendance);
+
+            $updatedCount++;
+        }
+
+        return $updatedCount;
     }
 
     public function autoCloseMissedPunchouts(?Carbon $beforeDate = null): int

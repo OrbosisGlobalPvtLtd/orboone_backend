@@ -23,7 +23,7 @@
 
     <p class="text-justify">
         We are pleased to appoint you as <strong>{{ $designation ?? 'Software Engineer' }}</strong> in the <strong>{{ $department ?? 'Engineering' }}</strong> department at 
-        <strong>{{ $company_name ?? 'Orbosis Global Pvt Ltd' }}</strong> on the following terms and conditions:
+        <strong>{{ $company_name ?? branding_name() }}</strong> on the following terms and conditions:
     </p>
 
     <p class="text-justify">
@@ -63,7 +63,7 @@
             <tr>
                 <td>
                     Sincerely,<br>
-                    <strong>For {{ $company_name ?? 'Orbosis Global Pvt Ltd' }}</strong>
+                    <strong>For {{ $company_name ?? branding_name() }}</strong>
                     <br><br><br><br>
                     <strong>{{ $hr_manager_name ?? $authorized_signatory ?? 'Authorized Signatory' }}</strong><br>
                     Human Resources Manager

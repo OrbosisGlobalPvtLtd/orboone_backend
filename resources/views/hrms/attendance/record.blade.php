@@ -442,6 +442,12 @@
         color: #BE123C
     }
 
+    .badge-missed_punch {
+        background: #fffbeb;
+        color: #b45309;
+        border: 1px solid #fde68a;
+    }
+
     .badge-default {
         background: #F1F5F9;
         color: #475569
@@ -1376,7 +1382,7 @@
                     className: 'leave-export-btn',
                     orientation: 'landscape',
                     pageSize: 'A3',
-                    title: 'Orbosis HRMS Attendance Records',
+                    title: '{{ branding_name() }} Attendance Records',
                     exportOptions: {
                         columns: ':not(.no-export)'
                     }
@@ -1385,7 +1391,7 @@
                     extend: 'print',
                     text: '<i class="fas fa-print"></i> Print',
                     className: 'leave-export-btn',
-                    title: 'Orbosis HRMS Attendance Records',
+                    title: '{{ branding_name() }} Attendance Records',
                     exportOptions: {
                         columns: ':not(.no-export)'
                     }

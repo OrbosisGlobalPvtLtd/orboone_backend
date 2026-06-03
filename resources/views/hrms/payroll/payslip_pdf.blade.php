@@ -30,7 +30,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <div class="company-name">Orbosis HRM</div>
+            <div class="company-name">{{ branding_name() }}</div>
             <div class="company-address">LIG Square, Indore, MP - 452001 | Phone: +91 62650715881</div>
         </div>
 
@@ -113,7 +113,7 @@
         <p class="note">Note: This payslip is generated only from approved payroll data for the selected period.</p>
 
         <div class="footer">
-            &copy; {{ date('Y') }} Orbosis HRM. All Rights Reserved.
+            &copy; {{ date('Y') }} {{ branding_name() }}. All Rights Reserved.
         </div>
     </div>
 </body>

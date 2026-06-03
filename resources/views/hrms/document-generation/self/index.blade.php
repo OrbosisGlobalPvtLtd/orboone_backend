@@ -230,7 +230,7 @@
         <div>
             <div class="set-kicker"><i class="fas fa-fingerprint"></i> Official Records</div>
             <h2 class="set-title">Your Verified Document Vault</h2>
-            <p class="set-subtitle">Access, review, and download official company correspondence, offer letters, appointment agreements, and experience credentials issued directly by OrboOne HR.</p>
+            <p class="set-subtitle">Access, review, and download official company correspondence, offer letters, appointment agreements, and experience credentials issued directly by {{ branding_name() }}.</p>
         </div>
         <div class="set-glass-badge">
             <small class="d-block font-weight-bold" style="font-size: 9px; text-transform: uppercase; color: rgba(255, 255, 255, 0.75); letter-spacing: 0.05em;">Total Documents</small>
@@ -376,7 +376,7 @@
                     <i class="fas fa-folder-open"></i>
                 </div>
                 <h4 class="font-weight-black text-dark mb-2">Your Document Vault is Empty</h4>
-                <p class="text-muted max-w-md mx-auto mb-0" style="font-size: 13.5px;">Official corporate documents, offer contracts, or work credentials generated for you by OrboOne HR departments will be displayed here securely.</p>
+                <p class="text-muted max-w-md mx-auto mb-0" style="font-size: 13.5px;">Official corporate documents, offer contracts, or work credentials generated for you by {{ branding_name() }} will be displayed here securely.</p>
             </div>
         @endforelse
     </div>

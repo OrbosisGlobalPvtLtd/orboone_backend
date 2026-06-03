@@ -25,7 +25,7 @@
         
         <p class="text-justify" style="font-size: 13px; line-height: 1.8; margin-top: 25px; text-align: center;">
             for successfully completing a professional training internship as a <strong>{{ $designation ?? 'Software Development Intern' }}</strong> at <br>
-            <strong style="color: #1e3a8a; font-size: 15px;">{{ $company_name ?? 'Orbosis Global Pvt Ltd' }}</strong>
+            <strong style="color: #1e3a8a; font-size: 15px;">{{ $company_name ?? branding_name() }}</strong>
         </p>
 
         <p style="font-size: 13px; font-style: italic; margin-top: 10px; margin-bottom: 30px;">
@@ -50,7 +50,7 @@
                     <strong>Date:</strong> {{ $issue_date ?? $current_date ?? date('d M, Y') }}
                 </td>
                 <td style="width: 50%; border: none; text-align: right;">
-                    <strong>For {{ $company_name ?? 'Orbosis Global Pvt Ltd' }}</strong>
+                    <strong>For {{ $company_name ?? branding_name() }}</strong>
                     <br><br><br><br>
                     <strong>{{ $signatory_name ?? $authorized_signatory ?? 'Authorized Signatory' }}</strong><br>
                     <span style="font-size: 10px; color: #4b5563;">{{ $signatory_designation ?? 'Head of Human Resources & Training' }}</span>

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="shortcut icon" href="{{ $branding['favicon_url'] ?? asset('favicon.ico') }}" type="image/x-icon">
-    <title>{{ $branding['company_name'] ?? 'OrboOne HRMS' }}</title>
+    <title>{{ $branding['company_name'] ?? config('app.name', 'OrboOne HRMS') }}</title>
 
     @include('partials.theme.branding-vars')
 

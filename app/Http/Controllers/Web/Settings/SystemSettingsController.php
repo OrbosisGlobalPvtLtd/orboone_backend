@@ -56,7 +56,7 @@ class SystemSettingsController extends Controller
     private function settings(): array
     {
         $defaults = [
-            'app_name' => config('app.name', 'Orbosis HRMS'),
+            'app_name' => config('app.name', 'OrboOne HRMS'),
             'timezone' => config('app.timezone', 'Asia/Kolkata'),
             'date_format' => 'd M Y',
             'attendance_start_time' => '09:30',

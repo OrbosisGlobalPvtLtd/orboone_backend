@@ -1,8 +1,7 @@
 <nav class="navbar navbar-expand-lg bg-white border-bottom shadow-sm sticky-top">
     <div class="container">
         <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="{{ url('/') }}">
-            <span style="color:var(--orb-primary);">OrboOne</span>
-            <span class="text-muted" style="font-size:0.9rem;">HRMS</span>
+            <span style="color:var(--orb-primary);">{{ $branding['company_name'] ?? config('app.name', 'OrboOne HRMS') }}</span>
         </a>
 
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#publicNavbar" aria-controls="publicNavbar" aria-expanded="false" aria-label="Toggle navigation">

@@ -288,7 +288,7 @@
     );
 
     $companySettings = \Illuminate\Support\Facades\DB::table('company_settings')->first();
-    $companyName = $companySettings->company_name ?? 'Orbosis Global Pvt. Ltd';
+    $companyName = $companySettings->company_name ?? branding_name();
     $companyEmail = $companySettings->email ?? 'info@orbosis.com';
     $companyPhone = $companySettings->phone ?? '+91-8770702092';
     $companyAddress = $companySettings->address ?? 'Indore, Madhya Pradesh, India';
@@ -365,7 +365,7 @@
 
     <div class="page">
         <div class="company-title">
-            <div class="name">Orbosis Global Pvt. Ltd</div>
+            <div class="name">{{ $companyName }}</div>
             <div class="slip">Salary Slip - {{ strtoupper($monthName) }} - {{ $payroll->year }}</div>
         </div>
 

@@ -35,7 +35,7 @@ class EmployeeCredentialMail extends Mailable implements ShouldQueue
     public function build()
     {
         return $this->subject('Employee Login Credentials')
-            ->from(config('hrms.emails.noreply'), config('mail.from.name'))
+            ->from(config('hrms.emails.noreply'), branding_name())
             ->view('emails.employee_credentials');
     }
 

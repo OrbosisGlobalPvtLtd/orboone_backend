@@ -86,7 +86,7 @@
     <div class="orb-role-wrap">
         <section class="orb-role-hero">
             <div class="orb-hero-main">
-                <div class="orb-eyebrow">Orbosis HRMS</div>
+                <div class="orb-eyebrow">{{ $branding['company_name'] ?? config('app.name', 'OrboOne HRMS') }}</div>
                 <h1 class="orb-title">{{ data_get($meta, 'title', data_get($dashboard, 'role_title', 'Dashboard')) }}</h1>
                 <p class="orb-subtitle">{{ data_get($meta, 'subtitle', 'Your role dashboard summary is ready.') }}</p>
                 <span class="orb-date"><i class="fas fa-calendar-day mr-2"></i>{{ data_get($meta, 'current_date', now()->format('d M Y')) }}</span>

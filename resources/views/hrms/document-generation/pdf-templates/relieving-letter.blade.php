@@ -23,7 +23,7 @@
 
     <p class="text-justify">
         We refer to your resignation letter dated <strong>{{ $resignation_date ?? 'N/A' }}</strong> from the post of 
-        <strong>{{ $designation ?? 'Software Engineer' }}</strong> at <strong>{{ $company_name ?? 'Orbosis Global Pvt Ltd' }}</strong>.
+        <strong>{{ $designation ?? 'Software Engineer' }}</strong> at <strong>{{ $company_name ?? branding_name() }}</strong>.
     </p>
 
     <p class="text-justify">
@@ -40,7 +40,7 @@
     </p>
 
     <p class="text-justify">
-        We thank you for the services rendered to <strong>{{ $company_name ?? 'Orbosis' }}</strong> during your tenure and wish you the very best in all your future professional and personal endeavors.
+        We thank you for the services rendered to <strong>{{ $company_name ?? branding_name() }}</strong> during your tenure and wish you the very best in all your future professional and personal endeavors.
     </p>
 
     <div class="signature-section" style="margin-top: 60px;">
@@ -48,7 +48,7 @@
             <tr>
                 <td>
                     Sincerely,<br>
-                    <strong>For {{ $company_name ?? 'Orbosis Global Pvt Ltd' }}</strong>
+                    <strong>For {{ $company_name ?? branding_name() }}</strong>
                     <br><br><br><br>
                     <strong>{{ $signatory_name ?? $authorized_signatory ?? 'Authorized Signatory' }}</strong><br>
                     {{ $signatory_designation ?? 'Manager - Human Resources' }}

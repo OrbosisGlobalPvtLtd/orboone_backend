@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Forgot Password | OrboOne HRMS</title>
+    <title>Forgot Password | {{ $branding['company_name'] ?? config('app.name', 'OrboOne HRMS') }}</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <style>
         body{margin:0;min-height:100vh;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(135deg,#f8faff 0%,#f3f4ff 45%,#fcf6ff 100%);display:flex;align-items:center;justify-content:center;padding:18px;color:#111827;}

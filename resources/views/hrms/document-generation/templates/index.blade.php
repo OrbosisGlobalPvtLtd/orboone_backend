@@ -1052,7 +1052,7 @@
                                             $badgeBg = '#E6F4EA';
                                             $badgeText = '#137333';
                                             $icon = 'fa-check-circle text-success';
-                                            $desc = 'Correctly mapped to OrboOne data model.';
+                                            $desc = 'Correctly mapped to ' . branding_name() . ' data model.';
                                             if ($status === 'missing') {
                                                 $badgeBg = '#FEF7E0';
                                                 $badgeText = '#B06000';

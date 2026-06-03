@@ -227,6 +227,7 @@ class DashboardResolverS
             'lwp_count' => 0,
             'punch_blocked' => 0,
             'pending_hr' => 0,
+            'missed_punch' => 0,
             
             'total_employees' => 0,
             'active_employees' => 0,
@@ -281,6 +282,7 @@ class DashboardResolverS
             $cards['lwp_count'] = $attRows->filter(function($r) { return $r->code === 'lwp' || (isset($r->is_lwp) && $r->is_lwp == 1); })->count();
             $cards['punch_blocked'] = $attRows->filter(function($r) { return $r->code === 'punch_blocked' || (isset($r->is_blocked) && $r->is_blocked == 1); })->count();
             $cards['pending_hr'] = $attRows->where('code', 'pending_hr')->count();
+            $cards['missed_punch'] = $attRows->where('code', 'missed_punch')->count();
         }
 
         if ($role === 'hr_admin') {
@@ -300,6 +302,7 @@ class DashboardResolverS
                 'pending_unlock' => $this->pendingUnlockCount(),
                 'pending_punch_out' => $this->pendingPunchOutCount(),
                 'new_joiners' => $this->newJoinersCount(),
+                'missed_punch' => (int) ($attendance['missed_punches'] ?? 0),
             ];
         }
 
@@ -702,7 +705,7 @@ class DashboardResolverS
         return [
             'meta' => [
                 'title' => $title,
-                'subtitle' => $payload['subtitle'] ?? 'Orbosis HRMS dashboard',
+                'subtitle' => $payload['subtitle'] ?? branding_name() . ' dashboard',
                 'current_date' => Carbon::now(config('app.timezone', 'Asia/Kolkata'))->format('l, d M Y h:i A'),
                 'user_name' => $user->name ?? 'User',
             ],
@@ -3153,6 +3156,7 @@ class DashboardResolverS
                 'lwp_count' => $attendance['leave'] ?? 0,
                 'punch_blocked' => $attendance['punch_blocked'] ?? 0,
                 'pending_hr' => $attendance['pending_hr'] ?? 0,
+                'missed_punch' => $attendance['missed_punches'] ?? 0,
 
                 'total_employees' => $employee['total'] ?? 0,
                 'active_employees' => $employee['active'] ?? 0,

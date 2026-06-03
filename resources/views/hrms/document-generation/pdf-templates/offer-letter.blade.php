@@ -7,7 +7,7 @@
 @php
     $candidateName = $employee_name ?? $candidate_name ?? 'Candidate Name';
     $candidateFirstName = $employee_first_name ?? explode(' ', trim($candidateName))[0] ?? 'Candidate';
-    $companyName = $company_name ?? 'Orbosis Global Pvt. Ltd.';
+    $companyName = $company_name ?? branding_name();
     $issueDate = $issue_date ?? $current_date ?? date('d M, Y');
     $joiningDate = $joining_date ?? 'To Be Confirmed';
     $designationText = $designation ?? 'Software Developer';
@@ -93,7 +93,7 @@
 
     <p class="text-justify">
         Any work, code, designs, developments, or improvements created by you during the course of your
-        employment will be the property of Orbosis, as per applicable laws and company policy.
+        employment will be the property of {{ $companyName }}, as per applicable laws and company policy.
     </p>
 
     <p class="text-justify">
@@ -141,7 +141,7 @@
     </p>
 
     <p class="text-justify">
-        We are excited about the opportunity to work with you and welcome you to Orbosis.
+        We are excited about the opportunity to work with you and welcome you to {{ $companyName }}.
         We hope this will be a positive and successful association for both you and the organization.
     </p>
 

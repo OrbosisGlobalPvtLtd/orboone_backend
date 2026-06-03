@@ -340,3 +340,22 @@ if (!function_exists('resolveEmployeeInitials')) {
     }
 }
 
+if (!function_exists('branding_name')) {
+    /**
+     * Get the dynamic company/portal branding name with config/hardcoded fallbacks.
+     *
+     * @return string
+     */
+    function branding_name()
+    {
+        try {
+            $branding = \App\Services\Core\Branding\BrandingSettingsS::get();
+            if (!empty($branding['company_name'])) {
+                return $branding['company_name'];
+            }
+        } catch (\Throwable $e) {}
+
+        return config('app.name') ?: 'OrboOne HRMS';
+    }
+}
+

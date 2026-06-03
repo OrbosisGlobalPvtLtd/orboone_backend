@@ -55,7 +55,7 @@
                     <div class="set-grid">
                         <div>
                             <label class="set-label">App Name</label>
-                            <input type="text" name="app_name" class="set-control" value="{{ old('app_name', $settings['app_name']) }}" placeholder="e.g. Orbosis HRMS" required>
+                            <input type="text" name="app_name" class="set-control" value="{{ old('app_name', $settings['app_name']) }}" placeholder="e.g. {{ branding_name() }}" required>
                         </div>
                         <div>
                             <label class="set-label">Timezone</label>

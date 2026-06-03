@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="light">
     <meta name="supported-color-schemes" content="light">
-    <title>{{ $mailTitle ?? 'OrboOne HRMS' }}</title>
+    <title>{{ $mailTitle ?? branding_name() }}</title>
     <style>
         body { margin: 0; padding: 0; background: #f3f5f9; font-family: Arial, Helvetica, sans-serif; color: #101828; }
         .wrap { width: 100%; padding: 20px 10px; box-sizing: border-box; }
@@ -29,17 +29,17 @@
 <div class="wrap">
     <div class="card">
         <div class="hero">
-            <h1>OrboOne HRMS</h1>
+            <h1>{{ branding_name() }}</h1>
             <p>Enterprise Human Resource Management System</p>
         </div>
         <div class="body">
             @yield('content')
         </div>
         <div class="footer">
-            <p><strong>Orbosis Global Pvt Ltd</strong></p>
+            <p><strong>{{ branding_name() }}</strong></p>
             <p>{{ config('app.url') }}</p>
             <p>Support: {{ config('hrms.emails.support') ?: config('mail.from.address') }}</p>
-            <p>&copy; {{ date('Y') }} Orbosis Global Pvt Ltd. All rights reserved.</p>
+            <p>&copy; {{ date('Y') }} {{ branding_name() }}. All rights reserved.</p>
         </div>
     </div>
 </div>

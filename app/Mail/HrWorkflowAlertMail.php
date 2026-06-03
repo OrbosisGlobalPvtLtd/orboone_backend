@@ -22,8 +22,9 @@ class HrWorkflowAlertMail extends Mailable implements ShouldQueue
 
     public function build()
     {
-        $mail = $this->subject($this->subjectText)
-            ->from(config('hrms.emails.noreply'), config('mail.from.name'))
+        $bName = branding_name();
+        $mail = $this->subject($bName . ' - ' . $this->subjectText)
+            ->from(config('hrms.emails.noreply'), $bName)
             ->view('emails.hr_workflow_alert');
 
         if ($this->replyToEmail) {

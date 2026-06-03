@@ -82,7 +82,7 @@ class DocumentPlaceholderResolverS
         $noticePeriodConfirmed = '30 Days';
 
         // 2. Resolve Company Details
-        $companyName = (string) ($company->company_name ?? $branding['company_name'] ?? 'OrboOne HRMS');
+        $companyName = (string) ($company->company_name ?? branding_name());
         $companyAddress = (string) ($company->address ?? '');
         $companyCity = (string) ($company->city ?? '');
         $companyPhone = (string) ($company->phone ?? '');

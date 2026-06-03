@@ -125,7 +125,7 @@
                             <div class="d-flex align-items-start" style="gap: 20px;">
                                 <div class="set-preview" style="width: 100px; height: 100px; border-radius: 16px; background: #f8fafc; border: 1px solid var(--set-border); display: flex; align-items: center; justify-content: center; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.02);">
                                     @if(!empty($brandingData['logo_path']))
-                                        <img src="{{ asset('storage/' . $brandingData['logo_path']) }}" id="logo_img_preview" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                                        <img src="{{ route('hrms.branding.file', ['type' => 'logo', 'filename' => basename($brandingData['logo_path'])]) }}" id="logo_img_preview" style="max-width: 100%; max-height: 100%; object-fit: contain;">
                                     @else
                                         <img src="{{ asset('images/Picsart_26-04-02_12-19-10-396.png') }}" id="logo_img_preview" style="max-width: 100%; max-height: 100%; object-fit: contain;">
                                     @endif
@@ -143,7 +143,7 @@
                             <div class="d-flex align-items-start" style="gap: 20px;">
                                 <div class="set-preview" style="width: 100px; height: 100px; border-radius: 16px; background: #f8fafc; border: 1px solid var(--set-border); display: flex; align-items: center; justify-content: center; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.02);">
                                     @if(!empty($brandingData['favicon_path']))
-                                        <img src="{{ asset('storage/' . $brandingData['favicon_path']) }}" id="favicon_img_preview" style="max-width: 32px; max-height: 32px; object-fit: contain;">
+                                        <img src="{{ route('hrms.branding.file', ['type' => 'favicon', 'filename' => basename($brandingData['favicon_path'])]) }}" id="favicon_img_preview" style="max-width: 32px; max-height: 32px; object-fit: contain;">
                                     @else
                                         <img src="{{ asset('favicon.ico') }}" id="favicon_img_preview" style="max-width: 32px; max-height: 32px; object-fit: contain;">
                                     @endif

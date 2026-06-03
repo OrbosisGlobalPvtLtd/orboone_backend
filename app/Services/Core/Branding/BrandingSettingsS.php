@@ -97,8 +97,10 @@ class BrandingSettingsS
             if (str_starts_with($logoPath, 'http://') || str_starts_with($logoPath, 'https://')) {
                 $logoUrl = $logoPath;
             } else {
-                $logoUrl = asset('storage/' . $logoPath);
+                $logoUrl = route('hrms.branding.file', ['type' => 'logo', 'filename' => basename($logoPath)]);
             }
+        } else {
+            $logoUrl = asset('images/Picsart_26-04-02_12-19-10-396.png');
         }
 
         $faviconUrl = null;
@@ -107,8 +109,10 @@ class BrandingSettingsS
             if (str_starts_with($faviconPath, 'http://') || str_starts_with($faviconPath, 'https://')) {
                 $faviconUrl = $faviconPath;
             } else {
-                $faviconUrl = asset('storage/' . $faviconPath);
+                $faviconUrl = route('hrms.branding.file', ['type' => 'favicon', 'filename' => basename($faviconPath)]);
             }
+        } else {
+            $faviconUrl = asset('favicon.ico');
         }
 
         $primaryColor = self::sanitizeColor(

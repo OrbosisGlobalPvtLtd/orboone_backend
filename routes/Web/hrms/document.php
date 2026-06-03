@@ -370,4 +370,7 @@ Route::middleware(['auth', 'module:hrms'])
             });
 
         Route::redirect('/employee/document', '/hrms/employee/documents');
+
     });
+
+

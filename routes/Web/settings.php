@@ -105,3 +105,4 @@ Route::middleware(['auth', 'web.admin.access'])->group(function () {
         ->middleware('permission:hrms_exit_policy.update|hrms_exit_policy.manage')
         ->name('settings.hrms_exit_policies.update');
 });
+Route::get('/hrms/branding/file/{type}/{filename}', [\App\Http\Controllers\Core\BrandingFileController::class, 'serve'])->name('hrms.branding.file');

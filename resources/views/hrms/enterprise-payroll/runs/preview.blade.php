@@ -12,21 +12,24 @@
             <h1>Payroll Preview {{ $month }}/{{ $year }}</h1>
             <p>Calculation preview uses active salary structure, payroll-ready attendance summaries and approved leave/claim data.</p>
         </div>
-        @if(empty($errors) && auth()->user() && auth()->user()->hasPermission('enterprise_payroll_run.generate'))
+        @if(empty($payrollErrors) && auth()->user() && auth()->user()->hasPermission('enterprise_payroll_run.generate'))
             <form method="POST" action="{{ route('enterprise-payroll.runs.generate') }}">
                 @csrf
                 <input type="hidden" name="month" value="{{ $month }}">
                 <input type="hidden" name="year" value="{{ $year }}">
+                @if(!empty($employee_id))
+                    <input type="hidden" name="employee_id" value="{{ $employee_id }}">
+                @endif
                 <button class="ep-btn ep-btn-primary"><i class="fas fa-play"></i> Generate Payroll</button>
             </form>
         @endif
     </div>
 
-    @if($errors)
+    @if($payrollErrors)
         <div class="alert alert-danger border-0 shadow-sm">
             <strong>Payroll cannot be generated until these issues are fixed.</strong>
             <ul class="mb-0 mt-2">
-                @foreach($errors as $error)
+                @foreach($payrollErrors as $error)
                     <li>{{ $error['employee'] }}: {{ $error['error'] }}</li>
                 @endforeach
             </ul>

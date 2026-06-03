@@ -250,7 +250,7 @@
                 datasets: [{
                         label: 'Present',
                         data: presentData,
-                        borderColor: '#4B00E8',
+                        borderColor: var(--orb-primary),
                         backgroundColor: 'rgba(75, 0, 232, 0.12)',
                         borderWidth: 3,
                         fill: true,

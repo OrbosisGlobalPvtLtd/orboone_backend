@@ -10,7 +10,7 @@
     min-height: calc(100vh - 80px);
 }
 .orb-hero {
-    background: linear-gradient(135deg, #4B00E8 0%, #8600EE 100%);
+    background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary));
     border-radius: 26px;
     padding: 30px 40px;
     color: white;
@@ -46,7 +46,7 @@
 }
 .btn-orb-white {
     background: white;
-    color: #4B00E8;
+    color: var(--orb-primary);
     border: none;
     border-radius: 50px;
     padding: 10px 20px;
@@ -83,7 +83,7 @@
     gap: 15px;
     box-shadow: 0 4px 15px rgba(16,24,40,.03);
     border: 1px solid #E7EAF3;
-    border-bottom: 3px solid #4B00E8;
+    border-bottom: 3px solid var(--orb-primary);
     margin-bottom: 24px;
     transition: all 0.3s;
 }
@@ -96,7 +96,7 @@
     height: 48px;
     border-radius: 50%;
     background: #F4F2FF;
-    color: #4B00E8;
+    color: var(--orb-primary);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -160,7 +160,7 @@
 
     <div class="row">
         <div class="col-md-3 col-sm-6">
-            <div class="stat-card" style="border-bottom-color: #4B00E8;">
+            <div class="stat-card" style="border-bottom-color: var(--orb-primary);">
                 <div class="stat-icon"><i class="fas fa-file-alt"></i></div>
                 <div class="stat-info">
                     <h4>{{ $generatedDocuments }}</h4>
@@ -206,7 +206,7 @@
                 <a href="{{ route('hrms.document-generation.generated.index') }}" class="btn btn-sm btn-light rounded-pill px-3 me-2 border">View All</a>
                 @endif
                 @if(Route::has('hrms.document-generation.generated.create'))
-                <a href="{{ route('hrms.document-generation.generated.create') }}" class="btn btn-sm rounded-pill px-3 text-white" style="background: linear-gradient(135deg, #4B00E8 0%, #8600EE 100%);">Generate New</a>
+                <a href="{{ route('hrms.document-generation.generated.create') }}" class="btn btn-sm rounded-pill px-3 text-white" style="background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary));">Generate New</a>
                 @endif
             </div>
         </div>

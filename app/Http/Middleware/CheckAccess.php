@@ -30,6 +30,12 @@ class CheckAccess
             return $next($request);
         }
 
+        if ($routeName === 'enterprise-payroll.payslips.download' || $routeName === 'enterprise-payroll.payslips.view' || $routeName === 'enterprise-payroll.payslips.preview') {
+            if ($user->hasPermission('enterprise_payslip.download') || $user->hasPermission('enterprise_payslip.view') || $user->hasPermission('enterprise_payroll.my_payslips.view') || $user->hasPermission('enterprise_payslip.generate')) {
+                return $next($request);
+            }
+        }
+
         $parts     = explode('.', $routeName);
         $main      = $parts[1] ?? null;
 

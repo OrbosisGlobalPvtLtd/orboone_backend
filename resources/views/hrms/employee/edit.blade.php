@@ -5,8 +5,7 @@
 @section('_content')
 <style>
     :root {
-        --orb-primary: #4B00E8;
-        --orb-secondary: #8600EE;
+
         --orb-rose: #EC4E74;
         --orb-bg: #F6F7FB;
         --orb-card: #FFFFFF;
@@ -41,7 +40,7 @@
     }
 
     .eo-header {
-        background: linear-gradient(135deg, #4B00E8, #8600EE) !important;
+        background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary)) !important;
         border: 0 !important;
         border-radius: 22px !important;
         box-shadow: 0 12px 30px rgba(75, 0, 232, .16) !important;
@@ -111,7 +110,7 @@
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        color: #4B00E8 !important;
+        color: var(--orb-primary) !important;
         background: #F4F2FF !important;
         font-size: 16px !important;
         flex: 0 0 auto !important;
@@ -322,7 +321,7 @@
 
     .btn-orb {
         border: 0 !important;
-        background: linear-gradient(135deg, #4B00E8, #8600EE) !important;
+        background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary)) !important;
         color: #fff !important;
         box-shadow: 0 8px 18px rgba(75, 0, 232, .16) !important;
     }

@@ -30,7 +30,17 @@ class AppServiceProvider extends ServiceProvider
     {
         Paginator::useBootstrap();
 
+        \Illuminate\Support\Facades\Blade::directive('checked', function ($expression) {
+            return "<?php echo ({$expression}) ? 'checked' : ''; ?>";
+        });
+
+        \Illuminate\Support\Facades\Blade::directive('selected', function ($expression) {
+            return "<?php echo ({$expression}) ? 'selected' : ''; ?>";
+        });
+
         View::composer('*', function ($view) {
+            $view->with('branding', \App\Services\Core\Branding\BrandingSettingsS::get());
+
             if (auth()->check()) {
                 $accesses = resolve(Access::class)->get(true);
                 $view->with('accesses', $accesses);

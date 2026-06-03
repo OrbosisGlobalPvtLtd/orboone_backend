@@ -13,6 +13,18 @@ class DocumentTemplate extends Model
 
     protected $table = 'document_templates';
     protected $guarded = [];
+    protected $casts = [
+        'detected_fields' => 'array',
+        'detected_placeholders' => 'array',
+        'invalid_placeholders' => 'array',
+        'missing_required_placeholders' => 'array',
+        'unknown_placeholders' => 'array',
+        'placeholder_mapping' => 'array',
+        'is_active' => 'boolean',
+        'is_certificate' => 'boolean',
+        'requires_review' => 'boolean',
+        'is_archived' => 'boolean',
+    ];
 
     public function fields()
     {

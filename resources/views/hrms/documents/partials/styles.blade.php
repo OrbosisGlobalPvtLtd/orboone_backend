@@ -1,7 +1,7 @@
 <style>
     :root {
-        --dm-primary: #4B00E8;
-        --dm-secondary: #8600EE;
+        --dm-primary: var(--orb-primary, #4B00E8);
+        --dm-secondary: var(--orb-secondary, #FF5252);
         --dm-bg: #F6F7FB;
         --dm-border: #E7EAF3;
         --dm-text: #101828;

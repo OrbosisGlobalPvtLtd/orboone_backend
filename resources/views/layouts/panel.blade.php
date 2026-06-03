@@ -5,8 +5,10 @@
 @section('head')
 <style>
     :root{
-        --primary:#4B00E8;
-        --primary-2:#8600EE;
+        --orb-primary: {{ $branding['primary_color'] ?? '#4B00E8' }};
+        --orb-secondary: {{ $branding['secondary_color'] ?? '#FF5252' }};
+        --primary: var(--orb-primary);
+        --primary-2: var(--orb-secondary);
         --primary-3:#D400D5;
         --primary-4:#EC4E74;
         --primary-5:#FFB101;
@@ -40,15 +42,22 @@
 
     /* ========== SIDEBAR ========== */
     .sidebar{
+        --orb-primary: {{ $branding['primary_color'] ?? '#4B00E8' }};
+        --orb-secondary: {{ $branding['secondary_color'] ?? '#FF5252' }};
         position:fixed;
         top:0;
         left:0;
         width:var(--sidebar-width);
         height:100vh;
         background:
-            radial-gradient(circle at top right, rgba(255,255,255,0.14), transparent 26%),
-            radial-gradient(circle at bottom left, rgba(255,255,255,0.10), transparent 24%),
-            linear-gradient(180deg, #4B00E8 0%, #8600EE 38%, #D400D5 70%, #EC4E74 88%, #FFB101 100%);
+            radial-gradient(circle at top right, rgba(255,255,255,.12), transparent 30%),
+            radial-gradient(circle at bottom left, rgba(255,255,255,.08), transparent 25%),
+            linear-gradient(
+                180deg,
+                var(--orb-primary) 0%,
+                var(--orb-primary) 22%,
+                var(--orb-secondary) 100%
+            ) !important;
         z-index:1200;
         transition:width .28s ease, transform .28s ease;
         overflow:hidden;
@@ -120,7 +129,7 @@
     }
 
     .brand-title{
-        color:#4B00E8;
+        color:var(--orb-primary);
         font-size:21px;
         font-weight:800;
         line-height:1;
@@ -230,7 +239,7 @@
 
     .module-switch-item.active{
         background:#fff;
-        color:#4B00E8;
+        color:var(--orb-primary);
         border-color:#fff;
         box-shadow:0 10px 24px rgba(17,24,39,0.14);
     }
@@ -271,7 +280,7 @@
         content:"";
         position:absolute;
         inset:0;
-        background:rgba(255,255,255,0.08);
+        background:rgba(255,255,255,0.14);
         opacity:0;
         transition:.2s ease;
         border-radius:inherit;
@@ -289,13 +298,13 @@
     }
 
     .menu > a.active{
-        background:#fff;
-        color:#4B00E8;
+        background:rgba(255,255,255,0.95);
+        color:var(--orb-primary);
         box-shadow:0 10px 24px rgba(17,24,39,0.14);
     }
 
     .menu > a.active .menu-icon{
-        color:#4B00E8;
+        color:var(--orb-primary);
     }
 
     .menu-icon{
@@ -309,75 +318,67 @@
 
     .menu-text{
         white-space:nowrap;
-        position:relative;
-        z-index:1;
         font-size:14px;
+        transition:opacity 0.2s ease;
     }
 
     .menu-badge{
-        margin-left:auto;
-        min-width:28px;
-        height:20px;
-        padding:0 7px;
-        border-radius:999px;
-        display:inline-flex;
-        align-items:center;
-        justify-content:center;
-        font-size:10px;
-        font-weight:800;
-        background:#fff;
-        color:#4B00E8;
-        box-shadow:0 6px 14px rgba(17,24,39,0.10);
+        font-size:11px;
+        font-weight:900;
+        padding:4px 8px;
+        border-radius:8px;
+        background:rgba(255,255,255,0.15);
+        color:#fff;
         position:relative;
         z-index:1;
     }
 
     .menu > a.active .menu-badge{
-        background:#4B00E8;
+        background:var(--orb-primary);
         color:#fff;
     }
 
-    /* ========== COLLAPSE GROUPS ========== */
-    .sidebar-group{
-        margin:0;
-    }
+    /* .sidebar-group{
+        margin-bottom:8px;
+    } */
 
     .sidebar-group + .sidebar-group{
-        margin-top:2px;
+        border-top:1px solid rgba(255,255,255,0.08);
+        /* padding-top:12px; */
     }
 
     .sidebar-group.open .sidebar-group-toggle{
-        background:rgba(255,255,255,0.10);
-        color:#fff;
+        background:rgba(255,255,255,0.05);
     }
 
     .group-chevron{
-        margin-left:auto;
-        position:relative;
-        z-index:1;
-        transition:transform .25s ease;
-        font-size:12px;
+        font-size:11px;
+        transition:transform .24s ease;
     }
 
     .sidebar-group.open .group-chevron{
-        transform:rotate(180deg);
+        transform:rotate(90deg);
     }
 
     .sidebar-submenu{
-        padding:6px 0 2px 0;
-        margin:2px 0 4px 18px;
-        border-left:1px solid rgba(255,255,255,0.22);
+        max-height:0;
+        overflow:hidden;
+        transition:max-height .28s ease;
+        padding-left:14px;
+    }
+
+    .sidebar-submenu.show{
+        max-height:1000px;
     }
 
     .sub-link{
-        min-height:38px;
         display:flex;
         align-items:center;
         gap:10px;
-        border-radius:12px;
-        padding:0 12px 0 14px;
-        margin:4px 0 0 10px;
-        color:rgba(255,255,255,0.82);
+        height:38px;
+        padding:0 14px;
+        border-radius:10px;
+        color:rgba(255,255,255,0.76);
         font-size:13px;
         font-weight:600;
         transition:.2s ease;
@@ -385,13 +386,13 @@
     }
 
     .sub-link:hover{
-        background:rgba(255,255,255,0.10);
+        background:rgba(255,255,255,0.14);
         color:#fff;
     }
 
     .sub-link.active{
-        background:#fff;
-        color:#4B00E8;
+        background:rgba(255,255,255,0.95);
+        color:var(--orb-primary);
         box-shadow:0 8px 18px rgba(17,24,39,0.12);
     }
 
@@ -552,7 +553,7 @@
 
     .sidebar-toggle:hover{
         background:#F3EDFF;
-        color:#4B00E8;
+        color:var(--orb-primary);
     }
 
     .page-title{
@@ -586,7 +587,7 @@
         width:10px;
         height:10px;
         border-radius:50%;
-        background:#4B00E8;
+        background:var(--orb-primary);
         flex-shrink:0;
     }
 
@@ -717,7 +718,7 @@
         align-items: center !important;
         justify-content: center !important;
         background: #F4F2FF !important;
-        color: #4B00E8 !important;
+        color: var(--orb-primary) !important;
         font-weight: 800 !important;
         flex-shrink: 0 !important;
     }
@@ -762,7 +763,7 @@
         align-items: center !important;
         justify-content: center !important;
         background: #F4F2FF !important;
-        color: #4B00E8 !important;
+        color: var(--orb-primary) !important;
         font-weight: 800 !important;
         flex-shrink: 0 !important;
     }

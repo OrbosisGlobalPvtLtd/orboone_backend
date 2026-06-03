@@ -10,8 +10,7 @@
 @section('_content')
 <style>
     :root {
-        --orb-primary: #4B00E8;
-        --orb-secondary: #8600EE;
+
         --orb-bg: #F6F7FB;
         --orb-border: #E7EAF3;
         --orb-text: #101828;
@@ -36,7 +35,7 @@
     }
 
     .att-hero {
-        background: linear-gradient(135deg, #4B00E8 0%, #7600EC 55%, #9A00F5 100%);
+        background: linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%);
         border-radius: 26px !important;
         padding: 30px;
         margin-bottom: 18px;
@@ -168,7 +167,7 @@
         height: 36px;
         border-radius: 13px;
         background: var(--metric-soft, #F4F2FF);
-        color: var(--metric-color, #4B00E8);
+        color: var(--metric-color, var(--orb-primary));
         display: flex;
         align-items: center;
         justify-content: center;
@@ -198,7 +197,7 @@
     .att-metric-line {
         height: 3px;
         border-radius: 999px;
-        background: linear-gradient(90deg, var(--metric-color, #4B00E8), transparent);
+        background: linear-gradient(90deg, var(--metric-color, var(--orb-primary)), transparent);
         margin-top: 8px;
     }
 
@@ -271,7 +270,7 @@
     .att-total-pill.purple {
         border-color: #E0D7FF;
         background: #F5F2FF;
-        color: #4B00E8;
+        color: var(--orb-primary);
     }
 
     .att-filter-panel {
@@ -488,11 +487,11 @@
 
     .att-action-edit {
         background: #F4F2FF;
-        color: #4B00E8;
+        color: var(--orb-primary);
     }
 
     .att-action-edit:hover {
-        background: #4B00E8;
+        background: var(--orb-primary);
         color: #fff;
     }
 
@@ -576,7 +575,7 @@
 
     .dataTables_wrapper .dt-buttons .btn:hover {
         background: #F4F2FF !important;
-        color: #4B00E8 !important;
+        color: var(--orb-primary) !important;
         border-color: #D9CCFF !important;
     }
 
@@ -683,7 +682,7 @@
         @endif
 
         <div class="att-metric-grid">
-            <div class="att-metric" style="--metric-color:#4B00E8;--metric-soft:#F4F2FF;">
+            <div class="att-metric" style="--metric-color:var(--orb-primary);--metric-soft:#F4F2FF;">
                 <div class="att-metric-top">
                     <div class="att-metric-icon"><i class="fas fa-lock"></i></div>
                     <div class="att-metric-value">{{ $stats['total_blocked'] ?? 0 }}</div>

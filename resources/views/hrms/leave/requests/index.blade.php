@@ -71,7 +71,7 @@
         font-weight: 800 !important;
         border: 1px solid #E7EAF3 !important;
         background: #fff !important;
-        color: #4B00E8 !important;
+        color: var(--set-primary) !important;
         cursor: pointer;
         transition: all 0.2s ease;
     }

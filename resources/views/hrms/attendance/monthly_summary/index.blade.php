@@ -11,8 +11,7 @@
 @section('_content')
 <style>
     :root {
-        --orb-primary: #4B00E8;
-        --orb-secondary: #8600EE;
+
         --orb-bg: #F6F7FB;
         --orb-card: #FFFFFF;
         --orb-border: #E7EAF3;
@@ -38,7 +37,7 @@
     }
 
     .att-hero {
-        background: linear-gradient(135deg, #4B00E8 0%, #7600EC 55%, #9A00F5 100%);
+        background: linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%);
         border-radius: 26px !important;
         padding: 30px;
         margin-bottom: 18px;
@@ -206,7 +205,7 @@
     .att-total-pill.purple {
         border-color: #E0D7FF;
         background: #F5F2FF;
-        color: #4B00E8;
+        color: var(--orb-primary);
     }
 
     .att-filter-panel {

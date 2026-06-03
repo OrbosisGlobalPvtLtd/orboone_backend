@@ -90,7 +90,7 @@
         padding: 6px 9px;
         border-radius: 10px;
         background: #F4F2FF;
-        color: #4B00E8;
+        color: var(--orb-primary);
         font-size: 12px;
         font-weight: 900;
         white-space: nowrap;
@@ -146,7 +146,7 @@
     .eo-icon-btn:hover,
     .eo-action-btn:hover {
         color: #fff;
-        background: #4B00E8;
+        background: var(--orb-primary);
     }
 
     .eo-action-btn {

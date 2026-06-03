@@ -1,7 +1,5 @@
 <style>
 :root{
-    --orb-primary:#4B00E8;
-    --orb-secondary:#8600EE;
     --orb-bg:#F6F7FB;
     --orb-border:#E7EAF3;
     --orb-text:#101828;
@@ -115,7 +113,7 @@ body {
     text-decoration:none!important;
 }
 
-.leave-btn-primary{background:linear-gradient(135deg,var(--orb-primary),var(--orb-secondary));color:#fff!important;}
+.leave-btn-primary{background:linear-gradient(135deg, var(--orb-primary), var(--orb-secondary));color:#fff!important;}
 .leave-btn-light{background:#fff;color:var(--orb-text);border:1px solid var(--orb-border);}
 .leave-btn-danger{background:linear-gradient(135deg,#ec4e74,#ff7675);color:#fff!important;}
 .leave-btn-success{background:linear-gradient(135deg,#10b981,#059669);color:#fff!important;}
@@ -224,7 +222,7 @@ body {
 
 .leave-modal-header{
     padding: 22px 26px !important;
-    background:linear-gradient(135deg,#4B00E8,#8600EE) !important;
+    background:linear-gradient(135deg, var(--orb-primary), var(--orb-secondary)) !important;
     color:#fff !important;
     border-bottom:0 !important;
     display:flex !important;
@@ -296,7 +294,7 @@ body {
 }
 
 .leave-modal-body .form-control:focus, .leave-modal-body .form-select:focus{
-    border-color:#4B00E8 !important;
+    border-color:var(--orb-primary) !important;
     box-shadow: 0 0 0 4px rgba(75, 0, 232, 0.1) !important;
     outline: 0 !important;
 }
@@ -323,7 +321,7 @@ body {
     gap: 8px !important;
 }
 
-.leave-modal-section-title i{color:#4B00E8 !important;}
+.leave-modal-section-title i{color:var(--orb-primary) !important;}
 
 .leave-modal-footer{
     padding: 16px 26px !important;

@@ -36,6 +36,7 @@ class DatabaseSeeder extends Seeder
             WeekoffRuleSeeder::class,
             MenuSeeder::class,
             RoleMenuAccessSeeder::class,
+            BrandingSettingsSeeder::class,
         ]);
     }
 }

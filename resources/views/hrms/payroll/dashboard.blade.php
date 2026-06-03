@@ -22,7 +22,7 @@
         <div class="col-md-4 mb-3">
             <div class="orb-table-card mb-0" style="border-radius: 20px; background: radial-gradient(circle at top right, rgba(75, 0, 232, .12), transparent 28%), #fff;">
                 <div class="orb-card-body p-4 d-flex align-items-center gap-3">
-                    <div class="orb-kpi-icon" style="width: 48px; height: 48px; border-radius: 14px; background: rgba(75, 0, 232, .10); color: #4B00E8; display: flex; align-items: center; justify-content: center; font-size: 18px;"><i class="fas fa-users"></i></div>
+                    <div class="orb-kpi-icon" style="width: 48px; height: 48px; border-radius: 14px; background: rgba(75, 0, 232, .10); color: var(--orb-primary); display: flex; align-items: center; justify-content: center; font-size: 18px;"><i class="fas fa-users"></i></div>
                     <div>
                         <div class="orb-muted small font-weight-bold text-uppercase" style="font-size: 11px; letter-spacing: 0.05em;">Total Active Employees</div>
                         <div class="h2 mb-0 font-weight-black mt-1" style="color: #101828;">{{ $employeesCount }}</div>

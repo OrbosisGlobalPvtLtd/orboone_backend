@@ -3,8 +3,7 @@
 @section('_content')
 <style>
 :root {
-    --orb-primary: #4B00E8;
-    --orb-secondary: #8600EE;
+
     --orb-pink: #D400D5;
     --orb-rose: #EC4E74;
     --orb-yellow: #FFB101;
@@ -503,7 +502,7 @@
 .notice-label {
     padding: 14px 18px;
     background: #FFB101;
-    color: #4B00E8;
+    color: var(--orb-primary);
     font-weight: 900;
     letter-spacing: 1px;
     text-transform: uppercase;
@@ -967,7 +966,7 @@
                                         <td class="text-left">
                                             <div class="d-flex align-items-center">
                                                 <div class="rounded-circle d-flex align-items-center justify-content-center text-white font-weight-bold"
-                                                     style="width: 38px; height: 38px; background: linear-gradient(135deg,#4B00E8,#8600EE); margin-right: 12px;">
+                                                     style="width: 38px; height: 38px; background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary)); margin-right: 12px;">
                                                     {{ strtoupper(substr($employee->name, 0, 1)) }}
                                                 </div>
                                                 <span class="font-weight-bold" style="color:#111827;">{{ $employee->name }}</span>
@@ -1060,7 +1059,7 @@
                                         </td>
                                         <td>
                                             @if($attendance->latitude || $attendance->clock_out_latitude)
-                                                <span class="font-weight-bold" style="color:#4B00E8;">
+                                                <span class="font-weight-bold" style="color:var(--orb-primary);">
                                                     <i class="fas fa-map-marker-alt"></i> Logged
                                                 </span>
                                             @else

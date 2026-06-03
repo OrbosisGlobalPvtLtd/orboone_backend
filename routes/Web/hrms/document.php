@@ -33,6 +33,19 @@ Route::middleware(['auth', 'module:hrms'])
                 abort(403, 'Unauthorized path traversal check failed.');
             }
 
+            // Fast-track: Allow authenticated company asset requests (logos, seals)
+            if (str_starts_with($path, 'company/')) {
+                $companyFile = storage_path('app/public/' . $path);
+                if (is_file($companyFile)) {
+                    $mime = mime_content_type($companyFile) ?: 'image/png';
+                    return response()->file($companyFile, [
+                        'Content-Type' => $mime,
+                        'Content-Disposition' => 'inline; filename="' . basename($companyFile) . '"',
+                    ]);
+                }
+                abort(404, 'Company file not found.');
+            }
+
             $employeeId = null;
             $isProfileImage = false;
 
@@ -138,6 +151,9 @@ Route::middleware(['auth', 'module:hrms'])
         })
             ->where('path', '.*')
             ->name('documents.file');
+
+        Route::get('/company-documents/{id}/preview', [CompanyDocumentC::class, 'preview'])->name('company-documents.preview');
+        Route::get('/company-documents/{id}/download', [CompanyDocumentC::class, 'download'])->name('company-documents.download');
     });
 
 

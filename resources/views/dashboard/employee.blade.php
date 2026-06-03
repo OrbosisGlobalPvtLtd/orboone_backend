@@ -12,6 +12,7 @@
     // Safe Profile & Document retrieval using data_get (supports both objects & arrays)
     $profileStatus = data_get($dashboard, 'employee.profile.profile_status') ?? (data_get($dashboard, 'employee.profile_status') ?? 'pending');
     $profileCompletion = data_get($dashboard, 'employee.profile_completion', 0);
+    $isProfileCompleted = ($profileStatus === 'approved' || data_get($dashboard, 'employee.is_profile_completed') == 1) && $profileStatus !== 'rejected';
     
     // Punch variables
     $punchIn = data_get($dashboard, 'attendance_self.today.punch_in_time') ?: data_get($dashboard, 'attendance_self.today.punch_in');
@@ -24,8 +25,7 @@
 @section('_content')
 <style>
     :root {
-        --orb-primary: #4B00E8;
-        --orb-secondary: #8600EE;
+
         --orb-bg: #F6F7FB;
         --orb-border: #E7EAF3;
         --orb-text: #101828;
@@ -47,7 +47,7 @@
     }
 
     .emp-hero {
-        background: linear-gradient(135deg, #4B00E8 0%, #7600EC 55%, #9A00F5 100%);
+        background: linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%);
         border-radius: 26px;
         padding: 24px 30px;
         margin-bottom: 24px;
@@ -409,7 +409,15 @@
         <div class="orb-card mb-4" style="border-radius: 22px; border: 1px solid var(--orb-border); box-shadow: var(--orb-shadow);">
             <div class="orb-card-body d-flex align-items-center justify-content-between flex-wrap gap-3 py-3 px-4" style="padding: 16px 24px;">
                 <div class="d-flex align-items-center gap-3">
-                    @if($profileStatus === 'pending' && $profileCompletion < 100)
+                    @if($isProfileCompleted)
+                        <div class="icon-circle" style="width:46px; height:46px; border-radius:14px; background:#DCFCE7; color:#15803D; display:flex; align-items:center; justify-content:center; font-size:18px;">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div>
+                            <h5 style="margin: 0; font-size: 14px; font-weight: 900; color: var(--orb-text);">Profile Verification: <span class="text-success">Approved / Active</span></h5>
+                            <p style="margin: 2px 0 0; font-size: 12px; font-weight: 650; color: var(--orb-muted);">Your profile has been fully verified and is currently locked.</p>
+                        </div>
+                    @elseif($profileStatus === 'pending' && $profileCompletion < 100)
                         <div class="icon-circle" style="width:46px; height:46px; border-radius:14px; background:#FEF3C7; color:#D97706; display:flex; align-items:center; justify-content:center; font-size:18px;">
                             <i class="fas fa-id-card"></i>
                         </div>
@@ -444,12 +452,16 @@
                     @endif
                 </div>
                 <div>
-                    @if($profileStatus === 'pending' && $profileCompletion < 100)
+                    @if($isProfileCompleted)
+                        <a href="{{ route('profile.index') }}" class="btn btn-success px-4 font-weight-bold" style="border-radius:12px; font-weight:800; font-size:12px; color:#fff; background:#15803D; border-color:#15803D; min-height:36px; display:inline-flex; align-items:center; gap:6px;">
+                            <i class="fas fa-eye"></i> View Profile
+                        </a>
+                    @elseif($profileStatus === 'pending' && $profileCompletion < 100)
                         <a href="{{ route('profile.index') }}" class="btn btn-warning px-4 font-weight-bold" style="border-radius:12px; font-weight:800; font-size:12px; color:#fff; background:#D97706; border-color:#D97706; min-height:36px; display:inline-flex; align-items:center; gap:6px;">
                             <i class="fas fa-edit"></i> Complete Profile
                         </a>
                     @elseif($profileStatus === 'submitted' || ($profileStatus === 'pending' && $profileCompletion == 100))
-                        <a href="{{ route('profile.index') }}" class="btn btn-primary px-4 font-weight-bold" style="border-radius:12px; font-weight:800; font-size:12px; color:#fff; background:linear-gradient(135deg, #4B00E8, #8600EE); border:none; min-height:36px; display:inline-flex; align-items:center; gap:6px;">
+                        <a href="{{ route('profile.index') }}" class="btn btn-primary px-4 font-weight-bold" style="border-radius:12px; font-weight:800; font-size:12px; color:#fff; background:linear-gradient(135deg, var(--orb-primary), var(--orb-secondary)); border:none; min-height:36px; display:inline-flex; align-items:center; gap:6px;">
                             <i class="fas fa-eye"></i> View Submitted Profile
                         </a>
                     @elseif($profileStatus === 'rejected')
@@ -615,8 +627,8 @@
                         </div>
                         <h6 class="font-weight-bold mb-1" style="font-size:15px; color:var(--orb-text);">{{ data_get($latestPayslip, 'label') }} Payslip</h6>
                         <p class="text-muted small px-3 mb-3">{{ data_get($latestPayslip, 'subtitle') }}</p>
-                        <a href="{{ Route::has('enterprise-payroll.self.payslips') ? route('enterprise-payroll.self.payslips') : '#' }}" class="btn btn-primary px-4 font-weight-bold" style="border-radius:12px; font-weight:800;">
-                            <i class="fas fa-download"></i> View Payslip
+                        <a href="{{ Route::has('enterprise-payroll.payslips.download') && data_get($latestPayslip, 'id') ? route('enterprise-payroll.payslips.download', data_get($latestPayslip, 'id')) : (Route::has('enterprise-payroll.self.payslips') ? route('enterprise-payroll.self.payslips') : '#') }}" class="btn btn-primary px-4 font-weight-bold" style="border-radius:12px; font-weight:800;">
+                            <i class="fas fa-download"></i> Download Slip
                         </a>
                     @else
                         <div class="empty-block w-100">

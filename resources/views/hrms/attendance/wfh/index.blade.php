@@ -17,7 +17,7 @@
     <div class="row ep-metrics-grid">
         <div class="col-lg-2 col-md-4 mb-3">
             <div class="ep-metric-card border-bottom-primary">
-                <div class="ep-metric-icon" style="background:#F4F2FF;color:#4B00E8;"><i class="fas fa-list"></i></div>
+                <div class="ep-metric-icon" style="background:#F4F2FF;color:var(--orb-primary);"><i class="fas fa-list"></i></div>
                 <div class="ep-metric-content"><div class="ep-metric-label">Total Requests</div><div class="ep-metric-value">{{ $stats['total'] ?? 0 }}</div></div>
             </div>
         </div>

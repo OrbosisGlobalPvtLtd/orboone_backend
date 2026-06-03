@@ -60,6 +60,22 @@ Route::prefix('enterprise-payroll')->middleware(['auth', 'check.access'])->name(
     Route::get('/payslips/{payslip}/download', [PayslipC::class, 'download'])
         ->middleware('permission:enterprise_payslip.download|enterprise_payroll.my_payslips.view')
         ->name('payslips.download');
+    Route::get('/payslips/{payslip}/view', [PayslipC::class, 'view'])
+        ->middleware('permission:enterprise_payslip.download|enterprise_payroll.my_payslips.view')
+        ->name('payslips.view');
+    Route::get('/payslips/{payroll}/preview', [PayslipC::class, 'preview'])
+        ->middleware('permission:enterprise_payslip.download|enterprise_payroll.my_payslips.view')
+        ->name('payslips.preview');
+    Route::post('/payrolls/{payroll}/generate-payslip', [PayslipC::class, 'generateForPayroll'])
+        ->middleware('permission:enterprise_payslip.generate')
+        ->name('payrolls.generate-payslip');
+
+    Route::post('/payslips/{payslip}/regenerate', [PayslipC::class, 'regenerate'])
+        ->middleware('permission:enterprise_payslip.generate')
+        ->name('payslips.regenerate');
+    Route::post('/payslips/{payslip}/email', [PayslipC::class, 'email'])
+        ->middleware('permission:enterprise_payslip.generate')
+        ->name('payslips.email');
 
     Route::get('/bonus-incentives', [BonusIncentiveC::class, 'index'])
         ->middleware('permission:enterprise_bonus_incentive.view|enterprise_bonus_incentive.manage')

@@ -111,46 +111,190 @@
                 <div class="ep-section-card mb-3">
                     <div class="ep-section-title"><i class="fas fa-calculator"></i> Salary Basis</div>
                     <div class="row">
-                        <div class="col-md-4 mb-3"><div class="ep-form-group"><label>Salary Day Basis</label><select name="salary_day_basis" id="salary_day_basis" class="form-control" required><option value="working_days" @selected($policy->salary_day_basis==='working_days')>working_days</option><option value="calendar_days" @selected($policy->salary_day_basis==='calendar_days')>calendar_days</option><option value="fixed_30_days" @selected($policy->salary_day_basis==='fixed_30_days')>fixed_30_days</option><option value="custom_fixed_days" @selected($policy->salary_day_basis==='custom_fixed_days')>custom_fixed_days</option></select></div></div>
-                        <div class="col-md-4 mb-3"><div class="ep-form-group"><label>Working Day Mode</label><select name="working_day_mode" class="form-control" required><option value="include_all_days" @selected($policy->working_day_mode==='include_all_days')>include_all_days</option><option value="exclude_sundays" @selected($policy->working_day_mode==='exclude_sundays')>exclude_sundays</option><option value="exclude_weekoffs" @selected($policy->working_day_mode==='exclude_weekoffs')>exclude_weekoffs</option><option value="exclude_holidays" @selected($policy->working_day_mode==='exclude_holidays')>exclude_holidays</option><option value="exclude_weekoffs_and_holidays" @selected($policy->working_day_mode==='exclude_weekoffs_and_holidays')>exclude_weekoffs_and_holidays</option></select></div></div>
-                        <div class="col-md-4 mb-3"><div class="ep-form-group"><label>Custom Fixed Days</label><input type="number" min="1" max="31" id="custom_fixed_days" name="custom_fixed_days" value="{{ old('custom_fixed_days', $policy->custom_fixed_days) }}" class="form-control"></div></div>
+                        <div class="col-md-4 mb-3">
+                            <div class="ep-form-group">
+                                <label>Salary Day Basis</label>
+                                <select name="salary_day_basis" id="salary_day_basis" class="form-control" required>
+                                    <option value="working_days" @selected(old('salary_day_basis', $policy->salary_day_basis ?? 'working_days') === 'working_days')>Working Days</option>
+                                    <option value="calendar_days" @selected(old('salary_day_basis', $policy->salary_day_basis ?? 'working_days') === 'calendar_days')>Calendar Days</option>
+                                    <option value="fixed_30_days" @selected(old('salary_day_basis', $policy->salary_day_basis ?? 'working_days') === 'fixed_30_days')>Fixed 30 Days</option>
+                                    <option value="custom_fixed_days" @selected(old('salary_day_basis', $policy->salary_day_basis ?? 'working_days') === 'custom_fixed_days')>Custom Fixed Days</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="ep-form-group">
+                                <label>Working Day Mode</label>
+                                <select name="working_day_mode" class="form-control" required>
+                                    <option value="include_all_days" @selected(old('working_day_mode', $policy->working_day_mode ?? 'exclude_weekoffs') === 'include_all_days')>Include All Days</option>
+                                    <option value="exclude_sundays" @selected(old('working_day_mode', $policy->working_day_mode ?? 'exclude_weekoffs') === 'exclude_sundays')>Exclude Sundays</option>
+                                    <option value="exclude_weekoffs" @selected(old('working_day_mode', $policy->working_day_mode ?? 'exclude_weekoffs') === 'exclude_weekoffs')>Exclude Weekoffs</option>
+                                    <option value="exclude_holidays" @selected(old('working_day_mode', $policy->working_day_mode ?? 'exclude_weekoffs') === 'exclude_holidays')>Exclude Holidays</option>
+                                    <option value="exclude_weekoffs_and_holidays" @selected(old('working_day_mode', $policy->working_day_mode ?? 'exclude_weekoffs') === 'exclude_weekoffs_and_holidays')>Exclude Weekoffs & Holidays</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="ep-form-group">
+                                <label>Custom Fixed Days</label>
+                                <input type="number" min="1" max="31" id="custom_fixed_days" name="custom_fixed_days" value="{{ old('custom_fixed_days', $policy->custom_fixed_days ?? '') }}" class="form-control">
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <div class="ep-section-card mb-3">
                     <div class="ep-section-title"><i class="fas fa-university"></i> Deductions</div>
                     <div class="row">
-                        <div class="col-md-3 mb-3"><div class="ep-form-group"><label><input type="checkbox" name="professional_tax_enabled" value="1" @checked($policy->professional_tax_enabled)> Professional Tax Enabled</label><input type="number" step="0.01" name="professional_tax_amount" value="{{ (float) $policy->professional_tax_amount }}" class="form-control"></div></div>
-                        <div class="col-md-3 mb-3"><div class="ep-form-group"><label><input type="checkbox" name="pf_enabled" value="1" @checked($policy->pf_enabled)> PF Enabled</label><input type="number" step="0.01" min="0" max="100" name="pf_percentage" value="{{ (float) $policy->pf_percentage }}" class="form-control"></div></div>
-                        <div class="col-md-3 mb-3"><div class="ep-form-group"><label><input type="checkbox" name="esi_enabled" value="1" @checked($policy->esi_enabled)> ESI Enabled</label><input type="number" step="0.01" min="0" max="100" name="esi_percentage" value="{{ (float) $policy->esi_percentage }}" class="form-control"></div></div>
-                        <div class="col-md-3 mb-3"><div class="ep-form-group"><label><input type="checkbox" name="tds_enabled" value="1" @checked($policy->tds_enabled)> TDS Enabled</label><input type="number" step="0.01" min="0" max="100" name="tds_percentage" value="{{ (float) $policy->tds_percentage }}" class="form-control"></div></div>
-                        <div class="col-md-6 mb-3"><div class="ep-form-group"><label>TDS Source</label><select name="tds_source" class="form-control"><option value="policy" @selected(($policy->tds_source ?? 'policy')==='policy')>policy</option><option value="salary_structure" @selected(($policy->tds_source ?? '')==='salary_structure')>salary_structure</option></select></div></div>
-                        <div class="col-md-3 mb-3"><div class="ep-form-group"><label><input type="checkbox" name="allow_negative_salary" value="1" @checked($policy->allow_negative_salary)> Allow Negative Salary</label></div></div>
-                        <div class="col-md-3 mb-3"><div class="ep-form-group"><label><input type="checkbox" name="payroll_lock_after_generation" value="1" @checked($policy->payroll_lock_after_generation)> Lock After Generation</label></div></div>
+                        <div class="col-md-3 mb-3">
+                            <div class="ep-form-group">
+                                <label class="form-check">
+                                    <input type="checkbox" name="professional_tax_enabled" value="1" class="form-check-input" @checked(old('professional_tax_enabled', $policy->professional_tax_enabled ?? true))>
+                                    <span class="form-check-label">Professional Tax Enabled</span>
+                                </label>
+                                <input type="number" step="0.01" name="professional_tax_amount" value="{{ old('professional_tax_amount', $policy->professional_tax_amount ?? 200) }}" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="ep-form-group">
+                                <label class="form-check">
+                                    <input type="checkbox" name="pf_enabled" value="1" class="form-check-input" @checked(old('pf_enabled', $policy->pf_enabled ?? true))>
+                                    <span class="form-check-label">PF Enabled</span>
+                                </label>
+                                <input type="number" step="0.01" min="0" max="100" name="pf_percentage" value="{{ old('pf_percentage', $policy->pf_percentage ?? 12) }}" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="ep-form-group">
+                                <label class="form-check">
+                                    <input type="checkbox" name="esi_enabled" value="1" class="form-check-input" @checked(old('esi_enabled', $policy->esi_enabled ?? true))>
+                                    <span class="form-check-label">ESI Enabled</span>
+                                </label>
+                                <input type="number" step="0.01" min="0" max="100" name="esi_percentage" value="{{ old('esi_percentage', $policy->esi_percentage ?? 0.75) }}" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="ep-form-group">
+                                <label class="form-check">
+                                    <input type="checkbox" name="tds_enabled" value="1" class="form-check-input" @checked(old('tds_enabled', $policy->tds_enabled ?? true))>
+                                    <span class="form-check-label">TDS Enabled</span>
+                                </label>
+                                <input type="number" step="0.01" min="0" max="100" name="tds_percentage" value="{{ old('tds_percentage', $policy->tds_percentage ?? 10) }}" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="ep-form-group">
+                                <label>TDS Source</label>
+                                <select name="tds_source" class="form-control">
+                                    <option value="policy" @selected(old('tds_source', $policy->tds_source ?? 'policy') === 'policy')>Policy Percentage</option>
+                                    <option value="salary_structure" @selected(old('tds_source', $policy->tds_source ?? 'policy') === 'salary_structure')>Salary Structure Monthly TDS</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="ep-form-group">
+                                <label class="form-check">
+                                    <input type="checkbox" name="allow_negative_salary" value="1" class="form-check-input" @checked(old('allow_negative_salary', $policy->allow_negative_salary ?? false))>
+                                    <span class="form-check-label">Allow Negative Salary</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="ep-form-group">
+                                <label class="form-check">
+                                    <input type="checkbox" name="payroll_lock_after_generation" value="1" class="form-check-input" @checked(old('payroll_lock_after_generation', $policy->payroll_lock_after_generation ?? false))>
+                                    <span class="form-check-label">Lock After Generation</span>
+                                </label>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <div class="ep-section-card mb-3">
                     <div class="ep-section-title"><i class="fas fa-percent"></i> Ratios</div>
                     <div class="row">
-                        <div class="col-md-4 mb-3"><div class="ep-form-group"><label>Half Day Payable Ratio</label><input type="number" step="0.01" min="0" max="1" name="half_day_payable_ratio" value="{{ (float) $policy->half_day_payable_ratio }}" class="form-control"></div></div>
-                        <div class="col-md-4 mb-3"><div class="ep-form-group"><label>Absent Payable Ratio</label><input type="number" step="0.01" min="0" max="1" name="absent_payable_ratio" value="{{ (float) $policy->absent_payable_ratio }}" class="form-control"></div></div>
-                        <div class="col-md-4 mb-3"><div class="ep-form-group"><label>LWP Payable Ratio</label><input type="number" step="0.01" min="0" max="1" name="lwp_payable_ratio" value="{{ (float) $policy->lwp_payable_ratio }}" class="form-control"></div></div>
-                        <div class="col-md-4 mb-3"><div class="ep-form-group"><label>Paid Leave Payable Ratio</label><input type="number" step="0.01" min="0" max="1" name="paid_leave_payable_ratio" value="{{ (float) $policy->paid_leave_payable_ratio }}" class="form-control"></div></div>
-                        <div class="col-md-4 mb-3"><div class="ep-form-group"><label>Weekoff Payable Ratio</label><input type="number" step="0.01" min="0" max="1" name="weekoff_payable_ratio" value="{{ (float) $policy->weekoff_payable_ratio }}" class="form-control"></div></div>
-                        <div class="col-md-4 mb-3"><div class="ep-form-group"><label>Holiday Payable Ratio</label><input type="number" step="0.01" min="0" max="1" name="holiday_payable_ratio" value="{{ (float) $policy->holiday_payable_ratio }}" class="form-control"></div></div>
-                        <div class="col-md-6 mb-3"><div class="ep-form-group"><label><input type="checkbox" name="include_weekoff_in_payable" value="1" @checked($policy->include_weekoff_in_payable)> Include Weekoff In Payable</label></div></div>
-                        <div class="col-md-6 mb-3"><div class="ep-form-group"><label><input type="checkbox" name="include_holiday_in_payable" value="1" @checked($policy->include_holiday_in_payable)> Include Holiday In Payable</label></div></div>
+                        <div class="col-md-4 mb-3">
+                            <div class="ep-form-group">
+                                <label>Half Day Payable Ratio</label>
+                                <input type="number" step="0.01" min="0" max="1" name="half_day_payable_ratio" value="{{ old('half_day_payable_ratio', $policy->half_day_payable_ratio ?? 0.5) }}" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="ep-form-group">
+                                <label>Absent Payable Ratio</label>
+                                <input type="number" step="0.01" min="0" max="1" name="absent_payable_ratio" value="{{ old('absent_payable_ratio', $policy->absent_payable_ratio ?? 0) }}" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="ep-form-group">
+                                <label>LWP Payable Ratio</label>
+                                <input type="number" step="0.01" min="0" max="1" name="lwp_payable_ratio" value="{{ old('lwp_payable_ratio', $policy->lwp_payable_ratio ?? 0) }}" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="ep-form-group">
+                                <label>Paid Leave Payable Ratio</label>
+                                <input type="number" step="0.01" min="0" max="1" name="paid_leave_payable_ratio" value="{{ old('paid_leave_payable_ratio', $policy->paid_leave_payable_ratio ?? 1.0) }}" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="ep-form-group">
+                                <label>Weekoff Payable Ratio</label>
+                                <input type="number" step="0.01" min="0" max="1" name="weekoff_payable_ratio" value="{{ old('weekoff_payable_ratio', $policy->weekoff_payable_ratio ?? 1.0) }}" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="ep-form-group">
+                                <label>Holiday Payable Ratio</label>
+                                <input type="number" step="0.01" min="0" max="1" name="holiday_payable_ratio" value="{{ old('holiday_payable_ratio', $policy->holiday_payable_ratio ?? 1.0) }}" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="ep-form-group">
+                                <label class="form-check">
+                                    <input type="checkbox" name="include_weekoff_in_payable" value="1" class="form-check-input" @checked(old('include_weekoff_in_payable', $policy->include_weekoff_in_payable ?? true))>
+                                    <span class="form-check-label">Include Weekoff In Payable</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="ep-form-group">
+                                <label class="form-check">
+                                    <input type="checkbox" name="include_holiday_in_payable" value="1" class="form-check-input" @checked(old('include_holiday_in_payable', $policy->include_holiday_in_payable ?? true))>
+                                    <span class="form-check-label">Include Holiday In Payable</span>
+                                </label>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <div class="ep-section-card mb-0">
                     <div class="ep-section-title"><i class="fas fa-clock"></i> Credit Window</div>
                     <div class="row">
-                        <div class="col-md-3 mb-3"><div class="ep-form-group"><label>Current Start Day</label><input type="number" min="1" max="31" name="salary_credit_start_day" value="{{ (int) $policy->salary_credit_start_day }}" class="form-control"></div></div>
-                        <div class="col-md-3 mb-3"><div class="ep-form-group"><label>Current End Day</label><input type="number" min="1" max="31" name="salary_credit_end_day" value="{{ (int) $policy->salary_credit_end_day }}" class="form-control"></div></div>
-                        <div class="col-md-3 mb-3"><div class="ep-form-group"><label>Future Start Day</label><input type="number" min="1" max="31" name="future_salary_credit_start_day" value="{{ (int) $policy->future_salary_credit_start_day }}" class="form-control"></div></div>
-                        <div class="col-md-3 mb-3"><div class="ep-form-group"><label>Future End Day</label><input type="number" min="1" max="31" name="future_salary_credit_end_day" value="{{ (int) $policy->future_salary_credit_end_day }}" class="form-control"></div></div>
+                        <div class="col-md-3 mb-3">
+                            <div class="ep-form-group">
+                                <label>Current Start Day</label>
+                                <input type="number" min="1" max="31" name="salary_credit_start_day" value="{{ old('salary_credit_start_day', $policy->salary_credit_start_day ?? 1) }}" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="ep-form-group">
+                                <label>Current End Day</label>
+                                <input type="number" min="1" max="31" name="salary_credit_end_day" value="{{ old('salary_credit_end_day', $policy->salary_credit_end_day ?? 30) }}" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="ep-form-group">
+                                <label>Future Start Day</label>
+                                <input type="number" min="1" max="31" name="future_salary_credit_start_day" value="{{ old('future_salary_credit_start_day', $policy->future_salary_credit_start_day ?? 1) }}" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="ep-form-group">
+                                <label>Future End Day</label>
+                                <input type="number" min="1" max="31" name="future_salary_credit_end_day" value="{{ old('future_salary_credit_end_day', $policy->future_salary_credit_end_day ?? 30) }}" class="form-control">
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -166,7 +310,7 @@
 
 @section('_script')
 <script>
-    (function () {
+    (function() {
         function toggleCustomDays() {
             var basis = document.getElementById('salary_day_basis');
             var custom = document.getElementById('custom_fixed_days');
@@ -174,11 +318,10 @@
             custom.required = basis.value === 'custom_fixed_days';
             if (!custom.required) custom.value = '';
         }
-        document.addEventListener('change', function (e) {
+        document.addEventListener('change', function(e) {
             if (e.target && e.target.id === 'salary_day_basis') toggleCustomDays();
         });
         toggleCustomDays();
     })();
 </script>
 @endsection
-

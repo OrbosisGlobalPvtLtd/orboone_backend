@@ -14,8 +14,7 @@
 
 <style>
     :root {
-        --orb-primary: #4B00E8;
-        --orb-secondary: #8600EE;
+
         --orb-bg: #F6F7FB;
         --orb-card: #FFFFFF;
         --orb-border: #E7EAF3;
@@ -321,13 +320,13 @@
 
     .badge-awaiting_punch_in {
         background: #F4F2FF !important;
-        color: #4B00E8 !important;
+        color: var(--orb-primary) !important;
     }
 
     .btn-undo:hover {
         background: #F8FAFC !important;
         border-color: #cbd5e1 !important;
-        color: #4B00E8 !important;
+        color: var(--orb-primary) !important;
         transform: translateY(-1px) !important;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
     }
@@ -398,7 +397,7 @@
 
             <div class="orb-table-card-header d-flex align-items-center justify-content-between" style="padding: 24px 26px 18px; border-bottom: 1px solid #EEF2F7; background: #fff; flex-wrap: wrap; gap: 16px;">
                 <div class="orb-title-wrap d-flex align-items-center" style="gap: 16px;">
-                    <span class="orb-card-icon" style="width: 46px; height: 46px; border-radius: 12px; background: #F4F2FF; color: #4B00E8; display: inline-flex; align-items: center; justify-content: center; font-size: 18px;">
+                    <span class="orb-card-icon" style="width: 46px; height: 46px; border-radius: 12px; background: #F4F2FF; color: var(--orb-primary); display: inline-flex; align-items: center; justify-content: center; font-size: 18px;">
                         <i class="fas fa-calendar-check"></i>
                     </span>
                     <div>

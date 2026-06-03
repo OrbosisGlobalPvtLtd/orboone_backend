@@ -10,9 +10,9 @@
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap4.min.css">
 <style>
 :root {
-    --orb-primary: #4B00E8;
+
     --orb-primary-hover: #3A00B7;
-    --orb-secondary: #8600EE;
+
     --orb-bg: #F8FAFC;
     --orb-border: #E2E8F0;
     --orb-text: #0F172A;
@@ -37,7 +37,7 @@ body {
 }
 
 .att-hero {
-    background: linear-gradient(135deg, #4B00E8 0%, #7600EC 55%, #9A00F5 100%);
+    background: linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%);
     border-radius: 24px !important;
     padding: 36px;
     margin-bottom: 24px;

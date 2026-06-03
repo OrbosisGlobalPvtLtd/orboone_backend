@@ -1,7 +1,7 @@
 <nav class="navbar navbar-expand-lg bg-white border-bottom shadow-sm sticky-top">
     <div class="container">
         <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="{{ url('/') }}">
-            <span style="color:#4B00E8;">OrboOne</span>
+            <span style="color:var(--orb-primary);">OrboOne</span>
             <span class="text-muted" style="font-size:0.9rem;">HRMS</span>
         </a>
 
@@ -24,7 +24,7 @@
                     @if (Route::has('login'))
                         <li class="nav-item">
                             <a class="btn btn-sm px-3" href="{{ route('login') }}"
-                               style="background:#4B00E8;color:#fff;border-radius:10px;">
+                               style="background:var(--orb-primary);color:#fff;border-radius:10px;">
                                 Login
                             </a>
                         </li>

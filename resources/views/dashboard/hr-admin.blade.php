@@ -3,8 +3,8 @@
 @section('_content')
 <style>
     .hr-dashboard {
-        --hr-primary: #4B00E8;
-        --hr-secondary: #8600EE;
+        --hr-primary: var(--orb-primary, #4B00E8);
+        --hr-secondary: var(--orb-secondary, #FF5252);
         --hr-bg: #F6F7FB;
         --hr-card: #FFFFFF;
         --hr-border: #E7EAF3;
@@ -249,7 +249,7 @@
         font-size: 11px;
         font-weight: 700;
         background: #F4F2FF;
-        color: #4B00E8;
+        color: var(--orb-primary);
     }
 
     .hr-empty {
@@ -291,7 +291,7 @@
         align-items: center;
         justify-content: center;
         background: #F4F2FF;
-        color: #4B00E8;
+        color: var(--orb-primary);
         flex-shrink: 0;
     }
 

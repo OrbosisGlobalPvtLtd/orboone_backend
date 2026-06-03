@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login | OrboOne HRMS</title>
+    <title>Login | {{ $branding['company_name'] ?? 'OrboOne HRMS' }}</title>
+    <link rel="shortcut icon" href="{{ $branding['favicon_url'] ?? asset('favicon.ico') }}" type="image/x-icon">
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
@@ -16,8 +17,8 @@
 
     <style>
         :root{
-            --orb-primary:#4b00e8;
-            --orb-secondary:#8600ee;
+            --orb-primary: {{ $branding['primary_color'] ?? '#4B00E8' }};
+            --orb-secondary: {{ $branding['secondary_color'] ?? '#8600EE' }};
             --orb-accent:#d400d5;
             --orb-rose:#ec4e74;
             --orb-gold:#ffb101;
@@ -491,7 +492,7 @@
             margin:0 auto;
             height:60px;
             border-radius:12px;
-            background:linear-gradient(135deg, #6f35f4 0%, #8b5cf6 50%, #d400d5 100%);
+            background:linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%);
             color:#fff;
             display:flex;
             align-items:center;
@@ -573,7 +574,7 @@
             gap:8px;
             padding:0 14px;
             color:#fff;
-            background:linear-gradient(135deg,var(--orb-primary),var(--orb-secondary));
+            background:linear-gradient(135deg, var(--orb-primary), var(--orb-secondary));
             font-size:13px;
             font-weight:900;
             box-shadow:0 12px 24px rgba(75,0,232,.18);
@@ -619,7 +620,7 @@
             background:
                 radial-gradient(circle at top right, rgba(255,255,255,.20), transparent 26%),
                 radial-gradient(circle at bottom left, rgba(255,177,1,.10), transparent 22%),
-                linear-gradient(155deg, #4b00e8 0%, #6e1cf0 34%, #a112e6 68%, #ec4e74 100%);
+                linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%);
             color:#fff;
             overflow:hidden;
             padding:clamp(18px, 2.1vw, 32px);
@@ -1544,7 +1545,7 @@
         <div class="mobile-scroll-area">
             <div class="mobile-top-content">
                 <div class="mobile-brand-block">
-                    <img src="{{ asset('images/Picsart_26-04-02_12-19-10-396.png') }}" alt="OrboOne Logo">
+                    <img src="{{ $branding['logo_url'] ?? asset('images/Picsart_26-04-02_12-19-10-396.png') }}" alt="{{ $branding['company_name'] ?? 'OrboOne Logo' }}">
                 </div>
 
                 <h1 class="mobile-main-title">
@@ -1693,7 +1694,7 @@
 
                 <div class="login-logo-wrap">
                     <div class="login-logo">
-                        <img src="{{ asset('images/Picsart_26-04-02_12-19-10-396.png') }}" alt="OrboOne HRMS Logo">
+                        <img src="{{ $branding['logo_url'] ?? asset('images/Picsart_26-04-02_12-19-10-396.png') }}" alt="{{ $branding['company_name'] ?? 'OrboOne HRMS Logo' }}">
                     </div>
                 </div>
 
@@ -1912,7 +1913,7 @@
 
                         <div class="login-logo-wrap">
                             <div class="login-logo">
-                                <img src="{{ asset('images/Picsart_26-04-02_12-19-10-396.png') }}" alt="OrboOne HRMS Logo">
+                                <img src="{{ $branding['logo_url'] ?? asset('images/Picsart_26-04-02_12-19-10-396.png') }}" alt="{{ $branding['company_name'] ?? 'OrboOne HRMS Logo' }}">
                             </div>
                         </div>
 

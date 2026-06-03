@@ -15,7 +15,7 @@
                 </p>
             </div>
             <div class="col-lg-4 col-md-12 text-center text-lg-right">
-                <a href="{{ route('hrms.employees.performance_scores.index') }}" class="btn btn-light rounded-pill px-4 py-2 font-weight-bold shadow-sm" style="color: #4b00e8;">
+                <a href="{{ route('hrms.employees.performance_scores.index') }}" class="btn btn-light rounded-pill px-4 py-2 font-weight-bold shadow-sm" style="color: var(--orb-primary);">
                     <i class="fas fa-arrow-left mr-2"></i> Back to Dashboard
                 </a>
             </div>
@@ -50,7 +50,7 @@
                         <div class="col-lg-5">
                             <div class="score-legend shadow-sm">
                                 <h6 class="font-weight-bold mb-2" style="color: #ffb101;"><i class="fas fa-info-circle mr-1"></i> Scoring Guide</h6>
-                                <p class="small text-dark mb-0 font-weight-bold" style="opacity: 0.8;">Rate categories from <strong style="color:#4b00e8;">1.0 to 10.0</strong> based on quality of work, consistency, and professional conduct.</p>
+                                <p class="small text-dark mb-0 font-weight-bold" style="opacity: 0.8;">Rate categories from <strong style="color:var(--orb-primary);">1.0 to 10.0</strong> based on quality of work, consistency, and professional conduct.</p>
                             </div>
                         </div>
                     </div>
@@ -66,7 +66,7 @@
                                         </div>
                                         <h6 class="font-weight-bold mb-0 text-dark">{{ Str::ucfirst(Str::lower($category->name)) }}</h6>
                                     </div>
-                                    <span class="badge badge-pill px-3 py-1" style="background: rgba(75,0,232,0.1); color: #4b00e8; font-weight: 700;">Cat: {{ $loop->iteration }}</span>
+                                    <span class="badge badge-pill px-3 py-1" style="background: rgba(75,0,232,0.1); color: var(--orb-primary); font-weight: 700;">Cat: {{ $loop->iteration }}</span>
                                 </div>
                                 <div class="form-group mb-0">
                                     <input type="hidden" name="categoryAndScore[{{ $loop->index }}][id]" value="{{ $category->id }}">

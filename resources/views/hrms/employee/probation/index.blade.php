@@ -5,8 +5,7 @@
 @section('_content')
     <style>
         :root {
-            --orb-primary: #4B00E8;
-            --orb-secondary: #8600EE;
+
             --orb-bg: #F6F7FB;
             --orb-border: #E7EAF3;
             --orb-text: #101828;
@@ -261,7 +260,7 @@
 
         .eo-pill-purple {
             background: rgba(75, 0, 232, .08);
-            color: #4B00E8;
+            color: var(--orb-primary);
         }
 
         .eo-actions {

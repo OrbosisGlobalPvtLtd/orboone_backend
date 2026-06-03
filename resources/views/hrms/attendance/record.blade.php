@@ -14,8 +14,7 @@
 
 <style>
     :root {
-        --orb-primary: #4B00E8;
-        --orb-secondary: #8600EE;
+
         --orb-bg: #F6F7FB;
         --orb-card: #FFFFFF;
         --orb-border: #E7EAF3;
@@ -37,7 +36,7 @@
     }
 
     .att-hero {
-        background: linear-gradient(135deg, #4B00E8 0%, #7600EC 55%, #9A00F5 100%);
+        background: linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%);
         border-radius: 30px;
         padding: 30px;
         margin-bottom: 18px;
@@ -165,7 +164,7 @@
         height: 36px;
         border-radius: 13px;
         background: var(--metric-soft, #F4F2FF);
-        color: var(--metric-color, #4B00E8);
+        color: var(--metric-color, var(--orb-primary));
         display: flex;
         align-items: center;
         justify-content: center;
@@ -195,7 +194,7 @@
     .att-metric-line {
         height: 3px;
         border-radius: 999px;
-        background: linear-gradient(90deg, var(--metric-color, #4B00E8), transparent);
+        background: linear-gradient(90deg, var(--metric-color, var(--orb-primary)), transparent);
         margin-top: 8px;
     }
 
@@ -586,7 +585,7 @@
 
     .leave-export-btn:hover {
         background: #F9F5FF !important;
-        color: #4B00E8 !important;
+        color: var(--orb-primary) !important;
         border-color: #D9CCFF !important;
     }
 
@@ -839,7 +838,7 @@
             <div class="att-section-head">
                 @if($isMyAttendance)
                 <div class="d-flex align-items-center gap-3">
-                    <div style="width:40px; height:40px; border-radius:50%; background:#F4F2FF; color:#4B00E8; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;">
+                    <div style="width:40px; height:40px; border-radius:50%; background:#F4F2FF; color:var(--orb-primary); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;">
                         <i class="fas fa-table"></i>
                     </div>
                     <div>

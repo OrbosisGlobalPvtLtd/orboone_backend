@@ -73,10 +73,6 @@ class EmployeeDocumentC extends Controller
 
         abort_if(! $employee, 404, 'Employee profile not found.');
 
-        if ($employee->profile && in_array($employee->profile->profile_status, ['submitted', 'approved'])) {
-            return back()->with('error', 'Documents editing is disabled after submission.');
-        }
-
         $request->validate([
             'document_type_id' => 'required|exists:document_types,id',
             'title' => 'nullable|string|max:150',
@@ -85,6 +81,23 @@ class EmployeeDocumentC extends Controller
         ]);
 
         $documentType = DocumentTypeM::findOrFail($request->document_type_id);
+
+        if ($employee->profile && in_array($employee->profile->profile_status, ['submitted', 'approved'])) {
+            $search = [
+                'employee_id' => $employee->id,
+                'document_type_id' => $documentType->id,
+            ];
+            if (\Illuminate\Support\Facades\Schema::hasColumn('employee_documents_new', 'is_active')) {
+                $search['is_active'] = 1;
+            }
+            $exists = EmployeeDocumentM::where($search)->exists();
+
+            // Block ONLY if the document type is mandatory or if it has already been uploaded previously.
+            // If it is optional AND has not been uploaded yet, permit the upload!
+            if ($documentType->is_mandatory || $exists) {
+                return back()->with('error', 'Documents editing is disabled after submission.');
+            }
+        }
         $file = $request->file('file');
 
         $storageService = app(\App\Services\HRMS\Document\HrmsFileStorageS::class);

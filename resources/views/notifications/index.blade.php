@@ -6,15 +6,14 @@
 <style>
     /* CSS Variables for design consistency & Dark Mode readiness */
     :root {
-        --orb-primary: #4B00E8;
-        --orb-secondary: #8600EE;
+
         --orb-bg: linear-gradient(180deg, #F6F7FB 0%, #EEF2FF 100%);
         --orb-card: #ffffff;
         --orb-text: #101828;
         --orb-text-muted: #667085;
         --orb-border: #E7EAF3;
         --orb-unread-bg: rgba(75, 0, 232, 0.02);
-        --orb-unread-border: #4B00E8;
+        --orb-unread-border: var(--orb-primary);
         --orb-shadow: 0 10px 30px rgba(16, 24, 40, 0.04);
         --orb-shadow-hover: 0 16px 40px rgba(75, 0, 232, 0.08);
     }
@@ -595,7 +594,7 @@
                         // Resolve Type, Icon, and Gradient by type category
                         $type = strtolower($notification->type ?? $notification->data['type'] ?? 'general');
                         $icon = 'fa-bell';
-                        $gradient = 'linear-gradient(135deg, #4B00E8, #8600EE)';
+                        $gradient = 'linear-gradient(135deg, var(--orb-primary), var(--orb-secondary))';
                         
                         if (str_contains($type, 'announcement')) {
                             $icon = 'fa-bullhorn';

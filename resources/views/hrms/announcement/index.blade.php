@@ -4,7 +4,7 @@
 <style>
     /* ----- Page Signature Header ----- */
     .hero-header {
-        background: linear-gradient(135deg, #4b00e8 0%, #ec4e74 100%);
+        background: linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%);
         border-radius: 16px;
         padding: 40px 30px;
         color: white;
@@ -41,7 +41,7 @@
     .announcement-card:hover {
         transform: translateY(-8px);
         box-shadow: 0 15px 35px rgba(0,0,0,0.1);
-        border-left-color: #4b00e8;
+        border-left-color: var(--orb-primary);
     }
 
     .card-meta {
@@ -52,7 +52,7 @@
 
     .badge-dept {
         background: rgba(75, 0, 232, 0.08);
-        color: #4b00e8;
+        color: var(--orb-primary);
         font-weight: 700;
         text-transform: uppercase;
         font-size: 0.65rem;
@@ -69,13 +69,13 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        color: #4b00e8;
+        color: var(--orb-primary);
     }
 
     /* ----- Custom Buttons ----- */
     .btn-create {
         background: white;
-        color: #4b00e8;
+        color: var(--orb-primary);
         font-weight: 700;
         border: none;
         padding: 10px 25px;

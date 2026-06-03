@@ -1,8 +1,7 @@
 /* ORBOSIS PREMIUM DESIGN SYSTEM & GLOBAL STANDARDIZATION CSS */
 
 :root {
-    --orb-primary: #4B00E8;
-    --orb-secondary: #8600EE;
+    /* Defer to dynamic branding vars from Blade */
     --orb-bg: #F6F7FB;
     --orb-border: #E7EAF3;
     --orb-text: #101828;

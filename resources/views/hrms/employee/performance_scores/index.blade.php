@@ -16,7 +16,7 @@
             </div>
             <div class="col-lg-6 col-md-12 text-center text-lg-right">
                 @if (collect($accesses)->where('menu_id', 3)->first()->status == 2)
-                <a href="{{ route('hrms.employees.performance_scores.create') }}" class="btn btn-light rounded-pill px-4 py-2 font-weight-bold shadow-sm" style="color: #4b00e8;">
+                <a href="{{ route('hrms.employees.performance_scores.create') }}" class="btn btn-light rounded-pill px-4 py-2 font-weight-bold shadow-sm" style="color: var(--orb-primary);">
                     <i class="fas fa-plus-circle mr-2"></i> Create Assessment
                 </a>
                 @endif
@@ -98,7 +98,7 @@
                         }
                     @endphp
                     <tr>
-                        <td data-label="ID" class="text-md-center font-weight-bold" style="color: #4b00e8;">
+                        <td data-label="ID" class="text-md-center font-weight-bold" style="color: var(--orb-primary);">
                             #{{ str_pad($loop->iteration + $employeeScores->firstItem() - 1, 2, '0', STR_PAD_LEFT) }}
                         </td>
                         <td data-label="Employee" class="emp-col">
@@ -128,7 +128,7 @@
                         </td>
                         <td data-label="Date">
                             <div class="font-weight-bold" style="font-size: 0.85rem;">
-                                <i class="far fa-calendar-check mr-2" style="color: #4b00e8; opacity: 0.7;"></i> 
+                                <i class="far fa-calendar-check mr-2" style="color: var(--orb-primary); opacity: 0.7;"></i> 
                                 {{ \Carbon\Carbon::parse($score->created_at)->format('d M, Y') }}
                             </div>
                         </td>
@@ -155,7 +155,7 @@
                     @empty
                     <tr>
                         <td colspan="6" class="text-center py-5 border-0">
-                            <i class="fas fa-clipboard-list mb-3" style="font-size: 4rem; color: #4b00e8; opacity: 0.15;"></i>
+                            <i class="fas fa-clipboard-list mb-3" style="font-size: 4rem; color: var(--orb-primary); opacity: 0.15;"></i>
                             <h5 class="font-weight-bold text-dark mt-2">No Assessments Found</h5>
                             <p class="text-muted mb-4">You haven't recorded any performance scores matching your criteria.</p>
                             @if (collect($accesses)->where('menu_id', 3)->first()->status == 2)

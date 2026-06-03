@@ -31,6 +31,16 @@ class DocumentPdfS
         return $path;
     }
 
+    public function generatePdfToPath(string $htmlContent, string $relativePath): string
+    {
+        $pdf = Pdf::loadHTML($htmlContent);
+        $pdf->setPaper('A4', 'portrait');
+
+        Storage::disk('private')->put($relativePath, $pdf->output());
+
+        return $relativePath;
+    }
+
     public function downloadPdf(string $path, string $downloadName = null)
     {
         if (!Storage::disk('private')->exists($path)) {

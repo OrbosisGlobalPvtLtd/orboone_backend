@@ -202,7 +202,7 @@
     }
 
     .summary-primary {
-        --summary-gradient: linear-gradient(135deg, #4B00E8, #8600EE);
+        --summary-gradient: linear-gradient(135deg, var(--leave-primary), var(--leave-secondary));
         --summary-shadow: rgba(75, 0, 232, .22);
         --summary-soft: rgba(75, 0, 232, .08);
     }

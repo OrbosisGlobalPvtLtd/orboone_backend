@@ -31,7 +31,7 @@
     <div class="row ep-metrics-grid">
         <div class="col-lg-3 col-md-6 mb-3">
             <div class="ep-metric-card border-bottom-primary" style="height:115px;">
-                <div class="ep-metric-icon" style="background:#F4F2FF;color:#4B00E8;"><i class="fas fa-calendar-alt"></i></div>
+                <div class="ep-metric-icon" style="background:#F4F2FF;color:var(--orb-primary);"><i class="fas fa-calendar-alt"></i></div>
                 <div class="ep-metric-content">
                     <div class="ep-metric-label">Monthly WFH Limit</div>
                     <div class="ep-metric-value">{{ $balance['monthly_limit'] ?? 0 }} Days</div>

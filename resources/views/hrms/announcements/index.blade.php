@@ -9,8 +9,7 @@
 
 <style>
     :root {
-        --orb-primary: #4B00E8;
-        --orb-secondary: #8600EE;
+
         --orb-bg: #F6F7FB;
         --orb-card: #FFFFFF;
         --orb-border: #E7EAF3;
@@ -323,7 +322,7 @@
     .priority-high { background: #FFF9E6; color: #B54708; }
     .priority-urgent { background: #FFE4E8; color: #C01048; }
 
-    .target-badge { background: #F4F2FF; color: #4B00E8; }
+    .target-badge { background: #F4F2FF; color: var(--orb-primary); }
     .status-on { background: #ECFDF3; color: #027A48; }
     .status-off { background: #F2F4F7; color: #667085; }
 
@@ -974,7 +973,7 @@
                         html += `
                             <a href="{{ url('/announcements') }}/${row.id}"
                                class="btn btn-sm btn-soft"
-                               style="background: #F4F2FF; border: 1px solid #E7EAF3; color: #4B00E8 !important;"
+                               style="background: #F4F2FF; border: 1px solid #E7EAF3; color: var(--orb-primary) !important;"
                                title="View Details">
                                 <i class="fas fa-eye"></i>
                             </a>

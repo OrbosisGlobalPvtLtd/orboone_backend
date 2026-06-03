@@ -25,9 +25,13 @@ class EnterprisePayrollCalculatorS
     ) {
     }
 
-    public function preview(int $month, int $year): array
+    public function preview(int $month, int $year, ?int $employeeId = null): array
     {
-        $employees = EmployeeM::query()->active()->with('user')->orderBy('id')->get();
+        $employeesQuery = EmployeeM::query()->active()->with('user')->orderBy('id');
+        if ($employeeId) {
+            $employeesQuery->where('id', $employeeId);
+        }
+        $employees = $employeesQuery->get();
         $rows = [];
         $errors = [];
 
@@ -52,9 +56,9 @@ class EnterprisePayrollCalculatorS
         return compact('rows', 'errors');
     }
 
-    public function generate(int $month, int $year, ?int $actorId = null): EnterprisePayrollRunM
+    public function generate(int $month, int $year, ?int $actorId = null, ?int $employeeId = null): EnterprisePayrollRunM
     {
-        return DB::transaction(function () use ($month, $year, $actorId) {
+        return DB::transaction(function () use ($month, $year, $actorId, $employeeId) {
             $run = EnterprisePayrollRunM::query()
                 ->where('month', $month)
                 ->where('year', $year)
@@ -73,30 +77,25 @@ class EnterprisePayrollCalculatorS
                 'status' => 'draft',
             ]);
 
-            EnterprisePayrollM::query()
+            $draftQuery = EnterprisePayrollM::query()
                 ->where('payroll_run_id', $run->id)
-                ->where('status', 'draft')
-                ->delete();
+                ->where('status', 'draft');
+            if ($employeeId) {
+                $draftQuery->where('employee_id', $employeeId);
+            }
+            $draftQuery->delete();
 
-            $totals = [
-                'total_employees' => 0,
-                'total_gross' => 0,
-                'total_deductions' => 0,
-                'total_net' => 0,
-            ];
-
-            $employees = EmployeeM::query()->active()->with('user')->orderBy('id')->get();
+            $employeesQuery = EmployeeM::query()->active()->with('user')->orderBy('id');
+            if ($employeeId) {
+                $employeesQuery->where('id', $employeeId);
+            }
+            $employees = $employeesQuery->get();
 
             $runErrors = [];
             foreach ($employees as $employee) {
                 try {
                     $calculation = $this->calculateEmployee($employee, $month, $year);
                     $payroll = $this->storePayroll($run, $employee, $calculation, $actorId);
-
-                    $totals['total_employees']++;
-                    $totals['total_gross'] += (float) $payroll->gross_salary;
-                    $totals['total_deductions'] += (float) $payroll->total_deductions;
-                    $totals['total_net'] += (float) $payroll->net_salary;
                 } catch (ValidationException $e) {
                     $runErrors[] = "{$employee->display_name}: " . (collect($e->errors())->flatten()->first() ?: $e->getMessage());
                     continue;
@@ -105,6 +104,13 @@ class EnterprisePayrollCalculatorS
                     continue;
                 }
             }
+
+            $totals = [
+                'total_employees' => (int) EnterprisePayrollM::where('payroll_run_id', $run->id)->count(),
+                'total_gross' => (float) EnterprisePayrollM::where('payroll_run_id', $run->id)->sum('gross_salary'),
+                'total_deductions' => (float) EnterprisePayrollM::where('payroll_run_id', $run->id)->sum('total_deductions'),
+                'total_net' => (float) EnterprisePayrollM::where('payroll_run_id', $run->id)->sum('net_salary'),
+            ];
 
             $remarks = !empty($runErrors) ? "Warnings/Skipped:\n" . implode("\n", $runErrors) : null;
 

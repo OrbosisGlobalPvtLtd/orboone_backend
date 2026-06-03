@@ -5,8 +5,6 @@
 @section('_content')
 <style>
 :root{
-    --orb-primary:#4B00E8;
-    --orb-secondary:#8600EE;
     --orb-rose:#EC4E74;
     --orb-bg:#F6F7FB;
     --orb-card:#FFFFFF;
@@ -200,7 +198,7 @@ textarea.form-control{
 
 .btn-orb{
     border:0;
-    background:linear-gradient(135deg,#4B00E8,#8600EE);
+    background:linear-gradient(135deg, var(--orb-primary), var(--orb-secondary));
     color:#fff!important;
     box-shadow:0 8px 18px rgba(75,0,232,.16);
 }

@@ -159,7 +159,7 @@ class ProfilesController extends Controller
                 if ($employee) {
                     $profile = DB::table('employee_profiles')->where('employee_id', $employee->id)->first();
                     
-                    $isSubmittedOrApproved = $profile && in_array($profile->profile_status, ['submitted', 'approved']);
+                    $isSubmittedOrApproved = $profile && $profile->profile_status === 'submitted';
                     
                     // Whitelisted fields allowed to be updated
                     $editableFields = [
@@ -192,6 +192,10 @@ class ProfilesController extends Controller
                                 $profileData[$field] = $data[$field];
                             }
                         }
+                        if ($profile && $profile->profile_status === 'approved') {
+                            $profileData['profile_status'] = 'incomplete';
+                            $profileData['is_profile_completed'] = 0;
+                        }
                     }
 
                     // Process profile image & resume file uploads (allowed in all states or locked as per allowed rules)
@@ -217,7 +221,7 @@ class ProfilesController extends Controller
                         }
                     }
 
-                    if (isset($data['experience_type']) && !$isSubmittedOrApproved) {
+                    if (isset($data['experience_type']) && !$isSubmittedOrApproved && Schema::hasColumn('employees_new', 'experience_type')) {
                         DB::table('employees_new')->where('id', $employee->id)->update([
                             'experience_type' => $data['experience_type'],
                             'updated_at' => now(),

@@ -57,11 +57,6 @@ class EmployeeSelfC extends Controller
 
         $documentTypes = \App\Models\HRMS\Document\DocumentTypeM::where('scope', 'employee')
             ->where('is_active', 1)
-            ->where(function ($q) use ($appliesTo) {
-                $q->whereNull('applies_to')
-                    ->orWhere('applies_to', '')
-                    ->orWhereIn(DB::raw('LOWER(TRIM(applies_to))'), $appliesTo);
-            })
             ->orderBy('is_mandatory', 'desc')
             ->orderBy('name')
             ->get();

@@ -5,8 +5,7 @@
 @section('_content')
 <style>
     :root {
-        --orb-primary: #4B00E8;
-        --orb-secondary: #8600EE;
+
         --orb-bg: #F6F7FB;
         --orb-card: #FFFFFF;
         --orb-border: #E7EAF3;
@@ -805,7 +804,7 @@ $disabled = $isReadOnly ? 'disabled' : '';
                         <p class="card-subtitle">View uploaded documents and upload missing or rejected documents for verification.</p>
                     </div>
                 </div>
-                <span class="badge-soft badge-pending">{{ $documentTypes->count() ?? 0 }} Items</span>
+                <span id="doc_items_count" class="badge-soft badge-pending">{{ $documentTypes->count() ?? 0 }} Items</span>
             </div>
             <div class="card-body">
                 <div class="doc-grid">
@@ -820,7 +819,7 @@ $disabled = $isReadOnly ? 'disabled' : '';
                     'rejected' => 'badge-rejected',
                     ][$docStatus] ?? 'badge-pending';
                     @endphp
-                    <div class="doc-card">
+                    <div class="doc-card" data-applies-to="{{ strtolower(trim($type->applies_to ?? '')) }}">
                         <div class="doc-top">
                             <div>
                                 <div class="doc-name"><i class="fas fa-file-alt text-primary mr-1"></i>{{ $type->name }}</div>
@@ -908,6 +907,29 @@ $disabled = $isReadOnly ? 'disabled' : '';
             if (expInput.value === '0') {
                 expInput.value = '';
             }
+        }
+
+        // Show/hide document cards based on experience type
+        var docCards = document.querySelectorAll('.doc-card');
+        var visibleCount = 0;
+        docCards.forEach(function(card) {
+            var appliesTo = card.getAttribute('data-applies-to') || '';
+            if (val === 'fresher') {
+                if (appliesTo === 'experienced' || appliesTo === 'experience' || appliesTo === 'exp') {
+                    card.style.display = 'none';
+                } else {
+                    card.style.display = 'block';
+                    visibleCount++;
+                }
+            } else {
+                card.style.display = 'block';
+                visibleCount++;
+            }
+        });
+
+        var countBadge = document.getElementById('doc_items_count');
+        if (countBadge) {
+            countBadge.textContent = visibleCount + ' Items';
         }
     }
     toggleExperience('{{ old("experience_type", $profile?->experience_type ?? "fresher") }}');

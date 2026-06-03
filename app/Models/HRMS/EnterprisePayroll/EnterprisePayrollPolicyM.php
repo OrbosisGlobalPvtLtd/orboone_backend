@@ -31,5 +31,29 @@ class EnterprisePayrollPolicyM extends Model
         'weekoff_payable_ratio' => 'decimal:2',
         'holiday_payable_ratio' => 'decimal:2',
     ];
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saving(function ($model) {
+            if (array_key_exists('tds_source', $model->attributes)) {
+                $tdsSource = $model->attributes['tds_source'];
+                unset($model->attributes['tds_source']);
+
+                \Illuminate\Support\Facades\DB::table('settings')->updateOrInsert(
+                    ['key' => 'enterprise_payroll_tds_source'],
+                    ['value' => $tdsSource, 'updated_at' => now()]
+                );
+            }
+        });
+    }
+
+    public function getTdsSourceAttribute()
+    {
+        return \Illuminate\Support\Facades\DB::table('settings')
+            ->where('key', 'enterprise_payroll_tds_source')
+            ->value('value') ?: 'policy';
+    }
 }
 

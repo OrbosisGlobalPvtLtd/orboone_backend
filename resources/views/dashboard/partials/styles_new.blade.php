@@ -14,7 +14,7 @@
     }
 
     .dash-hero {
-        background: linear-gradient(135deg, #4B00E8 0%, #8600EE 55%, #A855F7 100%);
+        background: linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%);
         color: #fff;
         padding: 24px;
         border-radius: 18px;
@@ -159,7 +159,7 @@
         height: 46px;
         border-radius: 15px;
         background: linear-gradient(135deg, #f1edff, #ede9fe);
-        color: #4B00E8;
+        color: var(--orb-primary);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -182,7 +182,7 @@
     }
 
     .dash-section-title i {
-        color: #4B00E8;
+        color: var(--orb-primary);
     }
 
     .dash-actions {
@@ -204,7 +204,7 @@
 
     .dash-action:hover {
         transform: translateY(-3px);
-        color: #4B00E8;
+        color: var(--orb-primary);
         text-decoration: none;
         box-shadow: 0 14px 32px rgba(15, 23, 42, .1);
     }
@@ -213,7 +213,7 @@
         width: 44px;
         height: 44px;
         border-radius: 15px;
-        background: linear-gradient(135deg, #4B00E8, #8600EE);
+        background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary));
         color: #fff;
         display: flex;
         align-items: center;
@@ -314,7 +314,7 @@
     }
 
     .dot.present {
-        background: #4B00E8;
+        background: var(--orb-primary);
     }
 
     .dot.late {
@@ -356,7 +356,7 @@
 
     .dash-bar-fill {
         height: 100%;
-        background: linear-gradient(90deg, #4B00E8, #8600EE);
+        background: linear-gradient(90deg, var(--orb-primary), var(--orb-secondary));
         border-radius: 999px;
     }
 

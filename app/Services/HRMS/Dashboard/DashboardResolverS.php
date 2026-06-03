@@ -1848,6 +1848,68 @@ class DashboardResolverS
             $pending += DB::table('employee_documents')->whereRaw('LOWER(status) = ?', ['pending'])->count();
         }
 
+        if ($this->tableExists('employee_documents_new') && $this->tableExists('document_types') && $this->tableExists('employees_new')) {
+            $documentTypes = DB::table('document_types')
+                ->where('scope', 'employee')
+                ->where('is_active', 1)
+                ->get();
+
+            $uploadedDocs = DB::table('employee_documents_new')
+                ->when($this->columnExists('employee_documents_new', 'is_active'), fn($q) => $q->where('is_active', 1))
+                ->get()
+                ->groupBy('employee_id');
+
+            $employeesQuery = DB::table('employees_new as e')
+                ->leftJoin('employee_profiles as p', 'p.employee_id', '=', 'e.id')
+                ->when($this->columnExists('employees_new', 'employment_status'), fn ($q) => $q->where('e.employment_status', 'active'))
+                ->when($this->columnExists('employees_new', 'is_active'), fn ($q) => $q->where('e.is_active', 1));
+
+            $selectColumns = ['e.id'];
+            if ($this->columnExists('employees_new', 'experience_type')) {
+                $selectColumns[] = 'e.experience_type';
+            }
+            if ($this->columnExists('employee_profiles', 'experience_type')) {
+                $selectColumns[] = 'p.experience_type as profile_experience_type';
+            }
+
+            $employees = $employeesQuery->select($selectColumns)->get();
+
+            foreach ($employees as $employee) {
+                $experienceType = strtolower(trim((string) (($employee->experience_type ?? $employee->profile_experience_type ?? null) ?: 'fresher')));
+                
+                $isExperienced = in_array($experienceType, [
+                    'experienced',
+                    'experience',
+                    'exp',
+                    'yes',
+                    '1',
+                ]);
+
+                $appliesTo = $isExperienced
+                    ? ['all', 'both', 'employee', 'employees', 'experienced', 'experience', 'exp']
+                    : ['all', 'both', 'employee', 'employees', 'fresher', 'freshers'];
+
+                $requiredDocs = $documentTypes->where('is_mandatory', 1)->filter(function ($type) use ($appliesTo) {
+                    $applies = strtolower(trim((string) ($type->applies_to ?: 'all')));
+                    return in_array($applies, $appliesTo, true);
+                });
+
+                $employeeDocs = $uploadedDocs->get($employee->id) ?? collect();
+                $latestDocs = $employeeDocs->whereIn('document_type_id', $requiredDocs->pluck('id'))->unique('document_type_id');
+                
+                $uploadedCount = $latestDocs->where('verification_status', '!=', 'rejected')->count();
+                $missing_documents += max(0, $requiredDocs->count() - $uploadedCount);
+                
+                $expired_documents += $latestDocs->whereNotNull('expiry_date')->filter(function($doc) {
+                    try {
+                        return now()->gt(\Carbon\Carbon::parse($doc->expiry_date));
+                    } catch (\Exception $e) {
+                        return false;
+                    }
+                })->count();
+            }
+        }
+
         return [
             'pending' => $pending,
             'pending_verification' => $pending,
@@ -2066,6 +2128,7 @@ class DashboardResolverS
         }
 
         return [
+            'id' => $payslip->id,
             'label' => Carbon::createFromDate($payslip->year, $payslip->month, 1)->format('M Y'),
             'subtitle' => 'Latest generated salary slip',
         ];
@@ -2090,6 +2153,7 @@ class DashboardResolverS
                 'u.name',
                 'u.email',
                 'p.is_profile_completed',
+                'p.profile_status',
                 'p.profile_image',
                 'p.date_of_birth',
                 'p.gender',
@@ -2869,6 +2933,18 @@ class DashboardResolverS
     }
 
     private function getDocumentOverview(): array
+    {
+        $stats = $this->documentStats();
+        return [
+            'pending_verification' => $stats['pending_verification'],
+            'rejected_documents' => $stats['rejected_documents'],
+            'missing_documents' => $stats['missing_documents'],
+            'expired_documents' => $stats['expired_documents'],
+            'recently_uploaded' => $stats['recently_uploaded'],
+        ];
+    }
+
+    private function getDocumentOverview_old(): array
     {
         return [
             'pending_verification' => $this->getPendingDocumentsCount(),

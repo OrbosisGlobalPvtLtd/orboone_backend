@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\HRMS\Storage\HrmsStoragePathS;
 use Illuminate\Http\Request;
 use App\Models\HRMS\Document\CompanyDocumentM as CompanyDocumentModal;
+
 class CompanyDocumentC extends Controller
 {
     public function __construct(private HrmsStoragePathS $paths)
@@ -14,9 +15,9 @@ class CompanyDocumentC extends Controller
 
     public function index()
     {
-        $docs = CompanyDocumentModal::latest()->get();
+        $policies = CompanyDocumentModal::latest()->get();
         $accesses = \App\Models\Core\AccessM::where('role_id', auth()->user()->role_id)->get();
-        return view('hrms.document.hr.policies-all', compact('docs', 'accesses'));
+        return view('hrms.documents.company-documents.index', compact('policies', 'accesses'));
     }
 
     public function store(Request $request)
@@ -47,5 +48,35 @@ class CompanyDocumentC extends Controller
         // \Illuminate\Support\Facades\Storage::disk('public')->delete($doc->file_path);
         $doc->delete();
         return back()->with('success', 'Policy removed successfully.');
+    }
+
+    public function preview($id)
+    {
+        $policy = CompanyDocumentModal::findOrFail($id);
+
+        if (!$policy->file_path || !\Illuminate\Support\Facades\Storage::disk('private')->exists($policy->file_path)) {
+            abort(404, 'File not found or missing.');
+        }
+
+        $absolutePath = \Illuminate\Support\Facades\Storage::disk('private')->path($policy->file_path);
+        $mime = mime_content_type($absolutePath) ?: 'application/octet-stream';
+
+        return response()->file($absolutePath, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'inline; filename="' . basename($absolutePath) . '"',
+        ]);
+    }
+
+    public function download($id)
+    {
+        $policy = CompanyDocumentModal::findOrFail($id);
+
+        if (!$policy->file_path || !\Illuminate\Support\Facades\Storage::disk('private')->exists($policy->file_path)) {
+            abort(404, 'File not found or missing.');
+        }
+
+        $absolutePath = \Illuminate\Support\Facades\Storage::disk('private')->path($policy->file_path);
+
+        return response()->download($absolutePath, basename($absolutePath));
     }
 }

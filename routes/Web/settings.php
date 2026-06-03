@@ -88,6 +88,13 @@ Route::middleware(['auth', 'web.admin.access'])->group(function () {
     Route::get('/settings/company', [CompanySettingsController::class, 'index'])->name('settings.company.index');
     Route::put('/settings/company', [CompanySettingsController::class, 'update'])->name('settings.company.update');
 
+    Route::get('/settings/branding', [\App\Http\Controllers\Web\Settings\BrandingSettingsController::class, 'index'])
+        ->middleware('permission:settings.branding.view|settings.branding.update')
+        ->name('settings.branding.index');
+    Route::post('/settings/branding', [\App\Http\Controllers\Web\Settings\BrandingSettingsController::class, 'update'])
+        ->middleware('permission:settings.branding.update')
+        ->name('settings.branding.update');
+
     Route::get('/settings/hrms-exit-policies', [HrmsExitPolicyC::class, 'index'])
         ->middleware('permission:hrms_exit_policy.view|hrms_exit_policy.manage|hrms_exit_policy.update')
         ->name('settings.hrms_exit_policies.index');

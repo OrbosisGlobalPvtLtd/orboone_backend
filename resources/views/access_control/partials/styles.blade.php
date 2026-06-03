@@ -1,8 +1,8 @@
 <style>
     /* Premium Orbosis HRMS Access Control Design System */
     :root {
-        --ac-primary: #4B00E8;
-        --ac-secondary: #8600EE;
+        --ac-primary: var(--orb-primary, #4B00E8);
+        --ac-secondary: var(--orb-secondary, #FF5252);
         --ac-bg: #F6F7FB;
         --ac-border: #E7EAF3;
         --ac-text: #101828;

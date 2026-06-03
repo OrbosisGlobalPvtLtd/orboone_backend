@@ -11,8 +11,6 @@
 
 <style>
     :root {
-        --orb-primary: #4B00E8;
-        --orb-secondary: #8600EE;
         --orb-bg: #F6F7FB;
         --orb-card: #FFFFFF;
         --orb-border: #E7EAF3;
@@ -473,7 +471,7 @@
     .dataTables_wrapper .dt-buttons .btn:hover,
     .dataTables_wrapper .dt-buttons .dt-button:hover {
         background: #F4F2FF !important;
-        color: #4B00E8 !important;
+        color: var(--orb-primary) !important;
         border-color: rgba(75, 0, 232, .22) !important;
     }
 

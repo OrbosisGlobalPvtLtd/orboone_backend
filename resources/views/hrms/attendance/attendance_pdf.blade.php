@@ -14,13 +14,13 @@
         .header {
             text-align: center;
             margin-bottom: 22px;
-            border-bottom: 2px solid #4b00e8;
+            border-bottom: 2px solid var(--orb-primary);
             padding-bottom: 10px;
         }
 
         .header h1 {
             margin: 0;
-            color: #4b00e8;
+            color: var(--orb-primary);
             font-size: 22px;
         }
 
@@ -45,7 +45,7 @@
         .summary-item strong {
             display: block;
             font-size: 13px;
-            color: #4b00e8;
+            color: var(--orb-primary);
         }
 
         .summary-item span {
@@ -63,7 +63,7 @@
 
         th {
             background: #f8f9fc;
-            color: #4b00e8;
+            color: var(--orb-primary);
             font-weight: bold;
             text-align: left;
             padding: 7px;

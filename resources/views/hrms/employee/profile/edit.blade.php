@@ -5,8 +5,7 @@
 @section('_content')
 <style>
     :root {
-        --orb-primary: #4B00E8;
-        --orb-secondary: #8600EE;
+
         --orb-rose: #EC4E74;
         --orb-bg: #F6F7FB;
         --orb-border: #E7EAF3;

@@ -4,8 +4,12 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-       {{-- <title>{{ config('app.name', 'Laravel') }}</title> --}}
-        <!-- Scripts -->
+    <link rel="shortcut icon" href="{{ $branding['favicon_url'] ?? asset('favicon.ico') }}" type="image/x-icon">
+    <title>{{ $branding['company_name'] ?? 'OrboOne HRMS' }}</title>
+
+    @include('partials.theme.branding-vars')
+
+    <!-- Scripts -->
     <!-- <script src="{{ asset('js/app.js') }}" defer></script> -->
      <script src="{{ asset('js/app.js') }}"></script>
 
@@ -57,7 +61,7 @@
             height: 50px;
             border: 5px solid rgba(75, 0, 232, 0.2);
             border-radius: 50%;
-            border-top-color: #4B00E8;
+            border-top-color: var(--orb-primary);
             animation: global-spin 1s ease-in-out infinite;
         }
         @keyframes global-spin {
@@ -66,7 +70,7 @@
     </style>
     <div id="global-form-loader" style="display: none; position: fixed; inset: 0; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index: 99999; align-items: center; justify-content: center; flex-direction: column;">
         <div class="global-spinner"></div>
-        <div style="margin-top: 15px; font-weight: 800; color: #4B00E8; font-size: 15px;">Processing, please wait...</div>
+        <div style="margin-top: 15px; font-weight: 800; color: var(--orb-primary); font-size: 15px;">Processing, please wait...</div>
     </div>
 
     <script>
@@ -75,6 +79,11 @@
 
             // Hook into standard form submissions
             document.addEventListener('submit', function(e) {
+                // If the submission event was already cancelled (e.g. by a confirm dialog returning false), do not show loader or disable buttons
+                if (e.defaultPrevented) {
+                    return;
+                }
+
                 const form = e.target;
 
                 // Respect HTML5 form validation before showing loader

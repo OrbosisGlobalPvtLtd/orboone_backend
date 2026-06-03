@@ -104,8 +104,7 @@ $announcementCards = [
 
 <style>
     :root {
-        --orb-primary: #4B00E8;
-        --orb-secondary: #8600EE;
+
         --orb-bg: #F6F7FB;
         --orb-card: #fff;
         --orb-border: #E7EAF3;
@@ -133,7 +132,7 @@ $announcementCards = [
         align-items: center;
         padding: 24px;
         border-radius: 20px;
-        background: linear-gradient(135deg, #4B00E8, #8600EE);
+        background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary));
         color: #fff;
         overflow: hidden;
         margin-bottom: 22px;
@@ -204,7 +203,7 @@ $announcementCards = [
 
     .sa-hero-btn:hover {
         background: #fff;
-        color: #4B00E8;
+        color: var(--orb-primary);
     }
 
     .sa-section {
@@ -327,7 +326,7 @@ $announcementCards = [
 
     .tone-primary {
         background: #F4F2FF;
-        color: #4B00E8;
+        color: var(--orb-primary);
     }
 
     .tone-success {

@@ -39,6 +39,10 @@ class EmployeeProfileCompletionS
             ? (bool) $employee->user->isEmployee()
             : true;
 
+        if (!$profile && $employee) {
+            $profile = $employee->profile;
+        }
+
         $missingProfileFields = $this->documentCompletion->missingProfileFields($profile, $employee);
         $profileFieldsCompleted = count($missingProfileFields) === 0;
 
@@ -51,7 +55,7 @@ class EmployeeProfileCompletionS
             && ($documentStatus['required_count'] ?? 0) > 0;
 
         $canPunchAttendance = ! $isEmployee || (
-            $profile->profile_status === 'approved' && $requiredVerified
+            ($profile?->profile_status ?? 'pending') === 'approved' && $requiredVerified
         );
 
         $docVerificationStatus = 'missing';
@@ -64,15 +68,15 @@ class EmployeeProfileCompletionS
             $docVerificationStatus = 'verified';
         }
 
-        $isProfileCompleted = (bool) $profile->is_profile_completed;
+        $isProfileCompleted = $profile ? (bool) $profile->is_profile_completed : false;
 
-        $mustCompleteProfile = $isEmployee ? (! $isProfileCompleted || $profile->profile_status === 'rejected') : false;
+        $mustCompleteProfile = $isEmployee ? (! $isProfileCompleted || ($profile?->profile_status ?? 'pending') === 'rejected') : false;
         $attendanceBlocked = $isEmployee ? ! $canPunchAttendance : false;
 
         $nextRoute = 'dashboard';
 
         if ($mustCompleteProfile) {
-            if (! $profileFieldsCompleted || $profile->profile_status === 'rejected') {
+            if (! $profileFieldsCompleted || ($profile?->profile_status ?? 'pending') === 'rejected') {
                 $nextRoute = 'profile_completion';
             } elseif (! $requiredUploaded) {
                 $nextRoute = 'document_completion';
@@ -83,8 +87,8 @@ class EmployeeProfileCompletionS
 
         return [
             'is_profile_completed'         => $isProfileCompleted,
-            'profile_verification_status'  => $profile->profile_status ?? 'pending',
-            'rejection_reason'             => $profile->rejection_reason,
+            'profile_verification_status'  => $profile?->profile_status ?? 'pending',
+            'rejection_reason'             => $profile?->rejection_reason,
             'document_verification_status' => $docVerificationStatus,
             'required_documents_verified'  => $requiredVerified,
             'can_punch_attendance'         => $canPunchAttendance,
@@ -94,7 +98,7 @@ class EmployeeProfileCompletionS
             'completion_percentage'        => $this->documentCompletion->profileCompletionPercentage($profile, $employee),
             'missing_profile_fields'       => $missingProfileFields,
             'document_completion_status'   => $documentStatus,
-            'experience_type'              => $profile->experience_type ?? 'fresher',
+            'experience_type'              => $profile?->experience_type ?? 'fresher',
         ];
     }
 }

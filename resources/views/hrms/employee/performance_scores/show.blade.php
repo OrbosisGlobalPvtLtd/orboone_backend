@@ -15,7 +15,7 @@
                 </p>
             </div>
             <div class="col-lg-4 col-md-12 text-center text-lg-right">
-                <a href="{{ route('hrms.employees.performance_scores.index') }}" class="btn btn-light rounded-pill px-4 py-2 font-weight-bold shadow-sm" style="color: #4b00e8;">
+                <a href="{{ route('hrms.employees.performance_scores.index') }}" class="btn btn-light rounded-pill px-4 py-2 font-weight-bold shadow-sm" style="color: var(--orb-primary);">
                     <i class="fas fa-arrow-left mr-2"></i> Back to Listing
                 </a>
             </div>
@@ -40,7 +40,7 @@
                     <img src="{{ $empPhotoUrl }}" class="profile-avatar mb-3" onerror="this.src='{{ asset('images/profile.png') }}'" alt="">
                     <h4 class="font-weight-bold text-dark mb-1">{{ $employeeScore->employee->name }}</h4>
                     <p class="text-muted font-weight-bold">{{ $employeeScore->employee->designation->name ?? 'Staff Professional' }}</p>
-                    <span class="badge badge-pill px-3 py-2" style="background: rgba(75,0,232,0.1); color: #4b00e8; font-weight: 700;">{{ $employeeScore->employee->employee_id }}</span>
+                    <span class="badge badge-pill px-3 py-2" style="background: rgba(75,0,232,0.1); color: var(--orb-primary); font-weight: 700;">{{ $employeeScore->employee->employee_id }}</span>
                 </div>
 
                 <div class="row mb-4">
@@ -55,7 +55,7 @@
                     <div class="col-12">
                         <div class="stat-label">Assessment Date</div>
                         <div class="stat-value">
-                            <i class="far fa-calendar-check mr-2" style="color: #4b00e8;"></i> {{ \Carbon\Carbon::parse($employeeScore->created_at)->format('l, F jS Y - h:i A') }}
+                            <i class="far fa-calendar-check mr-2" style="color: var(--orb-primary);"></i> {{ \Carbon\Carbon::parse($employeeScore->created_at)->format('l, F jS Y - h:i A') }}
                         </div>
                     </div>
                 </div>
@@ -89,7 +89,7 @@
                         <div class="overall-badge">
                             {{ number_format($employeeScore->average_score, 1) }}
                         </div>
-                        <h5 class="font-weight-bold mb-1" style="color: #4b00e8;">Overall Index</h5>
+                        <h5 class="font-weight-bold mb-1" style="color: var(--orb-primary);">Overall Index</h5>
                         <p class="small text-muted mb-0 font-weight-bold">Out of 10.0 scale</p>
                     </div>
                     <div class="col-md-8">

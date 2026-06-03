@@ -196,7 +196,7 @@
     }
 
     .card-primary {
-        --card-gradient: linear-gradient(135deg, #4B00E8, #8600EE);
+        --card-gradient: linear-gradient(135deg, var(--leave-primary), var(--leave-secondary));
         --card-shadow: rgba(75, 0, 232, .25);
         --card-soft: rgba(75, 0, 232, .08);
     }

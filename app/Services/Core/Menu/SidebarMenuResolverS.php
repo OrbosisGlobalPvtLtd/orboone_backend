@@ -299,6 +299,7 @@ class SidebarMenuResolverS
             'settings.hrms_exit_policies.index' => ['hrms_exit_policy.view', 'hrms_exit_policy.manage', 'hrms_exit_policy.update'],
             'settings.system.index' => ['settings.system.manage'],
             'settings.company.index' => ['settings.company.manage'],
+            'settings.branding.index' => ['settings.branding.view', 'settings.branding.update'],
             'hrms.mobile-app-versions.index' => ['mobile_app_versions.view', 'mobile_app_versions.manage'],
             'roles.index' => ['access.roles.manage'],
             'permissions.index' => ['access.permissions.manage'],

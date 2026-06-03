@@ -1,7 +1,7 @@
 <style>
     :root {
-        --set-primary: #4B00E8;
-        --set-secondary: #8600EE;
+        --set-primary: var(--orb-primary, #4B00E8);
+        --set-secondary: var(--orb-secondary, #8600EE);
         --set-bg: #F6F7FB;
         --set-border: #E7EAF3;
         --set-text: #101828;

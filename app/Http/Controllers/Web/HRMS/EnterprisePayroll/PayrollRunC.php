@@ -20,11 +20,13 @@ class PayrollRunC extends Controller
     public function index()
     {
         $runs = EnterprisePayrollRunM::query()->latest()->get();
+        $employees = \App\Models\HRMS\Employee\EmployeeM::query()->active()->with('user')->orderBy('id')->get();
 
         return view('hrms.enterprise-payroll.runs.index', [
             'accesses' => $this->accesses(),
             'active' => 'enterprise_payroll',
             'runs' => $runs,
+            'employees' => $employees,
         ]);
     }
 
@@ -33,17 +35,21 @@ class PayrollRunC extends Controller
         $data = $request->validate([
             'month' => ['required', 'integer', 'between:1,12'],
             'year' => ['required', 'integer', 'min:2020'],
+            'employee_id' => ['nullable', 'integer', 'exists:employees_new,id'],
         ]);
 
-        $preview = $this->calculator->preview((int) $data['month'], (int) $data['year']);
+        $employeeId = isset($data['employee_id']) ? (int)$data['employee_id'] : null;
+
+        $preview = $this->calculator->preview((int) $data['month'], (int) $data['year'], $employeeId);
 
         return view('hrms.enterprise-payroll.runs.preview', [
             'accesses' => $this->accesses(),
             'active' => 'enterprise_payroll',
             'month' => (int) $data['month'],
             'year' => (int) $data['year'],
+            'employee_id' => $employeeId,
             'rows' => $preview['rows'],
-            'errors' => $preview['errors'],
+            'payrollErrors' => $preview['errors'],
         ]);
     }
 
@@ -52,16 +58,19 @@ class PayrollRunC extends Controller
         $data = $request->validate([
             'month' => ['required', 'integer', 'between:1,12'],
             'year' => ['required', 'integer', 'min:2020'],
+            'employee_id' => ['nullable', 'integer', 'exists:employees_new,id'],
         ]);
 
-        $run = $this->calculator->generate((int) $data['month'], (int) $data['year'], $this->actorId());
+        $employeeId = isset($data['employee_id']) ? (int)$data['employee_id'] : null;
+
+        $run = $this->calculator->generate((int) $data['month'], (int) $data['year'], $this->actorId(), $employeeId);
 
         return redirect()->route('enterprise-payroll.runs.show', $run)->with('success', 'Enterprise payroll generated successfully.');
     }
 
     public function show(EnterprisePayrollRunM $run)
     {
-        $run->load('payrolls.employee.user');
+        $run->load('payrolls.employee.user', 'payrolls.payslip');
 
         return view('hrms.enterprise-payroll.runs.show', [
             'accesses' => $this->accesses(),

@@ -9,8 +9,7 @@
 <style>
     /* Compliance Command Center Premium Custom Styles */
     :root {
-        --orb-primary: #4B00E8;
-        --orb-secondary: #8600EE;
+
         --orb-bg: #F6F7FB;
         --orb-card: #FFFFFF;
         --orb-border: #E7EAF3;
@@ -27,7 +26,7 @@
         --color-danger-light: #FEF3F2;
         --color-info: #0ea5e9;
         --color-info-light: #F0F9FF;
-        --color-purple: #8600EE;
+        --color-purple: var(--orb-secondary);
         --color-purple-light: #F4F2FF;
     }
 
@@ -230,8 +229,8 @@
                         <!-- Definitions for Gradient -->
                         <defs>
                             <linearGradient id="gradientStroke" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" stop-color="#4B00E8" />
-                                <stop offset="100%" stop-color="#8600EE" />
+                                <stop offset="0%" stop-color="var(--orb-primary)" />
+                                <stop offset="100%" stop-color="var(--orb-secondary)" />
                             </linearGradient>
                         </defs>
                     </svg>

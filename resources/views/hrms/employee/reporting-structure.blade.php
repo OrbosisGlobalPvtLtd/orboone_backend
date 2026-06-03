@@ -13,11 +13,11 @@
     .eo-card{overflow:hidden;}
     .eo-table th{background:#F8FAFC;color:#667085;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.45px;border-bottom:1px solid #E7EAF3;white-space:nowrap;}
     .eo-table td{vertical-align:middle;color:#101828;font-size:13px;font-weight:650;border-bottom:1px solid #F1F3F8;}
-    .eo-code{display:inline-flex;padding:6px 9px;border-radius:10px;background:#F4F2FF;color:#4B00E8;font-size:12px;font-weight:900;white-space:nowrap;}
+    .eo-code{display:inline-flex;padding:6px 9px;border-radius:10px;background:#F4F2FF;color:var(--orb-primary);font-size:12px;font-weight:900;white-space:nowrap;}
     .eo-person{display:flex;flex-direction:column;gap:2px;}
     .eo-name{color:#101828;font-size:13px;font-weight:900;}
     .eo-meta{color:#667085;font-size:11px;font-weight:700;}
-    .eo-count{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:28px;border-radius:999px;background:rgba(75,0,232,.08);color:#4B00E8;font-size:12px;font-weight:900;}
+    .eo-count{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:28px;border-radius:999px;background:rgba(75,0,232,.08);color:var(--orb-primary);font-size:12px;font-weight:900;}
 </style>
 
 <div class="eo-page">

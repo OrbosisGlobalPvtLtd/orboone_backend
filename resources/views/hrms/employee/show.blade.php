@@ -5,8 +5,6 @@
 @section('_content')
 <style>
 :root{
-    --orb-primary:#4B00E8;
-    --orb-secondary:#8600EE;
     --orb-bg:#F6F7FB;
     --orb-card:#FFFFFF;
     --orb-border:#E7EAF3;
@@ -28,7 +26,7 @@
 }
 
 .ev-header {
-    background: linear-gradient(135deg, #4B00E8, #8600EE) !important;
+    background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary)) !important;
     color: #ffffff !important;
     border: 0 !important;
     border-radius: 26px !important;

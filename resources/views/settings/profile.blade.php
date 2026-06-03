@@ -18,7 +18,7 @@
     $initials = collect(explode(' ', trim($profile->name ?? 'U')))->filter()->take(2)->map(fn($part) => strtoupper(substr($part, 0, 1)))->implode('');
     
     $status = $employeeProfile?->profile_status ?? 'incomplete';
-    $isLocked = in_array($status, ['submitted', 'approved']);
+    $isLocked = $status === 'submitted';
     
     // Whitelist check helper
     $isFieldEditable = function($fieldName) use ($editableFields, $isLocked) {
@@ -40,11 +40,17 @@
     };
 
     $fieldStatusClass = function($fieldName) use ($isFieldEditable) {
-        return 'field-locked';
+        return $isFieldEditable($fieldName) ? '' : 'field-locked';
     };
 @endphp
 
 <style>
+    :root {
+        --set-primary: var(--orb-primary, #4B00E8);
+        --set-secondary: var(--orb-secondary, #8600EE);
+        --set-soft: #F4F2FF;
+    }
+
     .field-locked {
         background-color: #F8F9FC !important;
         color: #667085 !important;
@@ -67,7 +73,7 @@
         margin: 0 auto;
     }
     .profile-hero {
-        background: linear-gradient(135deg, #4B00E8, #8600EE);
+        background: linear-gradient(135deg, var(--set-primary), var(--set-secondary));
         border-radius: 26px;
         padding: 32px;
         color: white;
@@ -197,7 +203,7 @@
         border-bottom: 1px solid #F3F4F6;
     }
     .profile-card h3 i {
-        color: #4B00E8;
+        color: var(--set-primary);
     }
     .profile-label {
         display: block;
@@ -221,7 +227,7 @@
         transition: all 0.25s ease;
     }
     .profile-control:focus {
-        border-color: #4B00E8 !important;
+        border-color: var(--set-primary) !important;
         background: white !important;
         box-shadow: 0 0 0 4px rgba(75, 0, 232, 0.08) !important;
     }
@@ -253,7 +259,7 @@
     .profile-btn-primary {
         color: white !important;
         border-color: transparent;
-        background: linear-gradient(135deg, #4B00E8, #8600EE);
+        background: linear-gradient(135deg, var(--set-primary), var(--set-secondary));
         box-shadow: 0 4px 14px rgba(75, 0, 232, 0.2);
     }
     .profile-btn-primary:hover {
@@ -288,7 +294,7 @@
     .stage-section-card h4 {
         font-size: 13px;
         font-weight: 900;
-        color: #4B00E8;
+        color: var(--set-primary);
         margin: 0 0 14px;
         text-transform: uppercase;
         letter-spacing: 0.5px;
@@ -734,39 +740,44 @@
             <p class="text-muted mb-4" style="font-size: 12px; font-weight: 600;">Upload mandatory documents for profile verification. Verified documents will be locked securely.</p>
 
             <div class="document-grid">
-                @forelse($documentTypes as $type)
+                @php
+                    $uploadedCount = 0;
+                @endphp
+                @foreach($documentTypes as $type)
                     @php
                         $doc = $employeeDocuments->get($type->id);
-                        $docStatus = $doc ? $doc->verification_status : 'missing';
                     @endphp
-                    <div class="p-3 border rounded-lg" style="border-radius: 16px; border: 1px solid #E7EAF3; background: #FCFCFD; transition: all 0.2s ease;">
-                        <div class="d-flex align-items-center justify-content-between mb-3">
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <i class="fas fa-file-alt text-primary" style="font-size: 18px;"></i>
+                    @if($doc)
+                        @php
+                            $uploadedCount++;
+                            $docStatus = $doc->verification_status;
+                        @endphp
+                        <div class="p-3 border rounded-lg" style="border-radius: 16px; border: 1px solid #E7EAF3; background: #FCFCFD; transition: all 0.2s ease;">
+                            <div class="d-flex align-items-center justify-content-between mb-3">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <i class="fas fa-file-alt text-primary" style="font-size: 18px;"></i>
+                                    <div>
+                                        <span style="font-weight: 800; font-size: 13px; color: #101828;">{{ $type->name }}</span>
+                                        @if($type->is_mandatory)
+                                            <span class="badge badge-danger ml-1" style="font-size: 9px; font-weight: 800; background: #FEF3F2; color: #B42318; border: 1px solid #FECDCA; border-radius: 6px;">Required</span>
+                                        @endif
+                                    </div>
+                                </div>
+                                
+                                <!-- Status Badges -->
                                 <div>
-                                    <span style="font-weight: 800; font-size: 13px; color: #101828;">{{ $type->name }}</span>
-                                    @if($type->is_mandatory)
-                                        <span class="badge badge-danger ml-1" style="font-size: 9px; font-weight: 800; background: #FEF3F2; color: #B42318; border: 1px solid #FECDCA; border-radius: 6px;">Required</span>
+                                    @if($docStatus === 'missing')
+                                        <span class="badge" style="font-size: 10px; font-weight: 800; background: #FFF0F0; color: #E53E3E; padding: 4px 10px; border-radius: 12px; border: 1px solid #FED7D7;"><i class="fas fa-times-circle mr-1"></i> Missing</span>
+                                    @elseif($docStatus === 'pending')
+                                        <span class="badge" style="font-size: 10px; font-weight: 800; background: #FFFBEB; color: #D97706; padding: 4px 10px; border-radius: 12px; border: 1px solid #FDE68A;"><i class="fas fa-hourglass-half mr-1"></i> Pending</span>
+                                    @elseif($docStatus === 'verified')
+                                        <span class="badge" style="font-size: 10px; font-weight: 800; background: #F0FDF4; color: #16A34A; padding: 4px 10px; border-radius: 12px; border: 1px solid #BBF7D0;"><i class="fas fa-lock mr-1"></i> Locked</span>
+                                    @elseif($docStatus === 'rejected')
+                                        <span class="badge" style="font-size: 10px; font-weight: 800; background: #FFF7ED; color: #EA580C; padding: 4px 10px; border-radius: 12px; border: 1px solid #FFEDD5;"><i class="fas fa-exclamation-triangle mr-1"></i> Rejected</span>
                                     @endif
                                 </div>
                             </div>
-                            
-                            <!-- Status Badges -->
-                            <div>
-                                @if($docStatus === 'missing')
-                                    <span class="badge" style="font-size: 10px; font-weight: 800; background: #FFF0F0; color: #E53E3E; padding: 4px 10px; border-radius: 12px; border: 1px solid #FED7D7;"><i class="fas fa-times-circle mr-1"></i> Missing</span>
-                                @elseif($docStatus === 'pending')
-                                    <span class="badge" style="font-size: 10px; font-weight: 800; background: #FFFBEB; color: #D97706; padding: 4px 10px; border-radius: 12px; border: 1px solid #FDE68A;"><i class="fas fa-hourglass-half mr-1"></i> Pending</span>
-                                @elseif($docStatus === 'verified')
-                                    <span class="badge" style="font-size: 10px; font-weight: 800; background: #F0FDF4; color: #16A34A; padding: 4px 10px; border-radius: 12px; border: 1px solid #BBF7D0;"><i class="fas fa-lock mr-1"></i> Locked</span>
-                                @elseif($docStatus === 'rejected')
-                                    <span class="badge" style="font-size: 10px; font-weight: 800; background: #FFF7ED; color: #EA580C; padding: 4px 10px; border-radius: 12px; border: 1px solid #FFEDD5;"><i class="fas fa-exclamation-triangle mr-1"></i> Rejected</span>
-                                @endif
-                            </div>
-                        </div>
 
-                        @if($doc)
-                            <!-- Document Details & View Actions -->
                             <div class="d-flex align-items-center justify-content-between mt-2 p-2 rounded" style="background: #F1F5F9; border: 1px solid #E2E8F0;">
                                 <span class="text-truncate text-muted" style="font-size: 11px; font-weight: 700; max-width: 220px;"><i class="fas fa-paperclip mr-1"></i> {{ $doc->file_original_name }}</span>
                                 <div style="display: flex; gap: 6px;">
@@ -775,39 +786,40 @@
                                     </a>
                                 </div>
                             </div>
-                        @endif
 
-                        @if(($docStatus === 'missing' || $docStatus === 'rejected') && !$isLocked)
-                            <!-- File Upload Actions -->
-                            <form action="{{ route('hrms.documents.self.upload') }}" method="POST" enctype="multipart/form-data" class="mt-3">
-                                @csrf
-                                <input type="hidden" name="document_type_id" value="{{ $type->id }}">
-                                <div style="display: flex; gap: 10px; align-items: center;">
-                                    <input type="file" name="file" required accept=".pdf,.jpg,.jpeg,.png,.webp" style="font-size: 11px; width: 100%;">
-                                    <button type="submit" class="profile-btn profile-btn-primary" style="min-height: 30px; font-size: 11px; padding: 4px 14px; white-space: nowrap;">
-                                        <i class="fas fa-upload"></i> Upload
-                                    </button>
+                            @if(($docStatus === 'missing' || $docStatus === 'rejected') && !$isLocked)
+                                <!-- File Upload Actions -->
+                                <form action="{{ route('hrms.documents.self.upload') }}" method="POST" enctype="multipart/form-data" class="mt-3">
+                                    @csrf
+                                    <input type="hidden" name="document_type_id" value="{{ $type->id }}">
+                                    <div style="display: flex; gap: 10px; align-items: center;">
+                                        <input type="file" name="file" required accept=".pdf,.jpg,.jpeg,.png,.webp" style="font-size: 11px; width: 100%;">
+                                        <button type="submit" class="profile-btn profile-btn-primary" style="min-height: 30px; font-size: 11px; padding: 4px 14px; white-space: nowrap;">
+                                            <i class="fas fa-upload"></i> Upload
+                                        </button>
+                                    </div>
+                                </form>
+                            @elseif($docStatus === 'verified')
+                                <div class="mt-3 text-success d-flex align-items-center gap-1" style="font-size: 11px; font-weight: 800;">
+                                    <i class="fas fa-lock"></i> Verified & Locked
                                 </div>
-                            </form>
-                        @elseif($docStatus === 'verified')
-                            <div class="mt-3 text-success d-flex align-items-center gap-1" style="font-size: 11px; font-weight: 800;">
-                                <i class="fas fa-lock"></i> Verified & Locked
-                            </div>
-                        @elseif($isLocked)
-                            <div class="mt-3 text-muted d-flex align-items-center gap-1" style="font-size: 11px; font-weight: 700;">
-                                <i class="fas fa-hourglass-half"></i> Under HR Verification Review
-                            </div>
-                        @endif
-                        
-                        @if($doc && $doc->rejection_reason)
-                            <div class="mt-2 text-danger p-2 rounded" style="font-size: 11px; font-weight: 700; background: #FFF5F5; border-left: 3px solid #E53E3E;">
-                                <strong>Reason:</strong> {{ $doc->rejection_reason }}
-                            </div>
-                        @endif
-                    </div>
-                @empty
-                    <p class="text-muted text-center py-4 w-100" style="font-size: 12px; font-weight: 600;">No compliance documents required.</p>
-                @endforelse
+                            @elseif($isLocked)
+                                <div class="mt-3 text-muted d-flex align-items-center gap-1" style="font-size: 11px; font-weight: 700;">
+                                    <i class="fas fa-hourglass-half"></i> Under HR Verification Review
+                                </div>
+                            @endif
+                            
+                            @if($doc->rejection_reason)
+                                <div class="mt-2 text-danger p-2 rounded" style="font-size: 11px; font-weight: 700; background: #FFF5F5; border-left: 3px solid #E53E3E;">
+                                    <strong>Reason:</strong> {{ $doc->rejection_reason }}
+                                </div>
+                            @endif
+                        </div>
+                    @endif
+                @endforeach
+                @if($uploadedCount === 0)
+                    <p class="text-muted text-center py-4 w-100" style="font-size: 12px; font-weight: 600;">No compliance documents uploaded yet.</p>
+                @endif
             </div>
         </div>
 

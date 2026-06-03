@@ -7,6 +7,7 @@ use App\Models\HRMS\Document\EmployeeDocumentM;
 use App\Models\HRMS\Employee\EmployeeM;
 use App\Models\HRMS\Employee\EmployeeProfileM;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class EmployeeDocumentCompletionS
@@ -293,7 +294,23 @@ class EmployeeDocumentCompletionS
         }
 
         if (Schema::hasColumn('document_types', 'applies_to')) {
-            $query->whereIn('applies_to', ['all', $experienceType]);
+            $isExperienced = in_array(strtolower(trim($experienceType)), [
+                'experienced',
+                'experience',
+                'exp',
+                'yes',
+                '1',
+            ]);
+
+            $appliesTo = $isExperienced
+                ? ['all', 'both', 'employee', 'employees', 'experienced', 'experience', 'exp']
+                : ['all', 'both', 'employee', 'employees', 'fresher', 'freshers'];
+
+            $query->where(function ($q) use ($appliesTo) {
+                $q->whereNull('applies_to')
+                  ->orWhere('applies_to', '')
+                  ->orWhereIn(DB::raw('LOWER(TRIM(applies_to))'), $appliesTo);
+            });
         }
 
         return $query;

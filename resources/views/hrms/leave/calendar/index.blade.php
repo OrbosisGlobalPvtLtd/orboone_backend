@@ -5,8 +5,6 @@
 @section('_head')
 <style>
     :root {
-        --orb-primary: #4B00E8;
-        --orb-secondary: #8600EE;
         --orb-bg: #F6F7FB;
         --orb-card: #FFFFFF;
         --orb-border: #E7EAF3;
@@ -535,7 +533,7 @@
     <div class="row g-3">
         <div class="col-12 col-md-4 col-lg">
             <div class="stat-card" style="border-bottom: 4px solid var(--orb-primary); height: 90px; display: flex; align-items: center; gap: 14px;">
-                <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(75, 0, 232, 0.08); color: var(--orb-primary); display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                <div style="width: 40px; height: 40px; border-radius: 10px; background: color-mix(in srgb, var(--orb-primary) 8%, transparent); color: var(--orb-primary); display: flex; align-items: center; justify-content: center; font-size: 16px;">
                     <i class="fas fa-plane-departure"></i>
                 </div>
                 <div>

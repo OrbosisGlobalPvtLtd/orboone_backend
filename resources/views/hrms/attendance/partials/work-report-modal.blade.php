@@ -5,7 +5,7 @@
 
             <!-- Sticky Top Report Header (Compact Enterprise Style) -->
             <div class="modal-header d-block p-0 border-0" style="position: sticky; top: 0; z-index: 10;">
-                <div style="background: linear-gradient(135deg, #4B00E8 0%, #8600EE 100%); padding: 14px 20px; color: #fff; position: relative;">
+                <div style="background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary)); padding: 14px 20px; color: #fff; position: relative;">
                     <!-- Close button -->
                     <button type="button" class="close text-white opacity-100" data-dismiss="modal" aria-label="Close" style="position: absolute; right: 16px; top: 12px; outline: none; border: none; background: transparent; font-size: 24px; font-weight: 300; transition: all 0.2s; cursor: pointer; line-height: 1;">
                         <span aria-hidden="true">&times;</span>
@@ -63,14 +63,14 @@
                     <div class="card border-0 mb-3 shadow-sm" style="border-radius: 16px; overflow: hidden; background: #fff;">
                         <div class="card-body p-3">
                             <div class="d-flex align-items-center gap-2 mb-2">
-                                <span style="width: 24px; height: 24px; border-radius: 6px; background: #F4F2FF; color: #4B00E8; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">
+                                <span style="width: 24px; height: 24px; border-radius: 6px; background: #F4F2FF; color: var(--orb-primary); display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">
                                     <i class="fas fa-file-invoice"></i>
                                 </span>
-                                <span style="font-size: 9.5px; font-weight: 800; color: #4B00E8; letter-spacing: 0.08em; text-transform: uppercase;">Report Overview</span>
+                                <span style="font-size: 9.5px; font-weight: 800; color: var(--orb-primary); letter-spacing: 0.08em; text-transform: uppercase;">Report Overview</span>
                             </div>
                             <h5 id="modal-report-title" style="margin: 0 0 8px 0; font-weight: 800; color: #101828; font-size: 14px;">Work Report Submitted</h5>
 
-                            <p id="modal-report-desc" style="font-size: 12.5px; line-height: 1.5; color: #475467; margin: 0; padding: 10px 14px; background: #F8FAFC; border-radius: 10px; border-left: 3px solid #8600EE;">
+                            <p id="modal-report-desc" style="font-size: 12.5px; line-height: 1.5; color: #475467; margin: 0; padding: 10px 14px; background: #F8FAFC; border-radius: 10px; border-left: 3px solid var(--orb-secondary);">
                                 -
                             </p>
                         </div>
@@ -80,10 +80,10 @@
                     <div class="card border-0 mb-3 shadow-sm" style="border-radius: 16px; overflow: hidden; background: #fff;">
                         <div class="card-body p-3">
                             <div class="d-flex align-items-center gap-2 mb-2.5">
-                                <span style="width: 24px; height: 24px; border-radius: 6px; background: #F4F2FF; color: #4B00E8; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">
+                                <span style="width: 24px; height: 24px; border-radius: 6px; background: #F4F2FF; color: var(--orb-primary); display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">
                                     <i class="fas fa-tasks"></i>
                                 </span>
-                                <span style="font-size: 9.5px; font-weight: 800; color: #4B00E8; letter-spacing: 0.08em; text-transform: uppercase;">Task Checklist</span>
+                                <span style="font-size: 9.5px; font-weight: 800; color: var(--orb-primary); letter-spacing: 0.08em; text-transform: uppercase;">Task Checklist</span>
                             </div>
                             <div id="modal-tasks-list" class="d-flex flex-column gap-1.5">
                                 <!-- Populated dynamically -->
@@ -97,10 +97,10 @@
                             <div class="card border-0 h-100 shadow-sm" style="border-radius: 16px; background: #fff;">
                                 <div class="card-body p-3">
                                     <div class="d-flex align-items-center gap-2 mb-2.5">
-                                        <span style="width: 24px; height: 24px; border-radius: 6px; background: #F4F2FF; color: #4B00E8; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">
+                                        <span style="width: 24px; height: 24px; border-radius: 6px; background: #F4F2FF; color: var(--orb-primary); display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">
                                             <i class="fas fa-vial"></i>
                                         </span>
-                                        <span style="font-size: 9.5px; font-weight: 800; color: #4B00E8; letter-spacing: 0.08em; text-transform: uppercase;">Test Verification</span>
+                                        <span style="font-size: 9.5px; font-weight: 800; color: var(--orb-primary); letter-spacing: 0.08em; text-transform: uppercase;">Test Verification</span>
                                     </div>
                                     <div id="modal-test-status-area">
                                         <!-- Dynamic badge -->
@@ -113,10 +113,10 @@
                             <div class="card border-0 h-100 shadow-sm" style="border-radius: 16px; background: #fff;">
                                 <div class="card-body p-3">
                                     <div class="d-flex align-items-center gap-2 mb-2.5">
-                                        <span style="width: 24px; height: 24px; border-radius: 6px; background: #F4F2FF; color: #4B00E8; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">
+                                        <span style="width: 24px; height: 24px; border-radius: 6px; background: #F4F2FF; color: var(--orb-primary); display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">
                                             <i class="fas fa-exclamation-circle"></i>
                                         </span>
-                                        <span style="font-size: 9.5px; font-weight: 800; color: #4B00E8; letter-spacing: 0.08em; text-transform: uppercase;">Issues & Blockers</span>
+                                        <span style="font-size: 9.5px; font-weight: 800; color: var(--orb-primary); letter-spacing: 0.08em; text-transform: uppercase;">Issues & Blockers</span>
                                     </div>
                                     <div id="modal-issues-area">
                                         <!-- Dynamic card -->
@@ -130,10 +130,10 @@
                     <div id="modal-notes-wrapper" class="card border-0 mb-2 shadow-sm d-none" style="border-radius: 16px; overflow: hidden; background: #fff;">
                         <div class="card-body p-3">
                             <div class="d-flex align-items-center gap-2 mb-2">
-                                <span style="width: 24px; height: 24px; border-radius: 6px; background: #F4F2FF; color: #4B00E8; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">
+                                <span style="width: 24px; height: 24px; border-radius: 6px; background: #F4F2FF; color: var(--orb-primary); display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">
                                     <i class="fas fa-sticky-note"></i>
                                 </span>
-                                <span style="font-size: 9.5px; font-weight: 800; color: #4B00E8; letter-spacing: 0.08em; text-transform: uppercase;">Developer Notes</span>
+                                <span style="font-size: 9.5px; font-weight: 800; color: var(--orb-primary); letter-spacing: 0.08em; text-transform: uppercase;">Developer Notes</span>
                             </div>
                             <div id="modal-notes-text" class="p-2.5 rounded-lg" style="background: #FFFBEB; border: 1px solid #FEF3C7; color: #B45309; font-size: 12px; line-height: 1.4; border-radius: 10px;">
                                 -

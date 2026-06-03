@@ -13,11 +13,12 @@ class DocumentEmailS
 {
     public function sendDocument(GeneratedDocument $document, string $emailTo, string $subject, string $body)
     {
-        if (!$document->pdf_path || !Storage::disk('local')->exists($document->pdf_path)) {
+        $pdfPath = $document->generated_pdf_path ?: $document->pdf_path;
+        if (!$pdfPath || !Storage::disk('private')->exists($pdfPath)) {
             throw new \Exception("PDF document does not exist and cannot be sent.");
         }
 
-        $pdfFile = Storage::disk('local')->path($document->pdf_path);
+        $pdfFile = Storage::disk('private')->path($pdfPath);
 
         // Simple closure based mail sending
         Mail::send([], [], function ($message) use ($emailTo, $subject, $body, $pdfFile, $document) {
@@ -25,7 +26,7 @@ class DocumentEmailS
                 ->subject($subject)
                 ->html($body)
                 ->attach($pdfFile, [
-                    'as' => basename($document->pdf_path),
+                    'as' => basename($pdfPath),
                     'mime' => 'application/pdf',
                 ]);
         });

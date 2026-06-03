@@ -49,7 +49,7 @@ $topbarNotifications = collect();
                     style="width:42px;height:42px;border-radius:12px;border:1px solid #e5e7eb;background:#fff;margin-right:14px;transition:.2s;"
                     onmouseover="this.style.background='#f5f3ff'"
                     onmouseout="this.style.background='#fff'">
-                    <i class="fa-solid fa-bars-staggered" style="color:#4B00E8;"></i>
+                    <i class="fa-solid fa-bars-staggered" style="color:var(--orb-primary);"></i>
                 </button>
 
                 <div style="min-width:0;">
@@ -120,7 +120,7 @@ $topbarNotifications = collect();
                             // Map icon & background based on resolved type
                             $type = strtolower($notification->type ?? $data['type'] ?? 'general');
                             $icon = 'fa-bell';
-                            $iconBg = 'linear-gradient(135deg, #4B00E8, #8600EE)';
+                            $iconBg = 'linear-gradient(135deg, var(--orb-primary), var(--orb-secondary))';
                             
                             if (str_contains($type, 'announcement')) {
                                 $icon = 'fa-bullhorn';
@@ -230,11 +230,11 @@ $topbarNotifications = collect();
                         @if(!empty($topbarAvatar))
                         <img src="{{ $topbarAvatar }}" alt="{{ $topbarUser?->name ?? 'User' }}"
                             style="width:36px;height:36px;border-radius:50%;object-fit:cover;margin-right:8px;">
-                        <div class="topbar-avatar-fallback" style="width:36px;height:36px;border-radius:50%;background:#F4F2FF;color:#4B00E8;display:none;align-items:center;justify-content:center;font-size:13px;font-weight:900;margin-right:8px;">
+                        <div class="topbar-avatar-fallback" style="width:36px;height:36px;border-radius:50%;background:#F4F2FF;color:var(--orb-primary);display:none;align-items:center;justify-content:center;font-size:13px;font-weight:900;margin-right:8px;">
                             {{ $topbarInitial ?: '' }}
                         </div>
                         @else
-                        <div class="topbar-avatar-fallback" style="width:36px;height:36px;border-radius:50%;background:#F4F2FF;color:#4B00E8;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;margin-right:8px;">
+                        <div class="topbar-avatar-fallback" style="width:36px;height:36px;border-radius:50%;background:#F4F2FF;color:var(--orb-primary);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;margin-right:8px;">
                             @if($topbarInitial)
                             {{ $topbarInitial }}
                             @else
@@ -311,7 +311,7 @@ $topbarNotifications = collect();
         top: 0;
         z-index: 10;
         padding: 16px 18px;
-        background: linear-gradient(135deg, #4B00E8 0%, #8600EE 100%);
+        background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary));
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -362,7 +362,7 @@ $topbarNotifications = collect();
         min-width: 40px;
         border-radius: 12px;
         background: #F4F2FF;
-        color: #4B00E8;
+        color: var(--orb-primary);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -395,7 +395,7 @@ $topbarNotifications = collect();
         height: 8px;
         min-width: 8px;
         border-radius: 50%;
-        background: #4B00E8;
+        background: var(--orb-primary);
         margin-top: 5px;
         animation: pulse-dot 1.5s infinite;
     }
@@ -414,7 +414,7 @@ $topbarNotifications = collect();
         height: 42px;
         border-radius: 14px;
         background: #F4F2FF;
-        color: #4B00E8;
+        color: var(--orb-primary);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -425,7 +425,7 @@ $topbarNotifications = collect();
 
     .orb-view-all-btn:hover {
         color: #fff !important;
-        background: linear-gradient(135deg, #4B00E8 0%, #8600EE 100%);
+        background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary));
     }
 
     .orb-empty-bell {
@@ -433,7 +433,7 @@ $topbarNotifications = collect();
         height: 48px;
         border-radius: 16px;
         background: #F4F2FF;
-        color: #4B00E8;
+        color: var(--orb-primary);
         margin: 0 auto;
         display: flex;
         align-items: center;
@@ -479,7 +479,7 @@ $topbarNotifications = collect();
 <div class="modal fade" id="topbarChangePasswordModal" tabindex="-1" role="dialog" aria-labelledby="topbarChangePasswordModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content" style="border: none; border-radius: 24px; overflow: hidden; box-shadow: 0 15px 40px rgba(0,0,0,0.12);">
-            <div class="modal-header" style="background: linear-gradient(135deg, #4B00E8, #8600EE); color: white; border-bottom: none; padding: 20px 24px;">
+            <div class="modal-header" style="background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary)); color: white; border-bottom: none; padding: 20px 24px;">
                 <h5 class="modal-title" id="topbarChangePasswordModalLabel" style="font-weight: 800; font-size: 18px; color: white;"><i class="fas fa-lock mr-2"></i>Change Password</h5>
                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="opacity: 0.8; font-size: 24px; border: none; background: none;">
                     <span aria-hidden="true">&times;</span>
@@ -506,7 +506,7 @@ $topbarNotifications = collect();
                 </div>
                 <div class="modal-footer" style="border-top: none; padding: 16px 24px; gap: 8px; display: flex; justify-content: flex-end;">
                     <button type="button" data-dismiss="modal" style="background: #E7EAF3; border: none; color: #4B5563; min-height:38px; border-radius: 12px; padding: 8px 16px; font-size: 13px; font-weight: 800; cursor: pointer; transition: all 0.2s ease;">Cancel</button>
-                    <button type="submit" style="color: white; border-color: transparent; background: linear-gradient(135deg, #4B00E8, #8600EE); box-shadow: 0 4px 14px rgba(75, 0, 232, 0.2); min-height:38px; border-radius: 12px; padding: 8px 16px; font-size: 13px; font-weight: 800; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 6px;">
+                    <button type="submit" style="color: white; border-color: transparent; background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary)); box-shadow: 0 4px 14px rgba(75, 0, 232, 0.2); min-height:38px; border-radius: 12px; padding: 8px 16px; font-size: 13px; font-weight: 800; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 6px;">
                         <i class="fas fa-key"></i> Update Password
                     </button>
                 </div>

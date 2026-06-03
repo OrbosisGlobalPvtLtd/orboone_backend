@@ -5,8 +5,6 @@
 @section('_content')
 <style>
 :root{
-    --orb-primary:#4B00E8;
-    --orb-secondary:#8600EE;
     --orb-pink:#D400D5;
     --orb-bg:#F6F7FB;
     --orb-card:#FFFFFF;
@@ -29,7 +27,7 @@
 }
 
 .org-header-premium {
-    background: linear-gradient(135deg, #4B00E8, #8600EE);
+    background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary));
     border-radius: 26px;
     padding: 26px 30px;
     margin-bottom: 24px;
@@ -154,7 +152,7 @@
     padding:9px 14px;
     font-size:13px;
     font-weight:900;
-    background:linear-gradient(135deg,#4B00E8,#8600EE);
+    background:linear-gradient(135deg, var(--orb-primary), var(--orb-secondary));
     color:#fff!important;
     box-shadow:0 8px 18px rgba(75,0,232,.16);
     white-space:nowrap;

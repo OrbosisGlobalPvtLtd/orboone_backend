@@ -15,7 +15,7 @@
                 </p>
             </div>
             <div class="col-lg-4 col-md-12 text-center text-lg-right">
-                <a href="{{ route('hrms.employees.performance_scores.index') }}" class="btn btn-light rounded-pill px-4 py-2 font-weight-bold shadow-sm" style="color: #4b00e8;">
+                <a href="{{ route('hrms.employees.performance_scores.index') }}" class="btn btn-light rounded-pill px-4 py-2 font-weight-bold shadow-sm" style="color: var(--orb-primary);">
                     <i class="fas fa-times mr-2"></i> Cancel
                 </a>
             </div>
@@ -46,7 +46,7 @@
                                 <img src="{{ $empPhotoUrl }}" class="rounded-lg mr-3 shadow-sm" style="width: 55px; height: 55px; object-fit: cover; border: 2px solid white;" onerror="this.src='{{ asset('images/profile.png') }}'" alt="">
                                 <div>
                                     <h5 class="mb-1 font-weight-bold text-dark">{{ $employeeScore->employee->name }}</h5>
-                                    <span class="badge badge-pill" style="background: rgba(75,0,232,0.1); color: #4b00e8; font-weight: 700;">{{ $employeeScore->employee->employee_id }}</span>
+                                    <span class="badge badge-pill" style="background: rgba(75,0,232,0.1); color: var(--orb-primary); font-weight: 700;">{{ $employeeScore->employee->employee_id }}</span>
                                 </div>
                                 <input type="hidden" name="employee_id" value="{{ $employeeScore->employee_id }}">
                             </div>
@@ -54,7 +54,7 @@
                         <div class="col-lg-5">
                             <div class="bg-light p-4 rounded-lg border-left shadow-sm" style="border-left-color: #ffb101 !important; border-left-width: 5px !important;">
                                 <h6 class="font-weight-bold mb-2" style="color: #ffb101;"><i class="fas fa-history mr-1"></i> Revision Mode</h6>
-                                <p class="small text-muted mb-0 font-weight-bold">Updating a previous assessment.<br>Original date: <span style="color: #4b00e8;">{{ \Carbon\Carbon::parse($employeeScore->created_at)->format('M d, Y') }}</span></p>
+                                <p class="small text-muted mb-0 font-weight-bold">Updating a previous assessment.<br>Original date: <span style="color: var(--orb-primary);">{{ \Carbon\Carbon::parse($employeeScore->created_at)->format('M d, Y') }}</span></p>
                             </div>
                         </div>
                     </div>

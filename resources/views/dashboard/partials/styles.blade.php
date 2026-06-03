@@ -1,7 +1,7 @@
 <style>
     :root{
-        --dash-primary:#4B00E8;
-        --dash-secondary:#8600EE;
+        --dash-primary:var(--orb-primary, #4B00E8);
+        --dash-secondary:var(--orb-secondary, #FF5252);
         --dash-pink:#D400D5;
         --dash-rose:#EC4E74;
         --dash-yellow:#FFB101;
@@ -17,7 +17,7 @@
     }
     .dash-page{min-height:calc(100vh - 90px);padding:12px 8px 30px;background:var(--dash-bg);}
     .dash-wrap{max-width:1440px;margin:0 auto;}
-    .dash-hero{position:relative;overflow:hidden;border-radius:24px;padding:24px;background:linear-gradient(135deg,#4B00E8 0%,#8600EE 48%,#D400D5 78%,#EC4E74 100%);color:#fff;box-shadow:0 18px 44px rgba(75,0,232,.18);margin-bottom:16px;}
+    .dash-hero{position:relative;overflow:hidden;border-radius:24px;padding:24px;background:linear-gradient(135deg,var(--orb-primary, #4B00E8) 0%,var(--orb-secondary, #FF5252) 100%);color:#fff;box-shadow:0 18px 44px rgba(75,0,232,.18);margin-bottom:16px;}
     .dash-hero:before,.dash-hero:after{content:"";position:absolute;border-radius:999px;background:rgba(255,255,255,.10);}
     .dash-hero:before{width:220px;height:220px;right:-70px;top:-80px;}
     .dash-hero:after{width:170px;height:170px;right:120px;bottom:-95px;}

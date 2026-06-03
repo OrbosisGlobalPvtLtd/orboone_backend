@@ -70,8 +70,8 @@ $resolveRouteName = function (?string $routeName): ?string {
     <div class="sidebar-header">
         <div class="brand">
             <div class="brand-logo-box">
-                <img src="{{ asset('images/Picsart_26-04-02_12-19-10-396.png') }}"
-                    alt="Orbosis HRMS"
+                <img src="{{ $branding['logo_url'] ?? asset('images/Picsart_26-04-02_12-19-10-396.png') }}"
+                    alt="{{ $branding['company_name'] ?? 'Orbosis HRMS' }}"
                     class="brand-logo">
             </div>
         </div>

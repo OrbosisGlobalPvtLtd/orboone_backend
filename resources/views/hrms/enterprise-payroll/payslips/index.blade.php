@@ -94,6 +94,14 @@
                                         <a class="ep-btn ep-btn-light" style="height: 30px; padding: 0 10px;" href="{{ route('enterprise-payroll.payslips.download', $payslip) }}">
                                             <i class="fas fa-download text-primary"></i> Download
                                         </a>
+                                        @if(!$self && ($accesses['enterprise_payslip.generate'] ?? false))
+                                            <form action="{{ route('enterprise-payroll.payslips.regenerate', $payslip) }}" method="POST" class="d-inline ml-1" onsubmit="return confirm('Are you sure you want to regenerate this payslip PDF without recalculating the salary?')">
+                                                @csrf
+                                                <button type="submit" class="ep-btn ep-btn-light text-warning" style="height: 30px; padding: 0 10px;">
+                                                    <i class="fas fa-sync-alt"></i> Regenerate
+                                                </button>
+                                            </form>
+                                        @endif
                                     </td>
                                 </tr>
                             @endforeach

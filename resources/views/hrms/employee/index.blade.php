@@ -82,7 +82,7 @@
     #resetFilter {
         background: #fff !important;
         border: 1px solid #E7EAF3 !important;
-        color: #4B00E8 !important;
+        color: var(--orb-primary) !important;
         box-shadow: 0 8px 18px rgba(16, 24, 40, .06) !important;
         display: inline-flex !important;
         align-items: center !important;
@@ -99,7 +99,7 @@
 
     #resetFilter:hover {
         background: #F4F2FF !important; /* Hover stays soft purple/gray */
-        color: #4B00E8 !important;
+        color: var(--orb-primary) !important;
         border-color: rgba(75, 0, 232, 0.2) !important;
         transform: translateY(-1px) !important;
     }
@@ -197,7 +197,7 @@
         width: 42px !important;
         height: 42px !important;
         background: #F4F2FF !important;
-        color: #4B00E8 !important;
+        color: var(--orb-primary) !important;
         border-radius: 12px !important;
         display: flex !important;
         align-items: center !important;

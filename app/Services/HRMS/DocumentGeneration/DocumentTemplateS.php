@@ -4,6 +4,7 @@ namespace App\Services\HRMS\DocumentGeneration;
 
 use App\Models\HRMS\DocumentGeneration\DocumentTemplate;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 
 class DocumentTemplateS
 {
@@ -11,6 +12,27 @@ class DocumentTemplateS
     {
         $data['created_by_user_id'] = Auth::id() ?? 1;
         $data['updated_by_user_id'] = Auth::id() ?? 1;
+        if (Schema::hasColumn('document_templates', 'template_type')) {
+            $data['template_type'] = $data['template_type'] ?? 'html';
+        } else {
+            unset($data['template_type']);
+        }
+        if (Schema::hasColumn('document_templates', 'version')) {
+            $data['version'] = $data['version'] ?? 'v1';
+        } else {
+            unset($data['version']);
+        }
+        if (Schema::hasColumn('document_templates', 'is_archived')) {
+            $data['is_archived'] = !empty($data['is_archived']);
+        } else {
+            unset($data['is_archived']);
+        }
+        if (!Schema::hasColumn('document_templates', 'docx_file_path')) {
+            unset($data['docx_file_path']);
+        }
+        if (!Schema::hasColumn('document_templates', 'detected_fields')) {
+            unset($data['detected_fields']);
+        }
         
         $fields = $data['fields'] ?? [];
         unset($data['fields']);
@@ -25,6 +47,27 @@ class DocumentTemplateS
     public function updateTemplate(DocumentTemplate $template, array $data)
     {
         $data['updated_by_user_id'] = Auth::id() ?? 1;
+        if (Schema::hasColumn('document_templates', 'template_type')) {
+            $data['template_type'] = $data['template_type'] ?? ($template->template_type ?: 'html');
+        } else {
+            unset($data['template_type']);
+        }
+        if (Schema::hasColumn('document_templates', 'version')) {
+            $data['version'] = $data['version'] ?? ($template->version ?: 'v1');
+        } else {
+            unset($data['version']);
+        }
+        if (Schema::hasColumn('document_templates', 'is_archived')) {
+            $data['is_archived'] = !empty($data['is_archived']);
+        } else {
+            unset($data['is_archived']);
+        }
+        if (!Schema::hasColumn('document_templates', 'docx_file_path')) {
+            unset($data['docx_file_path']);
+        }
+        if (!Schema::hasColumn('document_templates', 'detected_fields')) {
+            unset($data['detected_fields']);
+        }
         
         $fields = $data['fields'] ?? [];
         unset($data['fields']);

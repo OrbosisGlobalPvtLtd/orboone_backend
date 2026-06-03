@@ -30,6 +30,15 @@
                         </select>
                     </div>
                     <div class="col-md-3 mb-3"><label>Year</label><input type="number" min="2020" name="year" value="{{ now('Asia/Kolkata')->year }}" class="form-control" required></div>
+                    <div class="col-md-3 mb-3">
+                        <label>Employee (Optional)</label>
+                        <select name="employee_id" class="form-control">
+                            <option value="">All Employees</option>
+                            @foreach($employees ?? [] as $emp)
+                                <option value="{{ $emp->id }}">{{ $emp->display_name }} ({{ $emp->employee_code }})</option>
+                            @endforeach
+                        </select>
+                    </div>
                     <div class="col-md-3 mb-3"><button class="ep-btn ep-btn-gradient w-100"><i class="fas fa-search"></i> Preview Payroll</button></div>
                 </form>
             </div>

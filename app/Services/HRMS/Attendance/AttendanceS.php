@@ -726,6 +726,7 @@ class AttendanceS
         }
 
         $this->applyCombinedViolationHalfDay($attendance, $date);
+        $this->syncAttendanceViolations($attendance);
 
         return $attendance;
     }
@@ -1530,5 +1531,55 @@ class AttendanceS
             return 'Late warning active. Punch in will be blocked after ' . $block->format('h:i A') . '.';
         }
         return null;
+    }
+
+    public function syncAttendanceViolations(Attendance $attendance): void
+    {
+        if (! Schema::hasTable('attendance_violations')) {
+            return;
+        }
+
+        $date = Carbon::parse($attendance->attendance_date)->toDateString();
+
+        // 1. Late Login
+        if ($attendance->is_late || (int) $attendance->late_minutes > 0) {
+            $this->recordAttendanceViolation($attendance, 'late_login', $date, [
+                'minutes' => (int) $attendance->late_minutes,
+                'source' => $attendance->attendance_source ?: 'system',
+                'policy_action' => 'late_mark',
+                'remarks' => $attendance->punch_in_note ?: 'Late login detected.',
+            ]);
+        }
+
+        // 2. Early Logout
+        if ($attendance->is_early_out || (int) $attendance->early_out_minutes > 0) {
+            $this->recordAttendanceViolation($attendance, 'early_logout', $date, [
+                'minutes' => (int) $attendance->early_out_minutes,
+                'source' => $attendance->attendance_source ?: 'system',
+                'policy_action' => 'early_logout',
+                'remarks' => $attendance->punch_out_note ?: 'Early logout detected.',
+            ]);
+        }
+
+        // 3. Blocked Punch
+        if ($attendance->is_blocked || $attendance->is_punch_blocked || optional($attendance->attendanceType)->code === 'punch_blocked' || $attendance->attendance_status === 'punch_blocked') {
+            $this->recordAttendanceViolation($attendance, 'blocked_punch', $date, [
+                'minutes' => 0,
+                'source' => $attendance->attendance_source ?: 'system_auto',
+                'policy_action' => 'blocked',
+                'remarks' => $attendance->blocked_reason ?: ($attendance->block_reason ?: 'Punch blocked.'),
+            ]);
+        }
+
+        // 4. Missed Punch
+        if ($attendance->missed_punch || $attendance->is_missed_punch || $attendance->attendance_status === 'missed_punch') {
+            $this->recordAttendanceViolation($attendance, 'missed_punch', $date, [
+                'minutes' => 0,
+                'source' => $attendance->attendance_source ?: 'system_auto',
+                'policy_action' => $attendance->is_lwp ? 'lwp' : 'warning',
+                'converted_to_lwp' => (bool) $attendance->is_lwp,
+                'remarks' => $attendance->missed_punch_reason ?: 'Missed punch detected.',
+            ]);
+        }
     }
 }

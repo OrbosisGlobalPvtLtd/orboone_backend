@@ -1,7 +1,7 @@
 <style>
     :root {
-        --ep-primary: #4B00E8;
-        --ep-secondary: #8600EE;
+        --ep-primary: var(--orb-primary, #4B00E8);
+        --ep-secondary: var(--orb-secondary, #FF5252);
         --ep-bg: #F6F7FB;
         --ep-card: #FFFFFF;
         --ep-border: #E7EAF3;
@@ -621,7 +621,7 @@
 
     .crud-export-btn:hover {
         background: #F4F2FF !important;
-        color: #4B00E8 !important;
+        color: var(--orb-primary) !important;
         border-color: rgba(75, 0, 232, .22) !important;
     }
 

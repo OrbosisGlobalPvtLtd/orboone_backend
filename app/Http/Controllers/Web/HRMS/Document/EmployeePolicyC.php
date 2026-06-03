@@ -10,11 +10,6 @@ class EmployeePolicyC extends Controller
 {
     public function index()
     {
-        return $this->indexx();
-    }
-
-    public function indexx()
-    {
         $user = auth()->user();
         $policies = CompanyDocumentModal::whereJsonContains('visible_to', 'employee')
             ->orWhereNull('visible_to')
@@ -23,6 +18,6 @@ class EmployeePolicyC extends Controller
 
         $accesses = \App\Models\Core\AccessM::where('role_id', $user->role_id)->get();
 
-        return view('hrms.document.employee.policies-index', compact('policies', 'accesses'));
+        return view('hrms.documents.employee-policies.index', compact('policies', 'accesses'));
     }
 }

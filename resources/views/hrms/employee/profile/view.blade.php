@@ -9,8 +9,6 @@
 @section('_content')
 <style>
     :root {
-        --orb-primary: #4B00E8;
-        --orb-secondary: #8600EE;
         --orb-bg: #F6F7FB;
         --orb-border: #E7EAF3;
         --orb-text: #101828;
@@ -37,7 +35,7 @@
         border-radius: 26px !important;
         padding: 28px !important;
         color: #ffffff !important;
-        background: linear-gradient(135deg, #4B00E8, #8600EE) !important;
+        background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary)) !important;
         border: none !important;
         box-shadow: 0 14px 35px rgba(75, 0, 232, 0.15) !important;
         margin-bottom: 24px !important;
@@ -190,7 +188,7 @@
 
     .btn-orb {
         background: #ffffff !important;
-        color: #4B00E8 !important;
+        color: var(--orb-primary) !important;
         border: none !important;
         box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12) !important;
         transition: all 0.25s ease !important;
@@ -251,7 +249,7 @@
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        color: #4B00E8 !important;
+        color: var(--orb-primary) !important;
         background: rgba(75, 0, 232, 0.06) !important;
         font-size: 16px !important;
         flex: 0 0 auto;
@@ -772,7 +770,7 @@
     }
 
     .doc-preview-head {
-        background: linear-gradient(135deg, #4B00E8, #8600EE);
+        background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary));
         color: #fff;
         padding: 14px 16px;
         display: flex;

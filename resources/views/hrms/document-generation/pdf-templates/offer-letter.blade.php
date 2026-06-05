@@ -1,25 +1,24 @@
-
 @extends('hrms.document-generation.pdf-templates.layouts.document-layout')
 
 @section('title', 'Offer Letter')
 
 @section('content')
 @php
-    $candidateName = $employee_name ?? $candidate_name ?? 'Candidate Name';
-    $candidateFirstName = $employee_first_name ?? explode(' ', trim($candidateName))[0] ?? 'Candidate';
-    $companyName = $company_name ?? branding_name();
-    $issueDate = $issue_date ?? $current_date ?? date('d M, Y');
-    $joiningDate = $joining_date ?? 'To Be Confirmed';
-    $designationText = $designation ?? 'Software Developer';
-    $departmentText = $department ?? 'Engineering';
-    $officeLocation = $office_location ?? $work_location ?? 'Indore';
-    $annualCtc = $annual_ctc ?? (($monthly_gross_salary ?? 0) * 12);
-    $monthlyGross = $monthly_gross_salary ?? 0;
-    $basicMonthly = $basic_monthly ?? ($monthlyGross * 0.40);
-    $hraMonthly = $hra_monthly ?? ($monthlyGross * 0.40);
-    $specialMonthly = $special_allowance_monthly ?? ($monthlyGross - $basicMonthly - $hraMonthly);
-    $ptMonthly = $professional_tax_monthly ?? 200;
-    $netMonthly = $net_pay_monthly ?? ($monthlyGross - $ptMonthly);
+$candidateName = $employee_name ?? $candidate_name ?? 'Candidate Name';
+$candidateFirstName = $employee_first_name ?? explode(' ', trim($candidateName))[0] ?? 'Candidate';
+$companyName = $company_name ?? branding_name();
+$issueDate = $issue_date ?? $current_date ?? date('d M, Y');
+$joiningDate = $joining_date ?? 'To Be Confirmed';
+$designationText = $designation ?? 'Software Developer';
+$departmentText = $department ?? 'Engineering';
+$officeLocation = $office_location ?? $work_location ?? 'Indore';
+$annualCtc = $annual_ctc ?? (($monthly_gross_salary ?? 0) * 12);
+$monthlyGross = $monthly_gross_salary ?? 0;
+$basicMonthly = $basic_monthly ?? ($monthlyGross * 0.40);
+$hraMonthly = $hra_monthly ?? ($monthlyGross * 0.40);
+$specialMonthly = $special_allowance_monthly ?? ($monthlyGross - $basicMonthly - $hraMonthly);
+$ptMonthly = $professional_tax_monthly ?? 200;
+$netMonthly = $net_pay_monthly ?? ($monthlyGross - $ptMonthly);
 @endphp
 
 <div class="letter-body">
@@ -60,11 +59,17 @@
         <strong>{{ $officeLocation }}</strong> office.
     </p>
 
-    <p class="text-justify">
-        Your annual compensation package will be
-        <strong>₹ {{ is_numeric($annualCtc) ? number_format((float)$annualCtc, 2) : $annualCtc }}</strong>.
-        A detailed breakup of your salary structure is provided below as per company policy.
-    </p>
+    @if(isset($compensation_type) && $compensation_type === 'Unpaid')
+        <p class="text-justify">
+            {!! nl2br(e($unpaid_clause ?? 'This offer is for an unpaid engagement. No salary, stipend, or monetary compensation shall be payable during this period unless separately approved in writing by the Company. The engagement is intended to provide professional exposure, learning, project experience, and practical workplace training.')) !!}
+        </p>
+    @else
+        <p class="text-justify">
+            Your annual compensation package will be
+            <strong>₹ {{ is_numeric($annualCtc) ? number_format((float)$annualCtc, 2) : $annualCtc }}</strong>.
+            A detailed breakup of your salary structure is provided below as per company policy.
+        </p>
+    @endif
 
     <p class="text-justify">
         In this role, you will work on
@@ -149,12 +154,22 @@
         If you have any questions or need clarification, please feel free to contact the Human Resources team.
     </p>
 
-    <div class="signature-section" style="margin-top:35px;">
+    <div class="signature-section signature-block" style="margin-top:35px;">
         <table class="signature-table">
             <tr>
                 <td>
-                    <strong>Human Resource Manager</strong><br><br><br>
-                    <strong>{{ $hr_manager_name ?? $authorized_signatory ?? 'HARSHIT SINGH' }}</strong><br>
+                    <strong>{{ $signatory_designation ?? 'Human Resource Manager' }}</strong><br>
+                    <div style="height: 50px; margin-top: 5px; margin-bottom: 5px; position: relative;">
+                        @if(!empty($signature_image))
+                            <img src="{{ $signature_image }}" style="max-height: 45px; max-width: 150px; display: inline-block;" alt="Signature">
+                        @else
+                            <div style="height: 35px;"></div>
+                        @endif
+                        @if(!empty($seal_image))
+                            <img src="{{ $seal_image }}" style="max-height: 55px; max-width: 55px; position: absolute; top: 5px; left: 120px;" alt="Seal">
+                        @endif
+                    </div>
+                    <strong>{{ $hr_manager_name ?? $authorized_signatory ?? 'HR' }}</strong><br>
                     {{ $companyName }}
                 </td>
                 <td class="text-right">
@@ -165,101 +180,118 @@
         </table>
     </div>
 
-    <div class="page-break"></div>
+    @if(!isset($compensation_type) || $compensation_type !== 'Unpaid')
+        <div class="page-break"></div>
 
-    <div class="text-center mb-4">
-        <h3 style="text-decoration: underline; font-size:15px; color:#111827;">Annexure</h3>
-    </div>
+        <div class="text-center mb-4">
+            <h3 style="text-decoration: underline; font-size:15px; color:#111827;">Annexure</h3>
+        </div>
 
-    <table class="table" style="font-size:11px;">
-        <thead>
-            <tr>
-                <th style="width:50%;"></th>
-                <th style="width:25%; text-align:center;">Monthly (₹)</th>
-                <th style="width:25%; text-align:center;">Annual (₹)</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td><strong>Gross Salary</strong></td>
-                <td class="text-center"><strong>{{ number_format((float)$monthlyGross, 2) }}</strong></td>
-                <td class="text-center"><strong>{{ number_format((float)$monthlyGross * 12, 2) }}</strong></td>
-            </tr>
+        <table class="table" style="font-size:11px;">
+            <thead>
+                <tr>
+                    <th style="width:50%;"></th>
+                    <th style="width:25%; text-align:center;">Monthly (₹)</th>
+                    <th style="width:25%; text-align:center;">Annual (₹)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Gross Salary</strong></td>
+                    <td class="text-center"><strong>{{ number_format((float)$monthlyGross, 2) }}</strong></td>
+                    <td class="text-center"><strong>{{ number_format((float)$monthlyGross * 12, 2) }}</strong></td>
+                </tr>
 
-            <tr><td colspan="3" style="height:12px;"></td></tr>
+                <tr>
+                    <td colspan="3" style="height:12px;"></td>
+                </tr>
 
-            <tr>
-                <td colspan="3"><strong>Salary Structure (A)</strong></td>
-            </tr>
-            <tr>
-                <td>Basic</td>
-                <td class="text-center">{{ number_format((float)$basicMonthly, 2) }}</td>
-                <td class="text-center">{{ number_format((float)$basicMonthly * 12, 2) }}</td>
-            </tr>
-            <tr>
-                <td>HRA</td>
-                <td class="text-center">{{ number_format((float)$hraMonthly, 2) }}</td>
-                <td class="text-center">{{ number_format((float)$hraMonthly * 12, 2) }}</td>
-            </tr>
-            <tr>
-                <td>Special Allowance</td>
-                <td class="text-center">{{ number_format((float)$specialMonthly, 2) }}</td>
-                <td class="text-center">{{ number_format((float)$specialMonthly * 12, 2) }}</td>
-            </tr>
-            <tr>
-                <td><strong>Subtotal (A)</strong></td>
-                <td class="text-center"><strong>{{ number_format((float)$monthlyGross, 2) }}</strong></td>
-                <td class="text-center"><strong>{{ number_format((float)$monthlyGross * 12, 2) }}</strong></td>
-            </tr>
+                <tr>
+                    <td colspan="3"><strong>Salary Structure (A)</strong></td>
+                </tr>
+                <tr>
+                    <td>Basic</td>
+                    <td class="text-center">{{ number_format((float)$basicMonthly, 2) }}</td>
+                    <td class="text-center">{{ number_format((float)$basicMonthly * 12, 2) }}</td>
+                </tr>
+                <tr>
+                    <td>HRA</td>
+                    <td class="text-center">{{ number_format((float)$hraMonthly, 2) }}</td>
+                    <td class="text-center">{{ number_format((float)$hraMonthly * 12, 2) }}</td>
+                </tr>
+                <tr>
+                    <td>Special Allowance</td>
+                    <td class="text-center">{{ number_format((float)$specialMonthly, 2) }}</td>
+                    <td class="text-center">{{ number_format((float)$specialMonthly * 12, 2) }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Subtotal (A)</strong></td>
+                    <td class="text-center"><strong>{{ number_format((float)$monthlyGross, 2) }}</strong></td>
+                    <td class="text-center"><strong>{{ number_format((float)$monthlyGross * 12, 2) }}</strong></td>
+                </tr>
 
-            <tr><td colspan="3" style="height:12px;"></td></tr>
+                <tr>
+                    <td colspan="3" style="height:12px;"></td>
+                </tr>
 
-            <tr>
-                <td colspan="3"><strong>Deductions (B)</strong></td>
-            </tr>
-            <tr>
-                <td>Professional Tax</td>
-                <td class="text-center">{{ number_format((float)$ptMonthly, 2) }}</td>
-                <td class="text-center">{{ number_format((float)$ptMonthly * 12, 2) }}</td>
-            </tr>
-            <tr>
-                <td><strong>Subtotal (B)</strong></td>
-                <td class="text-center"><strong>{{ number_format((float)$ptMonthly, 2) }}</strong></td>
-                <td class="text-center"><strong>{{ number_format((float)$ptMonthly * 12, 2) }}</strong></td>
-            </tr>
+                <tr>
+                    <td colspan="3"><strong>Deductions (B)</strong></td>
+                </tr>
+                <tr>
+                    <td>Professional Tax</td>
+                    <td class="text-center">{{ number_format((float)$ptMonthly, 2) }}</td>
+                    <td class="text-center">{{ number_format((float)$ptMonthly * 12, 2) }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Subtotal (B)</strong></td>
+                    <td class="text-center"><strong>{{ number_format((float)$ptMonthly, 2) }}</strong></td>
+                    <td class="text-center"><strong>{{ number_format((float)$ptMonthly * 12, 2) }}</strong></td>
+                </tr>
 
-            <tr><td colspan="3" style="height:12px;"></td></tr>
+                <tr>
+                    <td colspan="3" style="height:12px;"></td>
+                </tr>
 
-            <tr>
-                <td><strong>CTC (A-B)</strong></td>
-                <td class="text-center"><strong>{{ number_format((float)$monthlyGross, 2) }}</strong></td>
-                <td class="text-center"><strong>{{ number_format((float)$annualCtc, 2) }}</strong></td>
-            </tr>
+                <tr>
+                    <td><strong>CTC (A-B)</strong></td>
+                    <td class="text-center"><strong>{{ number_format((float)$monthlyGross, 2) }}</strong></td>
+                    <td class="text-center"><strong>{{ number_format((float)$annualCtc, 2) }}</strong></td>
+                </tr>
 
-            <tr>
-                <td style="height:45px;"><strong>Net Pay (A-B)<br>(Take Home Salary)</strong></td>
-                <td class="text-center"><strong>{{ number_format((float)$netMonthly, 2) }}</strong></td>
-                <td class="text-center"><strong>{{ number_format((float)$netMonthly * 12, 2) }}</strong></td>
-            </tr>
-        </tbody>
-    </table>
-
-    <div class="signature-section" style="margin-top:45px;">
-        <table class="signature-table">
-            <tr>
-                <td>
-                    <strong>Human Resource Manager</strong><br><br><br>
-                    <strong>{{ $hr_manager_name ?? $authorized_signatory ?? 'HARSHIT SINGH' }}</strong><br>
-                    {{ $companyName }}
-                </td>
-                <td class="text-right">
-                    <strong>Candidate’s Signature</strong><br><br><br>
-                    <strong>{{ $candidateName }}</strong>
-                </td>
-            </tr>
+                <tr>
+                    <td style="height:45px;"><strong>Net Pay (A-B)<br>(Take Home Salary)</strong></td>
+                    <td class="text-center"><strong>{{ number_format((float)$netMonthly, 2) }}</strong></td>
+                    <td class="text-center"><strong>{{ number_format((float)$netMonthly * 12, 2) }}</strong></td>
+                </tr>
+            </tbody>
         </table>
-    </div>
+
+        <div class="signature-section signature-block" style="margin-top:45px;">
+            <table class="signature-table">
+                <tr>
+                    <td>
+                        <strong>{{ $signatory_designation ?? 'Human Resource Manager' }}</strong><br>
+                        <div style="height: 50px; margin-top: 5px; margin-bottom: 5px; position: relative;">
+                            @if(!empty($signature_image))
+                                <img src="{{ $signature_image }}" style="max-height: 45px; max-width: 150px; display: inline-block;" alt="Signature">
+                            @else
+                                <div style="height: 35px;"></div>
+                            @endif
+                            @if(!empty($seal_image))
+                                <img src="{{ $seal_image }}" style="max-height: 55px; max-width: 55px; position: absolute; top: 5px; left: 120px;" alt="Seal">
+                            @endif
+                        </div>
+                        <strong>{{ $hr_manager_name ?? $authorized_signatory ?? 'HR' }}</strong><br>
+                        {{ $companyName }}
+                    </td>
+                    <td class="text-right">
+                        <strong>Candidate’s Signature</strong><br><br><br>
+                        <strong>{{ $candidateName }}</strong>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    @endif
 
 </div>
 @endsection
-

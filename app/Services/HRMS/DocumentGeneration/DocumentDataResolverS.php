@@ -21,6 +21,13 @@ class DocumentDataResolverS
     {
         $employee = $employeeId ? EmployeeM::find($employeeId) : null;
         
+        // If employee is selected, force candidate_name and employee_name to match employee name
+        if ($employee) {
+            $empName = $employee->employee_name ?: $employee->full_name ?: $employee->display_name ?: '';
+            $formData['candidate_name'] = $empName;
+            $formData['employee_name'] = $empName;
+        }
+        
         // Resolve company settings, employee profile defaults, and other static details
         $resolved = $this->placeholderResolver->resolve($employee, $formData, Auth::user());
 

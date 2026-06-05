@@ -53,15 +53,24 @@
         <strong>{{ $purpose ?? 'Address Verification / Loan Application' }}</strong> and carries no financial liability or obligation on the part of the Company.
     </p>
 
-    <div class="signature-section" style="margin-top: 70px;">
+    <div class="signature-section signature-block" style="margin-top: 50px;">
         <table class="signature-table">
             <tr>
                 <td>
                     Sincerely,<br>
                     <strong>For {{ $company_name ?? branding_name() }}</strong>
-                    <br><br><br><br>
+                    <div style="height: 60px; margin-top: 5px; margin-bottom: 5px; position: relative;">
+                        @if(!empty($signature_image))
+                            <img src="{{ $signature_image }}" style="max-height: 55px; max-width: 180px; display: inline-block;" alt="Signature">
+                        @else
+                            <div style="height: 40px;"></div>
+                        @endif
+                        @if(!empty($seal_image))
+                            <img src="{{ $seal_image }}" style="max-height: 65px; max-width: 65px; position: absolute; top: 5px; left: 140px;" alt="Seal">
+                        @endif
+                    </div>
                     <strong>{{ $signatory_name ?? $authorized_signatory ?? 'Authorized Signatory' }}</strong><br>
-                    Human Resources Manager
+                    {{ $signatory_designation ?? 'Human Resource Manager' }}
                 </td>
                 <td></td>
             </tr>

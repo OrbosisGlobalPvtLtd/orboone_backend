@@ -43,7 +43,7 @@ class DocumentPlaceholderResolverS
         $employeeCode = $employee?->employee_code ?: 'CAND';
         $department = $employee?->department?->name ?: '';
         $designation = $employee?->designation?->name ?: '';
-        
+
         $managerName = '';
         if ($employee) {
             $manager = $employee->reportingManager;
@@ -59,9 +59,27 @@ class DocumentPlaceholderResolverS
         $workLocation = (string) ($employee?->profile?->work_location ?? 'Remote');
         $employeeAddress = (string) ($employee?->profile?->present_address ?: $employee?->profile?->address ?: '');
         $employeeCity = (string) ($employee?->profile?->city ?: $employee?->profile?->present_city ?: '');
-        
-        $gender = strtolower($employee?->gender ?: $employee?->profile?->gender ?: 'male');
-        $genderTitle = ($gender === 'female' || $gender === 'f') ? 'Ms.' : 'Mr.';
+
+        $gender = strtolower($employee?->gender ?: $employee?->profile?->gender ?: '');
+        if ($gender === 'female' || $gender === 'f') {
+            $genderTitle = 'Ms.';
+            $pronounSubject = 'she';
+            $pronounPossessive = 'her';
+            $pronounObject = 'her';
+            $pronounSubjectCapitalized = 'She';
+        } elseif ($gender === 'male' || $gender === 'm') {
+            $genderTitle = 'Mr.';
+            $pronounSubject = 'he';
+            $pronounPossessive = 'his';
+            $pronounObject = 'him';
+            $pronounSubjectCapitalized = 'He';
+        } else {
+            $genderTitle = 'Mr./Ms.';
+            $pronounSubject = 'they';
+            $pronounPossessive = 'their';
+            $pronounObject = 'them';
+            $pronounSubjectCapitalized = 'They';
+        }
 
         $relievingDate = '';
         if ($employee) {
@@ -82,24 +100,27 @@ class DocumentPlaceholderResolverS
         $noticePeriodConfirmed = '30 Days';
 
         // 2. Resolve Company Details
-        $companyName = (string) ($company->company_name ?? branding_name());
-        $companyAddress = (string) ($company->address ?? '');
-        $companyCity = (string) ($company->city ?? '');
-        $companyPhone = (string) ($company->phone ?? '');
-        $companyEmail = (string) ($company->email ?? '');
-        $companyWebsite = (string) ($company->website ?? '');
-        $companyGstin = (string) ($company->gstin ?? '');
+        $companyName = (string) ($company?->company_name ?: (function_exists('branding_name') ? branding_name() : 'Orbosis Global Pvt. Ltd.'));
+        if (empty($companyName) || $companyName === 'HRMS' || $companyName === 'Default') {
+            $companyName = 'Orbosis Global Pvt. Ltd.';
+        }
+        $companyAddress = (string) ($company?->address ?? '');
+        $companyCity = (string) ($company?->city ?? '');
+        $companyPhone = (string) ($company?->phone ?? '');
+        $companyEmail = (string) ($company?->email ?? '');
+        $companyWebsite = (string) ($company?->website ?? '');
+        $companyGstin = (string) ($company?->gstin ?? '');
 
         // 3. Resolve Authority Settings
         $authorizedSignatory = (string) ($generatedBy?->name ?? 'Authorized Signatory');
-        $hrManagerName = 'Harshit Singh';
-        $ceoName = 'Harshit Singh';
-        $projectManagerName = 'Harshit Singh';
+        $hrManagerName = 'HR';
+        $ceoName = 'HR';
+        $projectManagerName = 'HR';
 
         // 4. Resolve Salary details
         $monthlyGross = 0.0;
         if ($employee) {
-            $monthlyGross = (float) ($employee->salaryStructure?->gross_salary ?? $employee->gross_salary ?? 0);
+            $monthlyGross = (float) ($employee->salaryStructure?->gross_salary ?? $employee->actual_salary ?? $employee->gross_salary ?? 0);
         }
         if (isset($manualFields['salary_monthly']) && is_numeric($manualFields['salary_monthly'])) {
             $monthlyGross = (float) $manualFields['salary_monthly'];
@@ -117,7 +138,7 @@ class DocumentPlaceholderResolverS
         $conveyanceMonthly = $monthlyGross > 0 ? 1600.0 : 0.0;
         $conveyanceAnnual = $conveyanceMonthly * 12;
         $ptaxMonthly = $monthlyGross > 15000 ? 200.0 : 0.0;
-        
+
         $specialAllowanceMonthly = $monthlyGross - ($basicMonthly + $hraMonthly + $conveyanceMonthly);
         if ($specialAllowanceMonthly < 0) {
             $specialAllowanceMonthly = 0.0;
@@ -126,13 +147,64 @@ class DocumentPlaceholderResolverS
         $netPayMonthly = $monthlyGross - $ptaxMonthly;
         $salaryInWords = $this->numberToWords((int)$monthlyGross) . ' Rupees Only';
 
+        // Resolve signature image
+        $signatureImage = null;
+        if (!empty($manualFields['signature_image_base64'])) {
+            $signatureImage = $manualFields['signature_image_base64'];
+        } elseif (!empty($manualFields['signature_image'])) {
+            $signatureImage = $manualFields['signature_image'];
+            if (str_contains($signatureImage, 'storage/hrms/')) {
+                $relPath = 'public/' . \Illuminate\Support\Str::after($signatureImage, 'storage/');
+                $fullPath = storage_path('app/' . $relPath);
+                if (is_file($fullPath)) {
+                    $signatureImage = 'data:image/' . pathinfo($fullPath, PATHINFO_EXTENSION) . ';base64,' . base64_encode(file_get_contents($fullPath));
+                }
+            }
+        } elseif ($company && Schema::hasColumn('company_settings', 'signature') && !empty($company->signature)) {
+            $sigPath = storage_path('app/public/' . $company->signature);
+            if (is_file($sigPath)) {
+                $signatureImage = 'data:image/' . pathinfo($sigPath, PATHINFO_EXTENSION) . ';base64,' . base64_encode(file_get_contents($sigPath));
+            }
+        }
+        if (!$signatureImage) {
+            $defaultSigPath = public_path('assets/hrms/document-letterhead/signature.png');
+            if (is_file($defaultSigPath)) {
+                $signatureImage = 'data:image/' . pathinfo($defaultSigPath, PATHINFO_EXTENSION) . ';base64,' . base64_encode(file_get_contents($defaultSigPath));
+            }
+        }
+
+        // Resolve seal image
+        $sealImage = null;
+        if (!empty($manualFields['seal_image_base64'])) {
+            $sealImage = $manualFields['seal_image_base64'];
+        } elseif (!empty($manualFields['seal_image'])) {
+            $sealImage = $manualFields['seal_image'];
+            if (str_contains($sealImage, 'storage/hrms/')) {
+                $relPath = 'public/' . \Illuminate\Support\Str::after($sealImage, 'storage/');
+                $fullPath = storage_path('app/' . $relPath);
+                if (is_file($fullPath)) {
+                    $sealImage = 'data:image/' . pathinfo($fullPath, PATHINFO_EXTENSION) . ';base64,' . base64_encode(file_get_contents($fullPath));
+                }
+            }
+        } elseif ($company && !empty($company->seal)) {
+            $sealPath = storage_path('app/public/' . $company->seal);
+            if (is_file($sealPath)) {
+                $sealImage = 'data:image/' . pathinfo($sealPath, PATHINFO_EXTENSION) . ';base64,' . base64_encode(file_get_contents($sealPath));
+            }
+        }
+
         // 5. Build full resolved placeholder library
         $data = [
             'employee_name' => $employeeName,
             'employee_first_name' => $firstName,
             'employee_address' => $employeeAddress,
             'employee_city' => $employeeCity,
+            'employee_prefix' => $genderTitle,
             'employee_gender_title' => $genderTitle,
+            'gender_pronoun_subject' => $pronounSubject,
+            'gender_pronoun_possessive' => $pronounPossessive,
+            'gender_pronoun_object' => $pronounObject,
+            'gender_pronoun_subject_capitalized' => $pronounSubjectCapitalized,
             'designation' => $designation,
             'department' => $department,
             'joining_date' => $joiningDate,
@@ -190,7 +262,10 @@ class DocumentPlaceholderResolverS
             'internship_work_summary' => '',
             'performance_summary' => '',
             'handover_status' => '',
-            
+
+            'signature_image' => $signatureImage,
+            'seal_image' => $sealImage,
+
             'orb_primary' => (string) ($branding['primary_color'] ?? '#4B00E8'),
             'orb_secondary' => (string) ($branding['secondary_color'] ?? '#FF5252'),
         ];
@@ -227,15 +302,39 @@ class DocumentPlaceholderResolverS
     private function numberToWords(int $num): string
     {
         $ones = [
-            0 => "Zero", 1 => "One", 2 => "Two", 3 => "Three", 4 => "Four", 5 => "Five",
-            6 => "Six", 7 => "Seven", 8 => "Eight", 9 => "Nine", 10 => "Ten",
-            11 => "Eleven", 12 => "Twelve", 13 => "Thirteen", 14 => "Fourteen",
-            15 => "Fifteen", 16 => "Sixteen", 17 => "Seventeen", 18 => "Eighteen", 19 => "Nineteen"
+            0 => "Zero",
+            1 => "One",
+            2 => "Two",
+            3 => "Three",
+            4 => "Four",
+            5 => "Five",
+            6 => "Six",
+            7 => "Seven",
+            8 => "Eight",
+            9 => "Nine",
+            10 => "Ten",
+            11 => "Eleven",
+            12 => "Twelve",
+            13 => "Thirteen",
+            14 => "Fourteen",
+            15 => "Fifteen",
+            16 => "Sixteen",
+            17 => "Seventeen",
+            18 => "Eighteen",
+            19 => "Nineteen"
         ];
-        
+
         $tens = [
-            0 => "Zero", 1 => "Ten", 2 => "Twenty", 3 => "Thirty", 4 => "Forty",
-            5 => "Fifty", 6 => "Sixty", 7 => "Seventy", 8 => "Eighty", 9 => "Ninety"
+            0 => "Zero",
+            1 => "Ten",
+            2 => "Twenty",
+            3 => "Thirty",
+            4 => "Forty",
+            5 => "Fifty",
+            6 => "Sixty",
+            7 => "Seventy",
+            8 => "Eighty",
+            9 => "Ninety"
         ];
 
         if ($num < 20) {
@@ -243,25 +342,25 @@ class DocumentPlaceholderResolverS
         }
 
         $res = "";
-        
+
         // Crores
         if ($num >= 10000000) {
             $res .= $this->numberToWords((int)($num / 10000000)) . " Crore ";
             $num %= 10000000;
         }
-        
+
         // Lakhs
         if ($num >= 100000) {
             $res .= $this->numberToWords((int)($num / 100000)) . " Lakh ";
             $num %= 100000;
         }
-        
+
         // Thousands
         if ($num >= 1000) {
             $res .= $this->numberToWords((int)($num / 1000)) . " Thousand ";
             $num %= 1000;
         }
-        
+
         // Hundreds
         if ($num >= 100) {
             $res .= $this->numberToWords((int)($num / 100)) . " Hundred ";

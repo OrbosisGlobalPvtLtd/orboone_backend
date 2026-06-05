@@ -117,7 +117,7 @@
     
 /* LOGO IMAGE */
 .brand-logo{
-    max-height: 52px;   /* 🔥 increase height */
+    max-height: 120px;   /* 🔥 increase height */
     max-width: 180px;   /* 🔥 increase width */
     object-fit: contain;
     display: block;
@@ -625,7 +625,7 @@
         display: flex;
     }
     .brand-logo{
-        max-height: 46px;
+        max-height: 120px;
         max-width: 150px;
     }
 

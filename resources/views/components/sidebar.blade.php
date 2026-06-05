@@ -66,13 +66,34 @@ $resolveRouteName = function (?string $routeName): ?string {
 };
 @endphp
 
+<style>
+    .favicon-logo {
+        display: none !important;
+    }
+    body.desktop-collapsed .full-logo {
+        display: none !important;
+    }
+    body.desktop-collapsed .favicon-logo {
+        display: block !important;
+        max-height: 40px !important;
+        max-width: 40px !important;
+        margin: 0 auto;
+        object-fit: contain;
+    }
+</style>
+
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
         <div class="brand">
             <div class="brand-logo-box">
+                <!-- Full Brand Logo -->
                 <img src="{{ $branding['logo_url'] ?? asset('images/Picsart_26-04-02_12-19-10-396.png') }}"
                     alt="{{ $branding['company_name'] ?? config('app.name', 'OrboOne HRMS') }}"
-                    class="brand-logo">
+                    class="brand-logo full-logo">
+                <!-- Favicon Logo (Shown on sidebar collapse) -->
+                <img src="{{ $branding['favicon_url'] ?? asset('favicon.ico') }}"
+                    alt="{{ $branding['company_name'] ?? config('app.name', 'OrboOne HRMS') }}"
+                    class="brand-logo favicon-logo">
             </div>
         </div>
 

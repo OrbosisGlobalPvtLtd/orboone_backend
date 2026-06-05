@@ -7,31 +7,31 @@
 
     @php
     $companySettings = \Illuminate\Support\Facades\DB::table('company_settings')->first();
-    $companyPhone = $companySettings->phone ?? $company_phone ?? '+91-8770702092';
-    $companyEmail = $companySettings->email ?? $company_email ?? 'info@orbosis.com';
-    $companyGstin = $company_gstin ?? '23 AAECO8032D1ZU';
-    $companyLocation = !empty($companySettings->address) ? $companySettings->address : trim(($company_city ?? 'Indore') . ', ' . ($company_state ?? 'Madhya Pradesh') . ', ' . ($company_country ?? 'India'), ', ');
-    $companyWebsite = !empty($companySettings->website) ? preg_replace('#^https?://#i', '', $companySettings->website) : ($company_website ?? 'www.orbosis.com');
+    $companyPhone = $companySettings->phone ?? $company_phone ?? '+91-0000000000';
+    $companyEmail = $companySettings->email ?? $company_email ?? 'info@company.com';
+    $companyGstin = $company_gstin ?? 'GSTIN';
+    $companyLocation = !empty($companySettings->address) ? $companySettings->address : trim(($company_city ?? 'City') . ', ' . ($company_state ?? 'State') . ', ' . ($company_country ?? 'Country'), ', ');
+    $companyWebsite = !empty($companySettings->website) ? preg_replace('#^https?://#i', '', $companySettings->website) : ($company_website ?? 'www.company.com');
 
     // Dynamic header/logo path
-    $headerSrc = null;
-    if (!empty($companySettings->logo)) {
-        $logoPath = storage_path('app/public/' . $companySettings->logo);
-        if (is_file($logoPath)) {
-            $headerSrc = ($isPreview ?? false)
-                ? asset('storage/' . $companySettings->logo)
-                : $logoPath;
-        }
-    }
-    if (!$headerSrc) {
-        $headerSrc = ($isPreview ?? false)
-            ? asset('assets/hrms/document-letterhead/header.png')
-            : public_path('assets/hrms/document-letterhead/header.png');
-    }
+    //$headerSrc = null;
+    //if (!empty($companySettings->logo)) {
+    // $logoPath = storage_path('app/public/' . $companySettings->logo);
+    //if (is_file($logoPath)) {
+    // $headerSrc = ($isPreview ?? false)
+    // ? asset('storage/' . $companySettings->logo)
+    // : $logoPath;
+    // }
+    // }
+    //if (!$headerSrc) {
+    $headerSrc = ($isPreview ?? false)
+    ? asset('assets/hrms/document-letterhead/header.png')
+    : public_path('assets/hrms/document-letterhead/header.png');
+    //}
 
     $footerSrc = ($isPreview ?? false)
-        ? asset('assets/hrms/document-letterhead/footer.png')
-        : public_path('assets/hrms/document-letterhead/footer.png');
+    ? asset('assets/hrms/document-letterhead/footer.png')
+    : public_path('assets/hrms/document-letterhead/footer.png');
     @endphp
 
     @if($isPreview ?? false)
@@ -221,6 +221,10 @@
             width: 100%;
         }
 
+        .signature-block {
+            page-break-inside: avoid;
+        }
+
         .signature-table {
             width: 100%;
             border-collapse: collapse;
@@ -407,6 +411,10 @@
         .signature-section {
             margin-top: 40px;
             width: 100%;
+        }
+
+        .signature-block {
+            page-break-inside: avoid;
         }
 
         .signature-table {

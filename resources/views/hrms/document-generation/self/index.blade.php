@@ -363,9 +363,12 @@
                         </div>
                     </div>
 
-                    <div class="doc-action-group">
+                    <div class="doc-action-group d-flex gap-2">
+                        <a href="{{ route('hrms.document-generation.self.view', $doc->id) }}" target="_blank" class="btn-premium-download" style="background: var(--set-primary); color: #ffffff; border-color: transparent;">
+                            <i class="fas fa-eye"></i> View
+                        </a>
                         <a href="{{ route('hrms.document-generation.self.download', $doc->id) }}" class="btn-premium-download">
-                            <i class="fas fa-cloud-download-alt"></i> Download Official Copy
+                            <i class="fas fa-cloud-download-alt"></i> Download
                         </a>
                     </div>
                 </div>

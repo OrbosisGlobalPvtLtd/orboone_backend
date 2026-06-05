@@ -4,64 +4,85 @@
 
 @section('content')
 <div class="letter-body">
-    <div style="float: right; text-align: right;">
-        <strong>Date:</strong> {{ $issue_date ?? $current_date ?? date('d M, Y') }}
-    </div>
-    
-    <div style="clear: both; margin-top: 15px;">
-        <strong>To,</strong><br>
-        <span style="font-size: 13px; font-weight: bold;">{{ $employee_name ?? 'Employee Name' }}</span><br>
-        {{ $employee_address ?? 'Employee Address' }}<br>
-        {{ $employee_city ?? '' }}
-    </div>
 
-    <div class="text-center mt-4 mb-4">
-        <h3 style="text-decoration: underline; letter-spacing: 1px; color: #1e3a8a;">RELIEVING LETTER & FULL-SETTLEMENT RECEIPT</h3>
+    <div style="text-align:center; margin-bottom:22px;">
+        <h2 style="margin:0; color:#1e3a8a; font-size:18px; letter-spacing:1px; font-weight:bold;">
+            ORBOSIS GLOBAL PRIVATE LIMITED
+        </h2>
+
+        <h3 style="margin:18px 0 0 0; color:#1e3a8a; font-size:17px; letter-spacing:1px; font-weight:bold;">
+            RELIEVING LETTER
+        </h3>
     </div>
 
-    <p>Dear <strong>{{ $employee_name ?? 'Employee' }}</strong>,</p>
-
-    <p class="text-justify">
-        We refer to your resignation letter dated <strong>{{ $resignation_date ?? 'N/A' }}</strong> from the post of 
-        <strong>{{ $designation ?? 'Software Engineer' }}</strong> at <strong>{{ $company_name ?? branding_name() }}</strong>.
+    <p style="font-size:13px; margin-bottom:24px;">
+        <strong>Date:</strong> {{ $issue_date ?? $current_date ?? date('d/m/Y') }}
     </p>
 
-    <p class="text-justify">
-        We would like to inform you that your resignation has been accepted by the management and you are hereby officially relieved from the services of the Company at the close of working hours on <strong>{{ $relieving_date ?? 'Relieving Date' }}</strong>. Your employment tenure with us was from <strong>{{ $joining_date ?? 'Joining Date' }}</strong> to <strong>{{ $relieving_date ?? 'Relieving Date' }}</strong>.
+    <p class="text-justify" style="font-size:13px; line-height:1.8;">
+        This letter confirms that
+        <strong>{{ $employee_prefix ?? 'Mr./Ms.' }} {{ $employee_name ?? 'Employee Name' }}</strong>
+        was employed with
+        <strong>{{ $company_name ?? branding_name() }}</strong>
+        as a
+        <strong>{{ $designation ?? 'Employee' }}</strong>
+        from
+        <strong>{{ $joining_date ?? 'Joining Date' }}</strong>
+        to
+        <strong>{{ $relieving_date ?? 'Relieving Date' }}</strong>.
     </p>
 
-    <p class="text-justify">
-        <strong>Handover & Clearance Status:</strong><br>
-        {!! nl2br(e($handover_status ?? 'All company assets, including laptop, security access badges, source code repositories, and work documents, have been successfully handed over to the designated team leader. Full and final settlement of accounts has been fully completed and paid.')) !!}
+    <p class="text-justify" style="font-size:13px; line-height:1.8;">
+        {{ ucfirst($gender_pronoun_subject ?? 'they') }} has been relieved from
+        {{ $gender_pronoun_possessive ?? 'their' }} duties effective from the close of
+        working hours on <strong>{{ $relieving_date ?? 'Relieving Date' }}</strong>,
+        following the completion of {{ $gender_pronoun_possessive ?? 'their' }}
+        tenure with the organization.
     </p>
 
-    <p class="text-justify">
-        We certify that you have complied with the company exit protocol and have settled all outstanding dues. The company records reflect that during your employment, your conduct, integrity, and performance were satisfactory.
+    <p class="text-justify" style="font-size:13px; line-height:1.8;">
+        We would like to confirm that
+        {{ $gender_pronoun_subject ?? 'they' }} has duly completed all required handover
+        formalities and there are no outstanding obligations from
+        {{ $gender_pronoun_possessive ?? 'their' }} end as per the company’s policies.
     </p>
 
-    <p class="text-justify">
-        We thank you for the services rendered to <strong>{{ $company_name ?? branding_name() }}</strong> during your tenure and wish you the very best in all your future professional and personal endeavors.
+    <p class="text-justify" style="font-size:13px; line-height:1.8;">
+        Throughout {{ $gender_pronoun_possessive ?? 'their' }} tenure,
+        {{ $gender_pronoun_subject ?? 'they' }} maintained a professional approach towards
+        {{ $gender_pronoun_possessive ?? 'their' }} responsibilities and upheld the standards
+        expected by the organization.
     </p>
 
-    <div class="signature-section" style="margin-top: 60px;">
-        <table class="signature-table">
-            <tr>
-                <td>
-                    Sincerely,<br>
-                    <strong>For {{ $company_name ?? branding_name() }}</strong>
-                    <br><br><br><br>
-                    <strong>{{ $signatory_name ?? $authorized_signatory ?? 'Authorized Signatory' }}</strong><br>
-                    {{ $signatory_designation ?? 'Manager - Human Resources' }}
-                </td>
-                <td class="text-right">
-                    Received & Acknowledged,<br>
-                    <br><br><br><br>
-                    ___________________________<br>
-                    <strong>{{ $employee_name ?? 'Employee Signature' }}</strong><br>
-                    Date:
-                </td>
-            </tr>
-        </table>
+    <p class="text-justify" style="font-size:13px; line-height:1.8;">
+        We take this opportunity to acknowledge
+        {{ $gender_pronoun_possessive ?? 'their' }} association with the company and wish
+        {{ $gender_pronoun_object ?? 'them' }} continued success in
+        {{ $gender_pronoun_possessive ?? 'their' }} future professional endeavors.
+    </p>
+
+    <div style="page-break-inside:avoid; margin-top:65px;">
+        <p style="font-size:13px; line-height:1.8; margin:0;">
+            <strong>For {{ $company_name ?? branding_name() }}</strong>
+        </p>
+
+        <div style="height: 60px; margin-top: 5px; margin-bottom: 5px; position: relative;">
+            @if(!empty($signature_image))
+                <img src="{{ $signature_image }}" style="max-height: 55px; max-width: 180px; display: inline-block;" alt="Signature">
+            @else
+                <div style="height: 40px;"></div>
+            @endif
+            @if(!empty($seal_image))
+                <img src="{{ $seal_image }}" style="max-height: 65px; max-width: 65px; position: absolute; top: 5px; left: 140px;" alt="Seal">
+            @endif
+        </div>
+
+        <p style="font-size:13px; line-height:1.6; margin:0;">
+            <strong>{{ $signatory_name ?? $authorized_signatory ?? 'Prabhat Agrawal' }}</strong><br>
+            {{ $signatory_designation ?? 'Chief Executive Officer' }}<br>
+            {{ $company_name ?? branding_name() }}
+        </p>
     </div>
+
 </div>
 @endsection

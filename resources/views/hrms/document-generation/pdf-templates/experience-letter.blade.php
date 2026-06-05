@@ -4,51 +4,86 @@
 
 @section('content')
 <div class="letter-body">
-    <div style="float: right; text-align: right;">
-        <strong>Date:</strong> {{ $issue_date ?? $current_date ?? date('d M, Y') }}
+
+    <div style="text-align:center; margin-bottom:22px;">
+        <h2 style="margin:0; color:#1e3a8a; font-size:18px; letter-spacing:1px; font-weight:bold;">
+            ORBOSIS GLOBAL PRIVATE LIMITED
+        </h2>
+
+        <h3 style="margin:18px 0 0 0; color:#1e3a8a; font-size:17px; letter-spacing:1px; font-weight:bold;">
+            EXPERIENCE CERTIFICATE
+        </h3>
     </div>
-    
-    <div style="clear: both; margin-top: 30px;">
-        <h2 class="text-center" style="letter-spacing: 2px; color: #1e3a8a; font-weight: bold; margin-bottom: 30px;">TO WHOMSOEVER IT MAY CONCERN</h2>
+
+    <p style="font-size:13px; margin-bottom:24px;">
+        <strong>Date:</strong> {{ $issue_date ?? $current_date ?? date('d/m/Y') }}
+    </p>
+
+    <p class="text-justify" style="font-size:13px; line-height:1.8;">
+        This is to certify that
+        <strong>{{ $employee_prefix ?? 'Mr./Ms.' }} {{ $employee_name ?? 'Employee Name' }}</strong>
+        was employed with
+        <strong>{{ $company_name ?? branding_name() }}</strong>
+        as a
+        <strong>{{ $designation ?? 'Employee' }}</strong>
+        from
+        <strong>{{ $joining_date ?? 'Joining Date' }}</strong>
+        to
+        <strong>{{ $relieving_date ?? 'Relieving Date' }}</strong>.
+    </p>
+
+    <p class="text-justify" style="font-size:13px; line-height:1.8;">
+        During {{ $gender_pronoun_possessive ?? 'their' }} tenure,
+        <strong>{{ $employee_prefix ?? 'Mr./Ms.' }} {{ $employee_name ?? 'Employee Name' }}</strong>
+        was responsible for
+        {!! nl2br(e($experience_responsibilities ?? 'managing assigned responsibilities, coordinating with team members, supporting day-to-day operations, and ensuring timely completion of work as per organizational requirements.')) !!}
+    </p>
+
+    <p class="text-justify" style="font-size:13px; line-height:1.8;">
+        {{ ucfirst($gender_pronoun_subject ?? 'they') }} demonstrated a responsible and proactive
+        approach towards {{ $gender_pronoun_possessive ?? 'their' }} work, along with the ability
+        to manage {{ $gender_pronoun_possessive ?? 'their' }} responsibilities effectively.
+        {{ ucfirst($gender_pronoun_subject ?? 'they') }} maintained a professional attitude
+        throughout {{ $gender_pronoun_possessive ?? 'their' }} tenure and handled tasks with
+        clarity and consistency.
+    </p>
+
+    <p class="text-justify" style="font-size:13px; line-height:1.8;">
+        During {{ $gender_pronoun_possessive ?? 'their' }} time with the organization,
+        {{ $gender_pronoun_subject ?? 'they' }} showed sincerity and commitment towards
+        {{ $gender_pronoun_possessive ?? 'their' }} role.
+        {{ ucfirst($gender_pronoun_subject ?? 'they') }} was dependable in executing assigned
+        responsibilities, coordinating with team members, and ensuring smooth day-to-day
+        operations. {{ ucfirst($gender_pronoun_possessive ?? 'their') }} overall contribution
+        supported the functioning of the department in a positive manner.
+    </p>
+
+    <p class="text-justify" style="font-size:13px; line-height:1.8;">
+        {{ $performance_summary ?? 'Their conduct and performance throughout their tenure were found to be satisfactory.' }}
+    </p>
+
+    <div style="page-break-inside:avoid; margin-top:65px;">
+        <p style="font-size:13px; line-height:1.8; margin:0;">
+            <strong>For {{ $company_name ?? branding_name() }}</strong>
+        </p>
+
+        <div style="height: 60px; margin-top: 5px; margin-bottom: 5px; position: relative;">
+            @if(!empty($signature_image))
+                <img src="{{ $signature_image }}" style="max-height: 55px; max-width: 180px; display: inline-block;" alt="Signature">
+            @else
+                <div style="height: 40px;"></div>
+            @endif
+            @if(!empty($seal_image))
+                <img src="{{ $seal_image }}" style="max-height: 65px; max-width: 65px; position: absolute; top: 5px; left: 140px;" alt="Seal">
+            @endif
+        </div>
+
+        <p style="font-size:13px; line-height:1.6; margin:0;">
+            <strong>{{ $signatory_name ?? $authorized_signatory ?? 'Prabhat Agrawal' }}</strong><br>
+            {{ $signatory_designation ?? 'Chief Executive Officer' }}<br>
+            {{ $company_name ?? branding_name() }}
+        </p>
     </div>
 
-    <p class="text-justify" style="font-size: 13px; line-height: 1.8;">
-        This is to certify that <strong>Mr./Ms. {{ $employee_name ?? 'Employee Name' }}</strong> was employed with 
-        <strong>{{ $company_name ?? branding_name() }}</strong> from 
-        <strong>{{ $joining_date ?? 'Start Date' }}</strong> to <strong>{{ $relieving_date ?? 'End Date' }}</strong>.
-    </p>
-
-    <p class="text-justify" style="font-size: 13px; line-height: 1.8;">
-        During their tenure with us, they held the designation of <strong>{{ $designation ?? 'Software Engineer' }}</strong> and performed their duties with utmost dedication and professionalism.
-    </p>
-
-    <p class="text-justify" style="font-size: 13px; line-height: 1.8;">
-        <strong>Core Roles & Responsibilities:</strong><br>
-        {!! nl2br(e($experience_responsibilities ?? 'Responsible for system design, code execution, collaboration with team leads, and quality checks.')) !!}
-    </p>
-
-    <p class="text-justify" style="font-size: 13px; line-height: 1.8;">
-        <strong>Performance Summary:</strong><br>
-        {!! nl2br(e($performance_summary ?? 'Their performance has been highly satisfactory and exemplary. They exhibited excellent problem-solving skills and collaborated well within their team.')) !!}
-    </p>
-
-    <p class="text-justify" style="font-size: 13px; line-height: 1.8; margin-top: 25px;">
-        We found them to be sincere, hardworking, and extremely honest in their conduct. We would like to take this opportunity to thank them for their contributions and wish them all the success in their future professional endeavors.
-    </p>
-
-    <div class="signature-section" style="margin-top: 60px;">
-        <table class="signature-table">
-            <tr>
-                <td>
-                    Sincerely,<br>
-                    <strong>For {{ $company_name ?? branding_name() }}</strong>
-                    <br><br><br><br>
-                    <strong>{{ $signatory_name ?? $authorized_signatory ?? 'Authorized Signatory' }}</strong><br>
-                    {{ $signatory_designation ?? 'Manager - Human Resources' }}
-                </td>
-                <td></td>
-            </tr>
-        </table>
-    </div>
 </div>
 @endsection

@@ -202,6 +202,39 @@ class EmployeeC extends Controller
                     ->limit((int) $request->input('length', 10))
                     ->get();
 
+                global $preloadedPassportPhotos;
+                $preloadedPassportPhotos = [];
+                $empIds = $employees->pluck('id')->toArray();
+                if (!empty($empIds) && Schema::hasTable('employee_documents_new') && Schema::hasTable('document_types')) {
+                    try {
+                        $photos = DB::table('employee_documents_new')
+                            ->join('document_types', 'document_types.id', '=', 'employee_documents_new.document_type_id')
+                            ->whereIn('employee_documents_new.employee_id', $empIds)
+                            ->where(function ($q) {
+                                $q->where('document_types.name', 'Passport Size Photo')
+                                  ->orWhere('document_types.code', 'passport_size_photo')
+                                  ->orWhere('document_types.name', 'Passport Photo')
+                                  ->orWhere('document_types.code', 'passport_photo')
+                                  ->orWhere('document_types.name', 'Photo')
+                                  ->orWhere('document_types.name', 'Passport')
+                                  ->orWhere('document_types.name', 'like', '%Passport%Photo%')
+                                  ->orWhere('document_types.name', 'like', '%Passport%Size%Photo%');
+                            })
+                            ->select('employee_documents_new.employee_id', 'employee_documents_new.file_path', 'employee_documents_new.verification_status')
+                            ->orderByRaw("CASE WHEN employee_documents_new.verification_status = 'verified' THEN 0 ELSE 1 END")
+                            ->orderBy('employee_documents_new.id', 'desc')
+                            ->get()
+                            ->groupBy('employee_id');
+
+                        foreach ($empIds as $id) {
+                            $document = isset($photos[$id]) ? $photos[$id]->first() : null;
+                            $preloadedPassportPhotos[$id] = ($document && $document->file_path)
+                                ? route('hrms.documents.file', ['path' => $document->file_path])
+                                : null;
+                        }
+                    } catch (\Throwable $e) {}
+                }
+
                 $data = $employees->map(function ($employee) {
                     $name = $employee->name ?: '-';
                     $employeeCode = $employee->employee_code ?: 'EMP-' . $employee->id;

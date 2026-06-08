@@ -411,6 +411,6 @@ class SidebarMenuResolverS
             return true;
         }
 
-        return in_array($moduleKey, ['documents', 'attendance', 'leave', 'enterprise_payroll'], true);
+        return in_array($moduleKey, ['documents', 'attendance', 'leave', 'enterprise_payroll', 'assets'], true);
     }
 }

@@ -9,6 +9,7 @@
         --orb-secondary: {{ $branding['secondary_color'] ?? '#FF5252' }};
         --primary: var(--orb-primary);
         --primary-2: var(--orb-secondary);
+        
         --primary-3:#D400D5;
         --primary-4:#EC4E74;
         --primary-5:#FFB101;

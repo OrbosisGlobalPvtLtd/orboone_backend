@@ -208,7 +208,19 @@ class LeaveApiC extends Controller
 
             $this->notifyLeaveApplied($leaveRequest->fresh(['employee.user', 'leaveType', 'dates']));
 
-            return $this->ok('Leave request submitted successfully.', $leaveRequest, 201);
+            $responseData = $leaveRequest->toArray();
+            $responseData['breakdown'] = [
+                'requested_days' => (float) $calculation['requested_days'],
+                'deducted_days' => (float) $calculation['deducted_days'],
+                'paid_days' => (float) $calculation['paid_days'],
+                'sick_days' => (float) $calculation['sick_days'],
+                'comp_off_days' => (float) $calculation['comp_off_days'],
+                'lwp_days' => (float) $calculation['lwp_days'],
+                'sandwich_days' => (int) $calculation['sandwich_days'],
+                'requires_medical_certificate' => (bool) $calculation['requires_medical_certificate'],
+            ];
+
+            return $this->ok('Leave request submitted successfully.', $responseData, 201);
         } catch (ValidationException $e) {
             throw $e;
         } catch (\Throwable $e) {
@@ -634,6 +646,6 @@ class LeaveApiC extends Controller
 
     private function fail(string $message, int $code = 400, $data = null)
     {
-        return response()->json(['success' => false, 'status' => false, 'message' => $message, 'data' => $data], $code);
+        return response()->json(['success' => false, 'status' => false, 'message' => app(\App\Services\Shared\MobileApiMessageS::class)->cleanMessage($message), 'data' => $data], $code);
     }
 }

@@ -20,16 +20,18 @@ class DocumentEmailS
 
         $pdfFile = Storage::disk('private')->path($pdfPath);
 
-        // Simple closure based mail sending
-        Mail::send([], [], function ($message) use ($emailTo, $subject, $body, $pdfFile, $document) {
-            $message->to($emailTo)
-                ->subject($subject)
-                ->html($body)
-                ->attach($pdfFile, [
-                    'as' => basename($pdfPath),
-                    'mime' => 'application/pdf',
-                ]);
-        });
+        $mailable = new \App\Mail\QueuedDocumentMail(
+            $subject,
+            $body,
+            $pdfFile,
+            basename($pdfPath)
+        );
+
+        if (config('queue.default') === 'sync') {
+            Mail::to($emailTo)->send($mailable);
+        } else {
+            Mail::to($emailTo)->queue($mailable);
+        }
 
         $document->update([
             'status' => 'sent',

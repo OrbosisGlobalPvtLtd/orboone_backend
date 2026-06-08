@@ -228,8 +228,11 @@
     }
 
     .leave-table-responsive {
-        border: none;
-        overflow: visible;
+        border: 1px solid var(--leave-border);
+        border-radius: 18px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        background: #fff;
     }
 
     .dataTables_scroll {
@@ -815,21 +818,79 @@
                                             {{ optional($request->end_date)->format('d M Y') }}
                                         </td>
                                     </tr>
-                                    <tr>
-                                        <td style="font-weight:700; background:#F9FAFB; color:var(--leave-text);">Deducted Days</td>
-                                        <td style="font-weight:800; color:var(--leave-text);">{{ $request->deducted_days }} Days</td>
-                                    </tr>
-                                    <tr>
-                                        <td style="font-weight:700; background:#F9FAFB; color:var(--leave-text);">Balance Split</td>
-                                        <td>
-                                            <div class="leave-split" style="min-width:auto;">
-                                                <div class="leave-split-item"><span>Paid Days</span><span class="leave-split-value">{{ $request->paid_days }}</span></div>
-                                                <div class="leave-split-item"><span>Sick Days</span><span class="leave-split-value">{{ $request->sick_days }}</span></div>
-                                                <div class="leave-split-item"><span>Comp Off Days</span><span class="leave-split-value">{{ $request->comp_off_days }}</span></div>
-                                                <div class="leave-split-item"><span>LWP Days</span><span class="leave-split-value">{{ $request->lwp_days }}</span></div>
-                                            </div>
-                                        </td>
-                                    </tr>
+                                     <tr>
+                                         <td style="font-weight:700; background:#F9FAFB; color:var(--leave-text);">Requested Days</td>
+                                         <td style="font-weight:800; color:var(--leave-text);">{{ (float) $request->requested_days }} Days</td>
+                                     </tr>
+                                     <tr>
+                                         <td style="font-weight:700; background:#F9FAFB; color:var(--leave-text);">Deducted Days</td>
+                                         <td style="font-weight:800; color:var(--leave-text);">{{ (float) $request->deducted_days }} Days</td>
+                                     </tr>
+                                     <tr>
+                                         <td style="font-weight:700; background:#F9FAFB; color:var(--leave-text);">Sandwich Days Included</td>
+                                         <td style="font-weight:800; color:var(--leave-text);">{{ $request->sandwich_applied ? 'Yes' : 'No' }}</td>
+                                     </tr>
+                                     <tr>
+                                         <td style="font-weight:700; background:#F9FAFB; color:var(--leave-text);">Weekend/Holiday Counted</td>
+                                         <td style="font-weight:800; color:var(--leave-text);">
+                                             @php
+                                                 $weekendHolidayCount = $request->dates ? $request->dates->filter(fn($d) => ($d->is_weekoff || $d->is_holiday) && $d->deduct_as_leave)->count() : 0;
+                                             @endphp
+                                             {{ $weekendHolidayCount }}
+                                         </td>
+                                     </tr>
+                                     <tr>
+                                         <td style="font-weight:700; background:#F9FAFB; color:var(--leave-text);">Leave Consumption</td>
+                                         <td>
+                                             <div class="leave-split" style="min-width:auto;">
+                                                 <div class="leave-split-item"><span>Paid Leave</span><span class="leave-split-value">{{ (float) $request->paid_days }}</span></div>
+                                                 <div class="leave-split-item"><span>Sick Leave</span><span class="leave-split-value">{{ (float) $request->sick_days }}</span></div>
+                                                 <div class="leave-split-item"><span>Comp Off</span><span class="leave-split-value">{{ (float) $request->comp_off_days }}</span></div>
+                                                 <div class="leave-split-item"><span>LWP</span><span class="leave-split-value">{{ (float) $request->lwp_days }}</span></div>
+                                             </div>
+                                         </td>
+                                     </tr>
+                                     <tr>
+                                         <td style="font-weight:700; background:#F9FAFB; color:var(--leave-text);">Medical Certificate</td>
+                                         <td>
+                                             @php
+                                                 $sickType = \App\Models\HRMS\Leave\LeaveTypeM::where('code', 'sick_leave')->first();
+                                                 $consecLimit = $sickType ? ($sickType->medical_certificate_after_days ?: 2) : 2;
+                                                 $isSick = optional($request->leaveType)->is_sick || optional($request->leaveType)->code === 'sick_leave';
+                                                 $consecRun = 0;
+                                                 if ($isSick && $request->dates) {
+                                                     $reqDates = $request->dates->filter(fn($d) => $d->sick_day > 0 || $d->deduct_as_leave)->pluck('leave_date')->map(fn($d) => \Carbon\Carbon::parse($d)->toDateString())->all();
+                                                     if (!empty($reqDates)) {
+                                                         $appSickDates = \Illuminate\Support\Facades\DB::table('leave_request_dates')
+                                                             ->join('leave_requests', 'leave_requests.id', '=', 'leave_request_dates.leave_request_id')
+                                                             ->where('leave_request_dates.employee_id', $request->employee_id)
+                                                             ->where('leave_requests.status', 'approved')
+                                                             ->where('leave_request_dates.sick_day', '>', 0)
+                                                             ->where('leave_requests.id', '<>', $request->id)
+                                                             ->pluck('leave_request_dates.leave_date')
+                                                             ->map(fn($d) => \Carbon\Carbon::parse($d)->toDateString())
+                                                             ->all();
+                                                         $allSicks = array_flip(array_merge($reqDates, $appSickDates));
+                                                         $firstDay = \Carbon\Carbon::parse(min($reqDates));
+                                                         $lastDay = \Carbon\Carbon::parse(max($reqDates));
+                                                         $leftC = 0;
+                                                         $cur = $firstDay->copy()->subDay();
+                                                         while (isset($allSicks[$cur->toDateString()])) { $leftC++; $cur->subDay(); }
+                                                         $rightC = 0;
+                                                         $cur = $lastDay->copy()->addDay();
+                                                         while (isset($allSicks[$cur->toDateString()])) { $rightC++; $cur->addDay(); }
+                                                         $consecRun = $leftC + count($reqDates) + $rightC;
+                                                     }
+                                                 }
+                                                 $certRequired = $isSick && $consecRun > $consecLimit;
+                                                 $uploaded = !empty($request->attachment_path);
+                                             @endphp
+                                             <div class="leave-split" style="min-width:auto;">
+                                                 <div class="leave-split-item"><span>Required</span><span class="leave-split-value">{{ $certRequired ? 'Yes' : 'No' }}</span></div>
+                                                 <div class="leave-split-item"><span>Uploaded</span><span class="leave-split-value">{{ $uploaded ? 'Yes' : 'No' }}</span></div>
+                                             </div>
+                                         </td>
+                                     </tr>
                                     <tr>
                                         <td style="font-weight:700; background:#F9FAFB; color:var(--leave-text);">Reason</td>
                                         <td style="white-space:normal; word-break:break-word; color:var(--leave-text);">{{ $request->reason ?: 'No reason provided.' }}</td>
@@ -930,7 +991,7 @@
                 if ($table.find('tbody tr').length > 0 && $table.find('tbody td[colspan]').length === 0) {
                     $table.DataTable({
                         pageLength: 25,
-                        scrollX: true,
+                        scrollX: false,
                         autoWidth: false,
                         language: {
                             emptyTable: '<div class="py-4"><i class="fas fa-folder-open fa-3x mb-3 text-muted opacity-50"></i><br>No records found</div>',

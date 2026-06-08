@@ -222,6 +222,19 @@ if (!function_exists('resolveEmployeePassportPhoto')) {
             return null;
         }
 
+        global $preloadedPassportPhotos;
+        if (isset($preloadedPassportPhotos)) {
+            $empId = null;
+            if (is_object($employeeOrUser) && isset($employeeOrUser->id)) {
+                $empId = $employeeOrUser->id;
+            } elseif (is_numeric($employeeOrUser)) {
+                $empId = (int)$employeeOrUser;
+            }
+            if ($empId !== null && array_key_exists($empId, $preloadedPassportPhotos)) {
+                return $preloadedPassportPhotos[$empId];
+            }
+        }
+
         $employee = null;
         if ($employeeOrUser instanceof \App\Models\HRMS\Employee\EmployeeM) {
             $employee = $employeeOrUser;

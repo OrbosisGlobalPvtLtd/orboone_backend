@@ -298,7 +298,7 @@ class AttendanceRegularizationController extends ApiController
             ]);
             });
         } catch (\RuntimeException $e) {
-            return response()->json(['success' => false, 'status' => false, 'message' => $e->getMessage(), 'data' => null], 422);
+            return response()->json(['success' => false, 'status' => false, 'message' => app(\App\Services\Shared\MobileApiMessageS::class)->friendly($e), 'data' => null], 422);
         }
 
         $fresh = $row->fresh();
@@ -376,7 +376,7 @@ class AttendanceRegularizationController extends ApiController
                 ]);
             });
         } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'status' => false, 'message' => $e->getMessage(), 'data' => null], 422);
+            return response()->json(['success' => false, 'status' => false, 'message' => app(\App\Services\Shared\MobileApiMessageS::class)->friendly($e), 'data' => null], 422);
         }
 
         $employee = EmployeeM::find($row->employee_id);

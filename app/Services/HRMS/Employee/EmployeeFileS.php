@@ -45,6 +45,18 @@ class EmployeeFileS
             throw new \Exception('Invalid file type.');
         }
 
+        $detectedMime = $file->getMimeType();
+        $allowedMimes = match ($type) {
+            'profile' => ['image/jpeg', 'image/png', 'image/webp'],
+            'resume' => ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+            'document' => ['application/pdf', 'image/jpeg', 'image/png'],
+            default => [],
+        };
+
+        if (!empty($allowedMimes) && !in_array($detectedMime, $allowedMimes)) {
+            throw new \Exception('Invalid file content MIME type.');
+        }
+
         // 5MB max safety
         if ($file->getSize() > 5 * 1024 * 1024) {
             throw new \Exception('File size too large.');

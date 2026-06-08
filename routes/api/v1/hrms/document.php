@@ -34,6 +34,10 @@ Route::middleware(['auth:sanctum'])
             ->whereNumber('document')
             ->name('replace');
 
+        Route::get('/generated/{id}/download', [MyDocumentController::class, 'downloadGeneratedDocument'])
+            ->name('generated.download')
+            ->whereNumber('id');
+
         Route::delete('/{document}', [MyDocumentController::class, 'destroy'])
             ->whereNumber('document')
             ->name('destroy');

@@ -347,7 +347,7 @@ class AttendanceController extends Controller
         return response()->json([
             'status' => $success,
             'success' => $success,
-            'message' => $message,
+            'message' => app(\App\Services\Shared\MobileApiMessageS::class)->cleanMessage($message),
             'errors' => $errors,
             'data' => $data,
         ], $status);

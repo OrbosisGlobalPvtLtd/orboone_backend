@@ -15,4 +15,5 @@ Route::middleware(['auth', 'module:hrms'])->prefix('hrms/employee')->name('hrms.
     Route::post('profile/submit-verification', [EmployeeSelfC::class, 'submitVerification'])->name('submit_verification');
     
     Route::get('my-profile', [EmployeeSelfC::class, 'myProfile'])->name('my_profile');
+    Route::get('assets', [\App\Http\Controllers\Web\HRMS\Employee\EmployeeAssetC::class, 'index'])->name('assets.index');
 });

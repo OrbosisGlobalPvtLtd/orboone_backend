@@ -210,11 +210,21 @@ class ProfileController extends Controller
 
         if (method_exists($employee, 'assetAllocations') && $employee->relationLoaded('assetAllocations')) {
             $assetSummary = $employee->assetAllocations->map(function ($asset) {
+                $brandModel = $asset->brand_model;
+                $parts = explode(' ', trim($brandModel ?? ''), 2);
+                $brand = $parts[0] ?? '';
+                $model = $parts[1] ?? $brand;
+
                 return [
-                    'id'         => $asset->id ?? null,
-                    'asset_name' => $asset->asset_name ?? $asset->name ?? 'Asset',
-                    'asset_code' => $asset->asset_code ?? null,
-                    'status'     => $asset->status ?? null,
+                    'id'            => $asset->id ?? null,
+                    'asset_name'    => $asset->brand_model ?? 'Asset',
+                    'asset_code'    => $asset->asset_id_sn ?? null,
+                    'category'      => $asset->asset_type ?? null,
+                    'serial_number' => $asset->asset_id_sn ?? null,
+                    'brand'         => $brand,
+                    'model'         => $model,
+                    'assigned_date' => $asset->issue_date ?? ($asset->created_at ? $asset->created_at->toDateString() : null),
+                    'status'        => strtolower($asset->status ?? 'active'),
                 ];
             })->values();
         }

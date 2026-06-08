@@ -182,11 +182,31 @@ class EmployeeDocumentCompletionS
         $optionalTypes = $this->optionalTypes($experienceType);
         $documents = $this->uploadedDocuments($employee);
 
+        $generatedDocuments = \App\Models\HRMS\DocumentGeneration\GeneratedDocument::where('employee_id', $employee->id)
+            ->whereIn('status', ['generated', 'sent', 'reviewed'])
+            ->latest()
+            ->get()
+            ->map(function ($doc) {
+                $path = $doc->generated_pdf_path ?: $doc->pdf_path;
+                $url = $path ? route('api.hrms.documents.generated.download', ['id' => $doc->id]) : null;
+                return [
+                    'id' => $doc->id,
+                    'document_title' => $doc->document_title,
+                    'document_type' => $doc->document_type,
+                    'document_number' => $doc->document_number,
+                    'file_url' => $url,
+                    'status' => $doc->status,
+                    'created_at' => $doc->created_at ? $doc->created_at->toDateTimeString() : null,
+                ];
+            })
+            ->values();
+
         return [
             'experience_type' => $experienceType,
             'required_documents' => $requiredTypes->map(fn ($type) => $this->formatType($type))->values(),
             'optional_documents' => $optionalTypes->map(fn ($type) => $this->formatType($type))->values(),
             'uploaded_documents' => $documents->map(fn ($doc) => $this->formatDocument($doc))->values(),
+            'generated_documents' => $generatedDocuments,
             'completion' => $this->completion($employee, $requiredTypes, $documents),
         ];
     }

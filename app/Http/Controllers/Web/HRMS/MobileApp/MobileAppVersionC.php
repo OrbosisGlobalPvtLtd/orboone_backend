@@ -69,6 +69,20 @@ class MobileAppVersionC extends Controller
                     if (! $value || strtolower($value->getClientOriginalExtension()) !== 'apk') {
                         $fail('The APK file must have a .apk extension.');
                     }
+                    if ($value) {
+                        $mime = $value->getMimeType();
+                        $allowedMimes = [
+                            'application/vnd.android.package-archive',
+                            'application/octet-stream',
+                            'application/zip',
+                            'application/x-zip-compressed',
+                            'application/java-archive',
+                            'application/x-java-archive',
+                        ];
+                        if (!in_array($mime, $allowedMimes)) {
+                            $fail('The APK file content is invalid.');
+                        }
+                    }
                 },
             ],
             'release_notes' => ['nullable', 'string'],

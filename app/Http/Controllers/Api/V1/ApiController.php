@@ -530,14 +530,14 @@ class ApiController extends Controller
         } catch (\Illuminate\Validation\ValidationException $ve) {
             return response()->json([
                 'status'  => false,
-                'message' => 'Validation Error',
+                'message' => app(\App\Services\Shared\MobileApiMessageS::class)->friendly($ve),
                 'errors'  => $ve->errors(),
             ], 422);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
                 'status'  => false,
-                'message' => 'Update Error: ' . $e->getMessage(),
+                'message' => app(\App\Services\Shared\MobileApiMessageS::class)->friendly($e),
             ], 500);
         }
     }
@@ -644,9 +644,9 @@ class ApiController extends Controller
             ]);
             return response()->json(['status' => true, 'message' => 'Leave type created.', 'data' => $type], 201);
         } catch (\Illuminate\Validation\ValidationException $ve) {
-            return response()->json(['status' => false, 'message' => 'Validation Error', 'errors' => $ve->errors()], 422);
+            return response()->json(['status' => false, 'message' => app(\App\Services\Shared\MobileApiMessageS::class)->friendly($ve), 'errors' => $ve->errors()], 422);
         } catch (\Exception $e) {
-            return response()->json(['status' => false, 'message' => $e->getMessage()], 500);
+            return response()->json(['status' => false, 'message' => app(\App\Services\Shared\MobileApiMessageS::class)->friendly($e)], 500);
         }
     }
 
@@ -944,9 +944,9 @@ class ApiController extends Controller
             ], 200);
 
         } catch (\Illuminate\Validation\ValidationException $ve) {
-            return response()->json(['status' => false, 'message' => 'Validation Error: ' . implode(', ', $ve->validator->errors()->all()), 'errors' => $ve->validator->errors()], 422);
+            return response()->json(['status' => false, 'message' => app(\App\Services\Shared\MobileApiMessageS::class)->friendly($ve), 'errors' => $ve->errors()], 422);
         } catch (\Exception $e) {
-            return response()->json(['status' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+            return response()->json(['status' => false, 'message' => app(\App\Services\Shared\MobileApiMessageS::class)->friendly($e)], 500);
         }
     }
 

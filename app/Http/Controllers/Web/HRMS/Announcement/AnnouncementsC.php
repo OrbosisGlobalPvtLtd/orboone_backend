@@ -203,6 +203,7 @@ class AnnouncementsC extends Controller
         $data = $this->validated($request);
 
         if ($request->hasFile('attachment')) {
+            $this->validateAttachment($request->file('attachment'));
             $data['attachment'] = $request->file('attachment')->store(
                 $this->paths->announcement((int) now()->format('Y'), (int) now()->format('m'), 'attachments'),
                 'private'
@@ -232,6 +233,7 @@ class AnnouncementsC extends Controller
         $data = $this->validated($request, true);
 
         if ($request->hasFile('attachment')) {
+            $this->validateAttachment($request->file('attachment'));
             if ($announcement->attachment) {
                 Storage::disk('private')->delete($announcement->attachment);
             }
@@ -422,6 +424,26 @@ class AnnouncementsC extends Controller
             'Content-Type' => $mime,
             'Content-Disposition' => 'inline; filename="' . basename($resolved['absolute']) . '"',
         ]);
+    }
+
+    private function validateAttachment($file): void
+    {
+        $ext = strtolower($file->getClientOriginalExtension());
+        $mime = $file->getMimeType();
+        $allowedMimes = [
+            'pdf' => 'application/pdf',
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'webp' => 'image/webp',
+            'doc' => 'application/msword',
+            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'xls' => 'application/vnd.ms-excel',
+            'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ];
+        if (!isset($allowedMimes[$ext]) || $mime !== $allowedMimes[$ext]) {
+            throw new \Exception('Invalid attachment MIME content type.');
+        }
     }
 
     private function validated(Request $request, bool $update = false): array

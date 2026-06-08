@@ -50,8 +50,28 @@ class MyDocumentController extends Controller
             ->map(fn($document) => $this->completionService->formatDocument($document))
             ->values();
 
+        $generatedDocuments = \App\Models\HRMS\DocumentGeneration\GeneratedDocument::where('employee_id', $employee->id)
+            ->whereIn('status', ['generated', 'sent', 'reviewed'])
+            ->latest()
+            ->get()
+            ->map(function ($doc) {
+                $path = $doc->generated_pdf_path ?: $doc->pdf_path;
+                $url = $path ? route('api.hrms.documents.generated.download', ['id' => $doc->id]) : null;
+                return [
+                    'id' => $doc->id,
+                    'document_title' => $doc->document_title,
+                    'document_type' => $doc->document_type,
+                    'document_number' => $doc->document_number,
+                    'file_url' => $url,
+                    'status' => $doc->status,
+                    'created_at' => $doc->created_at ? $doc->created_at->toDateTimeString() : null,
+                ];
+            })
+            ->values();
+
         return $this->apiResponse(true, 'Your documents fetched successfully.', [
             'uploaded_documents' => $documents,
+            'generated_documents' => $generatedDocuments,
             'completion' => $this->completionService->completion($employee),
         ]);
     }
@@ -349,6 +369,11 @@ class MyDocumentController extends Controller
             return $this->apiResponse(false, 'Employee record not found.', null, 404);
         }
 
+        $documentExists = EmployeeDocumentM::find($id);
+        if ($documentExists && $documentExists->employee_id !== $employee->id) {
+            throw new \Illuminate\Auth\Access\AuthorizationException('This action is unauthorized.');
+        }
+
         $document = EmployeeDocumentM::where('employee_id', $employee->id)->find($id);
 
         if (! $document) {
@@ -421,11 +446,35 @@ class MyDocumentController extends Controller
         return $this->myDocuments();
     }
 
+    public function downloadGeneratedDocument($id)
+    {
+        $employee = $this->completionService->employeeForUser((int) auth()->id());
+
+        if (! $employee) {
+            return $this->apiResponse(false, 'Employee record not found.', null, 404);
+        }
+
+        $document = \App\Models\HRMS\DocumentGeneration\GeneratedDocument::where('employee_id', $employee->id)
+            ->whereIn('status', ['generated', 'sent', 'reviewed'])
+            ->find($id);
+
+        if (! $document) {
+            return $this->apiResponse(false, 'Document not found or access denied.', null, 403);
+        }
+
+        $path = $document->generated_pdf_path ?: $document->pdf_path;
+        if (!$path || !Storage::disk('private')->exists($path)) {
+            return $this->apiResponse(false, 'PDF file is not available.', null, 404);
+        }
+
+        return Storage::disk('private')->download($path, basename($path));
+    }
+
     private function apiResponse(bool $success, string $message, $data = null, int $status = 200, $errors = null)
     {
         return response()->json([
             'success' => $success,
-            'message' => $message,
+            'message' => app(\App\Services\Shared\MobileApiMessageS::class)->cleanMessage($message),
             'errors' => $errors,
             'data' => $data,
         ], $status);

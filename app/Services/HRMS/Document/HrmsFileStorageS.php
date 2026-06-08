@@ -62,6 +62,27 @@ class HrmsFileStorageS
      */
     public function storeEmployeeDocument(EmployeeM $employee, DocumentTypeM|string $type, UploadedFile $file): array
     {
+        $ext = strtolower($file->getClientOriginalExtension());
+        $mime = $file->getMimeType();
+        
+        $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'doc', 'docx'];
+        $allowedMimes = [
+            'application/pdf',
+            'image/jpeg',
+            'image/png',
+            'image/webp',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        ];
+
+        if (!in_array($ext, $allowedExtensions)) {
+            throw new \Exception('Invalid file extension.');
+        }
+
+        if (!in_array($mime, $allowedMimes)) {
+            throw new \Exception('Invalid file content MIME type.');
+        }
+
         $path = $this->buildEmployeeDocumentPath($employee, $type, $file);
         $dir = dirname($path);
         $filename = basename($path);
@@ -125,6 +146,27 @@ class HrmsFileStorageS
      */
     public function archiveOrReplaceEmployeeDocument(EmployeeM $employee, DocumentTypeM|string $type, UploadedFile $file): array
     {
+        $ext = strtolower($file->getClientOriginalExtension());
+        $mime = $file->getMimeType();
+        
+        $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'doc', 'docx'];
+        $allowedMimes = [
+            'application/pdf',
+            'image/jpeg',
+            'image/png',
+            'image/webp',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        ];
+
+        if (!in_array($ext, $allowedExtensions)) {
+            throw new \Exception('Invalid file extension.');
+        }
+
+        if (!in_array($mime, $allowedMimes)) {
+            throw new \Exception('Invalid file content MIME type.');
+        }
+
         $docType = ($type instanceof DocumentTypeM) ? $type : DocumentTypeM::where('code', $type)->orWhere('name', $type)->first();
         $docTypeId = $docType ? $docType->id : null;
 

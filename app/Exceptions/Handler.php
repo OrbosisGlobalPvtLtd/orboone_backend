@@ -26,28 +26,33 @@ class Handler extends ExceptionHandler
 
             if ($exception instanceof ValidationException) {
                 $statusCode = 422;
-                $message = 'Validation failed';
+                $message = app(\App\Services\Shared\MobileApiMessageS::class)->friendly($exception);
                 $errors = $exception->errors();
             }
 
-            if ($exception instanceof AuthenticationException) {
+            elseif ($exception instanceof AuthenticationException) {
                 $statusCode = 401;
-                $message = 'Unauthenticated';
+                $message = app(\App\Services\Shared\MobileApiMessageS::class)->friendly($exception);
             }
 
-            if ($exception instanceof ModelNotFoundException) {
+            elseif ($exception instanceof \Illuminate\Auth\Access\AuthorizationException) {
+                $statusCode = 403;
+                $message = app(\App\Services\Shared\MobileApiMessageS::class)->friendly($exception);
+            }
+
+            elseif ($exception instanceof ModelNotFoundException) {
                 $statusCode = 404;
-                $message = 'Record not found';
+                $message = app(\App\Services\Shared\MobileApiMessageS::class)->friendly($exception);
             }
 
-            if ($exception instanceof NotFoundHttpException) {
+            elseif ($exception instanceof NotFoundHttpException) {
                 $statusCode = 404;
                 $message = 'Route not found';
             }
 
-            if ($exception instanceof QueryException) {
+            elseif ($exception instanceof QueryException) {
                 $statusCode = 500;
-                $message = 'Database Error';
+                $message = 'Something went wrong. Please try again.';
 
                 if (config('app.debug')) {
                     $errors = [
@@ -57,8 +62,14 @@ class Handler extends ExceptionHandler
                 }
             }
 
-            if ($exception instanceof HttpException) {
+            elseif ($exception instanceof HttpException) {
                 $statusCode = $exception->getStatusCode();
+                $message = app(\App\Services\Shared\MobileApiMessageS::class)->cleanMessage($exception->getMessage());
+            }
+
+            else {
+                $statusCode = method_exists($exception, 'getStatusCode') ? $exception->getStatusCode() : 500;
+                $message = 'Something went wrong. Please try again.';
             }
 
             $debugTrace = collect($exception->getTrace())

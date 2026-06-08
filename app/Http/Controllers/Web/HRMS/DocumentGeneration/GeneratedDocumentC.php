@@ -366,61 +366,40 @@ class GeneratedDocumentC extends Controller
                 $fromName = config('mail.from.name') ?: 'HR Team';
                 $fallbackUsed = false;
 
-                try {
-                    \Illuminate\Support\Facades\Log::info("Attempting to send email with preferred sender: {$fromAddress}");
-                    \Illuminate\Support\Facades\Mail::send([], [], function ($message) use ($emailTo, $ccEmail, $subject, $body, $pdfFile, $pdfPath, $fromAddress, $fromName) {
-                        if ($fromAddress) {
-                            $message->from($fromAddress, $fromName);
-                        }
-                        $message->to($emailTo);
-                        if (!empty($ccEmail)) {
-                            $message->cc($ccEmail);
-                        }
-                        $message->subject($subject);
-                        $message->setBody($body, 'text/html');
-                        $message->attach($pdfFile, [
-                            'as' => basename($pdfPath),
-                            'mime' => 'application/pdf',
-                        ]);
-                    });
-                } catch (\Throwable $mailEx) {
-                    $errorMessage = $mailEx->getMessage();
-                    $isRelayError = str_contains(strtolower($errorMessage), '553') || 
-                                    str_contains(strtolower($errorMessage), 'relay') || 
-                                    str_contains(strtolower($errorMessage), 'sender') ||
-                                    str_contains(strtolower($errorMessage), 'disallowed');
+                $mailable = new \App\Mail\QueuedDocumentMail(
+                    $subject,
+                    $body,
+                    $pdfFile,
+                    basename($pdfPath),
+                    $fromAddress,
+                    $fromName,
+                    $ccEmail
+                );
 
-                    $smtpUsername = config('mail.mailers.smtp.username');
-                    if ($isRelayError && $smtpUsername && $fromAddress !== $smtpUsername) {
-                        \Illuminate\Support\Facades\Log::warning("SMTP rejected preferred sender ({$fromAddress}) with error: {$errorMessage}. Falling back to MAIL_USERNAME: {$smtpUsername}");
-                        $fromAddress = $smtpUsername;
-                        $fallbackUsed = true;
+                if (config('queue.default') === 'sync') {
+                    try {
+                        \Illuminate\Support\Facades\Log::info("Attempting to send email synchronously with preferred sender: {$fromAddress}");
+                        \Illuminate\Support\Facades\Mail::to($emailTo)->send($mailable);
+                    } catch (\Throwable $mailEx) {
+                        $errorMessage = $mailEx->getMessage();
+                        $isRelayError = str_contains(strtolower($errorMessage), '553') || 
+                                        str_contains(strtolower($errorMessage), 'relay') || 
+                                        str_contains(strtolower($errorMessage), 'sender') ||
+                                        str_contains(strtolower($errorMessage), 'disallowed');
 
-                        \Illuminate\Support\Facades\Mail::send([], [], function ($message) use ($emailTo, $ccEmail, $subject, $body, $pdfFile, $pdfPath, $fromAddress, $fromName) {
-                            if ($fromAddress) {
-                                $message->from($fromAddress, $fromName);
-                            }
-                            $message->to($emailTo);
-                            if (!empty($ccEmail)) {
-                                $message->cc($ccEmail);
-                            }
-                            $message->subject($subject);
-                            $message->setBody($body, 'text/html');
-                            $message->attach($pdfFile, [
-                                'as' => basename($pdfPath),
-                                'mime' => 'application/pdf',
-                            ]);
-                        });
-                    } else {
-                        throw $mailEx;
+                        $smtpUsername = config('mail.mailers.smtp.username');
+                        if ($isRelayError && $smtpUsername && $fromAddress !== $smtpUsername) {
+                            \Illuminate\Support\Facades\Log::warning("SMTP rejected preferred sender ({$fromAddress}) with error: {$errorMessage}. Falling back to MAIL_USERNAME: {$smtpUsername}");
+                            $mailable->fromAddress = $smtpUsername;
+                            \Illuminate\Support\Facades\Mail::to($emailTo)->send($mailable);
+                        } else {
+                            throw $mailEx;
+                        }
                     }
+                } else {
+                    \Illuminate\Support\Facades\Log::info("Queueing email with preferred sender: {$fromAddress}");
+                    \Illuminate\Support\Facades\Mail::to($emailTo)->queue($mailable);
                 }
-
-                \Illuminate\Support\Facades\Log::info("Mail send success", [
-                    'to' => $emailTo,
-                    'actual_from_used' => $fromAddress,
-                    'fallback_used' => $fallbackUsed
-                ]);
 
                 $dbData = [
                     'status' => 'sent',

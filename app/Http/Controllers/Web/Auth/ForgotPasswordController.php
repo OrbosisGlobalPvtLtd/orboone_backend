@@ -24,6 +24,17 @@ class ForgotPasswordController extends Controller
             $service->sendOtp(strtolower($data['email']));
         } catch (\Throwable $e) {
             Log::error('Password reset OTP email failed: '.$e->getMessage());
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Failed to send OTP.'], 500);
+            }
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'If this email exists, an OTP has been sent.',
+                'email' => strtolower($data['email'])
+            ]);
         }
 
         return redirect()
@@ -46,8 +57,25 @@ class ForgotPasswordController extends Controller
             'otp' => ['required', 'digits:6'],
         ]);
 
-        if (! $service->verifyOtp(strtolower($data['email']), $data['otp'])) {
-            return back()->withErrors(['otp' => 'Invalid or expired OTP.'])->withInput();
+        $result = $service->verifyOtp(strtolower($data['email']), $data['otp']);
+
+        if (! ($result['success'] ?? false)) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $result['message'] ?? 'Invalid or expired OTP.'
+                ], 400);
+            }
+            return back()->withErrors(['otp' => $result['message'] ?? 'Invalid or expired OTP.'])->withInput();
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'OTP verified. Set your new password.',
+                'email' => strtolower($data['email']),
+                'otp' => $data['otp']
+            ]);
         }
 
         return redirect()
@@ -73,8 +101,23 @@ class ForgotPasswordController extends Controller
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
-        if (! $service->resetPassword(strtolower($data['email']), $data['otp'], $data['password'])) {
-            return back()->withErrors(['password' => 'Unable to reset password. Please request a new OTP.'])->withInput();
+        $result = $service->resetPassword(strtolower($data['email']), $data['otp'], $data['password']);
+
+        if (! ($result['success'] ?? false)) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $result['message'] ?? 'Unable to reset password. Please request a new OTP.'
+                ], 400);
+            }
+            return back()->withErrors(['password' => $result['message'] ?? 'Unable to reset password. Please request a new OTP.'])->withInput();
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Password reset successfully. Please login with your new password.'
+            ]);
         }
 
         return redirect()

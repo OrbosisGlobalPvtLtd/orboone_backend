@@ -372,3 +372,113 @@ if (!function_exists('branding_name')) {
     }
 }
 
+if (!function_exists('branding_logo')) {
+    /**
+     * Get the dynamic company/portal branding logo URL with config/hardcoded fallbacks.
+     *
+     * @return string
+     */
+    function branding_logo()
+    {
+        try {
+            $branding = \App\Services\Core\Branding\BrandingSettingsS::get();
+            $logoUrl = !empty($branding['logo_url']) ? $branding['logo_url'] : asset('images/Picsart_26-04-02_12-19-10-396.png');
+        } catch (\Throwable $e) {
+            $logoUrl = asset('images/Picsart_26-04-02_12-19-10-396.png');
+        }
+
+        // If running locally (localhost / 127.0.0.1) and it is the default logo,
+        // map it to the public domain so email clients like Gmail can load it.
+        if (preg_match('/(localhost|127\.0\.0\.1|::1)/i', $logoUrl)) {
+            if (str_contains($logoUrl, 'Picsart_26-04-02_12-19-10-396.png')) {
+                return 'https://orboone.orbosis.in/public/images/Picsart_26-04-02_12-19-10-396.png';
+            }
+        }
+
+        return $logoUrl;
+    }
+}
+
+if (!function_exists('branding_logo_path')) {
+    /**
+     * Get the absolute local path to the company/portal branding logo.
+     *
+     * @return string
+     */
+    function branding_logo_path()
+    {
+        try {
+            $settings = \App\Services\Core\Branding\BrandingSettingsS::cache();
+            if (!empty($settings['branding.logo_path'])) {
+                $logoPath = $settings['branding.logo_path'];
+                if (!str_starts_with($logoPath, 'http://') && !str_starts_with($logoPath, 'https://')) {
+                    $filename = basename($logoPath);
+                    $path = storage_path("app/public/branding/logo/{$filename}");
+                    if (file_exists($path) && is_file($path)) {
+                        return $path;
+                    }
+                }
+            }
+        } catch (\Throwable $e) {}
+
+        return public_path('images/Picsart_26-04-02_12-19-10-396.png');
+    }
+}
+
+if (!function_exists('company_name')) {
+    /**
+     * Get the company name from company settings, with a fallback to branding name.
+     *
+     * @return string
+     */
+    function company_name()
+    {
+        try {
+            $company = \Illuminate\Support\Facades\DB::table('company_settings')->first();
+            if ($company && !empty($company->company_name)) {
+                return $company->company_name;
+            }
+        } catch (\Throwable $e) {}
+
+        return branding_name();
+    }
+}
+
+if (!function_exists('branding_primary_color')) {
+    /**
+     * Get the dynamic branding primary color.
+     *
+     * @return string
+     */
+    function branding_primary_color()
+    {
+        try {
+            $branding = \App\Services\Core\Branding\BrandingSettingsS::get();
+            if (!empty($branding['primary_color'])) {
+                return $branding['primary_color'];
+            }
+        } catch (\Throwable $e) {}
+
+        return '#4B00E8';
+    }
+}
+
+if (!function_exists('branding_secondary_color')) {
+    /**
+     * Get the dynamic branding secondary color.
+     *
+     * @return string
+     */
+    function branding_secondary_color()
+    {
+        try {
+            $branding = \App\Services\Core\Branding\BrandingSettingsS::get();
+            if (!empty($branding['secondary_color'])) {
+                return $branding['secondary_color'];
+            }
+        } catch (\Throwable $e) {}
+
+        return '#FF5252';
+    }
+}
+

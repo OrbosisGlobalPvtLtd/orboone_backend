@@ -26,40 +26,52 @@
         .card {
             max-width: 680px;
             margin: 0 auto;
-            background: #ffffff;
-            border-radius: 16px;
-            overflow: hidden;
-            border: 1px solid #e4e7ec;
-        }
-
-        .hero {
-            /* padding: 10px 20px 14px; */
-            text-align: center;
             background: linear-gradient(
                 135deg,
                 {{ branding_primary_color() }} 0%,
                 {{ branding_secondary_color() }} 100%
             );
+            border-radius: 24px;
+            padding: 16px 6px;
+            box-sizing: border-box;
+        }
+
+        .card-badge {
+            text-align: center;
             color: #ffffff;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            padding: 6px 0 16px;
+        }
+
+        .inner-card {
+            background: #ffffff;
+            border-radius: 18px;
+            overflow: hidden;
+        }
+
+        .hero {
+            text-align: center;
+            background: #f9fafb;
+            padding: 16px 20px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .hero-logo-container {
+            text-align: center;
         }
 
         .hero-logo {
-            display: block;
-            width: 320px;
-            height: 92px;
+            display: inline-block;
+            width: auto;
+            height: 65px;
+            max-width: 100%;
             object-fit: contain;
-            margin: 0 auto 6px;
             border: 0;
             outline: none;
             text-decoration: none;
-        }
-
-        .hero-subtitle {
-            margin: 0;
-            font-size: 17px;
-            font-weight: 700;
-            color: #ffffff;
-            line-height: 1.25;
         }
 
         .body {
@@ -68,8 +80,7 @@
 
         .footer {
             border-top: 1px solid #e4e7ec;
-            background: #f8fafc;
-            padding: 16px 20px;
+            padding: 20px;
             text-align: center;
         }
 
@@ -148,29 +159,35 @@
             }
 
             .card {
-                border-radius: 14px;
+                border-radius: 16px;
+                padding: 10px 4px;
+            }
+
+            .card-badge {
+                padding: 4px 0 10px;
+                font-size: 10px;
+            }
+
+            .inner-card {
+                border-radius: 12px;
+                padding: 0;
             }
 
             .hero {
-                padding: 9px 14px 13px;
+                padding: 12px 10px;
             }
 
             .hero-logo {
-                width: 200px;
-                height: 76px;
-                margin-bottom: 5px;
-            }
-
-            .hero-subtitle {
-                font-size: 14px;
+                height: 50px;
             }
 
             .body {
-                padding: 22px 16px;
+                padding: 16px 12px;
             }
 
             .footer {
-                padding: 16px;
+                padding: 16px 12px 12px;
+                margin-top: 0;
             }
 
             table.meta td {
@@ -202,29 +219,33 @@
 <body>
     <div class="wrap">
         <div class="card">
+            <!-- Top badge text in the gradient header area -->
+            <!-- <div class="card-badge">
+                {{ branding_name() }}
+            </div> -->
 
-            <div class="hero">
-                <img
-                    src="{{ isset($message) ? $message->embed(branding_logo_path()) : branding_logo() }}"
-                    alt="{{ branding_name() }}"
-                    class="hero-logo">
-<!-- 
-                <p class="hero-subtitle">
-                    Enterprise Human Resource Management System
-                </p> -->
+            <!-- Inner White Card containing logo, body, and footer -->
+            <div class="inner-card">
+                <div class="hero">
+                    <div class="hero-logo-container">
+                        <img
+                            src="{{ branding_logo_url_or_embed($message ?? null) }}"
+                            alt="{{ branding_name() }}"
+                            class="hero-logo">
+                    </div>
+                </div>
+
+                <div class="body">
+                    @yield('content')
+                </div>
+
+                <div class="footer">
+                    <p><strong>{{ company_name() }}</strong></p>
+                    <p>{{ config('app.url') }}</p>
+                    <p>Support: {{ config('hrms.emails.support') ?: config('mail.from.address') }}</p>
+                    <p>&copy; {{ date('Y') }} {{ company_name() }}. All rights reserved.</p>
+                </div>
             </div>
-
-            <div class="body">
-                @yield('content')
-            </div>
-
-            <div class="footer">
-                <p><strong>{{ company_name() }}</strong></p>
-                <p>{{ config('app.url') }}</p>
-                <p>Support: {{ config('hrms.emails.support') ?: config('mail.from.address') }}</p>
-                <p>&copy; {{ date('Y') }} {{ company_name() }}. All rights reserved.</p>
-            </div>
-
         </div>
     </div>
 </body>

@@ -16,12 +16,18 @@ class ForgotPasswordController extends Controller
 
     public function sendOtp(Request $request, PasswordOtpService $service)
     {
+        $request->merge([
+            'email' => strtolower($request->input('email')),
+        ]);
+
         $data = $request->validate([
-            'email' => ['required', 'email'],
+            'email' => ['required', 'email', 'exists:users,email'],
+        ], [
+            'email.exists' => 'This email is not registered.',
         ]);
 
         try {
-            $service->sendOtp(strtolower($data['email']));
+            $service->sendOtp($data['email']);
         } catch (\Throwable $e) {
             Log::error('Password reset OTP email failed: '.$e->getMessage());
             if ($request->wantsJson()) {
@@ -32,15 +38,15 @@ class ForgotPasswordController extends Controller
         if ($request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => 'If this email exists, an OTP has been sent.',
-                'email' => strtolower($data['email'])
+                'message' => 'An OTP has been sent to your email.',
+                'email' => $data['email']
             ]);
         }
 
         return redirect()
             ->route('password.otp.form')
-            ->with('email', strtolower($data['email']))
-            ->with('success', 'If this email exists, an OTP has been sent.');
+            ->with('email', $data['email'])
+            ->with('success', 'An OTP has been sent to your email.');
     }
 
     public function showVerifyForm(Request $request)

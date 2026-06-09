@@ -482,3 +482,29 @@ if (!function_exists('branding_secondary_color')) {
     }
 }
 
+if (!function_exists('branding_logo_url_or_embed')) {
+    /**
+     * Get the dynamic branding logo URL, or embed it if running in a local environment.
+     *
+     * @param mixed $message
+     * @return string
+     */
+    function branding_logo_url_or_embed($message = null)
+    {
+        $logoUrl = branding_logo();
+
+        // If in production or not on a local server, return the public URL directly
+        // so that the email client loads it directly without attaching it as a file.
+        $isLocal = app()->environment('local', 'testing') 
+            || preg_match('/(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|::1)/i', $logoUrl);
+
+        if ($isLocal && $message) {
+            try {
+                return $message->embed(branding_logo_path());
+            } catch (\Throwable $e) {}
+        }
+
+        return $logoUrl;
+    }
+}
+

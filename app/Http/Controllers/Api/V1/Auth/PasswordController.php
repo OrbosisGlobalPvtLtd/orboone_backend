@@ -21,16 +21,22 @@ class PasswordController extends Controller
             'email' => strtolower((string) $request->input('email', '')),
         ]);
 
+        $request->merge([
+            'email' => strtolower((string) $request->input('email', '')),
+        ]);
+
         $validator = Validator::make($request->all(), [
-            'email' => ['required', 'email'],
+            'email' => ['required', 'email', 'exists:users,email'],
+        ], [
+            'email.exists' => 'This email is not registered.',
         ]);
 
         if ($validator->fails()) {
-            return $this->apiResponse(false, 'Validation failed.', $validator->errors(), null, 422);
+            return $this->apiResponse(false, $validator->errors()->first('email'), $validator->errors(), null, 422);
         }
 
         $data = $validator->validated();
-        $email = strtolower($data['email']);
+        $email = $data['email'];
         $ip = (string) $request->ip();
 
         if (! $this->allowOtpRequest($email, $ip)) {
@@ -45,7 +51,7 @@ class PasswordController extends Controller
             Log::error('API password reset OTP failed: '.$e->getMessage());
         }
 
-        return $this->apiResponse(true, 'If this email is registered, an OTP has been sent.', null, []);
+        return $this->apiResponse(true, 'An OTP has been sent to your email.', null, []);
     }
 
     public function verifyOtp(Request $request, PasswordOtpService $service)

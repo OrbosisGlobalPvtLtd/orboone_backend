@@ -17,25 +17,25 @@ class DefaultAdminSeeder extends Seeder
             'super_admin' => [
                 'name' => 'Super Admin',
                 'email' => 'superadmin@orbosis.com',
-                'password' => 'Orbosis@26',
+                'password' => 'Admin@12345',
             ],
 
             'admin' => [
                 'name' => 'Admin',
                 'email' => 'admin@orbosis.com',
-                'password' => 'Admin@26',
+                'password' => 'Admin@12345',
             ],
 
             'hr_admin' => [
                 'name' => 'HR Admin',
                 'email' => 'hradmin@orbosis.com',
-                'password' => 'Hr@26Admin',
+                'password' => 'Admin@12345',
             ],
 
             'finance_admin' => [
                 'name' => 'Finance Admin',
                 'email' => 'financeadmin@orbosis.com',
-                'password' => 'Fin@26Admin',
+                'password' => 'Admin@12345',
             ],
 
             'project_admin' => [

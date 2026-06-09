@@ -69,36 +69,23 @@ class FcmNotificationS
         $imageUrl = $this->resolveImageUrl($data);
         $formattedData = $this->formatData($data, $title, $body, $imageUrl);
 
-        $notificationPayload = [
-            'title' => $title,
-            'body' => $body,
-        ];
-
-        if ($imageUrl) {
-            $notificationPayload['image'] = $imageUrl;
-        }
-
-        $androidNotification = [
-            'channel_id' => 'hrms_notifications',
-            'sound' => 'default',
-        ];
-
-        if ($imageUrl) {
-            $androidNotification['image'] = $imageUrl;
-        }
-
+        // Send as a data-only payload for Android to run the custom client-side notification builder
+        // which handles downloading private/protected attachments with the Bearer authentication token.
+        // For iOS, the notification is triggered natively by including an APNs alert block.
         $payload = [
             'message' => [
                 'token' => $token,
-                'notification' => $notificationPayload,
                 'data' => $formattedData,
                 'android' => [
                     'priority' => 'HIGH',
-                    'notification' => $androidNotification,
                 ],
                 'apns' => [
                     'payload' => [
                         'aps' => [
+                            'alert' => [
+                                'title' => $title,
+                                'body' => $body,
+                            ],
                             'sound' => 'default',
                             'badge' => 1,
                         ],
@@ -169,19 +156,9 @@ class FcmNotificationS
         $imageUrl = $this->resolveImageUrl($data);
         $formattedData = $this->formatData($data, $title, $body, $imageUrl);
 
-        $notificationPayload = [
-            'title' => $title,
-            'body' => $body,
-            'sound' => 'default',
-        ];
-
-        if ($imageUrl) {
-            $notificationPayload['image'] = $imageUrl;
-        }
-
+        // Send as a data-only payload for Android to run the custom client-side notification builder
         $payload = [
             'to' => $token,
-            'notification' => $notificationPayload,
             'data' => $formattedData,
             'priority' => 'high',
         ];

@@ -367,8 +367,7 @@ class AnnouncementsC extends Controller
 
         if (
             ! (bool) $announcement->is_active ||
-            ($announcement->start_date && $announcement->start_date->startOfDay()->isAfter(today())) ||
-            ($announcement->end_date && $announcement->end_date->endOfDay()->isBefore(today())) ||
+            ($announcement->end_date && $announcement->end_date->format('Y-m-d') < today()->format('Y-m-d')) ||
             ! $this->isUserInTarget(Auth::user(), $announcement)
         ) {
             abort(403, 'Unauthorized access to this announcement.');
@@ -636,8 +635,7 @@ class AnnouncementsC extends Controller
         }
 
         if (
-            ($announcement->start_date && $announcement->start_date->startOfDay()->isAfter(today())) ||
-            ($announcement->end_date && $announcement->end_date->endOfDay()->isBefore(today()))
+            $announcement->end_date && $announcement->end_date->format('Y-m-d') < today()->format('Y-m-d')
         ) {
             return false;
         }

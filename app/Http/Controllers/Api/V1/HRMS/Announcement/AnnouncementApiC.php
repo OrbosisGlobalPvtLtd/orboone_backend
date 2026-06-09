@@ -77,8 +77,7 @@ class AnnouncementApiC extends Controller
                 $allowed = true;
             } elseif (
                 (bool) $announcement->is_active &&
-                (! $announcement->start_date || ! $announcement->start_date->startOfDay()->isAfter(today())) &&
-                (! $announcement->end_date || ! $announcement->end_date->endOfDay()->isBefore(today())) &&
+                (! $announcement->end_date || $announcement->end_date->format('Y-m-d') >= today()->format('Y-m-d')) &&
                 $this->isUserInTarget($user, $announcement)
             ) {
                 $allowed = true;
@@ -86,6 +85,15 @@ class AnnouncementApiC extends Controller
         }
 
         if (!$allowed) {
+            Log::error('Announcement API access denied', [
+                'announcement_id' => $announcement->id,
+                'user_id' => $user ? $user->id : null,
+                'is_active' => (bool) $announcement->is_active,
+                'start_date' => $announcement->start_date ? $announcement->start_date->toDateString() : null,
+                'end_date' => $announcement->end_date ? $announcement->end_date->toDateString() : null,
+                'today' => today()->toDateString(),
+                'is_target' => $user ? $this->isUserInTarget($user, $announcement) : false,
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized access to this announcement or it is inactive.'
@@ -129,8 +137,7 @@ class AnnouncementApiC extends Controller
                 $allowed = true;
             } elseif (
                 (bool) $announcement->is_active &&
-                (! $announcement->start_date || ! $announcement->start_date->startOfDay()->isAfter(today())) &&
-                (! $announcement->end_date || ! $announcement->end_date->endOfDay()->isBefore(today())) &&
+                (! $announcement->end_date || $announcement->end_date->format('Y-m-d') >= today()->format('Y-m-d')) &&
                 $this->isUserInTarget($user, $announcement)
             ) {
                 $allowed = true;
@@ -143,7 +150,10 @@ class AnnouncementApiC extends Controller
             'target_type' => $announcement->target_type,
             'is_admin' => $user ? ($user->hasPermission('announcements.view') || $user->hasPermission('announcements.manage')) : false,
             'is_employee' => $user ? $user->isEmployee() : false,
-            'allowed' => $allowed
+            'allowed' => $allowed,
+            'start_date' => $announcement->start_date ? $announcement->start_date->toDateString() : null,
+            'end_date' => $announcement->end_date ? $announcement->end_date->toDateString() : null,
+            'today' => today()->toDateString(),
         ]);
 
         if (! $allowed) {

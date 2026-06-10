@@ -51,7 +51,7 @@
         html,
         body {
             width: 100%;
-            min-height: 100%;
+            height: 100%;
             overflow-x: hidden;
             font-family: 'Inter', sans-serif;
             background:
@@ -620,8 +620,8 @@
         ========================================================= */
         .desktop-page {
             width: 100%;
-            min-height: 100vh;
-            padding: clamp(10px, 1.3vw, 22px);
+            height: 100%;
+            padding: clamp(20px, 4vh, 40px) clamp(10px, 1.5vw, 20px);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -629,7 +629,8 @@
 
         .desktop-shell {
             width: 100%;
-            max-width: min(1280px, calc(100vw - 24px));
+            max-width: min(1200px, calc(100vw - 24px));
+
             height: auto;
             min-height: 0;
             max-height: none;
@@ -637,7 +638,7 @@
 
         .desktop-layout {
             width: 100%;
-            min-height: clamp(540px, calc(100vh - 60px), 680px);
+            min-height: clamp(480px, calc(100vh - 100px), 680px);
             display: grid;
             grid-template-columns: minmax(0, 1.15fr) minmax(380px, .85fr);
             border-radius: 32px;
@@ -652,7 +653,7 @@
             background: #f3f4f9;
             color: #0f172a;
             overflow: hidden;
-            padding: clamp(16px, 2vw, 24px) clamp(16px, 2vw, 24px) 120px;
+            padding: clamp(24px, 4vh, 48px) clamp(24px, 2.5vw, 40px) 120px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -687,7 +688,7 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
             justify-content: center
         }
 
@@ -739,7 +740,7 @@
             font-weight: 900 !important;
             color: #0f172a !important;
             letter-spacing: -0.8px;
-            margin-bottom: 14px !important;
+            margin-bottom: 10px !important;
         }
 
         .text-primary-grad {
@@ -777,7 +778,7 @@
             width: 85%;
             max-width: 380px;
             height: auto;
-            max-height: clamp(200px, 38vh, 320px);
+            max-height: clamp(140px, 24vh, 240px);
             object-fit: contain;
             margin-bottom: -10px;
             transition: all 0.2s ease;
@@ -795,7 +796,7 @@
 
         .desk-features-row {
             position: absolute;
-            bottom: 8px;
+            bottom: 24px;
             left: 0;
             width: 100%;
             display: grid;
@@ -842,7 +843,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: clamp(16px, 2vw, 32px) clamp(16px, 2vw, 32px) 60px;
+            padding: clamp(24px, 4vh, 48px) clamp(24px, 2.5vw, 40px) 80px;
             min-width: 0;
             position: relative;
         }
@@ -873,6 +874,14 @@
             color: #64748b !important;
             margin-bottom: 16px !important;
             font-weight: 500;
+        }
+
+        .login-card-wrapper .mb-3 {
+            margin-bottom: 14px !important;
+        }
+
+        .login-card-wrapper .mb-4 {
+            margin-bottom: 16px !important;
         }
 
         .login-card-wrapper .form-label {
@@ -1008,7 +1017,7 @@
 
         .desktop-copyright-footer {
             position: absolute;
-            bottom: 24px;
+            bottom: 28px;
             left: 50%;
             transform: translateX(-50%);
             font-size: 11px;
@@ -1105,7 +1114,7 @@
 
         .input-group-custom {
             position: relative;
-            margin-bottom: 16px;
+            margin-bottom: 14px;
         }
 
         .input-icon {
@@ -1251,6 +1260,16 @@
         ========================================================= */
         @media (min-width: 992px) {
 
+            html,
+            body {
+                overflow: hidden;
+            }
+
+            .page-wrap {
+                height: 100vh;
+                overflow: hidden;
+            }
+
             .mobile-intro-page,
             .mobile-login-page {
                 display: none !important;
@@ -1319,7 +1338,7 @@
         }
 
         /* Large desktop */
-        @media (min-width: 1400px) {
+        /* @media (min-width: 1400px) {
             .desktop-shell {
                 max-width: 1340px;
             }
@@ -1331,75 +1350,102 @@
             .desktop-title {
                 font-size: 38px;
             }
-        }
+        } */
 
         /* Short laptop height fix */
         @media (min-width: 992px) and (max-height: 720px) {
-            .desktop-layout {
-                min-height: calc(100vh - 20px);
+            .desktop-page {
+                padding: 30px 15px;
             }
 
-            .desk-hero-card {
-                padding: 14px 16px;
+            .desktop-layout {
+                min-height: calc(100vh - 80px);
+            }
+
+            .desktop-left {
+                padding: 20px 20px 85px;
+            }
+
+            .desk-features-row {
+                bottom: 12px;
+            }
+
+            .desk-logo-row {
+                margin-bottom: 10px;
             }
 
             .desk-logo-box {
                 width: 130px;
-                min-height: 50px;
+                height: 38px;
             }
 
             .desktop-title {
-                font-size: 23px;
-                margin-bottom: 6px;
+                font-size: 20px !important;
+                margin-bottom: 4px !important;
             }
 
             .desktop-desc {
+                font-size: 11.5px !important;
+                line-height: 1.4 !important;
+            }
+
+            .desk-indicator-line {
+                margin-top: 6px;
+            }
+
+            .desk-vector-img {
+                max-height: 110px;
+            }
+
+            .desktop-right {
+                padding: 20px 20px 50px;
+            }
+
+            .desktop-copyright-footer {
+                bottom: 15px;
+            }
+
+            .login-card-wrapper {
+                padding: 20px;
+                border-radius: 18px;
+            }
+
+            .login-card-wrapper .login-title {
+                font-size: 22px !important;
+                margin-bottom: 4px !important;
+            }
+
+            .login-card-wrapper .login-subtitle {
+                font-size: 13px !important;
+                margin-bottom: 10px !important;
+            }
+
+            .login-card-wrapper .form-label {
                 font-size: 12px;
-                line-height: 1.45;
+                margin-bottom: 4px;
             }
 
-            .desk-info-card {
-                padding: 10px 12px;
+            .login-card-wrapper .form-control {
+                height: 40px;
+                font-size: 13px;
+                padding: 6px 36px;
             }
 
-            .desk-info-card p {
-                display: none;
+            .btn-login-new {
+                height: 40px;
+                font-size: 13px;
             }
 
-            .desk-section-card {
-                padding: 12px 14px;
+            .mb-3 {
+                margin-bottom: 8px !important;
             }
 
-            .desk-point {
-                padding: 8px 0;
+            .mb-4 {
+                margin-bottom: 10px !important;
             }
 
-            .desk-point-icon {
-                width: 30px;
-                height: 30px;
-                min-width: 30px;
-            }
-
-            .desk-point-text p {
-                line-height: 1.4;
-            }
-
-            .desktop-left-bottom {
-                margin-top: 8px;
-            }
-
-            .form-control,
-            .btn-login {
-                height: 48px;
-            }
-
-            .input-group-custom {
-                margin-bottom: 12px;
-            }
-
-            .signin-footer {
-                margin-top: 12px;
-                padding-top: 12px;
+            .signin-footer-new {
+                margin-top: 10px;
             }
         }
 

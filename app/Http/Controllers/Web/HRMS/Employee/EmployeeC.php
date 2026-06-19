@@ -497,6 +497,15 @@ class EmployeeC extends Controller
                 ['created_at' => now(), 'updated_at' => now()]
             );
 
+            // Phase 3 - Employee Role Auto Sync
+            $employeeRoleId = DB::table('roles')->where('slug', 'employee')->value('id');
+            if ($employeeRoleId && (int) $request->system_role_id !== (int) $employeeRoleId) {
+                DB::table('user_roles')->updateOrInsert(
+                    ['user_id' => $userId, 'role_id' => (int) $employeeRoleId],
+                    ['created_at' => now(), 'updated_at' => now()]
+                );
+            }
+
             $employeeInsertData = [
                 'user_id' => $userId,
                 'employee_code' => $employeeCode,
@@ -840,16 +849,33 @@ class EmployeeC extends Controller
                 $userUpdateData['phone'] = $request->phone;
             }
 
+            $oldSystemRoleId = (int) DB::table('users')->where('id', $employeeData->user_id)->value('system_role_id');
+
             DB::table('users')->where('id', $employeeData->user_id)->update($userUpdateData);
 
-            DB::table('user_roles')->where('user_id', $employeeData->user_id)->delete();
+            // Phase 3 - Employee Role Auto Sync (additive, do not delete existing roles)
+            $employeeRoleId = DB::table('roles')->where('slug', 'employee')->value('id');
 
-            DB::table('user_roles')->insert([
-                'user_id' => $employeeData->user_id,
-                'role_id' => $request->system_role_id,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            if ($oldSystemRoleId > 0 && $oldSystemRoleId !== (int) $request->system_role_id) {
+                if (!$employeeRoleId || $oldSystemRoleId !== (int) $employeeRoleId) {
+                    DB::table('user_roles')
+                        ->where('user_id', $employeeData->user_id)
+                        ->where('role_id', $oldSystemRoleId)
+                        ->delete();
+                }
+            }
+
+            DB::table('user_roles')->updateOrInsert(
+                ['user_id' => $employeeData->user_id, 'role_id' => (int) $request->system_role_id],
+                ['created_at' => now(), 'updated_at' => now()]
+            );
+
+            if ($employeeRoleId && (int) $request->system_role_id !== (int) $employeeRoleId) {
+                DB::table('user_roles')->updateOrInsert(
+                    ['user_id' => $employeeData->user_id, 'role_id' => (int) $employeeRoleId],
+                    ['created_at' => now(), 'updated_at' => now()]
+                );
+            }
 
             $employeeUpdateData = [
                 'system_role_id' => $request->system_role_id,

@@ -160,17 +160,6 @@ class DocumentPlaceholderResolverS
                     $signatureImage = 'data:image/' . pathinfo($fullPath, PATHINFO_EXTENSION) . ';base64,' . base64_encode(file_get_contents($fullPath));
                 }
             }
-        } elseif ($company && Schema::hasColumn('company_settings', 'signature') && !empty($company->signature)) {
-            $sigPath = storage_path('app/public/' . $company->signature);
-            if (is_file($sigPath)) {
-                $signatureImage = 'data:image/' . pathinfo($sigPath, PATHINFO_EXTENSION) . ';base64,' . base64_encode(file_get_contents($sigPath));
-            }
-        }
-        if (!$signatureImage) {
-            $defaultSigPath = public_path('assets/hrms/document-letterhead/signature.png');
-            if (is_file($defaultSigPath)) {
-                $signatureImage = 'data:image/' . pathinfo($defaultSigPath, PATHINFO_EXTENSION) . ';base64,' . base64_encode(file_get_contents($defaultSigPath));
-            }
         }
 
         // Resolve seal image

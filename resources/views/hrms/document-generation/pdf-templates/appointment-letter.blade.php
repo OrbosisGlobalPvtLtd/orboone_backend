@@ -228,12 +228,12 @@
         <strong>For {{ $company_name ?? branding_name() }}</strong>
         <div style="height: 60px; margin-top: 5px; margin-bottom: 5px; position: relative;">
             @if(!empty($signature_image))
-                <img src="{{ $signature_image }}" style="max-height: 55px; max-width: 180px; display: inline-block;" alt="Signature">
+                <img src="{{ $signature_image }}" style="height: 55px; width: auto; max-width: 180px; display: inline-block; vertical-align: middle;" alt="Signature">
             @else
                 <div style="height: 40px;"></div>
             @endif
             @if(!empty($seal_image))
-                <img src="{{ $seal_image }}" style="max-height: 65px; max-width: 65px; position: absolute; top: 5px; left: 140px;" alt="Seal">
+                <img src="{{ $seal_image }}" style="height: 65px; width: auto; max-width: 120px; position: absolute; top: 5px; left: 140px; vertical-align: middle;" alt="Seal">
             @endif
         </div>
         <strong>{{ $hr_manager_name ?? $authorized_signatory ?? 'HR Manager' }}</strong><br>

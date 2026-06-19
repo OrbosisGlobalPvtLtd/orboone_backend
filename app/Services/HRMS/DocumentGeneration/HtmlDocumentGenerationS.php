@@ -402,6 +402,124 @@ class HtmlDocumentGenerationS
         $xSigDesig = $getCenterX($sigDesig, $fontSans, 44);
         imagettftext($image, 44, 0, $xSigDesig, 3180, $colorBlack, $fontSans, $sigDesig);
 
+        // 5. Draw Seal & Signature
+        $sealImageStr = $data['seal_image'] ?? null;
+        $sigImageStr = $data['signature_image'] ?? null;
+
+        $makeWhiteTransparent = function ($img) {
+            if (!$img) {
+                return null;
+            }
+            $width = imagesx($img);
+            $height = imagesy($img);
+
+            $transparentImg = imagecreatetruecolor($width, $height);
+            imagealphablending($transparentImg, false);
+            imagesavealpha($transparentImg, true);
+
+            $transColor = imagecolorallocatealpha($transparentImg, 0, 0, 0, 127);
+            imagefill($transparentImg, 0, 0, $transColor);
+
+            for ($x = 0; $x < $width; $x++) {
+                for ($y = 0; $y < $height; $y++) {
+                    $rgb = imagecolorat($img, $x, $y);
+                    $alpha = ($rgb >> 24) & 0x7F;
+                    $r = ($rgb >> 16) & 0xFF;
+                    $g = ($rgb >> 8) & 0xFF;
+                    $b = $rgb & 0xFF;
+
+                    // If color is close to white (brightness > 215) or already transparent, make it transparent
+                    if ($alpha > 100 || ($r > 215 && $g > 215 && $b > 215)) {
+                        imagesetpixel($transparentImg, $x, $y, $transColor);
+                    } else {
+                        $color = imagecolorallocatealpha($transparentImg, $r, $g, $b, $alpha);
+                        imagesetpixel($transparentImg, $x, $y, $color);
+                    }
+                }
+            }
+            imagedestroy($img);
+            return $transparentImg;
+        };
+
+        $loadImage = function ($src) use ($makeWhiteTransparent) {
+            if (empty($src)) {
+                return null;
+            }
+            try {
+                $img = null;
+                if (str_starts_with($src, 'data:image')) {
+                    $parts = explode('base64,', $src);
+                    if (isset($parts[1])) {
+                        $decoded = base64_decode($parts[1]);
+                        if ($decoded) {
+                            $img = imagecreatefromstring($decoded);
+                        }
+                    }
+                } elseif (file_exists($src)) {
+                    $img = imagecreatefromstring(file_get_contents($src));
+                } elseif (filter_var($src, FILTER_VALIDATE_URL)) {
+                    $ctx = stream_context_create([
+                        'ssl' => [
+                            'verify_peer' => false,
+                            'verify_peer_name' => false,
+                        ],
+                    ]);
+                    $content = @file_get_contents($src, false, $ctx);
+                    if ($content) {
+                        $img = imagecreatefromstring($content);
+                    }
+                }
+
+                if ($img) {
+                    return $makeWhiteTransparent($img);
+                }
+            } catch (\Throwable $e) {
+                // Ignore load error
+            }
+            return null;
+        };
+
+        $drawOverlayImage = function ($destImage, $srcImage, $centerX, $centerY, $maxWidth, $maxHeight) {
+            if (!$srcImage) {
+                return;
+            }
+            $srcWidth = imagesx($srcImage);
+            $srcHeight = imagesy($srcImage);
+            if ($srcWidth <= 0 || $srcHeight <= 0) {
+                return;
+            }
+
+            $ratio = min($maxWidth / $srcWidth, $maxHeight / $srcHeight);
+            $destWidth = (int)($srcWidth * $ratio);
+            $destHeight = (int)($srcHeight * $ratio);
+
+            $destX = (int)($centerX - ($destWidth / 2));
+            $destY = (int)($centerY - ($destHeight / 2));
+
+            imagealphablending($destImage, true);
+            imagealphablending($srcImage, true);
+            imagecopyresampled($destImage, $srcImage, $destX, $destY, 0, 0, $destWidth, $destHeight, $srcWidth, $srcHeight);
+        };
+
+        $centerX = (int)(imagesx($image) / 2);
+        $centerY = 2770;
+
+        if ($sealImageStr) {
+            $sealImage = $loadImage($sealImageStr);
+            if ($sealImage) {
+                $drawOverlayImage($image, $sealImage, $centerX, $centerY, 360, 360);
+                imagedestroy($sealImage);
+            }
+        }
+
+        if ($sigImageStr) {
+            $sigImage = $loadImage($sigImageStr);
+            if ($sigImage) {
+                $drawOverlayImage($image, $sigImage, $centerX, $centerY, 300, 150);
+                imagedestroy($sigImage);
+            }
+        }
+
         ob_start();
         imagejpeg($image, null, 95);
         $jpegData = ob_get_clean();

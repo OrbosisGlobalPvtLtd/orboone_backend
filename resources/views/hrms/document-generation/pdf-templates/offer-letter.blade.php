@@ -161,12 +161,12 @@ $netMonthly = $net_pay_monthly ?? ($monthlyGross - $ptMonthly);
                     <strong>{{ $signatory_designation ?? 'Human Resource Manager' }}</strong><br>
                     <div style="height: 50px; margin-top: 5px; margin-bottom: 5px; position: relative;">
                         @if(!empty($signature_image))
-                            <img src="{{ $signature_image }}" style="max-height: 45px; max-width: 150px; display: inline-block;" alt="Signature">
+                            <img src="{{ $signature_image }}" style="height: 45px; width: auto; max-width: 150px; display: inline-block; vertical-align: middle;" alt="Signature">
                         @else
                             <div style="height: 35px;"></div>
                         @endif
                         @if(!empty($seal_image))
-                            <img src="{{ $seal_image }}" style="max-height: 55px; max-width: 55px; position: absolute; top: 5px; left: 120px;" alt="Seal">
+                            <img src="{{ $seal_image }}" style="height: 55px; width: auto; max-width: 100px; position: absolute; top: 5px; left: 120px; vertical-align: middle;" alt="Seal">
                         @endif
                     </div>
                     <strong>{{ $hr_manager_name ?? $authorized_signatory ?? 'HR' }}</strong><br>
@@ -273,12 +273,12 @@ $netMonthly = $net_pay_monthly ?? ($monthlyGross - $ptMonthly);
                         <strong>{{ $signatory_designation ?? 'Human Resource Manager' }}</strong><br>
                         <div style="height: 50px; margin-top: 5px; margin-bottom: 5px; position: relative;">
                             @if(!empty($signature_image))
-                                <img src="{{ $signature_image }}" style="max-height: 45px; max-width: 150px; display: inline-block;" alt="Signature">
+                                <img src="{{ $signature_image }}" style="height: 45px; width: auto; max-width: 150px; display: inline-block; vertical-align: middle;" alt="Signature">
                             @else
                                 <div style="height: 35px;"></div>
                             @endif
                             @if(!empty($seal_image))
-                                <img src="{{ $seal_image }}" style="max-height: 55px; max-width: 55px; position: absolute; top: 5px; left: 120px;" alt="Seal">
+                                <img src="{{ $seal_image }}" style="height: 55px; width: auto; max-width: 100px; position: absolute; top: 5px; left: 120px; vertical-align: middle;" alt="Seal">
                             @endif
                         </div>
                         <strong>{{ $hr_manager_name ?? $authorized_signatory ?? 'HR' }}</strong><br>

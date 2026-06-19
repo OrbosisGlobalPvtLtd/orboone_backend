@@ -25,18 +25,40 @@ class SidebarMenuResolverS
 
             $roleIds = $this->resolveRoleIds($user);
             $isSuperAdmin = method_exists($user, 'hasRole') && $user->hasRole('super_admin');
-            $isEmployeeContext = $this->isEmployeeContext($user);
 
-            $filtered = $this->filterByRoleMenuAccess($menus, $roleIds, $isSuperAdmin);
-            $filtered = $this->filterByPermission($filtered, $user, $isSuperAdmin);
-            $filtered = $this->filterByEmployeeOnlyVisibility($filtered, $isEmployeeContext);
-            $filtered = $this->filterRetiredLegacyPayrollMenus($filtered);
-            $filtered = $this->filterByRouteValidity($filtered);
-            $filtered = $this->repairParentVisibility($filtered);
-            $filtered = $this->deduplicateMenus($filtered);
-            $filtered = $this->removeEmptyParents($filtered);
+            $hasEmployeeRole = method_exists($user, 'hasRole') && $user->hasRole('employee');
+            $hasAdminRole = $isSuperAdmin || (method_exists($user, 'hasRole') && $user->hasRole([
+                'admin',
+                'hr_admin',
+                'finance_admin',
+                'project_admin',
+                'operations_admin',
+                'custom_admin',
+                'manager',
+            ]));
 
-            return $filtered
+            // Fallback for user without roles
+            if (!$hasEmployeeRole && !$hasAdminRole) {
+                $hasEmployeeRole = true;
+            }
+
+            $employeeMenus = collect();
+            $adminMenus = collect();
+
+            if ($hasEmployeeRole) {
+                $employeeMenus = $this->resolveForContext($menus, $user, $roleIds, $isSuperAdmin, true);
+            }
+
+            if ($hasAdminRole) {
+                $adminMenus = $this->resolveForContext($menus, $user, $roleIds, $isSuperAdmin, false);
+            }
+
+            $merged = $employeeMenus->concat($adminMenus)->unique('id');
+            $merged = $this->repairParentVisibility($merged);
+            $merged = $this->deduplicateMenus($merged);
+            $merged = $this->removeEmptyParents($merged);
+
+            return $merged
                 ->sortBy([
                     ['parent_id', 'asc'],
                     ['sort_order', 'asc'],
@@ -45,6 +67,17 @@ class SidebarMenuResolverS
                 ->values()
                 ->groupBy('parent_id');
         });
+    }
+
+    private function resolveForContext(Collection $menus, Authenticatable $user, array $roleIds, bool $isSuperAdmin, bool $isEmployeeContext): Collection
+    {
+        $filtered = $this->filterByRoleMenuAccess($menus, $roleIds, $isSuperAdmin);
+        $filtered = $this->filterByPermission($filtered, $user, $isSuperAdmin);
+        $filtered = $this->filterByEmployeeOnlyVisibility($filtered, $isEmployeeContext);
+        $filtered = $this->filterRetiredLegacyPayrollMenus($filtered);
+        $filtered = $this->filterByRouteValidity($filtered);
+
+        return $filtered;
     }
 
     public function clearCache(int $userId): void

@@ -61,6 +61,9 @@ class EmployeeSelfDocumentC extends Controller
             $search['is_active'] = 1;
         }
 
+        $oldDocument = EmployeeDocumentM::where($search)->orderByDesc('id')->first();
+        $isReupload = $oldDocument && $oldDocument->verification_status === 'rejected';
+
         EmployeeDocumentM::updateOrCreate(
             $search,
             [
@@ -79,6 +82,26 @@ class EmployeeSelfDocumentC extends Controller
                 'is_active' => true
             ]
         );
+
+        if ($isReupload) {
+            $employeeName = $employee->user->name ?? $employee->employee_code;
+            app(\App\Services\HRMS\Notification\NotificationS::class)->notifyHrAndSuperAdmin(
+                'Document Re-uploaded',
+                $employeeName . ' has re-uploaded ' . ($oldDocument->title ?: $docType->name) . ' for verification.',
+                'document_reuploaded',
+                'hrms.employees.profile.view',
+                ['employee' => $employee->id],
+                [
+                    'employee_id' => $employee->id,
+                    'user_id' => $employee->user_id,
+                    'employee_code' => $employee->employee_code,
+                    'notification_type' => 'document_reuploaded',
+                    'action_url' => route('hrms.employees.profile.view', ['employee' => $employee->id]),
+                    'route_name' => 'hrms.employees.profile.view',
+                    'route_params' => ['employee' => $employee->id],
+                ]
+            );
+        }
         
         return response()->json(['success' => true, 'message' => 'Document uploaded successfully.']);
     }
@@ -99,6 +122,8 @@ class EmployeeSelfDocumentC extends Controller
         $storageService = app(\App\Services\HRMS\Document\HrmsFileStorageS::class);
         $meta = $storageService->archiveOrReplaceEmployeeDocument($employee, $docType, $file);
         
+        $isReupload = $document->verification_status === 'rejected';
+
         if ($document->verification_status === 'verified') {
             EmployeeDocumentM::create([
                 'employee_id' => $employee->id,
@@ -128,6 +153,26 @@ class EmployeeSelfDocumentC extends Controller
                 'uploaded_by_user_id' => Auth::id(),
                 'uploaded_at' => now()
             ]);
+        }
+
+        if ($isReupload) {
+            $employeeName = $employee->user->name ?? $employee->employee_code;
+            app(\App\Services\HRMS\Notification\NotificationS::class)->notifyHrAndSuperAdmin(
+                'Document Re-uploaded',
+                $employeeName . ' has re-uploaded ' . ($document->title ?: $docType->name) . ' for verification.',
+                'document_reuploaded',
+                'hrms.employees.profile.view',
+                ['employee' => $employee->id],
+                [
+                    'employee_id' => $employee->id,
+                    'user_id' => $employee->user_id,
+                    'employee_code' => $employee->employee_code,
+                    'notification_type' => 'document_reuploaded',
+                    'action_url' => route('hrms.employees.profile.view', ['employee' => $employee->id]),
+                    'route_name' => 'hrms.employees.profile.view',
+                    'route_params' => ['employee' => $employee->id],
+                ]
+            );
         }
         
         return response()->json(['success' => true, 'message' => 'Document replaced successfully.']);

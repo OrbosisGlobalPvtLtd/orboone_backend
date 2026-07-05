@@ -519,12 +519,33 @@ class EmployeeDocumentsC extends Controller
         }
 
         $oldDocument = $oldQuery->orderByDesc('id')->first();
+        $isReupload = $oldDocument && $oldDocument->verification_status === 'rejected';
 
         if ($oldDocument) {
             DB::table('employee_documents_new')->where('id', $oldDocument->id)->update($data);
         } else {
             $data['created_at'] = now();
             DB::table('employee_documents_new')->insert($data);
+        }
+
+        if ($isReupload) {
+            $employeeName = $employeeModel->user->name ?? $employeeModel->employee_code;
+            app(\App\Services\HRMS\Notification\NotificationS::class)->notifyHrAndSuperAdmin(
+                'Document Re-uploaded',
+                $employeeName . ' has re-uploaded ' . ($oldDocument->title ?: 'a document') . ' for verification.',
+                'document_reuploaded',
+                'hrms.employees.profile.view',
+                ['employee' => $employeeModel->id],
+                [
+                    'employee_id' => $employeeModel->id,
+                    'user_id' => $employeeModel->user_id,
+                    'employee_code' => $employeeModel->employee_code,
+                    'notification_type' => 'document_reuploaded',
+                    'action_url' => route('hrms.employees.profile.view', ['employee' => $employeeModel->id]),
+                    'route_name' => 'hrms.employees.profile.view',
+                    'route_params' => ['employee' => $employeeModel->id],
+                ]
+            );
         }
 
         return back()->with('success', 'Document uploaded successfully.');
@@ -543,36 +564,50 @@ class EmployeeDocumentsC extends Controller
             return;
         }
 
-        $title = match ($type) {
-            'document_rejected' => 'Document Rejected',
-            'document_reuploaded' => 'Document Reupload Requested',
-            'document_verified' => 'Document Verified',
-            default => 'Document Approved',
-        };
+        if ($type === 'document_rejected') {
+            $title = 'Document Rejected';
+            $message = ($document->title ?: 'Document') . ' has been rejected. Reason: ' . ($reason ?: 'Image not clear') . '. Please upload again.';
 
-        $message = match ($type) {
-            'document_rejected' => 'Your document ' . ($document->title ?: 'document') . ' was rejected. Please re-upload it.',
-            'document_reuploaded' => 'Please re-upload ' . ($document->title ?: 'your document') . '.',
-            default => 'Your document ' . ($document->title ?: 'document') . ' has been approved.',
-        };
+            app(\App\Services\HRMS\Notification\NotificationS::class)->notifyEmployee(
+                $title,
+                $message,
+                $type,
+                'documents',
+                ['document_id' => $document->id],
+                [
+                    'document_id' => $document->id,
+                    'employee_id' => $document->employee_id,
+                    'document_title' => $document->title,
+                    'rejection_reason' => $reason,
+                    'attachment_url' => $this->privateFileUrl($document->file_path),
+                    'attachment_type' => $this->attachmentType($document->file_mime_type, $document->file_original_name),
+                    'attachment_name' => $document->file_original_name ?: $document->title,
+                ],
+                $userId
+            );
+        }
 
-        app(\App\Services\HRMS\Notification\NotificationS::class)->notifyEmployee(
-            $title,
-            $message,
-            $type,
-            'documents',
-            ['document_id' => $document->id],
-            [
-                'document_id' => $document->id,
-                'employee_id' => $document->employee_id,
-                'document_title' => $document->title,
-                'rejection_reason' => $reason,
-                'attachment_url' => $this->privateFileUrl($document->file_path),
-                'attachment_type' => $this->attachmentType($document->file_mime_type, $document->file_original_name),
-                'attachment_name' => $document->file_original_name ?: $document->title,
-            ],
-            $userId
-        );
+        if ($type === 'document_approved' || $type === 'document_verified') {
+            $employeeModel = EmployeeM::with(['profile'])->find($document->employee_id);
+            if ($employeeModel) {
+                $completionStatus = app(\App\Services\HRMS\Employee\EmployeeProfileCompletionS::class)->buildCompletionStatus($employeeModel);
+                if ($completionStatus['required_documents_verified']) {
+                    app(\App\Services\HRMS\Notification\NotificationS::class)->notifyEmployee(
+                        'Profile Verified',
+                        'Your profile verification has been completed successfully.',
+                        'profile_approved',
+                        'punch_in_out',
+                        [],
+                        [
+                            'employee_id' => $employeeModel->id,
+                            'user_id' => $employeeModel->user_id,
+                            'redirect_type' => 'attendance',
+                        ],
+                        $userId
+                    );
+                }
+            }
+        }
     }
 
     private function privateFileUrl(?string $path): string

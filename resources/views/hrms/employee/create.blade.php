@@ -686,7 +686,7 @@
                                 <option value="">Select Role</option>
                                 @foreach ($roles as $role)
                                 <option value="{{ $role->id }}"
-                                    {{ old('system_role_id') == $role->id ? 'selected' : '' }}>
+                                    {{ old('system_role_id', ($role->slug === 'employee' ? $role->id : '')) == $role->id ? 'selected' : '' }}>
                                     {{ $role->display_name ?? ($role->name ?? ($role->title ?? 'Role ' . $role->id)) }}
                                 </option>
                                 @endforeach
@@ -716,11 +716,11 @@
                         </div>
 
                         <div class="col-xl-3 col-lg-4 col-md-6 eo-field">
-                            <label id="salary_label">Actual Salary <span class="required">*</span></label>
+                            <label id="salary_label">Actual Salary (Monthly CTC) <span class="required">*</span></label>
                             <input type="number" name="actual_salary" id="actual_salary" class="form-control"
                                 value="{{ old('actual_salary') }}" min="0" step="1"
-                                placeholder="Enter salary">
-                            <div class="small-note" id="salary_note">Initial salary will be saved in employee_salary_histories.</div>
+                                placeholder="Enter Monthly CTC (Example: 25000)">
+                            <div class="small-note" id="salary_note">Annual CTC is calculated automatically by the system.</div>
                         </div>
 
                         <div class="col-xl-3 col-lg-4 col-md-6 eo-field">
@@ -840,6 +840,7 @@
         const stageLabels = {
             internship: 'Internship',
             probation: 'Probation',
+            permanent: 'Permanent',
             freelance: 'Freelance',
             contract: 'Contract'
         };
@@ -853,7 +854,18 @@
         }
 
         function currentStage() {
-            const stage = defaultStageForType();
+            let stage = defaultStageForType();
+            if (stage === 'probation' && joiningDate && joiningDate.value) {
+                const duration = probationMonths ? (probationMonths.value || 3) : 3;
+                const endDate = addMonths(joiningDate.value, duration);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const end = new Date(endDate);
+                end.setHours(0, 0, 0, 0);
+                if (today > end) {
+                    stage = 'permanent';
+                }
+            }
             employeeStage.value = stage;
             employeeStageDisplay.value = stageLabels[stage] || 'Auto';
             return stage;
@@ -862,7 +874,7 @@
         function updateProbation() {
             const stage = currentStage();
 
-            if (!joiningDate.value || stage !== 'probation') {
+            if (!joiningDate.value || (stage !== 'probation' && stage !== 'permanent')) {
                 probationDisplay.value = '';
                 return;
             }
@@ -947,7 +959,7 @@
                 return;
             }
 
-            salaryLabel.innerHTML = 'Actual Salary <span class="required">*</span>';
+            salaryLabel.innerHTML = 'Actual Salary (Monthly CTC) <span class="required">*</span>';
             salary.removeAttribute('readonly');
             salary.classList.remove('disabled-soft');
             enableSalaryEffective();
@@ -957,7 +969,7 @@
                 salaryEffectiveFrom.value = joiningDate.value;
             }
 
-            salaryNote.innerText = 'Initial salary employee_salary_histories me save hogi.';
+            salaryNote.innerText = "Annual CTC is calculated automatically by the system.";
         }
 
         function updateEmploymentFields() {

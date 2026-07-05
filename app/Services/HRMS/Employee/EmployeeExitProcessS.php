@@ -69,9 +69,43 @@ class EmployeeExitProcessS
             default => 'exit_initiated',
         };
 
+        $openExit = DB::table($this->exitTable)
+            ->where('employee_id', $employeeId)
+            ->whereNotIn('status', ['exit_completed', 'cancelled'])
+            ->orderByDesc('id')
+            ->first();
+
+        $previousEmploymentStatus = $employee->employment_status ?? 'active';
+        $isExistingExitStatus = in_array($previousEmploymentStatus, ['notice_period', 'terminated', 'absconded', 'exited'], true);
+
+        $prevStatusToSave = $previousEmploymentStatus;
+        if ($openExit && !empty($openExit->previous_employment_status)) {
+            $prevStatusToSave = $openExit->previous_employment_status;
+        } elseif ($isExistingExitStatus) {
+            $prevStatusToSave = 'active';
+        }
+
+        $loginDisabledByExit = 0;
+        if ($openExit && !empty($openExit->login_disabled_by_exit)) {
+            $loginDisabledByExit = $openExit->login_disabled_by_exit;
+        }
+
+        $immediateDisable = (bool) ($payload['immediate_disable_login'] ?? false);
+        if (in_array($exitType, ['termination', 'absconding'], true) && ($immediateExit || $immediateDisable)) {
+            if (!empty($employee->user_id) && Schema::hasTable('users') && Schema::hasColumn('users', 'is_active')) {
+                $user = DB::table('users')->where('id', $employee->user_id)->first();
+                if ($user && $user->is_active) {
+                    $this->disableUser((int) $employee->user_id);
+                    $loginDisabledByExit = 1;
+                }
+            }
+        }
+
         $record = [
             'employee_id' => $employeeId,
             'exit_type' => $exitType,
+            'previous_employment_status' => $prevStatusToSave,
+            'login_disabled_by_exit' => $loginDisabledByExit,
             'resignation_date' => $resignationDate,
             'termination_date' => $terminationDate,
             'exit_initiated_date' => $payload['exit_initiated_date'] ?? now()->toDateString(),
@@ -95,18 +129,33 @@ class EmployeeExitProcessS
             'updated_at' => now(),
         ];
 
-        $openExit = DB::table($this->exitTable)
-            ->where('employee_id', $employeeId)
-            ->whereNotIn('status', ['exit_completed', 'cancelled'])
-            ->orderByDesc('id')
-            ->first();
-
         if ($openExit) {
             DB::table($this->exitTable)->where('id', $openExit->id)->update($record);
             $exitId = (int) $openExit->id;
         } else {
             $record['created_at'] = now();
             $exitId = (int) DB::table($this->exitTable)->insertGetId($record);
+        }
+
+        // Initialize department clearances
+        $this->initializeClearances($exitId);
+
+        // Create an audit log: "Exit Clearance Started" in employee_lifecycle_logs
+        if (Schema::hasTable('employee_lifecycle_logs')) {
+            $exists = DB::table('employee_lifecycle_logs')
+                ->where('employee_id', $employeeId)
+                ->where('action', 'Exit Clearance Started')
+                ->exists();
+            if (!$exists) {
+                DB::table('employee_lifecycle_logs')->insert([
+                    'employee_id' => $employeeId,
+                    'action' => 'Exit Clearance Started',
+                    'performed_by_user_id' => $actorUserId,
+                    'performed_at' => now(),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
         }
 
         if (Schema::hasColumn($this->employeeTable, 'employment_status')) {
@@ -121,11 +170,6 @@ class EmployeeExitProcessS
                 'relieving_date' => $lastWorkingDay,
                 'updated_at' => now(),
             ]);
-        }
-
-        $immediateDisable = (bool) ($payload['immediate_disable_login'] ?? false);
-        if (in_array($exitType, ['termination', 'absconding'], true) && ($immediateExit || $immediateDisable)) {
-            $this->disableUser((int) $employee->user_id);
         }
 
         $this->notifications->notifyHrAndSuperAdmin(
@@ -207,6 +251,19 @@ class EmployeeExitProcessS
         abort_if(! $exit, 404, 'Exit process not found.');
 
         $updated = $this->refreshStatus($exitId);
+
+        // Final Clearance Rule Check
+        $mandatoryDepts = ['hr', 'manager', 'it', 'admin', 'finance', 'asset'];
+        $approvedCount = DB::table('employee_exit_clearances')
+            ->where('exit_process_id', $exitId)
+            ->whereIn('department_key', $mandatoryDepts)
+            ->where('status', 'approved')
+            ->count();
+
+        if ($approvedCount < count($mandatoryDepts)) {
+            abort(422, 'Cannot proceed to Final Settlement. All mandatory department clearances (HR, Reporting Manager, IT, Admin, Finance, Asset Team) must be approved.');
+        }
+
         $canComplete = in_array($updated['asset_status'], ['cleared', 'waived'], true)
             && in_array($updated['fnf_status'], ['completed', 'approved', 'paid', 'waived'], true)
             && in_array($updated['document_status'], ['completed', 'generated', 'sent', 'waived'], true)
@@ -251,7 +308,13 @@ class EmployeeExitProcessS
 
             $employee = DB::table($this->employeeTable)->where('id', $exit->employee_id)->first();
             if ($employee && ! empty($employee->user_id)) {
-                $this->disableUser((int) $employee->user_id);
+                $user = DB::table('users')->where('id', $employee->user_id)->first();
+                if ($user && $user->is_active) {
+                    $this->disableUser((int) $employee->user_id);
+                    DB::table($this->exitTable)->where('id', $exit->id)->update([
+                        'login_disabled_by_exit' => 1,
+                    ]);
+                }
             }
         });
 
@@ -282,17 +345,66 @@ class EmployeeExitProcessS
 
     public function cancel(int $exitId, int $actorUserId, ?string $remarks = null): array
     {
-        $exit = DB::table($this->exitTable)->where('id', $exitId)->first();
-        abort_if(! $exit, 404, 'Exit process not found.');
+        return DB::transaction(function () use ($exitId, $actorUserId, $remarks) {
+            $exit = DB::table($this->exitTable)->where('id', $exitId)->first();
+            abort_if(! $exit, 404, 'Exit process not found.');
 
-        DB::table($this->exitTable)->where('id', $exitId)->update([
-            'status' => 'cancelled',
-            'final_status' => 'cancelled',
-            'remarks' => $remarks ?: $exit->remarks,
-            'updated_at' => now(),
-        ]);
+            DB::table($this->exitTable)->where('id', $exitId)->update([
+                'status' => 'cancelled',
+                'final_status' => 'cancelled',
+                'remarks' => $remarks ?: $exit->remarks,
+                'updated_at' => now(),
+            ]);
 
-        return (array) DB::table($this->exitTable)->where('id', $exitId)->first();
+            // Restore employee status and remove exit flags
+            if (Schema::hasTable($this->employeeTable)) {
+                $employee = DB::table($this->employeeTable)->where('id', $exit->employee_id)->first();
+                if ($employee) {
+                    // Safety Rule: Restore previous valid active state only if the Exit Process changed it.
+                    $targetStatus = $exit->previous_employment_status ?: 'active';
+                    
+                    $updateData = [
+                        'employment_status' => $targetStatus,
+                        'relieving_date' => null,
+                        'updated_at' => now(),
+                    ];
+                    if (Schema::hasColumn($this->employeeTable, 'is_active')) {
+                        $updateData['is_active'] = 1;
+                    }
+                    if (Schema::hasColumn($this->employeeTable, 'notice_status')) {
+                        $updateData['notice_status'] = null;
+                    }
+                    DB::table($this->employeeTable)->where('id', $exit->employee_id)->update($updateData);
+
+                    // Safety Rule: Restore login ONLY IF the Exit Process itself disabled the login.
+                    if (!empty($employee->user_id) && $exit->login_disabled_by_exit) {
+                        if (Schema::hasTable('users') && Schema::hasColumn('users', 'is_active')) {
+                            DB::table('users')->where('id', $employee->user_id)->update([
+                                'is_active' => 1,
+                                'updated_at' => now(),
+                            ]);
+                        }
+                    }
+                }
+            }
+
+            // Create an audit log: "Exit Process Cancelled" in employee_lifecycle_logs
+            if (Schema::hasTable('employee_lifecycle_logs')) {
+                DB::table('employee_lifecycle_logs')->insert([
+                    'employee_id' => $exit->employee_id,
+                    'action' => 'Exit Process Cancelled',
+                    'old_value' => json_encode(['status' => $exit->status, 'final_status' => $exit->final_status]),
+                    'new_value' => json_encode(['status' => 'cancelled', 'final_status' => 'cancelled']),
+                    'remarks' => $remarks ?: $exit->remarks,
+                    'performed_by_user_id' => $actorUserId,
+                    'performed_at' => now(),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            return (array) DB::table($this->exitTable)->where('id', $exitId)->first();
+        });
     }
 
     public function updateClearance(int $exitId, array $payload, int $actorUserId): array
@@ -421,5 +533,291 @@ class EmployeeExitProcessS
                 ->where('tokenable_id', $userId)
                 ->delete();
         }
+    }
+
+    public function initializeClearances(int $exitId): void
+    {
+        if (! Schema::hasTable('employee_exit_clearances')) {
+            return;
+        }
+
+        $defaultChecklists = [
+            'hr' => [
+                ['item' => 'Documents verified', 'completed' => false],
+                ['item' => 'Leave balance verified', 'completed' => false],
+                ['item' => 'Exit interview completed', 'completed' => false],
+            ],
+            'manager' => [
+                ['item' => 'Knowledge transfer completed', 'completed' => false],
+                ['item' => 'Handover of tasks done', 'completed' => false],
+            ],
+            'it' => [
+                ['item' => 'Laptop returned', 'completed' => false],
+                ['item' => 'Email disabled', 'completed' => false],
+                ['item' => 'VPN disabled', 'completed' => false],
+                ['item' => 'Access revoked', 'completed' => false],
+            ],
+            'admin' => [
+                ['item' => 'ID Card returned', 'completed' => false],
+                ['item' => 'Parking card returned', 'completed' => false],
+                ['item' => 'Office keys returned', 'completed' => false],
+            ],
+            'finance' => [
+                ['item' => 'Salary hold check', 'completed' => false],
+                ['item' => 'Loan recovery', 'completed' => false],
+                ['item' => 'Advance recovery', 'completed' => false],
+                ['item' => 'Reimbursement verification', 'completed' => false],
+            ],
+            'asset' => [
+                ['item' => 'Mobile returned', 'completed' => false],
+                ['item' => 'Laptop returned', 'completed' => false],
+                ['item' => 'Accessories returned', 'completed' => false],
+            ],
+            'security' => [
+                ['item' => 'Access card deactivated', 'completed' => false],
+            ],
+            'accounts' => [
+                ['item' => 'Final ledger reconciliation', 'completed' => false],
+            ],
+        ];
+
+        foreach ($defaultChecklists as $dept => $items) {
+            DB::table('employee_exit_clearances')->insertOrIgnore([
+                'exit_process_id' => $exitId,
+                'department_key' => $dept,
+                'status' => 'pending',
+                'checklist' => json_encode($items),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+    }
+
+    public function updateDepartmentClearance(int $exitId, string $dept, string $status, ?string $remarks, ?array $checklistItems, int $actorUserId): array
+    {
+        $exit = DB::table($this->exitTable)->where('id', $exitId)->first();
+        abort_if(! $exit, 404, 'Exit process not found.');
+
+        $clearance = DB::table('employee_exit_clearances')
+            ->where('exit_process_id', $exitId)
+            ->where('department_key', $dept)
+            ->first();
+        abort_if(! $clearance, 404, 'Clearance record not found for department.');
+
+        $update = [
+            'status' => $status,
+            'remarks' => $remarks,
+            'approved_by_user_id' => $actorUserId,
+            'approved_at' => now(),
+            'updated_at' => now(),
+        ];
+
+        if ($checklistItems !== null) {
+            $update['checklist'] = json_encode($checklistItems);
+        }
+
+        DB::table('employee_exit_clearances')
+            ->where('exit_process_id', $exitId)
+            ->where('department_key', $dept)
+            ->update($update);
+
+        if ($status === 'approved') {
+            $logAction = match ($dept) {
+                'hr' => 'HR Cleared',
+                'it' => 'IT Cleared',
+                'finance' => 'Finance Cleared',
+                'asset' => 'Assets Cleared',
+                default => null,
+            };
+
+            if ($logAction && Schema::hasTable('employee_lifecycle_logs')) {
+                DB::table('employee_lifecycle_logs')->insert([
+                    'employee_id' => $exit->employee_id,
+                    'action' => $logAction,
+                    'remarks' => $remarks,
+                    'performed_by_user_id' => $actorUserId,
+                    'performed_at' => now(),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+
+        if ($status === 'approved' && !empty($exit->employee_id)) {
+            $employee = DB::table($this->employeeTable)->where('id', $exit->employee_id)->first();
+            if ($employee && !empty($employee->user_id)) {
+                $deptLabel = strtoupper($dept);
+                if ($dept === 'manager') {
+                    $deptLabel = 'Reporting Manager';
+                }
+                $this->notifications->notifyEmployee(
+                    'Department Clearance Approved',
+                    "Your clearance for department {$deptLabel} has been approved by HR/Admin.",
+                    'clearance_approved',
+                    null,
+                    [],
+                    ['employee_id' => $exit->employee_id, 'exit_process_id' => $exitId],
+                    (int) $employee->user_id
+                );
+            }
+        }
+
+        $this->checkAndCompleteClearances($exitId, $actorUserId);
+
+        return $this->refreshStatus($exitId);
+    }
+
+    public function checkAndCompleteClearances(int $exitId, int $actorUserId): void
+    {
+        $exit = DB::table($this->exitTable)->where('id', $exitId)->first();
+        if (! $exit) {
+            return;
+        }
+
+        $totalDepts = DB::table('employee_exit_clearances')
+            ->where('exit_process_id', $exitId)
+            ->count();
+
+        $approvedDepts = DB::table('employee_exit_clearances')
+            ->where('exit_process_id', $exitId)
+            ->where('status', 'approved')
+            ->count();
+
+        if ($totalDepts > 0 && $totalDepts === $approvedDepts) {
+            if (Schema::hasTable('employee_lifecycle_logs')) {
+                $completedExists = DB::table('employee_lifecycle_logs')
+                    ->where('employee_id', $exit->employee_id)
+                    ->where('action', 'Clearance Completed')
+                    ->exists();
+
+                if (!$completedExists) {
+                    DB::table('employee_lifecycle_logs')->insert([
+                        'employee_id' => $exit->employee_id,
+                        'action' => 'Clearance Completed',
+                        'performed_by_user_id' => $actorUserId,
+                        'performed_at' => now(),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+
+                    DB::table('employee_lifecycle_logs')->insert([
+                        'employee_id' => $exit->employee_id,
+                        'action' => 'Ready For Final Settlement',
+                        'performed_by_user_id' => $actorUserId,
+                        'performed_at' => now(),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            }
+
+            $this->notifications->notifyHrAndSuperAdmin(
+                'Exit Clearance Completed',
+                "All department clearances have been completed for employee #{$exit->employee_id}.",
+                'exit_clearance_completed',
+                'hrms.employees.exit',
+                [],
+                ['employee_id' => $exit->employee_id, 'exit_process_id' => $exitId]
+            );
+        }
+    }
+
+    public function getModuleSummary(int $employeeId, ?object $exit = null): array
+    {
+        $summary = [
+            'attendance_pending' => 0,
+            'leave_remaining' => 0,
+            'assets_assigned' => 0,
+            'payroll_pending' => 0,
+            'documents_count' => 0,
+            'loans_pending' => 0,
+            'wfh_pending' => 0,
+            'holiday_work_pending' => 0,
+            'notice_days_remaining' => 0,
+        ];
+
+        if (Schema::hasTable('attendance_regularizations')) {
+            $summary['attendance_pending'] += DB::table('attendance_regularizations')
+                ->where('employee_id', $employeeId)
+                ->where('status', 'pending')
+                ->count();
+        }
+        if (Schema::hasTable('attendance_violations')) {
+            $summary['attendance_pending'] += DB::table('attendance_violations')
+                ->where('employee_id', $employeeId)
+                ->count();
+        }
+
+        if (Schema::hasTable('leave_allocations')) {
+            $summary['leave_remaining'] = (float) DB::table('leave_allocations')
+                ->where('employee_id', $employeeId)
+                ->orderByDesc('year')
+                ->value('total_remaining') ?? 0;
+        }
+
+        if (Schema::hasTable('asset_allocations')) {
+            $summary['assets_assigned'] = DB::table('asset_allocations')
+                ->where('employee_id', $employeeId)
+                ->where(function ($q) {
+                    $q->whereNull('status')->orWhere('status', '!=', 'Returned');
+                })
+                ->count();
+        }
+
+        if (Schema::hasTable('enterprise_payrolls')) {
+            $summary['payroll_pending'] += DB::table('enterprise_payrolls')
+                ->where('employee_id', $employeeId)
+                ->whereNotIn('status', ['paid', 'approved', 'completed'])
+                ->count();
+        }
+        if (Schema::hasTable('payrolls')) {
+            $summary['payroll_pending'] += DB::table('payrolls')
+                ->where('employee_id', $employeeId)
+                ->whereNotIn('status', ['paid', 'approved', 'completed'])
+                ->count();
+        }
+
+        if (Schema::hasTable('generated_documents')) {
+            $summary['documents_count'] = DB::table('generated_documents')
+                ->where('employee_id', $employeeId)
+                ->count();
+        }
+
+        if (Schema::hasTable('enterprise_payroll_adjustments')) {
+            $summary['loans_pending'] += DB::table('enterprise_payroll_adjustments')
+                ->where('employee_id', $employeeId)
+                ->where('status', 'pending')
+                ->count();
+        }
+        if (Schema::hasTable('payroll_adjustments')) {
+            $summary['loans_pending'] += DB::table('payroll_adjustments')
+                ->where('employee_id', $employeeId)
+                ->where('status', 'pending')
+                ->count();
+        }
+
+        if (Schema::hasTable('wfh_requests')) {
+            $summary['wfh_pending'] = DB::table('wfh_requests')
+                ->where('employee_id', $employeeId)
+                ->where('status', 'pending')
+                ->count();
+        }
+
+        if (Schema::hasTable('holiday_work_requests')) {
+            $summary['holiday_work_pending'] += DB::table('holiday_work_requests')
+                ->where('employee_id', $employeeId)
+                ->where('status', 'pending')
+                ->count();
+        }
+
+        if ($exit && !empty($exit->last_working_day)) {
+            $lastWorking = \Carbon\Carbon::parse($exit->last_working_day)->startOfDay();
+            $today = now()->startOfDay();
+            if ($lastWorking->isAfter($today)) {
+                $summary['notice_days_remaining'] = (int) $today->diffInDays($lastWorking);
+            }
+        }
+
+        return $summary;
     }
 }

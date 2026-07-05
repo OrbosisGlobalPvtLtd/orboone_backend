@@ -67,6 +67,8 @@ Route::middleware(['auth', 'web.admin.access', 'module:hrms'])
             Route::post('/{employee}/exit-cancel', [EmployeeC::class, 'cancelExit'])
                 ->middleware('permission:employee_exit.cancel|employees.update')
                 ->name('exit.cancel');
+            Route::post('/{employee}/exit-clearance-dept-update', [EmployeeC::class, 'updateClearanceDept'])
+                ->name('exit.clearance.dept.update');
 
             Route::get('/export', [EmployeeC::class, 'print'])
                 ->middleware('permission:employees.view')

@@ -24,7 +24,7 @@ class EmployeeS
         return $prefix.str_pad((string) $next, 3, '0', STR_PAD_LEFT);
     }
 
-    public function createFormData(): array
+    public function createFormData(?int $includeManagerId = null): array
     {
         $departments = DB::table('departments')
             ->orderBy('name')
@@ -37,7 +37,17 @@ class EmployeeS
 
         $reportingManagers = DB::table('employees_new')
             ->join('users', 'users.id', '=', 'employees_new.user_id')
+            ->leftJoin('employee_profiles', 'employee_profiles.employee_id', '=', 'employees_new.id')
             ->where('employees_new.is_active', 1)
+            ->where(function ($query) use ($includeManagerId) {
+                $query->where(function ($q) {
+                    $q->where('employee_profiles.is_profile_completed', 1)
+                      ->where('employee_profiles.profile_status', 'approved');
+                });
+                if ($includeManagerId) {
+                    $query->orWhere('employees_new.id', $includeManagerId);
+                }
+            })
             ->select('employees_new.id', 'employees_new.employee_code', 'users.name')
             ->orderBy('users.name')
             ->get();

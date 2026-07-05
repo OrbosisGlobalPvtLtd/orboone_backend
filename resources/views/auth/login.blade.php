@@ -2758,6 +2758,34 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            function setupPasswordToggle(toggleId, inputId) {
+                const toggle = document.getElementById(toggleId);
+                const input = document.getElementById(inputId);
+                if (toggle && input) {
+                    toggle.addEventListener('click', function () {
+                        const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
+                        input.setAttribute('type', type);
+                        
+                        const icon = toggle.querySelector('i');
+                        if (icon) {
+                            if (type === 'text') {
+                                icon.classList.remove('fa-eye');
+                                icon.classList.add('fa-eye-slash');
+                            } else {
+                                icon.classList.remove('fa-eye-slash');
+                                icon.classList.add('fa-eye');
+                            }
+                        }
+                    });
+                }
+            }
+
+            setupPasswordToggle('togglePasswordMobile', 'passwordMobile');
+            setupPasswordToggle('togglePasswordDesktop', 'passwordDesktop');
+        });
+    </script>
     @include('auth.partials.forgot-password-modal')
 </body>
 

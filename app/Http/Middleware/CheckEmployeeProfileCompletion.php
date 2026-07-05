@@ -30,6 +30,11 @@ class CheckEmployeeProfileCompletion
             return $next($request);
         }
 
+        // Bypass profile completion if user must change password to avoid redirect loops
+        if (session('must_change_password') || (isset($user->must_change_password) && $user->must_change_password)) {
+            return $next($request);
+        }
+
         // resolve employee by user_id from employees_new/current Employee model
         $employee = EmployeeM::with(['profile'])->where('user_id', $user->id)->first();
 

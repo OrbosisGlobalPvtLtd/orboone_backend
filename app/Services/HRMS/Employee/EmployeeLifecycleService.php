@@ -45,9 +45,14 @@ class EmployeeLifecycleService
                 $probationMonths = 3;
             }
             $probationEnd = $joiningDate->copy()->addMonthsNoOverflow($probationMonths - 1)->endOfMonth()->format('Y-m-d');
-            $probationStatus = in_array($existingProbationStatus, ['completed', 'confirmed'], true)
-                ? $existingProbationStatus
-                : 'ongoing';
+            if (Carbon::now()->greaterThan(Carbon::parse($probationEnd))) {
+                $employeeStage = 'permanent';
+                $probationStatus = 'completed';
+            } else {
+                $probationStatus = in_array($existingProbationStatus, ['completed', 'confirmed'], true)
+                    ? $existingProbationStatus
+                    : 'ongoing';
+            }
         } elseif ($employeeStage === 'permanent') {
             $probationStatus = 'completed';
         }

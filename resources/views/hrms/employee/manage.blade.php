@@ -1519,8 +1519,9 @@ if ($user) {
                             <h6 class="em-section-title"><i class="fas fa-money-bill-wave"></i>Current Salary Update</h6>
                             <div class="em-form-grid">
                                 <div class="em-field">
-                                    <label>Actual Salary</label>
-                                    <input type="number" step="0.01" name="actual_salary" class="em-control editable" value="{{ old('actual_salary', $employeeData->actual_salary) }}" readonly>
+                                    <label>Actual Salary (Monthly CTC)</label>
+                                    <input type="number" step="0.01" name="actual_salary" class="em-control editable" value="{{ old('actual_salary', $employeeData->actual_salary) }}" placeholder="Enter Monthly CTC (Example: 25000)" readonly>
+                                    <div class="small-note">Annual CTC is calculated automatically by the system.</div>
                                     @error('actual_salary') <div class="em-error">{{ $message }}</div> @enderror
                                 </div>
 

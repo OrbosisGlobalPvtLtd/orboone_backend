@@ -1411,9 +1411,18 @@ class DashboardResolverS
             return [];
         }
 
-        return DB::table('employees_new')
-            ->where('reporting_manager_employee_id', $manager->id)
-            ->pluck('id')
+        $query = DB::table('employees_new')
+            ->where('employees_new.reporting_manager_employee_id', $manager->id);
+
+        if ($this->tableExists('employee_profiles')) {
+            $query->leftJoin('employee_profiles', 'employee_profiles.employee_id', '=', 'employees_new.id')
+                ->where(function ($q) {
+                    $q->whereNull('employee_profiles.employee_id')
+                      ->orWhere('employee_profiles.profile_status', 'approved');
+                });
+        }
+
+        return $query->pluck('employees_new.id')
             ->map(fn ($id) => (int) $id)
             ->all();
     }

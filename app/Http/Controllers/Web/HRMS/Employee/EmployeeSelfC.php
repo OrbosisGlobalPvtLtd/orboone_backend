@@ -172,10 +172,14 @@ class EmployeeSelfC extends Controller
                 'rejection_reason' => null
             ]);
 
-            $employeeName = $employee->user->name ?? $employee->employee_code ?: 'An employee';
+            $deptName = $employee->department->name ?? 'N/A';
+            $empCode = $employee->employee_code ?? 'N/A';
+            $empName = $employee->user->name ?? $empCode;
+            $subDate = now()->toFormattedDateString();
+
             app(\App\Services\HRMS\Notification\NotificationS::class)->notifyHrAndSuperAdmin(
-                'Profile Verification Request',
-                $employeeName . ' submitted profile for verification.',
+                'Employee Profile Submitted for Verification',
+                "Profile submitted for verification.\nEmployee: {$empName} ({$empCode})\nDepartment: {$deptName}\nDate: {$subDate}",
                 'profile_submitted',
                 'hrms.employees.profile.view',
                 ['employee' => $employee->id],

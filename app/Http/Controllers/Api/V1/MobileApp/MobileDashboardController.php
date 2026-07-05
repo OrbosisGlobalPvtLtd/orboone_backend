@@ -301,7 +301,7 @@ class MobileDashboardController extends Controller
 
         $exit = DB::table('employee_exit_processes')
             ->where('employee_id', $employeeId)
-            ->whereNotIn('status', ['cancelled'])
+            ->whereNotIn('status', ['cancelled', 'rejected', 'rolled_back'])
             ->orderByDesc('id')
             ->first();
 

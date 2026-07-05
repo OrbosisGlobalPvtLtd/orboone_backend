@@ -729,12 +729,12 @@ $probationMonths = old('probation_months', $employeeData->probation_months ?? 3)
                         </div>
 
                         <div class="col-xl-3 col-lg-4 col-md-6 eo-field">
-                            <label id="salary_label">Actual Salary <span class="required">*</span></label>
+                            <label id="salary_label">Actual Salary (Monthly CTC) <span class="required">*</span></label>
                             <input type="number" name="actual_salary" id="actual_salary"
                                 class="form-control @error('actual_salary') is-invalid @enderror"
                                 value="{{ old('actual_salary', $employeeData->actual_salary) }}"
-                                min="0" step="1" placeholder="Enter salary">
-                            <div class="small-note" id="salary_note">Salary update employee_salary_histories me sync hogi.</div>
+                                min="0" step="1" placeholder="Enter Monthly CTC (Example: 25000)">
+                            <div class="small-note" id="salary_note"> Annual CTC is calculated automatically by the system.</div>
                             @error('actual_salary') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
 
@@ -895,6 +895,18 @@ $probationMonths = old('probation_months', $employeeData->probation_months ?? 3)
                 stage = defaultStageForType();
             }
 
+            if (stage === 'probation' && joiningDate && joiningDate.value) {
+                const duration = probationMonths ? (probationMonths.value || 3) : 3;
+                const endDate = addMonths(joiningDate.value, duration);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const end = new Date(endDate);
+                end.setHours(0, 0, 0, 0);
+                if (today > end) {
+                    stage = 'permanent';
+                }
+            }
+
             employeeStage.value = stage;
             employeeStageDisplay.value = stageLabels[stage] || 'Auto';
 
@@ -904,7 +916,7 @@ $probationMonths = old('probation_months', $employeeData->probation_months ?? 3)
         function updateProbation() {
             const stage = currentStage();
 
-            if (!joiningDate.value || stage !== 'probation') {
+            if (!joiningDate.value || (stage !== 'probation' && stage !== 'permanent')) {
                 probationDisplay.value = '';
                 return;
             }
@@ -994,7 +1006,7 @@ $probationMonths = old('probation_months', $employeeData->probation_months ?? 3)
                 return;
             }
 
-            salaryLabel.innerHTML = 'Actual Salary <span class="required">*</span>';
+            salaryLabel.innerHTML = 'Actual Salary (Monthly CTC) <span class="required">*</span>';
             salary.removeAttribute('readonly');
             salary.classList.remove('disabled-soft');
             enableSalaryEffective();
@@ -1004,7 +1016,7 @@ $probationMonths = old('probation_months', $employeeData->probation_months ?? 3)
                 salaryEffectiveFrom.value = joiningDate.value;
             }
 
-            salaryNote.innerText = 'Salary update employee_salary_histories me sync hogi.';
+            salaryNote.innerText = "Enter the employee's Monthly CTC. Example: ₹25,000 per month. Annual CTC is calculated automatically by the system.";
         }
 
         function updateEmploymentFields() {

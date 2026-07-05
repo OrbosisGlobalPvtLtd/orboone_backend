@@ -51,7 +51,7 @@ class HrmsExitPolicyC extends Controller
         return $request->validate([
             'name' => ['required', 'string', 'max:150'],
             'applies_to' => ['required', 'in:all,internship,probation,permanent,contract'],
-            'exit_type' => ['nullable', 'in:resignation,termination,internship_exit,internship_completed,contract_end,absconding'],
+            'exit_type' => ['nullable', 'in:resignation,termination,retirement,contract_end,mutual_separation,layoff_redundancy,absconding,deceased,other,internship_exit,internship_completed'],
             'notice_period_days' => ['required', 'integer', 'min:0', 'max:365'],
             'fnf_processing_days' => ['required', 'integer', 'min:0', 'max:365'],
             'allow_waiver' => ['nullable', 'boolean'],

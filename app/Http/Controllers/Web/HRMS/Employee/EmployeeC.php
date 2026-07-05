@@ -672,11 +672,23 @@ class EmployeeC extends Controller
 
         $roles = $rolesQuery->orderBy('id')->get();
 
+        $currentManagerId = $employeeData->reporting_manager_employee_id;
+
         $reportingManagers = DB::table($this->employeeTable)
             ->join('users', 'users.id', '=', $this->employeeTable . '.user_id')
+            ->leftJoin($this->profileTable, $this->profileTable . '.employee_id', '=', $this->employeeTable . '.id')
             ->select($this->employeeTable . '.id', 'users.name', $this->employeeTable . '.employee_code')
             ->where($this->employeeTable . '.id', '!=', $employee)
             ->where($this->employeeTable . '.employment_status', 'active')
+            ->where(function ($query) use ($currentManagerId) {
+                $query->where(function ($q) {
+                    $q->where($this->profileTable . '.is_profile_completed', 1)
+                      ->where($this->profileTable . '.profile_status', 'approved');
+                });
+                if ($currentManagerId) {
+                    $query->orWhere($this->employeeTable . '.id', $currentManagerId);
+                }
+            })
             ->orderBy('users.name')
             ->get();
 
@@ -1130,7 +1142,7 @@ class EmployeeC extends Controller
 
         abort_if(! $employeeData, 404);
 
-        $formData = $this->employeeService->createFormData();
+        $formData = $this->employeeService->createFormData($employeeData->reporting_manager_employee_id);
 
         $departments = $formData['departments'];
         $designations = $formData['designations'];
@@ -1339,11 +1351,14 @@ class EmployeeC extends Controller
             );
 
             if (($oldProfile->profile_status ?? null) !== 'submitted') {
-                $employeeName = DB::table('users')->where('id', $employeeData->user_id)->value('name') ?: $employeeData->employee_code;
+                $deptName = DB::table('departments')->where('id', $employeeData->department_id)->value('name') ?: 'N/A';
+                $empCode = $employeeData->employee_code ?? 'N/A';
+                $empName = DB::table('users')->where('id', $employeeData->user_id)->value('name') ?: $empCode;
+                $subDate = now()->toFormattedDateString();
 
                 app(\App\Services\HRMS\Notification\NotificationS::class)->notifyHrAndSuperAdmin(
-                    'Profile Verification Request',
-                    $employeeName . ' submitted profile for verification.',
+                    'Employee Profile Submitted for Verification',
+                    "Profile submitted for verification.\nEmployee: {$empName} ({$empCode})\nDepartment: {$deptName}\nDate: {$subDate}",
                     'profile_submitted',
                     'hrms.employees.profile.view',
                     ['employee' => $id],
@@ -1604,15 +1619,43 @@ class EmployeeC extends Controller
                 'employee_exit_processes.document_status',
                 'employee_exit_processes.handover_status',
                 'employee_exit_processes.asset_handover_status',
-                'employee_exit_processes.fnf_status'
+                'employee_exit_processes.fnf_status',
+                'employee_exit_processes.last_working_day'
             )
             ->where(function ($q) {
-                $q->whereNotNull('employee_exit_processes.id')
-                    ->orWhereIn('employee_exit_processes.status', ['exit_initiated', 'notice_period', 'handover_pending', 'asset_pending', 'fnf_pending', 'document_pending', 'ready_for_final_approval', 'exit_completed', 'terminated', 'absconded'])
-                    ->orWhereIn($this->employeeTable . '.employment_status', ['terminated', 'absconded']);
+                $q->where(function ($sq) {
+                    $sq->whereNotNull('employee_exit_processes.id')
+                        ->whereNotIn('employee_exit_processes.status', ['cancelled', 'rejected', 'rolled_back']);
+                })
+                ->orWhereIn($this->employeeTable . '.employment_status', ['terminated', 'absconded']);
             })
             ->orderByDesc($this->employeeTable . '.id')
             ->get();
+
+        foreach ($employees as $emp) {
+            if ($emp->exit_process_id) {
+                // Fetch clearance list
+                $clearanceList = DB::table('employee_exit_clearances')
+                    ->where('exit_process_id', $emp->exit_process_id)
+                    ->get();
+                
+                // If it's empty, initialize them dynamically for safety
+                if ($clearanceList->isEmpty()) {
+                    $this->exitProcessService->initializeClearances($emp->exit_process_id);
+                    $clearanceList = DB::table('employee_exit_clearances')
+                        ->where('exit_process_id', $emp->exit_process_id)
+                        ->get();
+                }
+                
+                $emp->clearances = $clearanceList->keyBy('department_key');
+                
+                // Fetch module summary for auto verification display
+                $emp->module_summary = $this->exitProcessService->getModuleSummary($emp->id, $emp);
+            } else {
+                $emp->clearances = collect();
+                $emp->module_summary = [];
+            }
+        }
 
         return view('hrms.employee.exit.index', compact('employees'));
     }
@@ -1645,6 +1688,11 @@ class EmployeeC extends Controller
         }
         
         $query->where($employeeTable . '.employment_status', 'active');
+
+        $query->where(function ($q) use ($profileTable) {
+            $q->whereNull($profileTable . '.employee_id')
+              ->orWhere($profileTable . '.profile_status', 'approved');
+        });
 
         $employees = $query->get();
 
@@ -2012,7 +2060,7 @@ class EmployeeC extends Controller
         $isSuperAdmin = method_exists($actor, 'isSuperAdmin') && $actor->isSuperAdmin();
 
         $request->validate([
-            'exit_type' => ['required', Rule::in(['resignation', 'termination', 'internship_completed', 'internship_exit', 'contract_end', 'absconding'])],
+            'exit_type' => ['required', Rule::in(['resignation', 'termination', 'retirement', 'contract_end', 'mutual_separation', 'layoff_redundancy', 'absconding', 'deceased', 'other', 'internship_completed', 'internship_exit'])],
             'resignation_date' => ['nullable', 'date'],
             'termination_date' => ['nullable', 'date'],
             'last_working_day' => ['nullable', 'date'],
@@ -2083,6 +2131,97 @@ class EmployeeC extends Controller
         );
 
         return back()->with('success', 'Exit process cancelled.');
+    }
+
+    public function updateClearanceDept(Request $request, $employee)
+    {
+        $request->validate([
+            'exit_process_id' => ['required', 'integer'],
+            'department_key' => ['required', 'string'],
+            'status' => ['required', 'in:pending,approved,rejected'],
+            'remarks' => ['nullable', 'string', 'max:1000'],
+            'checklist' => ['nullable', 'array'],
+        ]);
+
+        $actor = auth()->user();
+        abort_if(! $actor, 401);
+
+        $dept = $request->department_key;
+
+        // Check Permissions
+        $isSuperAdmin = method_exists($actor, 'isSuperAdmin') && $actor->isSuperAdmin();
+        $isHrAdmin = method_exists($actor, 'hasRole') && $actor->hasRole('hr_admin');
+
+        $canApprove = false;
+        if ($isSuperAdmin || $isHrAdmin) {
+            $canApprove = true;
+        } else {
+            // Check dynamic reporting manager authorization
+            if ($dept === 'manager') {
+                $empRecord = DB::table('employees_new')->where('id', $employee)->first();
+                if ($empRecord && $actor->employee && $empRecord->reporting_manager_employee_id == $actor->employee->id) {
+                    $canApprove = true;
+                }
+            }
+
+            // Check department-specific permissions
+            if (!$canApprove) {
+                $permissionMap = [
+                    'hr' => 'employee_exit.clearance.hr',
+                    'manager' => 'employee_exit.clearance.manager',
+                    'it' => 'employee_exit.clearance.it',
+                    'admin' => 'employee_exit.clearance.admin',
+                    'finance' => 'employee_exit.clearance.finance',
+                    'asset' => 'employee_exit.clearance.asset',
+                    'security' => 'employee_exit.clearance.security',
+                    'accounts' => 'employee_exit.clearance.accounts',
+                ];
+
+                if (isset($permissionMap[$dept]) && $actor->hasPermission($permissionMap[$dept])) {
+                    $canApprove = true;
+                }
+            }
+
+            // Fallback: check matching department by name
+            if (!$canApprove && $actor->employee && !empty($actor->employee->department_id)) {
+                $userDeptName = DB::table('departments')->where('id', $actor->employee->department_id)->value('name');
+                if ($userDeptName) {
+                    $userDeptNameLower = strtolower($userDeptName);
+                    if ($dept === 'it' && (str_contains($userDeptNameLower, 'it') || str_contains($userDeptNameLower, 'infrastructure') || str_contains($userDeptNameLower, 'devops'))) {
+                        $canApprove = true;
+                    } elseif ($dept === 'finance' && (str_contains($userDeptNameLower, 'finance') || str_contains($userDeptNameLower, 'account'))) {
+                        $canApprove = true;
+                    } elseif ($dept === 'accounts' && (str_contains($userDeptNameLower, 'finance') || str_contains($userDeptNameLower, 'account'))) {
+                        $canApprove = true;
+                    }
+                }
+            }
+        }
+
+        abort_if(! $canApprove, 403, 'You do not have permission to approve/reject clearance for this department.');
+
+        // Reformat checklist to standard array of items
+        $checklistItems = null;
+        if ($request->has('checklist')) {
+            $checklistItems = [];
+            foreach ($request->input('checklist') as $itemText => $completedVal) {
+                $checklistItems[] = [
+                    'item' => $itemText,
+                    'completed' => (bool)$completedVal,
+                ];
+            }
+        }
+
+        $this->exitProcessService->updateDepartmentClearance(
+            (int) $request->exit_process_id,
+            $dept,
+            $request->status,
+            $request->remarks,
+            $checklistItems,
+            (int) auth()->id()
+        );
+
+        return back()->with('success', strtoupper($dept) . ' clearance status updated successfully.');
     }
 
     public function refreshExit(Request $request, $employee)

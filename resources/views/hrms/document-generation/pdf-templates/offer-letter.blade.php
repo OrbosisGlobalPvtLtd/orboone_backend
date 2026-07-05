@@ -165,9 +165,9 @@ $netMonthly = $net_pay_monthly ?? ($monthlyGross - $ptMonthly);
                         @else
                             <div style="height: 35px;"></div>
                         @endif
-                        @if(!empty($seal_image))
+                        <!-- @if(!empty($seal_image))
                             <img src="{{ $seal_image }}" style="height: 55px; width: auto; max-width: 100px; position: absolute; top: 5px; left: 120px; vertical-align: middle;" alt="Seal">
-                        @endif
+                        @endif -->
                     </div>
                     <strong>{{ $hr_manager_name ?? $authorized_signatory ?? 'HR' }}</strong><br>
                     {{ $companyName }}
@@ -277,9 +277,9 @@ $netMonthly = $net_pay_monthly ?? ($monthlyGross - $ptMonthly);
                             @else
                                 <div style="height: 35px;"></div>
                             @endif
-                            @if(!empty($seal_image))
+                            <!-- @if(!empty($seal_image))
                                 <img src="{{ $seal_image }}" style="height: 55px; width: auto; max-width: 100px; position: absolute; top: 5px; left: 120px; vertical-align: middle;" alt="Seal">
-                            @endif
+                            @endif -->
                         </div>
                         <strong>{{ $hr_manager_name ?? $authorized_signatory ?? 'HR' }}</strong><br>
                         {{ $companyName }}

@@ -1015,12 +1015,16 @@
                             <div class="col-md-6 mb-3">
                                 <label class="eo-label">Exit Type <span class="required">*</span></label>
                                 <select name="exit_type" class="eo-control eo-exit-type" required>
+                                    <option value="" disabled selected>Select Exit Type</option>
                                     <option value="resignation">Resignation</option>
                                     <option value="termination">Termination</option>
-                                    <option value="internship_completed">Internship Completed</option>
-                                    <option value="internship_exit">Internship Exit</option>
-                                    <option value="contract_end">Contract End</option>
-                                    <option value="absconding">Absconding</option>
+                                    <option value="retirement">Retirement</option>
+                                    <option value="contract_end">End of Contract</option>
+                                    <option value="mutual_separation">Mutual Separation</option>
+                                    <option value="layoff_redundancy">Layoff / Redundancy</option>
+                                    <option value="absconding">Absconded</option>
+                                    <option value="deceased">Deceased</option>
+                                    <option value="other">Other</option>
                                 </select>
                             </div>
                             <div class="col-md-6 mb-3">
@@ -1105,6 +1109,272 @@
                                     <div><span class="eo-pill {{ $statusPill($relievingStatus) }}">{{ ucfirst(str_replace('_', ' ', $relievingStatus)) }}</span></div>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Auto Module Verification Summary Cards -->
+                    @if(!empty($employee->module_summary))
+                    <div class="card border-0 shadow-sm mb-4" style="border-radius:20px; background: #fff; border: 1px solid #E7EAF3; box-shadow: 0 10px 28px rgba(16, 24, 40, .06);">
+                        <div class="card-header bg-white border-0 pt-3 pb-0">
+                            <h6 class="font-weight-bold text-dark mb-0"><i class="fas fa-search-dollar text-primary mr-2"></i> Auto Module Verification Summary</h6>
+                            <p class="text-muted small mb-0">Informational overview synced from other HRMS modules before exit finalisation.</p>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <!-- 1. Attendance -->
+                                <div class="col-6 col-md-4 mb-3">
+                                    <div class="p-3 border rounded shadow-xs" style="background:#F9FAFB; border-radius:15px;">
+                                        <div class="text-muted small font-weight-bold mb-1">Attendance Issues</div>
+                                        <div class="h5 font-weight-bold {{ $employee->module_summary['attendance_pending'] > 0 ? 'text-danger' : 'text-success' }} mb-0">
+                                            {{ $employee->module_summary['attendance_pending'] }} Pending
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 2. Leave -->
+                                <div class="col-6 col-md-4 mb-3">
+                                    <div class="p-3 border rounded shadow-xs" style="background:#F9FAFB; border-radius:15px;">
+                                        <div class="text-muted small font-weight-bold mb-1">Leave Balance</div>
+                                        <div class="h5 font-weight-bold text-primary mb-0">
+                                            {{ $employee->module_summary['leave_remaining'] }} Days Left
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 3. Assets -->
+                                <div class="col-6 col-md-4 mb-3">
+                                    <div class="p-3 border rounded shadow-xs" style="background:#F9FAFB; border-radius:15px;">
+                                        <div class="text-muted small font-weight-bold mb-1">Assigned Assets</div>
+                                        <div class="h5 font-weight-bold {{ $employee->module_summary['assets_assigned'] > 0 ? 'text-warning' : 'text-success' }} mb-0">
+                                            {{ $employee->module_summary['assets_assigned'] }} Assigned
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 4. Payroll -->
+                                <div class="col-6 col-md-4 mb-3">
+                                    <div class="p-3 border rounded shadow-xs" style="background:#F9FAFB; border-radius:15px;">
+                                        <div class="text-muted small font-weight-bold mb-1">Pending Payroll</div>
+                                        <div class="h5 font-weight-bold {{ $employee->module_summary['payroll_pending'] > 0 ? 'text-danger' : 'text-success' }} mb-0">
+                                            {{ $employee->module_summary['payroll_pending'] }} Pending
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 5. Documents -->
+                                <div class="col-6 col-md-4 mb-3">
+                                    <div class="p-3 border rounded shadow-xs" style="background:#F9FAFB; border-radius:15px;">
+                                        <div class="text-muted small font-weight-bold mb-1">Exit Documents</div>
+                                        <div class="h5 font-weight-bold text-success mb-0">
+                                            {{ $employee->module_summary['documents_count'] }} Generated
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 6. Loans/Recoveries -->
+                                <div class="col-6 col-md-4 mb-3">
+                                    <div class="p-3 border rounded shadow-xs" style="background:#F9FAFB; border-radius:15px;">
+                                        <div class="text-muted small font-weight-bold mb-1">Loans/Adjustments</div>
+                                        <div class="h5 font-weight-bold {{ $employee->module_summary['loans_pending'] > 0 ? 'text-danger' : 'text-success' }} mb-0">
+                                            {{ $employee->module_summary['loans_pending'] }} Pending
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 7. WFH -->
+                                <div class="col-6 col-md-4 mb-3">
+                                    <div class="p-3 border rounded shadow-xs" style="background:#F9FAFB; border-radius:15px;">
+                                        <div class="text-muted small font-weight-bold mb-1">WFH Requests</div>
+                                        <div class="h5 font-weight-bold text-dark mb-0">
+                                            {{ $employee->module_summary['wfh_pending'] }} Pending
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 8. Holiday Work -->
+                                <div class="col-6 col-md-4 mb-3">
+                                    <div class="p-3 border rounded shadow-xs" style="background:#F9FAFB; border-radius:15px;">
+                                        <div class="text-muted small font-weight-bold mb-1">Pending Comp-Off</div>
+                                        <div class="h5 font-weight-bold text-dark mb-0">
+                                            {{ $employee->module_summary['holiday_work_pending'] }} Pending
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 9. Notice Period -->
+                                <div class="col-6 col-md-4 mb-3">
+                                    <div class="p-3 border rounded shadow-xs" style="background:#F9FAFB; border-radius:15px;">
+                                        <div class="text-muted small font-weight-bold mb-1">Notice Remaining</div>
+                                        <div class="h5 font-weight-bold text-dark mb-0">
+                                            {{ $employee->module_summary['notice_days_remaining'] }} Days
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+
+                    <!-- Department Exit Clearances Section -->
+                    <div class="card border-0 shadow-sm mb-4" style="border-radius:20px; background: #fff; border: 1px solid #E7EAF3; box-shadow: 0 10px 28px rgba(16, 24, 40, .06);">
+                        <div class="card-header bg-white border-0 pt-3 pb-0">
+                            <h6 class="font-weight-bold text-dark mb-0"><i class="fas fa-tasks text-primary mr-2"></i> Department Exit Clearances</h6>
+                            <p class="text-muted small mb-0">Approval statuses and checklists across mandatory business departments.</p>
+                        </div>
+                        <div class="card-body">
+                            @php
+                                $actor = auth()->user();
+                                $isSuperAdmin = $actor && method_exists($actor, 'isSuperAdmin') && $actor->isSuperAdmin();
+                                $isHrAdmin = $actor && method_exists($actor, 'hasRole') && $actor->hasRole('hr_admin');
+                                $isHRorAdmin = $isSuperAdmin || $isHrAdmin;
+                                
+                                $deptKeys = ['hr', 'manager', 'it', 'admin', 'finance', 'asset', 'security', 'accounts'];
+                                $deptLabels = [
+                                    'hr' => 'Human Resources (HR)',
+                                    'manager' => 'Reporting Manager',
+                                    'it' => 'IT Department',
+                                    'admin' => 'Admin Department',
+                                    'finance' => 'Finance Department',
+                                    'asset' => 'Asset Management Team',
+                                    'security' => 'Security Office',
+                                    'accounts' => 'Accounts Department',
+                                ];
+                            @endphp
+
+                            @foreach($deptKeys as $dKey)
+                                @php
+                                    $clearance = isset($employee->clearances[$dKey]) ? $employee->clearances[$dKey] : null;
+                                    $clrStatus = $clearance ? $clearance->status : 'pending';
+                                    $clrRemarks = $clearance ? $clearance->remarks : '';
+                                    $checklist = $clearance ? json_decode($clearance->checklist, true) : [];
+                                    $approvedBy = '';
+                                    if ($clearance && $clearance->approved_by_user_id) {
+                                        $approvedBy = \DB::table('users')->where('id', $clearance->approved_by_user_id)->value('name');
+                                    }
+                                    $approvedAt = $clearance && $clearance->approved_at ? \Carbon\Carbon::parse($clearance->approved_at)->format('d M Y, h:i A') : '';
+                                    
+                                    // Evaluate security/approve permission
+                                    $canApproveDept = false;
+                                    if ($isHRorAdmin) {
+                                        $canApproveDept = true;
+                                    } else {
+                                        if ($dKey === 'manager' && $actor->employee && $employee->reporting_manager_employee_id == $actor->employee->id) {
+                                            $canApproveDept = true;
+                                        }
+                                        
+                                        if (!$canApproveDept) {
+                                            $pMap = [
+                                                'hr' => 'employee_exit.clearance.hr',
+                                                'manager' => 'employee_exit.clearance.manager',
+                                                'it' => 'employee_exit.clearance.it',
+                                                'admin' => 'employee_exit.clearance.admin',
+                                                'finance' => 'employee_exit.clearance.finance',
+                                                'asset' => 'employee_exit.clearance.asset',
+                                                'security' => 'employee_exit.clearance.security',
+                                                'accounts' => 'employee_exit.clearance.accounts',
+                                            ];
+                                            if (isset($pMap[$dKey]) && $actor->hasPermission($pMap[$dKey])) {
+                                                $canApproveDept = true;
+                                            }
+                                        }
+                                        
+                                        // Fallback department name check
+                                        if (!$canApproveDept && $actor->employee && !empty($actor->employee->department_id)) {
+                                            $uDeptName = \DB::table('departments')->where('id', $actor->employee->department_id)->value('name');
+                                            if ($uDeptName) {
+                                                $uDeptNameLower = strtolower($uDeptName);
+                                                if ($dKey === 'it' && (str_contains($uDeptNameLower, 'it') || str_contains($uDeptNameLower, 'infrastructure') || str_contains($uDeptNameLower, 'devops'))) {
+                                                    $canApproveDept = true;
+                                                } elseif ($dKey === 'finance' && (str_contains($uDeptNameLower, 'finance') || str_contains($uDeptNameLower, 'account'))) {
+                                                    $canApproveDept = true;
+                                                } elseif ($dKey === 'accounts' && (str_contains($uDeptNameLower, 'finance') || str_contains($uDeptNameLower, 'account'))) {
+                                                    $canApproveDept = true;
+                                                }
+                                            }
+                                        }
+                                    }
+                                @endphp
+
+                                <div class="eo-action-card mb-3" style="border-left: 4px solid {{ $clrStatus === 'approved' ? '#10B981' : ($clrStatus === 'rejected' ? '#EF4444' : '#F59E0B') }};">
+                                    <div class="eo-action-card-head d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <div class="eo-action-title">{{ $deptLabels[$dKey] }} Clearance</div>
+                                            <div class="eo-action-sub mb-0">Status: 
+                                                <span class="badge badge-{{ $clrStatus === 'approved' ? 'success' : ($clrStatus === 'rejected' ? 'danger' : 'warning') }}">
+                                                    {{ ucfirst($clrStatus) }}
+                                                </span>
+                                                @if($approvedBy)
+                                                    <span class="text-muted small ml-1">by <strong>{{ $approvedBy }}</strong> on {{ $approvedAt }}</span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <i class="fas {{ $clrStatus === 'approved' ? 'fa-check-circle text-success' : ($clrStatus === 'rejected' ? 'fa-times-circle text-danger' : 'fa-clock text-warning') }} fa-lg"></i>
+                                        </div>
+                                    </div>
+                                    
+                                    @if($canApproveDept || $isHRorAdmin)
+                                    <form action="{{ route('hrms.employees.exit.clearance.dept.update', $employee->id) }}" method="POST" class="mb-0">
+                                        @csrf
+                                        <input type="hidden" name="exit_process_id" value="{{ $employee->exit_process_id }}">
+                                        <input type="hidden" name="department_key" value="{{ $dKey }}">
+                                        
+                                        <div class="eo-action-body">
+                                            @if(!empty($checklist))
+                                            <label class="eo-label">Clearance Checklist Items:</label>
+                                            <div class="mb-3 pl-2">
+                                                @foreach($checklist as $index => $item)
+                                                    <div class="custom-control custom-checkbox mb-1">
+                                                        <input type="hidden" name="checklist[{{ $item['item'] }}]" value="0">
+                                                        <input type="checkbox" name="checklist[{{ $item['item'] }}]" value="1" class="custom-control-input" id="chk-{{ $dKey }}-{{ $index }}-{{ $employee->id }}" {{ $item['completed'] ? 'checked' : '' }}>
+                                                        <label class="custom-control-label font-weight-normal text-dark" for="chk-{{ $dKey }}-{{ $index }}-{{ $employee->id }}">{{ $item['item'] }}</label>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                            @endif
+                                            
+                                            <div class="row">
+                                                <div class="col-md-8 mb-2">
+                                                    <label class="eo-label">Remarks</label>
+                                                    <input type="text" name="remarks" class="eo-control" value="{{ $clrRemarks }}" placeholder="Enter department clearance remarks...">
+                                                </div>
+                                                <div class="col-md-4 mb-2">
+                                                    <label class="eo-label">Action</label>
+                                                    <select name="status" class="eo-control" required>
+                                                        <option value="pending" {{ $clrStatus === 'pending' ? 'selected' : '' }}>Set Pending</option>
+                                                        <option value="approved" {{ $clrStatus === 'approved' ? 'selected' : '' }}>Approve Clearance</option>
+                                                        <option value="rejected" {{ $clrStatus === 'rejected' ? 'selected' : '' }}>Reject Clearance</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="d-flex justify-content-end mt-2">
+                                                <button type="submit" class="btn btn-primary btn-orb px-3 py-1" style="height:32px; min-height:32px; font-size:11px;">
+                                                    <i class="fas fa-save mr-1"></i> Save {{ strtoupper($dKey) }} Status
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                    @else
+                                        <!-- Read only view for employees or other departments -->
+                                        <div class="eo-action-body">
+                                            @if(!empty($checklist))
+                                            <label class="eo-label">Clearance Checklist Items:</label>
+                                            <div class="mb-2 pl-2">
+                                                @foreach($checklist as $item)
+                                                    <div class="mb-1 text-dark">
+                                                        <i class="fas {{ $item['completed'] ? 'fa-check-square text-success' : 'fa-square text-muted' }} mr-2"></i>
+                                                        <span class="{{ $item['completed'] ? 'text-success font-weight-bold' : '' }}">{{ $item['item'] }}</span>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                            @endif
+                                            @if($clrRemarks)
+                                                <div class="mt-2 text-muted small"><strong>Remarks:</strong> {{ $clrRemarks }}</div>
+                                            @endif
+                                        </div>
+                                    @endif
+                                </div>
+                            @endforeach
                         </div>
                     </div>
 
@@ -1202,7 +1472,7 @@
                         <div class="eo-action-card-head">
                             <div class="eo-action-icon" style="background: #DCFCE7; color: #15803D;"><i class="fas fa-check-double"></i></div>
                             <div>
-                                <div class="eo-action-title">Complete Exit Process</div>
+                                <div class="eo-action-title">Complete Exit Process (Final Settlement)</div>
                                 <div class="eo-action-sub">Finalize full-and-final, lock user account, and mark inactive.</div>
                             </div>
                         </div>
@@ -1211,9 +1481,27 @@
                             <input type="hidden" name="exit_process_id" value="{{ $employee->exit_process_id }}">
                             <div class="eo-action-body d-flex justify-content-between align-items-center flex-wrap gap-2">
                                 <span class="text-muted small">This action is permanent and will disable login credentials.</span>
-                                <button type="submit" class="btn btn-success em-btn-success px-3 py-2" style="height:36px; min-height:36px; font-size:12px; border-radius:50px; font-weight:800; border:none;" onclick="return confirm('Complete exit and disable login?')">
-                                    <i class="fas fa-user-check mr-1"></i> Complete Exit
-                                </button>
+                                @php
+                                    $clearanceApproved = true;
+                                    $mandatoryDepts = ['hr', 'manager', 'it', 'admin', 'finance', 'asset'];
+                                    foreach ($mandatoryDepts as $mDept) {
+                                        $status = isset($employee->clearances[$mDept]) ? $employee->clearances[$mDept]->status : 'pending';
+                                        if ($status !== 'approved') {
+                                            $clearanceApproved = false;
+                                            break;
+                                        }
+                                    }
+                                @endphp
+                                @if($clearanceApproved)
+                                    <button type="submit" class="btn btn-success em-btn-success px-3 py-2" style="height:36px; min-height:36px; font-size:12px; border-radius:50px; font-weight:800; border:none;" onclick="return confirm('Complete exit and disable login?')">
+                                        <i class="fas fa-user-check mr-1"></i> Complete Exit
+                                    </button>
+                                @else
+                                    <button type="button" class="btn btn-success em-btn-success px-3 py-2" style="height:36px; min-height:36px; font-size:12px; border-radius:50px; font-weight:800; border:none; opacity: 0.5; cursor: not-allowed;" disabled title="Clearances are pending approval">
+                                        <i class="fas fa-ban mr-1"></i> Complete Exit (Blocked)
+                                    </button>
+                                    <span class="text-danger small mt-1 d-block w-100"><i class="fas fa-exclamation-triangle mr-1"></i> All mandatory clearances (HR, Manager, IT, Admin, Finance, Assets) must be approved.</span>
+                                @endif
                             </div>
                         </form>
                     </div>

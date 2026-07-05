@@ -38,6 +38,7 @@ class Kernel extends HttpKernel
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            \App\Http\Middleware\ForcePasswordChange::class,
             \App\Http\Middleware\CheckEmployeeProfileCompletion::class,
         ],
 
@@ -72,5 +73,6 @@ class Kernel extends HttpKernel
         'module' => \App\Http\Middleware\CheckModuleAccess::class,
         'check.profile.complete' => \App\Http\Middleware\CheckProfileComplete::class,
         'employee.user' => \App\Http\Middleware\EnsureUserIsEmployee::class,
+        'force.password.change' => \App\Http\Middleware\ForcePasswordChange::class,
     ];
 }

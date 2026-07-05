@@ -18,6 +18,14 @@ class CheckAccess
             return redirect()->route('login');
         }
 
+        // Bypass permission checks for force password change routes
+        if (session('must_change_password') || (isset($user->must_change_password) && $user->must_change_password)) {
+            $routeName = $request->route() ? $request->route()->getName() : null;
+            if (in_array($routeName, ['profile.index', 'profile.password.update', 'logout'], true)) {
+                return $next($request);
+            }
+        }
+
         if (method_exists($user, 'hasRole') && $user->hasRole('super_admin')) {
             return $next($request);
         }

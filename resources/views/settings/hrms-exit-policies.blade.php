@@ -507,10 +507,15 @@
                                     <option value="">All Exit Types</option>
                                     <option value="resignation">Resignation</option>
                                     <option value="termination">Termination</option>
+                                    <option value="retirement">Retirement</option>
+                                    <option value="contract_end">End of Contract</option>
+                                    <option value="mutual_separation">Mutual Separation</option>
+                                    <option value="layoff_redundancy">Layoff / Redundancy</option>
+                                    <option value="absconding">Absconded</option>
+                                    <option value="deceased">Deceased</option>
+                                    <option value="other">Other</option>
                                     <option value="internship_exit">Internship Exit</option>
                                     <option value="internship_completed">Internship Completed</option>
-                                    <option value="contract_end">Contract End</option>
-                                    <option value="absconding">Absconding</option>
                                 </select>
                             </div>
                         </div>
@@ -605,7 +610,7 @@
                                 <label>Exit Type</label>
                                 <select name="exit_type" class="exit-control">
                                     <option value="" {{ empty($policy->exit_type) ? 'selected' : '' }}>All Exit Types</option>
-                                    @foreach(['resignation', 'termination', 'internship_exit', 'internship_completed', 'contract_end', 'absconding'] as $type)
+                                    @foreach(['resignation', 'termination', 'retirement', 'contract_end', 'mutual_separation', 'layoff_redundancy', 'absconding', 'deceased', 'other', 'internship_exit', 'internship_completed'] as $type)
                                     <option value="{{ $type }}" {{ $policy->exit_type === $type ? 'selected' : '' }}>{{ ucwords(str_replace('_', ' ', $type)) }}</option>
                                     @endforeach
                                 </select>

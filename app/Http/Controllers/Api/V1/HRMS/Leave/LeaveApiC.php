@@ -80,8 +80,13 @@ class LeaveApiC extends Controller
                 ->values();
 
             $teamEmployeeIds = EmployeeM::query()
-                ->where('reporting_manager_employee_id', $employee->id)
-                ->pluck('id');
+                ->leftJoin('employee_profiles', 'employee_profiles.employee_id', '=', 'employees_new.id')
+                ->where('employees_new.reporting_manager_employee_id', $employee->id)
+                ->where(function ($query) {
+                    $query->whereNull('employee_profiles.employee_id')
+                          ->orWhere('employee_profiles.profile_status', 'approved');
+                })
+                ->pluck('employees_new.id');
 
             $teamOnLeave = $teamEmployeeIds->isEmpty()
                 ? collect()

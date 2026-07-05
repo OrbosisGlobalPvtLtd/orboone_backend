@@ -18,6 +18,10 @@ class ProfilesController extends Controller
 
     public function index()
     {
+        if (session('must_change_password')) {
+            return view('auth.change-password');
+        }
+
         $profile = auth()->user()->load([
             'role',
             'primaryRole',

@@ -38,6 +38,13 @@ class CheckAccess
             return $next($request);
         }
 
+        // Map sub-routes/actions to their primary menu route
+        if (strpos($routeName, 'documents.hr.') === 0) {
+            $routeName = 'documents.verification.index';
+        } elseif (strpos($routeName, 'documents.employee.') === 0) {
+            $routeName = 'documents.compliance.index';
+        }
+
         if ($routeName === 'enterprise-payroll.payslips.download' || $routeName === 'enterprise-payroll.payslips.view' || $routeName === 'enterprise-payroll.payslips.preview') {
             if ($user->hasPermission('enterprise_payslip.download') || $user->hasPermission('enterprise_payslip.view') || $user->hasPermission('enterprise_payroll.my_payslips.view') || $user->hasPermission('enterprise_payslip.generate')) {
                 return $next($request);

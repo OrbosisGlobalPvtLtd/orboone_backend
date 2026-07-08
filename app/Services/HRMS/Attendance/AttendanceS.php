@@ -676,7 +676,11 @@ class AttendanceS
             $isHalfDay = true;
         }
 
-        $attendance->fill([
+        $threshold = $this->policyDayEndTime($shift) ?: '23:59:00';
+        $dayCloseTime = Carbon::parse($date . ' ' . $threshold, $timezone);
+        $isCheckedOutBeforeClose = $out->lte($dayCloseTime);
+
+        $updateData = [
             'target_punch_out_time' => $attendance->target_punch_out_time ?: $target->format('H:i:s'),
             'gross_work_minutes' => $grossMinutes,
             'break_minutes' => $breakMinutes,
@@ -687,7 +691,15 @@ class AttendanceS
             'violation_count' => $violationCount,
             'is_half_day' => $isHalfDay,
             'is_lwp' => $isLwp,
-        ]);
+        ];
+
+        if ($isCheckedOutBeforeClose) {
+            $updateData['missed_punch'] = false;
+            $updateData['is_missed_punch'] = false;
+            $updateData['missed_punch_reason'] = null;
+        }
+
+        $attendance->fill($updateData);
 
         if (! $attendance->is_blocked && ! $attendance->is_punch_blocked) {
             $attendance->attendance_type_id = $this->attendanceType($typeCode)?->id ?: $attendance->attendance_type_id;
@@ -695,6 +707,12 @@ class AttendanceS
         }
 
         $attendance->save();
+
+        if ($isCheckedOutBeforeClose && Schema::hasTable('attendance_violations')) {
+            AttendanceViolationM::where('attendance_id', $attendance->id)
+                ->where('type', 'missed_punch')
+                ->delete();
+        }
 
         if ($isHalfDay) {
             $this->notifyAttendance($employee, 'half_day', 'Half Day Marked', 'Your attendance has been marked as half day.', $date, [
@@ -846,8 +864,9 @@ class AttendanceS
             $warningIndex = min($missedCount, max(1, $allowedMissedPunches));
             $missedPunchType = $this->attendanceType('missed_punch');
             $type = $limitExceeded && $lwpType ? $lwpType : ($missedPunchType ?: ($pendingHrType ?: $attendance->attendanceType ?: $absentType));
+            $nth = $this->ordinal($missedCount);
             $reason = $limitExceeded
-                ? '3rd missed punch converted to LWP'
+                ? "{$nth} missed punch converted to LWP (Allowed: {$allowedMissedPunches})"
                 : "Missed punch warning {$warningIndex} of {$allowedMissedPunches}. No deduction applied.";
 
             $updates = $this->attendancePayload([
@@ -1287,9 +1306,7 @@ class AttendanceS
             return true;
         }
 
-        $threshold = $policy?->shift_end_time
-            ? $this->ruleResolver->timeString($policy->shift_end_time)
-            : ($this->policyDayEndTime($policy) ?: '23:59:00');
+        $threshold = $this->policyDayEndTime($policy) ?: '23:59:00';
 
         return $now->gte(Carbon::parse($date . ' ' . $threshold, $this->attendanceTimezone()));
     }
@@ -1349,7 +1366,15 @@ class AttendanceS
             ->whereIn('type', ['late_login', 'early_logout'])
             ->count();
 
-        if ($count < 3) {
+        $employee = $attendance->employee ?: Employee::find($attendance->employee_id);
+        $policy = $employee ? $this->ruleResolver->getPolicyForEmployee($employee, $date) : null;
+        $combinedViolationLimit = $policy ? (int) ($policy->combined_violation_limit ?? 3) : 3;
+
+        if ($combinedViolationLimit <= 0) {
+            return;
+        }
+
+        if ($count < $combinedViolationLimit) {
             return;
         }
 
@@ -1365,7 +1390,7 @@ class AttendanceS
         $halfDayType = $this->attendanceType('half_day');
         $updates = [
             'is_half_day' => true,
-            'half_day_reason' => 'Auto half-day due to 3 monthly combined violations (late + early logout).',
+            'half_day_reason' => "Auto half-day due to {$combinedViolationLimit} monthly combined violations (late + early logout).",
             'violation_count' => max((int) $attendance->violation_count, $count),
         ];
         if ($halfDayType) {
@@ -1654,6 +1679,16 @@ class AttendanceS
                 'converted_to_lwp' => (bool) $attendance->is_lwp,
                 'remarks' => $attendance->missed_punch_reason ?: 'Missed punch detected.',
             ]);
+        }
+    }
+
+    private function ordinal(int $number): string
+    {
+        $ends = ['th','st','nd','rd','th','th','th','th','th','th'];
+        if ((($number % 100) >= 11) && (($number % 100) <= 13)) {
+            return $number . 'th';
+        } else {
+            return $number . $ends[$number % 10];
         }
     }
 }

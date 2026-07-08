@@ -2000,7 +2000,7 @@ class EmployeeC extends Controller
                 $updateData['employee_stage'] = 'probation';
                 $updateData['joining_date'] = $effectiveDate;
                 $updateData['probation_start_date'] = $effectiveDate;
-                $updateData['probation_end_date'] = Carbon::parse($effectiveDate)->addMonthsNoOverflow($probationMonths - 1)->endOfMonth()->toDateString();
+                $updateData['probation_end_date'] = Carbon::parse($effectiveDate)->addMonthsNoOverflow($probationMonths)->subDay()->toDateString();
                 $updateData['probation_status'] = 'active';
 
                 if (Schema::hasColumn($this->employeeTable, 'internship_status')) {

@@ -44,7 +44,7 @@ class EmployeeLifecycleService
             if ($probationMonths < 1) {
                 $probationMonths = 3;
             }
-            $probationEnd = $joiningDate->copy()->addMonthsNoOverflow($probationMonths - 1)->endOfMonth()->format('Y-m-d');
+            $probationEnd = $joiningDate->copy()->addMonthsNoOverflow($probationMonths)->subDay()->format('Y-m-d');
             if (Carbon::now()->greaterThan(Carbon::parse($probationEnd))) {
                 $employeeStage = 'permanent';
                 $probationStatus = 'completed';
@@ -65,7 +65,7 @@ class EmployeeLifecycleService
                 ? (int)$input['internship_duration_months']
                 : 3;
             $startDateObj = Carbon::parse($internshipStart);
-            $internshipEnd = $startDateObj->copy()->addMonthsNoOverflow($duration - 1)->endOfMonth()->format('Y-m-d');
+            $internshipEnd = $startDateObj->copy()->addMonthsNoOverflow($duration)->subDay()->format('Y-m-d');
         }
 
         return [

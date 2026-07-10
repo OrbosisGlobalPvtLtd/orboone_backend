@@ -794,6 +794,8 @@
                                     <select name="document_type" class="orb-form-control" required>
                                         <option value="offer_letter">Offer Letter</option>
                                         <option value="appointment_letter">Appointment Letter</option>
+                                        <option value="internship_offer_letter">Internship Offer Letter</option>
+                                        <option value="discontinuing_letter">Discontinuing Letter</option>
                                         <option value="confirmation_letter">Confirmation Letter</option>
                                         <option value="relieving_letter">Relieving Letter</option>
                                         <option value="experience_certificate">Experience Certificate</option>
@@ -939,6 +941,8 @@
                                     <select name="document_type" class="orb-form-control" required>
                                         <option value="offer_letter" {{ $template->document_type == 'offer_letter' ? 'selected' : '' }}>Offer Letter</option>
                                         <option value="appointment_letter" {{ $template->document_type == 'appointment_letter' ? 'selected' : '' }}>Appointment Letter</option>
+                                        <option value="internship_offer_letter" {{ $template->document_type == 'internship_offer_letter' ? 'selected' : '' }}>Internship Offer Letter</option>
+                                        <option value="discontinuing_letter" {{ $template->document_type == 'discontinuing_letter' ? 'selected' : '' }}>Discontinuing Letter</option>
                                         <option value="confirmation_letter" {{ $template->document_type == 'confirmation_letter' ? 'selected' : '' }}>Confirmation Letter</option>
                                         <option value="relieving_letter" {{ $template->document_type == 'relieving_letter' ? 'selected' : '' }}>Relieving Letter</option>
                                         <option value="experience_certificate" {{ $template->document_type == 'experience_certificate' ? 'selected' : '' }}>Experience Certificate</option>

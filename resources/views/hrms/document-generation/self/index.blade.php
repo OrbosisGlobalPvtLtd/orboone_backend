@@ -213,12 +213,12 @@
 
     $lettersCount = \App\Models\HRMS\DocumentGeneration\GeneratedDocument::where('employee_id', $employeeId)
         ->whereIn('status', ['generated', 'sent', 'reviewed'])
-        ->whereIn('document_type', ['offer_letter', 'appointment_letter', 'internship_certificate'])
+        ->whereIn('document_type', ['offer_letter', 'appointment_letter', 'internship_certificate', 'internship_offer_letter'])
         ->count();
 
     $serviceCount = \App\Models\HRMS\DocumentGeneration\GeneratedDocument::where('employee_id', $employeeId)
         ->whereIn('status', ['generated', 'sent', 'reviewed'])
-        ->whereIn('document_type', ['experience_letter', 'relieving_letter'])
+        ->whereIn('document_type', ['experience_letter', 'relieving_letter', 'discontinuing_letter'])
         ->count();
 
     $otherCount = $totalOfficial - ($lettersCount + $serviceCount);
@@ -318,14 +318,14 @@
                 $gradientClass = 'bg-gradient-orange';
                 $typeName = 'Letter';
 
-                if (in_array($doc->document_type, ['offer_letter', 'appointment_letter'])) {
+                if (in_array($doc->document_type, ['offer_letter', 'appointment_letter', 'internship_offer_letter'])) {
                     $category = 'contract';
                     $iconClass = 'fas fa-file-signature';
                     $gradientClass = 'bg-gradient-indigo';
                     $typeName = str_replace('_', ' ', ucwords($doc->document_type));
-                } elseif (in_array($doc->document_type, ['experience_letter', 'relieving_letter', 'internship_certificate'])) {
+                } elseif (in_array($doc->document_type, ['experience_letter', 'relieving_letter', 'internship_certificate', 'discontinuing_letter'])) {
                     $category = 'service';
-                    $iconClass = 'fas fa-award';
+                    $iconClass = ($doc->document_type === 'discontinuing_letter') ? 'fas fa-user-times' : 'fas fa-award';
                     $gradientClass = 'bg-gradient-emerald';
                     $typeName = str_replace('_', ' ', ucwords($doc->document_type));
                 } elseif ($doc->document_type === 'salary_certificate') {

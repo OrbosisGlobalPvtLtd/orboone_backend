@@ -51,6 +51,63 @@ class DocumentFieldConfigS
                 ]
             ],
 
+            'internship_offer_letter' => [
+                'name' => 'Internship Offer Letter',
+                'fields' => [
+                    // Recipient Section
+                    ['name' => 'candidate_name', 'label' => 'Candidate Name', 'type' => 'text', 'required' => true, 'default' => 'Candidate Name', 'autofill' => 'name', 'section' => 'recipient'],
+                    ['name' => 'employee_city', 'label' => 'City', 'type' => 'text', 'required' => false, 'default' => 'Indore', 'autofill' => 'city', 'section' => 'recipient'],
+
+                    // Details Section
+                    ['name' => 'issue_date', 'label' => 'Issue Date', 'type' => 'date', 'required' => true, 'default' => 'today', 'section' => 'details'],
+                    ['name' => 'joining_date', 'label' => 'Commencement Date', 'type' => 'date', 'required' => true, 'default' => 'today', 'autofill' => 'joining_date', 'section' => 'details'],
+                    ['name' => 'internship_duration', 'label' => 'Internship Duration', 'type' => 'text', 'required' => true, 'default' => '3-month', 'section' => 'details'],
+                    ['name' => 'internship_mode', 'label' => 'Internship Mode', 'type' => 'select', 'options' => ['Hybrid', 'Onsite', 'Remote'], 'required' => true, 'default' => 'Hybrid', 'section' => 'details'],
+                    ['name' => 'designation', 'label' => 'Designation', 'type' => 'text', 'required' => true, 'default' => 'Software Engineer Intern', 'autofill' => 'designation', 'section' => 'details'],
+                    ['name' => 'office_location', 'label' => 'Office / Work Location', 'type' => 'text', 'required' => true, 'default' => 'Indore Office', 'autofill' => 'location', 'section' => 'details'],
+                    ['name' => 'working_hours', 'label' => 'Working Hours', 'type' => 'text', 'required' => false, 'default' => '10:00 AM to 7:00 PM', 'section' => 'details'],
+                    ['name' => 'working_days', 'label' => 'Working Days', 'type' => 'text', 'required' => false, 'default' => 'Monday to Saturday', 'section' => 'details'],
+                    ['name' => 'saturday_off_clause', 'label' => 'Saturday Off Clause', 'type' => 'text', 'required' => false, 'default' => 'with second and fourth Saturdays observed as off (alternate Saturdays off)', 'section' => 'details'],
+
+                    // Compensation Type Selector
+                    ['name' => 'compensation_type', 'label' => 'Internship Compensation Type', 'type' => 'select', 'options' => ['Paid', 'Unpaid'], 'required' => true, 'default' => 'Unpaid', 'section' => 'details'],
+
+                    // Stipend Section (Only shown if Paid)
+                    ['name' => 'stipend_amount', 'label' => 'Monthly Stipend (INR)', 'type' => 'number', 'required' => true, 'default' => '18000', 'show_if' => ['compensation_type' => 'Paid'], 'section' => 'salary'],
+
+                    // Signatory Section
+                    ['name' => 'hr_manager_name', 'label' => 'HR Manager Name', 'type' => 'text', 'required' => true, 'default' => 'Vanshika Dhunna', 'section' => 'signatory'],
+                    ['name' => 'signatory_designation', 'label' => 'Signatory Designation', 'type' => 'text', 'required' => true, 'default' => 'HR Manager', 'section' => 'signatory'],
+                    ['name' => 'company_name', 'label' => 'Company Name', 'type' => 'text', 'required' => true, 'default' => 'company_name', 'section' => 'signatory'],
+
+                    // Paragraphs / Clauses
+                    ['name' => 'job_responsibilities', 'label' => 'Internship Responsibilities', 'type' => 'textarea', 'required' => false, 'default' => "During the internship, you will assist in software development, testing, debugging, and application maintenance under the guidance of senior team members. You will contribute to real-world projects, participate in code reviews, and support documentation while collaborating with the team. This internship is designed to help you build practical technical skills and gain exposure to industry-standard software development practices.", 'section' => 'paragraphs'],
+                    ['name' => 'unpaid_clause', 'label' => 'Unpaid Clause', 'type' => 'textarea', 'required' => false, 'default' => "This offer is for an unpaid engagement. No salary, stipend, or monetary compensation shall be payable during this period unless separately approved in writing by the Company. The engagement is intended to provide professional exposure, learning, project experience, and practical workplace training.", 'show_if' => ['compensation_type' => 'Unpaid'], 'section' => 'paragraphs'],
+                ]
+            ],
+
+            'discontinuing_letter' => [
+                'name' => 'Discontinuing Letter',
+                'fields' => [
+                    // Recipient Section
+                    ['name' => 'employee_name', 'label' => 'Employee Name', 'type' => 'text', 'required' => true, 'default' => 'Employee Name', 'autofill' => 'name', 'section' => 'recipient'],
+                    ['name' => 'employee_code', 'label' => 'Employee Code', 'type' => 'text', 'required' => true, 'default' => 'EMP001', 'autofill' => 'code', 'section' => 'recipient'],
+
+                    // Details Section
+                    ['name' => 'issue_date', 'label' => 'Issue Date', 'type' => 'date', 'required' => true, 'default' => 'today', 'section' => 'details'],
+                    ['name' => 'discontinue_date', 'label' => 'Discontinue Effective Date', 'type' => 'date', 'required' => true, 'default' => 'today', 'section' => 'details'],
+
+                    // Signatory Section
+                    ['name' => 'hr_manager_name', 'label' => 'HR Manager Name', 'type' => 'text', 'required' => true, 'default' => 'Vanshika Dhunna', 'section' => 'signatory'],
+                    ['name' => 'signatory_designation', 'label' => 'Signatory Designation', 'type' => 'text', 'required' => true, 'default' => 'HR Manager', 'section' => 'signatory'],
+                    ['name' => 'company_name', 'label' => 'Company Name', 'type' => 'text', 'required' => true, 'default' => 'company_name', 'section' => 'signatory'],
+
+                    // Paragraphs / Clauses
+                    ['name' => 'discontinue_reason', 'label' => 'Discontinue Regret Reason', 'type' => 'textarea', 'required' => false, 'default' => "After careful review of the Company's current business requirements and financial position, we regret to inform you that the Company has decided to discontinue your employment with the Company.", 'section' => 'paragraphs'],
+                    ['name' => 'handover_clause', 'label' => 'Handover & Final Settlement Clause', 'type' => 'textarea', 'required' => false, 'default' => "You are requested to complete all handover formalities and return any Company assets, documents, or access credentials in your possession on or before your last working day. The Company will process your final settlement and any applicable dues in accordance with Company policy and applicable laws.", 'section' => 'paragraphs'],
+                ]
+            ],
+
             'appointment_letter' => [
                 'name' => 'Appointment Letter',
                 'fields' => [

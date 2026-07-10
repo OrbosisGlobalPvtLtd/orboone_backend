@@ -143,6 +143,8 @@ class GeneratedDocumentC extends Controller
         $documentTypes = [
             'offer_letter' => 'Offer Letter',
             'appointment_letter' => 'Appointment Letter',
+            'internship_offer_letter' => 'Internship Offer Letter',
+            'discontinuing_letter' => 'Discontinuing Letter',
             'experience_letter' => 'Experience Letter',
             'relieving_letter' => 'Relieving Letter',
             'internship_certificate' => 'Internship Certificate',
@@ -501,6 +503,16 @@ class GeneratedDocumentC extends Controller
                 return [
                     'subject' => "Internship Certificate - {$companyName}",
                     'body' => "Dear {$employeeName},<br><br>Please find attached your internship certificate from {$companyName}.<br><br>We appreciate your contribution and wish you all the best."
+                ];
+            case 'internship_offer_letter':
+                return [
+                    'subject' => "Internship Offer Letter - {$companyName}",
+                    'body' => "Dear {$employeeName},<br><br>We are pleased to offer you the internship opportunity at {$companyName}. Please find attached your internship offer letter detailing the terms of your engagement.<br><br>Kindly review, sign, and return the acceptance to us.<br><br>Best regards,<br>HR Team<br>{$companyName}"
+                ];
+            case 'discontinuing_letter':
+                return [
+                    'subject' => "Discontinuing Letter - {$companyName}",
+                    'body' => "Dear {$employeeName},<br><br>Please find attached your discontinuing letter from {$companyName}.<br><br>Kindly contact HR if you have any questions regarding the final settlement process."
                 ];
             default:
                 return [

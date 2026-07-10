@@ -13,7 +13,7 @@
     </div>
 
     <p class="text-justify" style="font-size: 13px; line-height: 1.8;">
-        This is to certify that <strong>Mr./Ms. {{ $employee_name ?? 'Employee Name' }}</strong> (Employee Code: <strong>{{ $employee_code ?? 'EMP' }}</strong>) is a permanent employee of 
+        This is to certify that <strong>{{ $employee_prefix ?? 'Mr./Ms.' }} {{ $employee_name ?? 'Employee Name' }}</strong> (Employee Code: <strong>{{ $employee_code ?? 'EMP' }}</strong>) is a permanent employee of 
         <strong>{{ $company_name ?? branding_name() }}</strong>. 
     </p>
 

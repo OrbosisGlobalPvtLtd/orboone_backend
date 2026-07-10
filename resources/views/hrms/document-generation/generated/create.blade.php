@@ -797,7 +797,7 @@
                 if (document.getElementById('field_basic_monthly')) document.getElementById('field_basic_monthly').value = (gross * 0.50).toFixed(2);
                 if (document.getElementById('field_hra_monthly')) document.getElementById('field_hra_monthly').value = (gross * 0.20).toFixed(2);
                 
-                const special = gross - (gross * 0.50) - (gross * 0.20) - (gross > 0 ? 1600.0 : 0.0);
+                const special = gross - (gross * 0.50) - (gross * 0.20);
                 if (document.getElementById('field_special_allowance_monthly')) document.getElementById('field_special_allowance_monthly').value = Math.max(0, special).toFixed(2);
                 
                 if (document.getElementById('field_net_pay_monthly')) document.getElementById('field_net_pay_monthly').value = Math.max(0, gross - pt).toFixed(2);
@@ -925,6 +925,7 @@
                         else if (key === 'state') val = data.employee_state;
                         else if (key === 'country') val = data.employee_country;
                         else if (key === 'salary') val = data.monthly_salary;
+                        else if (key === 'code') val = data.employee_code;
                     }
 
                     // Specific pronoun derivations
@@ -992,6 +993,7 @@
         const iconMap = {
             'offer_letter': 'fas fa-envelope-open-text text-primary',
             'appointment_letter': 'fas fa-file-signature text-primary',
+            'internship_offer_letter': 'fas fa-envelope-open-text text-success',
             'experience_letter': 'fas fa-award text-primary',
             'relieving_letter': 'fas fa-door-open text-primary',
             'internship_certificate': 'fas fa-graduation-cap text-primary',
@@ -1006,7 +1008,8 @@
             'noc_letter': 'fas fa-handshake text-primary',
             'increment_letter': 'fas fa-chart-line text-success',
             'transfer_letter': 'fas fa-exchange-alt text-warning',
-            'resignation_acceptance_letter': 'fas fa-sign-out-alt text-danger'
+            'resignation_acceptance_letter': 'fas fa-sign-out-alt text-danger',
+            'discontinuing_letter': 'fas fa-user-times text-danger'
         };
         
         const iconEl = document.getElementById('document_type_icon');

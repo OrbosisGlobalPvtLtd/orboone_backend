@@ -873,6 +873,8 @@
                                 <option value="">All Types</option>
                                 <option value="offer_letter" {{ request('document_type') == 'offer_letter' ? 'selected' : '' }}>Offer Letter</option>
                                 <option value="appointment_letter" {{ request('document_type') == 'appointment_letter' ? 'selected' : '' }}>Appointment Letter</option>
+                                <option value="internship_offer_letter" {{ request('document_type') == 'internship_offer_letter' ? 'selected' : '' }}>Internship Offer Letter</option>
+                                <option value="discontinuing_letter" {{ request('document_type') == 'discontinuing_letter' ? 'selected' : '' }}>Discontinuing Letter</option>
                                 <option value="experience_letter" {{ request('document_type') == 'experience_letter' ? 'selected' : '' }}>Experience Letter</option>
                                 <option value="relieving_letter" {{ request('document_type') == 'relieving_letter' ? 'selected' : '' }}>Relieving Letter</option>
                                 <option value="internship_certificate" {{ request('document_type') == 'internship_certificate' ? 'selected' : '' }}>Internship Certificate</option>

@@ -26,6 +26,10 @@ class DocumentPlaceholderSeeder extends Seeder
             ['placeholder_key' => 'notice_period_probation', 'label' => 'Notice Period (Probation)', 'group_name' => 'Employee', 'source_type' => 'employee', 'source_table' => 'employees_new', 'source_column' => 'notice_period_probation', 'resolver_key' => 'notice_period_probation'],
             ['placeholder_key' => 'notice_period_confirmed', 'label' => 'Notice Period (Confirmed)', 'group_name' => 'Employee', 'source_type' => 'employee', 'source_table' => 'employees_new', 'source_column' => 'notice_period_confirmed', 'resolver_key' => 'notice_period_confirmed'],
             ['placeholder_key' => 'office_location', 'label' => 'Office Location', 'group_name' => 'Employee', 'source_type' => 'employee', 'source_table' => 'employee_profiles', 'source_column' => 'work_location', 'resolver_key' => 'office_location'],
+            ['placeholder_key' => 'employee_code', 'label' => 'Employee Code', 'group_name' => 'Employee', 'source_type' => 'employee', 'source_table' => 'employees_new', 'source_column' => 'employee_code', 'resolver_key' => 'employee_code'],
+            ['placeholder_key' => 'discontinue_date', 'label' => 'Discontinue Date', 'group_name' => 'Document', 'source_type' => 'document', 'source_table' => null, 'source_column' => null, 'resolver_key' => 'discontinue_date'],
+            ['placeholder_key' => 'discontinue_reason', 'label' => 'Discontinue Reason', 'group_name' => 'Content Block', 'source_type' => 'manual', 'source_table' => null, 'source_column' => null, 'resolver_key' => 'discontinue_reason'],
+            ['placeholder_key' => 'handover_clause', 'label' => 'Handover Clause', 'group_name' => 'Content Block', 'source_type' => 'manual', 'source_table' => null, 'source_column' => null, 'resolver_key' => 'handover_clause'],
 
             // Company Group
             ['placeholder_key' => 'company_name', 'label' => 'Company Name', 'group_name' => 'Company', 'source_type' => 'company', 'source_table' => 'company_settings', 'source_column' => 'company_name', 'resolver_key' => 'company_name'],
@@ -111,6 +115,12 @@ class DocumentPlaceholderSeeder extends Seeder
                 'allowance_monthly', 'probation_period', 'notice_period_probation', 'notice_period_confirmed', 'issue_date',
                 'company_name', 'company_address', 'company_phone', 'company_email', 'company_website', 'company_gstin', 'hr_manager_name'
             ],
+            'internship_offer_letter' => [
+                'employee_name', 'employee_first_name', 'employee_address', 'employee_city', 'designation', 'joining_date',
+                'internship_start_date', 'internship_end_date', 'office_location',
+                'probation_period', 'offer_valid_till', 'issue_date', 'hr_manager_name', 'company_name', 'company_address',
+                'company_phone', 'company_email', 'company_website', 'company_gstin', 'job_responsibilities', 'performance_summary'
+            ],
             'internship_certificate' => [
                 'employee_name', 'designation', 'internship_start_date', 'internship_end_date', 'internship_work_summary',
                 'performance_summary', 'ceo_name', 'company_name'
@@ -123,6 +133,10 @@ class DocumentPlaceholderSeeder extends Seeder
                 'employee_gender_title', 'employee_name', 'designation', 'joining_date', 'relieving_date', 'issue_date',
                 'experience_responsibilities', 'performance_summary', 'ceo_name', 'company_name', 'company_phone', 'company_email',
                 'company_website', 'company_gstin'
+            ],
+            'discontinuing_letter' => [
+                'employee_name', 'employee_code', 'issue_date', 'discontinue_date', 'hr_manager_name', 'company_name',
+                'discontinue_reason', 'handover_clause'
             ],
         ];
 

@@ -512,7 +512,7 @@
                             <img src="${headerSrc}" alt="Header">
                         </div>
                         <div class="a4-content"></div>
-                        ${footerHtml}
+                        ${ {!! json_encode(!($hide_footer ?? false)) !!} ? footerHtml : '' }
                     `;
                 container.appendChild(page);
                 return page;
@@ -548,6 +548,7 @@
         <img src="{{ $headerSrc }}" alt="Header">
     </div>
 
+    @if(!($hide_footer ?? false))
     <div class="pdf-footer">
         <div class="pdf-footer-strip">
             <img src="{{ $footerSrc }}" alt="Footer">
@@ -573,6 +574,7 @@
             </table>
         </div>
     </div>
+    @endif
 
     <div class="pdf-content">
         @yield('content')

@@ -34,6 +34,10 @@ class DocumentDataResolverS
         // Explicitly merge all raw form data keys to ensure they take top priority in Blade views
         foreach ($formData as $key => $value) {
             if ($value !== null && $value !== '') {
+                // Do not overwrite signature_image and seal_image if they were already resolved to base64
+                if (in_array($key, ['signature_image', 'seal_image']) && str_starts_with($resolved[$key] ?? '', 'data:image')) {
+                    continue;
+                }
                 $resolved[$key] = $value;
             }
         }

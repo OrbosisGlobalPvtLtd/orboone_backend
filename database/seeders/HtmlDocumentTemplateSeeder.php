@@ -49,6 +49,20 @@ class HtmlDocumentTemplateSeeder extends Seeder
                 'description' => 'Certificate issued upon successful completion of intern training projects.',
             ],
             [
+                'name' => 'Internship Offer Letter',
+                'slug' => 'internship-offer-letter',
+                'document_type' => 'internship_offer_letter',
+                'html_template' => 'hrms.document-generation.pdf-templates.internship-offer-letter',
+                'description' => 'Official internship offer letter detailing duration, stipend, working hours, and terms.',
+            ],
+            [
+                'name' => 'Discontinuing Letter',
+                'slug' => 'discontinuing-letter',
+                'document_type' => 'discontinuing_letter',
+                'html_template' => 'hrms.document-generation.pdf-templates.discontinuing-letter',
+                'description' => 'Official letter confirming the discontinuation of employment due to business or organizational requirements.',
+            ],
+            [
                 'name' => 'Salary Certificate',
                 'slug' => 'salary-certificate',
                 'document_type' => 'salary_certificate',

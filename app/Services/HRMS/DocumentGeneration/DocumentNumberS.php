@@ -18,6 +18,8 @@ class DocumentNumberS
             'experience_letter' => 'EXP',
             'relieving_letter' => 'REL',
             'internship_certificate' => 'INT',
+            'internship_offer_letter' => 'IOL',
+            'discontinuing_letter' => 'DIS',
             'salary_certificate' => 'SAL',
             'warning_letter' => 'WRN',
             'appreciation_letter' => 'APR',

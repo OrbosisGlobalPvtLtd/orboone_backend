@@ -132,14 +132,31 @@ class DocumentPlaceholderResolverS
 
         $annualGross = $monthlyGross * 12;
         $basicMonthly = $monthlyGross * 0.50;
+        if (isset($manualFields['basic_monthly']) && is_numeric($manualFields['basic_monthly'])) {
+            $basicMonthly = (float) $manualFields['basic_monthly'];
+        }
         $basicAnnual = $basicMonthly * 12;
-        $hraMonthly = $monthlyGross * 0.20;
-        $hraAnnual = $hraMonthly * 12;
-        $conveyanceMonthly = $monthlyGross > 0 ? 1600.0 : 0.0;
-        $conveyanceAnnual = $conveyanceMonthly * 12;
-        $ptaxMonthly = $monthlyGross > 15000 ? 200.0 : 0.0;
 
-        $specialAllowanceMonthly = $monthlyGross - ($basicMonthly + $hraMonthly + $conveyanceMonthly);
+        $hraMonthly = $monthlyGross * 0.20;
+        if (isset($manualFields['hra_monthly']) && is_numeric($manualFields['hra_monthly'])) {
+            $hraMonthly = (float) $manualFields['hra_monthly'];
+        }
+        $hraAnnual = $hraMonthly * 12;
+
+        $conveyanceMonthly = $monthlyGross > 0 ? 1600.0 : 0.0;
+        if (isset($manualFields['conveyance_monthly']) && is_numeric($manualFields['conveyance_monthly'])) {
+            $conveyanceMonthly = (float) $manualFields['conveyance_monthly'];
+        }
+        $conveyanceAnnual = $conveyanceMonthly * 12;
+
+        $ptaxMonthly = $monthlyGross > 15000 ? 200.0 : 0.0;
+        if (isset($manualFields['professional_tax_monthly']) && is_numeric($manualFields['professional_tax_monthly'])) {
+            $ptaxMonthly = (float) $manualFields['professional_tax_monthly'];
+        }
+
+        // Conveyance is not a component of the Offer Letter salary structure.
+        // Therefore, Special Allowance must equal Gross Salary - (Basic + HRA).
+        $specialAllowanceMonthly = $monthlyGross - ($basicMonthly + $hraMonthly);
         if ($specialAllowanceMonthly < 0) {
             $specialAllowanceMonthly = 0.0;
         }
@@ -266,6 +283,10 @@ class DocumentPlaceholderResolverS
                 continue;
             }
             if ($value === null) {
+                continue;
+            }
+            // Do not overwrite signature_image and seal_image if they were already resolved to base64
+            if (in_array($normalizedKey, ['signature_image', 'seal_image']) && str_starts_with($data[$normalizedKey] ?? '', 'data:image')) {
                 continue;
             }
             $stringValue = is_scalar($value) ? (string) $value : '';

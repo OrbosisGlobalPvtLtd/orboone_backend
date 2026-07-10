@@ -373,6 +373,29 @@
         background: #F04438;
     }
 
+    .complete-profile-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 5px 10px;
+        border-radius: 8px;
+        font-size: 11px;
+        font-weight: 800;
+        color: #B54708;
+        background: #FFF4D6;
+        border: 1px solid rgba(181, 71, 8, 0.15);
+        text-decoration: none !important;
+        white-space: nowrap;
+        transition: all 0.2s ease;
+    }
+
+    .complete-profile-btn:hover {
+        background: #F79009;
+        color: #fff;
+        border-color: #F79009;
+    }
+
     .pp-mobile-list {
         display: none;
         padding: 12px;
@@ -645,7 +668,7 @@
         border-radius: 20px !important;
         background: #fff !important;
         border: 1px solid var(--orb-border) !important;
-        box-shadow: 0 14px 35px rgba(16,24,40,.07) !important;
+        box-shadow: 0 14px 35px rgba(16, 24, 40, .07) !important;
         display: flex !important;
         align-items: center !important;
         gap: 12px !important;
@@ -655,21 +678,25 @@
 
     .pp-page .eo-stat:hover {
         transform: translateY(-2px) !important;
-        box-shadow: 0 18px 45px rgba(16,24,40,.1) !important;
+        box-shadow: 0 18px 45px rgba(16, 24, 40, .1) !important;
     }
 
     .pp-page .eo-stat.border-bottom-primary {
         border-bottom: 4px solid var(--orb-primary) !important;
     }
+
     .pp-page .eo-stat.border-bottom-warning {
         border-bottom: 4px solid #F79009 !important;
     }
+
     .pp-page .eo-stat.border-bottom-info {
         border-bottom: 4px solid #15B79E !important;
     }
+
     .pp-page .eo-stat.border-bottom-success {
         border-bottom: 4px solid #12B76A !important;
     }
+
     .pp-page .eo-stat.border-bottom-danger {
         border-bottom: 4px solid #F04438 !important;
     }
@@ -689,18 +716,22 @@
         background: rgba(75, 0, 232, 0.08) !important;
         color: var(--orb-primary) !important;
     }
+
     .pp-page .eo-stat-icon.warning {
         background: rgba(247, 144, 9, 0.08) !important;
         color: #F79009 !important;
     }
+
     .pp-page .eo-stat-icon.info {
         background: rgba(21, 183, 158, 0.08) !important;
         color: #15B79E !important;
     }
+
     .pp-page .eo-stat-icon.success {
         background: rgba(18, 183, 106, 0.08) !important;
         color: #12B76A !important;
     }
+
     .pp-page .eo-stat-icon.danger {
         background: rgba(240, 68, 56, 0.08) !important;
         color: #F04438 !important;
@@ -728,6 +759,7 @@
         .pp-page .eo-stat {
             padding: 14px 12px !important;
         }
+
         .pp-page .eo-stat-value {
             font-size: 20px !important;
         }
@@ -844,8 +876,9 @@
                             <th>Designation</th>
                             <th>Status</th>
                             <th class="text-center">Approve</th>
+                            <!-- <th>Complete Profile</th> -->
                             <th>Updated</th>
-                            <th>Profile Actions</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -873,25 +906,24 @@
                             <td>
                                 <div class="emp-cell">
                                     @php
-                                        $passportPhotoUrl = resolveEmployeePassportPhoto($emp);
-                                        $employeeInitial = $initial;
-                                        $employeeName = $emp->name ?? 'Employee';
+                                    $passportPhotoUrl = resolveEmployeePassportPhoto($emp);
+                                    $employeeInitial = $initial;
+                                    $employeeName = $emp->name ?? 'Employee';
                                     @endphp
                                     <span class="hrms-emp-avatar hrms-emp-avatar-sm mr-2">
                                         @if($passportPhotoUrl)
-                                            <img
-                                                src="{{ $passportPhotoUrl }}"
-                                                alt="{{ $employeeName }}"
-                                                class="hrms-emp-avatar-img"
-                                                onerror="this.style.display='none'; this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.remove('is-hidden'); this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.add('is-visible');"
-                                            >
-                                            <span class="hrms-emp-avatar-fallback is-hidden">
-                                                {{ $employeeInitial }}
-                                            </span>
+                                        <img
+                                            src="{{ $passportPhotoUrl }}"
+                                            alt="{{ $employeeName }}"
+                                            class="hrms-emp-avatar-img"
+                                            onerror="this.style.display='none'; this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.remove('is-hidden'); this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.add('is-visible');">
+                                        <span class="hrms-emp-avatar-fallback is-hidden">
+                                            {{ $employeeInitial }}
+                                        </span>
                                         @else
-                                            <span class="hrms-emp-avatar-fallback is-visible">
-                                                {{ $employeeInitial }}
-                                            </span>
+                                        <span class="hrms-emp-avatar-fallback is-visible">
+                                            {{ $employeeInitial }}
+                                        </span>
                                         @endif
                                     </span>
                                     <div>
@@ -926,6 +958,15 @@
                                     @endif
                                 </div>
                             </td>
+                            <!-- <td>
+                                @if ($status !== 'approved')
+                                <a href="{{ route('hrms.employees.profile.edit', $emp->id) }}" class="complete-profile-btn" title="Complete Profile">
+                                    <i class="fas fa-user-edit mr-1"></i> Complete Profile
+                                </a>
+                                @else
+                                <span class="text-muted" style="font-size: 11px; font-weight: 750;"><i class="fas fa-check-circle text-success mr-1"></i> Completed</span>
+                                @endif
+                            </td> -->
                             <td>
                                 @if (!empty($emp->updated_at))
                                 {{ \Carbon\Carbon::parse($emp->updated_at)->diffForHumans() }}
@@ -940,12 +981,14 @@
                                         <i class="fas fa-eye"></i>
                                     </a>
 
-                                    @if ($status !== 'approved')
-                                    <a href="{{ route('hrms.employees.profile.edit', $emp->id) }}"
-                                        class="action-btn action-edit" title="Edit Profile">
+                                    @if (Route::has('hrms.employees.edit'))
+                                    <a href="{{ route('hrms.employees.edit', $emp->id) }}"
+                                        class="action-btn action-edit" title="Edit Onboarding">
                                         <i class="fas fa-edit"></i>
                                     </a>
+                                    @endif
 
+                                    @if ($status !== 'approved')
                                     @if (Route::has('hrms.employees.profile.reject'))
                                     <button type="button"
                                         class="action-btn action-reject reject-profile-btn"
@@ -994,25 +1037,24 @@
                 <div class="pp-mobile-card">
                     <div class="pp-mobile-head">
                         @php
-                            $passportPhotoUrl = resolveEmployeePassportPhoto($emp);
-                            $employeeInitial = $initial;
-                            $employeeName = $emp->name ?? 'Employee';
+                        $passportPhotoUrl = resolveEmployeePassportPhoto($emp);
+                        $employeeInitial = $initial;
+                        $employeeName = $emp->name ?? 'Employee';
                         @endphp
                         <span class="hrms-emp-avatar hrms-emp-avatar-sm mr-2">
                             @if($passportPhotoUrl)
-                                <img
-                                    src="{{ $passportPhotoUrl }}"
-                                    alt="{{ $employeeName }}"
-                                    class="hrms-emp-avatar-img"
-                                    onerror="this.style.display='none'; this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.remove('is-hidden'); this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.add('is-visible');"
-                                >
-                                <span class="hrms-emp-avatar-fallback is-hidden">
-                                    {{ $employeeInitial }}
-                                </span>
+                            <img
+                                src="{{ $passportPhotoUrl }}"
+                                alt="{{ $employeeName }}"
+                                class="hrms-emp-avatar-img"
+                                onerror="this.style.display='none'; this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.remove('is-hidden'); this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.add('is-visible');">
+                            <span class="hrms-emp-avatar-fallback is-hidden">
+                                {{ $employeeInitial }}
+                            </span>
                             @else
-                                <span class="hrms-emp-avatar-fallback is-visible">
-                                    {{ $employeeInitial }}
-                                </span>
+                            <span class="hrms-emp-avatar-fallback is-visible">
+                                {{ $employeeInitial }}
+                            </span>
                             @endif
                         </span>
                         <div class="pp-mobile-info">
@@ -1063,10 +1105,17 @@
                                 <i class="fas fa-eye"></i>
                             </a>
 
-                            @if ($status !== 'approved' && !$isCompleted)
-                            <a href="{{ route('hrms.employees.profile.edit', $emp->id) }}"
-                                class="action-btn action-edit" title="Edit Profile">
+                            @if (Route::has('hrms.employees.edit'))
+                            <a href="{{ route('hrms.employees.edit', $emp->id) }}"
+                                class="action-btn action-edit" title="Edit Onboarding">
                                 <i class="fas fa-edit"></i>
+                            </a>
+                            @endif
+
+                            @if ($status !== 'approved')
+                            <a href="{{ route('hrms.employees.profile.edit', $emp->id) }}"
+                                class="action-btn text-warning" style="background: rgba(247, 144, 9, 0.08);" title="Complete Profile">
+                                <i class="fas fa-user-edit"></i>
                             </a>
 
                             @if (Route::has('hrms.employees.profile.reject'))

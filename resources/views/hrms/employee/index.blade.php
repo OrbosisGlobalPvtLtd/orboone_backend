@@ -393,6 +393,10 @@
         justify-content: center;
     }
 
+    .eo-action-menu .dropdown-toggle::after {
+        display: none !important;
+    }
+
     .eo-action-menu .dropdown-menu {
         border: 1px solid var(--orb-border);
         box-shadow: 0 18px 40px rgba(16, 24, 40, .12);
@@ -893,8 +897,7 @@
                             <th>Employee</th>
                             <th>Department</th>
                             <th>Designation</th>
-                            <th>Type</th>
-                            <th>Mode</th>
+                            <th>Type & Mode</th>
                             <th>Manager</th>
                             <th>Shift</th>
                             <th>Verification</th>
@@ -1002,16 +1005,10 @@
                     data: 'employment_type',
                     name: 'employment_type',
                     defaultContent: '-',
-                    render: function(data) {
-                        return pill(data || '-', data || '');
-                    }
-                },
-                {
-                    data: 'work_mode',
-                    name: 'work_mode',
-                    defaultContent: '-',
-                    render: function(data) {
-                        return pill(data || '-', data || '');
+                    render: function(data, type, row) {
+                        let typePill = pill(row.employment_type || '-', row.employment_type || '');
+                        let modePill = pill(row.work_mode || '-', row.work_mode || '');
+                        return '<div class="d-flex flex-column align-items-start gap-1">' + typePill + '<div style="margin-top: 4px;">' + modePill + '</div></div>';
                     }
                 },
                 {
@@ -1073,7 +1070,7 @@
                     title: 'Employee Directory',
                     className: 'btn btn-sm',
                     exportOptions: {
-                        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
                         format: {
                             body: function(data) {
                                 return cleanExportText(data);
@@ -1087,7 +1084,7 @@
                     title: 'Employee Directory',
                     className: 'btn btn-sm',
                     exportOptions: {
-                        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
                         format: {
                             body: function(data) {
                                 return cleanExportText(data);
@@ -1101,7 +1098,7 @@
                     title: 'Employee Directory',
                     className: 'btn btn-sm',
                     exportOptions: {
-                        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
                         format: {
                             body: function(data) {
                                 return cleanExportText(data);

@@ -129,7 +129,7 @@ class AdminUserC extends Controller
     {
         $adminUser = $this->findAdmin($admin);
         abort_if(! $adminUser, 404);
-        $selectedRoleIds = $this->selectedAdminRoleIds($request);
+        $selectedRoleIds = $this->selectedAdminRoleIds($request, $adminUser->id);
 
         DB::transaction(function () use ($request, $adminUser, $selectedRoleIds) {
             $primaryRoleId = $selectedRoleIds[0];
@@ -150,7 +150,11 @@ class AdminUserC extends Controller
             }
 
             if (Schema::hasColumn('users', 'is_web_access')) {
-                $userData['is_web_access'] = 1;
+                $employeeRoleId = null;
+                if (Schema::hasTable('roles')) {
+                    $employeeRoleId = DB::table('roles')->where('slug', 'employee')->value('id');
+                }
+                $userData['is_web_access'] = ($employeeRoleId && (int)$primaryRoleId === (int)$employeeRoleId) ? 0 : 1;
             }
 
             if (Schema::hasColumn('users', 'is_app_access')) {
@@ -237,7 +241,7 @@ class AdminUserC extends Controller
             ->all();
     }
 
-    private function selectedAdminRoleIds(StoreAdminUserRequest $request): array
+    private function selectedAdminRoleIds(StoreAdminUserRequest $request, $adminUserId = null): array
     {
         $roleIds = $request->input('role_ids', []);
 
@@ -269,6 +273,13 @@ class AdminUserC extends Controller
             ->all();
 
         if (empty($selectedRoleIds)) {
+            if ($adminUserId && Schema::hasTable('employees_new') && DB::table('employees_new')->where('user_id', $adminUserId)->exists()) {
+                $employeeRoleId = DB::table('roles')->where('slug', 'employee')->value('id');
+                if ($employeeRoleId) {
+                    return [(int) $employeeRoleId];
+                }
+            }
+
             throw \Illuminate\Validation\ValidationException::withMessages([
                 'role_ids' => 'Select at least one active admin role.',
             ]);

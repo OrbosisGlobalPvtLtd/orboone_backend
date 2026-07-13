@@ -16,6 +16,18 @@ class StoreAdminUserRequest extends FormRequest
     {
         $adminId = $this->route('admin');
         $passwordRule = $this->isMethod('post') ? ['required', 'string', 'min:8'] : ['nullable', 'string', 'min:8'];
+        
+        $isEmployee = false;
+        if ($adminId && \Illuminate\Support\Facades\Schema::hasTable('employees_new')) {
+            $isEmployee = \Illuminate\Support\Facades\DB::table('employees_new')->where('user_id', $adminId)->exists();
+        }
+
+        $roleIdsRule = ['array'];
+        if (!$isEmployee) {
+            $roleIdsRule[] = 'required_without:role_id';
+            $roleIdsRule[] = 'min:1';
+        }
+
         $adminRoleRule = function () {
             return Rule::exists('roles', 'id')->where(function ($query) {
                 $query->where('slug', '!=', 'employee');
@@ -32,7 +44,7 @@ class StoreAdminUserRequest extends FormRequest
             ],
             'password' => $passwordRule,
             'role_id' => ['nullable', 'integer', $adminRoleRule()],
-            'role_ids' => ['required_without:role_id', 'array', 'min:1'],
+            'role_ids' => $roleIdsRule,
             'role_ids.*' => ['integer', $adminRoleRule()],
             'is_active' => ['nullable', 'boolean'],
             'is_app_access' => ['nullable', 'boolean'],

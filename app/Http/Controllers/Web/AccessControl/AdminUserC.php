@@ -150,11 +150,7 @@ class AdminUserC extends Controller
             }
 
             if (Schema::hasColumn('users', 'is_web_access')) {
-                $employeeRoleId = null;
-                if (Schema::hasTable('roles')) {
-                    $employeeRoleId = DB::table('roles')->where('slug', 'employee')->value('id');
-                }
-                $userData['is_web_access'] = ($employeeRoleId && (int)$primaryRoleId === (int)$employeeRoleId) ? 0 : 1;
+                $userData['is_web_access'] = 1;
             }
 
             if (Schema::hasColumn('users', 'is_app_access')) {

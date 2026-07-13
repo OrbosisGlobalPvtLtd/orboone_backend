@@ -18,7 +18,7 @@
         <h3 style="text-decoration: underline; letter-spacing: 1px; color: #1e3a8a; font-weight: bold;">LETTER OF PROMOTION</h3>
     </div>
 
-    <p>Dear <strong>{{ $employee_name ?? 'Employee' }}</strong>,</p>
+    <p>Dear <strong>{{ $employee_first_name ?? 'Employee' }}</strong>,</p>
 
     <p class="text-justify">
         On behalf of the management at <strong>{{ $company_name ?? branding_name() }}</strong>, we are absolutely delighted to inform you that you have been promoted. This promotion is a reflection of your outstanding performance, continuous dedication, and valuable contributions to the organization.

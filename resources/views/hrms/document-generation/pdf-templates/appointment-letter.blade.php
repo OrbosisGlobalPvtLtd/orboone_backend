@@ -23,7 +23,7 @@
         <strong>{{ $designation ?? 'Full Stack Developer' }}</strong>.
     </p>
 
-    <p>Dear <strong>{{ $employee_name ?? 'Employee' }}</strong>,</p>
+    <p>Dear <strong>{{ $employee_first_name ?? 'Employee' }}</strong>,</p>
 
     <p class="text-justify">
         We are pleased to inform you that, based on your performance in the selection process

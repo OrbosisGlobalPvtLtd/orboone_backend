@@ -253,13 +253,21 @@ class GeneratedDocumentC extends Controller
             $docType = $request->input('document_type');
             $configs = \App\Services\HRMS\DocumentGeneration\DocumentFieldConfigS::getTemplates();
             $manualFields = $request->input('manual_fields', []);
-            $isUnpaid = ($docType === 'offer_letter' && isset($manualFields['compensation_type']) && $manualFields['compensation_type'] === 'Unpaid');
 
             if (isset($configs[$docType])) {
                 $rules = [];
                 foreach ($configs[$docType]['fields'] as $field) {
-                    if ($isUnpaid && isset($field['show_if']) && isset($field['show_if']['compensation_type']) && $field['show_if']['compensation_type'] === 'Paid') {
-                        continue;
+                    if (isset($field['show_if'])) {
+                        $shouldShow = true;
+                        foreach ($field['show_if'] as $depKey => $depValue) {
+                            if (!isset($manualFields[$depKey]) || $manualFields[$depKey] !== $depValue) {
+                                $shouldShow = false;
+                                break;
+                            }
+                        }
+                        if (!$shouldShow) {
+                            continue;
+                        }
                     }
                     if ($field['required']) {
                         $rules["manual_fields.{$field['name']}"] = 'required';
@@ -321,6 +329,7 @@ class GeneratedDocumentC extends Controller
             $ccEmail = $request->input('cc_email');
             
             $employeeName = $document->employee ? $document->employee->display_name : ($document->candidate_name ?: 'Candidate');
+            $employeeFirstName = !empty($employeeName) ? (explode(' ', trim($employeeName))[0] ?: 'Candidate') : 'Candidate';
 
             // Resolve company name
             $company = null;
@@ -335,7 +344,7 @@ class GeneratedDocumentC extends Controller
                 $companyName = 'Orbosis Global Pvt. Ltd.';
             }
 
-            $template = $this->resolveEmailTemplate($document->document_type, $employeeName, $companyName);
+            $template = $this->resolveEmailTemplate($document->document_type, $employeeFirstName, $companyName);
             
             $subject = $request->filled('email_subject') ? $request->input('email_subject') : $template['subject'];
             $body = $request->filled('email_message') ? $request->input('email_message') : $template['body'];
@@ -524,8 +533,10 @@ class GeneratedDocumentC extends Controller
 
     protected function parseEmailTemplates($subject, $body, $employeeName, $companyName)
     {
+        $employeeFirstName = !empty($employeeName) ? (explode(' ', trim($employeeName))[0] ?: 'Candidate') : 'Candidate';
         $replace = [
             '{{ employee_name }}' => $employeeName,
+            '{{ employee_first_name }}' => $employeeFirstName,
             '{{ company_name }}' => $companyName,
         ];
         

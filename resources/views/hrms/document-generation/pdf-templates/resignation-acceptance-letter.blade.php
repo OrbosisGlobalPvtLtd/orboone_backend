@@ -18,7 +18,7 @@
         <h3 style="text-decoration: underline; letter-spacing: 1px; color: #1e3a8a; font-weight: bold;">RESIGNATION ACCEPTANCE LETTER</h3>
     </div>
 
-    <p>Dear <strong>{{ $employee_name ?? 'Employee' }}</strong>,</p>
+    <p>Dear <strong>{{ $employee_first_name ?? 'Employee' }}</strong>,</p>
 
     <p class="text-justify">
         We are writing to formally acknowledge and accept your resignation from the position of <strong>{{ $designation ?? 'Designation' }}</strong>, which you submitted on <strong>{{ $resignation_date ?? date('d M, Y') }}</strong>.

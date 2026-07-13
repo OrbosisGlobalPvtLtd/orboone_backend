@@ -18,7 +18,7 @@
         <h3 style="text-decoration: underline; letter-spacing: 1px; color: #1e3a8a; font-weight: bold;">LETTER OF EMPLOYMENT CONFIRMATION</h3>
     </div>
 
-    <p>Dear <strong>{{ $employee_name ?? 'Employee' }}</strong>,</p>
+    <p>Dear <strong>{{ $employee_first_name ?? 'Employee' }}</strong>,</p>
 
     <p class="text-justify">
         We are pleased to inform you that your performance and conduct during your probation period have been evaluated and found to be highly satisfactory. Consequently, the management of <strong>{{ $company_name ?? branding_name() }}</strong> is pleased to confirm your employment with the organization.

@@ -32,12 +32,18 @@ class DocumentPlaceholderResolverS
         $employeeName = $employee?->employee_name
             ?: $employee?->full_name
             ?: $employee?->display_name
+            ?: ($manualFields['employee_name'] ?? '')
+            ?: ($manualFields['candidate_name'] ?? '')
             ?: '';
 
-        $firstName = '';
-        if ($employeeName) {
+        $firstName = null;
+        if (!empty($manualFields['employee_first_name'])) {
+            $firstName = $manualFields['employee_first_name'];
+        } elseif (!empty($manualFields['candidate_first_name'])) {
+            $firstName = $manualFields['candidate_first_name'];
+        } elseif ($employeeName) {
             $parts = explode(' ', trim($employeeName));
-            $firstName = $parts[0] ?? '';
+            $firstName = !empty($parts[0]) ? $parts[0] : null;
         }
 
         $employeeCode = $employee?->employee_code ?: 'CAND';

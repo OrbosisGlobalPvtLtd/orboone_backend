@@ -5,7 +5,7 @@
 @section('content')
 @php
 $candidateName = $employee_name ?? $candidate_name ?? 'Candidate Name';
-$candidateFirstName = $employee_first_name ?? explode(' ', trim($candidateName))[0] ?? 'Candidate';
+$candidateFirstName = (!empty($employee_first_name) ? $employee_first_name : null) ?? explode(' ', trim($candidateName))[0] ?? 'Candidate';
 $companyName = $company_name ?? branding_name();
 $issueDate = $issue_date ?? $current_date ?? date('d M, Y');
 $joiningDate = $joining_date ?? 'To Be Confirmed';

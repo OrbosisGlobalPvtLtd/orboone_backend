@@ -18,7 +18,7 @@
         <h3 style="text-decoration: underline; letter-spacing: 1px; color: #1e3a8a; font-weight: bold;">JOINING LETTER & ONBOARDING ACKNOWLEDGMENT</h3>
     </div>
 
-    <p>Dear <strong>{{ $employee_name ?? 'Employee' }}</strong>,</p>
+    <p>Dear <strong>{{ $employee_first_name ?? 'Employee' }}</strong>,</p>
 
     <p class="text-justify">
         We are pleased to formally welcome you to the team at <strong>{{ $company_name ?? branding_name() }}</strong>. This letter serves as our official acknowledgment of your joining the organization.

@@ -31,7 +31,7 @@
         <h3 style="text-decoration: underline; letter-spacing: 2px; color: #16a34a; font-weight: bold;">LETTER OF APPRECIATION</h3>
     </div>
 
-    <p>Dear <strong>{{ $employee_name ?? 'Employee' }}</strong>,</p>
+    <p>Dear <strong>{{ $employee_first_name ?? 'Employee' }}</strong>,</p>
 
     <p class="text-justify">
         On behalf of the management at <strong>{{ $company_name ?? branding_name() }}</strong>, we are writing to express our sincere appreciation for your outstanding dedication and exceptional performance.

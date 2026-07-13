@@ -18,7 +18,7 @@
         <h3 style="text-decoration: underline; letter-spacing: 1px; color: #1e3a8a; font-weight: bold;">SALARY INCREMENT & REVISION LETTER</h3>
     </div>
 
-    <p>Dear <strong>{{ $employee_name ?? 'Employee' }}</strong>,</p>
+    <p>Dear <strong>{{ $employee_first_name ?? 'Employee' }}</strong>,</p>
 
     <p class="text-justify">
         We would like to express our appreciation for your valuable contributions, hard work, and commitment to <strong>{{ $company_name ?? branding_name() }}</strong> during the past review cycle. Your efforts have significantly contributed to the achievements of your department and the organization.

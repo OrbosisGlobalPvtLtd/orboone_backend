@@ -4,7 +4,7 @@
 
 @section('content')
 @php
-$employeeName = $employee_name ?? 'Ritik';
+$employeeName = (!empty($employee_first_name) ? $employee_first_name : null) ?? ($employee_name ? (explode(' ', trim($employee_name))[0] ?: 'Ritik') : 'Ritik');
 $companyName = $company_name ?? branding_name();
 if (empty($companyName) || $companyName === 'HRMS' || $companyName === 'Default') {
     $companyName = 'Orbosis Global Pvt. Ltd.';

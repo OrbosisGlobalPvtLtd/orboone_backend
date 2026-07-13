@@ -19,7 +19,7 @@
         <h3 style="text-decoration: underline; letter-spacing: 1px; color: #b91c1c; font-weight: bold;">LETTER OF WARNING / REMAND</h3>
     </div>
 
-    <p>Dear <strong>{{ $employee_name ?? 'Employee' }}</strong>,</p>
+    <p>Dear <strong>{{ $employee_first_name ?? 'Employee' }}</strong>,</p>
 
     <p class="text-justify">
         This letter serves as a formal written warning concerning your performance / conduct issues at <strong>{{ $company_name ?? branding_name() }}</strong>. 

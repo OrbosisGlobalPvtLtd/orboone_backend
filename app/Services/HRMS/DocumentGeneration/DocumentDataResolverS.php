@@ -55,6 +55,11 @@ class DocumentDataResolverS
             $resolved['candidate_name'] = $resolved['employee_name'];
         }
 
+        if (empty($resolved['employee_first_name']) && !empty($resolved['employee_name'])) {
+            $parts = explode(' ', trim($resolved['employee_name']));
+            $resolved['employee_first_name'] = !empty($parts[0]) ? $parts[0] : null;
+        }
+
         return $resolved;
     }
 }

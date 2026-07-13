@@ -18,7 +18,7 @@
         <h3 style="text-decoration: underline; letter-spacing: 1px; color: #1e3a8a; font-weight: bold;">LETTER OF TRANSFER</h3>
     </div>
 
-    <p>Dear <strong>{{ $employee_name ?? 'Employee' }}</strong>,</p>
+    <p>Dear <strong>{{ $employee_first_name ?? 'Employee' }}</strong>,</p>
 
     <p class="text-justify">
         This is to inform you that the management of <strong>{{ $company_name ?? branding_name() }}</strong> has decided to transfer you from your current work location to our new operations branch, due to strategic business requirements and operational expansions.

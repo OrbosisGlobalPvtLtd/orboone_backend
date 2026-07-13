@@ -72,7 +72,6 @@ class SidebarMenuResolverS
     private function resolveForContext(Collection $menus, Authenticatable $user, array $roleIds, bool $isSuperAdmin, bool $isEmployeeContext): Collection
     {
         $filtered = $this->filterByRoleMenuAccess($menus, $roleIds, $isSuperAdmin);
-        $filtered = $this->filterByPermission($filtered, $user, $isSuperAdmin);
         $filtered = $this->filterByEmployeeOnlyVisibility($filtered, $isEmployeeContext);
         $filtered = $this->filterRetiredLegacyPayrollMenus($filtered);
         $filtered = $this->filterByRouteValidity($filtered);
@@ -334,9 +333,9 @@ class SidebarMenuResolverS
             'settings.company.index' => ['settings.company.manage'],
             'settings.branding.index' => ['settings.branding.view', 'settings.branding.update'],
             'hrms.mobile-app-versions.index' => ['mobile_app_versions.view', 'mobile_app_versions.manage'],
-            'roles.index' => ['access.roles.manage'],
-            'permissions.index' => ['access.permissions.manage'],
-            'admins.index' => ['admins.manage'],
+            'roles.index' => ['roles.manage', 'access.roles.manage'],
+            'permissions.index' => ['permissions.manage', 'access.permissions.manage'],
+            'admins.index' => ['admins.manage', 'access.admins.manage'],
             'hrms.attendance.work-reports' => ['attendance.work_reports.view_all', 'attendance.work_reports.view_team'],
             'hrms.attendance.my-work-reports' => ['attendance.work_reports.view_own'],
             'enterprise-payroll.policies.index' => ['enterprise_payroll.policy.view'],

@@ -90,6 +90,17 @@ class RolePermissionC extends Controller
             }
         });
 
+        $userIds = DB::table('users')
+            ->where('system_role_id', $roleData->id)
+            ->pluck('id')
+            ->merge(DB::table('user_roles')->where('role_id', $roleData->id)->pluck('user_id'))
+            ->unique();
+
+        $sidebarService = app(\App\Services\AccessControl\SidebarS::class);
+        foreach ($userIds as $userId) {
+            $sidebarService->clearCache($userId);
+        }
+
         return redirect()
             ->route('role_permissions.index')
             ->with('success', 'Role permissions updated successfully.');

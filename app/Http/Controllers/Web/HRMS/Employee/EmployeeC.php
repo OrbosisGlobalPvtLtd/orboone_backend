@@ -182,14 +182,13 @@ class EmployeeC extends Controller
                     1  => 'departments.name',
                     2  => 'designations.name',
                     3  => $employeeTable . '.employment_type',
-                    4  => $employeeTable . '.work_mode',
-                    5  => 'manager_user.name',
-                    6  => $hasAttendanceTime ? 'attendance_times.name' : $employeeTable . '.id',
-                    7  => $profileTable . '.profile_status',
-                    8  => $employeeTable . '.employee_stage',
-                    9  => $employeeTable . '.joining_date',
-                    10 => $employeeTable . '.employment_status',
-                    11 => $employeeTable . '.id',
+                    4  => 'manager_user.name',
+                    5  => $hasAttendanceTime ? 'attendance_times.name' : $employeeTable . '.id',
+                    6  => $profileTable . '.profile_status',
+                    7  => $employeeTable . '.employee_stage',
+                    8  => $employeeTable . '.joining_date',
+                    9  => $employeeTable . '.employment_status',
+                    10 => $employeeTable . '.id',
                 ];
 
                 $orderColumnIndex = (int) $request->input('order.0.column', 11);

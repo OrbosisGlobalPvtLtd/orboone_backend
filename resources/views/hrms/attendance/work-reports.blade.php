@@ -1002,21 +1002,40 @@
             function(settings, data, dataIndex) {
                 if (settings.nTable.id !== 'workReportsTable') return true;
 
-                const fromVal = $('input[name="from_date"]').val();
-                const toVal = $('input[name="to_date"]').val();
+                const fromVal = $('input[name="from_date"]').val(); // YYYY-MM-DD
+                const toVal = $('input[name="to_date"]').val(); // YYYY-MM-DD
                 if (!fromVal && !toVal) return true;
 
-                const dateStr = data[dateColIndex] ? data[dateColIndex].trim() : '';
-                if (!dateStr) return false;
+                // Try to get YYYY-MM-DD from the cell's data-order attribute
+                const cellNode = settings.aoData[dataIndex].anCells ? settings.aoData[dataIndex].anCells[dateColIndex] : null;
+                let dateVal = cellNode ? cellNode.getAttribute('data-order') : null;
 
-                const rowDate = new Date(dateStr);
-                if (isNaN(rowDate)) return false;
+                // Fallback to manual text parsing if data-order attribute isn't set or found
+                if (!dateVal) {
+                    const dateStr = data[dateColIndex] ? data[dateColIndex].trim() : '';
+                    if (dateStr && dateStr !== '-') {
+                        const parts = dateStr.replace(/,/g, '').replace(/\s+/g, ' ').split(' ');
+                        if (parts.length === 3) {
+                            const day = parseInt(parts[0], 10);
+                            const months = {
+                                jan:0, feb:1, mar:2, apr:3, may:4, jun:5, jul:6, aug:7, sep:8, oct:9, nov:10, dec:11
+                            };
+                            const mStr = parts[1].toLowerCase().substring(0, 3);
+                            const month = months[mStr];
+                            const year = parseInt(parts[2], 10);
+                            if (!isNaN(day) && month !== undefined && !isNaN(year)) {
+                                const dd = String(day).padStart(2, '0');
+                                const mm = String(month + 1).padStart(2, '0');
+                                dateVal = `${year}-${mm}-${dd}`;
+                            }
+                        }
+                    }
+                }
 
-                const fromDate = fromVal ? new Date(fromVal + 'T00:00:00') : null;
-                const toDate = toVal ? new Date(toVal + 'T23:59:59') : null;
+                if (!dateVal) return false;
 
-                if (fromDate && rowDate < fromDate) return false;
-                if (toDate && rowDate > toDate) return false;
+                if (fromVal && dateVal < fromVal) return false;
+                if (toVal && dateVal > toVal) return false;
 
                 return true;
             }

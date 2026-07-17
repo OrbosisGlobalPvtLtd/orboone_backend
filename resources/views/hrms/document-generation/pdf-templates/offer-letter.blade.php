@@ -19,6 +19,27 @@ $hraMonthly = $hra_monthly ?? ($monthlyGross * 0.20);
 $specialMonthly = $special_allowance_monthly ?? ($monthlyGross - $basicMonthly - $hraMonthly);
 $ptMonthly = $professional_tax_monthly ?? 200;
 $netMonthly = $net_pay_monthly ?? ($monthlyGross - $ptMonthly);
+
+$resolveParagraph = function($text) use ($companyName, $joiningDate, $working_hours, $working_days, $officeLocation, $probation_period, $candidateName, $designationText) {
+    if (empty($text)) return '';
+    $safeText = e($text);
+    $replace = [
+        '{company_name}' => '<strong>' . e($companyName) . '</strong>',
+        '{companyName}' => '<strong>' . e($companyName) . '</strong>',
+        '{candidate_name}' => '<strong>' . e($candidateName) . '</strong>',
+        '{candidateName}' => '<strong>' . e($candidateName) . '</strong>',
+        '{designation}' => '<strong>' . e($designationText) . '</strong>',
+        '{designationText}' => '<strong>' . e($designationText) . '</strong>',
+        '{joining_date}' => '<strong>' . e($joiningDate) . '</strong>',
+        '{joiningDate}' => '<strong>' . e($joiningDate) . '</strong>',
+        '{working_hours}' => '<strong>' . e($working_hours ?? '10:00 AM to 7:00 PM') . '</strong>',
+        '{working_days}' => '<strong>' . e($working_days ?? 'Monday to Saturday') . '</strong>',
+        '{office_location}' => '<strong>' . e($officeLocation) . '</strong>',
+        '{officeLocation}' => '<strong>' . e($officeLocation) . '</strong>',
+        '{probation_period}' => '<strong>' . e($probation_period ?? 'Three months') . '</strong>',
+    ];
+    return str_ireplace(array_keys($replace), array_values($replace), $safeText);
+};
 @endphp
 
 <div class="letter-body">
@@ -44,24 +65,31 @@ $netMonthly = $net_pay_monthly ?? ($monthlyGross - $ptMonthly);
     <p>Dear {{ $candidateFirstName }},</p>
 
     <p class="text-justify">
-        {{ $companyName }} is pleased to offer you the position of
-        <strong>{{ $designationText }}</strong> with our organization. We are excited about the skills,
-        energy, and perspective you bring to our team, and we look forward to your contribution to our
-        ongoing growth and success.
+        @if(!empty($intro_clause))
+            {!! nl2br($resolveParagraph($intro_clause)) !!}
+        @else
+            {{ $companyName }} is pleased to offer you the position of
+            <strong>{{ $designationText }}</strong> with our organization. We are excited about the skills,
+            energy, and perspective you bring to our team, and we look forward to your contribution to our
+            ongoing growth and success.
+        @endif
     </p>
 
     <p class="text-justify">
-        After your internship and reviewing your performance and skills, we believe you will be a good fit
-        for our organization. We are pleased to confirm your joining with {{ $companyName }}, effective
-        <strong>{{ $joiningDate }}</strong>, with working hours from
-        <strong>{{ $working_hours ?? '10:00 AM to 7:00 PM' }}</strong>,
-        {{ $working_days ?? 'Monday to Saturday' }}, your primary place of work will be at
-        <strong>{{ $officeLocation }}</strong> office.
+        @if(!empty($joining_clause))
+            {!! nl2br($resolveParagraph($joining_clause)) !!}
+        @else
+            We are pleased to confirm your joining with {{ $companyName }}, effective
+            <strong>{{ $joiningDate }}</strong>, with working hours from
+            <strong>{{ $working_hours ?? '10:00 AM to 7:00 PM' }}</strong>,
+            {{ $working_days ?? 'Monday to Saturday' }}, your primary place of work will be at
+            <strong>{{ $officeLocation }}</strong> office.
+        @endif
     </p>
 
     @if(isset($compensation_type) && $compensation_type === 'Unpaid')
         <p class="text-justify">
-            {!! nl2br(e($unpaid_clause ?? 'This offer is for an unpaid engagement. No salary, stipend, or monetary compensation shall be payable during this period unless separately approved in writing by the Company. The engagement is intended to provide professional exposure, learning, project experience, and practical workplace training.')) !!}
+            {!! nl2br($resolveParagraph($unpaid_clause ?? 'This offer is for an unpaid engagement. No salary, stipend, or monetary compensation shall be payable during this period unless separately approved in writing by the Company. The engagement is intended to provide professional exposure, learning, project experience, and practical workplace training.')) !!}
         </p>
     @else
         <p class="text-justify">
@@ -73,47 +101,71 @@ $netMonthly = $net_pay_monthly ?? ($monthlyGross - $ptMonthly);
 
     <p class="text-justify">
         In this role, you will work on
-        {!! nl2br(e($job_responsibilities ?? 'developing, maintaining, optimizing, testing, and delivering assigned software/project tasks as per company requirements. You will also complete tasks assigned by your reporting manager and are expected to perform your duties sincerely, follow company guidelines, and work cooperatively with team members while maintaining professional conduct at all times.')) !!}
+        {!! nl2br($resolveParagraph($job_responsibilities ?? 'developing, maintaining, optimizing, testing, and delivering assigned software/project tasks as per company requirements. You will also complete tasks assigned by your reporting manager and are expected to perform your duties sincerely, follow company guidelines, and work cooperatively with team members while maintaining professional conduct at all times.')) !!}
     </p>
 
     <p class="text-justify">
-        You will be on probation for a period of
-        <strong>{{ $probation_period ?? 'Three months' }}</strong> from your date of joining.
-        During this period, your performance and conduct will be reviewed. Upon satisfactory performance,
-        your employment may be confirmed. The probation period may be extended if required.
+        @if(!empty($probation_clause))
+            {!! nl2br($resolveParagraph($probation_clause)) !!}
+        @else
+            You will be on probation for a period of
+            <strong>{{ $probation_period ?? 'Three months' }}</strong> from your date of joining.
+            During this period, your performance and conduct will be reviewed. Upon satisfactory performance,
+            your employment may be confirmed. The probation period may be extended if required.
+        @endif
     </p>
 
     <p class="text-justify">
-        Your working hours, weekly offs, leave entitlements, holidays, and other benefits will be governed
-        by company policy and shared with you after joining. Due to work requirements, you may occasionally
-        need to work additional hours to meet project deadlines, without additional compensation unless
-        specified by policy.
+        @if(!empty($working_hours_clause))
+            {!! nl2br($resolveParagraph($working_hours_clause)) !!}
+        @else
+            Your working hours, weekly offs, leave entitlements, holidays, and other benefits will be governed
+            by company policy and shared with you after joining. Due to work requirements, you may occasionally
+            need to work additional hours to meet project deadlines, without additional compensation unless
+            specified by policy.
+        @endif
     </p>
 
     <p class="text-justify">
-        During your employment, you may have access to confidential company information. You are required
-        to maintain strict confidentiality of all such information during and after your employment. Any
-        misuse or unauthorized sharing of company information may result in disciplinary action.
+        @if(!empty($confidentiality_clause))
+            {!! nl2br($resolveParagraph($confidentiality_clause)) !!}
+        @else
+            During your employment, you may have access to confidential company information. You are required
+            to maintain strict confidentiality of all such information during and after your employment. Any
+            misuse or unauthorized sharing of company information may result in disciplinary action.
+        @endif
     </p>
 
     <p class="text-justify">
-        Any work, code, designs, developments, or improvements created by you during the course of your
-        employment will be the property of {{ $companyName }}, as per applicable laws and company policy.
+        @if(!empty($ip_clause))
+            {!! nl2br($resolveParagraph($ip_clause)) !!}
+        @else
+            Any work, code, designs, developments, or improvements created by you during the course of your
+            employment will be the property of {{ $companyName }}, as per applicable laws and company policy.
+        @endif
     </p>
 
     <p class="text-justify">
-        This offer is subject to verification of your educational qualifications, previous employment details,
-        and other required documents. If any information provided is found to be incorrect, the company
-        reserves the right to withdraw this offer or terminate employment.
+        @if(!empty($verification_clause))
+            {!! nl2br($resolveParagraph($verification_clause)) !!}
+        @else
+            This offer is subject to verification of your educational qualifications, previous employment details,
+            and other required documents. If any information provided is found to be incorrect, the company
+            reserves the right to withdraw this offer or terminate employment.
+        @endif
     </p>
 
     <div class="page-break"></div>
 
     <p class="text-justify">
-        This offer letter provides an overview of your employment. The complete terms and conditions,
-        including company policies, service rules, probation details, and code of conduct, will be communicated
-        to you through a formal Appointment Letter, which will be issued after your joining and completion of
-        joining formalities.
+        @if(!empty($final_terms_clause))
+            {!! nl2br($resolveParagraph($final_terms_clause)) !!}
+        @else
+            This offer letter provides an overview of your employment. The complete terms and conditions,
+            including company policies, service rules, probation details, and code of conduct, will be communicated
+            to you through a formal Appointment Letter, which will be issued after your joining and completion of
+            joining formalities.
+        @endif
     </p>
 
     <p><strong>Submission of Documents:</strong></p>

@@ -544,7 +544,7 @@
                             <th>Date</th>
                             <th>Mode</th>
                             <th>Shift Context</th>
-                            <th>Punch Details</th>
+                            <th>Gross Work</th>
                             <th>Work Summary Description</th>
                             <th>Structured Tasks</th>
                             <th class="text-right pr-4 no-export">Actions</th>
@@ -564,6 +564,9 @@
                                 : '-';
                             $punchOut = $attendance && $attendance->punch_out_time 
                                 ? \Carbon\Carbon::parse($attendance->punch_out_time)->format('h:i A') 
+                                : '-';
+                            $grossWork = $attendance && $attendance->gross_duration 
+                                ? $attendance->gross_duration 
                                 : '-';
                                 
                             $tasks = $log->work_summary_json;
@@ -625,7 +628,8 @@
                                 'designation' => optional(optional($log->employee)->designation)->name ?? 'Member',
                                 'work_date' => $log->work_date ? $log->work_date->format('d M Y') : '-',
                                 'shift_name' => optional(optional($log->attendance)->attendanceTime)->name ?? 'Default Shift',
-                                'attendance_status' => optional($log->attendance)->attendance_status ?? 'present',
+                                'attendance_status' => (optional($log->attendance)->attendance_status ?? 'present') === 'absent' && (optional($log->attendance)->is_lwp ?? false) ? '🔴 ABSENT' : (optional($log->attendance)->attendance_status ?? 'present'),
+                                'is_lwp' => (bool) (optional($log->attendance)->is_lwp ?? false),
                                 'title' => $title,
                                 'description' => $description,
                                 'status' => $status,
@@ -636,10 +640,53 @@
                                 'issues' => $issues,
                                 'notes' => $notes,
                             ];
+
+                            $exportReport = $title;
+                            if (!empty($description)) {
+                                $exportReport .= " - " . $description;
+                            }
+                            if (!empty($issues)) {
+                                $realIssues = array_filter($issues, function($item) {
+                                    if (!is_string($item)) return true;
+                                    $val = strtolower(trim($item));
+                                    return $val !== 'no issues' && $val !== 'none' && strlen($val) > 0;
+                                });
+                                if (!empty($realIssues)) {
+                                    $exportReport .= " (Blocker: " . implode(', ', $realIssues) . ")";
+                                }
+                            }
+                            if ($notes) {
+                                $exportReport .= " (Notes: " . $notes . ")";
+                            }
+
+                            $exportTasks = 'None';
+                            if ($tasksCount > 0 && is_array($requirementsList)) {
+                                $taskTexts = [];
+                                foreach ($requirementsList as $taskItem) {
+                                    if (is_string($taskItem)) {
+                                        $taskTexts[] = $taskItem;
+                                    } elseif (is_array($taskItem)) {
+                                        $tText = $taskItem['text'] ?? $taskItem['task'] ?? $taskItem['title'] ?? $taskItem['description'] ?? '';
+                                        if ($tText) {
+                                            $isDone = false;
+                                            if (isset($taskItem['done'])) {
+                                                $isDone = ($taskItem['done'] === true || $taskItem['done'] === 'true');
+                                            } else {
+                                                $tStatus = strtolower($taskItem['status'] ?? 'completed');
+                                                $isDone = ($tStatus === 'completed' || $tStatus === 'done' || $tStatus === 'success');
+                                            }
+                                            $taskTexts[] = ($isDone ? '✓ ' : '  ') . $tText;
+                                        }
+                                    }
+                                }
+                                if (!empty($taskTexts)) {
+                                    $exportTasks = implode("\n", $taskTexts);
+                                }
+                            }
                         @endphp
                         <tr>
                             @if($isAdminOrManager)
-                            <td>
+                            <td data-export="{{ $employeeName }} ({{ $employeeCode }})">
                                 <div class="att-emp">
                                     @php
                                         $passportPhotoUrl = resolveEmployeePassportPhoto($log->employee ?? $log);
@@ -670,11 +717,11 @@
                             </td>
                             @endif
 
-                            <td>
+                            <td data-order="{{ $log->work_date ? $log->work_date->format('Y-m-d') : '' }}">
                                 <strong>{{ $log->work_date ? $log->work_date->format('d M Y') : '-' }}</strong>
                             </td>
 
-                            <td>
+                            <td data-export="{{ $modeText }}">
                                 <span class="badge-premium-pill {{ $modeBadgeClass }}">
                                     <span style="width: 6px; height: 6px; border-radius: 50%; background: currentColor; display: inline-block;"></span>
                                     {{ $modeText }}
@@ -685,20 +732,17 @@
                                 {{ optional($attendance)->attendanceTime->name ?? 'Default Shift' }}
                             </td>
 
-                            <td>
-                                <div style="font-size: 11.5px; line-height: 1.4;">
-                                    <div><i class="fas fa-sign-in-alt text-success mr-1"></i> In: <strong>{{ $punchIn }}</strong></div>
-                                    <div><i class="fas fa-sign-out-alt text-danger mr-1"></i> Out: <strong>{{ $punchOut }}</strong></div>
-                                </div>
-                            </td>
+                            <td data-export="{{ $grossWork }}">
+                                 <span style="font-weight: 700; color: #344054;">{{ $grossWork }}</span>
+                             </td>
 
-                            <td>
+                            <td data-export="{{ $exportReport }}">
                                 <div class="work-summary-bubble" style="font-weight: 700; color: #1D2939; background: #F8FAFC; border: 1px solid #E4E7EC; border-radius: 12px; padding: 10px 14px;">
                                     <i class="fas fa-file-alt text-primary mr-1"></i> {{ $title }}
                                 </div>
                             </td>
 
-                            <td>
+                            <td data-export="{{ $exportTasks }}">
                                 @if($tasksCount > 0)
                                 <span class="structured-tasks-count">
                                     <i class="fas fa-list-check"></i> {{ $tasksCount }} {{ Str::plural('Task', $tasksCount) }}
@@ -766,29 +810,88 @@
             $('#workReportsTable').DataTable().destroy();
         }
 
+        const exportOptionsExcel = {
+            columns: ':not(.no-export)',
+            format: {
+                body: function ( data, row, column, node ) {
+                    if (node && node.hasAttribute('data-export')) {
+                        return node.getAttribute('data-export');
+                    }
+                    if (typeof data === 'string') {
+                        var temp = document.createElement("div");
+                        temp.innerHTML = data;
+                        return (temp.textContent || temp.innerText || "").trim();
+                    }
+                    return data;
+                }
+            }
+        };
+
+        const exportOptionsPdf = {
+            columns: ':not(.no-export)',
+            format: {
+                body: function ( data, row, column, node ) {
+                    if (node && node.hasAttribute('data-export')) {
+                        let val = node.getAttribute('data-export');
+                        return val.replace(/✓/g, '[Done]');
+                    }
+                    if (typeof data === 'string') {
+                        var temp = document.createElement("div");
+                        temp.innerHTML = data;
+                        return (temp.textContent || temp.innerText || "").trim().replace(/✓/g, '[Done]');
+                    }
+                    return data;
+                }
+            }
+        };
+
+        const exportOptionsPrint = {
+            columns: ':not(.no-export)',
+            format: {
+                body: function ( data, row, column, node ) {
+                    if (node && node.hasAttribute('data-export')) {
+                        return node.getAttribute('data-export');
+                    }
+                    if (typeof data === 'string') {
+                        var temp = document.createElement("div");
+                        temp.innerHTML = data;
+                        return (temp.textContent || temp.innerText || "").trim();
+                    }
+                    return data;
+                }
+            }
+        };
+
         var table = $('#workReportsTable').DataTable({
             pageLength: 25,
+            order: [[{{ $isAdminOrManager ? 1 : 0 }}, 'desc']],
             ordering: true,
             searching: true, 
             paging: true,
             info: true,
             responsive: false,
             autoWidth: false,
-            dom: "<'row align-items-center mb-3'<'col-md-6'><'col-md-6 text-md-right'>>" +
-                "t" +
-                "<'row mt-3'<'col-md-12'>>", // Customize standard pagination location
+            dom: "t<'d-none'ip>", // Customize standard pagination location
             buttons: [
                 {
                     extend: 'csvHtml5',
                     text: '<i class="fas fa-file-csv text-info"></i> CSV',
                     className: 'orb-export-btn',
-                    exportOptions: { columns: ':not(.no-export)' }
+                    exportOptions: exportOptionsExcel
                 },
                 {
                     extend: 'excelHtml5',
                     text: '<i class="fas fa-file-excel text-success"></i> Excel',
                     className: 'orb-export-btn',
-                    exportOptions: { columns: ':not(.no-export)' }
+                    exportOptions: exportOptionsExcel,
+                    customize: function (xlsx) {
+                        var sheet = xlsx.xl.worksheets['sheet1.xml'];
+                        $('row c', sheet).each(function () {
+                            if ($('is t', this).text().indexOf('\n') !== -1) {
+                                $(this).attr('s', '55'); // wrapped text style
+                            }
+                        });
+                    }
                 },
                 {
                     extend: 'pdfHtml5',
@@ -797,14 +900,17 @@
                     orientation: 'landscape',
                     pageSize: 'A4',
                     title: 'Daily Work Reports',
-                    exportOptions: { columns: ':not(.no-export)' }
+                    exportOptions: exportOptionsPdf
                 },
                 {
                     extend: 'print',
                     text: '<i class="fas fa-print text-primary"></i> Print',
                     className: 'orb-export-btn',
                     title: 'Daily Work Reports',
-                    exportOptions: { columns: ':not(.no-export)' }
+                    exportOptions: exportOptionsPrint,
+                    customize: function (win) {
+                        $(win.document.body).find('table').find('td').css('white-space', 'pre-line');
+                    }
                 }
             ],
             language: {

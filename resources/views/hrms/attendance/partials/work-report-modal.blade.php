@@ -204,12 +204,12 @@
             // Status Badge
             const statusBadge = document.getElementById('modal-attendance-badge');
             const status = (log.attendance_status || 'present').toLowerCase();
-            statusBadge.innerText = status.replace('_', ' ');
+            statusBadge.innerText = status.includes('absent') && log.is_lwp ? '🔴 ABSENT' : status.replace('_', ' ');
             statusBadge.className = 'badge-premium-pill';
             if (status === 'present') {
                 statusBadge.style.background = '#DCFCE7';
                 statusBadge.style.color = '#15803D';
-            } else if (status === 'absent' || status === 'lwp') {
+            } else if (status === 'absent' || status === 'lwp' || status.includes('absent')) {
                 statusBadge.style.background = '#FEE2E2';
                 statusBadge.style.color = '#B91C1C';
             } else if (status === 'half_day') {

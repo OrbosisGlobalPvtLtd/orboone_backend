@@ -803,10 +803,10 @@
         </div>
     </div>
 
-    <!-- MAIN DASHBOARD CONTENT: TABLE (8 Columns) & TIMELINE (4 Columns) -->
+    <!-- MAIN DASHBOARD CONTENT: TABLE (Full Width) -->
     <div class="row">
         <!-- SECTION 4 – RECENT GENERATED DOCUMENTS -->
-        <div class="col-lg-8 mb-4">
+        <div class="col-lg-12 mb-4">
             <div class="dashboard-card">
                 <div class="dashboard-card-header">
                     <h5 class="dashboard-card-title"><i class="fas fa-clock"></i> Recent Generated Documents</h5>
@@ -826,6 +826,7 @@
                                     <th>Type</th>
                                     <th>Status</th>
                                     <th>Generated Date</th>
+                                    <th class="text-right pr-4">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -902,10 +903,26 @@
                                         <div class="date-main">{{ $doc->created_at->format('d M Y') }}</div>
                                         <div class="date-sub">{{ $doc->created_at->format('h:i A') }}</div>
                                     </td>
+
+                                    <!-- Actions Column -->
+                                    <td>
+                                        <div class="att-actions-container justify-content-end pr-3">
+                                            @if(Route::has('hrms.document-generation.generated.show'))
+                                            <a href="{{ route('hrms.document-generation.generated.show', $doc->id) }}" class="btn-action-icon" title="View Document" style="color: var(--orb-primary);">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            @endif
+                                            @if(Route::has('hrms.document-generation.generated.download'))
+                                            <a href="{{ route('hrms.document-generation.generated.download', $doc->id) }}" class="btn-action-icon" title="Download PDF" style="color: var(--orb-success);">
+                                                <i class="fas fa-download"></i>
+                                            </a>
+                                            @endif
+                                        </div>
+                                    </td>
                                 </tr>
                                 @empty
                                 <tr>
-                                    <td colspan="5" class="p-0">
+                                    <td colspan="6" class="p-0">
                                         <div class="text-center py-5 text-muted">
                                             <i class="fas fa-folder-open fs-1 mb-3 text-secondary"></i>
                                             <h5>No documents generated yet.</h5>
@@ -919,41 +936,6 @@
                                 @endforelse
                             </tbody>
                         </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- SECTION 5 – RECENT ACTIVITY TIMELINE (4 Columns) -->
-        <div class="col-lg-4 mb-4">
-            <div class="dashboard-card">
-                <div class="dashboard-card-header">
-                    <h5 class="dashboard-card-title"><i class="fas fa-history"></i> Recent Activity</h5>
-                </div>
-                <div class="card-body p-4">
-                    <div class="timeline">
-                        @forelse($recentDocuments as $doc)
-                        @php
-                            $actionClass = 'generated';
-                            $actionText = 'generated';
-                            if ($doc->status == 'sent') {
-                                $actionClass = 'sent';
-                                $actionText = 'emailed';
-                            } elseif ($doc->status == 'reviewed') {
-                                $actionClass = 'reviewed';
-                                $actionText = 'reviewed';
-                            }
-                        @endphp
-                        <div class="timeline-item {{ $actionClass }}">
-                            <div class="timeline-dot"></div>
-                            <div class="timeline-content">
-                                <strong>{{ $doc->template->name ?? ucwords(str_replace('_', ' ', $doc->document_type)) }}</strong> was {{ $actionText }} for <strong>{{ $doc->employee ? $doc->employee->display_name : ($doc->candidate_name ?: 'Candidate') }}</strong>.
-                                <div class="timeline-time">{{ $doc->created_at->diffForHumans() }}</div>
-                            </div>
-                        </div>
-                        @empty
-                        <div class="text-center py-4 text-muted small">No recent activities available.</div>
-                        @endforelse
                     </div>
                 </div>
             </div>

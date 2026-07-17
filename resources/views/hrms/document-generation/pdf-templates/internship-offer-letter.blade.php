@@ -18,6 +18,35 @@ $internshipMode = $internship_mode ?? 'Hybrid';
 $officeLocation = $office_location ?? 'Indore Office';
 $stipendAmount = $stipend_amount ?? 18000;
 $compensationType = $compensation_type ?? 'Unpaid';
+
+$resolveParagraph = function($text) use ($companyName, $joiningDate, $internshipDuration, $internshipMode, $officeLocation, $stipendAmount, $compensationType, $designationText, $working_hours, $working_days, $saturday_off_clause) {
+    if (empty($text)) return '';
+    $safeText = e($text);
+    $stipendText = ($compensationType === 'Paid') 
+        ? 'You will receive a monthly stipend of <strong>₹' . e(is_numeric($stipendAmount) ? number_format((float)$stipendAmount) : $stipendAmount) . '</strong> during the internship period.' 
+        : '';
+    $compTypeClause = ($compensationType === 'Unpaid') ? '<strong>unpaid</strong>' : '';
+    $replace = [
+        '{company_name}' => '<strong>' . e($companyName) . '</strong>',
+        '{companyName}' => '<strong>' . e($companyName) . '</strong>',
+        '{designation}' => '<strong>' . e($designationText) . '</strong>',
+        '{designationText}' => '<strong>' . e($designationText) . '</strong>',
+        '{joining_date}' => '<strong>' . e($joiningDate) . '</strong>',
+        '{joiningDate}' => '<strong>' . e($joiningDate) . '</strong>',
+        '{internship_duration}' => '<strong>' . e($internshipDuration) . '</strong>',
+        '{internshipDuration}' => '<strong>' . e($internshipDuration) . '</strong>',
+        '{internship_mode}' => '<strong>' . e($internshipMode) . '</strong>',
+        '{internshipMode}' => '<strong>' . e($internshipMode) . '</strong>',
+        '{office_location}' => '<strong>' . e($officeLocation) . '</strong>',
+        '{officeLocation}' => '<strong>' . e($officeLocation) . '</strong>',
+        '{working_hours}' => '<strong>' . e($working_hours ?? '10:00 AM to 7:00 PM') . '</strong>',
+        '{working_days}' => '<strong>' . e($working_days ?? 'Monday to Saturday') . '</strong>',
+        '{saturday_off_clause}' => '<strong>' . e($saturday_off_clause ?? 'with second and fourth Saturdays observed as off (alternate Saturdays off)') . '</strong>',
+        '{stipend_clause}' => $stipendText,
+        '{compensation_type_clause}' => $compTypeClause,
+    ];
+    return str_ireplace(array_keys($replace), array_values($replace), $safeText);
+};
 @endphp
 
 <div class="letter-body">
@@ -50,28 +79,44 @@ $compensationType = $compensation_type ?? 'Unpaid';
     <p>Dear {{ $candidateFirstName }},</p>
 
     <p class="text-justify">
-        We are pleased to offer you the position of <strong>{{ $designationText }}</strong> with <strong>{{ $companyName }}</strong>, commencing on <strong>{{ $joiningDate }}</strong>. This is a <strong>{{ $internshipDuration }} full-time @if($compensationType === 'Unpaid')unpaid @endif internship</strong> conducted in <strong>{{ $internshipMode }}</strong> mode at our <strong>{{ $officeLocation }}</strong>. The internship is designed to provide you with practical exposure to software development practices, industry methodologies, and corporate work processes.
-    </p>
-
-    <p class="text-justify">
-        Your working hours will be <strong>{{ $working_hours ?? '10:00 AM to 7:00 PM' }}</strong>, 
-        <strong>{{ $working_days ?? 'Monday to Saturday' }}</strong>, 
-        {{ $saturday_off_clause ?? 'with second and fourth Saturdays observed as off (alternate Saturdays off)' }}, as per company policy.
-        @if($compensationType === 'Paid')
-            You will receive a monthly stipend of <strong>₹{{ is_numeric($stipendAmount) ? number_format((float)$stipendAmount) : $stipendAmount }}</strong> during the internship period.
+        @if(!empty($intro_clause))
+            {!! nl2br($resolveParagraph($intro_clause)) !!}
+        @else
+            We are pleased to offer you the position of <strong>{{ $designationText }}</strong> with <strong>{{ $companyName }}</strong>, commencing on <strong>{{ $joiningDate }}</strong>. This is a <strong>{{ $internshipDuration }} full-time @if($compensationType === 'Unpaid')unpaid @endif internship</strong> conducted in <strong>{{ $internshipMode }}</strong> mode at our <strong>{{ $officeLocation }}</strong>. The internship is designed to provide you with practical exposure to software development practices, industry methodologies, and corporate work processes.
         @endif
     </p>
 
     <p class="text-justify">
-        {!! nl2br(e($job_responsibilities ?? 'During the internship, you will assist in software development, testing, debugging, and application maintenance under the guidance of senior team members. You will contribute to real-world projects, participate in code reviews, and support documentation while collaborating with the team. This internship is designed to help you build practical technical skills and gain exposure to industry-standard software development practices.')) !!}
+        @if(!empty($working_hours_clause))
+            {!! nl2br($resolveParagraph($working_hours_clause)) !!}
+        @else
+            Your working hours will be <strong>{{ $working_hours ?? '10:00 AM to 7:00 PM' }}</strong>, 
+            <strong>{{ $working_days ?? 'Monday to Saturday' }}</strong>, 
+            {{ $saturday_off_clause ?? 'with second and fourth Saturdays observed as off (alternate Saturdays off)' }}, as per company policy.
+            @if($compensationType === 'Paid')
+                You will receive a monthly stipend of <strong>₹{{ is_numeric($stipendAmount) ? number_format((float)$stipendAmount) : $stipendAmount }}</strong> during the internship period.
+            @endif
+        @endif
     </p>
 
     <p class="text-justify">
-        Upon successful completion of the internship, you will receive an <strong>Internship Completion Certificate</strong>. Based on your performance and organizational requirements, you may be offered a full-time employment opportunity. If performance expectations are not met, the internship may be extended for further evaluation.
+        {!! nl2br($resolveParagraph($job_responsibilities ?? 'During the internship, you will assist in software development, testing, debugging, and application maintenance under the guidance of senior team members. You will contribute to real-world projects, participate in code reviews, and support documentation while collaborating with the team. This internship is designed to help you build practical technical skills and gain exposure to industry-standard software development practices.')) !!}
     </p>
 
     <p class="text-justify">
-        Kindly confirm your acceptance of this offer by replying to this email.
+        @if(!empty($completion_clause))
+            {!! nl2br($resolveParagraph($completion_clause)) !!}
+        @else
+            Upon successful completion of the internship, you will receive an <strong>Internship Completion Certificate</strong>. Based on your performance and organizational requirements, you may be offered a full-time employment opportunity. If performance expectations are not met, the internship may be extended for further evaluation.
+        @endif
+    </p>
+
+    <p class="text-justify">
+        @if(!empty($acceptance_clause))
+            {!! nl2br($resolveParagraph($acceptance_clause)) !!}
+        @else
+            Kindly confirm your acceptance of this offer by replying to this email.
+        @endif
     </p>
 
     <div class="signature-section signature-block" style="margin-top:45px;">

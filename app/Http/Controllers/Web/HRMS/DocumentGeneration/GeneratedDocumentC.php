@@ -552,8 +552,7 @@ class GeneratedDocumentC extends Controller
 
     public function show($id)
     {
-        $document = GeneratedDocument::findOrFail($id);
-        return view('hrms.document-generation.generated.show', compact('document'));
+        return $this->streamPdf($id);
     }
 
     public function download($id)

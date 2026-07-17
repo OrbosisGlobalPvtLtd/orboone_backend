@@ -10,9 +10,22 @@ if (empty($companyName) || $companyName === 'HRMS' || $companyName === 'Default'
     $companyName = 'Orbosis Global Pvt. Ltd.';
 }
 $issueDate = $issue_date ?? $current_date ?? date('d M, Y');
-$discontinueDate = $discontinue_date ?? date('d M, Y');
+$discontinueDateRaw = $discontinue_date ?? date('Y-m-d');
+$discontinueDate = !empty($discontinueDateRaw) ? (preg_match('/^\d{4}-\d{2}-\d{2}$/', $discontinueDateRaw) ? date('jS F Y', strtotime($discontinueDateRaw)) : $discontinueDateRaw) : date('jS F Y');
 $hrManagerName = $hr_manager_name ?? 'Vanshika Dhunna';
 $signatoryDesignation = $signatory_designation ?? 'HR Manager';
+
+$resolveParagraph = function($text) use ($companyName, $discontinueDate) {
+    if (empty($text)) return '';
+    $safeText = e($text);
+    $replace = [
+        '{company_name}' => '<strong>' . e($companyName) . '</strong>',
+        '{companyName}' => '<strong>' . e($companyName) . '</strong>',
+        '{discontinue_date}' => '<strong>' . e($discontinueDate) . '</strong>',
+        '{discontinueDate}' => '<strong>' . e($discontinueDate) . '</strong>',
+    ];
+    return str_ireplace(array_keys($replace), array_values($replace), $safeText);
+};
 @endphp
 
 <div class="letter-body">
@@ -31,7 +44,7 @@ $signatoryDesignation = $signatory_designation ?? 'HR Manager';
     </p>
 
     <p class="text-justify" style="font-size:13px; line-height:1.8; margin-bottom:18px;">
-        {!! nl2br(e($discontinue_reason ?? "After careful review of the Company's current business requirements and financial position, we regret to inform you that the Company has decided to discontinue your employment with the Company effective " . $discontinueDate . ".")) !!}
+        {!! nl2br($resolveParagraph($discontinue_reason ?? "After careful review of the Company's current business requirements and financial position, we regret to inform you that the Company has decided to discontinue your employment with the Company effective {discontinue_date}.")) !!}
     </p>
 
     <p class="text-justify" style="font-size:13px; line-height:1.8; margin-bottom:18px;">
@@ -39,7 +52,7 @@ $signatoryDesignation = $signatory_designation ?? 'HR Manager';
     </p>
 
     <p class="text-justify" style="font-size:13px; line-height:1.8; margin-bottom:18px;">
-        {!! nl2br(e($handover_clause ?? "You are requested to complete all handover formalities and return any Company assets, documents, or access credentials in your possession on or before your last working day. The Company will process your final settlement and any applicable dues in accordance with Company policy and applicable laws.")) !!}
+        {!! nl2br($resolveParagraph($handover_clause ?? "You are requested to complete all handover formalities and return any Company assets, documents, or access credentials in your possession on or before your last working day. The Company will process your final settlement and any applicable dues in accordance with Company policy and applicable laws.")) !!}
     </p>
 
     <p class="text-justify" style="font-size:13px; line-height:1.8; margin-bottom:18px;">

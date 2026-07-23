@@ -33,7 +33,46 @@ class LeaveApiC extends Controller
 
     public function types()
     {
-        return $this->ok('Leave types fetched successfully.', LeaveTypeM::where('is_active', true)->orderBy('name')->get());
+        $employee = $this->employee();
+        $year = Carbon::now('Asia/Kolkata')->year;
+        $allocation = LeaveAllocationM::where('employee_id', $employee->id)
+            ->where('year', $year)
+            ->first();
+
+        $types = LeaveTypeM::where('is_active', true)->orderBy('name')->get();
+        $isPermanent = $employee->is_permanent;
+
+        foreach ($types as $type) {
+            $balance = 0.0;
+            if ($isPermanent && $allocation) {
+                if ($type->is_paid) {
+                    $balance = (float) $allocation->paid_remaining;
+                } elseif ($type->is_sick) {
+                    $balance = (float) $allocation->sick_remaining;
+                } elseif ($type->is_comp_off) {
+                    $balance = (float) $allocation->comp_off_remaining;
+                }
+            }
+
+            // Apply November & December rule to dynamic available balance
+            if ($balance > 0 && in_array((int) Carbon::now('Asia/Kolkata')->month, [11, 12], true)) {
+                $remaining = (float) ($allocation->total_remaining ?? 0);
+                if ($remaining > 10.0) {
+                    $balance = round($balance * 0.5, 2);
+                }
+            }
+
+            $type->available_balance = $balance;
+            $type->policy = [
+                'available_balance' => $balance,
+                'max_consecutive_days' => (int) $type->max_days_per_request,
+                'sandwich_applicable' => true,
+                'attachment_required' => (bool) $type->requires_attachment,
+                'description' => $type->description ?? '',
+            ];
+        }
+
+        return $this->ok('Leave types fetched successfully.', $types);
     }
 
     public function dashboard()
@@ -49,17 +88,62 @@ class LeaveApiC extends Controller
                 ->groupBy('status')
                 ->pluck('total', 'status');
 
-            $summary = [
-                'pending' => (int) ($statusCounts['pending'] ?? 0),
-                'approved' => (int) ($statusCounts['approved'] ?? 0),
-                'rejected' => (int) ($statusCounts['rejected'] ?? 0),
-                'total' => (int) $statusCounts->sum(),
-            ];
+            $currentMonth = Carbon::now('Asia/Kolkata')->month;
+            $currentYear = Carbon::now('Asia/Kolkata')->year;
+
+            $alreadyUsedThisMonth = (float) DB::table('leave_request_dates')
+                ->join('leave_requests', 'leave_requests.id', '=', 'leave_request_dates.leave_request_id')
+                ->where('leave_request_dates.employee_id', $employee->id)
+                ->where('leave_requests.status', 'approved')
+                ->whereMonth('leave_request_dates.leave_date', $currentMonth)
+                ->whereYear('leave_request_dates.leave_date', $currentYear)
+                ->where('leave_request_dates.deduct_as_leave', 1)
+                ->sum('leave_request_dates.paid_day');
 
             $allocation = LeaveAllocationM::where('employee_id', $employee->id)
                 ->where('year', $year)
                 ->latest()
                 ->first();
+
+            $isPermanent = $employee->is_permanent;
+            $paidRemaining = $isPermanent && $allocation ? (float) $allocation->paid_remaining : 0.0;
+            $sickRemaining = $isPermanent && $allocation ? (float) $allocation->sick_remaining : 0.0;
+            $compRemaining = $isPermanent && $allocation ? (float) $allocation->comp_off_remaining : 0.0;
+            $totalRemaining = $isPermanent && $allocation ? (float) $allocation->total_remaining : 0.0;
+            $lwpUsed = $allocation ? (float) $allocation->lwp_used : 0.0;
+
+            // Apply November/December rule to dynamic balances
+            if (in_array((int) $currentMonth, [11, 12], true) && $totalRemaining > 10.0) {
+                $paidRemaining = round($paidRemaining * 0.5, 2);
+                $sickRemaining = round($sickRemaining * 0.5, 2);
+                $compRemaining = round($compRemaining * 0.5, 2);
+            }
+
+            $remainingThisMonth = $isPermanent ? max(0.0, 2.0 - $alreadyUsedThisMonth) : 0.0;
+
+            $emergencyUsed = DB::table('leave_requests')
+                ->where('employee_id', $employee->id)
+                ->where('status', 'approved')
+                ->where('emergency_leave', 1)
+                ->count();
+
+            $summary = [
+                'pending' => (int) ($statusCounts['pending'] ?? 0),
+                'approved' => (int) ($statusCounts['approved'] ?? 0),
+                'rejected' => (int) ($statusCounts['rejected'] ?? 0),
+                'total' => (int) $statusCounts->sum(),
+                
+                // Detailed metrics required by rules
+                'paid_leave_remaining' => $paidRemaining,
+                'paid_leave_used' => $isPermanent && $allocation ? (float) $allocation->paid_used : 0.0,
+                'paid_leave_available_this_month' => $isPermanent ? 2.0 : 0.0,
+                'already_used_this_month' => $alreadyUsedThisMonth,
+                'remaining_this_month' => $remainingThisMonth,
+                'sick_leave_remaining' => $sickRemaining,
+                'comp_off_balance' => $compRemaining,
+                'lwp_count' => $lwpUsed,
+                'emergency_leave_used' => $emergencyUsed,
+            ];
 
             $balances = $this->formatBalances($allocation);
 
@@ -134,12 +218,25 @@ class LeaveApiC extends Controller
             ->latest()
             ->first();
 
+        $isPermanent = $employee->is_permanent;
+        $totalRem = $isPermanent ? (float) ($allocation->total_remaining ?? 0) : 0.0;
+        $paidRem = $isPermanent ? (float) ($allocation->paid_remaining ?? 0) : 0.0;
+        $sickRem = $isPermanent ? (float) ($allocation->sick_remaining ?? 0) : 0.0;
+        $compRem = $isPermanent ? (float) ($allocation->comp_off_remaining ?? 0) : 0.0;
+
+        if (in_array((int) Carbon::now('Asia/Kolkata')->month, [11, 12], true) && $totalRem > 10.0) {
+            $totalRem = round($totalRem * 0.5, 2);
+            $paidRem = round($paidRem * 0.5, 2);
+            $sickRem = round($sickRem * 0.5, 2);
+            $compRem = round($compRem * 0.5, 2);
+        }
+
         return $this->ok('Leave balance fetched successfully.', [
             'allocation' => $allocation,
-            'total_remaining' => (float) ($allocation->total_remaining ?? 0),
-            'paid_remaining' => (float) ($allocation->paid_remaining ?? 0),
-            'sick_remaining' => (float) ($allocation->sick_remaining ?? 0),
-            'comp_off_remaining' => (float) ($allocation->comp_off_remaining ?? 0),
+            'total_remaining' => $totalRem,
+            'paid_remaining' => $paidRem,
+            'sick_remaining' => $sickRem,
+            'comp_off_remaining' => $compRem,
             'lwp_used' => (float) ($allocation->lwp_used ?? 0),
         ]);
     }
@@ -494,34 +591,54 @@ class LeaveApiC extends Controller
             return [];
         }
 
+        $employee = EmployeeM::find($allocation->employee_id);
+        $isPermanent = $employee ? $employee->is_permanent : true;
+
+        $totalAlloc = $isPermanent ? (float) ($allocation->total_allocated ?? 0) : 0.0;
+        $paidAlloc = $isPermanent ? (float) ($allocation->paid_allocated ?? 0) : 0.0;
+        $sickAlloc = $isPermanent ? (float) ($allocation->sick_allocated ?? 0) : 0.0;
+        $compAlloc = $isPermanent ? (float) ($allocation->comp_off_allocated ?? 0) : 0.0;
+
+        $totalRem = $isPermanent ? (float) ($allocation->total_remaining ?? 0) : 0.0;
+        $paidRem = $isPermanent ? (float) ($allocation->paid_remaining ?? 0) : 0.0;
+        $sickRem = $isPermanent ? (float) ($allocation->sick_remaining ?? 0) : 0.0;
+        $compRem = $isPermanent ? (float) ($allocation->comp_off_remaining ?? 0) : 0.0;
+
+        if (in_array((int) Carbon::now('Asia/Kolkata')->month, [11, 12], true) && $totalRem > 10.0) {
+            $totalRem = round($totalRem * 0.5, 2);
+            $paidRem = round($paidRem * 0.5, 2);
+            $sickRem = round($sickRem * 0.5, 2);
+            $compRem = round($compRem * 0.5, 2);
+        }
+
         return [
             [
                 'type' => 'total',
                 'label' => 'Total Leave',
-                'allocated' => (float) ($allocation->total_allocated ?? 0),
+                'allocated' => $totalAlloc,
                 'used' => (float) ($allocation->total_used ?? 0),
-                'remaining' => (float) ($allocation->total_remaining ?? 0),
+                'remaining' => $totalRem,
             ],
             [
                 'type' => 'paid',
                 'label' => 'Paid Leave',
-                'allocated' => (float) ($allocation->paid_allocated ?? 0),
+                'allocated' => $paidAlloc,
                 'used' => (float) ($allocation->paid_used ?? 0),
-                'remaining' => (float) ($allocation->paid_remaining ?? 0),
+                'remaining' => $paidRem,
             ],
             [
                 'type' => 'sick',
                 'label' => 'Sick Leave',
-                'allocated' => (float) ($allocation->sick_allocated ?? 0),
+                'allocated' => $sickAlloc,
                 'used' => (float) ($allocation->sick_used ?? 0),
-                'remaining' => (float) ($allocation->sick_remaining ?? 0),
+                'remaining' => $sickRem,
             ],
             [
                 'type' => 'comp_off',
                 'label' => 'Comp Off',
-                'allocated' => (float) ($allocation->comp_off_allocated ?? 0),
+                'allocated' => $compAlloc,
                 'used' => (float) ($allocation->comp_off_used ?? 0),
-                'remaining' => (float) ($allocation->comp_off_remaining ?? 0),
+                'remaining' => $compRem,
             ],
             [
                 'type' => 'lwp',

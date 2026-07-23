@@ -75,19 +75,31 @@ class LeavePolicyCalculatorS
 
         $this->ensureNoDuplicateDates($employee, $dateRows, $existingRequest);
         
+        // Leave Advance Notice Validation
+        $isSick = (bool) $leaveType->is_sick;
+        $isLwp = (bool) $leaveType->is_lwp;
+        $isEmergency = (bool) ($payload['emergency_leave'] ?? false);
+
+        if (! $isSick && ! $isLwp && ! $isEmergency) {
+            $today = Carbon::now('Asia/Kolkata')->startOfDay();
+            $startDate = Carbon::parse($payload['start_date'], 'Asia/Kolkata')->startOfDay();
+            if ($today->diffInDays($startDate, false) < 2) {
+                throw ValidationException::withMessages([
+                    'start_date' => 'Normal leaves must be applied at least 2 days in advance.'
+                ]);
+            }
+        }
+
         // Sick leave certificate validation
         $requiresMedicalCertificate = false;
         if ($leaveType->is_sick) {
-            $certificateAfter = (int) ($leaveType->medical_certificate_after_days ?: $policy->medical_certificate_after_days ?: 0);
-            if ($certificateAfter > 0) {
-                $consecutiveCount = $this->maxConsecutiveSickDaysIncludingRequest($employee, $dateRows, $existingRequest?->id);
-                if ($consecutiveCount > $certificateAfter) {
-                    $requiresMedicalCertificate = true;
-                    if (empty($payload['attachment_path']) && empty($payload['attachment'])) {
-                        throw ValidationException::withMessages([
-                            'attachment' => 'Medical certificate is required for more than 2 consecutive sick leave days.'
-                        ]);
-                    }
+            $consecutiveCount = $this->maxConsecutiveSickDaysIncludingRequest($employee, $dateRows, $existingRequest?->id);
+            if ($consecutiveCount > 2) {
+                $requiresMedicalCertificate = true;
+                if (empty($payload['attachment_path']) && empty($payload['attachment'])) {
+                    throw ValidationException::withMessages([
+                        'attachment' => 'Medical certificate is required for more than 2 consecutive sick leave days.'
+                    ]);
                 }
             }
         }
@@ -146,100 +158,106 @@ class LeavePolicyCalculatorS
         ?int $excludeRequestId = null
     ): array
     {
-        if ($leaveType->is_lwp) {
-            return [0.0, 0.0, 0.0, $deductedDays];
-        }
-
-        $stage = strtolower((string) ($allocation->employment_stage ?: $employee->employee_stage));
-        $stageLimit = null;
-        if ($stage === 'probation') {
-            $stageLimit = (float) $policy->probation_leave_limit;
-        } elseif ($stage === 'internship') {
-            $stageLimit = (float) $policy->internship_leave_limit;
-        }
+        $paid = 0.0;
+        $sick = 0.0;
+        $compOff = 0.0;
+        $lwp = 0.0;
 
         $paidCapacity = (float) $allocation->paid_remaining;
         $sickCapacity = (float) $allocation->sick_remaining;
         $compCapacity = (float) $allocation->comp_off_remaining;
 
-        // Apply Monthly paid leave carry forward rule for Paid Leave type
-        if ($leaveType->is_paid || $leaveType->code === 'paid_leave') {
-            $allocationStartMonth = $allocation->allocation_from_date ? $allocation->allocation_from_date->month : 1;
-            $creditedMonths = max(1, $start->month - $allocationStartMonth + 1);
-            $creditedPaid = $creditedMonths * 2;
-
-            $usedPaidBefore = DB::table('leave_request_dates')
-                ->join('leave_requests', 'leave_requests.id', '=', 'leave_request_dates.leave_request_id')
-                ->where('leave_request_dates.employee_id', $employee->id)
-                ->where('leave_requests.status', 'approved')
-                ->where('leave_request_dates.leave_date', '<', $start->toDateString())
-                ->when($excludeRequestId, fn($q) => $q->where('leave_requests.id', '<>', $excludeRequestId))
-                ->sum('leave_request_dates.paid_day');
-
-            $paidCapacity = max(0.0, min((float) $allocation->paid_allocated, $creditedPaid - $usedPaidBefore));
-            $paidCapacity = min($paidCapacity, (float) $allocation->paid_remaining);
+        // confirmation check
+        if (! $employee->is_permanent) {
+            $paidCapacity = 0.0;
+            $sickCapacity = 0.0;
+            $compCapacity = 0.0;
         }
 
-        if ($stageLimit !== null) {
-            $alreadyUsed = (float) $allocation->paid_used + (float) $allocation->sick_used + (float) $allocation->comp_off_used;
-            $stageAvailable = max(0, $stageLimit - $alreadyUsed);
-            $paidCapacity = min($paidCapacity + $sickCapacity + $compCapacity, $stageAvailable);
-            $sickCapacity = $leaveType->is_sick ? $paidCapacity : 0.0;
-            $compCapacity = $leaveType->is_comp_off ? $paidCapacity : 0.0;
-        }
-
-        if ($policy->nov_dec_half_usage_enabled && in_array((int) $start->month, [11, 12], true)) {
+        // November & December rule
+        if (in_array((int) $start->month, [11, 12], true)) {
             $remaining = (float) $allocation->total_remaining;
-            if ($remaining > (float) $policy->nov_dec_threshold_balance) {
-                $allowed = round($remaining * ((float) $policy->nov_dec_usage_percentage / 100), 2);
+            if ($remaining > 10.0) {
+                $allowed = round($remaining * 0.5, 2);
                 $paidCapacity = min($paidCapacity, $allowed);
                 $sickCapacity = min($sickCapacity, $allowed);
                 $compCapacity = min($compCapacity, $allowed);
             }
         }
 
-        $monthlyAvailable = $this->remainingMonthlyLimit($employee, $policy, $dateRows);
-        if (! ($policy->allow_monthly_balance_accumulation || $policy->carry_forward_enabled)) {
-            $paidCapacity = min($paidCapacity, $monthlyAvailable);
-        }
-        $sickCapacity = min($sickCapacity, $monthlyAvailable);
-        $compCapacity = min($compCapacity, $monthlyAvailable);
-
-        $paid = 0.0;
-        $sick = 0.0;
-        $compOff = 0.0;
-
+        // For Comp-Off, validate balance at the beginning
         if ($leaveType->is_comp_off) {
-            if ($compCapacity < $deductedDays) {
+            if ($compCapacity <= 0) {
                 throw ValidationException::withMessages([
-                    'leave_type_id' => 'Comp Off balance is not available.'
+                    'leave_type_id' => 'Comp-Off balance is not available.'
                 ]);
             }
-            if ($compCapacity <= 0) {
-                $hasApprovedPendingWorkRequest = DB::table('holiday_work_requests')
-                    ->where('employee_id', $employee->id)
-                    ->where('status', 'approved')
-                    ->where('comp_off_generated', 0)
-                    ->whereNull('deleted_at')
-                    ->exists();
+            // Check pending holiday work requests as in original code
+            $hasApprovedPendingWorkRequest = DB::table('holiday_work_requests')
+                ->where('employee_id', $employee->id)
+                ->where('status', 'approved')
+                ->where('comp_off_generated', 0)
+                ->whereNull('deleted_at')
+                ->exists();
 
-                if ($hasApprovedPendingWorkRequest) {
-                    throw ValidationException::withMessages([
-                        'leave_type_id' => 'You cannot use comp-off leave before completing approved holiday/weekoff work.',
-                    ]);
-                }
+            if ($hasApprovedPendingWorkRequest) {
+                throw ValidationException::withMessages([
+                    'leave_type_id' => 'You cannot use comp-off leave before completing approved holiday/weekoff work.',
+                ]);
             }
-            $compOff = min($deductedDays, $compCapacity);
-        } elseif ($leaveType->is_sick) {
-            $sick = min($deductedDays, $sickCapacity);
-            $paid = min($deductedDays - $sick, $paidCapacity);
-        } else {
-            $paid = min($deductedDays, $paidCapacity);
         }
 
-        $lwp = round(max(0, $deductedDays - $paid - $sick - $compOff), 2);
+        $monthlyPlUsed = [];
 
-        return [round($paid, 2), round($sick, 2), round($compOff, 2), $lwp];
+        foreach ($dateRows as $row) {
+            if (! $row['deduct_as_leave']) {
+                continue;
+            }
+
+            $deductCount = count(array_filter($dateRows, fn($r) => $r['deduct_as_leave']));
+            $dayUnit = $deductCount > 0 ? ($deductedDays / $deductCount) : 1.0;
+
+            $d = Carbon::parse($row['leave_date'], 'Asia/Kolkata');
+            $monthKey = $d->format('Y-m');
+
+            if ($leaveType->is_lwp) {
+                $lwp += $dayUnit;
+            } elseif ($leaveType->is_comp_off) {
+                $allocatedComp = min($dayUnit, $compCapacity);
+                $compOff += $allocatedComp;
+                $compCapacity = round($compCapacity - $allocatedComp, 2);
+                $lwp += round($dayUnit - $allocatedComp, 2);
+            } elseif ($leaveType->is_sick) {
+                $allocatedSick = min($dayUnit, $sickCapacity);
+                $sick += $allocatedSick;
+                $sickCapacity = round($sickCapacity - $allocatedSick, 2);
+                $lwp += round($dayUnit - $allocatedSick, 2);
+            } else {
+                // Paid Leave
+                if (! isset($monthlyPlUsed[$monthKey])) {
+                    $used = DB::table('leave_request_dates')
+                        ->join('leave_requests', 'leave_requests.id', '=', 'leave_request_dates.leave_request_id')
+                        ->where('leave_request_dates.employee_id', $employee->id)
+                        ->where('leave_requests.status', 'approved')
+                        ->whereMonth('leave_request_dates.leave_date', $d->month)
+                        ->whereYear('leave_request_dates.leave_date', $d->year)
+                        ->where('leave_request_dates.deduct_as_leave', 1)
+                        ->when($excludeRequestId, fn($q) => $q->where('leave_requests.id', '<>', $excludeRequestId))
+                        ->sum('leave_request_dates.paid_day');
+                    $monthlyPlUsed[$monthKey] = (float) $used;
+                }
+
+                $monthlyAvailable = max(0.0, 2.0 - $monthlyPlUsed[$monthKey]);
+                $allocatedPaid = min($dayUnit, $paidCapacity, $monthlyAvailable);
+
+                $paid += $allocatedPaid;
+                $paidCapacity = round($paidCapacity - $allocatedPaid, 2);
+                $monthlyPlUsed[$monthKey] = round($monthlyPlUsed[$monthKey] + $allocatedPaid, 2);
+                $lwp += round($dayUnit - $allocatedPaid, 2);
+            }
+        }
+
+        return [round($paid, 2), round($sick, 2), round($compOff, 2), round($lwp, 2)];
     }
 
     private function remainingMonthlyLimit(EmployeeM $employee, $policy, array $dateRows): float

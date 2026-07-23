@@ -29,7 +29,7 @@ class AttendanceS
         int $userId,
         string $workMode = 'wfo',
         ?string $note = null,
-        array $meta = [],
+        array|string|float|null $meta = [],
         ?string $customTime = null,
         ?int $attendanceTypeId = null,
         bool $enforceEmployeeRules = true
@@ -43,19 +43,59 @@ class AttendanceS
             return ['status' => 'error', 'message' => 'Employee profile not found.'];
         }
 
+        $hasApprovedLeave = DB::table('leave_requests')
+            ->where('employee_id', $employee->id)
+            ->where('status', 'approved')
+            ->whereRaw('? BETWEEN start_date AND end_date', [$today])
+            ->exists();
+
+        if ($hasApprovedLeave) {
+            return ['status' => 'error', 'message' => 'Attendance punch is disabled during approved leave.'];
+        }
+
+        if (! is_array($meta)) {
+            $lat = $meta !== null && $meta !== '' ? (float) $meta : null;
+            $lng = is_numeric($customTime) ? (float) $customTime : null;
+            $customTimeStr = is_string($attendanceTypeId) ? $attendanceTypeId : (is_string($customTime) && ! is_numeric($customTime) ? $customTime : null);
+            $meta = [
+                'latitude' => $lat,
+                'longitude' => $lng,
+            ];
+            $customTime = $customTimeStr;
+            $attendanceTypeId = null;
+        }
+
         if ($enforceEmployeeRules && ! $this->employeeEligibleForAttendance($employee)) {
             return ['status' => 'error', 'message' => 'You are not eligible to mark attendance yet.'];
         }
 
-        $workMode = strtolower($workMode);
-        $approvedWfh = $this->wfhRequestService?->approvedForDate((int) $employee->id, $today);
-        if ($approvedWfh && $approvedWfh->status === 'approved') {
+        $employeeWorkMode = strtolower((string) ($employee->work_mode ?? 'wfo'));
+        $requestedWorkMode = strtolower($workMode);
+
+        if ($employeeWorkMode === 'wfh') {
+            // Permanent WFH employee - direct WFH attendance, no approval/quota check required
             $workMode = 'wfh';
-        }
-        if ($enforceEmployeeRules && $workMode === 'wfo') {
-            $locationValidation = $this->validateWfoOfficeLocation($meta);
-            if (($locationValidation['status'] ?? null) === 'error') {
-                return $locationValidation;
+        } else {
+            // WFO employee (or non-permanent WFH)
+            if ($requestedWorkMode === 'wfh') {
+                $approvedWfh = $this->wfhRequestService?->approvedForDate((int) $employee->id, $today);
+                if (! $approvedWfh || $approvedWfh->status !== 'approved') {
+                    if ($enforceEmployeeRules) {
+                        return [
+                            'status' => 'error',
+                            'message' => 'You cannot mark WFH attendance because no approved WFH request exists for today.',
+                        ];
+                    }
+                }
+                $workMode = 'wfh';
+            } else {
+                $workMode = 'wfo';
+                if ($enforceEmployeeRules) {
+                    $locationValidation = $this->validateWfoOfficeLocation($meta);
+                    if (($locationValidation['status'] ?? null) === 'error') {
+                        return $locationValidation;
+                    }
+                }
             }
         }
 
@@ -79,7 +119,22 @@ class AttendanceS
             return ['status' => 'error', 'message' => 'Attendance is already marked for today.'];
         }
 
-        if ($existing && ($existing->is_blocked || $existing->is_punch_blocked) && ! $existing->is_admin_unlocked) {
+        $blockedViolation = DB::table('attendance_violations')
+            ->where('employee_id', $employee->id)
+            ->where('type', 'blocked_punch')
+            ->whereDate('violation_date', $today)
+            ->first();
+
+        $isUnlocked = $blockedViolation && $blockedViolation->policy_action === 'resolved';
+
+        if ($existing && ($existing->is_blocked || $existing->is_punch_blocked) && ! $existing->is_admin_unlocked && ! $isUnlocked) {
+            if (! $blockedViolation) {
+                $this->recordAttendanceViolation($existing, 'blocked_punch', $today, [
+                    'source' => 'mobile',
+                    'policy_action' => 'blocked',
+                    'remarks' => 'Punch-in blocked after allowed time.',
+                ]);
+            }
             return ['status' => 'error', 'message' => 'Your punch-in is blocked. Please contact HR/Admin.'];
         }
 
@@ -93,12 +148,40 @@ class AttendanceS
         $blockAfter = $window['block_after'];
         $isBlocked = $window['is_blocked']
             && ! $attendanceTypeId
+            && ! $isUnlocked
             && ! optional($existing)->is_late_exempted
             && ! optional($existing)->is_admin_unlocked;
 
         if ($isBlocked) {
-            if ($existing) {
-                $this->recordAttendanceViolation($existing, 'blocked_punch', $today, [
+            $blockedType = $this->attendanceType('punch_blocked');
+            $blockedAttendance = Attendance::updateOrCreate(
+                ['employee_id' => $employee->id, 'attendance_date' => $today],
+                [
+                    'user_id' => $userId,
+                    'attendance_time_id' => $this->resolveShiftIdForPolicy($shift, $existing, $this->defaultShift()?->id),
+                    'attendance_type_id' => $blockedType?->id ?: ($existing->attendance_type_id ?? null),
+                    'work_mode' => $workMode,
+                    'punch_in_latitude' => $meta['latitude'] ?? null,
+                    'punch_in_longitude' => $meta['longitude'] ?? null,
+                    'punch_in_address' => $meta['address'] ?? null,
+                    'punch_in_ip' => $meta['ip'] ?? null,
+                    'punch_in_device' => $meta['device'] ?? null,
+                    'is_blocked' => true,
+                    'is_punch_blocked' => true,
+                    'blocked_reason' => 'Punch-in blocked after allowed time.',
+                    'block_reason' => 'Punch-in blocked after allowed time.',
+                    'attendance_source' => 'mobile',
+                    'attendance_status' => 'punch_blocked',
+                ]
+            );
+
+            if (! $blockedViolation) {
+                AttendanceViolationM::create([
+                    'employee_id' => $employee->id,
+                    'attendance_id' => $blockedAttendance->id,
+                    'violation_date' => $today,
+                    'type' => 'blocked_punch',
+                    'minutes' => 0,
                     'source' => 'mobile',
                     'policy_action' => 'blocked',
                     'remarks' => 'Punch-in blocked after allowed time.',
@@ -117,7 +200,7 @@ class AttendanceS
             ?: (in_array($existingTypeCode, ['punch_blocked', 'pending_hr'], true) ? $presentType?->id : ($existing->attendance_type_id ?? $presentType?->id));
 
         $attendanceStatusForPunchIn = ($existing && ! in_array($existing->attendance_status, ['pending_hr', 'punch_blocked', 'unlocked'], true)) ? $existing->attendance_status : 'present';
-        if ($existing && $existing->is_admin_unlocked && ! $existing->punch_in_time) {
+        if (($isUnlocked || ($existing && $existing->is_admin_unlocked)) && ! ($existing && $existing->punch_in_time)) {
             $attendanceTypeForPunchIn = $presentType?->id ?: $attendanceTypeForPunchIn;
             $attendanceStatusForPunchIn = 'present';
         }
@@ -126,7 +209,7 @@ class AttendanceS
             ['employee_id' => $employee->id, 'attendance_date' => $today],
             [
                 'user_id' => $userId,
-                'attendance_time_id' => ($shift?->source_table ?? null) === 'attendance_times' ? $shift?->id : ($existing->attendance_time_id ?? $this->defaultShift()?->id),
+                'attendance_time_id' => $this->resolveShiftIdForPolicy($shift, $existing, $this->defaultShift()?->id),
                 'attendance_type_id' => $attendanceTypeForPunchIn,
                 'punch_in_time' => $time,
                 'target_punch_out_time' => $targetPunchOut,
@@ -140,6 +223,7 @@ class AttendanceS
                 'late_minutes' => $lateMinutes,
                 'is_blocked' => false,
                 'is_punch_blocked' => false,
+                'is_admin_unlocked' => $isUnlocked || (bool) optional($existing)->is_admin_unlocked,
                 'blocked_reason' => null,
                 'block_reason' => null,
                 'auto_block_reason' => null,
@@ -159,6 +243,8 @@ class AttendanceS
             ]);
         }
 
+        $this->syncAttendanceViolations($attendance);
+
         return [
             'status' => true,
             'message' => $isLate ? 'Punch in recorded with late mark.' : 'Punch in recorded successfully.',
@@ -170,18 +256,40 @@ class AttendanceS
         int $userId,
         string $taskSummary,
         ?string $note = null,
-        array $meta = [],
+        array|string|float|null $meta = [],
         ?string $customTime = null,
         bool $enforceEmployeeRules = true,
         $taskSummaryJson = null
     ): array {
         $timezone = $this->attendanceTimezone();
+
+        if (! is_array($meta)) {
+            $lat = $meta !== null && $meta !== '' ? (float) $meta : null;
+            $lng = is_numeric($customTime) ? (float) $customTime : null;
+            $customTimeStr = is_string($customTime) && ! is_numeric($customTime) ? $customTime : null;
+            $meta = [
+                'latitude' => $lat,
+                'longitude' => $lng,
+            ];
+            $customTime = $customTimeStr;
+        }
+
         $now = $customTime ? Carbon::parse($customTime, $timezone) : Carbon::now($timezone);
         $today = $now->toDateString();
         $employee = Employee::where('user_id', $userId)->first();
 
         if (! $employee) {
             return ['status' => 'error', 'message' => 'Employee profile not found.'];
+        }
+
+        $hasApprovedLeave = DB::table('leave_requests')
+            ->where('employee_id', $employee->id)
+            ->where('status', 'approved')
+            ->whereRaw('? BETWEEN start_date AND end_date', [$today])
+            ->exists();
+
+        if ($hasApprovedLeave) {
+            return ['status' => 'error', 'message' => 'Attendance punch is disabled during approved leave.'];
         }
 
         $attendance = Attendance::with('attendanceType')
@@ -280,129 +388,13 @@ class AttendanceS
             'skipped_no_user' => 0,
         ];
 
-        $blockedType = $this->attendanceType('punch_blocked');
-        if (! $blockedType) {
-            $counts['missing_attendance_type'] = 1;
-            return $counts;
-        }
-
-        $employees = Employee::with(['profile', 'documents'])->active()->get();
-        $status = 'punch_blocked';
-
-        foreach ($employees as $employee) {
-            $counts['total_checked']++;
-            $policy = $this->ruleResolver->getPolicyForEmployee($employee, $date);
-            if (! $policy || ! (bool) ($policy->auto_block_enabled ?? false)) {
-                $counts['skipped_policy_disabled']++;
-                continue;
-            }
-
-            if (! $policy->block_after_time) {
-                $counts['skipped_not_due']++;
-                continue;
-            }
-
-            $blockAt = Carbon::parse($date . ' ' . $this->ruleResolver->timeString($policy->block_after_time), $timezone)->addSecond();
-            if ($now->lt($blockAt)) {
-                $counts['skipped_not_due']++;
-                continue;
-            }
-
-            if (! $employee->user_id) {
-                $counts['skipped_no_user']++;
-                continue;
-            }
-
-            if (! $this->employeeIsActive($employee)) {
-                $counts['skipped_inactive']++;
-                continue;
-            }
-
-            if (! $this->employeeProfileApproved($employee)) {
-                $counts['skipped_profile']++;
-                continue;
-            }
-
-            $dayContext = $this->ruleResolver->getDayContext($employee, $date);
-            if ($dayContext['is_on_leave']) {
-                $counts['skipped_leave']++;
-                continue;
-            }
-
-            if ($dayContext['is_holiday']) {
-                $counts['skipped_holiday']++;
-                continue;
-            }
-
-            if ($dayContext['is_weekoff']) {
-                $counts['skipped_weekoff']++;
-                continue;
-            }
-
-            $existing = Attendance::where('employee_id', $employee->id)->whereDate('attendance_date', $date)->first();
-            if ($existing) {
-                $counts['skipped_existing']++;
-                continue;
-            }
-
-            $reason = 'Auto blocked after ' . Carbon::parse($policy->block_after_time, $timezone)->format('h:i A') . ' because employee did not punch in.';
-            $payload = $this->attendancePayload([
-                'employee_id' => $employee->id,
-                'user_id' => $employee->user_id,
-                'attendance_time_id' => ($policy?->source_table ?? null) === 'attendance_times' ? $policy?->id : null,
-                'attendance_type_id' => $blockedType?->id,
-                'attendance_date' => $date,
-                'punch_in_time' => null,
-                'punch_out_time' => null,
-                'is_punch_blocked' => true,
-                'is_blocked' => true,
-                'blocked_reason' => $reason,
-                'block_reason' => $reason,
-                'auto_blocked_at' => $now,
-                'auto_block_reason' => $reason,
-                'hr_approval_note' => null,
-                'is_locked' => true,
-                'punch_in_note' => $reason,
-                'attendance_source' => 'system_auto',
-                'attendance_status' => $status,
-                'pending_hr_reason' => null,
-            ]);
-
-            if ($dryRun) {
-                $counts['would_create']++;
-                continue;
-            }
-
-            $attendance = Attendance::firstOrCreate(
-                ['employee_id' => $employee->id, 'attendance_date' => $date],
-                $payload
-            );
-            $this->recordAttendanceViolation($attendance, 'blocked_punch', $date, [
-                'source' => 'system_auto',
-                'policy_action' => 'blocked',
-                'remarks' => $reason,
-            ]);
-
-            $this->notifyAttendance($employee, 'punch_blocked', 'Punch In Blocked', 'Your punch-in was auto-blocked because you did not punch in before the allowed time.', $date, [
-                'attendance_id' => $attendance->id,
-                'reason' => $reason,
-            ]);
-
-            $counts['created']++;
-        }
-
-        Log::info('HRMS auto-block missed punch-ins completed.', $counts + ['date' => $date]);
+        Log::info('HRMS auto-block missed punch-ins bypassed per refactored workflow.', $counts + ['date' => $date]);
 
         return $counts;
     }
 
-    public function unlockAttendance(int $attendanceId, int $adminUserId, array|string|null $payload = null): array
+    public function unlockAttendance(int|string $attendanceId, int $adminUserId, array|string|null $payload = null): array
     {
-        $attendance = Attendance::with(['employee', 'attendanceTime'])->find($attendanceId);
-        if (! $attendance) {
-            return ['success' => false, 'message' => 'Attendance record not found.'];
-        }
-
         $data = is_array($payload) ? $payload : ['unlock_remarks' => $payload];
         $unlockType = $data['unlock_type'] ?? 'unlock_only';
         $approvedPunchIn = $data['approved_punch_in_time'] ?? null;
@@ -410,6 +402,77 @@ class AttendanceS
         $now = Carbon::now($this->attendanceTimezone());
         $approvalNote = trim((string) ($data['hr_approval_note'] ?? ''))
             ?: (trim((string) ($data['unlock_remarks'] ?? '')) ?: 'Unlocked by HR/Admin.');
+
+        if (is_string($attendanceId) && str_starts_with($attendanceId, 'violation_')) {
+            $violationId = (int) substr($attendanceId, 10);
+            $violation = AttendanceViolationM::with('employee')->find($violationId);
+            if (! $violation) {
+                return ['success' => false, 'status' => 'error', 'message' => 'Blocked punch violation not found.'];
+            }
+
+            // Mark violation resolved
+            $violation->update([
+                'policy_action' => 'resolved',
+                'remarks' => ($violation->remarks ?: '') . ' [Resolved: Unlocked/approved by HR/Admin.]',
+            ]);
+
+            if ($unlockType === 'manual_punch_in') {
+                if (! $approvedPunchIn) {
+                    return ['success' => false, 'status' => 'error', 'message' => 'Approved punch-in time is required for manual punch-in.'];
+                }
+
+                $date = $violation->violation_date->toDateString();
+                $employee = $violation->employee;
+                $punchIn = Carbon::parse($date . ' ' . $approvedPunchIn, $this->attendanceTimezone());
+                $shift = $this->ruleResolver->getPolicyForEmployee($employee, $date);
+
+                $targetPunchOut = $this->targetPunchOutTime($punchIn, $shift);
+                $isLate = $this->isLatePunch($punchIn, $shift);
+                $lateMinutes = $isLate ? $this->lateMinutes($punchIn, $shift) : 0;
+
+                $attendance = Attendance::create([
+                    'employee_id' => $employee->id,
+                    'user_id' => $employee->user_id,
+                    'attendance_date' => $date,
+                    'attendance_time_id' => $this->resolveShiftIdForPolicy($shift, null, $this->defaultShift()?->id),
+                    'attendance_type_id' => $presentType?->id,
+                    'punch_in_time' => $punchIn->format('H:i:s'),
+                    'target_punch_out_time' => $targetPunchOut,
+                    'attendance_status' => 'present',
+                    'attendance_source' => 'admin_unlock',
+                    'is_late' => $isLate,
+                    'late_minutes' => $lateMinutes,
+                    'is_blocked' => false,
+                    'is_punch_blocked' => false,
+                    'is_admin_unlocked' => true,
+                    'unlock_type' => 'manual_punch_in',
+                    'unlock_remarks' => $data['unlock_remarks'] ?? null,
+                    'hr_approval_note' => $approvalNote,
+                    'unlocked_by' => $adminUserId,
+                    'unlocked_at' => $now,
+                    'hr_approved_by' => $adminUserId,
+                    'hr_approved_at' => $now,
+                ]);
+
+                // Link the violation to the attendance ID
+                $violation->update(['attendance_id' => $attendance->id]);
+
+                $this->syncAttendanceViolations($attendance);
+
+                $this->notifyAttendanceUnlocked($employee, $attendance->id);
+
+                return ['success' => true, 'status' => 'success', 'message' => 'Attendance unlocked successfully.', 'data' => $attendance->fresh()];
+            }
+
+            $this->notifyAttendanceUnlocked($violation->employee, null);
+
+            return ['success' => true, 'status' => 'success', 'message' => 'Attendance unlocked successfully.', 'data' => null];
+        }
+
+        $attendance = Attendance::with(['employee', 'attendanceTime'])->find($attendanceId);
+        if (! $attendance) {
+            return ['success' => false, 'status' => 'error', 'message' => 'Attendance record not found.'];
+        }
 
         $updates = [
             'attendance_type_id' => $presentType?->id ?: $attendance->attendance_type_id,
@@ -442,7 +505,7 @@ class AttendanceS
 
         if ($unlockType === 'manual_punch_in') {
             if (! $approvedPunchIn) {
-                return ['success' => false, 'message' => 'Approved punch-in time is required for manual punch-in.'];
+                return ['success' => false, 'status' => 'error', 'message' => 'Approved punch-in time is required for manual punch-in.'];
             }
 
             $date = Carbon::parse($attendance->attendance_date, $this->attendanceTimezone())->toDateString();
@@ -461,11 +524,36 @@ class AttendanceS
 
         $attendance->fill($this->attendancePayload($updates))->save();
 
+        $this->syncAttendanceViolations($attendance);
+
         if ($attendance->punch_in_time && $attendance->punch_out_time) {
             $this->calculateAttendanceStats($attendance);
         }
 
-        return ['success' => true, 'message' => 'Attendance unlocked successfully.', 'data' => $attendance->fresh()];
+        $this->notifyAttendanceUnlocked($attendance->employee, $attendance->id);
+
+        return ['success' => true, 'status' => 'success', 'message' => 'Attendance unlocked successfully.', 'data' => $attendance->fresh()];
+    }
+
+    private function notifyAttendanceUnlocked($employee, ?int $attendanceId): void
+    {
+        try {
+            $notificationService = app(\App\Services\HRMS\Notification\NotificationS::class);
+            $user = $employee?->user ?: ($employee ? \App\Models\Core\UserM::find($employee->user_id) : null);
+            if ($user) {
+                $notificationService->notifyEmployee(
+                    'Attendance Unlocked',
+                    "Your attendance has been unlocked.\nYou can now Punch In.",
+                    'attendance_unlocked',
+                    'hrms.attendance.my',
+                    [],
+                    ['employee_id' => $employee->id, 'attendance_id' => $attendanceId],
+                    $user->id
+                );
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Attendance unlock notification failed: ' . $e->getMessage());
+        }
     }
 
     public function processBlockedAbsent(?string $date = null): int
@@ -492,6 +580,10 @@ class AttendanceS
             'skipped_policy_disabled' => 0,
             'skipped_not_due' => 0,
             'skipped_has_punch_in' => 0,
+            'skipped_has_attendance' => 0,
+            'skipped_no_user' => 0,
+            'skipped_inactive' => 0,
+            'skipped_profile' => 0,
         ];
 
         if (! $absentType) {
@@ -499,7 +591,8 @@ class AttendanceS
             return $counts;
         }
 
-        $records = Attendance::with('attendanceType')
+        // 1. Process legacy blocked records (for regression parity)
+        $legacyRecords = Attendance::with('attendanceType')
             ->whereDate('attendance_date', $date)
             ->where(function ($query) {
                 $query->where('is_blocked', true)
@@ -508,7 +601,7 @@ class AttendanceS
             })
             ->get();
 
-        foreach ($records as $attendance) {
+        foreach ($legacyRecords as $attendance) {
             $counts['total_checked']++;
             $employee = $attendance->employee ?: Employee::find($attendance->employee_id);
             $policy = $employee ? $this->ruleResolver->getPolicyForEmployee($employee, $date) : null;
@@ -554,14 +647,13 @@ class AttendanceS
             }
 
             $reason = 'Auto marked absent at day-end due to unresolved punch block.';
-
             $updates = $this->attendancePayload([
                 'attendance_type_id' => $absentType->id,
                 'attendance_status' => 'absent',
                 'attendance_source' => 'system_auto',
                 'is_blocked' => false,
                 'is_punch_blocked' => false,
-                'is_locked' => true,
+                'is_locked' => false,
                 'is_lwp' => false,
                 'lwp_reason' => null,
                 'is_half_day' => false,
@@ -579,16 +671,85 @@ class AttendanceS
             }
 
             $attendance->fill($updates)->save();
-            $this->recordAttendanceViolation($attendance, 'blocked_punch', $date, [
-                'source' => 'system_auto',
-                'policy_action' => 'blocked',
-                'remarks' => $reason,
-            ]);
-
             $counts['marked_absent']++;
         }
 
-        Log::info('HRMS auto-close blocked attendance completed.', $counts + ['date' => $date]);
+        // 2. Process active employees who NEVER punched in (Rule 4)
+        $employees = Employee::with(['profile', 'documents'])->active()->get();
+
+        foreach ($employees as $employee) {
+            $counts['total_checked']++;
+
+            if (! $employee->user_id) {
+                $counts['skipped_no_user']++;
+                continue;
+            }
+
+            if (! $this->employeeIsActive($employee)) {
+                $counts['skipped_inactive']++;
+                continue;
+            }
+
+            if (! $this->employeeProfileApproved($employee)) {
+                $counts['skipped_profile']++;
+                continue;
+            }
+
+            $policy = $this->ruleResolver->getPolicyForEmployee($employee, $date);
+            if (! $policy || ! (bool) ($policy->auto_absent_enabled ?? false)) {
+                $counts['skipped_policy_disabled']++;
+                continue;
+            }
+
+            if (! $this->dayEndProcessingDue($date, $policy, $now)) {
+                $counts['skipped_not_due']++;
+                continue;
+            }
+
+            // Check if there is already an attendance record for this day
+            $existing = Attendance::where('employee_id', $employee->id)->whereDate('attendance_date', $date)->first();
+            if ($existing) {
+                $counts['skipped_has_attendance']++;
+                continue;
+            }
+
+            $dayContext = $this->ruleResolver->getDayContext($employee, $date);
+            if ($dayContext['is_on_leave'] || $dayContext['is_holiday'] || $dayContext['is_weekoff']) {
+                $counts['skipped_protected_status']++;
+                continue;
+            }
+
+            // Employee never punched in. Create absent record automatically at day end.
+            $reason = 'Auto marked absent at day-end because employee never punched in.';
+            $updates = $this->attendancePayload([
+                'employee_id' => $employee->id,
+                'user_id' => $employee->user_id,
+                'attendance_time_id' => $this->resolveShiftIdForPolicy($policy, null, null),
+                'attendance_type_id' => $absentType->id,
+                'attendance_date' => $date,
+                'attendance_status' => 'absent',
+                'attendance_source' => 'system_auto',
+                'is_lwp' => true,
+                'lwp_reason' => 'Absent (Never punched in)',
+                'is_blocked' => false,
+                'is_punch_blocked' => false,
+                'is_locked' => false,
+                'is_half_day' => false,
+                'missed_punch' => false,
+                'is_missed_punch' => false,
+                'remarks' => $reason,
+            ]);
+
+            if ($dryRun) {
+                $counts['would_mark_absent']++;
+                continue;
+            }
+
+            Attendance::create($updates);
+            $counts['marked_absent_never_punched'] = ($counts['marked_absent_never_punched'] ?? 0) + 1;
+        }
+
+        Log::info('HRMS auto-close blocked/absent attendance completed.', $counts + ['date' => $date]);
 
         return $counts;
     }
@@ -671,7 +832,7 @@ class AttendanceS
         if ($absentBelowMinutes > 0 && $netMinutes < $absentBelowMinutes) {
             $typeCode = 'lwp';
             $isLwp = true;
-        } elseif (($requiredMinutes > 0 && $netMinutes < $requiredMinutes) || ($combinedViolationLimit > 0 && $violationCount >= $combinedViolationLimit)) {
+        } elseif (($halfDayMinutes > 0 && $netMinutes < $halfDayMinutes) || ($combinedViolationLimit > 0 && $violationCount >= $combinedViolationLimit)) {
             $typeCode = 'half_day';
             $isHalfDay = true;
         }
@@ -1029,7 +1190,13 @@ class AttendanceS
             $completed = max(0, $in->diffInMinutes($now) - (int) ($shift?->lunch_break_minutes ?? $shift?->break_minutes ?? 0));
         }
         $required = (int) ($shift?->required_work_minutes ?? 0);
-        $target = $attendance?->target_punch_out_time ? Carbon::parse($now->toDateString() . ' ' . $this->ruleResolver->timeString($attendance->target_punch_out_time), $timezone) : null;
+        $target = null;
+        if ($attendance?->target_punch_out_time) {
+            $target = Carbon::parse($now->toDateString() . ' ' . $this->ruleResolver->timeString($attendance->target_punch_out_time), $timezone);
+        } elseif ($attendance?->punch_in_time) {
+            $in = Carbon::parse($now->toDateString() . ' ' . $this->ruleResolver->timeString($attendance->punch_in_time), $timezone);
+            $target = $this->ruleResolver->targetPunchOut($in, $shift);
+        }
         $remainingSeconds = $target && ! $attendance?->punch_out_time ? max(0, $now->diffInSeconds($target, false)) : 0;
 
         $typeCode = optional($attendance?->attendanceType)->code;
@@ -1045,19 +1212,12 @@ class AttendanceS
             $isBlocked = false;
         }
 
-        $resolved = $this->resolveFinalStatus($attendance);
-        $statusCodeVal = $resolved['status_code'];
-        $statusName = $resolved['status_name'];
-        if ($isBlocked) {
-            $statusCodeVal = 'punch_blocked';
-            $statusName = 'Punch Blocked';
-        } elseif ($isUnlocked && ! $attendance?->punch_in_time) {
-            $statusCodeVal = 'awaiting_punch_in';
-            $statusName = 'Awaiting Punch In';
-        }
-
-        $canPunchIn = ! $isBlocked && ! $attendance?->punch_in_time;
-        $canPunchOut = ! $isBlocked && (bool) ($attendance?->punch_in_time && ! $attendance?->punch_out_time);
+        $state = $this->ruleResolver->resolveMobileState($employee, $now, $attendance);
+        $statusCodeVal = $state['status_code'];
+        $statusName = $state['status_name'];
+        $isBlocked = $state['is_blocked'];
+        $canPunchIn = $state['can_punch_in'];
+        $canPunchOut = $state['can_punch_out'];
 
         return [
             'attendance_date' => $now->toDateString(),
@@ -1080,7 +1240,7 @@ class AttendanceS
             'can_punch_in' => $canPunchIn,
             'can_punch_out' => $canPunchOut,
             'late_warning' => $this->lateWarning($now, $shift),
-            'next_action' => $isBlocked ? 'blocked' : (! $attendance?->punch_in_time ? 'punch_in' : (! $attendance?->punch_out_time ? 'punch_out' : 'completed')),
+            'next_action' => $state['next_action'],
             'dynamic_timer_enabled' => (bool) ($attendance?->punch_in_time && ! $attendance?->punch_out_time),
             'office_location' => $this->officeLocationPayload(),
         ];
@@ -1092,48 +1252,24 @@ class AttendanceS
             return ['status_code' => 'not_punched', 'status_name' => 'Not Punched'];
         }
 
-        $typeCode = strtolower((string) optional($attendance->attendanceType)->code);
-        $statusCode = strtolower((string) ($attendance->attendance_status ?? ''));
-        $hasPunchIn = (bool) $attendance->punch_in_time;
-        $hasPunchOut = (bool) $attendance->punch_out_time;
-        $isBlocked = (bool) ($attendance->is_blocked || $attendance->is_punch_blocked || $typeCode === 'punch_blocked' || $statusCode === 'punch_blocked');
-
-        $resolvedCode = 'absent';
-
-        if (in_array($typeCode, ['holiday'], true) || in_array($statusCode, ['holiday'], true)) {
-            $resolvedCode = 'holiday';
-        } elseif (in_array($typeCode, ['week_off'], true) || in_array($statusCode, ['week_off'], true)) {
-            $resolvedCode = 'week_off';
-        } elseif (in_array($typeCode, ['leave'], true) || in_array($statusCode, ['leave'], true)) {
-            $resolvedCode = 'leave';
-        } elseif ($isBlocked) {
-            $attendanceDate = Carbon::parse($attendance->attendance_date, $this->attendanceTimezone());
-            $isToday = $attendanceDate->isToday();
-            if (! $hasPunchIn && ! $hasPunchOut && ! $isToday) {
-                $resolvedCode = $this->hasPendingRegularization($attendance, $attendanceDate->toDateString()) ? 'pending_hr' : 'absent';
-            } else {
-                $resolvedCode = 'punch_blocked';
-            }
-        } elseif ((bool) ($attendance->missed_punch || $attendance->is_missed_punch) || in_array($typeCode, ['missed_punch'], true) || in_array($statusCode, ['missed_punch'], true)) {
-            $resolvedCode = 'missed_punch';
-        } elseif ((bool) $attendance->is_lwp || in_array($typeCode, ['lwp'], true) || in_array($statusCode, ['lwp'], true)) {
-            $resolvedCode = 'lwp';
-        } elseif ((bool) $attendance->is_half_day || in_array($typeCode, ['half_day'], true) || in_array($statusCode, ['half_day'], true)) {
-            $resolvedCode = 'half_day';
-        } elseif (((bool) ($attendance->is_admin_unlocked ?? false) || $statusCode === 'unlocked') && ! $hasPunchIn && Carbon::parse($attendance->attendance_date, $this->attendanceTimezone())->isToday()) {
-            $resolvedCode = 'awaiting_punch_in';
-        } elseif ($hasPunchIn) {
-            $resolvedCode = 'present';
-        } elseif (! $hasPunchIn && ! $hasPunchOut) {
-            $resolvedCode = 'absent';
+        $employee = $attendance->employee ?: Employee::find($attendance->employee_id);
+        $date = Carbon::parse($attendance->attendance_date, $this->attendanceTimezone());
+        if ($employee) {
+            $state = $this->ruleResolver->resolveMobileState($employee, $date, $attendance);
+            return [
+                'status_code' => $state['status_code'],
+                'status_name' => $state['status_name'],
+            ];
         }
 
-        $statusName = optional($attendance->attendanceType)->name;
-        if (! $statusName || optional($attendance->attendanceType)->code !== $resolvedCode) {
-            $statusName = $this->attendanceType($resolvedCode)?->name ?: ucwords(str_replace('_', ' ', $resolvedCode));
+        $statusCode = $attendance->attendance_status ?: optional($attendance->attendanceType)->code ?: 'absent';
+        if ($statusCode === 'lwp') {
+            $statusCode = 'absent';
         }
-
-        return ['status_code' => $resolvedCode, 'status_name' => $statusName];
+        return [
+            'status_code' => $statusCode,
+            'status_name' => $statusCode === 'absent' ? 'Absent' : ucwords(str_replace('_', ' ', $statusCode)),
+        ];
     }
 
     public function defaultOfficeLocation(): ?AttendanceLocation
@@ -1286,14 +1422,13 @@ class AttendanceS
             return true;
         }
 
-        $threshold = $this->policyDayEndTime($policy) ?: '23:59:00';
-        $dueAt = Carbon::parse($date . ' ' . $threshold, $this->attendanceTimezone());
-
-        if ($policy?->shift_end_time) {
-            $shiftEnd = Carbon::parse($date . ' ' . $this->ruleResolver->timeString($policy->shift_end_time), $this->attendanceTimezone());
-            if ($shiftEnd->gt($dueAt)) {
-                $dueAt = $shiftEnd;
-            }
+        $policyDayEnd = $this->policyDayEndTime($policy);
+        if ($policyDayEnd) {
+            $dueAt = Carbon::parse($date . ' ' . $policyDayEnd, $this->attendanceTimezone());
+        } elseif ($policy?->shift_end_time) {
+            $dueAt = Carbon::parse($date . ' ' . $this->ruleResolver->timeString($policy->shift_end_time), $this->attendanceTimezone());
+        } else {
+            $dueAt = Carbon::parse($date . ' 23:59:00', $this->attendanceTimezone());
         }
 
         return $now->gte($dueAt);
@@ -1462,7 +1597,7 @@ class AttendanceS
 
         return [
             'allowed' => $allowed,
-            'message' => $allowed ? 'Success' : "You are outside the allowed office {$actionMsg} radius.",
+            'message' => $allowed ? 'Success' : 'You are outside the allowed office location.',
             'distance_meters' => round($distanceMeters, 2),
             'allowed_radius_meters' => $allowedRadiusMeters,
             'office_location_name' => $officeLocation->name,
@@ -1648,6 +1783,19 @@ class AttendanceS
                 'policy_action' => 'late_mark',
                 'remarks' => $attendance->punch_in_note ?: 'Late login detected.',
             ]);
+        } else {
+            // Check if there is an active late login violation to resolve
+            $violation = AttendanceViolationM::where('attendance_id', $attendance->id)
+                ->where('type', 'late_login')
+                ->whereDate('violation_date', $date)
+                ->first();
+            if ($violation && $violation->policy_action !== 'resolved') {
+                $reason = $attendance->is_late_exempted ? 'Exempted by HR/Admin' : 'Regularized/recalculated';
+                $violation->update([
+                    'policy_action' => 'resolved',
+                    'remarks' => $violation->remarks . " [Resolved: {$reason}.]",
+                ]);
+            }
         }
 
         // 2. Early Logout
@@ -1658,16 +1806,66 @@ class AttendanceS
                 'policy_action' => 'early_logout',
                 'remarks' => $attendance->punch_out_note ?: 'Early logout detected.',
             ]);
+        } else {
+            // Check if there is an active early logout violation to resolve
+            $violation = AttendanceViolationM::where('attendance_id', $attendance->id)
+                ->where('type', 'early_logout')
+                ->whereDate('violation_date', $date)
+                ->first();
+            if ($violation && $violation->policy_action !== 'resolved') {
+                $violation->update([
+                    'policy_action' => 'resolved',
+                    'remarks' => $violation->remarks . ' [Resolved: Adjusted by HR/Admin / recalculated.]',
+                ]);
+            }
         }
 
         // 3. Blocked Punch
-        if ($attendance->is_blocked || $attendance->is_punch_blocked || optional($attendance->attendanceType)->code === 'punch_blocked' || $attendance->attendance_status === 'punch_blocked') {
-            $this->recordAttendanceViolation($attendance, 'blocked_punch', $date, [
-                'minutes' => 0,
-                'source' => $attendance->attendance_source ?: 'system_auto',
-                'policy_action' => 'blocked',
-                'remarks' => $attendance->blocked_reason ?: ($attendance->block_reason ?: 'Punch blocked.'),
-            ]);
+        $isBlocked = $attendance->is_blocked || $attendance->is_punch_blocked || optional($attendance->attendanceType)->code === 'punch_blocked' || $attendance->attendance_status === 'punch_blocked';
+        if ($isBlocked) {
+            // Only log blocked punch violation if it was an actual user punch attempt (source is NOT system_auto)
+            if ($attendance->attendance_source !== 'system_auto') {
+                // Check by employee and date
+                $exists = AttendanceViolationM::where('employee_id', $attendance->employee_id)
+                    ->where('type', 'blocked_punch')
+                    ->whereDate('violation_date', $date)
+                    ->first();
+                if (! $exists) {
+                    AttendanceViolationM::create([
+                        'employee_id' => $attendance->employee_id,
+                        'attendance_id' => $attendance->id,
+                        'violation_date' => $date,
+                        'type' => 'blocked_punch',
+                        'minutes' => 0,
+                        'source' => $attendance->attendance_source ?: 'system_auto',
+                        'policy_action' => 'blocked',
+                        'remarks' => $attendance->blocked_reason ?: ($attendance->block_reason ?: 'Punch blocked.'),
+                    ]);
+                } else {
+                    if (! $exists->attendance_id) {
+                        $exists->update(['attendance_id' => $attendance->id]);
+                    }
+                }
+            }
+        } else {
+            // Check if there is an active blocked punch violation to resolve (by employee and date)
+            $violation = AttendanceViolationM::where('employee_id', $attendance->employee_id)
+                ->where('type', 'blocked_punch')
+                ->whereDate('violation_date', $date)
+                ->first();
+            if ($violation) {
+                $violationUpdates = [];
+                if (! $violation->attendance_id) {
+                    $violationUpdates['attendance_id'] = $attendance->id;
+                }
+                if ($violation->policy_action !== 'resolved') {
+                    $violationUpdates['policy_action'] = 'resolved';
+                    $violationUpdates['remarks'] = ($violation->remarks ?: '') . ' [Resolved: Unlocked/approved by HR/Admin.]';
+                }
+                if (! empty($violationUpdates)) {
+                    $violation->update($violationUpdates);
+                }
+            }
         }
 
         // 4. Missed Punch
@@ -1680,6 +1878,37 @@ class AttendanceS
                 'remarks' => $attendance->missed_punch_reason ?: 'Missed punch detected.',
             ]);
         }
+    }
+
+    private function resolveShiftIdForPolicy(?object $policy, ?object $existing = null, ?int $fallback = null): ?int
+    {
+        $resolvedShiftId = null;
+        if ($policy) {
+            if (($policy->source_table ?? null) === 'attendance_times') {
+                $resolvedShiftId = $policy->id;
+            } else {
+                $policyName = $policy->policy_name ?? $policy->name ?? '';
+                $mappedShiftCode = null;
+                if (str_contains($policyName, 'Default') || str_contains($policyName, 'General')) {
+                    $mappedShiftCode = 'general_shift';
+                } elseif (str_contains($policyName, 'Part Time')) {
+                    $mappedShiftCode = 'part_time_shift';
+                } elseif (str_contains($policyName, 'Half Day Morning')) {
+                    $mappedShiftCode = 'half_day_morning';
+                } elseif (str_contains($policyName, 'Half Day Evening')) {
+                    $mappedShiftCode = 'half_day_evening';
+                } elseif (str_contains($policyName, 'Half Day')) {
+                    $mappedShiftCode = 'half_day_shift';
+                } elseif (str_contains($policyName, 'WFH')) {
+                    $mappedShiftCode = 'wfh_shift';
+                }
+
+                if ($mappedShiftCode) {
+                    $resolvedShiftId = DB::table('attendance_times')->where('code', $mappedShiftCode)->value('id');
+                }
+            }
+        }
+        return $resolvedShiftId ?: ($existing->attendance_time_id ?? $fallback);
     }
 
     private function ordinal(int $number): string

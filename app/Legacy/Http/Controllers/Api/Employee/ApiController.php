@@ -259,7 +259,7 @@ class ApiController extends Controller
                     'id'                    => $profile->id,
                     'employee_id'           => $profile->employee_id,
                     'profile_image'         => $this->profileImageUrl($profile),
-                    'date_of_birth'         => $profile->date_of_birth,
+                    'date_of_birth'         => $profile->date_of_birth ? \Carbon\Carbon::parse($profile->date_of_birth)->format('Y-m-d') : null,
                     'gender'                => $profile->gender,
                     'address'               => $profile->address,
                     'highest_qualification' => $profile->highest_qualification,

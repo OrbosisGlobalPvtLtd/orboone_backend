@@ -629,7 +629,8 @@ class AttendancesC extends Controller
             'shift_end_time' => 'required',
             'late_after_time' => 'required',
             'warning_after_time' => 'nullable',
-            'block_after_time' => 'required',
+            'block_after_time' => 'nullable',
+            'half_day_after_time' => 'nullable',
             'required_work_minutes' => 'required|integer',
             'half_day_min_minutes' => 'required|integer',
             'absent_below_minutes' => 'nullable|integer',
@@ -817,7 +818,10 @@ class AttendancesC extends Controller
 
     private function canManageAttendance(): bool
     {
-        return (bool) (auth()->user() && method_exists(auth()->user(), 'isSuperAdmin') && auth()->user()->isSuperAdmin());
+        return $this->userHasPermission('attendance.rules.manage')
+            || $this->userHasPermission('attendance.records.manage')
+            || (bool) (auth()->user() && method_exists(auth()->user(), 'isSuperAdmin') && auth()->user()->isSuperAdmin())
+            || (bool) (auth()->user() && method_exists(auth()->user(), 'isAdmin') && auth()->user()->isAdmin());
     }
 
     private function canUnlockAttendance(): bool

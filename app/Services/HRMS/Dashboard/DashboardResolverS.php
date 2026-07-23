@@ -280,12 +280,13 @@ class DashboardResolverS
             $cards['early_logout'] = $attRows->filter(function($r) { return $r->code === 'early_leave' || (isset($r->is_early_out) && $r->is_early_out == 1); })->count();
             $cards['half_day'] = $attRows->filter(function($r) { return $r->code === 'half_day' || (isset($r->is_half_day) && $r->is_half_day == 1); })->count();
             $cards['lwp_count'] = $attRows->filter(function($r) { return $r->code === 'lwp' || (isset($r->is_lwp) && $r->is_lwp == 1); })->count();
-            $cards['punch_blocked'] = $attRows->filter(function($r) { return $r->code === 'punch_blocked' || (isset($r->is_blocked) && $r->is_blocked == 1); })->count();
+            $cards['punch_blocked'] = DB::table('attendance_violations')->where('type', 'blocked_punch')->whereDate('violation_date', $today)->where(function($q) { $q->whereNull('policy_action')->orWhere('policy_action', '<>', 'resolved'); })->count();
             $cards['pending_hr'] = $attRows->where('code', 'pending_hr')->count();
             $cards['missed_punch'] = $attRows->where('code', 'missed_punch')->count();
         }
 
         if ($role === 'hr_admin') {
+            $tasks = $this->taskStats(auth()->user());
             $cards = [
                 'active_employees' => (int) ($employee['active'] ?? 0),
                 'present_today' => (int) ($attendance['present'] ?? 0),
@@ -303,6 +304,9 @@ class DashboardResolverS
                 'pending_punch_out' => $this->pendingPunchOutCount(),
                 'new_joiners' => $this->newJoinersCount(),
                 'missed_punch' => (int) ($attendance['missed_punches'] ?? 0),
+                'tasks_open' => (int) $tasks['open'],
+                'tasks_completed' => (int) $tasks['completed'],
+                'tasks_review' => (int) $tasks['review'],
             ];
         }
 
@@ -318,8 +322,10 @@ class DashboardResolverS
                 'pending_wfh' => $this->getPendingWfhTable(),
                 'pending_profiles' => $this->getPendingProfilesTable(),
                 'pending_documents' => $this->getPendingDocumentsTable(),
+                'recent_tasks' => $this->recentTaskRows(8),
             ];
         }
+
 
         return [
             'cards' => $cards,
@@ -641,6 +647,7 @@ class DashboardResolverS
         $teamCount = count($teamIds);
         $pendingLeaves = $this->pendingLeaveCount($teamIds);
         $pendingDocuments = $this->pendingDocumentCount($teamIds);
+        $tasks = $this->taskStats($user);
 
         return $this->roleDashboardPayload('manager', $user, [
             'subtitle' => 'Team-level attendance, leave and document monitoring.',
@@ -648,6 +655,8 @@ class DashboardResolverS
             'cards' => [
                 $this->card('Team Members', $teamCount, 'fas fa-users', 'Direct reporting employees'),
                 $this->card('Present Today', $attendance['present'], 'fas fa-user-check', 'Team present today'),
+                $this->card('Team Open Tasks', $tasks['open'], 'fas fa-tasks', 'Assigned team tasks pending/in progress'),
+                $this->card('Team Completed Tasks', $tasks['completed'], 'fas fa-check-double', 'Completed team tasks'),
                 $this->card('Team On Leave', $attendance['leave'], 'fas fa-plane-departure', 'Team leave today'),
                 $this->card('Pending Leave Approvals', $pendingLeaves, 'fas fa-calendar-check', 'Team requests awaiting approval'),
                 $this->card('Late Team Members', $attendance['late'], 'fas fa-clock', 'Team late arrivals'),
@@ -668,6 +677,8 @@ class DashboardResolverS
                 ['Late Team Members', 'Team members marked late today', $attendance['late'], 'fas fa-clock', 'attendances.daily'],
             ]),
             'recent_activities' => $this->teamActivityRows($teamIds),
+            'recent_tasks' => $this->recentTaskRows(8),
+
             'tables' => [
                 'team_attendance' => $this->dashboardTable('Team Attendance Today', 'Only assigned team employees are shown', 'fas fa-calendar-check', $this->todayAttendanceRows(10, $teamIds), [
                     ['key' => 'employee', 'label' => 'Employee'],
@@ -1171,13 +1182,18 @@ class DashboardResolverS
         ];
     }
 
-    private function recentTaskRows(int $limit = 8): array
+    private function recentTaskRows(int $limit = 8, ?int $userId = null): array
     {
         if (! $this->tableExists('taskmanagement')) {
             return [];
         }
 
-        return DB::table('taskmanagement')
+        $query = DB::table('taskmanagement');
+        if ($userId) {
+            $query->where('user_id', $userId);
+        }
+
+        return $query
             ->select('title', 'employee_name', 'due_date', 'status')
             ->orderByDesc('id')
             ->limit($limit)
@@ -1189,6 +1205,7 @@ class DashboardResolverS
                 'status' => ucfirst((string) $row->status),
             ])->all();
     }
+
 
     private function projectProgressRows(): array
     {
@@ -1322,28 +1339,24 @@ class DashboardResolverS
 
     private function punchBlockedRows(int $limit = 8): array
     {
-        if (! $this->tableExists('attendances') || ! $this->tableExists('employees_new')) {
+        if (! $this->tableExists('attendance_violations') || ! $this->tableExists('employees_new')) {
             return [];
         }
 
-        $query = DB::table('attendances as a')
-            ->join('employees_new as e', 'e.id', '=', 'a.employee_id')
+        $query = DB::table('attendance_violations as v')
+            ->join('employees_new as e', 'e.id', '=', 'v.employee_id')
             ->leftJoin('users as u', 'u.id', '=', 'e.user_id')
-            ->whereDate('a.attendance_date', today()->toDateString());
-
-        if ($this->columnExists('attendances', 'is_blocked')) {
-            $query->where('a.is_blocked', 1);
-        } elseif ($this->columnExists('attendances', 'attendance_status')) {
-            $query->where('a.attendance_status', 'punch_blocked');
-        } else {
-            return [];
-        }
+            ->where('v.type', 'blocked_punch')
+            ->where(function($q) {
+                $q->whereNull('v.policy_action')->orWhere('v.policy_action', '<>', 'resolved');
+            })
+            ->whereDate('v.violation_date', today()->toDateString());
 
         return $query->select(
             DB::raw("COALESCE(u.name, 'Employee') as employee"),
             DB::raw($this->columnExists('employees_new', 'employee_code') ? "COALESCE(e.employee_code, '-') as code" : "'-' as code"),
-            DB::raw($this->columnExists('attendances', 'blocked_reason') ? "COALESCE(a.blocked_reason, '-')" : "'-' as reason"),
-            DB::raw($this->columnExists('attendances', 'is_admin_unlocked') ? "CASE WHEN a.is_admin_unlocked = 1 THEN 'Unlocked' ELSE 'Blocked' END as status" : "'Blocked' as status")
+            DB::raw("COALESCE(v.remarks, 'Punch blocked') as reason"),
+            DB::raw("'Blocked' as status")
         )->limit($limit)->get()->map(fn ($row) => $this->rowToArray($row))->all();
     }
 
@@ -1545,12 +1558,15 @@ class DashboardResolverS
         $leave = $this->employeeLeaveData($employeeId);
         $documents = $this->employeeDocumentData($employeeId);
         $payslip = $this->latestPayslip($employeeId);
+        $tasks = $this->taskStats($user);
 
         return [
             'employee' => $employee,
             'cards' => [
                 $this->card('Profile Completion', ($employee->profile_completion ?? 0) . '%', 'fas fa-id-card', 'Your HRMS profile status'),
                 $this->card('Today Attendance', $attendance['today_status'], 'fas fa-clock', $attendance['punch_summary']),
+                $this->card('My Open Tasks', $tasks['open'], 'fas fa-tasks', 'Pending and in-progress tasks'),
+                $this->card('My Completed Tasks', $tasks['completed'], 'fas fa-check-double', 'Tasks completed'),
                 $this->card('Month Present', $attendance['month']['present'], 'fas fa-calendar-check', 'This month present days'),
                 $this->card('Month Late', $attendance['month']['late'], 'fas fa-business-time', 'This month late count'),
                 $this->card('Leave Balance', $leave['summary'], 'fas fa-plane-departure', 'Available leave balance'),
@@ -1564,8 +1580,10 @@ class DashboardResolverS
             'latest_announcements' => $this->latestAnnouncements(),
             'latest_payslip' => $payslip,
             'quick_actions' => $this->quickActionsFor('employee', $employeeId),
+            'recent_tasks' => $this->recentTaskRows(8, $user->id ?? null),
         ];
     }
+
 
     private function employeeStats(): array
     {
@@ -1670,7 +1688,19 @@ class DashboardResolverS
             $stats[$code] = (int) ($rows[$code] ?? 0);
         }
 
-        $stats['punch_blocked'] = (int) ($rows['punch_blocked'] ?? 0);
+        $stats['punch_blocked'] = 0;
+        if ($this->tableExists('attendance_violations')) {
+            $violationQuery = DB::table('attendance_violations')
+                ->where('type', 'blocked_punch')
+                ->whereDate('violation_date', $date)
+                ->where(function($q) {
+                    $q->whereNull('policy_action')->orWhere('policy_action', '<>', 'resolved');
+                });
+            if ($employeeId) {
+                $violationQuery->where('employee_id', $employeeId);
+            }
+            $stats['punch_blocked'] = $violationQuery->count();
+        }
         $stats['late'] = (int) (clone $query)->where('a.is_late', 1)->count();
         $stats['early_out'] = (int) (clone $query)->where('a.is_early_out', 1)->count();
         $stats['missed_punches'] = (int) (clone $query)->where(function ($q) {
@@ -1969,16 +1999,54 @@ class DashboardResolverS
             ];
         }
 
+        $role = $this->resolveRole($user);
+        $query = DB::table('taskmanagement');
+
+        if ($role === 'employee') {
+            $query->where('user_id', $user->id ?? 0);
+        } elseif ($role === 'manager') {
+            $employeeIds = $this->managerTeamEmployeeIds($user);
+            $subordinateUserIds = DB::table('employees_new')
+                ->whereIn('id', $employeeIds)
+                ->pluck('user_id')
+                ->filter()
+                ->all();
+            $query->where(function($q) use ($user, $subordinateUserIds) {
+                $q->where('user_id', $user->id ?? 0)
+                  ->orWhereIn('user_id', $subordinateUserIds);
+            });
+        }
+
+        $tasks = collect($query->get());
+
+        $open = 0;
+        $completed = 0;
+        $review = 0;
+        $mine = 0;
+
+        foreach ($tasks as $t) {
+            $status = strtolower(trim((string)($t->status ?? '')));
+            if (in_array($status, ['pending', 'in_progress', 'progress'])) {
+                $open++;
+            } elseif ($status === 'completed') {
+                $completed++;
+            } elseif (in_array($status, ['verified', 'closed'])) {
+                $review++;
+            }
+            if (($t->user_id ?? 0) == ($user->id ?? 0)) {
+                $mine++;
+            }
+        }
+
         return [
-            'open' => DB::table('taskmanagement')->whereIn('status', ['pending', 'progress', 'overdue'])->count(),
-            'completed' => DB::table('taskmanagement')->where('status', 'completed')->count(),
-            'review' => $this->columnExists('taskmanagement', 'review_status')
-                ? DB::table('taskmanagement')->whereRaw('LOWER(review_status) = ?', ['pending'])->count()
-                : 0,
-            'mine' => DB::table('taskmanagement')->where('user_id', $user->id ?? 0)->count(),
-            'has_project_setup' => false,
+            'open' => $open,
+            'completed' => $completed,
+            'review' => $review,
+            'mine' => $mine,
+            'has_project_setup' => true,
         ];
     }
+
 
     private function employeeAttendanceData($employeeId, $userId): array
     {
@@ -3593,23 +3661,32 @@ class DashboardResolverS
 
     private function pendingUnlockCount(): int
     {
-        if (! $this->tableExists('attendances')) {
-            return 0;
+        $count = 0;
+        $today = Carbon::today(config('app.timezone', 'Asia/Kolkata'))->toDateString();
+        
+        if ($this->tableExists('attendance_violations')) {
+            $count += DB::table('attendance_violations')
+                ->where('type', 'blocked_punch')
+                ->whereDate('violation_date', $today)
+                ->where(function($q) {
+                    $q->whereNull('policy_action')->orWhere('policy_action', '<>', 'resolved');
+                })
+                ->count();
+        }
+        
+        if ($this->tableExists('attendances')) {
+            $query = DB::table('attendances as a')
+                ->whereDate('a.attendance_date', $today);
+                
+            if ($this->tableExists('attendance_types') && $this->columnExists('attendances', 'attendance_type_id')) {
+                $query->whereIn('a.attendance_type_id', DB::table('attendance_types')->whereIn('code', ['pending_hr'])->select('id'));
+            } else {
+                return $count;
+            }
+            $count += $query->count();
         }
 
-        $query = DB::table('attendances as a')
-            ->whereDate('a.attendance_date', Carbon::today(config('app.timezone', 'Asia/Kolkata'))->toDateString());
-
-        $query->where(function ($q) {
-            if ($this->columnExists('attendances', 'is_blocked')) {
-                $q->orWhere('a.is_blocked', 1);
-            }
-            if ($this->tableExists('attendance_types') && $this->columnExists('attendances', 'attendance_type_id')) {
-                $q->orWhereIn('a.attendance_type_id', DB::table('attendance_types')->whereIn('code', ['punch_blocked', 'pending_hr'])->select('id'));
-            }
-        });
-
-        return (int) $query->count();
+        return $count;
     }
 
     private function pendingPunchOutCount(): int

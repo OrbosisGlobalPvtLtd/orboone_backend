@@ -63,12 +63,228 @@ class AttendanceRuleResolverService
         ];
     }
 
+    public function resolveMobileState(Employee $employee, Carbon|string|null $dateTime = null, ?Attendance $attendance = null): array
+    {
+        $now = $this->date($dateTime);
+        $today = $now->toDateString();
+        $isFuture = $now->copy()->startOfDay()->gt(Carbon::now(self::TIMEZONE)->startOfDay());
+
+        $policy = $this->getPolicyForEmployee($employee, $now);
+        $dayContext = $this->getDayContext($employee, $now);
+        $window = $this->calculatePunchWindowState($policy, $now);
+
+        if (! $attendance) {
+            $attendance = Attendance::with(['attendanceType', 'attendanceTime', 'workLogs'])
+                ->where('employee_id', $employee->id)
+                ->whereDate('attendance_date', $today)
+                ->latest('id')
+                ->first();
+        }
+
+        $typeCode = strtolower((string) optional($attendance?->attendanceType)->code);
+        $statusCode = strtolower((string) ($attendance?->attendance_status ?? ''));
+        $rawStatus = $statusCode ?: ($typeCode ?: '');
+
+        $hasPunchIn = (bool) $attendance?->punch_in_time;
+        $hasPunchOut = (bool) $attendance?->punch_out_time;
+
+        $blockedViolation = DB::table('attendance_violations')
+            ->where('employee_id', $employee->id)
+            ->where('type', 'blocked_punch')
+            ->whereDate('violation_date', $today)
+            ->first();
+
+        $isUnlocked = (bool) ($attendance?->is_admin_unlocked ?? false)
+            || ($blockedViolation && $blockedViolation->policy_action === 'resolved')
+            || $statusCode === 'unlocked';
+
+        $isBlockedViolation = $blockedViolation && $blockedViolation->policy_action !== 'resolved';
+
+        // Check for Final Attendance States
+        $isLeave = $dayContext['is_on_leave'] || $rawStatus === 'leave' || in_array($typeCode, ['leave'], true) || (bool) ($attendance?->is_leave ?? false);
+        $isHoliday = $dayContext['is_holiday'] || $rawStatus === 'holiday' || in_array($typeCode, ['holiday'], true);
+        $isWeekoff = $dayContext['is_weekoff'] || $rawStatus === 'week_off' || in_array($typeCode, ['week_off'], true);
+        $isHalfDay = (bool) ($attendance?->is_half_day ?? false) || $rawStatus === 'half_day' || in_array($typeCode, ['half_day'], true);
+        $isMissedPunch = (bool) ($attendance?->missed_punch ?? $attendance?->is_missed_punch ?? false) || $rawStatus === 'missed_punch' || in_array($typeCode, ['missed_punch'], true);
+        $isLwp = (bool) ($attendance?->is_lwp ?? false) || $rawStatus === 'lwp' || in_array($typeCode, ['lwp'], true);
+        $isAbsent = ($rawStatus === 'absent' || in_array($typeCode, ['absent'], true)) && ! $isUnlocked;
+        $isPresent = $hasPunchIn && ! $isHalfDay && ! $isMissedPunch && ! $isLwp && ! $isAbsent;
+
+        $isBlockedDb = (bool) (
+            $attendance?->is_blocked
+            || $attendance?->is_punch_blocked
+            || $typeCode === 'punch_blocked'
+            || $statusCode === 'punch_blocked'
+        );
+
+        $evalNow = Carbon::now(self::TIMEZONE);
+        $attDateStr = $attendance ? Carbon::parse($attendance->attendance_date, self::TIMEZONE)->toDateString() : $evalNow->toDateString();
+        $isAttDateToday = $attDateStr === $evalNow->toDateString();
+
+        // Priority Order: 1 Holiday, 2 Week Off, 3 Approved Leave, 4 Present, 5 Half Day, 6 Missed Punch, 7 Punch Blocked, 8 Absent
+        if ($isUnlocked && ! $hasPunchIn && $isAttDateToday) {
+            return [
+                'status_code' => 'awaiting_punch_in',
+                'status_name' => 'Awaiting Punch In',
+                'attendance_state' => 'unlocked_waiting_punch_in',
+                'is_blocked' => false,
+                'is_punch_blocked' => false,
+                'show_blocked_card' => false,
+                'blocked_message' => null,
+                'can_punch_in' => true,
+                'can_punch_out' => false,
+                'next_action' => 'punch_in',
+                'primary_message' => 'Punch-in is available.',
+            ];
+        }
+
+        $finalCode = null;
+        if ($isHoliday) {
+            $finalCode = 'holiday';
+        } elseif ($isWeekoff) {
+            $finalCode = 'week_off';
+        } elseif ($isLeave) {
+            $finalCode = 'leave';
+        } elseif ($isPresent) {
+            $finalCode = 'present';
+        } elseif ($isHalfDay) {
+            $finalCode = 'half_day';
+        } elseif ($isMissedPunch) {
+            $finalCode = 'missed_punch';
+        } elseif ($isBlockedDb) {
+            $finalCode = 'punch_blocked';
+        } elseif ($isAbsent) {
+            $finalCode = 'absent';
+        }
+
+        if ($finalCode !== null) {
+            // STATE: FINAL ATTENDANCE STATE REACHED
+            // Blocked state can NEVER override a final state.
+            $statusCodeVal = $finalCode;
+            $statusName = match ($finalCode) {
+                'leave' => 'Leave',
+                'holiday' => 'Holiday',
+                'week_off' => 'Week Off',
+                'present' => 'Present',
+                'half_day' => 'Half Day',
+                'missed_punch' => 'Missed Punch',
+                'punch_blocked' => 'Punch Blocked',
+                'absent' => 'Absent',
+                default => ucwords(str_replace('_', ' ', $finalCode)),
+            };
+
+            $canPunchIn = false;
+            $canPunchOut = $hasPunchIn && ! $hasPunchOut;
+            $nextAction = $hasPunchIn ? (! $hasPunchOut ? 'punch_out' : 'completed') : 'none';
+            $attendanceState = $hasPunchIn ? (! $hasPunchOut ? 'punched_in' : 'punched_out') : $finalCode;
+
+            if ($finalCode === 'leave') {
+                $canPunchOut = false;
+                $nextAction = 'none';
+                $attendanceState = 'leave';
+            }
+
+            if (in_array($finalCode, ['absent', 'missed_punch', 'punch_blocked', 'leave', 'holiday', 'week_off'], true)) {
+                $attendanceState = $finalCode;
+            }
+
+            return [
+                'status_code' => $statusCodeVal,
+                'status_name' => $statusName,
+                'attendance_state' => $attendanceState,
+                'is_blocked' => false,
+                'is_punch_blocked' => false,
+                'show_blocked_card' => false,
+                'blocked_message' => null,
+                'can_punch_in' => $canPunchIn,
+                'can_punch_out' => $canPunchOut,
+                'next_action' => $nextAction,
+                'primary_message' => $this->primaryMessage($policy, $dayContext, $attendance, $window),
+            ];
+        }
+
+        if ($isFuture) {
+            return [
+                'status_code' => 'future',
+                'status_name' => 'Future',
+                'attendance_state' => 'future',
+                'is_blocked' => false,
+                'is_punch_blocked' => false,
+                'show_blocked_card' => false,
+                'blocked_message' => null,
+                'can_punch_in' => false,
+                'can_punch_out' => false,
+                'next_action' => 'none',
+                'primary_message' => 'Upcoming date.',
+            ];
+        }
+
+        $isBlockedDb = (bool) (
+            $attendance?->is_blocked
+            || $attendance?->is_punch_blocked
+            || $typeCode === 'punch_blocked'
+            || $statusCode === 'punch_blocked'
+        );
+
+        if ($isBlockedDb) {
+            return [
+                'status_code' => 'punch_blocked',
+                'status_name' => 'Punch Blocked',
+                'attendance_state' => 'punch_blocked',
+                'is_blocked' => true,
+                'is_punch_blocked' => true,
+                'show_blocked_card' => true,
+                'blocked_message' => 'Your punch-in is blocked. Please contact HR/Admin.',
+                'can_punch_in' => false,
+                'can_punch_out' => false,
+                'next_action' => 'blocked',
+                'primary_message' => 'Punch-in is blocked.',
+            ];
+        }
+
+        $isPastDate = Carbon::parse($today, self::TIMEZONE)->startOfDay()->lt($evalNow->copy()->startOfDay());
+        $isPastShiftEnd = $window['is_after_shift_end'] ?? false;
+
+        if (! $hasPunchIn && ($isPastDate || $isPastShiftEnd)) {
+            return [
+                'status_code' => 'absent',
+                'status_name' => 'Absent',
+                'attendance_state' => 'absent',
+                'is_blocked' => false,
+                'is_punch_blocked' => false,
+                'show_blocked_card' => false,
+                'blocked_message' => null,
+                'can_punch_in' => false,
+                'can_punch_out' => false,
+                'next_action' => 'none',
+                'primary_message' => null,
+            ];
+        }
+
+        $canPunchIn = $dayContext['is_working_day'] && $window['is_allowed'];
+        $nextAction = $canPunchIn ? 'punch_in' : 'none';
+
+        return [
+            'status_code' => 'not_punched',
+            'status_name' => 'Not Punched',
+            'attendance_state' => 'not_punched',
+            'is_blocked' => false,
+            'is_punch_blocked' => false,
+            'show_blocked_card' => false,
+            'blocked_message' => null,
+            'can_punch_in' => $canPunchIn,
+            'can_punch_out' => false,
+            'next_action' => $nextAction,
+            'primary_message' => $this->primaryMessage($policy, $dayContext, $attendance, $window),
+        ];
+    }
+
     public function buildMobileRulePayload(Employee $employee, Carbon|string|null $dateTime = null): array
     {
         $now = $this->date($dateTime);
         $policy = $this->getPolicyForEmployee($employee, $now);
         $dayContext = $this->getDayContext($employee, $now);
-        
+
         $today = $now->toDateString();
         $attendance = Attendance::with(['attendanceType', 'attendanceTime', 'workLogs'])
             ->where('employee_id', $employee->id)
@@ -77,114 +293,18 @@ class AttendanceRuleResolverService
             ->first();
 
         $window = $this->calculatePunchWindowState($policy, $now);
-        $typeCode = optional($attendance?->attendanceType)->code;
-        $statusCode = $attendance?->attendance_status;
-        $isUnlocked = (bool) ($attendance?->is_admin_unlocked ?? false);
-        
-        $hasPunchIn = (bool) $attendance?->punch_in_time;
-        $hasPunchOut = (bool) $attendance?->punch_out_time;
+        $state = $this->resolveMobileState($employee, $now, $attendance);
 
-        // Define default states based on user requirements
-        $isBlocked = false;
-        $isPunchBlocked = false;
-        $showBlockedCard = false;
-        $canPunchIn = false;
-        $canPunchOut = false;
-        $attendanceState = 'absent';
-        $statusCodeVal = 'not_punched';
-        $nextAction = 'none';
-
-        if ($attendance) {
-            $isBlockedDb = ! $isUnlocked && (bool) (
-                $attendance->is_blocked
-                || $attendance->is_punch_blocked
-                || $typeCode === 'punch_blocked'
-                || $statusCode === 'punch_blocked'
-            );
-            
-            if ($isUnlocked) {
-                $isBlocked = false;
-                $isPunchBlocked = false;
-                $showBlockedCard = false;
-                
-                if (! $hasPunchIn) {
-                    $statusCodeVal = 'awaiting_punch_in';
-                    $canPunchIn = true;
-                    $nextAction = 'punch_in';
-                    $attendanceState = 'unlocked_waiting_punch_in';
-                } else {
-                    $statusCodeVal = $typeCode ?: ($statusCode ?: 'present');
-                    $canPunchIn = false;
-                    $canPunchOut = ! $hasPunchOut;
-                    $nextAction = ! $hasPunchOut ? 'punch_out' : 'completed';
-                    $attendanceState = ! $hasPunchOut ? 'punched_in' : 'punched_out';
-                }
-            } elseif ($isBlockedDb) {
-                $isBlocked = true;
-                $isPunchBlocked = true;
-                $showBlockedCard = true;
-                $statusCodeVal = 'punch_blocked';
-                $canPunchIn = false;
-                $canPunchOut = false;
-                $nextAction = 'blocked';
-            } else {
-                // Not unlocked, not blocked in DB
-                // Normal processing
-                $statusCodeVal = $typeCode ?: ($statusCode ?: 'not_punched');
-                if ($statusCodeVal === 'pending_hr') {
-                    $statusCodeVal = 'not_punched';
-                }
-                
-                if (! $hasPunchIn) {
-                    // Check if block time is crossed
-                    if ($window['is_blocked']) {
-                        $isBlocked = true;
-                        $isPunchBlocked = true;
-                        $showBlockedCard = true;
-                        $statusCodeVal = 'punch_blocked';
-                        $canPunchIn = false;
-                        $nextAction = 'blocked';
-                    } else {
-                        $canPunchIn = $dayContext['is_working_day'] && $window['is_allowed'];
-                        $nextAction = $canPunchIn ? 'punch_in' : 'none';
-                    }
-                } else {
-                    $statusCodeVal = $typeCode ?: ($statusCode ?: 'present');
-                    $canPunchIn = false;
-                    $canPunchOut = ! $hasPunchOut;
-                    $nextAction = ! $hasPunchOut ? 'punch_out' : 'completed';
-                    $attendanceState = ! $hasPunchOut ? 'punched_in' : 'punched_out';
-                }
-            }
-        } else {
-            // Attendance is null (no attendance row exists)
-            $isBlocked = false;
-            $isPunchBlocked = false;
-            $showBlockedCard = false;
-            $canPunchOut = false;
-            $attendanceState = 'absent';
-            
-            if ($window['is_blocked']) {
-                $statusCodeVal = 'absent';
-                $canPunchIn = false;
-                $nextAction = 'blocked_by_policy';
-            } else {
-                $canPunchIn = $dayContext['is_working_day'] && $window['is_allowed'];
-                $statusCodeVal = 'not_punched';
-                $nextAction = $canPunchIn ? 'punch_in' : 'none';
-            }
-        }
-
-        $primaryMessage = $this->primaryMessage($policy, $dayContext, $attendance, $window);
-        $blockedMessage = $showBlockedCard ? 'Your punch-in is blocked. Please contact HR/Admin.' : null;
-        
-        if ($isUnlocked && ! $hasPunchIn) {
-            $primaryMessage = 'Punch-in is available.';
-            $blockedMessage = null;
-        } elseif (! $attendance && $window['is_blocked']) {
-            $primaryMessage = 'Punch-in is blocked by policy.';
-            $blockedMessage = null;
-        }
+        $isBlocked = $state['is_blocked'];
+        $isPunchBlocked = $state['is_punch_blocked'];
+        $showBlockedCard = $state['show_blocked_card'];
+        $canPunchIn = $state['can_punch_in'];
+        $canPunchOut = $state['can_punch_out'];
+        $attendanceState = $state['attendance_state'];
+        $statusCodeVal = $state['status_code'];
+        $nextAction = $state['next_action'];
+        $primaryMessage = $state['primary_message'];
+        $blockedMessage = $state['blocked_message'];
 
         $requiredWorkMinutes = 0;
         if ($policy) {
@@ -211,7 +331,35 @@ class AttendanceRuleResolverService
             $policy->required_work_minutes = $requiredWorkMinutes;
         }
 
-        if ($attendance && $isUnlocked && ! $hasPunchIn) {
+        $breakMinutes = 0;
+        if ($policy) {
+            $breakMinutes = (int) ($policy->lunch_break_minutes ?? $policy->break_minutes ?? 0);
+        }
+        if ($breakMinutes <= 0) {
+            $shift = $this->policyFromDefaultShift();
+            if ($shift) {
+                $breakMinutes = (int) ($shift->lunch_break_minutes ?? $shift->break_minutes ?? 0);
+            }
+        }
+        if ($breakMinutes <= 0) {
+            if (Schema::hasTable('attendance_times')) {
+                $breakMinutes = (int) (DB::table('attendance_times')->where('lunch_break_minutes', '>', 0)->value('lunch_break_minutes') ?? 0);
+            }
+        }
+
+        $remainingSeconds = 0;
+        if ($attendance && $attendance->punch_in_time && ! $attendance->punch_out_time) {
+            $targetVal = $attendance->target_punch_out_time;
+            if ($targetVal) {
+                $target = Carbon::parse($today . ' ' . $this->timeString($targetVal), self::TIMEZONE);
+            } else {
+                $in = Carbon::parse($today . ' ' . $this->timeString($attendance->punch_in_time), self::TIMEZONE);
+                $target = $this->targetPunchOut($in, $policy);
+            }
+            $remainingSeconds = max(0, $now->diffInSeconds($target, false));
+        }
+
+        if ($attendance && $state['status_code'] === 'awaiting_punch_in' && ! $attendance->punch_in_time) {
             $attendance->status_code = 'awaiting_punch_in';
             $attendance->status_name = 'Awaiting Punch In';
             $attendance->attendance_status = 'unlocked';
@@ -229,6 +377,8 @@ class AttendanceRuleResolverService
             'timezone' => self::TIMEZONE,
             'policy' => $this->policyPayload($policy),
             'required_work_minutes' => $requiredWorkMinutes,
+            'remaining_work_seconds' => $remainingSeconds,
+            'break_minutes' => $breakMinutes,
             'day_context' => $dayContext,
             'attendance' => $attendance,
             'ui' => [
@@ -238,10 +388,10 @@ class AttendanceRuleResolverService
                 'is_blocked' => $isBlocked,
                 'is_punch_blocked' => $isPunchBlocked,
                 'status_code' => $statusCodeVal,
-                'status_name' => $isUnlocked && ! $hasPunchIn ? 'Awaiting Punch In' : ucwords(str_replace('_', ' ', $statusCodeVal)),
+                'status_name' => $state['status_name'],
                 'next_action' => $nextAction,
                 'show_early_login_tag' => $window['is_before_shift_start'] && $canPunchIn,
-                'show_late_mark' => $window['is_late'],
+                'show_late_mark' => $attendance ? (bool) ($attendance->is_late ?? false) : $window['is_late'],
                 'show_late_warning' => $window['is_warning'],
                 'show_blocked_card' => $showBlockedCard,
                 'primary_message' => $primaryMessage,
@@ -259,6 +409,9 @@ class AttendanceRuleResolverService
         $lateAfter = $this->timeOnDate($policy?->late_after_time, $now);
         $warningAfter = $this->timeOnDate($policy?->warning_after_time, $now);
         $blockAfter = $this->timeOnDate($policy?->block_after_time, $now);
+        $shiftEnd = $this->timeOnDate($policy?->shift_end_time, $now);
+
+        $isAfterShiftEnd = $shiftEnd ? $now->gt($shiftEnd) : false;
 
         return [
             'is_before_allowed_from' => $allowedFrom ? $now->lt($allowedFrom) : false,
@@ -266,9 +419,11 @@ class AttendanceRuleResolverService
             'is_late' => $lateAfter ? $now->gt($lateAfter) : false,
             'is_warning' => $warningAfter && $blockAfter ? $now->betweenIncluded($warningAfter, $blockAfter) : false,
             'is_blocked' => $blockAfter ? $now->gt($blockAfter) : false,
-            'is_allowed' => (! $allowedFrom || $now->gte($allowedFrom)) && (! $blockAfter || $now->lte($blockAfter)),
+            'is_after_shift_end' => $isAfterShiftEnd,
+            'is_allowed' => (! $allowedFrom || $now->gte($allowedFrom)) && (! $shiftEnd || $now->lte($shiftEnd)),
             'allowed_from' => $allowedFrom,
             'block_after' => $blockAfter,
+            'shift_end' => $shiftEnd,
         ];
     }
 
@@ -319,8 +474,6 @@ class AttendanceRuleResolverService
         if ($absentBelow > 0 && $work['net_minutes'] < $absentBelow) {
             $code = 'lwp';
         } elseif (($halfDay > 0 && $work['net_minutes'] < $halfDay) || ($violationLimit > 0 && $violationCount >= $violationLimit)) {
-            $code = 'half_day';
-        } elseif ($required > 0 && $work['net_minutes'] < $required) {
             $code = 'half_day';
         }
 
@@ -503,7 +656,7 @@ class AttendanceRuleResolverService
         return $employee ? $this->getPolicyForEmployee($employee, $attendance->attendance_date) : $this->defaultAttendancePolicy();
     }
 
-    private function primaryMessage(?object $policy, array $dayContext, ?Attendance $attendance, array $window): string
+    private function primaryMessage(?object $policy, array $dayContext, ?Attendance $attendance, array $window): ?string
     {
         if ($dayContext['is_holiday']) {
             return 'Today is a holiday.';
@@ -523,14 +676,8 @@ class AttendanceRuleResolverService
         if ($window['is_before_allowed_from']) {
             return 'Punch-in is allowed from ' . $this->displayTime($policy?->punch_allowed_from) . '.';
         }
-        if ($window['is_blocked']) {
-            return 'Your punch-in is blocked. Please contact HR/Admin.';
-        }
-        if ($window['is_warning']) {
-            return 'Late punch-in. Warning: punch will be blocked after ' . $this->displayTime($policy?->block_after_time) . '.';
-        }
 
-        return 'Punch-in is available.';
+        return null;
     }
 
     private function displayTime($time): string

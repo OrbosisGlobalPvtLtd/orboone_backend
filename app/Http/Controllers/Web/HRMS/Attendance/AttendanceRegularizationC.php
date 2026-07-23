@@ -35,7 +35,7 @@ class AttendanceRegularizationC extends Controller
         $query = $this->employeeJoinedQuery('attendance_regularizations')
             ->leftJoin('attendances', 'attendances.id', '=', 'attendance_regularizations.attendance_id')
             ->addSelect([
-                DB::raw('attendances.attendance_date as mapped_attendance_date'),
+                DB::raw('COALESCE(attendances.attendance_date, DATE(attendance_regularizations.requested_punch_in), DATE(attendance_regularizations.requested_punch_out), DATE(attendance_regularizations.created_at)) as mapped_attendance_date'),
                 DB::raw('attendances.punch_in_time as mapped_current_punch_in'),
                 DB::raw('attendances.punch_out_time as mapped_current_punch_out'),
             ])

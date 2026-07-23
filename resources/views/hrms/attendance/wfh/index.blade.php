@@ -1,4 +1,4 @@
-@extends('layouts.panel', ['accesses' => $accesses ?? [], 'active' => $active ?? 'attendance'])
+    @extends('layouts.panel', ['accesses' => $accesses ?? [], 'active' => $active ?? 'attendance'])
 
 @section('_head')
 @include('hrms.enterprise-payroll.partials.styles')
@@ -13,6 +13,27 @@
             <p>Track, approve and manage employee Work From Home requests with quota and payroll impact.</p>
         </div>
     </div>
+
+    @if(session('success'))
+    <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm mb-4" role="alert" style="border-radius: 12px; background: #ECFDF3; color: #027A48;">
+        <i class="fas fa-check-circle mr-2"></i> {{ session('success') }}
+        <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+    </div>
+    @endif
+
+    @if(session('error'))
+    <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm mb-4" role="alert" style="border-radius: 12px; background: #FEF3F2; color: #B42318;">
+        <i class="fas fa-exclamation-circle mr-2"></i> {{ session('error') }}
+        <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+    </div>
+    @endif
+
+    @if($errors->any())
+    <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm mb-4" role="alert" style="border-radius: 12px; background: #FEF3F2; color: #B42318;">
+        <i class="fas fa-exclamation-circle mr-2"></i> {{ $errors->first() }}
+        <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+    </div>
+    @endif
 
     <div class="row ep-metrics-grid">
         <div class="col-lg-2 col-md-4 mb-3">
@@ -131,13 +152,13 @@
                             <th>S.No.</th>
                             <th>Employee</th>
                             <th>Code</th>
-                            <th>Date</th>
+                            <th>Date Range</th>
+                            <th>Working Days</th>
                             <th>Source</th>
                             <th>Request Type</th>
                             <th>Reason Category</th>
                             <th>Quota Impact</th>
                             <th>Payroll Impact</th>
-                            <th>Approval Stage</th>
                             <th>Status</th>
                             <th>Approved By</th>
                             <th>Submitted At</th>
@@ -150,7 +171,8 @@
                             <td>{{ $loop->iteration }}</td>
                             <td>{{ $row->employee_display_name ?? '-' }}</td>
                             <td>{{ $row->employee_code ?? '-' }}</td>
-                            <td>{{ \Carbon\Carbon::parse($row->request_date)->format('d M Y') }}</td>
+                            <td><strong>{{ $row->date_range_label ?? \Carbon\Carbon::parse($row->request_date)->format('d M Y') }}</strong></td>
+                            <td><span class="ep-badge ep-badge-primary">{{ $row->working_days ?? 1 }} Days</span></td>
                             <td>{{ $row->source_label ?? 'Employee Requested' }}</td>
                             <td>{{ ucwords(str_replace('_', ' ', $row->request_type)) }}</td>
                             <td>{{ ucwords(str_replace('_', ' ', $row->reason_category)) }}</td>
@@ -164,11 +186,6 @@
                                     {{ strtoupper($row->payroll_impact === 'lwp' ? 'LWP' : 'None') }}
                                 </span>
                             </td>
-                            <td>
-                                <span class="ep-badge {{ in_array($row->status, ['pending','manager_approved','hr_approved']) ? 'ep-badge-warning' : (in_array($row->status, ['approved']) ? 'ep-badge-success' : 'ep-badge-danger') }}">
-                                    {{ $row->approval_stage ?? ucwords(str_replace('_', ' ', $row->status)) }}
-                                </span>
-                            </td>
                             <td><span class="ep-badge {{ in_array($row->status, ['pending','manager_approved','hr_approved']) ? 'ep-badge-warning' : (in_array($row->status, ['approved']) ? 'ep-badge-success' : 'ep-badge-danger') }}">{{ ucwords(str_replace('_', ' ', $row->status)) }}</span></td>
                             <td>{{ $row->approved_by_label ?? '-' }}</td>
                             <td>{{ optional($row->created_at)->format('d M Y h:i A') }}</td>
@@ -179,7 +196,7 @@
                                         <button type="button" class="dropdown-item js-view-details"
                                             data-row='@json($row)'>View Details</button>
                                         @if($canApprove && in_array($row->status, ['pending','manager_approved','hr_approved']))
-                                        <button type="button" class="dropdown-item text-success js-approve" data-id="{{ $row->id }}">Approve</button>
+                                        <button type="button" class="dropdown-item text-success js-approve" data-id="{{ $row->id }}" data-row='@json($row)'>Approve</button>
                                         @endif
                                         @if($canReject && in_array($row->status, ['pending','manager_approved','hr_approved']))
                                         <button type="button" class="dropdown-item text-danger js-reject" data-id="{{ $row->id }}">Reject</button>
@@ -317,17 +334,23 @@
         <div class="modal-content ep-form border-0 shadow-lg">
             <div class="ep-modal-header">
                 <h5 class="modal-title">WFH Request Details</h5>
-                <p>View request reason, approval timeline and payroll impact.</p>
+                <p>View complete request information, days breakdown, and approval history.</p>
                 <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <div class="ep-modal-body">
                 <div class="ep-section-card mb-3">
-                    <div class="ep-section-title"><i class="fas fa-user"></i> Request Information</div>
+                    <div class="ep-section-title"><i class="fas fa-user"></i> Application Overview</div>
                     <div class="row">
-                        <div class="col-md-6 mb-2"><small class="text-muted d-block">Employee</small><strong id="d_employee">-</strong></div>
-                        <div class="col-md-6 mb-2"><small class="text-muted d-block">Date</small><strong id="d_date">-</strong></div>
-                        <div class="col-md-6 mb-2"><small class="text-muted d-block">Request Type</small><strong id="d_type">-</strong></div>
+                        <div class="col-md-6 mb-2"><small class="text-muted d-block">Employee Name</small><strong id="d_employee">-</strong></div>
+                        <div class="col-md-6 mb-2"><small class="text-muted d-block">Employee Code</small><strong id="d_employee_code">-</strong></div>
+                        <div class="col-md-6 mb-2"><small class="text-muted d-block">From Date</small><strong id="d_from_date">-</strong></div>
+                        <div class="col-md-6 mb-2"><small class="text-muted d-block">To Date</small><strong id="d_to_date">-</strong></div>
+                        <div class="col-md-3 mb-2"><small class="text-muted d-block">Total Calendar Days</small><strong id="d_total_days">-</strong></div>
+                        <div class="col-md-3 mb-2"><small class="text-muted d-block">Total Working Days</small><strong id="d_working_days">-</strong></div>
+                        <div class="col-md-3 mb-2"><small class="text-muted d-block">Weekend Count</small><strong id="d_weekoff_days">-</strong></div>
+                        <div class="col-md-3 mb-2"><small class="text-muted d-block">Holiday Count</small><strong id="d_holiday_days">-</strong></div>
                         <div class="col-md-6 mb-2"><small class="text-muted d-block">Reason Category</small><strong id="d_reason_cat">-</strong></div>
+                        <div class="col-md-6 mb-2"><small class="text-muted d-block">Request Type</small><strong id="d_type">-</strong></div>
                         <div class="col-md-12 mb-2"><small class="text-muted d-block">Reason</small><strong id="d_reason">-</strong></div>
                         <div class="col-md-6 mb-2"><small class="text-muted d-block">Quota Impact</small><strong id="d_quota">-</strong></div>
                         <div class="col-md-6 mb-2"><small class="text-muted d-block">Payroll Impact</small><strong id="d_payroll">-</strong></div>
@@ -337,13 +360,14 @@
                     </div>
                 </div>
                 <div class="ep-section-card mb-0">
-                    <div class="ep-section-title"><i class="fas fa-history"></i> Approval Timeline</div>
+                    <div class="ep-section-title"><i class="fas fa-history"></i> Status & Approval History</div>
                     <div class="row">
-                        <div class="col-md-6 mb-2"><small class="text-muted d-block">Status</small><strong id="d_status">-</strong></div>
+                        <div class="col-md-6 mb-2"><small class="text-muted d-block">Applied Date</small><strong id="d_applied_at">-</strong></div>
+                        <div class="col-md-6 mb-2"><small class="text-muted d-block">Current Status</small><strong id="d_status">-</strong></div>
                         <div class="col-md-6 mb-2"><small class="text-muted d-block">Manager Approved At</small><strong id="d_mgr_at">-</strong></div>
                         <div class="col-md-6 mb-2"><small class="text-muted d-block">HR Approved At</small><strong id="d_hr_at">-</strong></div>
                         <div class="col-md-6 mb-2"><small class="text-muted d-block">Rejected At</small><strong id="d_rej_at">-</strong></div>
-                        <div class="col-md-12"><small class="text-muted d-block">Rejection Reason</small><strong id="d_rej_reason">-</strong></div>
+                        <div class="col-md-6 mb-2"><small class="text-muted d-block">Rejection Reason</small><strong id="d_rej_reason">-</strong></div>
                     </div>
                 </div>
             </div>
@@ -385,20 +409,45 @@
     <div class="modal-dialog modal-md modal-dialog-centered">
         <form id="approveForm" method="POST" class="modal-content ep-form border-0 shadow-lg">
             @csrf
+            <input type="hidden" name="override_quota" id="approve_override_quota" value="0">
             <div class="ep-modal-header">
                 <h5 class="modal-title">Approve WFH Request</h5>
-                <p>Confirm WFH approval for this request.</p>
+                <p>Confirm full or partial WFH approval for this request.</p>
                 <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <div class="ep-modal-body">
+                <div id="approveQuotaWarning" class="alert alert-warning border-0 shadow-sm mb-3 d-none" style="border-radius: 12px; background: #FFFAEB; color: #B54708;">
+                    <div class="font-weight-bold mb-1"><i class="fas fa-exclamation-triangle mr-1"></i> Monthly WFH Limit Exceeded</div>
+                    <div class="small mb-1">
+                        <strong>Limit:</strong> <span id="approve_q_limit">0</span> Days &nbsp;|&nbsp;
+                        <strong>Approved:</strong> <span id="approve_q_used">0</span> Days &nbsp;|&nbsp;
+                        <strong>Requested:</strong> <span id="approve_q_req">0</span> Working Days
+                    </div>
+                    <div class="small text-dark font-weight-semibold">This request exceeds the employee's monthly WFH quota. Do you still want to approve it?</div>
+                </div>
+
                 <div class="ep-form-group">
-                    <label>Remarks (Optional)</label>
+                    <label><i class="fas fa-calendar-check text-primary mr-1"></i> Partial Approval (Optional Date Range)</label>
+                    <div class="row">
+                        <div class="col-6">
+                            <small class="text-muted">Approved From</small>
+                            <input type="date" class="form-control" name="approved_from_date">
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Approved To</small>
+                            <input type="date" class="form-control" name="approved_to_date">
+                        </div>
+                    </div>
+                    <small class="form-text text-muted">Leave empty to approve full requested period.</small>
+                </div>
+                <div class="ep-form-group">
+                    <label>Remarks / Audit Note (Optional)</label>
                     <input type="text" class="form-control" name="remarks" placeholder="Optional remarks for audit logs">
                 </div>
             </div>
             <div class="ep-modal-footer">
                 <button type="button" class="ep-modal-btn ep-modal-btn-light" data-dismiss="modal">Cancel</button>
-                <button class="ep-modal-btn ep-modal-btn-primary"><i class="fas fa-check"></i> Confirm Approve</button>
+                <button type="submit" id="approveSubmitBtn" class="ep-modal-btn ep-modal-btn-primary"><i class="fas fa-check"></i> Confirm Approve</button>
             </div>
         </form>
     </div>
@@ -437,9 +486,15 @@
         document.querySelectorAll('.js-view-details').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 var row = JSON.parse(this.getAttribute('data-row') || '{}');
-                var fmt = function(v) { return v ? String(v) : '-'; };
+                var fmt = function(v) { return (v !== null && v !== undefined && String(v).trim() !== '') ? String(v) : '-'; };
                 document.getElementById('d_employee').textContent = fmt(row.employee_display_name);
-                document.getElementById('d_date').textContent = fmt(row.request_date);
+                document.getElementById('d_employee_code').textContent = fmt(row.employee_code);
+                document.getElementById('d_from_date').textContent = fmt(row.from_date_formatted || row.request_date);
+                document.getElementById('d_to_date').textContent = fmt(row.to_date_formatted || row.from_date_formatted || row.request_date);
+                document.getElementById('d_total_days').textContent = fmt(row.total_days || 1) + ' Days';
+                document.getElementById('d_working_days').textContent = fmt(row.working_days || 1) + ' Days';
+                document.getElementById('d_weekoff_days').textContent = fmt(row.weekoff_days || 0) + ' Days';
+                document.getElementById('d_holiday_days').textContent = fmt(row.holiday_days || 0) + ' Days';
                 document.getElementById('d_type').textContent = fmt((row.request_type || '').replaceAll('_', ' '));
                 document.getElementById('d_reason_cat').textContent = fmt((row.reason_category || '').replaceAll('_', ' '));
                 document.getElementById('d_reason').textContent = fmt(row.reason);
@@ -448,6 +503,7 @@
                 document.getElementById('d_lwp_reason').textContent = fmt(row.lwp_reason);
                 document.getElementById('d_assigned_by').textContent = fmt(row.assigned_by_label);
                 document.getElementById('d_remarks').textContent = fmt(row.remarks);
+                document.getElementById('d_applied_at').textContent = fmt(row.created_at);
                 document.getElementById('d_status').textContent = fmt((row.status || '').replaceAll('_', ' '));
                 document.getElementById('d_mgr_at').textContent = fmt(row.manager_approved_at);
                 document.getElementById('d_hr_at').textContent = fmt(row.hr_approved_at);
@@ -476,10 +532,47 @@
         }
 
         var approveForm = document.getElementById('approveForm');
+        var approveQuotaWarning = document.getElementById('approveQuotaWarning');
+        var approveSubmitBtn = document.getElementById('approveSubmitBtn');
+        var approveOverrideInput = document.getElementById('approve_override_quota');
+        var userCanOverride = @json($canOverrideQuota ?? false);
+
         document.querySelectorAll('.js-approve').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 if (!approveForm) return;
-                approveForm.action = "{{ route('hrms.attendance.wfh.approve', ['id' => '__ID__']) }}".replace('__ID__', this.dataset.id);
+                var row = JSON.parse(this.getAttribute('data-row') || '{}');
+                var id = this.dataset.id || row.id;
+                approveForm.action = "{{ route('hrms.attendance.wfh.approve', ['id' => '__ID__']) }}".replace('__ID__', id);
+
+                if (row.exceeds_quota) {
+                    if (approveQuotaWarning) {
+                        approveQuotaWarning.classList.remove('d-none');
+                        document.getElementById('approve_q_limit').textContent = row.monthly_quota || 0;
+                        document.getElementById('approve_q_used').textContent = row.already_approved_quota || 0;
+                        document.getElementById('approve_q_req').textContent = row.requested_working_days || 1;
+                    }
+                    if (userCanOverride) {
+                        if (approveOverrideInput) approveOverrideInput.value = '1';
+                        if (approveSubmitBtn) {
+                            approveSubmitBtn.className = 'ep-modal-btn ep-modal-btn-warning';
+                            approveSubmitBtn.innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i> Approve Anyway';
+                        }
+                    } else {
+                        if (approveOverrideInput) approveOverrideInput.value = '0';
+                        if (approveSubmitBtn) {
+                            approveSubmitBtn.className = 'ep-modal-btn ep-modal-btn-primary';
+                            approveSubmitBtn.innerHTML = '<i class="fas fa-check mr-1"></i> Confirm Approve';
+                        }
+                    }
+                } else {
+                    if (approveQuotaWarning) approveQuotaWarning.classList.add('d-none');
+                    if (approveOverrideInput) approveOverrideInput.value = '0';
+                    if (approveSubmitBtn) {
+                        approveSubmitBtn.className = 'ep-modal-btn ep-modal-btn-primary';
+                        approveSubmitBtn.innerHTML = '<i class="fas fa-check mr-1"></i> Confirm Approve';
+                    }
+                }
+
                 $('#approveModal').modal('show');
             });
         });

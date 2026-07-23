@@ -105,24 +105,35 @@ class ApiController extends Controller
         ]);
 
         $userId = auth()->id();
+        $workMode = strtolower($request->input('work_type', $request->input('work_mode', 'wfo')));
         $result = $this->attendanceService->processPunchIn(
             $userId, 
-            $request->work_type, 
+            $workMode, 
             $request->note, 
-            $request->latitude, 
-            $request->longitude, 
+            [
+                'latitude' => $request->latitude,
+                'longitude' => $request->longitude,
+                'address' => $request->address,
+                'ip' => $request->ip(),
+                'device' => $request->userAgent(),
+            ],
             $request->clock_in_time
         );
 
+        $isSuccess = ($result['status'] ?? null) === true || ($result['status'] ?? null) === 'success' || (($result['status'] ?? null) !== 'error' && ($result['status'] ?? null) !== false);
+        $cleanMsg = app(\App\Services\Shared\MobileApiMessageS::class)->cleanMessage($result['message'] ?? ($isSuccess ? 'Punch in recorded successfully.' : 'Punch in failed.'));
+
         return response()->json([
-            'status'  => $result['status'],
-            'message' => $result['message'],
-        ], $result['status'] === false ? 403 : 200);
+            'status'  => $isSuccess ? 'success' : 'error',
+            'message' => $cleanMsg,
+            'data'    => $result['data'] ?? null,
+        ], $isSuccess ? 200 : 422);
     }
 
     public function clockOut(Request $request)
     {
         $request->validate([
+            'task_summary'   => 'nullable|string',
             'note'           => 'nullable|string',
             'latitude'       => 'nullable|string',
             'longitude'      => 'nullable|string',
@@ -130,18 +141,29 @@ class ApiController extends Controller
         ]);
 
         $userId = auth()->id();
+        $summary = $request->input('task_summary', $request->input('note', 'Punch Out Summary'));
         $result = $this->attendanceService->processPunchOut(
             $userId, 
+            $summary,
             $request->note, 
-            $request->latitude, 
-            $request->longitude, 
+            [
+                'latitude' => $request->latitude,
+                'longitude' => $request->longitude,
+                'address' => $request->address,
+                'ip' => $request->ip(),
+                'device' => $request->userAgent(),
+            ],
             $request->clock_out_time
         );
 
+        $isSuccess = ($result['status'] ?? null) === true || ($result['status'] ?? null) === 'success' || (($result['status'] ?? null) !== 'error' && ($result['status'] ?? null) !== false);
+        $cleanMsg = app(\App\Services\Shared\MobileApiMessageS::class)->cleanMessage($result['message'] ?? ($isSuccess ? 'Punch out recorded successfully.' : 'Punch out failed.'));
+
         return response()->json([
-            'status'  => $result['status'],
-            'message' => $result['message'],
-        ], $result['status'] === false && isset($result['message']) && str_contains($result['message'], 'error') ? 400 : ($result['status'] === false ? 403 : 200));
+            'status'  => $isSuccess ? 'success' : 'error',
+            'message' => $cleanMsg,
+            'data'    => $result['data'] ?? null,
+        ], $isSuccess ? 200 : 422);
     }
     // ------------------------------------------------
     // 5. GET PROFILE
@@ -229,7 +251,7 @@ class ApiController extends Controller
                 'emergency_contact_number' => $detail->emergency_contact_number,
                 'address'                  => $detail->address,
                 'gender'                   => $detail->gender,
-                'date_of_birth'            => $detail->date_of_birth,
+                'date_of_birth'            => $detail->date_of_birth ? \Carbon\Carbon::parse($detail->date_of_birth)->format('Y-m-d') : null,
                 'last_education'           => $detail->last_education,
                 'gpa'                      => $detail->gpa,
                 'work_experience_in_years' => $detail->work_experience_in_years,
@@ -512,7 +534,7 @@ class ApiController extends Controller
                     'emergency_contact_number' => $detail?->emergency_contact_number,
                     'address'                  => $detail?->address,
                     'gender'                   => $detail?->gender,
-                    'date_of_birth'            => $detail?->date_of_birth,
+                    'date_of_birth'            => $detail?->date_of_birth ? \Carbon\Carbon::parse($detail->date_of_birth)->format('Y-m-d') : null,
                     'last_education'           => $detail?->last_education,
                     'gpa'                      => $detail?->gpa,
                     'work_experience_in_years' => $detail?->work_experience_in_years,

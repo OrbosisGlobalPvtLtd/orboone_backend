@@ -58,7 +58,7 @@ class AttendanceController extends Controller
                 ? (($result['status'] ?? null) === 'error' ? $result['data'] : $this->formatAttendanceRecord($result['data']))
                 : null,
             ($result['status'] ?? null) === 'error' ? 422 : 200,
-            $result['errors'] ?? (($result['status'] ?? null) === 'error' ? $result['data'] : null)
+            $result['errors'] ?? (($result['status'] ?? null) === 'error' ? ($result['data'] ?? null) : null)
         );
     }
 
@@ -194,7 +194,7 @@ class AttendanceController extends Controller
         }
 
         $request->validate([
-            'attendance_id' => ['required', 'exists:attendances,id'],
+            'attendance_id' => ['required', 'string'],
             'unlock_type' => ['required', 'in:unlock_only,late_exemption,manual_punch_in'],
             'unlock_reason_category' => ['nullable', 'string', 'max:255'],
             'unlock_remarks' => ['nullable', 'string', 'max:2000'],
@@ -213,7 +213,7 @@ class AttendanceController extends Controller
         return $this->apiResponse(
             $result['success'],
             $result['message'],
-            isset($result['data']) ? $this->formatAttendanceRecord($result['data']) : null,
+            (isset($result['data']) && $result['data']) ? $this->formatAttendanceRecord($result['data']) : null,
             $result['success'] ? 200 : 422
         );
     }
@@ -315,7 +315,7 @@ class AttendanceController extends Controller
 
         return [
             'present' => $records->filter(fn ($item) => $code($item) === 'present')->count(),
-            'absent' => $records->filter(fn ($item) => $code($item) === 'absent')->count(),
+            'absent' => $records->filter(fn ($item) => $code($item) === 'absent' || $code($item) === 'lwp' || $item->is_lwp)->count(),
             'half_day' => $records->filter(fn ($item) => $code($item) === 'half_day')->count(),
             'leave' => $records->filter(fn ($item) => $code($item) === 'leave')->count(),
             'week_off' => $records->filter(fn ($item) => $code($item) === 'week_off')->count(),
@@ -324,7 +324,7 @@ class AttendanceController extends Controller
             'punch_blocked' => $records->filter(fn ($item) => $item->is_blocked || $item->is_punch_blocked || $item->attendance_status === 'punch_blocked')->count(),
             'late' => $records->where('is_late', true)->count(),
             'early_out' => $records->where('is_early_out', true)->count(),
-            'lwp' => $records->filter(fn ($item) => $code($item) === 'lwp' || $item->is_lwp)->count(),
+            'lwp' => 0,
             'missed_punch' => $records->where('missed_punch', true)->count(),
             'total_work_minutes' => (int) $records->sum('total_work_minutes'),
             'total_work_hours' => round(((int) $records->sum('total_work_minutes')) / 60, 2),

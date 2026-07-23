@@ -86,6 +86,19 @@ class NotificationS
         );
     }
 
+    public function notifyUser(int $userId, string $title, string $message, array $data = []): void
+    {
+        $this->notifyEmployee(
+            title: $title,
+            message: $message,
+            type: $data['type'] ?? 'general',
+            routeName: null,
+            routeParams: [],
+            data: $data,
+            userId: $userId
+        );
+    }
+
     public function createNotification(
         ?int $userId,
         ?int $roleId,
@@ -96,6 +109,7 @@ class NotificationS
         array $routeParams = [],
         array $data = []
     ): ?int {
+
         if (! Schema::hasTable($this->notificationsTable)) {
             return null;
         }
@@ -183,13 +197,27 @@ class NotificationS
             // If notification is for a specific user
             if ($userId) {
                 $user = DB::table('users')->where('id', $userId)->first();
-                if ($user && ! empty($user->fcm_token)) {
-                    $fcmService->sendPush($user->fcm_token, $title, $message, $payload);
-                } else {
-                    Log::warning('Notification FCM skipped: token missing', [
-                        'notification_id' => $notificationId,
-                        'user_id' => $userId,
-                    ]);
+                if ($user) {
+                    $tokens = [];
+                    if (! empty($user->fcm_token)) {
+                        $tokens = array_merge($tokens, preg_split('/[\s,]+/', trim($user->fcm_token)));
+                    }
+                    if (Schema::hasColumn('users', 'device_token') && ! empty($user->device_token)) {
+                        $tokens = array_merge($tokens, preg_split('/[\s,]+/', trim($user->device_token)));
+                    }
+                    
+                    $uniqueTokens = array_filter(array_unique($tokens));
+                    
+                    if (! empty($uniqueTokens)) {
+                        foreach ($uniqueTokens as $token) {
+                            $fcmService->sendPush($token, $title, $message, $payload);
+                        }
+                    } else {
+                        Log::warning('Notification FCM skipped: token missing', [
+                            'notification_id' => $notificationId,
+                            'user_id' => $userId,
+                        ]);
+                    }
                 }
             }
             // If notification is for a role (e.g. HR/Admin)

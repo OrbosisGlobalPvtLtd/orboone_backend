@@ -222,7 +222,7 @@ $resolveParagraph = function($text) use ($companyName, $joiningDate, $working_ho
                         @endif -->
                     </div>
                     <strong>{{ $hr_manager_name ?? $authorized_signatory ?? 'HR' }}</strong><br>
-                    {{ $companyName }}
+                    {{ $companyName }}  
                 </td>
                 <td class="text-right">
                     <strong>Candidate’s Signature</strong><br><br><br>

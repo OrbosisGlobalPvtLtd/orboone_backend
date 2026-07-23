@@ -23,7 +23,7 @@ class LapseYearEndLeaves extends Command
             LeaveAllocationM::with('policy')->where('year', $year)->lockForUpdate()->chunk(100, function ($allocations) use (&$count) {
                 foreach ($allocations as $allocation) {
                     $policy = $allocation->policy ?: LeavePolicyM::where('is_active', true)->first();
-                    if (! $policy || $policy->carry_forward_enabled || $allocation->is_locked) {
+                    if (! $policy || $allocation->is_locked) {
                         continue;
                     }
 

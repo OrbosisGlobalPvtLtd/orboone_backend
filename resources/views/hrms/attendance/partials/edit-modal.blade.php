@@ -33,6 +33,13 @@
                                         </option>
                                     @endforeach
                                 </select>
+                                @if($attendance->is_lwp)
+                                <div style="margin-top: 8px;">
+                                    <div class="alert alert-danger py-2 mb-0" style="font-size: 11px; border-radius: 6px; background-color: #FEF2F2; border-color: #FEE2E2; color: #991B1B; display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px;">
+                                        <i class="fas fa-calculator"></i> <strong>Payroll Impact:</strong> Leave Without Pay (LWP)
+                                    </div>
+                                </div>
+                                @endif
                             </div>
                             <div>
                                 <label class="orb-form-label">Date</label>

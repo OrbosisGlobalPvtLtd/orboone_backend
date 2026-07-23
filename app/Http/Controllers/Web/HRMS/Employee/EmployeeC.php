@@ -72,8 +72,26 @@ class EmployeeC extends Controller
                 ->groupBy('employee_id');
         }
 
+        $today = Carbon::now('Asia/Kolkata')->toDateString();
+        $activeAssignmentsSub = DB::table('employee_policy_assignments')
+            ->join('attendance_policy_rules', 'attendance_policy_rules.id', '=', 'employee_policy_assignments.policy_id')
+            ->where('employee_policy_assignments.policy_type', 'attendance')
+            ->where('employee_policy_assignments.is_active', 1)
+            ->where(function($q) use ($today) {
+                $q->whereNull('employee_policy_assignments.effective_from')
+                  ->orWhereDate('employee_policy_assignments.effective_from', '<=', $today);
+            })
+            ->where(function($q) use ($today) {
+                $q->whereNull('employee_policy_assignments.effective_to')
+                  ->orWhereDate('employee_policy_assignments.effective_to', '>=', $today);
+            })
+            ->select('employee_policy_assignments.employee_id', 'attendance_policy_rules.policy_name');
+
         $baseQuery = DB::table($employeeTable)
             ->join('users', 'users.id', '=', $employeeTable . '.user_id')
+            ->leftJoinSub($activeAssignmentsSub, 'active_attendance_policy', function ($join) use ($employeeTable) {
+                $join->on('active_attendance_policy.employee_id', '=', $employeeTable . '.id');
+            })
             ->leftJoin('departments', 'departments.id', '=', $employeeTable . '.department_id')
             ->leftJoin('designations', 'designations.id', '=', $employeeTable . '.designation_id')
             ->leftJoin($employeeTable . ' as manager', 'manager.id', '=', $employeeTable . '.reporting_manager_employee_id')
@@ -111,7 +129,15 @@ class EmployeeC extends Controller
             $profileTable . '.profile_image',
             $profileTable . '.profile_status',
             $profileTable . '.is_profile_completed',
-            DB::raw($hasAttendanceTime ? 'attendance_times.name as shift_name' : "'General Shift' as shift_name"),
+            DB::raw("CASE 
+                WHEN active_attendance_policy.policy_name = 'Default Attendance Policy' THEN 'General Shift'
+                WHEN active_attendance_policy.policy_name = 'Part Time Attendance Policy' THEN 'Part Time Shift'
+                WHEN active_attendance_policy.policy_name = 'Half Day Attendance Policy' THEN 'Half Day Shift'
+                WHEN active_attendance_policy.policy_name = 'WFH Attendance Policy' THEN 'WFH Shift'
+                WHEN active_attendance_policy.policy_name = 'Half Day Morning Policy' THEN 'Half Day Morning Shift'
+                WHEN active_attendance_policy.policy_name = 'Half Day Evening Policy' THEN 'Half Day Evening Shift'
+                ELSE 'General Shift'
+            END as shift_name"),
             DB::raw($documentStats ? 'COALESCE(doc_stats.uploaded_documents_count, 0) as uploaded_documents_count' : '0 as uploaded_documents_count'),
             DB::raw($documentStats ? 'COALESCE(doc_stats.verified_documents_count, 0) as verified_documents_count' : '0 as verified_documents_count'),
             DB::raw($documentStats ? 'COALESCE(doc_stats.pending_documents_count, 0) as pending_documents_count' : '0 as pending_documents_count'),
@@ -446,7 +472,7 @@ class EmployeeC extends Controller
             'phone' => ['required'],
             'employment_type' => ['required', Rule::in(['full_time', 'part_time', 'intern', 'freelancer', 'contract'])],
             'work_mode' => ['required', Rule::in(['wfo', 'wfh', 'hybrid'])],
-            'work_schedule_type' => ['nullable', Rule::in(['full_day', 'part_day', 'hourly', 'shift_based'])],
+            'work_schedule_type' => ['nullable', Rule::in(['full_day', 'part_day', 'hourly', 'shift_based', 'general', 'wfh', 'part_time', 'half_day', 'half_day_morning', 'half_day_evening'])],
             'department_id' => ['required'],
             'designation_id' => ['required'],
             'system_role_id' => ['required'],
@@ -505,6 +531,9 @@ class EmployeeC extends Controller
                 );
             }
 
+            list($shift, $policyId) = $this->resolveShiftAndPolicyBySchedule($request->work_schedule_type, $request->work_mode, $request->employment_type);
+            $dbScheduleType = $this->mapScheduleTypeForDb($request->work_schedule_type ?: ($request->work_mode === 'wfh' ? 'wfh' : ($request->employment_type === 'part_time' ? 'part_time' : 'general')));
+
             $employeeInsertData = [
                 'user_id' => $userId,
                 'employee_code' => $employeeCode,
@@ -515,7 +544,8 @@ class EmployeeC extends Controller
                 'employment_type' => $request->employment_type,
                 'employee_stage' => $lifecyclePayload['employee_stage'],
                 'work_mode' => $request->work_mode,
-                'work_schedule_type' => $lifecyclePayload['work_schedule_type'],
+                'work_schedule_type' => $dbScheduleType,
+                'attendance_policy_rule_id' => $policyId,
                 'joining_date' => $lifecyclePayload['joining_date'],
                 'employment_status' => 'active',
                 'probation_months' => 3,
@@ -546,6 +576,19 @@ class EmployeeC extends Controller
             }
 
             $employeeId = DB::table($this->employeeTable)->insertGetId($employeeInsertData);
+
+            if ($policyId) {
+                DB::table('employee_policy_assignments')->insert([
+                    'employee_id' => $employeeId,
+                    'policy_type' => 'attendance',
+                    'policy_id' => $policyId,
+                    'effective_from' => $lifecyclePayload['joining_date'] ?: Carbon::now('Asia/Kolkata')->toDateString(),
+                    'is_active' => 1,
+                    'assigned_by_user_id' => auth()->id() ?: 1,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
 
             $this->salaryHistoryService->syncSalary(
                 (int) $employeeId,
@@ -642,6 +685,8 @@ class EmployeeC extends Controller
     {
         $employeeData = $this->findEmployeeProfileRecord($employee);
         abort_if(! $employeeData, 404);
+
+        $this->adjustWorkScheduleTypeForView($employeeData);
 
         $departments = DB::table('departments')->select('id', 'name')->orderBy('name')->get();
 
@@ -792,7 +837,7 @@ class EmployeeC extends Controller
 
             'employment_type' => ['required', Rule::in(['full_time', 'part_time', 'intern', 'freelancer', 'contract'])],
             'work_mode' => ['required', Rule::in(['wfo', 'wfh', 'hybrid'])],
-            'work_schedule_type' => ['nullable', Rule::in(['full_day', 'part_day', 'hourly', 'shift_based'])],
+            'work_schedule_type' => ['nullable', Rule::in(['full_day', 'part_day', 'hourly', 'shift_based', 'general', 'wfh', 'part_time', 'half_day', 'half_day_morning', 'half_day_evening'])],
             'employment_status' => ['required', Rule::in(['active', 'resigned', 'terminated', 'inactive'])],
 
             'joining_date' => ['nullable', 'date'],
@@ -888,6 +933,10 @@ class EmployeeC extends Controller
                 );
             }
 
+            list($oldShift, $oldPolicyId) = $this->resolveShiftAndPolicyBySchedule($employeeData->work_schedule_type, $employeeData->work_mode, $employeeData->employment_type);
+            list($newShift, $newPolicyId) = $this->resolveShiftAndPolicyBySchedule($request->work_schedule_type, $request->work_mode, $request->employment_type);
+            $dbScheduleType = $this->mapScheduleTypeForDb($request->work_schedule_type ?: ($request->work_mode === 'wfh' ? 'wfh' : ($request->employment_type === 'part_time' ? 'part_time' : 'general')));
+
             $employeeUpdateData = [
                 'system_role_id' => $request->system_role_id,
                 'department_id' => $request->department_id,
@@ -895,7 +944,8 @@ class EmployeeC extends Controller
                 'employment_type' => $request->employment_type,
                 'employee_stage' => $lifecyclePayload['employee_stage'],
                 'work_mode' => $request->work_mode,
-                'work_schedule_type' => $lifecyclePayload['work_schedule_type'],
+                'work_schedule_type' => $dbScheduleType,
+                'attendance_policy_rule_id' => $newPolicyId,
                 'employment_status' => $request->employment_status,
                 'joining_date' => $lifecyclePayload['joining_date'],
                 'relieving_date' => $lifecyclePayload['relieving_date'],
@@ -938,6 +988,47 @@ class EmployeeC extends Controller
             }
 
             DB::table($this->employeeTable)->where('id', $employee)->update($employeeUpdateData);
+
+            if (($oldPolicyId !== $newPolicyId || !DB::table('employee_policy_assignments')->where('employee_id', $employee)->where('policy_type', 'attendance')->where('is_active', 1)->exists()) && $newPolicyId) {
+                $today = Carbon::now('Asia/Kolkata')->toDateString();
+                $yesterday = Carbon::now('Asia/Kolkata')->subDay()->toDateString();
+
+                // Deactivate/end existing active assignments
+                $activeAssignments = DB::table('employee_policy_assignments')
+                    ->where('employee_id', $employee)
+                    ->where('policy_type', 'attendance')
+                    ->where('is_active', 1)
+                    ->get();
+
+                foreach ($activeAssignments as $assignment) {
+                    if ($assignment->effective_from && Carbon::parse($assignment->effective_from)->gte(Carbon::parse($today))) {
+                        // Starts today or in future - delete it
+                        DB::table('employee_policy_assignments')
+                            ->where('id', $assignment->id)
+                            ->delete();
+                    } else {
+                        // Ends yesterday
+                        DB::table('employee_policy_assignments')
+                            ->where('id', $assignment->id)
+                            ->update([
+                                'effective_to' => $yesterday,
+                                'updated_at' => now(),
+                            ]);
+                    }
+                }
+
+                // Insert new assignment starting today
+                DB::table('employee_policy_assignments')->insert([
+                    'employee_id' => $employee,
+                    'policy_type' => 'attendance',
+                    'policy_id' => $newPolicyId,
+                    'effective_from' => $today,
+                    'is_active' => 1,
+                    'assigned_by_user_id' => auth()->id() ?: 1,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
 
             $oldSalary = round((float)($employeeData->actual_salary ?? 0), 2);
             $newSalary = round((float)($lifecyclePayload['actual_salary'] ?? 0), 2);
@@ -1055,6 +1146,8 @@ class EmployeeC extends Controller
 
         abort_if(! $employeeData, 404);
 
+        $this->adjustWorkScheduleTypeForView($employeeData);
+
         $salaryHistories = DB::table('employee_salary_histories')
             ->leftJoin('users as creator', 'creator.id', '=', 'employee_salary_histories.created_by')
             ->where('employee_salary_histories.employee_id', $employee)
@@ -1140,6 +1233,8 @@ class EmployeeC extends Controller
         $employeeData = $this->findEmployeeProfileRecord($employee);
 
         abort_if(! $employeeData, 404);
+
+        $this->adjustWorkScheduleTypeForView($employeeData);
 
         $formData = $this->employeeService->createFormData($employeeData->reporting_manager_employee_id);
 
@@ -2538,5 +2633,196 @@ class EmployeeC extends Controller
             ]);
 
         return back()->with('success', 'Document rejected successfully.');
+    }
+
+    private function getOrCreatePolicyForRule(string $policyName, string $shiftCode): ?int
+    {
+        $policy = DB::table('attendance_policy_rules')->where('policy_name', $policyName)->first();
+        if ($policy) {
+            // Ensure timings are correct/synchronized with shift if they are mismatched
+            $shift = DB::table('attendance_times')->where('code', $shiftCode)->first();
+            if ($shift) {
+                $updates = [];
+                foreach (['shift_start_time', 'shift_end_time', 'required_work_minutes', 'half_day_min_minutes', 'absent_below_minutes', 'lunch_break_minutes'] as $field) {
+                    if (isset($shift->{$field}) && (!isset($policy->{$field}) || $policy->{$field} != $shift->{$field})) {
+                        $updates[$field] = $shift->{$field};
+                    }
+                }
+                if (!empty($updates)) {
+                    DB::table('attendance_policy_rules')->where('id', $policy->id)->update($updates);
+                }
+            }
+            return $policy->id;
+        }
+
+        // Try with "Attendance Policy" suffix if not found and not already suffix
+        if (!str_contains($policyName, 'Attendance Policy')) {
+            $altName = str_replace(' Policy', ' Attendance Policy', $policyName);
+            $policy = DB::table('attendance_policy_rules')->where('policy_name', $altName)->first();
+            if ($policy) {
+                return $policy->id;
+            }
+        }
+
+        // If still not found, check the shift and create a corresponding policy rule dynamically
+        $shift = DB::table('attendance_times')->where('code', $shiftCode)->first();
+        if ($shift) {
+            $policyData = [
+                'policy_name' => $policyName,
+                'punch_allowed_from' => $shift->punch_allowed_from ?? '09:00:00',
+                'shift_start_time' => $shift->shift_start_time ?? '10:00:00',
+                'late_after_time' => $shift->late_after_time ?? '11:05:00',
+                'warning_after_time' => $shift->warning_after_time ?? '11:06:00',
+                'block_after_time' => $shift->block_after_time ?? '11:15:00',
+                'shift_end_time' => $shift->shift_end_time ?? '19:00:00',
+                'required_work_minutes' => $shift->required_work_minutes ?? 480,
+                'half_day_min_minutes' => $shift->half_day_min_minutes ?? 270,
+                'absent_below_minutes' => $shift->absent_below_minutes ?? 270,
+                'lunch_break_minutes' => $shift->lunch_break_minutes ?? 60,
+                'allowed_missed_punches' => 2,
+                'combined_violation_limit' => 3,
+                'late_violation_limit' => 3,
+                'early_violation_limit' => 3,
+                'auto_block_enabled' => 1,
+                'auto_absent_enabled' => 1,
+                'is_active' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+            // Filter fields to match columns in database
+            $policyData = collect($policyData)->filter(fn ($value, $column) => Schema::hasColumn('attendance_policy_rules', $column))->all();
+            return DB::table('attendance_policy_rules')->insertGetId($policyData);
+        }
+
+        return null;
+    }
+
+    private function resolveShiftAndPolicyBySchedule(?string $schedule, string $workMode, string $employmentType): array
+    {
+        $shiftCode = 'general_shift';
+        $policyName = 'Default Attendance Policy';
+
+        $config = config('hrms.work_schedule_shifts');
+
+        // Normalize legacy schedule keys to the new format
+        $scheduleKey = $schedule;
+        if ($scheduleKey === 'full_day') {
+            $scheduleKey = 'general';
+        } elseif ($scheduleKey === 'part_day') {
+            $scheduleKey = 'part_time';
+        } elseif ($scheduleKey === 'hourly') {
+            $scheduleKey = 'half_day';
+        } elseif ($scheduleKey === 'shift_based' || $scheduleKey === 'shift_based_morning') {
+            $scheduleKey = 'half_day_morning';
+        } elseif ($scheduleKey === 'shift_based_evening') {
+            $scheduleKey = 'half_day_evening';
+        }
+
+        // Determine schedule key based on input or defaults
+        if (empty($scheduleKey)) {
+            if ($workMode === 'wfh') {
+                $scheduleKey = 'wfh';
+            } elseif ($employmentType === 'part_time') {
+                $scheduleKey = 'part_time';
+            } else {
+                $scheduleKey = 'general';
+            }
+        }
+
+        if ($config && isset($config[$scheduleKey])) {
+            $shiftCode = $config[$scheduleKey]['shift_code'];
+            $policyName = $config[$scheduleKey]['policy_name'];
+        } else {
+            // Fallback mappings if config is not available
+            if ($workMode === 'wfh' || $scheduleKey === 'wfh') {
+                $shiftCode = 'wfh_shift';
+                $policyName = 'WFH Attendance Policy';
+            } elseif ($scheduleKey === 'part_time') {
+                $shiftCode = 'part_time_shift';
+                $policyName = 'Part Time Attendance Policy';
+            } elseif ($scheduleKey === 'half_day') {
+                $shiftCode = 'half_day_shift';
+                $policyName = 'Half Day Attendance Policy';
+            } elseif ($scheduleKey === 'half_day_morning') {
+                $shiftCode = 'half_day_morning';
+                $policyName = 'Half Day Morning Policy';
+            } elseif ($scheduleKey === 'half_day_evening') {
+                $shiftCode = 'half_day_evening';
+                $policyName = 'Half Day Evening Policy';
+            }
+        }
+
+        $shift = DB::table('attendance_times')->where('code', $shiftCode)->first();
+        if (!$shift) {
+            $shift = DB::table('attendance_times')->where('name', 'like', '%' . str_replace('_', ' ', $shiftCode) . '%')->first();
+        }
+
+        $policyId = null;
+        if ($shift) {
+            $policyId = $this->getOrCreatePolicyForRule($policyName, $shift->code);
+        }
+
+        return [$shift, $policyId];
+    }
+
+    private function mapScheduleTypeForDb(?string $schedule): ?string
+    {
+        if ($schedule === 'shift_based_morning' || $schedule === 'shift_based_evening' || $schedule === 'half_day_morning' || $schedule === 'half_day_evening') {
+            return 'shift_based';
+        }
+        if ($schedule === 'part_time') {
+            return 'part_day';
+        }
+        if ($schedule === 'half_day') {
+            return 'hourly';
+        }
+        if ($schedule === 'general') {
+            return 'full_day';
+        }
+        return $schedule;
+    }
+
+    private function adjustWorkScheduleTypeForView($employeeData): void
+    {
+        if (!$employeeData) {
+            return;
+        }
+
+        $activePolicy = DB::table('employee_policy_assignments')
+            ->join('attendance_policy_rules', 'attendance_policy_rules.id', '=', 'employee_policy_assignments.policy_id')
+            ->where('employee_policy_assignments.employee_id', $employeeData->id)
+            ->where('employee_policy_assignments.policy_type', 'attendance')
+            ->where('employee_policy_assignments.is_active', 1)
+            ->orderByDesc('employee_policy_assignments.effective_from')
+            ->orderByDesc('employee_policy_assignments.id')
+            ->first();
+
+        if ($activePolicy) {
+            $policyName = $activePolicy->policy_name;
+            if (str_contains($policyName, 'Morning')) {
+                $employeeData->work_schedule_type = 'half_day_morning';
+            } elseif (str_contains($policyName, 'Evening')) {
+                $employeeData->work_schedule_type = 'half_day_evening';
+            } elseif (str_contains($policyName, 'Part Time')) {
+                $employeeData->work_schedule_type = 'part_time';
+            } elseif (str_contains($policyName, 'Half Day')) {
+                $employeeData->work_schedule_type = 'half_day';
+            } elseif (str_contains($policyName, 'WFH')) {
+                $employeeData->work_schedule_type = 'wfh';
+            } elseif (str_contains($policyName, 'Default') || str_contains($policyName, 'General')) {
+                $employeeData->work_schedule_type = 'general';
+            }
+        } else {
+            // Fallback from db columns if no assignment exists
+            if ($employeeData->work_schedule_type === 'full_day') {
+                $employeeData->work_schedule_type = 'general';
+            } elseif ($employeeData->work_schedule_type === 'part_day') {
+                $employeeData->work_schedule_type = 'part_time';
+            } elseif ($employeeData->work_schedule_type === 'hourly') {
+                $employeeData->work_schedule_type = 'half_day';
+            } elseif ($employeeData->work_schedule_type === 'shift_based') {
+                $employeeData->work_schedule_type = 'half_day_morning';
+            }
+        }
     }
 }

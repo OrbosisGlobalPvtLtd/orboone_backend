@@ -539,17 +539,13 @@
 
                         <div class="col-xl-3 col-lg-4 col-md-6 eo-field">
                             <label>Work Schedule</label>
-                            <select name="work_schedule_type" class="form-select">
+                            <select name="work_schedule_type" id="work_schedule_type" class="form-select">
                                 <option value="">Select Schedule</option>
-                                <option value="full_day"
-                                    {{ old('work_schedule_type') == 'full_day' ? 'selected' : '' }}>Full Day</option>
-                                <option value="part_day"
-                                    {{ old('work_schedule_type') == 'part_day' ? 'selected' : '' }}>Part Day</option>
-                                <option value="hourly" {{ old('work_schedule_type') == 'hourly' ? 'selected' : '' }}>
-                                    Hourly</option>
-                                <option value="shift_based"
-                                    {{ old('work_schedule_type') == 'shift_based' ? 'selected' : '' }}>Shift Based
-                                </option>
+                                <option value="general" {{ old('work_schedule_type') == 'general' ? 'selected' : '' }}>Full Day</option>
+                                <option value="part_time" {{ old('work_schedule_type') == 'part_time' ? 'selected' : '' }}>Part-Day</option>
+                                <option value="half_day" {{ old('work_schedule_type') == 'half_day' ? 'selected' : '' }}>Half-Day</option>
+                                <option value="half_day_morning" {{ old('work_schedule_type') == 'half_day_morning' ? 'selected' : '' }}>Half-Day (Morning)</option>
+                                <option value="half_day_evening" {{ old('work_schedule_type') == 'half_day_evening' ? 'selected' : '' }}>Half-Day (Evening)</option>
                             </select>
                         </div>
 
@@ -766,6 +762,7 @@
         const department = document.getElementById('department_id');
         const designation = document.getElementById('designation_id');
         const employmentType = document.getElementById('employment_type');
+        const workScheduleType = document.getElementById('work_schedule_type');
         const employeeStage = document.getElementById('employee_stage');
         const employeeStageDisplay = document.getElementById('employee_stage_display');
         const joiningDate = document.getElementById('joining_date');
@@ -1012,6 +1009,19 @@
             salaryEffectiveTouched = false;
             salaryEffectiveFrom.value = '';
             updateEmploymentFields();
+
+            const workScheduleMap = {
+                'full_time': 'general',
+                'part_time': 'part_time',
+                'intern': 'general',
+                'contract': 'general',
+                'consultant': 'general',
+                'trainee': 'general'
+            };
+            const schedule = workScheduleMap[employmentType.value];
+            if (schedule && workScheduleType) {
+                workScheduleType.value = schedule;
+            }
         });
 
         joiningDate.addEventListener('change', function() {

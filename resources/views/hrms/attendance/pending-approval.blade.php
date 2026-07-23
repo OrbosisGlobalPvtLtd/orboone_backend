@@ -820,11 +820,41 @@
                             continue;
                             }
 
-                            $typeCode = optional($attendance->attendanceType)->code ?? 'default';
-                            $statusCode = $typeCode !== 'default' ? $typeCode : ($attendance->attendance_status ?: 'default');
-                            $statusLabel = $statusCode === 'punch_blocked'
-                            ? 'Punch Blocked'
-                            : (optional($attendance->attendanceType)->name ?? ucwords(str_replace('_', ' ', $statusCode)));
+                             $typeCode = optional($attendance->attendanceType)->code ?? 'default';
+                             $rawStatus = strtolower($attendance->attendance_status ?? '');
+                             if (empty($rawStatus)) {
+                                 $rawStatus = $typeCode;
+                             }
+                             if ($rawStatus === 'absent' || $rawStatus === 'lwp') {
+                                 $statusCode = 'absent';
+                                 $statusLabel = '🔴 ABSENT';
+                             } else {
+                                 $statusMap = [
+                                     'present' => ['present', 'Present'],
+                                     'half_day' => ['half_day', 'Half Day'],
+                                     'absent' => ['absent', '🔴 ABSENT'],
+                                     'missed_punch' => ['missed_punch', 'Missed Punch'],
+                                     'leave' => ['leave', 'Leave'],
+                                     'holiday' => ['holiday', 'Holiday'],
+                                     'week_off' => ['week_off', 'Week Off'],
+                                     'punch_blocked' => ['punch_blocked', 'Punch Blocked'],
+                                     'lwp' => ['absent', '🔴 ABSENT'],
+                                 ];
+                                 $mapped = $statusMap[$rawStatus] ?? null;
+                                 if ($mapped) {
+                                     $statusCode = $mapped[0];
+                                     $statusLabel = $mapped[1];
+                                 } else {
+                                     $statusCode = $typeCode !== 'default' ? $typeCode : ($attendance->attendance_status ?: 'default');
+                                     $statusLabel = $statusCode === 'punch_blocked'
+                                     ? 'Punch Blocked'
+                                     : (optional($attendance->attendanceType)->name ?? ucwords(str_replace('_', ' ', $statusCode)));
+                                     if ($statusCode === 'lwp' || $statusCode === 'absent') {
+                                         $statusCode = 'absent';
+                                         $statusLabel = '🔴 ABSENT';
+                                     }
+                                 }
+                             }
                             $attDate = $attendance->attendance_date ? \Carbon\Carbon::parse($attendance->attendance_date)->format('d M Y') : '-';
                             @endphp
                             <tr>

@@ -519,18 +519,19 @@
                             } elseif ($attStatus === 'half_day' || ($attendance->is_half_day ?? false)) {
                                 $typeCode = 'half_day';
                                 $statusName = 'Half Day';
-                            } elseif ($attStatus === 'lwp' || ($attendance->is_lwp ?? false)) {
-                                $typeCode = 'lwp';
-                                $statusName = 'LWP';
+                            } elseif ($attStatus === 'absent' || $attStatus === 'lwp' || ($attendance->is_lwp ?? false)) {
+                                $typeCode = 'absent';
+                                $statusName = '🔴 ABSENT';
                             } elseif ($attStatus === 'present' || ! is_null($punchInTime)) {
                                 $typeCode = 'present';
                                 $statusName = 'Present';
-                            } elseif ($attStatus === 'absent') {
-                                $typeCode = 'absent';
-                                $statusName = 'Absent';
                             } else {
                                 $typeCode = optional($attendance->attendanceType)->code ?? 'default';
                                 $statusName = optional($attendance->attendanceType)->name ?? 'Pending';
+                                if ($typeCode === 'lwp' || $typeCode === 'absent') {
+                                    $typeCode = 'absent';
+                                    $statusName = '🔴 ABSENT';
+                                }
                             }
                             $modeCode = strtolower($attendance->work_mode ?? '');
                             $modeClass = $modeCode === 'wfh' ? 'mode-wfh' : 'mode-wfo';

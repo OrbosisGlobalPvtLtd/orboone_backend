@@ -103,6 +103,7 @@ Route::middleware(['auth', 'check.access'])
         Route::post('/wfh/{id}/mark-lwp', [WfhRequestC::class, 'markLwp'])->middleware('permission:attendance.wfh.mark_lwp')->name('wfh.mark-lwp');
 
         Route::get('/my-wfh', [WfhRequestC::class, 'myWfh'])->middleware('permission:attendance.wfh.own')->name('my-wfh.index');
+        Route::get('/my-wfh/calculate-days', [WfhRequestC::class, 'calculateDays'])->middleware('permission:attendance.wfh.own')->name('my-wfh.calculate-days');
         Route::post('/my-wfh/apply', [WfhRequestC::class, 'apply'])->middleware('permission:attendance.wfh.own')->name('my-wfh.apply');
         Route::post('/my-wfh/{id}/cancel', [WfhRequestC::class, 'cancel'])->middleware('permission:attendance.wfh.own')->name('my-wfh.cancel');
     });

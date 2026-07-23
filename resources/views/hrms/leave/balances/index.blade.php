@@ -541,6 +541,39 @@
 
         <!-- Dynamic Summary Cards Computed From Collection -->
         @php
+            $balances->transform(function ($b) {
+                $isConfirmed = optional($b->employee)->is_permanent ?? true;
+                
+                $totalAlloc = $isConfirmed ? (float) $b->total_allocated : 0.0;
+                $paidAlloc = $isConfirmed ? (float) $b->paid_allocated : 0.0;
+                $sickAlloc = $isConfirmed ? (float) $b->sick_allocated : 0.0;
+                $compAlloc = $isConfirmed ? (float) $b->comp_off_allocated : 0.0;
+
+                $totalRem = $isConfirmed ? (float) $b->total_remaining : 0.0;
+                $paidRem = $isConfirmed ? (float) $b->paid_remaining : 0.0;
+                $sickRem = $isConfirmed ? (float) $b->sick_remaining : 0.0;
+                $compRem = $isConfirmed ? (float) $b->comp_off_remaining : 0.0;
+
+                if (in_array((int) Carbon\Carbon::now('Asia/Kolkata')->month, [11, 12], true) && $totalRem > 10.0) {
+                    $totalRem = round($totalRem * 0.5, 2);
+                    $paidRem = round($paidRem * 0.5, 2);
+                    $sickRem = round($sickRem * 0.5, 2);
+                    $compRem = round($compRem * 0.5, 2);
+                }
+
+                $b->total_allocated = $totalAlloc;
+                $b->paid_allocated = $paidAlloc;
+                $b->sick_allocated = $sickAlloc;
+                $b->comp_off_allocated = $compAlloc;
+
+                $b->total_remaining = $totalRem;
+                $b->paid_remaining = $paidRem;
+                $b->sick_remaining = $sickRem;
+                $b->comp_off_remaining = $compRem;
+
+                return $b;
+            });
+
             $totalAllocated = $balances->sum('total_allocated');
             $totalRemaining = $balances->sum('total_remaining');
             $totalPaidRem = $balances->sum('paid_remaining');

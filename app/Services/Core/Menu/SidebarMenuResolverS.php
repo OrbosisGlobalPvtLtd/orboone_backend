@@ -95,10 +95,26 @@ class SidebarMenuResolverS
             return collect();
         }
 
-        return DB::table('menus')
+        $base = DB::table('menus')
             ->where('is_active', 1)
             ->select('id', 'name', 'route', 'icon', 'module_key', 'parent_id', 'sort_order', 'is_active')
             ->get();
+
+        $menus = collect($base);
+
+        // Dynamically inject "My Tasks" submenu item for Employees
+        $menus->push((object)[
+            'id' => 9999,
+            'name' => 'My Tasks',
+            'route' => 'project_management.tasks.my',
+            'icon' => 'fas fa-user-check',
+            'module_key' => 'employee.tasks',
+            'parent_id' => 320,
+            'sort_order' => 2,
+            'is_active' => 1
+        ]);
+
+        return $menus;
     }
 
     private function resolveRoleIds(Authenticatable $user): array
@@ -139,6 +155,11 @@ class SidebarMenuResolverS
             ->map(fn ($id) => (int) $id)
             ->all();
 
+        // Always allow Project Management container, Tasks menu, and My Tasks menu for everyone
+        $allowedIds[] = 320;
+        $allowedIds[] = 322;
+        $allowedIds[] = 9999;
+
         if (empty($allowedIds)) {
             return collect();
         }
@@ -178,6 +199,16 @@ class SidebarMenuResolverS
                 return true;
             }
 
+            // Exclude My Tasks for non-employee contexts
+            if (! $isEmployeeContext && $menu->id == 9999) {
+                return false;
+            }
+
+            // Exclude Admin Tasks menu for employee context
+            if ($isEmployeeContext && $menu->id == 322) {
+                return false;
+            }
+
             $isEmployeeOnly = $this->isEmployeeOnlyMenu($menu);
 
             if ($isEmployeeContext) {
@@ -187,6 +218,7 @@ class SidebarMenuResolverS
             return ! $isEmployeeOnly;
         })->values();
     }
+
 
     private function filterByRouteValidity(Collection $menus): Collection
     {
@@ -415,7 +447,7 @@ class SidebarMenuResolverS
             'employee_',
         ];
 
-        if (in_array($route, $employeeRouteExact, true) || in_array($name, $employeeNames, true)) {
+        if (in_array($route, $employeeRouteExact, true) || in_array($name, $employeeNames, true) || $route === 'project_management.tasks.my' || $name === 'my tasks') {
             return true;
         }
 
@@ -436,13 +468,16 @@ class SidebarMenuResolverS
 
     private function isEmployeeParentContainer(object $menu): bool
     {
+
         $moduleKey = strtolower(trim((string) ($menu->module_key ?? '')));
         $name = strtolower(trim((string) ($menu->name ?? '')));
 
         if ($moduleKey === 'my.profile' || $name === 'settings') {
+
             return true;
         }
 
-        return in_array($moduleKey, ['documents', 'attendance', 'leave', 'enterprise_payroll', 'assets'], true);
+        return in_array($moduleKey, ['documents', 'attendance', 'leave', 'enterprise_payroll', 'assets', 'project_management'], true)
+            || $menu->id == 320;
     }
 }

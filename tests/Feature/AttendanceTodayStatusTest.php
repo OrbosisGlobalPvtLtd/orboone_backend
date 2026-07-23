@@ -124,7 +124,7 @@ class AttendanceTodayStatusTest extends TestCase
 
     public function test_today_status_when_no_attendance_exists_after_block_time(): void
     {
-        // 12:00 PM is after block time (11:15 AM default policy in database)
+        // 12:00 PM is during shift hours before shift end (18:00 PM)
         Carbon::setTestNow(Carbon::create(2026, 5, 20, 12, 0, 0, 'Asia/Kolkata'));
 
         Sanctum::actingAs($this->user);
@@ -133,10 +133,10 @@ class AttendanceTodayStatusTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('data.ui.is_blocked', false) // Not blocked card because no attendance row exists, but can't punch in
+            ->assertJsonPath('data.ui.is_blocked', false)
             ->assertJsonPath('data.ui.is_punch_blocked', false)
-            ->assertJsonPath('data.ui.can_punch_in', false)
-            ->assertJsonPath('data.ui.status_code', 'absent');
+            ->assertJsonPath('data.ui.can_punch_in', true)
+            ->assertJsonPath('data.ui.status_code', 'not_punched');
     }
 
     public function test_today_status_after_admin_unlock_allows_punch_in_after_block_time(): void
@@ -227,7 +227,7 @@ class AttendanceTodayStatusTest extends TestCase
 
         $response->assertStatus(422)
             ->assertJsonPath('success', false)
-            ->assertJsonPath('message', 'You are outside the allowed office punch-in radius.')
+            ->assertJsonPath('message', 'You are outside the allowed office location.')
             ->assertJsonPath('data.allowed_radius_meters', 100);
     }
 
@@ -258,6 +258,8 @@ class AttendanceTodayStatusTest extends TestCase
             'attendance_status' => 'unlocked',
             'attendance_type_id' => $this->presentType->id,
         ]);
+
+        $this->employee->update(['work_mode' => 'wfh']);
 
         Sanctum::actingAs($this->user);
 
@@ -332,7 +334,7 @@ class AttendanceTodayStatusTest extends TestCase
 
         $response->assertStatus(422)
             ->assertJsonPath('success', false)
-            ->assertJsonPath('message', 'You are outside the allowed office punch-out radius.')
+            ->assertJsonPath('message', 'You are outside the allowed office location.')
             ->assertJsonPath('data.allowed_radius_meters', 100);
     }
 
@@ -494,5 +496,162 @@ class AttendanceTodayStatusTest extends TestCase
         $this->assertEquals(1, (int) ($counts['skipped_pending_regularization'] ?? 0));
         $this->assertEquals('punch_blocked', $attendance->attendance_status);
         $this->assertTrue((bool) $attendance->is_punch_blocked);
+    }
+
+    public function test_new_flow_punch_attempt_after_block_creates_violation_and_rejects(): void
+    {
+        // 12:00 PM is after block time (11:15 AM default policy in database)
+        Carbon::setTestNow(Carbon::create(2026, 5, 20, 12, 0, 0, 'Asia/Kolkata'));
+
+        Sanctum::actingAs($this->user);
+
+        // Attempt punch in
+        $response = $this->postJson('/api/v1/hrms/attendance/punch-in', [
+            'work_mode' => 'wfo',
+            'latitude' => 19.0760000,
+            'longitude' => 72.8777000,
+            'device' => 'Mobile',
+        ]);
+
+        $blockTimeStr = \Carbon\Carbon::parse(\App\Models\HRMS\Attendance\AttendancePolicyRuleM::find(1)?->block_after_time ?? '11:15:00')->format('h:i A');
+        $response->assertStatus(422)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', "Punch in is blocked after {$blockTimeStr}. Please contact HR/Admin.");
+
+        // Assert that a blocked_punch violation was created
+        $this->assertDatabaseHas('attendance_violations', [
+            'employee_id' => $this->employee->id,
+            'type' => 'blocked_punch',
+            'violation_date' => '2026-05-20',
+            'policy_action' => 'blocked',
+        ]);
+
+        // Attempt again - should not create duplicate violation
+        $response2 = $this->postJson('/api/v1/hrms/attendance/punch-in', [
+            'work_mode' => 'wfo',
+            'latitude' => 19.0760000,
+            'longitude' => 72.8777000,
+            'device' => 'Mobile',
+        ]);
+
+        $response2->assertStatus(422);
+        $this->assertEquals(1, DB::table('attendance_violations')->where('employee_id', $this->employee->id)->where('type', 'blocked_punch')->count());
+    }
+
+    public function test_new_flow_unlock_resolves_violation_and_allows_punch_in(): void
+    {
+        Carbon::setTestNow(Carbon::create(2026, 5, 20, 12, 0, 0, 'Asia/Kolkata'));
+
+        // Create unresolved violation
+        $violation = DB::table('attendance_violations')->insertGetId([
+            'employee_id' => $this->employee->id,
+            'violation_date' => '2026-05-20',
+            'type' => 'blocked_punch',
+            'minutes' => 0,
+            'source' => 'mobile',
+            'policy_action' => 'blocked',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // Admin unlocks using violation ID prefix
+        $admin = UserM::create([
+            'name' => 'Admin User',
+            'email' => 'admin_user_' . uniqid() . '@example.com',
+            'password' => bcrypt('password'),
+            'system_role_id' => 1,
+            'is_active' => 1,
+            'is_app_access' => 1,
+            'is_web_access' => 1,
+        ]);
+        Sanctum::actingAs($admin);
+
+        $response = $this->postJson('/api/v1/hrms/attendance/unlock', [
+            'attendance_id' => 'violation_' . $violation,
+            'unlock_type' => 'unlock_only',
+            'unlock_remarks' => 'Allow punch in',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('success', true);
+
+        // Check violation is resolved
+        $this->assertDatabaseHas('attendance_violations', [
+            'id' => $violation,
+            'policy_action' => 'resolved',
+        ]);
+
+        // Employee punches in successfully
+        Sanctum::actingAs($this->user);
+        $punchResponse = $this->postJson('/api/v1/hrms/attendance/punch-in', [
+            'work_mode' => 'wfo',
+            'latitude' => 19.0760000,
+            'longitude' => 72.8777000,
+            'device' => 'Mobile',
+        ]);
+
+        $punchResponse->assertOk()
+            ->assertJsonPath('success', true);
+
+        // Check attendance is created and linked to the violation
+        $attendance = Attendance::where('employee_id', $this->employee->id)->whereDate('attendance_date', '2026-05-20')->first();
+        $this->assertNotNull($attendance);
+        $this->assertTrue((bool) $attendance->is_admin_unlocked);
+        $this->assertDatabaseHas('attendance_violations', [
+            'id' => $violation,
+            'attendance_id' => $attendance->id,
+        ]);
+
+        // Check unlock notification was generated
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $this->user->id,
+            'title' => 'Attendance Unlocked',
+            'message' => "Your attendance has been unlocked.\nYou can now Punch In.",
+            'type' => 'attendance_unlocked',
+        ]);
+    }
+
+    public function test_new_flow_never_punched_in_marked_absent_lwp_at_day_end(): void
+    {
+        Carbon::setTestNow(Carbon::create(2026, 5, 21, 0, 5, 0, 'Asia/Kolkata'));
+
+        // Run auto close blocked/absent attendance
+        $counts = app(\App\Services\HRMS\Attendance\AttendanceS::class)
+            ->autoCloseBlockedAttendance('2026-05-20');
+
+        // Check count
+        $this->assertGreaterThanOrEqual(1, (int) ($counts['marked_absent_never_punched'] ?? 0));
+
+        // Check attendance created as absent + LWP
+        $attendance = Attendance::where('employee_id', $this->employee->id)->whereDate('attendance_date', '2026-05-20')->first();
+        $this->assertNotNull($attendance);
+        $this->assertEquals('absent', $attendance->attendance_status);
+        $this->assertTrue((bool) $attendance->is_lwp);
+        $this->assertEquals('Absent (Never punched in)', $attendance->lwp_reason);
+
+        // Ensure no violations were created
+        $this->assertDatabaseMissing('attendance_violations', [
+            'employee_id' => $this->employee->id,
+            'violation_date' => '2026-05-20',
+        ]);
+    }
+
+    public function test_new_flow_never_punched_in_marked_absent_lwp_immediately_after_shift_end(): void
+    {
+        // 19:05 PM is after shift end time (19:00:00 default in seeded policy rule) but before calendar day end (23:59:00)
+        Carbon::setTestNow(Carbon::create(2026, 5, 20, 19, 5, 0, 'Asia/Kolkata'));
+
+        // Run auto close blocked/absent attendance
+        $counts = app(\App\Services\HRMS\Attendance\AttendanceS::class)
+            ->autoCloseBlockedAttendance('2026-05-20');
+
+        // Check count
+        $this->assertGreaterThanOrEqual(1, (int) ($counts['marked_absent_never_punched'] ?? 0));
+
+        // Check attendance created as absent + LWP
+        $attendance = Attendance::where('employee_id', $this->employee->id)->whereDate('attendance_date', '2026-05-20')->first();
+        $this->assertNotNull($attendance);
+        $this->assertEquals('absent', $attendance->attendance_status);
+        $this->assertTrue((bool) $attendance->is_lwp);
     }
 }

@@ -561,12 +561,16 @@ $probationMonths = old('probation_months', $employeeData->probation_months ?? 3)
 
                         <div class="col-xl-3 col-lg-4 col-md-6 eo-field">
                             <label>Work Schedule</label>
-                            <select name="work_schedule_type" class="form-select @error('work_schedule_type') is-invalid @enderror">
+                            <select name="work_schedule_type" id="work_schedule_type" class="form-select @error('work_schedule_type') is-invalid @enderror">
                                 <option value="">Select Schedule</option>
-                                <option value="full_day" {{ old('work_schedule_type', $employeeData->work_schedule_type ?? '') == 'full_day' ? 'selected' : '' }}>Full Day</option>
-                                <option value="part_day" {{ old('work_schedule_type', $employeeData->work_schedule_type ?? '') == 'part_day' ? 'selected' : '' }}>Part Day</option>
-                                <option value="hourly" {{ old('work_schedule_type', $employeeData->work_schedule_type ?? '') == 'hourly' ? 'selected' : '' }}>Hourly</option>
-                                <option value="shift_based" {{ old('work_schedule_type', $employeeData->work_schedule_type ?? '') == 'shift_based' ? 'selected' : '' }}>Shift Based</option>
+                                <option value="general" {{ old('work_schedule_type', $employeeData->work_schedule_type ?? '') == 'general' ? 'selected' : '' }}>Full Day</option>
+                                @if(old('work_schedule_type', $employeeData->work_schedule_type ?? '') == 'wfh')
+                                    <option value="wfh" selected>Work From Home (WFH)</option>
+                                @endif
+                                <option value="part_time" {{ old('work_schedule_type', $employeeData->work_schedule_type ?? '') == 'part_time' ? 'selected' : '' }}>Part-Day</option>
+                                <option value="half_day" {{ old('work_schedule_type', $employeeData->work_schedule_type ?? '') == 'half_day' ? 'selected' : '' }}>Half-Day</option>
+                                <option value="half_day_morning" {{ old('work_schedule_type', $employeeData->work_schedule_type ?? '') == 'half_day_morning' ? 'selected' : '' }}>Half-Day (Morning)</option>
+                                <option value="half_day_evening" {{ old('work_schedule_type', $employeeData->work_schedule_type ?? '') == 'half_day_evening' ? 'selected' : '' }}>Half-Day (Evening)</option>
                             </select>
                             @error('work_schedule_type') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
@@ -789,6 +793,7 @@ $probationMonths = old('probation_months', $employeeData->probation_months ?? 3)
         const department = document.getElementById('department_id');
         const designation = document.getElementById('designation_id');
         const employmentType = document.getElementById('employment_type');
+        const workScheduleType = document.getElementById('work_schedule_type');
         const employeeStage = document.getElementById('employee_stage');
         const employeeStageDisplay = document.getElementById('employee_stage_display');
         const joiningDate = document.getElementById('joining_date');

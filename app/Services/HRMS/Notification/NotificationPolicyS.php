@@ -26,7 +26,9 @@ class NotificationPolicyS
             case 'salary_revision':
             case 'experience_letter':
             case 'relieving_letter':
+            case 'discontinuing_letter':
             case 'internship_certificate':
+            case 'internship_offer_letter':
             case 'payslip_release':
             case 'payslip':
             case 'payslip_available':

@@ -37,7 +37,12 @@ class SandwichLeaveService
             $cursor->addDay();
         }
 
-        if (! $policy->sandwich_enabled) {
+        // Enforce Sandwich leave policy rules programmatically as per Issue 8
+        $sandwichEnabled = true;
+        $weekoffIncludedInSandwich = true;
+        $holidayIncludedInSandwich = true;
+
+        if (! $sandwichEnabled) {
             return array_values($rows);
         }
 
@@ -63,8 +68,8 @@ class SandwichLeaveService
             $rightHasLeave = $this->hasLeaveOnRight($employee, $currentDate, $start, $end, $existingLeaveDates);
 
             if ($leftHasLeave && $rightHasLeave) {
-                $includeWeekoff = $row['is_weekoff'] && $policy->weekoff_included_in_sandwich;
-                $includeHoliday = $row['is_holiday'] && $policy->holiday_included_in_sandwich;
+                $includeWeekoff = $row['is_weekoff'] && $weekoffIncludedInSandwich;
+                $includeHoliday = $row['is_holiday'] && $holidayIncludedInSandwich;
                 if ($includeWeekoff || $includeHoliday) {
                     $row['is_sandwich_day'] = true;
                     $row['deduct_as_leave'] = true;

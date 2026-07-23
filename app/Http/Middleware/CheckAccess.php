@@ -38,8 +38,18 @@ class CheckAccess
             return $next($request);
         }
 
+        // Always allow project management / task routes for authenticated users
+        if (strpos($routeName, 'project_management.') === 0) {
+            return $next($request);
+        }
+
+
         // Map sub-routes/actions to their primary menu route
-        if (strpos($routeName, 'documents.hr.') === 0) {
+        if (strpos($routeName, 'attendance.policy_rules.') === 0 || strpos($routeName, 'attendance.rules.') === 0) {
+            $routeName = 'attendance.rules.index';
+        } elseif (strpos($routeName, 'attendance.types.') === 0) {
+            $routeName = 'attendance.types.index';
+        } elseif (strpos($routeName, 'documents.hr.') === 0) {
             $routeName = 'documents.verification.index';
         } elseif (strpos($routeName, 'documents.employee.') === 0) {
             $routeName = 'documents.compliance.index';

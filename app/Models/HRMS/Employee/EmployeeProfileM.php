@@ -42,7 +42,7 @@ class EmployeeProfileM extends Model
     ];
 
     protected $casts = [
-        'date_of_birth' => 'date',
+        'date_of_birth' => 'date:Y-m-d',
         'is_profile_completed' => 'boolean',
         'profile_completed_at' => 'datetime',
         'approved_at' => 'datetime',

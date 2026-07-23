@@ -9,9 +9,11 @@
 
 @section('_content')
 @php
-$attendanceRows = $attendances instanceof \Illuminate\Pagination\AbstractPaginator
+$attendanceRows = ($attendances instanceof \Illuminate\Pagination\AbstractPaginator
 ? collect($attendances->items())
-: collect($attendances ?? []);
+: collect($attendances ?? []))->filter(function ($item) {
+    return !($item->is_punch_blocked || $item->is_blocked || $item->attendance_status === 'punch_blocked' || (optional($item->attendanceType)->code === 'punch_blocked'));
+});
 
 $blockedRows = collect($blockedAttendances ?? []);
 
@@ -871,6 +873,7 @@ $kpis = [
             @endforeach
         </div>
 
+        @if($blockedRows->count() > 0)
         <div class="orb-table-card att-block-card" style="border-color: #FED7AA;">
             <div class="orb-table-toolbar justify-content-between align-items-center">
                 <div>
@@ -982,6 +985,7 @@ $kpis = [
                 </div>
             </div>
         </div>
+        @endif
 
         <div class="orb-table-card">
             <div class="orb-table-toolbar justify-content-between align-items-end flex-wrap gap-3">
@@ -1017,8 +1021,38 @@ $kpis = [
                         <tbody>
                             @foreach($attendanceRows as $attendance)
                             @php
-                            $typeCode = optional($attendance->attendanceType)->code ?? 'default';
-                            $statusName = optional($attendance->attendanceType)->name ?? 'N/A';
+                             $rawStatus = strtolower($attendance->attendance_status ?? '');
+                             if (empty($rawStatus)) {
+                                 $rawStatus = optional($attendance->attendanceType)->code ?? 'default';
+                             }
+                             if ($rawStatus === 'absent' || $rawStatus === 'lwp') {
+                                 $typeCode = 'absent';
+                                 $statusName = '🔴 ABSENT';
+                             } else {
+                                 $statusMap = [
+                                     'present' => ['present', 'Present'],
+                                     'half_day' => ['half_day', 'Half Day'],
+                                     'absent' => ['absent', '🔴 ABSENT'],
+                                     'missed_punch' => ['missed_punch', 'Missed Punch'],
+                                     'leave' => ['leave', 'Leave'],
+                                     'holiday' => ['holiday', 'Holiday'],
+                                     'week_off' => ['week_off', 'Week Off'],
+                                     'punch_blocked' => ['punch_blocked', 'Punch Blocked'],
+                                     'lwp' => ['absent', '🔴 ABSENT'],
+                                 ];
+                                 $mapped = $statusMap[$rawStatus] ?? null;
+                                 if ($mapped) {
+                                     $typeCode = $mapped[0];
+                                     $statusName = $mapped[1];
+                                 } else {
+                                     $typeCode = optional($attendance->attendanceType)->code ?? 'default';
+                                     $statusName = optional($attendance->attendanceType)->name ?? 'N/A';
+                                     if ($typeCode === 'lwp') {
+                                         $typeCode = 'absent';
+                                         $statusName = '🔴 ABSENT';
+                                     }
+                                 }
+                             }
                             $modeCode = strtolower($attendance->work_mode ?? '');
                             $modeLabel = $modeCode === 'wfh' ? 'WFH' : ($modeCode === 'wfo' ? 'WFO' : '-');
                             $modeClass = in_array($modeCode, ['wfo', 'wfh']) ? $modeCode : 'default';

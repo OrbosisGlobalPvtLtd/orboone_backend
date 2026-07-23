@@ -28,23 +28,30 @@ class AttendanceSyncFromLeaveService
                 }
 
                 $oldStatus = $attendance->attendance_status;
-                $isLwp = (float) $dateRow->lwp_day > 0 && ((float) $dateRow->paid_day + (float) $dateRow->sick_day + (float) $dateRow->comp_off_day) <= 0;
                 $dayValue = (float) $dateRow->paid_day + (float) $dateRow->sick_day + (float) $dateRow->comp_off_day + (float) $dateRow->lwp_day;
 
                 $attendance->fill([
                     'user_id' => $leaveRequest->user_id,
                     'employee_id' => $leaveRequest->employee_id,
-                    'attendance_type_id' => $isLwp ? $lwpTypeId : $leaveTypeId,
+                    'attendance_type_id' => $leaveTypeId,
                     'leave_request_id' => $leaveRequest->id,
                     'attendance_date' => $dateRow->leave_date->toDateString(),
-                    'attendance_status' => $isLwp ? 'lwp' : 'leave',
+                    'attendance_status' => 'leave',
                     'attendance_source' => 'leave_auto',
-                    'is_lwp' => $isLwp,
-                    'lwp_reason' => $isLwp ? 'Leave approved without payable balance.' : null,
+                    'is_lwp' => false,
+                    'lwp_reason' => null,
                     'is_half_day' => $dayValue > 0 && $dayValue < 1,
                     'half_day_reason' => $dayValue > 0 && $dayValue < 1 ? 'Half-day leave' : null,
                     'total_work_minutes' => 0,
                     'gross_work_minutes' => 0,
+                    'is_late' => false,
+                    'late_minutes' => 0,
+                    'is_early_out' => false,
+                    'early_out_minutes' => 0,
+                    'missed_punch' => false,
+                    'is_missed_punch' => false,
+                    'is_punch_blocked' => false,
+                    'is_blocked' => false,
                 ]);
 
                 $attendance->save();

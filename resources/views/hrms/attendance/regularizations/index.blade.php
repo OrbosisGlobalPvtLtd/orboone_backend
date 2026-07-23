@@ -741,7 +741,7 @@ body {
                                     $desigName = $emp?->designation?->name ?? 'N/A';
                                     
                                     $attendanceRecord = $row->attendance_id ? \App\Models\HRMS\Attendance\AttendanceM::find($row->attendance_id) : null;
-                                    $currentStatusText = $attendanceRecord?->status ?? 'N/A';
+                                    $currentStatusText = $attendanceRecord ? resolve(\App\Services\HRMS\Attendance\AttendanceS::class)->resolveFinalStatus($attendanceRecord)['status_name'] : 'N/A';
                                     
                                     $type = $row->request_type;
                                     
@@ -790,11 +790,10 @@ body {
                                     </td>
                                     <td style="white-space: nowrap;"><code>{{ $row->employee_code }}</code></td>
                                     <td style="white-space: nowrap;">
-                                        @if($row->mapped_attendance_date)
-                                            <span class="font-weight-bold">{{ \Carbon\Carbon::parse($row->mapped_attendance_date)->format('d M Y') }}</span>
-                                        @else
-                                            <span class="font-weight-bold">{{ \Carbon\Carbon::parse($row->created_at)->format('d M Y') }}</span>
-                                        @endif
+                                        @php
+                                            $rowDate = $row->mapped_attendance_date ?: ($row->requested_punch_in ?: ($row->requested_punch_out ?: $row->created_at));
+                                        @endphp
+                                        <span class="font-weight-bold">{{ \Carbon\Carbon::parse($rowDate)->format('d M Y') }}</span>
                                     </td>
                                     <td style="white-space: nowrap;">
                                         <span class="orb-badge orb-badge-primary">
@@ -971,7 +970,7 @@ body {
                 $desigName = $emp?->designation?->name ?? 'N/A';
                 
                 $attendanceRecord = $row->attendance_id ? \App\Models\HRMS\Attendance\AttendanceM::find($row->attendance_id) : null;
-                $currentStatusText = $attendanceRecord?->status ?? 'N/A';
+                $currentStatusText = $attendanceRecord ? resolve(\App\Services\HRMS\Attendance\AttendanceS::class)->resolveFinalStatus($attendanceRecord)['status_name'] : 'N/A';
                 $shiftName = $attendanceRecord?->shift?->name ?? 'Regular Shift';
             @endphp
 
@@ -1007,7 +1006,7 @@ body {
                                 <div class="detail-card-title"><i class="fas fa-calendar-alt mr-2"></i> Attendance Information</div>
                                 <div class="detail-row">
                                     <span class="detail-label">Attendance Date</span>
-                                    <span class="detail-value">{{ $row->mapped_attendance_date ? \Carbon\Carbon::parse($row->mapped_attendance_date)->format('d M Y') : \Carbon\Carbon::parse($row->created_at)->format('d M Y') }}</span>
+                                    <span class="detail-value">{{ \Carbon\Carbon::parse($row->mapped_attendance_date ?: ($row->requested_punch_in ?: ($row->requested_punch_out ?: $row->created_at)))->format('d M Y') }}</span>
                                 </div>
                                 <div class="detail-row">
                                     <span class="detail-label">Current Shift</span>
@@ -1132,7 +1131,7 @@ body {
                                     <div class="small text-muted font-weight-bold mb-1">REQUEST TYPE</div>
                                     <div class="font-weight-bold text-dark mb-2">{{ $typeLabels[$row->request_type] ?? $row->request_type }}</div>
                                     <div class="small text-muted font-weight-bold mb-1">DATE</div>
-                                    <div class="font-weight-bold text-dark">{{ \Carbon\Carbon::parse($row->mapped_attendance_date ?: $row->created_at)->format('d M Y') }}</div>
+                                    <div class="font-weight-bold text-dark">{{ \Carbon\Carbon::parse($row->mapped_attendance_date ?: ($row->requested_punch_in ?: ($row->requested_punch_out ?: $row->created_at)))->format('d M Y') }}</div>
                                 </div>
                             </div>
                             <div class="modal-footer" style="background: rgba(255,255,255,0.5);">
@@ -1195,7 +1194,7 @@ body {
                                 
                                 <div class="form-group">
                                     <label class="font-weight-bold text-dark">Attendance Date</label>
-                                    <input type="text" class="form-control" style="background: #F1F5F9;" value="{{ $row->mapped_attendance_date ? \Carbon\Carbon::parse($row->mapped_attendance_date)->format('d M Y') : \Carbon\Carbon::parse($row->created_at)->format('d M Y') }}" readonly>
+                                    <input type="text" class="form-control" style="background: #F1F5F9;" value="{{ \Carbon\Carbon::parse($row->mapped_attendance_date ?: ($row->requested_punch_in ?: ($row->requested_punch_out ?: $row->created_at)))->format('d M Y') }}" readonly>
                                 </div>
 
                                 <div class="form-group">

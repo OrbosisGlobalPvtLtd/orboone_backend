@@ -217,9 +217,15 @@ class EmployeeM extends Model
         return StatutorySetting::query()->first();
     }
 
-    /* ============================
-       ACCESSORS / HELPERS
-       ============================ */
+    public function isPermanentWfh(): bool
+    {
+        return strtolower((string) ($this->work_mode ?? 'wfo')) === 'wfh';
+    }
+
+    public function isWfo(): bool
+    {
+        return strtolower((string) ($this->work_mode ?? 'wfo')) !== 'wfh';
+    }
 
     public function getIsPermanentAttribute()
     {

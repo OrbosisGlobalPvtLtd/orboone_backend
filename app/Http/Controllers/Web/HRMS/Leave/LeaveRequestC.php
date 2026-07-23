@@ -64,10 +64,13 @@ class LeaveRequestC extends Controller
         $employee = EmployeeM::where('user_id', Auth::id())->first();
         abort_if(! $employee, 403, 'No employee profile linked to your account.');
 
+        $year = Carbon::now('Asia/Kolkata')->year;
+        $allocation = resolve(\App\Services\HRMS\Leave\LeaveAllocationService::class)->getOrGenerate($employee, $year, auth()->id());
+
         $leaveTypes = LeaveTypeM::where('is_active', true)->orderBy('name')->get();
         $accesses = $this->accesses();
 
-        return view('hrms.leave.requests.create', compact('leaveTypes', 'employee', 'accesses'))
+        return view('hrms.leave.requests.create', compact('leaveTypes', 'employee', 'accesses', 'allocation'))
             ->with('active', 'leave_management');
     }
 

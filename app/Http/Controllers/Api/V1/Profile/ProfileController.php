@@ -43,7 +43,7 @@ class ProfileController extends Controller
     {
         return [
             'emergency_contact_number' => $profile->emergency_contact_number,
-            'date_of_birth'         => $profile->date_of_birth,
+            'date_of_birth'         => $profile->date_of_birth ? \Carbon\Carbon::parse($profile->date_of_birth)->format('Y-m-d') : null,
             'gender'                => $profile->gender,
             'address'               => $profile->address,
             'highest_qualification' => $profile->highest_qualification,
@@ -309,7 +309,7 @@ class ProfileController extends Controller
                     'employee_id'           => $profile->employee_id,
                     'emergency_contact_number' => $profile->emergency_contact_number,
                     'profile_image'         => $this->fileUrl($profile->profile_image),
-                    'date_of_birth'         => $profile->date_of_birth,
+                    'date_of_birth'         => $profile->date_of_birth ? \Carbon\Carbon::parse($profile->date_of_birth)->format('Y-m-d') : null,
                     'gender'                => $profile->gender,
                     'address'               => $profile->address,
                     'highest_qualification' => $profile->highest_qualification,

@@ -34,6 +34,50 @@ class AttendanceRegularizationController extends ApiController
             return response()->json(['success' => false, 'status' => false, 'message' => 'Employee profile not found.', 'data' => null], 404);
         }
 
+        $attendanceId = $request->input('attendance_id');
+        $attendance = null;
+        if (! empty($attendanceId)) {
+            $attendance = Attendance::where('id', $attendanceId)
+                ->where('employee_id', $employee->id)
+                ->first();
+            if (! $attendance) {
+                return response()->json(['success' => false, 'status' => false, 'message' => 'Attendance record not found for employee.', 'data' => null], 422);
+            }
+        }
+
+        $rawAttendanceDate = $request->input('attendance_date');
+        $attendanceDate = null;
+        if (! empty($rawAttendanceDate)) {
+            try {
+                $attendanceDate = Carbon::parse($rawAttendanceDate)->toDateString();
+            } catch (\Throwable $e) {
+                $attendanceDate = $rawAttendanceDate;
+            }
+        } elseif ($attendance?->attendance_date) {
+            $attendanceDate = Carbon::parse($attendance->attendance_date)->toDateString();
+        }
+
+        if ($attendanceDate && Carbon::parse($attendanceDate)->isFuture()) {
+            return response()->json(['success' => false, 'status' => false, 'message' => 'Future attendance date is not allowed.', 'data' => null], 422);
+        }
+
+        if (! $attendance && $attendanceDate) {
+            $attendance = Attendance::where('employee_id', $employee->id)
+                ->whereDate('attendance_date', $attendanceDate)
+                ->first();
+        }
+
+        $rawPunchIn = $request->input('requested_punch_in') ?? $request->input('requested_punch_in_time');
+        $rawPunchOut = $request->input('requested_punch_out') ?? $request->input('requested_punch_out_time');
+
+        $normalizedPunchIn = $this->normalizePunchDateTime($rawPunchIn, $attendanceDate, 'requested_punch_in');
+        $normalizedPunchOut = $this->normalizePunchDateTime($rawPunchOut, $attendanceDate, 'requested_punch_out');
+
+        $request->merge([
+            'requested_punch_in' => $normalizedPunchIn,
+            'requested_punch_out' => $normalizedPunchOut,
+        ]);
+
         $data = $request->validate([
             'attendance_id' => 'nullable|exists:attendances,id',
             'attendance_date' => 'nullable|date',
@@ -45,34 +89,6 @@ class AttendanceRegularizationController extends ApiController
             'reason' => 'required|string',
             'attachment' => 'nullable|file|max:5120',
         ]);
-
-        $attendance = null;
-        if (! empty($data['attendance_id'])) {
-            $attendance = Attendance::where('id', $data['attendance_id'])
-                ->where('employee_id', $employee->id)
-                ->first();
-            if (! $attendance) {
-                return response()->json(['success' => false, 'status' => false, 'message' => 'Attendance record not found for employee.', 'data' => null], 422);
-            }
-        }
-
-        $attendanceDate = $data['attendance_date'] ?? ($attendance?->attendance_date ? Carbon::parse($attendance->attendance_date)->toDateString() : null);
-        if ($attendanceDate && Carbon::parse($attendanceDate)->isFuture()) {
-            return response()->json(['success' => false, 'status' => false, 'message' => 'Future attendance date is not allowed.', 'data' => null], 422);
-        }
-
-        if (! $attendance && $attendanceDate) {
-            $attendance = Attendance::where('employee_id', $employee->id)
-                ->whereDate('attendance_date', $attendanceDate)
-                ->first();
-        }
-
-        if ($attendanceDate && empty($data['requested_punch_in']) && ! empty($data['requested_punch_in_time'])) {
-            $data['requested_punch_in'] = Carbon::parse($attendanceDate . ' ' . $data['requested_punch_in_time'], 'Asia/Kolkata')->toDateTimeString();
-        }
-        if ($attendanceDate && empty($data['requested_punch_out']) && ! empty($data['requested_punch_out_time'])) {
-            $data['requested_punch_out'] = Carbon::parse($attendanceDate . ' ' . $data['requested_punch_out_time'], 'Asia/Kolkata')->toDateTimeString();
-        }
 
         if ($data['request_type'] === 'missed_punch_in' && empty($data['requested_punch_in'])) {
             return response()->json(['success' => false, 'status' => false, 'message' => 'Requested punch in time is required for missed punch in.', 'data' => null], 422);
@@ -415,5 +431,46 @@ class AttendanceRegularizationController extends ApiController
             $user->hasPermission('attendance.regularization.approve')
             || $user->hasPermission('attendance.regularization.reject')
         );
+    }
+
+    /**
+     * Normalize incoming punch input (time-only or datetime) to standard Y-m-d H:i:s datetime string.
+     *
+     * Cases handled:
+     * Case 1: "09:18" + "2026-07-18" => "2026-07-18 09:18:00"
+     * Case 2: "09:18:15" + "2026-07-18" => "2026-07-18 09:18:15"
+     * Case 3: "2026-07-18 09:18" => "2026-07-18 09:18:00"
+     * Case 4: "2026-07-18 09:18:00" => "2026-07-18 09:18:00"
+     * Case 5: Invalid value => Throws ValidationException
+     */
+    private function normalizePunchDateTime(?string $value, ?string $attendanceDate, string $fieldName = 'requested_punch'): ?string
+    {
+        if ($value === null || trim($value) === '') {
+            return null;
+        }
+
+        $value = trim($value);
+
+        // A time-only string does not contain date separator '-' or '/'
+        $isTimeOnly = ! str_contains($value, '-') && ! str_contains($value, '/');
+
+        if ($isTimeOnly) {
+            if (! $attendanceDate) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'attendance_date' => ["Attendance date is required to parse time '{$value}'."],
+                ]);
+            }
+
+            $cleanDate = Carbon::parse($attendanceDate)->toDateString();
+            $value = $cleanDate . ' ' . $value;
+        }
+
+        try {
+            return Carbon::parse($value)->toDateTimeString();
+        } catch (\Throwable $e) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                $fieldName => ["The {$fieldName} is not a valid date."],
+            ]);
+        }
     }
 }

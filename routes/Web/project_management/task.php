@@ -10,6 +10,9 @@ Route::middleware(['auth', 'web.admin.access', 'module:hrms'])
         Route::get('/task_management', [TaskmanagementController::class, 'task_management'])
             ->name('index');
 
+        Route::get('/task_detail/{id}', [TaskmanagementController::class, 'showDetail'])
+            ->name('detail');
+
         Route::get('/add_task', [TaskmanagementController::class, 'store_task'])
             ->name('create');
 
@@ -21,6 +24,12 @@ Route::middleware(['auth', 'web.admin.access', 'module:hrms'])
 
         Route::post('/update_task/{id}', [TaskmanagementController::class, 'update'])
             ->name('update');
+
+        Route::post('/task/{id}/update_status', [TaskmanagementController::class, 'updateStatus'])
+            ->name('update_status');
+
+        Route::post('/task/{id}/comment', [TaskmanagementController::class, 'addComment'])
+            ->name('add_comment');
 
         Route::delete('/delete_task/{id}', [TaskmanagementController::class, 'destroy'])
             ->name('destroy');

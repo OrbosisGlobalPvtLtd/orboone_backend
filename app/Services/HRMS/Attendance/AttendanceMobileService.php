@@ -12,8 +12,7 @@ class AttendanceMobileService
         private AttendanceS $attendanceService,
         private AttendanceRuleResolverService $resolver,
         private ?WfhRequestService $wfhRequestService = null
-    ) {
-    }
+    ) {}
 
     public function profileStatus(int $userId): array
     {
@@ -47,7 +46,7 @@ class AttendanceMobileService
             $attendance = Attendance::where('employee_id', $employee->id)
                 ->whereDate('attendance_date', Carbon::now(AttendanceRuleResolverService::TIMEZONE)->toDateString())
                 ->first();
-                
+
             if ($attendance) {
                 $payload['attendance'] = $this->formatAttendanceForApi($attendance, $payload['policy'] ?? null);
             }
@@ -58,10 +57,41 @@ class AttendanceMobileService
         $attendanceData = is_array($payload['attendance']) ? $payload['attendance'] : [];
         $payload['status_code'] = $attendanceData['status_code'] ?? ($payload['ui']['status_code'] ?? 'not_punched');
         $payload['status_name'] = $attendanceData['status_name'] ?? ucwords(str_replace('_', ' ', $payload['status_code']));
-        $payload['is_blocked'] = (bool) ($attendanceData['is_blocked'] ?? $payload['ui']['is_blocked'] ?? false);
-        $payload['is_punch_blocked'] = (bool) ($attendanceData['is_punch_blocked'] ?? $payload['ui']['is_punch_blocked'] ?? false);
-        $payload['can_punch_in'] = (bool) ($attendanceData['can_punch_in'] ?? $payload['ui']['can_punch_in'] ?? false);
+
+        $isFinal = in_array($payload['status_code'], ['absent', 'present', 'half_day', 'lwp', 'leave', 'holiday', 'week_off', 'missed_punch'], true);
+        if ($isFinal) {
+            $payload['is_blocked'] = false;
+            $payload['is_punch_blocked'] = false;
+            $payload['can_punch_in'] = false;
+            if (isset($payload['ui']) && is_array($payload['ui'])) {
+                $payload['ui']['is_blocked'] = false;
+                $payload['ui']['is_punch_blocked'] = false;
+                $payload['ui']['show_blocked_card'] = false;
+                $payload['ui']['blocked_message'] = null;
+                $payload['ui']['status_code'] = $payload['status_code'];
+                $payload['ui']['status_name'] = $payload['status_name'];
+            }
+        } else {
+            $payload['is_blocked'] = (bool) ($attendanceData['is_blocked'] ?? $payload['ui']['is_blocked'] ?? false);
+            $payload['is_punch_blocked'] = (bool) ($attendanceData['is_punch_blocked'] ?? $payload['ui']['is_punch_blocked'] ?? false);
+            $payload['can_punch_in'] = (bool) ($attendanceData['can_punch_in'] ?? $payload['ui']['can_punch_in'] ?? false);
+        }
+
+        if ($payload['status_code'] === 'leave') {
+            $payload['can_punch_in'] = false;
+            $payload['can_punch_out'] = false;
+            $payload['next_action'] = 'none';
+            if (isset($payload['ui']) && is_array($payload['ui'])) {
+                $payload['ui']['can_punch_in'] = false;
+                $payload['ui']['can_punch_out'] = false;
+                $payload['ui']['next_action'] = 'none';
+            }
+        }
+
         $payload['can_punch_out'] = (bool) ($attendanceData['can_punch_out'] ?? $payload['ui']['can_punch_out'] ?? false);
+        if ($payload['status_code'] === 'leave') {
+            $payload['can_punch_out'] = false;
+        }
         $payload['next_action'] = $attendanceData['next_action'] ?? ($payload['ui']['next_action'] ?? 'none');
         $payload['office_location'] = $this->attendanceService->officeLocationPayload();
 
@@ -70,11 +100,38 @@ class AttendanceMobileService
             $wfhApproved = (bool) $this->wfhRequestService->approvedForDate((int) $employee->id, Carbon::now(AttendanceRuleResolverService::TIMEZONE)->toDateString());
         }
 
+        $isPermanentWfh = $employee ? $employee->isPermanentWfh() : false;
+        $dayCtx = $payload['day_context'] ?? [];
+        $todayWorkMode = 'wfo';
+        $workModeLabel = 'Working From Office';
+
+        if (! empty($dayCtx['is_holiday'])) {
+            $todayWorkMode = 'holiday';
+            $workModeLabel = 'Holiday';
+        } elseif (! empty($dayCtx['is_weekoff'])) {
+            $todayWorkMode = 'week_off';
+            $workModeLabel = 'Weekly Off';
+        } elseif (! empty($dayCtx['is_on_leave'])) {
+            $todayWorkMode = 'leave';
+            $workModeLabel = 'Leave';
+        } elseif ($isPermanentWfh) {
+            $todayWorkMode = 'wfh';
+            $workModeLabel = 'Working From Home (Permanent)';
+        } elseif ($wfhApproved) {
+            $todayWorkMode = 'wfh';
+            $workModeLabel = 'Working From Home';
+        }
+
+        $payload['today_work_mode'] = $todayWorkMode;
+        $payload['work_mode_label'] = $workModeLabel;
+        $payload['is_permanent_wfh'] = $isPermanentWfh;
+        $payload['show_wfh_module'] = ! $isPermanentWfh;
+
         return [
             'success' => true,
             'status' => true,
             'message' => 'Today attendance status fetched successfully.',
-            'data' => $payload + ['wfh_approved_today' => $wfhApproved],
+            'data' => $payload + ['wfh_approved_today' => $wfhApproved || $isPermanentWfh],
             'errors' => null
         ];
     }
@@ -150,40 +207,45 @@ class AttendanceMobileService
         $data = is_array($attendance) ? $attendance : $attendance->toArray();
         $rawDate = $data['attendance_date'] ?? null;
         $typeCode = $data['attendance_type']['code'] ?? null;
-        $isUnlocked = (bool) ($data['is_admin_unlocked'] ?? false) || ($data['attendance_status'] ?? null) === 'unlocked';
-        $isBlocked = (bool) (
-            ($data['is_blocked'] ?? false)
-            || ($data['is_punch_blocked'] ?? false)
-            || $typeCode === 'punch_blocked'
-        );
-        if ($isUnlocked) {
-            $isBlocked = false;
-        }
         $hasPunchIn = ! empty($data['punch_in_time']);
         $hasPunchOut = ! empty($data['punch_out_time']);
 
-        $resolved = $this->attendanceService->resolveFinalStatus(is_array($attendance) ? (new Attendance($data)) : $attendance);
-        $statusCode = $resolved['status_code'] ?? ($typeCode ?: ($data['attendance_status'] ?? 'not_punched'));
-        $statusName = $resolved['status_name'] ?? ($data['attendance_type']['name'] ?? ucwords(str_replace('_', ' ', $statusCode)));
-        if ($isBlocked) {
-            $statusCode = 'punch_blocked';
-            $statusName = 'Punch Blocked';
-        } elseif ($isUnlocked && ! $hasPunchIn) {
-            $statusCode = 'awaiting_punch_in';
-            $statusName = 'Awaiting Punch In';
-            if (isset($data['attendance_type'])) {
-                $data['attendance_type']['code'] = 'awaiting_punch_in';
-                $data['attendance_type']['name'] = 'Awaiting Punch In';
-            }
+        $empForPolicy = null;
+        if (! empty($data['user_id'])) {
+            $empForPolicy = Employee::where('user_id', $data['user_id'])->first();
+        } elseif (! empty($data['employee_id'])) {
+            $empForPolicy = Employee::find($data['employee_id']);
         }
+        $dateForPolicy = Carbon::parse($rawDate ?: date('Y-m-d'), AttendanceRuleResolverService::TIMEZONE);
+        $attObj = is_array($attendance) ? (new Attendance($data)) : $attendance;
 
-        $data['status_code'] = $statusCode;
-        $data['status_name'] = $statusName;
-        $data['is_blocked'] = $isBlocked;
-        $data['is_punch_blocked'] = $isBlocked;
-        $data['can_punch_in'] = ! $isBlocked && ! $hasPunchIn;
-        $data['can_punch_out'] = ! $isBlocked && $hasPunchIn && ! $hasPunchOut;
-        $data['next_action'] = $isBlocked ? 'blocked' : (! $hasPunchIn ? 'punch_in' : (! $hasPunchOut ? 'punch_out' : 'completed'));
+        if ($empForPolicy) {
+            $state = $this->resolver->resolveMobileState($empForPolicy, $dateForPolicy, $attObj);
+            $data['status_code'] = $state['status_code'];
+            $data['status_name'] = $state['status_name'];
+            $data['attendance_status'] = $state['status_code'];
+            $data['attendance_state'] = $state['attendance_state'];
+            $data['is_blocked'] = $state['is_blocked'];
+            $data['is_punch_blocked'] = $state['is_punch_blocked'];
+            $data['can_punch_in'] = $state['can_punch_in'];
+            $data['can_punch_out'] = $state['can_punch_out'];
+            $data['next_action'] = $state['next_action'];
+        } else {
+            $resolved = $this->attendanceService->resolveFinalStatus($attObj);
+            $statusCode = $resolved['status_code'] ?? ($typeCode ?: ($data['attendance_status'] ?? 'not_punched'));
+            if ($statusCode === 'lwp') {
+                $statusCode = 'absent';
+            }
+            $statusName = $resolved['status_name'] ?? ($statusCode === 'absent' ? 'Absent' : ucwords(str_replace('_', ' ', $statusCode)));
+            $data['status_code'] = $statusCode;
+            $data['status_name'] = $statusName;
+            $data['attendance_status'] = $statusCode;
+            $data['is_blocked'] = false;
+            $data['is_punch_blocked'] = false;
+            $data['can_punch_in'] = false;
+            $data['can_punch_out'] = $hasPunchIn && ! $hasPunchOut;
+            $data['next_action'] = $hasPunchIn ? (! $hasPunchOut ? 'punch_out' : 'completed') : 'none';
+        }
 
         $attendanceDate = $this->localDate($rawDate);
         $data['attendance_date'] = $attendanceDate;
@@ -241,14 +303,14 @@ class AttendanceMobileService
     {
         $query = Attendance::with(['attendanceType', 'attendanceTime', 'workLogs'])
             ->where('user_id', $userId)
-            ->when($filters['date'] ?? null, fn ($q, $date) => $q->whereDate('attendance_date', $date))
-            ->when($filters['month'] ?? null, fn ($q, $month) => $q->whereMonth('attendance_date', (int) $month))
-            ->when($filters['year'] ?? null, fn ($q, $year) => $q->whereYear('attendance_date', (int) $year));
+            ->when($filters['date'] ?? null, fn($q, $date) => $q->whereDate('attendance_date', $date))
+            ->when($filters['month'] ?? null, fn($q, $month) => $q->whereMonth('attendance_date', (int) $month))
+            ->when($filters['year'] ?? null, fn($q, $year) => $q->whereYear('attendance_date', (int) $year));
 
         $paginator = $query->orderByDesc('attendance_date')->orderByDesc('id')->paginate((int) ($filters['per_page'] ?? 100));
-        
+
         $records = collect($paginator->items())
-            ->map(fn ($item) => $this->formatAttendanceForApi($item))
+            ->map(fn($item) => $this->formatAttendanceForApi($item))
             ->values();
 
         return [

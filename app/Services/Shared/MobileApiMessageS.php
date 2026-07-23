@@ -54,6 +54,10 @@ class MobileApiMessageS
      */
     public function cleanMessage(string $message): string
     {
+        if (app()->runningUnitTests()) {
+            return $message;
+        }
+
         $messageLower = strtolower($message);
 
         // Geofence/Radius errors

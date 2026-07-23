@@ -244,44 +244,147 @@
 
         @include('hrms.leave.shared.flash')
 
-        <!-- Leaves Allocations Metric Grid -->
+        <!-- Leaves Dashboard Metrics Grid -->
+        @php
+            $isConfirmed = $employee->is_permanent;
+            
+            $paidRemaining = $isConfirmed ? ($allocation->paid_remaining ?? 0) : 0.0;
+            $paidUsed = $isConfirmed ? ($allocation->paid_used ?? 0) : 0.0;
+            $sickRemaining = $isConfirmed ? ($allocation->sick_remaining ?? 0) : 0.0;
+            $compRemaining = $isConfirmed ? ($allocation->comp_off_remaining ?? 0) : 0.0;
+            $lwpUsed = (float) ($allocation->lwp_used ?? 0);
+
+            // Monthly Paid Leave limits
+            $currentMonth = Carbon\Carbon::now('Asia/Kolkata')->month;
+            $currentYear = Carbon\Carbon::now('Asia/Kolkata')->year;
+
+            $alreadyUsedThisMonth = (float) DB::table('leave_request_dates')
+                ->join('leave_requests', 'leave_requests.id', '=', 'leave_request_dates.leave_request_id')
+                ->where('leave_request_dates.employee_id', $employee->id)
+                ->where('leave_requests.status', 'approved')
+                ->whereMonth('leave_request_dates.leave_date', $currentMonth)
+                ->whereYear('leave_request_dates.leave_date', $currentYear)
+                ->where('leave_request_dates.deduct_as_leave', 1)
+                ->sum('leave_request_dates.paid_day');
+
+            $paidAvailableThisMonth = $isConfirmed ? 2.0 : 0.0;
+            $remainingThisMonth = $isConfirmed ? max(0.0, 2.0 - $alreadyUsedThisMonth) : 0.0;
+
+            // Apply November/December rule to dynamic balances
+            if (in_array((int) $currentMonth, [11, 12], true) && ($allocation->total_remaining ?? 0) > 10.0) {
+                $paidRemaining = round($paidRemaining * 0.5, 2);
+                $sickRemaining = round($sickRemaining * 0.5, 2);
+                $compRemaining = round($compRemaining * 0.5, 2);
+                $remainingThisMonth = round($remainingThisMonth * 0.5, 2);
+            }
+
+            // Requests Counts
+            $pendingCount = DB::table('leave_requests')
+                ->where('employee_id', $employee->id)
+                ->where('status', 'pending')
+                ->count();
+            
+            $approvedCount = DB::table('leave_requests')
+                ->where('employee_id', $employee->id)
+                ->where('status', 'approved')
+                ->count();
+
+            $rejectedCount = DB::table('leave_requests')
+                ->where('employee_id', $employee->id)
+                ->where('status', 'rejected')
+                ->count();
+
+            // Emergency Leaves Used
+            $emergencyUsed = DB::table('leave_requests')
+                ->where('employee_id', $employee->id)
+                ->where('status', 'approved')
+                ->where('emergency_leave', 1)
+                ->count();
+        @endphp
         <div class="row mb-4">
             @foreach([
-                'Total Remaining' => [
-                    'val' => $allocation->total_remaining ?? 0,
-                    'icon' => 'fa-calendar-alt',
-                    'color' => '#4B00E8'
-                ],
-                'Paid Leaves' => [
-                    'val' => $allocation->paid_remaining ?? 0,
+                'Paid Leave Remaining' => [
+                    'val' => $paidRemaining,
                     'icon' => 'fa-star',
-                    'color' => '#10B981'
+                    'color' => '#10B981',
+                    'desc' => 'Annual remaining Paid Leaves'
                 ],
-                'Sick Leaves' => [
-                    'val' => $allocation->sick_remaining ?? 0,
+                'Paid Leave Used' => [
+                    'val' => $paidUsed,
+                    'icon' => 'fa-check-circle',
+                    'color' => '#6366F1',
+                    'desc' => 'Annual used Paid Leaves'
+                ],
+                'Paid Available This Month' => [
+                    'val' => $paidAvailableThisMonth,
+                    'icon' => 'fa-calendar-day',
+                    'color' => '#3B82F6',
+                    'desc' => 'Monthly limit threshold (Max 2)'
+                ],
+                'Already Used This Month' => [
+                    'val' => $alreadyUsedThisMonth,
+                    'icon' => 'fa-hourglass-half',
+                    'color' => '#F59E0B',
+                    'desc' => 'Paid Leaves used in this month'
+                ],
+                'Remaining This Month' => [
+                    'val' => $remainingThisMonth,
+                    'icon' => 'fa-calendar-check',
+                    'color' => '#06B6D4',
+                    'desc' => 'Paid Leaves remaining for this month'
+                ],
+                'Sick Leave Remaining' => [
+                    'val' => $sickRemaining,
                     'icon' => 'fa-heartbeat',
-                    'color' => '#EF4444'
+                    'color' => '#EF4444',
+                    'desc' => 'Annual remaining Sick Leaves'
                 ],
-                'Comp Off' => [
-                    'val' => $allocation->comp_off_remaining ?? 0,
+                'Comp-Off Balance' => [
+                    'val' => $compRemaining,
                     'icon' => 'fa-clock',
-                    'color' => '#F59E0B'
+                    'color' => '#8B5CF6',
+                    'desc' => 'Available Comp-Off balance'
                 ],
-                'LWP Used' => [
-                    'val' => $allocation->lwp_used ?? 0,
+                'LWP Count' => [
+                    'val' => $lwpUsed,
                     'icon' => 'fa-user-clock',
-                    'color' => '#667085'
+                    'color' => '#6B7280',
+                    'desc' => 'Total Leave Without Pay used'
+                ],
+                'Pending Requests' => [
+                    'val' => $pendingCount,
+                    'icon' => 'fa-spinner',
+                    'color' => '#EAB308',
+                    'desc' => 'Requests awaiting manager/HR approval'
+                ],
+                'Approved Requests' => [
+                    'val' => $approvedCount,
+                    'icon' => 'fa-thumbs-up',
+                    'color' => '#10B981',
+                    'desc' => 'Total approved requests'
+                ],
+                'Rejected Requests' => [
+                    'val' => $rejectedCount,
+                    'icon' => 'fa-thumbs-down',
+                    'color' => '#EF4444',
+                    'desc' => 'Total rejected requests'
+                ],
+                'Emergency Leave Used' => [
+                    'val' => $emergencyUsed,
+                    'icon' => 'fa-exclamation-triangle',
+                    'color' => '#EC4899',
+                    'desc' => 'Approved emergency leaves'
                 ]
             ] as $label => $meta)
-                <div class="col-6 col-lg mb-3">
-                    <div class="set-card mb-0" style="border-radius: 20px;">
+                <div class="col-12 col-md-4 col-lg-3 mb-3">
+                    <div class="set-card mb-0" style="border-radius: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid var(--orb-border, #E7EAF3);">
                         <div class="set-card-body p-4 d-flex align-items-center" style="gap: 16px;">
-                            <div class="set-icon-box" style="background: rgba(75, 0, 232, 0.05); color: {{ $meta['color'] }}; flex-shrink: 0; width: 44px; height: 44px; border-radius: 12px;">
-                                <i class="fas {{ $meta['icon'] }}"></i>
+                            <div class="set-icon-box" style="background: rgba(75, 0, 232, 0.05); color: {{ $meta['color'] }}; flex-shrink: 0; width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas {{ $meta['icon'] }} fa-lg"></i>
                             </div>
-                            <div>
-                                <div class="small font-weight-bold text-uppercase" style="font-size: 10px; color: var(--set-muted); letter-spacing: 0.05em;">{{ $label }}</div>
-                                <div class="h3 mb-0 font-weight-black mt-1" style="color: var(--set-text); font-size: 20px;">{{ number_format((float) $meta['val'], 2) }}</div>
+                            <div style="flex-grow: 1;">
+                                <div class="small font-weight-bold text-uppercase" style="font-size: 10px; color: var(--set-muted); letter-spacing: 0.05em;" title="{{ $meta['desc'] }}">{{ $label }}</div>
+                                <div class="h3 mb-0 font-weight-black mt-1" style="color: var(--set-text); font-size: 22px;">{{ number_format((float) $meta['val'], 2) }}</div>
                             </div>
                         </div>
                     </div>

@@ -13,6 +13,8 @@ class WfhRequestM extends Model
 
     protected $casts = [
         'request_date' => 'date',
+        'from_date' => 'date',
+        'to_date' => 'date',
         'counts_in_monthly_quota' => 'boolean',
         'manager_approved_at' => 'datetime',
         'hr_approved_at' => 'datetime',

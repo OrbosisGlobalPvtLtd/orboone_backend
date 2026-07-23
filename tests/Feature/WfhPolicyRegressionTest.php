@@ -50,11 +50,14 @@ class WfhPolicyRegressionTest extends TestCase
         $this->service = app(WfhRequestService::class);
     }
 
-    public function test_quota_blocks_third_working_day_wfh_request(): void
+    public function test_quota_blocks_third_working_day_wfh_request_on_approval(): void
     {
         WfhRequestM::create([
             'employee_id' => $this->employee->id,
             'request_date' => '2026-06-02',
+            'from_date' => '2026-06-02',
+            'to_date' => '2026-06-02',
+            'working_days' => 1,
             'request_type' => 'working_day_wfh',
             'reason_category' => 'normal',
             'reason' => 'WFH 1',
@@ -65,6 +68,9 @@ class WfhPolicyRegressionTest extends TestCase
         WfhRequestM::create([
             'employee_id' => $this->employee->id,
             'request_date' => '2026-06-03',
+            'from_date' => '2026-06-03',
+            'to_date' => '2026-06-03',
+            'working_days' => 1,
             'request_type' => 'working_day_wfh',
             'reason_category' => 'normal',
             'reason' => 'WFH 2',
@@ -73,12 +79,17 @@ class WfhPolicyRegressionTest extends TestCase
             'payroll_impact' => 'none',
         ]);
 
-        $this->expectException(ValidationException::class);
-        $this->service->apply($this->employee, [
+        // Employee applies for 3rd WFH request - should succeed and stay pending
+        $thirdRow = $this->service->apply($this->employee, [
             'request_date' => '2026-06-04',
             'reason_category' => 'normal',
             'reason' => 'WFH 3',
         ]);
+        $this->assertSame('pending', $thirdRow->status);
+
+        // HR approval of 3rd WFH request should throw ValidationException due to quota limit exceeded
+        $this->expectException(ValidationException::class);
+        $this->service->approve($thirdRow, (int) $this->employee->user_id);
     }
 
     public function test_internet_issue_approved_wfh_does_not_auto_convert_to_lwp(): void

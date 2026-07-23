@@ -997,7 +997,7 @@
                                 Cancel
                             </button>
 
-                            <button class="orb-btn orb-btn-primary" style="background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary)); color: #fff;">
+                            <button type="submit" class="orb-btn orb-btn-primary" style="background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary)); color: #fff;">
                                 <i class="fas fa-save"></i> Save Rule
                             </button>
                         </div>
@@ -1085,7 +1085,7 @@
                         </div>
                         <div class="modal-footer att-modal-footer">
                             <button type="button" class="orb-btn orb-btn-light" data-dismiss="modal">Cancel</button>
-                            <button class="orb-btn orb-btn-primary" style="background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary)); color: #fff;"><i class="fas fa-save"></i> Save Policy</button>
+                            <button type="submit" class="orb-btn orb-btn-primary" style="background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary)); color: #fff;"><i class="fas fa-save"></i> Save Policy</button>
                         </div>
                     </form>
                 </div>
@@ -1129,7 +1129,7 @@
                     </div>
                     <div class="modal-footer att-modal-footer">
                         <button type="button" class="orb-btn orb-btn-light" data-dismiss="modal">Cancel</button>
-                        <button class="orb-btn orb-btn-primary" style="background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary)); color: #fff;"><i class="fas fa-save"></i> Create Policy</button>
+                        <button type="submit" class="orb-btn orb-btn-primary" style="background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary)); color: #fff;"><i class="fas fa-save"></i> Create Policy</button>
                     </div>
                 </form>
             </div>

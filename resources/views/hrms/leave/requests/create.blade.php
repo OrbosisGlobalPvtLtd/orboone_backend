@@ -55,9 +55,30 @@
                         <div>
                             <label class="set-label">Leave Type <span class="text-danger">*</span></label>
                             <select name="leave_type_id" class="set-control" required>
-                                <option value="" disabled selected>Select leave type...</option>
+                                <option value="" disabled {{ old('leave_type_id') === null ? '' : 'selected' }}>Select leave type...</option>
                                 @foreach($leaveTypes as $type)
-                                    <option value="{{ $type->id }}" {{ old('leave_type_id') == $type->id ? 'selected' : '' }}>{{ $type->name }}</option>
+                                    @php
+                                        $isConfirmed = $employee->is_permanent;
+                                        $isDisabled = false;
+                                        $suffix = '';
+                                        
+                                        if (!$isConfirmed && !$type->is_lwp) {
+                                            $isDisabled = true;
+                                            $suffix = ' (Confirmed employees only)';
+                                        } elseif ($type->is_comp_off && ($allocation->comp_off_remaining ?? 0) <= 0) {
+                                            $isDisabled = true;
+                                            $suffix = ' (No balance available)';
+                                        }
+                                        
+                                        $isSelected = old('leave_type_id') !== null 
+                                            ? old('leave_type_id') == $type->id 
+                                            : ($type->is_lwp);
+                                    @endphp
+                                    <option value="{{ $type->id }}" 
+                                        {{ $isDisabled ? 'disabled' : '' }} 
+                                        {{ $isSelected ? 'selected' : '' }}>
+                                        {{ $type->name }}{{ $suffix }}
+                                    </option>
                                 @endforeach
                             </select>
                         </div>

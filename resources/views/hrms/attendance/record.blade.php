@@ -990,7 +990,38 @@
                     <tbody>
                         @foreach($attendances as $attendance)
                         @php
-                        $typeCode = optional($attendance->attendanceType)->code ?? 'default';
+                        $rawStatus = strtolower($attendance->attendance_status ?? '');
+                        if (empty($rawStatus)) {
+                            $rawStatus = optional($attendance->attendanceType)->code ?? 'default';
+                        }
+                        if ($rawStatus === 'absent' || $rawStatus === 'lwp') {
+                            $typeCode = 'absent';
+                            $statusName = '🔴 ABSENT';
+                        } else {
+                            $statusMap = [
+                                'present' => ['present', 'Present'],
+                                'half_day' => ['half_day', 'Half Day'],
+                                'absent' => ['absent', '🔴 ABSENT'],
+                                'missed_punch' => ['missed_punch', 'Missed Punch'],
+                                'leave' => ['leave', 'Leave'],
+                                'holiday' => ['holiday', 'Holiday'],
+                                'week_off' => ['week_off', 'Week Off'],
+                                'punch_blocked' => ['punch_blocked', 'Punch Blocked'],
+                                'lwp' => ['absent', '🔴 ABSENT'],
+                            ];
+                            $mapped = $statusMap[$rawStatus] ?? null;
+                            if ($mapped) {
+                                $typeCode = $mapped[0];
+                                $statusName = $mapped[1];
+                            } else {
+                                $typeCode = optional($attendance->attendanceType)->code ?? 'default';
+                                $statusName = optional($attendance->attendanceType)->name ?? 'N/A';
+                                if ($typeCode === 'lwp') {
+                                    $typeCode = 'absent';
+                                    $statusName = '🔴 ABSENT';
+                                }
+                            }
+                        }
 
                         $modeCode = strtolower($attendance->work_mode ?? '');
                         $modeLabel = $modeCode === 'wfh' ? 'WFH' : ($modeCode === 'wfo' ? 'WFO' : '-');
@@ -1088,9 +1119,9 @@
 
                             <td><strong>{{ $net }}</strong></td>
 
-                            <td>
+                             <td>
                                 <span class="att-badge badge-{{ $typeCode }}">
-                                    {{ optional($attendance->attendanceType)->name ?? 'N/A' }}
+                                    {{ $statusName }}
                                 </span>
                             </td>
 
@@ -1224,7 +1255,8 @@
                                                     'designation' => optional(optional($attendance->employee)->designation)->name ?? 'Member',
                                                     'work_date' => $attendance->attendance_date ? \Carbon\Carbon::parse($attendance->attendance_date)->format('d M Y') : '-',
                                                     'shift_name' => optional($attendance->attendanceTime)->name ?? 'Default Shift',
-                                                    'attendance_status' => $attendance->attendance_status ?? 'present',
+                                                    'attendance_status' => ($attendance->attendance_status ?? 'present') === 'absent' && ($attendance->is_lwp ?? false) ? '🔴 ABSENT' : ($attendance->attendance_status ?? 'present'),
+                                                    'is_lwp' => (bool) ($attendance->is_lwp ?? false),
                                                     'title' => $repTitle,
                                                     'description' => $repDesc,
                                                     'status' => $repStatus,

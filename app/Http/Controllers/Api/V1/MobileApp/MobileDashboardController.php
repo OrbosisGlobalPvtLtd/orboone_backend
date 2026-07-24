@@ -21,8 +21,7 @@ class MobileDashboardController extends Controller
 {
     public function __construct(
         private AttendanceMobileService $attendanceMobileService
-    ) {
-    }
+    ) {}
 
     public function bootstrap()
     {
@@ -262,7 +261,7 @@ class MobileDashboardController extends Controller
             $unreadNotificationCount = Notification::where('user_id', $user->id)
                 ->where(function ($q) {
                     $q->where('is_read', 0)
-                      ->orWhereNull('read_at');
+                        ->orWhereNull('read_at');
                 })
                 ->count();
         } catch (\Throwable $e) {
@@ -324,70 +323,7 @@ class MobileDashboardController extends Controller
 
     private function buildCompletionStatus(Employee $employee, $profile): array
     {
-        $documentCompletion = app(EmployeeDocumentCompletionS::class);
-
-        $isEmployee = method_exists($employee->user, 'isEmployee')
-            ? (bool) $employee->user->isEmployee()
-            : true;
-
-        $missingProfileFields = $documentCompletion->missingProfileFields($profile, $employee);
-        $profileFieldsCompleted = count($missingProfileFields) === 0;
-
-        $documentStatus = $documentCompletion->completion($employee);
-
-        $requiredUploaded = ($documentStatus['uploaded_required_count'] ?? 0) === ($documentStatus['required_count'] ?? 0)
-            && ($documentStatus['required_count'] ?? 0) > 0;
-
-        $requiredVerified = ($documentStatus['verified_count'] ?? 0) === ($documentStatus['required_count'] ?? 0)
-            && ($documentStatus['required_count'] ?? 0) > 0;
-
-        $canPunchAttendance = ! $isEmployee || (
-            $profile->profile_status === 'approved' && $requiredVerified
-        );
-
-        $docVerificationStatus = 'missing';
-
-        if (($documentStatus['rejected_count'] ?? 0) > 0) {
-            $docVerificationStatus = 'rejected';
-        } elseif (($documentStatus['pending_count'] ?? 0) > 0) {
-            $docVerificationStatus = 'pending';
-        } elseif ($requiredVerified) {
-            $docVerificationStatus = 'verified';
-        }
-
-        $isProfileCompleted = (bool) $profile->is_profile_completed;
-
-        $mustCompleteProfile = $isEmployee ? (! $isProfileCompleted || $profile->profile_status === 'rejected') : false;
-        $attendanceBlocked = $isEmployee ? ! $canPunchAttendance : false;
-
-        $nextRoute = 'dashboard';
-
-        if ($mustCompleteProfile) {
-            if (! $profileFieldsCompleted || $profile->profile_status === 'rejected') {
-                $nextRoute = 'profile_completion';
-            } elseif (! $requiredUploaded) {
-                $nextRoute = 'document_completion';
-            } else {
-                $nextRoute = 'document_completion';
-            }
-        }
-
-        return [
-            'is_profile_completed'         => $isProfileCompleted,
-            'profile_verification_status'  => $profile->profile_status ?? 'pending',
-            'rejection_reason'             => $profile->rejection_reason,
-            'document_verification_status' => $docVerificationStatus,
-            'required_documents_verified'  => $requiredVerified,
-            'can_punch_attendance'         => $canPunchAttendance,
-            'attendance_blocked'           => $attendanceBlocked,
-            'next_route'                   => $nextRoute,
-
-            'must_complete_profile'        => $mustCompleteProfile,
-            'completion_percentage'        => $documentCompletion->profileCompletionPercentage($profile, $employee),
-            'missing_profile_fields'       => $missingProfileFields,
-            'document_completion_status'   => $documentStatus,
-            'experience_type'              => $profile->experience_type ?? 'fresher',
-        ];
+        return app(\App\Services\HRMS\Employee\EmployeeProfileCompletionS::class)->buildCompletionStatus($employee, $profile);
     }
 
     private function isUserInTarget($user, $announcement): bool
@@ -421,7 +357,7 @@ class MobileDashboardController extends Controller
                 'hr' => ['super_admin', 'admin', 'hr_admin'],
                 default => [],
             };
-            
+
             $userRoleSlug = optional($user->role)->slug;
             return in_array($userRoleSlug, $roleSlugs, true) || $user->hasRole($roleSlugs);
         }

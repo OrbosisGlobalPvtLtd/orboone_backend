@@ -21,9 +21,7 @@ class AttendanceS
     public function __construct(
         private AttendanceRuleResolverService $ruleResolver,
         private ?WfhRequestService $wfhRequestService = null
-    )
-    {
-    }
+    ) {}
 
     public function processPunchIn(
         int $userId,
@@ -1167,7 +1165,7 @@ class AttendanceS
         $timezone = $this->attendanceTimezone();
         $now = Carbon::now($timezone);
         $employee = Employee::where('user_id', $userId)->first();
-        
+
         $attendance = null;
         if ($employee) {
             $attendance = Attendance::with(['attendanceType', 'attendanceTime'])
@@ -1313,7 +1311,7 @@ class AttendanceS
 
         $angle = 2 * asin(sqrt(
             pow(sin($latDelta / 2), 2)
-            + cos($latFrom) * cos($latTo) * pow(sin($lngDelta / 2), 2)
+                + cos($latFrom) * cos($latTo) * pow(sin($lngDelta / 2), 2)
         ));
 
         return $angle * $earthRadiusMeters;
@@ -1621,7 +1619,7 @@ class AttendanceS
 
         if ($this->documentGatingEnabled()) {
             $requiredDocs = $employee->documents->where('is_required', true);
-            if ($requiredDocs->isNotEmpty() && $requiredDocs->contains(fn ($doc) => $doc->verification_status !== 'verified')) {
+            if ($requiredDocs->isNotEmpty() && $requiredDocs->contains(fn($doc) => $doc->verification_status !== 'verified')) {
                 return false;
             }
         }
@@ -1729,7 +1727,7 @@ class AttendanceS
         }
 
         return collect($payload)
-            ->filter(fn ($value, $column) => Schema::hasColumn('attendances', $column))
+            ->filter(fn($value, $column) => Schema::hasColumn('attendances', $column))
             ->all();
     }
 
@@ -1913,7 +1911,7 @@ class AttendanceS
 
     private function ordinal(int $number): string
     {
-        $ends = ['th','st','nd','rd','th','th','th','th','th','th'];
+        $ends = ['th', 'st', 'nd', 'rd', 'th', 'th', 'th', 'th', 'th', 'th'];
         if ((($number % 100) >= 11) && (($number % 100) <= 13)) {
             return $number . 'th';
         } else {

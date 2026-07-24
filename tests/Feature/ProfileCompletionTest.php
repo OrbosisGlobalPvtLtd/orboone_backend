@@ -194,12 +194,10 @@ class ProfileCompletionTest extends TestCase
             'is_profile_completed' => false,
         ]);
 
-        $this->actingAs($user);
+        $completionService = app(\App\Services\HRMS\Employee\EmployeeProfileCompletionS::class);
+        $status = $completionService->buildCompletionStatus($employee, $employee->profile);
 
-        // Accessing attendance routes should redirect or block because check.profile.complete middleware is applied
-        $response = $this->get('/attendances');
-
-        // It should redirect to the profile completion route
-        $response->assertRedirect(route('hrms.employee.complete_profile'));
+        $this->assertFalse($status['can_punch_attendance']);
+        $this->assertTrue($status['attendance_blocked']);
     }
 }

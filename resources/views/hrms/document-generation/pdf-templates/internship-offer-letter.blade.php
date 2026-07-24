@@ -130,6 +130,9 @@ $resolveParagraph = function($text) use ($companyName, $joiningDate, $internship
                         @else
                             <div style="height: 35px;"></div>
                         @endif
+                        <!-- @if(!empty($seal_image))
+                            <img src="{{ $seal_image }}" style="height: 65px; width: auto; max-width: 120px; position: absolute; top: -5px; left: 50%; margin-left: -60px; vertical-align: middle;" alt="Seal">
+                        @endif -->
                     </div>
                     <strong>{{ $hr_manager_name ?? 'Vanshika Dhunna' }}</strong><br>
                     {{ $signatory_designation ?? 'HR Manager' }}<br>

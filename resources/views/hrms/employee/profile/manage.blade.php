@@ -957,7 +957,8 @@ $rejectedDocs = $documents->where('verification_status', 'rejected')->count();
 
         <form id="profileInlineForm"
             action="{{ route('hrms.employees.profile.inline_update', $profile->employee_id) }}"
-            method="POST">
+            method="POST"
+            enctype="multipart/form-data">
             @csrf
 
             <div class="section-two-grid">
@@ -974,12 +975,17 @@ $rejectedDocs = $documents->where('verification_status', 'rejected')->count();
                         <div class="info-grid">
                             <div class="profile-info">
                                 <span class="profile-label">Date of Birth</span>
+                                @php
+                                $dobRaw = $profile->date_of_birth ?? null;
+                                $dobValue = !empty($dobRaw) ? \Carbon\Carbon::parse($dobRaw)->format('Y-m-d') : '';
+                                $dobDisplay = !empty($dobRaw) ? \Carbon\Carbon::parse($dobRaw)->format('d M Y') : '-';
+                                @endphp
                                 @if($isEditMode)
                                 <input type="date" name="date_of_birth" class="form-control profile-edit-control"
-                                    value="{{ old('date_of_birth', !empty($profile->date_of_birth) ? \Carbon\Carbon::parse($profile->date_of_birth)->format('Y-m-d') : '') }}">
+                                    value="{{ old('date_of_birth', $dobValue) }}">
                                 @else
-                                <div class="profile-value {{ empty($profile->date_of_birth) ? 'muted' : '' }}">
-                                    {{ !empty($profile->date_of_birth) ? \Carbon\Carbon::parse($profile->date_of_birth)->format('d M Y') : '-' }}
+                                <div class="profile-value {{ empty($dobRaw) ? 'muted' : '' }}">
+                                    {{ $dobDisplay }}
                                 </div>
                                 @endif
                             </div>
@@ -1087,6 +1093,23 @@ $rejectedDocs = $documents->where('verification_status', 'rejected')->count();
 
                             <div class="profile-info wide">
                                 <span class="profile-label">Resume</span>
+                                @if($isEditMode)
+                                <div class="d-flex flex-column gap-2">
+                                    <input type="file" name="resume_file" class="form-control profile-edit-control" accept=".pdf,.doc,.docx">
+                                    @if (!empty($profile->resume_file) && Route::has('hrms.documents.file'))
+                                    @php $resumeUrl = route('hrms.documents.file', $profile->resume_file); @endphp
+                                    <div class="small text-muted mt-1">
+                                        Current: 
+                                        <button type="button" class="file-link js-doc-preview text-primary p-0 border-0 bg-transparent fw-bold"
+                                            data-title="Resume"
+                                            data-url="{{ $resumeUrl }}"
+                                            data-ext="{{ strtolower(pathinfo($profile->resume_file, PATHINFO_EXTENSION)) }}">
+                                            <i class="fas fa-eye"></i> View Current Resume
+                                        </button>
+                                    </div>
+                                    @endif
+                                </div>
+                                @else
                                 @if (!empty($profile->resume_file) && Route::has('hrms.documents.file'))
                                 @php $resumeUrl = route('hrms.documents.file', $profile->resume_file); @endphp
                                 <button type="button" class="file-link js-doc-preview"
@@ -1097,6 +1120,7 @@ $rejectedDocs = $documents->where('verification_status', 'rejected')->count();
                                 </button>
                                 @else
                                 <div class="profile-value muted">No resume uploaded</div>
+                                @endif
                                 @endif
                             </div>
                         </div>

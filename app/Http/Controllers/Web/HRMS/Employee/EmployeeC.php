@@ -2541,6 +2541,7 @@ class EmployeeC extends Controller
             'cgpa_percentage' => ['nullable', 'string', 'max:50'],
             'experience_type' => ['nullable', 'string', 'in:fresher,experienced'],
             'total_experience' => ['nullable', 'string', 'max:50'],
+            'resume_file' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:10240'],
 
             'bank_account_no' => ['nullable', 'string', 'max:50'],
             'bank_account_type' => ['nullable', 'string', 'max:50'],
@@ -2577,6 +2578,21 @@ class EmployeeC extends Controller
                     'updated_at' => now(),
                 ]
             );
+
+            if ($request->hasFile('resume_file')) {
+                $fileService = app(EmployeeFileS::class);
+                $resumePath = $fileService->upload(
+                    $request->file('resume_file'),
+                    $employeeData->id,
+                    $employeeData->employee_code ?? 'EMP-' . $employeeData->id,
+                    'resume'
+                );
+
+                DB::table($this->profileTable)->where('employee_id', $employee)->update([
+                    'resume_file' => $resumePath,
+                    'updated_at' => now(),
+                ]);
+            }
 
             DB::commit();
 

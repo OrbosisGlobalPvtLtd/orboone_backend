@@ -19,8 +19,7 @@ class WfhRequestService
     public function __construct(
         private WfhPolicyService $policyService,
         private AttendanceRuleResolverService $ruleResolver
-    ) {
-    }
+    ) {}
 
     public function policy(): array
     {
@@ -129,11 +128,11 @@ class WfhRequestService
             ->where(function ($q) use ($from, $to) {
                 $q->where(function ($q2) use ($from, $to) {
                     $q2->whereDate('from_date', '<=', $to->toDateString())
-                       ->whereDate('to_date', '>=', $from->toDateString());
+                        ->whereDate('to_date', '>=', $from->toDateString());
                 })->orWhere(function ($q3) use ($from, $to) {
                     $q3->whereNull('from_date')
-                       ->whereDate('request_date', '>=', $from->toDateString())
-                       ->whereDate('request_date', '<=', $to->toDateString());
+                        ->whereDate('request_date', '>=', $from->toDateString())
+                        ->whereDate('request_date', '<=', $to->toDateString());
                 });
             })
             ->exists();
@@ -274,11 +273,11 @@ class WfhRequestService
                 ->where(function ($q) use ($from, $to) {
                     $q->where(function ($q2) use ($from, $to) {
                         $q2->whereDate('from_date', '<=', $to->toDateString())
-                           ->whereDate('to_date', '>=', $from->toDateString());
+                            ->whereDate('to_date', '>=', $from->toDateString());
                     })->orWhere(function ($q3) use ($from, $to) {
                         $q3->whereNull('from_date')
-                           ->whereDate('request_date', '>=', $from->toDateString())
-                           ->whereDate('request_date', '<=', $to->toDateString());
+                            ->whereDate('request_date', '>=', $from->toDateString())
+                            ->whereDate('request_date', '<=', $to->toDateString());
                     });
                 })
                 ->exists();
@@ -491,10 +490,10 @@ class WfhRequestService
             ->where(function ($q) use ($date) {
                 $q->where(function ($q2) use ($date) {
                     $q2->whereDate('from_date', '<=', $date)
-                       ->whereDate('to_date', '>=', $date);
+                        ->whereDate('to_date', '>=', $date);
                 })->orWhere(function ($q3) use ($date) {
                     $q3->whereNull('from_date')
-                       ->whereDate('request_date', $date);
+                        ->whereDate('request_date', $date);
                 });
             })
             ->first();
@@ -581,7 +580,7 @@ class WfhRequestService
             })
             ->where('status', 'approved')
             ->where('counts_in_monthly_quota', true)
-            ->when(! empty($excludeIds), fn ($q) => $q->whereNotIn('id', $excludeIds))
+            ->when(! empty($excludeIds), fn($q) => $q->whereNotIn('id', $excludeIds))
             ->sum('working_days');
     }
 
@@ -608,14 +607,14 @@ class WfhRequestService
 
         return match ($scope) {
             'single' => ! empty($payload['employee_id']) ? [(int) $payload['employee_id']] : [],
-            'multiple' => collect($payload['employee_ids'] ?? [])->map(fn ($id) => (int) $id)->filter()->unique()->values()->all(),
+            'multiple' => collect($payload['employee_ids'] ?? [])->map(fn($id) => (int) $id)->filter()->unique()->values()->all(),
             'department' => ! empty($payload['department_id'])
-                ? $query->where('department_id', (int) $payload['department_id'])->pluck('id')->map(fn ($id) => (int) $id)->all()
+                ? $query->where('department_id', (int) $payload['department_id'])->pluck('id')->map(fn($id) => (int) $id)->all()
                 : [],
             'designation' => ! empty($payload['designation_id'])
-                ? $query->where('designation_id', (int) $payload['designation_id'])->pluck('id')->map(fn ($id) => (int) $id)->all()
+                ? $query->where('designation_id', (int) $payload['designation_id'])->pluck('id')->map(fn($id) => (int) $id)->all()
                 : [],
-            'all' => $query->pluck('id')->map(fn ($id) => (int) $id)->all(),
+            'all' => $query->pluck('id')->map(fn($id) => (int) $id)->all(),
             default => [],
         };
     }

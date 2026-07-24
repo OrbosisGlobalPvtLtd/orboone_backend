@@ -7,7 +7,7 @@
 $employeeName = (!empty($employee_first_name) ? $employee_first_name : null) ?? ($employee_name ? (explode(' ', trim($employee_name))[0] ?: 'Ritik') : 'Ritik');
 $companyName = $company_name ?? branding_name();
 if (empty($companyName) || $companyName === 'HRMS' || $companyName === 'Default') {
-    $companyName = 'Orbosis Global Pvt. Ltd.';
+$companyName = 'Orbosis Global Pvt. Ltd.';
 }
 $issueDate = $issue_date ?? $current_date ?? date('d M, Y');
 $discontinueDateRaw = $discontinue_date ?? date('Y-m-d');
@@ -16,15 +16,15 @@ $hrManagerName = $hr_manager_name ?? 'Vanshika Dhunna';
 $signatoryDesignation = $signatory_designation ?? 'HR Manager';
 
 $resolveParagraph = function($text) use ($companyName, $discontinueDate) {
-    if (empty($text)) return '';
-    $safeText = e($text);
-    $replace = [
-        '{company_name}' => '<strong>' . e($companyName) . '</strong>',
-        '{companyName}' => '<strong>' . e($companyName) . '</strong>',
-        '{discontinue_date}' => '<strong>' . e($discontinueDate) . '</strong>',
-        '{discontinueDate}' => '<strong>' . e($discontinueDate) . '</strong>',
-    ];
-    return str_ireplace(array_keys($replace), array_values($replace), $safeText);
+if (empty($text)) return '';
+$safeText = e($text);
+$replace = [
+'{company_name}' => '<strong>' . e($companyName) . '</strong>',
+'{companyName}' => '<strong>' . e($companyName) . '</strong>',
+'{discontinue_date}' => '<strong>' . e($discontinueDate) . '</strong>',
+'{discontinueDate}' => '<strong>' . e($discontinueDate) . '</strong>',
+];
+return str_ireplace(array_keys($replace), array_values($replace), $safeText);
 };
 @endphp
 
@@ -60,7 +60,7 @@ $resolveParagraph = function($text) use ($companyName, $discontinueDate) {
     </p>
 
     <p class="text-justify" style="font-size:13px; line-height:1.8; margin-bottom:18px;">
-        Should you require any clarification regarding the separation process, please feel free to contact the HR Department.
+        If you require any clarification regarding the separation process, please feel free to contact the HR Department.
     </p>
 
     <div style="page-break-inside:avoid; margin-top:40px;">
@@ -70,10 +70,13 @@ $resolveParagraph = function($text) use ($companyName, $discontinueDate) {
 
         <div style="height: 55px; margin-top: 5px; margin-bottom: 5px; position: relative;">
             @if(!empty($signature_image))
-                <img src="{{ $signature_image }}" style="height: 48px; width: auto; max-width: 180px; display: inline-block; vertical-align: middle;" alt="Signature">
+            <img src="{{ $signature_image }}" style="height: 48px; width: auto; max-width: 180px; display: inline-block; vertical-align: middle;" alt="Signature">
             @else
-                <div style="height: 35px;"></div>
+            <div style="height: 35px;"></div>
             @endif
+            <!-- @if(!empty($seal_image))
+            <img src="{{ $seal_image }}" style="height: 65px; width: auto; max-width: 120px; position: absolute; top: -5px; left: 50%; margin-left: -60px; vertical-align: middle;" alt="Seal">
+            @endif -->
         </div>
 
         <p style="font-size:13px; line-height:1.6; margin:0;">

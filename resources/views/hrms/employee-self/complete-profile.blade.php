@@ -599,7 +599,10 @@
 </style>
 
 @php
-$isReadOnly = in_array($status['profile_verification_status'] ?? '', ['submitted', 'approved']);
+$hasRejectedDoc = ($status['document_verification_status'] ?? '') === 'rejected' || ($status['document_completion_status']['rejected_count'] ?? 0) > 0;
+$isProfileRejected = ($status['profile_verification_status'] ?? '') === 'rejected';
+$isCorrectionRequired = $isProfileRejected || $hasRejectedDoc;
+$isReadOnly = ! $isCorrectionRequired && in_array($status['profile_verification_status'] ?? '', ['submitted', 'approved']);
 $disabled = $isReadOnly ? 'disabled' : '';
 @endphp
 
@@ -625,14 +628,14 @@ $disabled = $isReadOnly ? 'disabled' : '';
                 </div>
             </div>
             <div class="hero-meta">
-                @if($status['profile_verification_status'] === 'incomplete')
-                <span class="status-pill status-pill-incomplete"><i class="fas fa-exclamation-triangle"></i> Profile Incomplete</span>
+                @if($isCorrectionRequired)
+                <span class="status-pill status-pill-rejected"><i class="fas fa-times-circle"></i> Correction Required</span>
                 @elseif($status['profile_verification_status'] === 'submitted')
                 <span class="status-pill status-pill-submitted"><i class="fas fa-hourglass-half"></i> Pending Verification</span>
                 @elseif($status['profile_verification_status'] === 'approved')
                 <span class="status-pill status-pill-approved"><i class="fas fa-check-circle"></i> Verified Profile</span>
-                @elseif($status['profile_verification_status'] === 'rejected')
-                <span class="status-pill status-pill-rejected"><i class="fas fa-times-circle"></i> Correction Required</span>
+                @else
+                <span class="status-pill status-pill-incomplete"><i class="fas fa-exclamation-triangle"></i> Profile Incomplete</span>
                 @endif
             </div>
         </div>
@@ -696,6 +699,11 @@ $disabled = $isReadOnly ? 'disabled' : '';
 
                     <div class="profile-section">
                         <h3 class="section-title"><i class="fas fa-user"></i> Personal & Contact Details</h3>
+                        @php
+                        $dobRaw = $profile?->date_of_birth;
+                        $dobFormatted = !empty($dobRaw) ? \Carbon\Carbon::parse($dobRaw)->format('Y-m-d') : '';
+                        $genderVal = strtolower(trim($profile?->gender ?? ''));
+                        @endphp
                         <div class="row">
                             <div class="col-md-4 mb-3">
                                 <label class="profile-label">Profile Image</label>
@@ -703,15 +711,15 @@ $disabled = $isReadOnly ? 'disabled' : '';
                             </div>
                             <div class="col-md-4 mb-3">
                                 <label class="profile-label">DOB *</label>
-                                <input type="date" name="date_of_birth" class="profile-control" value="{{ old('date_of_birth', $profile?->date_of_birth) }}" required {{ $disabled }}>
+                                <input type="date" name="date_of_birth" class="profile-control" value="{{ old('date_of_birth', $dobFormatted) }}" required {{ $disabled }}>
                             </div>
                             <div class="col-md-4 mb-3">
                                 <label class="profile-label">Gender *</label>
                                 <select name="gender" class="profile-control" required {{ $disabled }}>
                                     <option value="">Select Gender</option>
-                                    <option value="male" {{ old('gender', $profile?->gender) === 'male' ? 'selected' : '' }}>Male</option>
-                                    <option value="female" {{ old('gender', $profile?->gender) === 'female' ? 'selected' : '' }}>Female</option>
-                                    <option value="other" {{ old('gender', $profile?->gender) === 'other' ? 'selected' : '' }}>Other</option>
+                                    <option value="male" {{ old('gender', $genderVal) === 'male' ? 'selected' : '' }}>Male</option>
+                                    <option value="female" {{ old('gender', $genderVal) === 'female' ? 'selected' : '' }}>Female</option>
+                                    <option value="other" {{ old('gender', $genderVal) === 'other' ? 'selected' : '' }}>Other</option>
                                 </select>
                             </div>
                             <div class="col-md-12 mb-3">

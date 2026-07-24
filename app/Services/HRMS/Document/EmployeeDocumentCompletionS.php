@@ -161,6 +161,7 @@ class EmployeeDocumentCompletionS
         }
 
         $requiredCount = $requiredTypes->count();
+        $isApproved = ($employee->profile?->profile_status ?? 'pending') === 'approved';
         $profileComplete = $this->isProfileComplete($employee->profile, $employee);
 
         return [
@@ -171,7 +172,7 @@ class EmployeeDocumentCompletionS
             'rejected_count' => $rejected,
             'missing_count' => $missing,
             'can_submit_for_verification' => $requiredCount > 0 && $missing === 0 && $rejected === 0,
-            'can_punch_attendance' => $profileComplete && $missing === 0 && $rejected === 0 && $verified === $requiredCount,
+            'can_punch_attendance' => $isApproved || ($profileComplete && $missing === 0 && $rejected === 0 && $verified === $requiredCount),
         ];
     }
 

@@ -218,7 +218,7 @@ $resolveParagraph = function($text) use ($companyName, $joiningDate, $working_ho
                             <div style="height: 35px;"></div>
                         @endif
                         <!-- @if(!empty($seal_image))
-                            <img src="{{ $seal_image }}" style="height: 55px; width: auto; max-width: 100px; position: absolute; top: 5px; left: 120px; vertical-align: middle;" alt="Seal">
+                            <img src="{{ $seal_image }}" style="height: 65px; width: auto; max-width: 120px; position: absolute; top: -5px; left: 50%; margin-left: -60px; vertical-align: middle;" alt="Seal">
                         @endif -->
                     </div>
                     <strong>{{ $hr_manager_name ?? $authorized_signatory ?? 'HR' }}</strong><br>
@@ -329,9 +329,9 @@ $resolveParagraph = function($text) use ($companyName, $joiningDate, $working_ho
                             @else
                                 <div style="height: 35px;"></div>
                             @endif
-                            <!-- @if(!empty($seal_image))
-                                <img src="{{ $seal_image }}" style="height: 55px; width: auto; max-width: 100px; position: absolute; top: 5px; left: 120px; vertical-align: middle;" alt="Seal">
-                            @endif -->
+                            @if(!empty($seal_image))
+                                <img src="{{ $seal_image }}" style="height: 65px; width: auto; max-width: 120px; position: absolute; top: -5px; left: 50%; margin-left: -60px; vertical-align: middle;" alt="Seal">
+                            @endif
                         </div>
                         <strong>{{ $hr_manager_name ?? $authorized_signatory ?? 'HR' }}</strong><br>
                         {{ $companyName }}

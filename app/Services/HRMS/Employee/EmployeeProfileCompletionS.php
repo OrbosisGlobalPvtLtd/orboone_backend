@@ -54,8 +54,10 @@ class EmployeeProfileCompletionS
         $requiredVerified = ($documentStatus['verified_count'] ?? 0) === ($documentStatus['required_count'] ?? 0)
             && ($documentStatus['required_count'] ?? 0) > 0;
 
-        $canPunchAttendance = ! $isEmployee || (
-            ($profile?->profile_status ?? 'pending') === 'approved' && $requiredVerified
+        $isProfileApproved = ($profile?->profile_status ?? 'pending') === 'approved';
+
+        $canPunchAttendance = ! $isEmployee || $isProfileApproved || (
+            ($profile?->is_profile_completed ?? false) && $requiredVerified
         );
 
         $docVerificationStatus = 'missing';
@@ -69,8 +71,10 @@ class EmployeeProfileCompletionS
         }
 
         $isProfileCompleted = $profile ? (bool) $profile->is_profile_completed : false;
+        $hasRejectedDoc = ($documentStatus['rejected_count'] ?? 0) > 0;
+        $isProfileRejected = ($profile?->profile_status ?? 'pending') === 'rejected';
 
-        $mustCompleteProfile = $isEmployee ? (! $isProfileCompleted || ($profile?->profile_status ?? 'pending') === 'rejected') : false;
+        $mustCompleteProfile = $isEmployee ? (! $isProfileCompleted || $isProfileRejected || $hasRejectedDoc) : false;
         $attendanceBlocked = $isEmployee ? ! $canPunchAttendance : false;
 
         $nextRoute = 'dashboard';

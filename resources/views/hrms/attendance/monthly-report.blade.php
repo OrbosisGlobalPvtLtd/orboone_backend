@@ -814,7 +814,17 @@
                 <a href="{{ route('attendances.export-pdf', request()->query() + ['month' => $month, 'year' => $year]) }}"
                     class="orb-btn orb-btn-primary">
                     <i class="fas fa-file-pdf text-danger"></i>
-                    Export Monthly Report
+                    Export PDF
+                </a>
+                <a href="{{ route('attendances.export-excel', request()->query() + ['month' => $month, 'year' => $year]) }}"
+                    class="orb-btn orb-btn-light">
+                    <i class="fas fa-file-excel text-success"></i>
+                    Export CSV
+                </a>
+                <a href="{{ route('attendances.print', request()->query() + ['month' => $month, 'year' => $year]) }}" target="_blank"
+                    class="orb-btn orb-btn-light">
+                    <i class="fas fa-print text-primary"></i>
+                    Print Report
                 </a>
             </div>
         </div>

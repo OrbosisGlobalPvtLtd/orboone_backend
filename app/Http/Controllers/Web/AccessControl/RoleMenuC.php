@@ -105,22 +105,15 @@ class RoleMenuC extends Controller
             foreach (array_chunk($rows, 100) as $chunk) {
                 DB::table('role_menu_access')->insert($chunk);
             }
+
+            // Dynamically synchronize role permissions for assigned menus
+            $permissionSyncService = app(\App\Services\AccessControl\PermissionSyncService::class);
+            $permissionSyncService->syncRolePermissionsFromMenus((int) $roleData->id, $validMenuIds);
         });
-
-        $userIds = DB::table('users')
-            ->where('system_role_id', $roleData->id)
-            ->pluck('id')
-            ->merge(DB::table('user_roles')->where('role_id', $roleData->id)->pluck('user_id'))
-            ->unique();
-
-        $sidebarService = app(SidebarS::class);
-        foreach ($userIds as $userId) {
-            $sidebarService->clearCache($userId);
-        }
 
         return redirect()
             ->route('role_menus.index')
-            ->with('success', 'Role menu access updated successfully.');
+            ->with('success', 'Role menu access & permissions synchronized successfully.');
     }
 
     private function findRole($role)

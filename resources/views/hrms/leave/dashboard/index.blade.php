@@ -617,7 +617,7 @@
             $i++;
             @endphp
 
-            <div class="col-xl-2 col-lg-4 col-md-4 col-6">
+            <div class="col-xl-3 col-lg-3 col-md-6 col-12">
                 <div class="leave-mini-card card-{{ $color }}">
                     <div class="leave-mini-top">
                         <div>

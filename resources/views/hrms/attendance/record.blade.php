@@ -255,6 +255,30 @@
         white-space: nowrap;
     }
 
+    .att-export-btn {
+        border: 1px solid #E4E7EC;
+        background: #FFFFFF;
+        color: #344054;
+        border-radius: 12px;
+        padding: 8px 14px;
+        font-size: 12px;
+        font-weight: 800;
+        white-space: nowrap;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        text-decoration: none !important;
+        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+        transition: all .15s ease;
+    }
+
+    .att-export-btn:hover {
+        background: #F9FAFB;
+        border-color: #D0D5DD;
+        color: #101828;
+        transform: translateY(-1px);
+    }
+
     .att-filter-panel {
         padding: 16px 22px;
         border-bottom: 1px solid var(--orb-border);
@@ -725,8 +749,9 @@
     <div class="att-container">
 
         @php
-        $recordItems = $attendances instanceof \Illuminate\Pagination\AbstractPaginator ? collect($attendances->items()) : collect($attendances);
-        $totalRecords = $recordItems->count();
+        $isPaginator = $attendances instanceof \Illuminate\Pagination\AbstractPaginator;
+        $recordItems = $isPaginator ? collect($attendances->items()) : collect($attendances);
+        $totalRecords = $isPaginator ? $attendances->total() : $recordItems->count();
         $presentRecords = $recordItems->filter(fn($a) => optional($a->attendanceType)->code === 'present')->count();
         $lateRecords = $recordItems->filter(fn($a) => ($a->is_late ?? $a->late_mark ?? false))->count();
         $blockedRecords = $recordItems->filter(fn($a) => ($a->is_blocked ?? $a->is_punch_blocked ?? false))->count();
@@ -754,9 +779,18 @@
                 <a href="{{ route('attendances.index') }}" class="att-btn att-btn-light">
                     <i class="fas fa-chart-line"></i> Attendance Dashboard
                 </a>
+                <!-- <a href="{{ route('attendances.export-pdf', request()->query()) }}" class="att-btn att-btn-light">
+                    <i class="fas fa-file-pdf text-danger"></i> Export PDF
+                </a>
+                <a href="{{ route('attendances.export-excel', request()->query()) }}" class="att-btn att-btn-light">
+                    <i class="fas fa-file-excel text-success"></i> Export CSV
+                </a>
+                <a href="{{ route('attendances.print', request()->query()) }}" target="_blank" class="att-btn att-btn-light">
+                    <i class="fas fa-print text-primary"></i> Print
+                </a>
                 <a href="{{ route('attendances.record') }}" class="att-btn att-btn-light">
                     <i class="fas fa-undo"></i> Reset
-                </a>
+                </a> -->
             </div>
             @endif
         </div>
@@ -857,9 +891,22 @@
                     <h5 class="att-section-title"><i class="fas fa-table"></i> Attendance Records List</h5>
                     <div class="att-section-sub">Filters are attached with this table and auto-apply on change/search.</div>
                 </div>
-                <div class="att-head-badges">
+                <div class="att-head-badges align-items-center">
                     <span class="att-total-pill">Total: {{ $totalRecords }}</span>
                     <span class="att-total-pill">Blocked: {{ $blockedRecords }}</span>
+
+                    <a href="{{ route('attendances.export-excel', request()->query()) }}" class="att-export-btn">
+                        <i class="fas fa-file-csv text-success"></i> CSV
+                    </a>
+                    <a href="{{ route('attendances.export-excel', request()->query()) }}" class="att-export-btn">
+                        <i class="fas fa-file-excel text-success"></i> Excel
+                    </a>
+                    <a href="{{ route('attendances.export-pdf', request()->query()) }}" class="att-export-btn">
+                        <i class="fas fa-file-pdf text-danger"></i> PDF
+                    </a>
+                    <a href="{{ route('attendances.print', request()->query()) }}" target="_blank" class="att-export-btn">
+                        <i class="fas fa-print text-primary"></i> Print
+                    </a>
                 </div>
                 @endif
             </div>
@@ -952,13 +999,11 @@
                             </select>
                         </div>
 
-                        @if($isMyAttendance)
                         <div class="att-filter-group d-flex align-items-end">
-                            <a href="{{ route('hrms.attendance.my') }}" class="btn btn-light w-100" style="height:43px; border-radius:14px; display:inline-flex; align-items:center; justify-content:center; gap:8px; font-weight:750; border:1px solid #E4E7EC;">
+                            <a href="{{ $isMyAttendance ? route('hrms.attendance.my') : route('attendances.record') }}" class="btn btn-light w-100" style="height:43px; border-radius:14px; display:inline-flex; align-items:center; justify-content:center; gap:8px; font-weight:750; border:1px solid #E4E7EC; background:#fff; color:#344054;">
                                 <i class="fas fa-undo"></i> Reset
                             </a>
                         </div>
-                        @endif
 
                     </div>
                 </form>
@@ -1311,6 +1356,17 @@
                     </tbody>
                 </table>
             </div>
+
+            @if($attendances instanceof \Illuminate\Pagination\AbstractPaginator && $attendances->hasPages())
+            <div class="px-4 py-3 border-top d-flex justify-content-between align-items-center flex-wrap gap-2" style="background:#FAFBFD; border-bottom-left-radius:24px; border-bottom-right-radius:24px;">
+                <div class="text-muted font-weight-bold" style="font-size:13px;">
+                    Showing {{ $attendances->firstItem() }} to {{ $attendances->lastItem() }} of {{ $attendances->total() }} records
+                </div>
+                <div>
+                    {{ $attendances->appends(request()->query())->links() }}
+                </div>
+            </div>
+            @endif
         </div>
 
         @foreach($attendances as $attendance)
@@ -1348,6 +1404,35 @@
         const searchInput = document.querySelector('.auto-filter-input');
         let typingTimer = null;
 
+        const dateInput = document.querySelector('input[name="date"]');
+        const fromDateInput = document.querySelector('input[name="from_date"]');
+        const toDateInput = document.querySelector('input[name="to_date"]');
+
+        if (dateInput) {
+            dateInput.addEventListener('change', function() {
+                if (this.value) {
+                    if (fromDateInput) fromDateInput.value = '';
+                    if (toDateInput) toDateInput.value = '';
+                }
+            });
+        }
+
+        if (fromDateInput) {
+            fromDateInput.addEventListener('change', function() {
+                if (this.value && dateInput) {
+                    dateInput.value = '';
+                }
+            });
+        }
+
+        if (toDateInput) {
+            toDateInput.addEventListener('change', function() {
+                if (this.value && dateInput) {
+                    dateInput.value = '';
+                }
+            });
+        }
+
         function submitFilterForm() {
             if (form) {
                 form.submit();
@@ -1376,68 +1461,37 @@
             $('#dailyAttendanceDataTable').DataTable().destroy();
         }
 
-        $('#dailyAttendanceDataTable').DataTable({
+        const currentPerPage = "{{ request('per_page', '50') }}";
+
+        const dtTable = $('#dailyAttendanceDataTable').DataTable({
             destroy: true,
-            pageLength: 25,
+            pageLength: currentPerPage === 'all' || currentPerPage === '-1' ? -1 : parseInt(currentPerPage) || 50,
             lengthMenu: [
-                [10, 25, 50, 100, -1],
-                [10, 25, 50, 100, 'All']
+                [10, 25, 50, 100, 250, 500, -1],
+                [10, 25, 50, 100, 250, 500, 'All']
             ],
             ordering: true,
+            order: [],
             responsive: false,
             autoWidth: false,
             scrollX: true,
             scrollCollapse: true,
-            paging: true,
-            info: true,
+            paging: false,
+            info: false,
             searching: false,
-            dom: '<"leave-dt-toolbar"<"leave-dt-left"l><"leave-dt-right"B>>rt<"leave-table-footer"ip>',
-            buttons: [{
-                    extend: 'csvHtml5',
-                    text: '<i class="fas fa-file-csv"></i> CSV',
-                    className: 'leave-export-btn',
-                    exportOptions: {
-                        columns: ':not(.no-export)'
-                    }
-                },
-                {
-                    extend: 'excelHtml5',
-                    text: '<i class="fas fa-file-excel"></i> Excel',
-                    className: 'leave-export-btn',
-                    exportOptions: {
-                        columns: ':not(.no-export)'
-                    }
-                },
-                {
-                    extend: 'pdfHtml5',
-                    text: '<i class="fas fa-file-pdf"></i> PDF',
-                    className: 'leave-export-btn',
-                    orientation: 'landscape',
-                    pageSize: 'A3',
-                    title: '{{ branding_name() }} Attendance Records',
-                    exportOptions: {
-                        columns: ':not(.no-export)'
-                    }
-                },
-                {
-                    extend: 'print',
-                    text: '<i class="fas fa-print"></i> Print',
-                    className: 'leave-export-btn',
-                    title: '{{ branding_name() }} Attendance Records',
-                    exportOptions: {
-                        columns: ':not(.no-export)'
-                    }
-                }
-            ],
+            dom: 'rt',
             language: {
-                lengthMenu: 'Show _MENU_ entries',
-                emptyTable: 'No attendance records found.',
-                info: 'Showing _START_ to _END_ of _TOTAL_ attendance records',
-                paginate: {
-                    previous: 'Prev',
-                    next: 'Next'
-                }
+                emptyTable: 'No attendance records found.'
             }
+        });
+
+        $('.dataTables_length select').off('change').on('change', function() {
+            let val = $(this).val();
+            let url = new URL(window.location.href);
+            if (val === '-1') val = 'all';
+            url.searchParams.set('per_page', val);
+            url.searchParams.delete('page'); // Reset to page 1 on length change
+            window.location.href = url.toString();
         });
 
         setTimeout(function() {

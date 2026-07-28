@@ -188,14 +188,14 @@
 
     .hr-grid-2 {
         display: grid;
-        grid-template-columns: 1.4fr .9fr;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
         gap: 16px;
         margin-bottom: 16px;
     }
 
     .hr-grid-2-eq {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
         gap: 16px;
         margin-bottom: 16px;
     }
@@ -394,38 +394,45 @@
         @endforeach
     </div>
 
+    @php
+        $hasBlocked = !empty($dashboard['tables']['blocked_employees']);
+        $hasLeaves = !empty($dashboard['tables']['pending_leaves']);
+        $hasWfh = !empty($dashboard['tables']['pending_wfh']);
+        $hasProfiles = !empty($dashboard['tables']['pending_profiles']);
+        $hasDocs = !empty($dashboard['tables']['pending_documents']);
+        $hasActivities = !empty($dashboard['recent_activities']);
+    @endphp
+
     <div class="hr-grid-2">
+        @if($hasBlocked)
         <div class="hr-section-card">
             <div class="hr-section-head">
                 <div>
                     <h5>Punch-In Blocked Employees</h5>
                     <small>Employees blocked today based on attendance policy cut-off.</small>
                 </div>
-                <span class="hr-pill">{{ count($dashboard['tables']['blocked_employees'] ?? []) }} Blocked</span>
+                <span class="hr-pill">{{ count($dashboard['tables']['blocked_employees']) }} Blocked</span>
             </div>
             <div class="hr-section-body table-responsive">
-                @if(!empty($dashboard['tables']['blocked_employees']))
-                    <table class="hr-table">
-                        <thead>
-                            <tr><th>Employee</th><th>Department</th><th>Blocked At</th><th>Reason</th><th>Action</th></tr>
-                        </thead>
-                        <tbody>
-                        @foreach($dashboard['tables']['blocked_employees'] as $row)
-                            <tr>
-                                <td><strong>{{ $row['employee_name'] ?? 'N/A' }}</strong><br><small>{{ $row['employee_code'] ?? '-' }}</small></td>
-                                <td>{{ $row['department_name'] ?? '-' }}</td>
-                                <td>{{ ($row['auto_blocked_at'] ?? null) ? \Carbon\Carbon::parse($row['auto_blocked_at'])->format('h:i A') : '-' }}</td>
-                                <td>{{ $row['block_reason'] ?? '-' }}</td>
-                                <td><a href="{{ route('attendances.pending-approval') }}" class="hr-pill">Review</a></td>
-                            </tr>
-                        @endforeach
-                        </tbody>
-                    </table>
-                @else
-                    <div class="hr-empty">No punch-in blocked employees today.</div>
-                @endif
+                <table class="hr-table">
+                    <thead>
+                        <tr><th>Employee</th><th>Department</th><th>Blocked At</th><th>Reason</th><th>Action</th></tr>
+                    </thead>
+                    <tbody>
+                    @foreach($dashboard['tables']['blocked_employees'] as $row)
+                        <tr>
+                            <td><strong>{{ $row['employee_name'] ?? 'N/A' }}</strong><br><small>{{ $row['employee_code'] ?? '-' }}</small></td>
+                            <td>{{ $row['department_name'] ?? '-' }}</td>
+                            <td>{{ ($row['auto_blocked_at'] ?? null) ? \Carbon\Carbon::parse($row['auto_blocked_at'])->format('h:i A') : '-' }}</td>
+                            <td>{{ $row['block_reason'] ?? '-' }}</td>
+                            <td><a href="{{ route('attendances.pending-approval') }}" class="hr-pill">Review</a></td>
+                        </tr>
+                    @endforeach
+                    </tbody>
+                </table>
             </div>
         </div>
+        @endif
 
         <div class="hr-section-card">
             <div class="hr-section-head">
@@ -445,126 +452,123 @@
         </div>
     </div>
 
+    @if($hasLeaves || $hasWfh)
     <div class="hr-grid-2-eq">
+        @if($hasLeaves)
         <div class="hr-section-card">
             <div class="hr-section-head">
                 <div><h5>Pending Leave Requests</h5><small>Latest pending leave approvals.</small></div>
                 <a href="{{ route('leave-approvals.index') }}" class="hr-pill">View All</a>
             </div>
             <div class="hr-section-body table-responsive">
-                @if(!empty($dashboard['tables']['pending_leaves']))
-                    <table class="hr-table">
-                        <thead><tr><th>Employee</th><th>Leave Type</th><th>Date Range</th><th>Days</th><th>Status</th><th>Action</th></tr></thead>
-                        <tbody>
-                        @foreach($dashboard['tables']['pending_leaves'] as $leave)
-                            <tr>
-                                <td><strong>{{ $leave['employee_name'] ?? '-' }}</strong><br><small>{{ $leave['employee_code'] ?? '-' }}</small></td>
-                                <td>{{ $leave['leave_type'] ?? '-' }}</td>
-                                <td>{{ $leave['start_date'] ?? '-' }} to {{ $leave['end_date'] ?? '-' }}</td>
-                                <td>{{ $leave['deducted_days'] ?? '-' }}</td>
-                                <td><span class="hr-pill">{{ ucfirst(str_replace('_',' ', $leave['status'] ?? '-')) }}</span></td>
-                                <td><a href="{{ route('leave-approvals.index') }}" class="hr-pill">Review</a></td>
-                            </tr>
-                        @endforeach
-                        </tbody>
-                    </table>
-                @else
-                    <div class="hr-empty">No pending leave requests.</div>
-                @endif
+                <table class="hr-table">
+                    <thead><tr><th>Employee</th><th>Leave Type</th><th>Date Range</th><th>Days</th><th>Status</th><th>Action</th></tr></thead>
+                    <tbody>
+                    @foreach($dashboard['tables']['pending_leaves'] as $leave)
+                        <tr>
+                            <td><strong>{{ $leave['employee_name'] ?? '-' }}</strong><br><small>{{ $leave['employee_code'] ?? '-' }}</small></td>
+                            <td>{{ $leave['leave_type'] ?? '-' }}</td>
+                            <td>{{ $leave['start_date'] ?? '-' }} to {{ $leave['end_date'] ?? '-' }}</td>
+                            <td>{{ $leave['deducted_days'] ?? '-' }}</td>
+                            <td><span class="hr-pill">{{ ucfirst(str_replace('_',' ', $leave['status'] ?? '-')) }}</span></td>
+                            <td><a href="{{ route('leave-approvals.index') }}" class="hr-pill">Review</a></td>
+                        </tr>
+                    @endforeach
+                    </tbody>
+                </table>
             </div>
         </div>
+        @endif
 
+        @if($hasWfh)
         <div class="hr-section-card">
             <div class="hr-section-head">
                 <div><h5>WFH Requests Pending</h5><small>Requests awaiting final approval.</small></div>
                 <a href="{{ route('hrms.attendance.wfh.index') }}" class="hr-pill">View All</a>
             </div>
             <div class="hr-section-body table-responsive">
-                @if(!empty($dashboard['tables']['pending_wfh']))
-                    <table class="hr-table">
-                        <thead><tr><th>Employee</th><th>Date</th><th>Reason Category</th><th>Quota</th><th>Status</th><th>Action</th></tr></thead>
-                        <tbody>
-                        @foreach($dashboard['tables']['pending_wfh'] as $wfh)
-                            <tr>
-                                <td><strong>{{ $wfh['employee_name'] ?? '-' }}</strong><br><small>{{ $wfh['employee_code'] ?? '-' }}</small></td>
-                                <td>{{ $wfh['request_date'] ?? '-' }}</td>
-                                <td>{{ ucfirst(str_replace('_',' ', $wfh['reason_category'] ?? '-')) }}</td>
-                                <td><span class="hr-pill">{{ $wfh['quota_impact'] ?? '-' }}</span></td>
-                                <td><span class="hr-pill">{{ ucfirst(str_replace('_',' ', $wfh['status'] ?? '-')) }}</span></td>
-                                <td><a href="{{ route('hrms.attendance.wfh.index') }}" class="hr-pill">Review</a></td>
-                            </tr>
-                        @endforeach
-                        </tbody>
-                    </table>
-                @else
-                    <div class="hr-empty">No pending WFH requests.</div>
-                @endif
+                <table class="hr-table">
+                    <thead><tr><th>Employee</th><th>Date</th><th>Reason Category</th><th>Quota</th><th>Status</th><th>Action</th></tr></thead>
+                    <tbody>
+                    @foreach($dashboard['tables']['pending_wfh'] as $wfh)
+                        <tr>
+                            <td><strong>{{ $wfh['employee_name'] ?? '-' }}</strong><br><small>{{ $wfh['employee_code'] ?? '-' }}</small></td>
+                            <td>{{ $wfh['request_date'] ?? '-' }}</td>
+                            <td>{{ ucfirst(str_replace('_',' ', $wfh['reason_category'] ?? '-')) }}</td>
+                            <td><span class="hr-pill">{{ $wfh['quota_impact'] ?? '-' }}</span></td>
+                            <td><span class="hr-pill">{{ ucfirst(str_replace('_',' ', $wfh['status'] ?? '-')) }}</span></td>
+                            <td><a href="{{ route('hrms.attendance.wfh.index') }}" class="hr-pill">Review</a></td>
+                        </tr>
+                    @endforeach
+                    </tbody>
+                </table>
             </div>
         </div>
+        @endif
     </div>
+    @endif
 
+    @if($hasProfiles || $hasDocs)
     <div class="hr-grid-2-eq">
+        @if($hasProfiles)
         <div class="hr-section-card">
             <div class="hr-section-head">
                 <div><h5>Pending Profiles</h5><small>Profiles pending completion/review.</small></div>
                 <a href="{{ route('hrms.employees.pending_profiles') }}" class="hr-pill">View All</a>
             </div>
             <div class="hr-section-body table-responsive">
-                @if(!empty($dashboard['tables']['pending_profiles']))
-                    <table class="hr-table">
-                        <thead><tr><th>Employee</th><th>Code</th><th>Employment Stage</th><th>Profile Status</th><th>Action</th></tr></thead>
-                        <tbody>
-                        @foreach($dashboard['tables']['pending_profiles'] as $profile)
-                            <tr>
-                                <td>{{ $profile['employee_name'] ?? '-' }}</td>
-                                <td>{{ $profile['employee_code'] ?? '-' }}</td>
-                                <td>{{ ucfirst($profile['employee_stage'] ?? '-') }}</td>
-                                <td><span class="hr-pill">{{ ucfirst(str_replace('_',' ', $profile['profile_status'] ?? '-')) }}</span></td>
-                                <td><a href="{{ route('hrms.employees.pending_profiles') }}" class="hr-pill">Review</a></td>
-                            </tr>
-                        @endforeach
-                        </tbody>
-                    </table>
-                @else
-                    <div class="hr-empty">No pending profiles.</div>
-                @endif
+                <table class="hr-table">
+                    <thead><tr><th>Employee</th><th>Code</th><th>Employment Stage</th><th>Profile Status</th><th>Action</th></tr></thead>
+                    <tbody>
+                    @foreach($dashboard['tables']['pending_profiles'] as $profile)
+                        <tr>
+                            <td>{{ $profile['employee_name'] ?? '-' }}</td>
+                            <td>{{ $profile['employee_code'] ?? '-' }}</td>
+                            <td>{{ ucfirst($profile['employee_stage'] ?? '-') }}</td>
+                            <td><span class="hr-pill">{{ ucfirst(str_replace('_',' ', $profile['profile_status'] ?? '-')) }}</span></td>
+                            <td><a href="{{ route('hrms.employees.pending_profiles') }}" class="hr-pill">Review</a></td>
+                        </tr>
+                    @endforeach
+                    </tbody>
+                </table>
             </div>
         </div>
+        @endif
 
+        @if($hasDocs)
         <div class="hr-section-card">
             <div class="hr-section-head">
                 <div><h5>Pending Documents</h5><small>Uploaded documents awaiting verification.</small></div>
                 <a href="{{ route('documents.hr.index') }}" class="hr-pill">View All</a>
             </div>
             <div class="hr-section-body table-responsive">
-                @if(!empty($dashboard['tables']['pending_documents']))
-                    <table class="hr-table">
-                        <thead><tr><th>Employee</th><th>Document</th><th>Uploaded At</th><th>Status</th><th>Action</th></tr></thead>
-                        <tbody>
-                        @foreach($dashboard['tables']['pending_documents'] as $doc)
-                            <tr>
-                                <td>{{ $doc['employee_name'] ?? '-' }}</td>
-                                <td>{{ $doc['document_name'] ?? '-' }}</td>
-                                <td>{{ ($doc['uploaded_at'] ?? null) ? \Carbon\Carbon::parse($doc['uploaded_at'])->format('d M Y h:i A') : '-' }}</td>
-                                <td><span class="hr-pill">{{ ucfirst(str_replace('_',' ', $doc['verification_status'] ?? '-')) }}</span></td>
-                                <td><a href="{{ route('documents.hr.index') }}" class="hr-pill">Review</a></td>
-                            </tr>
-                        @endforeach
-                        </tbody>
-                    </table>
-                @else
-                    <div class="hr-empty">No pending documents.</div>
-                @endif
+                <table class="hr-table">
+                    <thead><tr><th>Employee</th><th>Document</th><th>Uploaded At</th><th>Status</th><th>Action</th></tr></thead>
+                    <tbody>
+                    @foreach($dashboard['tables']['pending_documents'] as $doc)
+                        <tr>
+                            <td>{{ $doc['employee_name'] ?? '-' }}</td>
+                            <td>{{ $doc['document_name'] ?? '-' }}</td>
+                            <td>{{ ($doc['uploaded_at'] ?? null) ? \Carbon\Carbon::parse($doc['uploaded_at'])->format('d M Y h:i A') : '-' }}</td>
+                            <td><span class="hr-pill">{{ ucfirst(str_replace('_',' ', $doc['verification_status'] ?? '-')) }}</span></td>
+                            <td><a href="{{ route('documents.hr.index') }}" class="hr-pill">Review</a></td>
+                        </tr>
+                    @endforeach
+                    </tbody>
+                </table>
             </div>
         </div>
+        @endif
     </div>
+    @endif
 
+    @if($hasActivities)
     <div class="hr-section-card">
         <div class="hr-section-head">
             <div><h5>Recent HR Activity</h5><small>Live updates from employees, leave, documents, WFH and regularizations.</small></div>
         </div>
         <div class="hr-section-body">
-            @forelse(($dashboard['recent_activities'] ?? []) as $activity)
+            @foreach($dashboard['recent_activities'] as $activity)
                 <div class="hr-activity-item">
                     <span class="hr-activity-icon"><i class="{{ $activity['icon'] ?? 'fas fa-circle' }}"></i></span>
                     <div>
@@ -573,10 +577,9 @@
                         <div style="font-size:11px; color:#98A2B3; margin-top:2px;">{{ ($activity['created_at'] ?? null) ? \Carbon\Carbon::parse($activity['created_at'])->diffForHumans() : (($activity['time'] ?? null) ? \Carbon\Carbon::parse($activity['time'])->diffForHumans() : '-') }}</div>
                     </div>
                 </div>
-            @empty
-                <div class="hr-empty">No recent HR activity found.</div>
-            @endforelse
+            @endforeach
         </div>
     </div>
+    @endif
 </div>
 @endsection

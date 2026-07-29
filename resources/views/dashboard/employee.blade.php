@@ -801,4 +801,7 @@
         @endif
     </div>
 @endif
+
+{{-- Include Punch In & Punch Out Modals and Scripts --}}
+@include('dashboard.partials.employee-dashboard', ['only_modals' => true])
 @endsection

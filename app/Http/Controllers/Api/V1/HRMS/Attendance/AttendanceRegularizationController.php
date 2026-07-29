@@ -277,18 +277,17 @@ class AttendanceRegularizationController extends ApiController
                 );
             }
 
-            if ($attendance->payroll_processed || $attendance->is_locked) {
-                throw new \RuntimeException('Attendance is locked/payroll processed for this date.');
-            }
-
-            $summaryLocked = DB::table('monthly_attendance_summaries')
-                ->where('employee_id', $row->employee_id)
-                ->where('month', (int) Carbon::parse($attendance->attendance_date)->format('m'))
-                ->where('year', (int) Carbon::parse($attendance->attendance_date)->format('Y'))
-                ->where('is_locked', 1)
-                ->exists();
-            if ($summaryLocked) {
-                throw new \RuntimeException('Attendance is locked/payroll processed for this date.');
+            if ($attendance->payroll_processed) {
+                $summaryLocked = DB::table('monthly_attendance_summaries')
+                    ->where('employee_id', $row->employee_id)
+                    ->where('month', (int) Carbon::parse($attendance->attendance_date)->format('m'))
+                    ->where('year', (int) Carbon::parse($attendance->attendance_date)->format('Y'))
+                    ->where('is_locked', 1)
+                    ->where('payroll_processed', 1)
+                    ->exists();
+                if ($summaryLocked) {
+                    throw new \RuntimeException('Attendance is locked/payroll processed for this date.');
+                }
             }
 
             if ($row->requested_punch_in) {

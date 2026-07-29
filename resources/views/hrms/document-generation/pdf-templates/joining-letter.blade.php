@@ -45,14 +45,18 @@
                 <td>
                     Warm regards,<br>
                     <strong>For {{ $company_name ?? branding_name() }}</strong>
-                    <div style="height: 60px; margin-top: 5px; margin-bottom: 5px; position: relative;">
-                        @if(!empty($signature_image))
-                            <img src="{{ $signature_image }}" style="height: 55px; width: auto; max-width: 180px; display: inline-block; vertical-align: middle;" alt="Signature">
+                    <div style="min-height: 65px; margin-top: 5px; margin-bottom: 5px;">
+                        @if(!empty($signature_image) && !empty($seal_image))
+                            <div style="display: inline-block; vertical-align: middle;">
+                                <img src="{{ $signature_image }}" style="height: 55px; width: auto; max-width: 160px; vertical-align: middle;" alt="Signature">
+                                <img src="{{ $seal_image }}" style="height: 65px; width: auto; max-width: 120px; vertical-align: middle; margin-left: 15px;" alt="Seal">
+                            </div>
+                        @elseif(!empty($signature_image))
+                            <img src="{{ $signature_image }}" style="height: 55px; width: auto; max-width: 180px; vertical-align: middle;" alt="Signature">
+                        @elseif(!empty($seal_image))
+                            <img src="{{ $seal_image }}" style="height: 65px; width: auto; max-width: 120px; vertical-align: middle; display: block;" alt="Seal">
                         @else
-                            <div style="height: 40px;"></div>
-                        @endif
-                        @if(!empty($seal_image))
-                            <img src="{{ $seal_image }}" style="height: 65px; width: auto; max-width: 120px; position: absolute; top: -5px; left: 50%; margin-left: -60px; vertical-align: middle;" alt="Seal">
+                            <div style="height: 45px;"></div>
                         @endif
                     </div>
                     <strong>{{ $signatory_name ?? $authorized_signatory ?? 'Authorized Signatory' }}</strong><br>

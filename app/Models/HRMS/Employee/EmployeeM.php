@@ -36,6 +36,21 @@ class EmployeeM extends Model
 
     protected $guarded = [];
 
+    protected $casts = [
+        'allow_mobile_attendance' => 'boolean',
+        'allow_web_attendance' => 'boolean',
+    ];
+
+    public function canUseWebAttendance(): bool
+    {
+        return (bool) ($this->allow_web_attendance ?? false);
+    }
+
+    public function canUseMobileAttendance(): bool
+    {
+        return (bool) ($this->allow_mobile_attendance ?? true);
+    }
+
 
     protected $with = [
         'user',

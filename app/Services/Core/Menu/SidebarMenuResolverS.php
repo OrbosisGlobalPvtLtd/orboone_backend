@@ -24,7 +24,8 @@ class SidebarMenuResolverS
             }
 
             $roleIds = $this->resolveRoleIds($user);
-            $isSuperAdmin = method_exists($user, 'hasRole') && $user->hasRole('super_admin');
+            $isSuperAdmin = (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin())
+                || (method_exists($user, 'hasRole') && $user->hasRole('super_admin'));
 
             $hasEmployeeRole = method_exists($user, 'hasRole') && $user->hasRole('employee');
             $hasAdminRole = $isSuperAdmin || (method_exists($user, 'hasRole') && $user->hasRole([
@@ -72,7 +73,9 @@ class SidebarMenuResolverS
     private function resolveForContext(Collection $menus, Authenticatable $user, array $roleIds, bool $isSuperAdmin, bool $isEmployeeContext): Collection
     {
         $filtered = $this->filterByRoleMenuAccess($menus, $roleIds, $isSuperAdmin);
+        $filtered = $this->filterByPermission($filtered, $user, $isSuperAdmin);
         $filtered = $this->filterByEmployeeOnlyVisibility($filtered, $isEmployeeContext);
+        $filtered = $this->filterByWebAttendancePermission($filtered, $user, $isSuperAdmin);
         $filtered = $this->filterRetiredLegacyPayrollMenus($filtered);
         $filtered = $this->filterByRouteValidity($filtered);
 
@@ -350,9 +353,30 @@ class SidebarMenuResolverS
         return null;
     }
 
+    private function filterByWebAttendancePermission(Collection $menus, Authenticatable $user, bool $isSuperAdmin): Collection
+    {
+        if ($isSuperAdmin) {
+            return $menus;
+        }
+
+        $emp = DB::table('employees_new')->where('user_id', $user->id)->first(['allow_web_attendance']);
+        $canWebPunch = $emp ? (bool) ($emp->allow_web_attendance ?? false) : false;
+
+        if ($canWebPunch) {
+            return $menus;
+        }
+
+        return $menus->filter(function ($menu) {
+            $route = (string) ($menu->route ?? '');
+            return $route !== 'attendances.today';
+        })->values();
+    }
+
     private function menuPermissionMap(): array
     {
         return [
+            'attendances.today' => ['attendance.my.view', 'attendance.records.view_all', 'attendance.dashboard.view'],
+            'attendances.access-control' => ['attendance.access_control.manage', 'attendance.records.view_all', 'attendance.dashboard.view'],
             'documents.compliance.index' => ['documents.compliance.view'],
             'documents.verification.index' => ['documents.verification.view'],
             'documents.types.index' => ['documents.types.manage'],
@@ -418,6 +442,7 @@ class SidebarMenuResolverS
 
         $employeeRouteExact = [
             'profile.index',
+            'attendances.today',
             'hrms.document-generation.self.index',
             'hrms.attendance.my',
             'employee.announcements.index',

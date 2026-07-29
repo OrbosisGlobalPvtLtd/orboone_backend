@@ -21,24 +21,24 @@ $ptMonthly = $professional_tax_monthly ?? 200;
 $netMonthly = $net_pay_monthly ?? ($monthlyGross - $ptMonthly);
 
 $resolveParagraph = function($text) use ($companyName, $joiningDate, $working_hours, $working_days, $officeLocation, $probation_period, $candidateName, $designationText) {
-    if (empty($text)) return '';
-    $safeText = e($text);
-    $replace = [
-        '{company_name}' => '<strong>' . e($companyName) . '</strong>',
-        '{companyName}' => '<strong>' . e($companyName) . '</strong>',
-        '{candidate_name}' => '<strong>' . e($candidateName) . '</strong>',
-        '{candidateName}' => '<strong>' . e($candidateName) . '</strong>',
-        '{designation}' => '<strong>' . e($designationText) . '</strong>',
-        '{designationText}' => '<strong>' . e($designationText) . '</strong>',
-        '{joining_date}' => '<strong>' . e($joiningDate) . '</strong>',
-        '{joiningDate}' => '<strong>' . e($joiningDate) . '</strong>',
-        '{working_hours}' => '<strong>' . e($working_hours ?? '10:00 AM to 7:00 PM') . '</strong>',
-        '{working_days}' => '<strong>' . e($working_days ?? 'Monday to Saturday') . '</strong>',
-        '{office_location}' => '<strong>' . e($officeLocation) . '</strong>',
-        '{officeLocation}' => '<strong>' . e($officeLocation) . '</strong>',
-        '{probation_period}' => '<strong>' . e($probation_period ?? 'Three months') . '</strong>',
-    ];
-    return str_ireplace(array_keys($replace), array_values($replace), $safeText);
+if (empty($text)) return '';
+$safeText = e($text);
+$replace = [
+'{company_name}' => '<strong>' . e($companyName) . '</strong>',
+'{companyName}' => '<strong>' . e($companyName) . '</strong>',
+'{candidate_name}' => '<strong>' . e($candidateName) . '</strong>',
+'{candidateName}' => '<strong>' . e($candidateName) . '</strong>',
+'{designation}' => '<strong>' . e($designationText) . '</strong>',
+'{designationText}' => '<strong>' . e($designationText) . '</strong>',
+'{joining_date}' => '<strong>' . e($joiningDate) . '</strong>',
+'{joiningDate}' => '<strong>' . e($joiningDate) . '</strong>',
+'{working_hours}' => '<strong>' . e($working_hours ?? '10:00 AM to 7:00 PM') . '</strong>',
+'{working_days}' => '<strong>' . e($working_days ?? 'Monday to Saturday') . '</strong>',
+'{office_location}' => '<strong>' . e($officeLocation) . '</strong>',
+'{officeLocation}' => '<strong>' . e($officeLocation) . '</strong>',
+'{probation_period}' => '<strong>' . e($probation_period ?? 'Three months') . '</strong>',
+];
+return str_ireplace(array_keys($replace), array_values($replace), $safeText);
 };
 @endphp
 
@@ -66,37 +66,37 @@ $resolveParagraph = function($text) use ($companyName, $joiningDate, $working_ho
 
     <p class="text-justify">
         @if(!empty($intro_clause))
-            {!! nl2br($resolveParagraph($intro_clause)) !!}
+        {!! nl2br($resolveParagraph($intro_clause)) !!}
         @else
-            {{ $companyName }} is pleased to offer you the position of
-            <strong>{{ $designationText }}</strong> with our organization. We are excited about the skills,
-            energy, and perspective you bring to our team, and we look forward to your contribution to our
-            ongoing growth and success.
+        {{ $companyName }} is pleased to offer you the position of
+        <strong>{{ $designationText }}</strong> with our organization. We are excited about the skills,
+        energy, and perspective you bring to our team, and we look forward to your contribution to our
+        ongoing growth and success.
         @endif
     </p>
 
     <p class="text-justify">
         @if(!empty($joining_clause))
-            {!! nl2br($resolveParagraph($joining_clause)) !!}
+        {!! nl2br($resolveParagraph($joining_clause)) !!}
         @else
-            We are pleased to confirm your joining with {{ $companyName }}, effective
-            <strong>{{ $joiningDate }}</strong>, with working hours from
-            <strong>{{ $working_hours ?? '10:00 AM to 7:00 PM' }}</strong>,
-            {{ $working_days ?? 'Monday to Saturday' }}, your primary place of work will be at
-            <strong>{{ $officeLocation }}</strong> office.
+        We are pleased to confirm your joining with {{ $companyName }}, effective
+        <strong>{{ $joiningDate }}</strong>, with working hours from
+        <strong>{{ $working_hours ?? '10:00 AM to 7:00 PM' }}</strong>,
+        {{ $working_days ?? 'Monday to Saturday' }}, your primary place of work will be at
+        <strong>{{ $officeLocation }}</strong> office.
         @endif
     </p>
 
     @if(isset($compensation_type) && $compensation_type === 'Unpaid')
-        <p class="text-justify">
-            {!! nl2br($resolveParagraph($unpaid_clause ?? 'This offer is for an unpaid engagement. No salary, stipend, or monetary compensation shall be payable during this period unless separately approved in writing by the Company. The engagement is intended to provide professional exposure, learning, project experience, and practical workplace training.')) !!}
-        </p>
+    <p class="text-justify">
+        {!! nl2br($resolveParagraph($unpaid_clause ?? 'This offer is for an unpaid engagement. No salary, stipend, or monetary compensation shall be payable during this period unless separately approved in writing by the Company. The engagement is intended to provide professional exposure, learning, project experience, and practical workplace training.')) !!}
+    </p>
     @else
-        <p class="text-justify">
-            Your annual compensation package will be
-            <strong>₹ {{ is_numeric($annualCtc) ? number_format((float)$annualCtc, 2) : $annualCtc }}</strong>.
-            A detailed breakup of your salary structure is provided below as per company policy.
-        </p>
+    <p class="text-justify">
+        Your annual compensation package will be
+        <strong>₹ {{ is_numeric($annualCtc) ? number_format((float)$annualCtc, 2) : $annualCtc }}</strong>.
+        A detailed breakup of your salary structure is provided below as per company policy.
+    </p>
     @endif
 
     <p class="text-justify">
@@ -106,52 +106,52 @@ $resolveParagraph = function($text) use ($companyName, $joiningDate, $working_ho
 
     <p class="text-justify">
         @if(!empty($probation_clause))
-            {!! nl2br($resolveParagraph($probation_clause)) !!}
+        {!! nl2br($resolveParagraph($probation_clause)) !!}
         @else
-            You will be on probation for a period of
-            <strong>{{ $probation_period ?? 'Three months' }}</strong> from your date of joining.
-            During this period, your performance and conduct will be reviewed. Upon satisfactory performance,
-            your employment may be confirmed. The probation period may be extended if required.
+        You will be on probation for a period of
+        <strong>{{ $probation_period ?? 'Three months' }}</strong> from your date of joining.
+        During this period, your performance and conduct will be reviewed. Upon satisfactory performance,
+        your employment may be confirmed. The probation period may be extended if required.
         @endif
     </p>
 
     <p class="text-justify">
         @if(!empty($working_hours_clause))
-            {!! nl2br($resolveParagraph($working_hours_clause)) !!}
+        {!! nl2br($resolveParagraph($working_hours_clause)) !!}
         @else
-            Your working hours, weekly offs, leave entitlements, holidays, and other benefits will be governed
-            by company policy and shared with you after joining. Due to work requirements, you may occasionally
-            need to work additional hours to meet project deadlines, without additional compensation unless
-            specified by policy.
+        Your working hours, weekly offs, leave entitlements, holidays, and other benefits will be governed
+        by company policy and shared with you after joining. Due to work requirements, you may occasionally
+        need to work additional hours to meet project deadlines, without additional compensation unless
+        specified by policy.
         @endif
     </p>
 
     <p class="text-justify">
         @if(!empty($confidentiality_clause))
-            {!! nl2br($resolveParagraph($confidentiality_clause)) !!}
+        {!! nl2br($resolveParagraph($confidentiality_clause)) !!}
         @else
-            During your employment, you may have access to confidential company information. You are required
-            to maintain strict confidentiality of all such information during and after your employment. Any
-            misuse or unauthorized sharing of company information may result in disciplinary action.
+        During your employment, you may have access to confidential company information. You are required
+        to maintain strict confidentiality of all such information during and after your employment. Any
+        misuse or unauthorized sharing of company information may result in disciplinary action.
         @endif
     </p>
 
     <p class="text-justify">
         @if(!empty($ip_clause))
-            {!! nl2br($resolveParagraph($ip_clause)) !!}
+        {!! nl2br($resolveParagraph($ip_clause)) !!}
         @else
-            Any work, code, designs, developments, or improvements created by you during the course of your
-            employment will be the property of {{ $companyName }}, as per applicable laws and company policy.
+        Any work, code, designs, developments, or improvements created by you during the course of your
+        employment will be the property of {{ $companyName }}, as per applicable laws and company policy.
         @endif
     </p>
 
     <p class="text-justify">
         @if(!empty($verification_clause))
-            {!! nl2br($resolveParagraph($verification_clause)) !!}
+        {!! nl2br($resolveParagraph($verification_clause)) !!}
         @else
-            This offer is subject to verification of your educational qualifications, previous employment details,
-            and other required documents. If any information provided is found to be incorrect, the company
-            reserves the right to withdraw this offer or terminate employment.
+        This offer is subject to verification of your educational qualifications, previous employment details,
+        and other required documents. If any information provided is found to be incorrect, the company
+        reserves the right to withdraw this offer or terminate employment.
         @endif
     </p>
 
@@ -159,12 +159,12 @@ $resolveParagraph = function($text) use ($companyName, $joiningDate, $working_ho
 
     <p class="text-justify">
         @if(!empty($final_terms_clause))
-            {!! nl2br($resolveParagraph($final_terms_clause)) !!}
+        {!! nl2br($resolveParagraph($final_terms_clause)) !!}
         @else
-            This offer letter provides an overview of your employment. The complete terms and conditions,
-            including company policies, service rules, probation details, and code of conduct, will be communicated
-            to you through a formal Appointment Letter, which will be issued after your joining and completion of
-            joining formalities.
+        This offer letter provides an overview of your employment. The complete terms and conditions,
+        including company policies, service rules, probation details, and code of conduct, will be communicated
+        to you through a formal Appointment Letter, which will be issued after your joining and completion of
+        joining formalities.
         @endif
     </p>
 
@@ -213,16 +213,16 @@ $resolveParagraph = function($text) use ($companyName, $joiningDate, $working_ho
                     <strong>{{ $signatory_designation ?? 'Human Resource Manager' }}</strong><br>
                     <div style="height: 50px; margin-top: 5px; margin-bottom: 5px; position: relative;">
                         @if(!empty($signature_image))
-                            <img src="{{ $signature_image }}" style="height: 45px; width: auto; max-width: 150px; display: inline-block; vertical-align: middle;" alt="Signature">
+                        <img src="{{ $signature_image }}" style="height: 45px; width: auto; max-width: 150px; display: inline-block; vertical-align: middle;" alt="Signature">
                         @else
-                            <div style="height: 35px;"></div>
+                        <div style="height: 35px;"></div>
                         @endif
                         <!-- @if(!empty($seal_image))
                             <img src="{{ $seal_image }}" style="height: 65px; width: auto; max-width: 120px; position: absolute; top: -5px; left: 50%; margin-left: -60px; vertical-align: middle;" alt="Seal">
                         @endif -->
                     </div>
                     <strong>{{ $hr_manager_name ?? $authorized_signatory ?? 'HR' }}</strong><br>
-                    {{ $companyName }}  
+                    {{ $companyName }}
                 </td>
                 <td class="text-right">
                     <strong>Candidate’s Signature</strong><br><br><br>
@@ -233,116 +233,116 @@ $resolveParagraph = function($text) use ($companyName, $joiningDate, $working_ho
     </div>
 
     @if(!isset($compensation_type) || $compensation_type !== 'Unpaid')
-        <div class="page-break"></div>
+    <div class="page-break"></div>
 
-        <div class="text-center mb-4">
-            <h3 style="text-decoration: underline; font-size:15px; color:#111827;">Annexure</h3>
-        </div>
+    <div class="text-center mb-4">
+        <h3 style="text-decoration: underline; font-size:15px; color:#111827;">Annexure</h3>
+    </div>
 
-        <table class="table" style="font-size:11px;">
-            <thead>
-                <tr>
-                    <th style="width:50%;"></th>
-                    <th style="width:25%; text-align:center;">Monthly (₹)</th>
-                    <th style="width:25%; text-align:center;">Annual (₹)</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td><strong>Gross Salary</strong></td>
-                    <td class="text-center"><strong>{{ number_format((float)$monthlyGross, 2) }}</strong></td>
-                    <td class="text-center"><strong>{{ number_format((float)$monthlyGross * 12, 2) }}</strong></td>
-                </tr>
+    <table class="table" style="font-size:11px;">
+        <thead>
+            <tr>
+                <th style="width:50%;"></th>
+                <th style="width:25%; text-align:center;">Monthly (₹)</th>
+                <th style="width:25%; text-align:center;">Annual (₹)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Gross Salary</strong></td>
+                <td class="text-center"><strong>{{ number_format((float)$monthlyGross, 2) }}</strong></td>
+                <td class="text-center"><strong>{{ number_format((float)$monthlyGross * 12, 2) }}</strong></td>
+            </tr>
 
-                <tr>
-                    <td colspan="3" style="height:12px;"></td>
-                </tr>
+            <tr>
+                <td colspan="3" style="height:12px;"></td>
+            </tr>
 
-                <tr>
-                    <td colspan="3"><strong>Salary Structure (A)</strong></td>
-                </tr>
-                <tr>
-                    <td>Basic</td>
-                    <td class="text-center">{{ number_format((float)$basicMonthly, 2) }}</td>
-                    <td class="text-center">{{ number_format((float)$basicMonthly * 12, 2) }}</td>
-                </tr>
-                <tr>
-                    <td>HRA</td>
-                    <td class="text-center">{{ number_format((float)$hraMonthly, 2) }}</td>
-                    <td class="text-center">{{ number_format((float)$hraMonthly * 12, 2) }}</td>
-                </tr>
-                <tr>
-                    <td>Special Allowance</td>
-                    <td class="text-center">{{ number_format((float)$specialMonthly, 2) }}</td>
-                    <td class="text-center">{{ number_format((float)$specialMonthly * 12, 2) }}</td>
-                </tr>
-                <tr>
-                    <td><strong>Subtotal (A)</strong></td>
-                    <td class="text-center"><strong>{{ number_format((float)$monthlyGross, 2) }}</strong></td>
-                    <td class="text-center"><strong>{{ number_format((float)$monthlyGross * 12, 2) }}</strong></td>
-                </tr>
+            <tr>
+                <td colspan="3"><strong>Salary Structure (A)</strong></td>
+            </tr>
+            <tr>
+                <td>Basic</td>
+                <td class="text-center">{{ number_format((float)$basicMonthly, 2) }}</td>
+                <td class="text-center">{{ number_format((float)$basicMonthly * 12, 2) }}</td>
+            </tr>
+            <tr>
+                <td>HRA</td>
+                <td class="text-center">{{ number_format((float)$hraMonthly, 2) }}</td>
+                <td class="text-center">{{ number_format((float)$hraMonthly * 12, 2) }}</td>
+            </tr>
+            <tr>
+                <td>Special Allowance</td>
+                <td class="text-center">{{ number_format((float)$specialMonthly, 2) }}</td>
+                <td class="text-center">{{ number_format((float)$specialMonthly * 12, 2) }}</td>
+            </tr>
+            <tr>
+                <td><strong>Subtotal (A)</strong></td>
+                <td class="text-center"><strong>{{ number_format((float)$monthlyGross, 2) }}</strong></td>
+                <td class="text-center"><strong>{{ number_format((float)$monthlyGross * 12, 2) }}</strong></td>
+            </tr>
 
-                <tr>
-                    <td colspan="3" style="height:12px;"></td>
-                </tr>
+            <tr>
+                <td colspan="3" style="height:12px;"></td>
+            </tr>
 
-                <tr>
-                    <td colspan="3"><strong>Deductions (B)</strong></td>
-                </tr>
-                <tr>
-                    <td>Professional Tax</td>
-                    <td class="text-center">{{ number_format((float)$ptMonthly, 2) }}</td>
-                    <td class="text-center">{{ number_format((float)$ptMonthly * 12, 2) }}</td>
-                </tr>
-                <tr>
-                    <td><strong>Subtotal (B)</strong></td>
-                    <td class="text-center"><strong>{{ number_format((float)$ptMonthly, 2) }}</strong></td>
-                    <td class="text-center"><strong>{{ number_format((float)$ptMonthly * 12, 2) }}</strong></td>
-                </tr>
+            <tr>
+                <td colspan="3"><strong>Deductions (B)</strong></td>
+            </tr>
+            <tr>
+                <td>Professional Tax</td>
+                <td class="text-center">{{ number_format((float)$ptMonthly, 2) }}</td>
+                <td class="text-center">{{ number_format((float)$ptMonthly * 12, 2) }}</td>
+            </tr>
+            <tr>
+                <td><strong>Subtotal (B)</strong></td>
+                <td class="text-center"><strong>{{ number_format((float)$ptMonthly, 2) }}</strong></td>
+                <td class="text-center"><strong>{{ number_format((float)$ptMonthly * 12, 2) }}</strong></td>
+            </tr>
 
-                <tr>
-                    <td colspan="3" style="height:12px;"></td>
-                </tr>
+            <tr>
+                <td colspan="3" style="height:12px;"></td>
+            </tr>
 
-                <tr>
-                    <td><strong>CTC (A-B)</strong></td>
-                    <td class="text-center"><strong>{{ number_format((float)$monthlyGross, 2) }}</strong></td>
-                    <td class="text-center"><strong>{{ number_format((float)$annualCtc, 2) }}</strong></td>
-                </tr>
+            <tr>
+                <td><strong>CTC (A-B)</strong></td>
+                <td class="text-center"><strong>{{ number_format((float)$monthlyGross, 2) }}</strong></td>
+                <td class="text-center"><strong>{{ number_format((float)$annualCtc, 2) }}</strong></td>
+            </tr>
 
-                <tr>
-                    <td style="height:45px;"><strong>Net Pay (A-B)<br>(Take Home Salary)</strong></td>
-                    <td class="text-center"><strong>{{ number_format((float)$netMonthly, 2) }}</strong></td>
-                    <td class="text-center"><strong>{{ number_format((float)$netMonthly * 12, 2) }}</strong></td>
-                </tr>
-            </tbody>
+            <tr>
+                <td style="height:45px;"><strong>Net Pay (A-B)<br>(Take Home Salary)</strong></td>
+                <td class="text-center"><strong>{{ number_format((float)$netMonthly, 2) }}</strong></td>
+                <td class="text-center"><strong>{{ number_format((float)$netMonthly * 12, 2) }}</strong></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="signature-section signature-block" style="margin-top:45px;">
+        <table class="signature-table">
+            <tr>
+                <td>
+                    <strong>{{ $signatory_designation ?? 'Human Resource Manager' }}</strong><br>
+                    <div style="height: 50px; margin-top: 5px; margin-bottom: 5px; position: relative;">
+                        @if(!empty($signature_image))
+                        <img src="{{ $signature_image }}" style="height: 45px; width: auto; max-width: 150px; display: inline-block; vertical-align: middle;" alt="Signature">
+                        @else
+                        <div style="height: 35px;"></div>
+                        @endif
+                        @if(!empty($seal_image))
+                        <img src="{{ $seal_image }}" style="height: 65px; width: auto; max-width: 120px; position: absolute; top: -5px; left: 50%; margin-left: -60px; vertical-align: middle;" alt="Seal">
+                        @endif
+                    </div>
+                    <strong>{{ $hr_manager_name ?? $authorized_signatory ?? 'HR' }}</strong><br>
+                    {{ $companyName }}
+                </td>
+                <td class="text-right">
+                    <strong>Candidate’s Signature</strong><br><br><br>
+                    <strong>{{ $candidateName }}</strong>
+                </td>
+            </tr>
         </table>
-
-        <div class="signature-section signature-block" style="margin-top:45px;">
-            <table class="signature-table">
-                <tr>
-                    <td>
-                        <strong>{{ $signatory_designation ?? 'Human Resource Manager' }}</strong><br>
-                        <div style="height: 50px; margin-top: 5px; margin-bottom: 5px; position: relative;">
-                            @if(!empty($signature_image))
-                                <img src="{{ $signature_image }}" style="height: 45px; width: auto; max-width: 150px; display: inline-block; vertical-align: middle;" alt="Signature">
-                            @else
-                                <div style="height: 35px;"></div>
-                            @endif
-                            @if(!empty($seal_image))
-                                <img src="{{ $seal_image }}" style="height: 65px; width: auto; max-width: 120px; position: absolute; top: -5px; left: 50%; margin-left: -60px; vertical-align: middle;" alt="Seal">
-                            @endif
-                        </div>
-                        <strong>{{ $hr_manager_name ?? $authorized_signatory ?? 'HR' }}</strong><br>
-                        {{ $companyName }}
-                    </td>
-                    <td class="text-right">
-                        <strong>Candidate’s Signature</strong><br><br><br>
-                        <strong>{{ $candidateName }}</strong>
-                    </td>
-                </tr>
-            </table>
-        </div>
+    </div>
     @endif
 
 </div>

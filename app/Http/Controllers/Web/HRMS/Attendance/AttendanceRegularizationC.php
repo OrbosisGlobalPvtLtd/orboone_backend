@@ -181,8 +181,17 @@ class AttendanceRegularizationC extends Controller
                 ['employee_id' => $row->employee_id, 'attendance_date' => Carbon::parse($row->created_at)->toDateString()]
             );
         }
-        if ($attendance->payroll_processed || $attendance->is_locked) {
-            return back()->with('error', 'Attendance is locked/payroll processed for this date.');
+        if ($attendance->payroll_processed) {
+            $summaryLocked = DB::table('monthly_attendance_summaries')
+                ->where('employee_id', $row->employee_id)
+                ->where('month', (int) Carbon::parse($attendance->attendance_date)->format('m'))
+                ->where('year', (int) Carbon::parse($attendance->attendance_date)->format('Y'))
+                ->where('is_locked', 1)
+                ->where('payroll_processed', 1)
+                ->exists();
+            if ($summaryLocked) {
+                return back()->with('error', 'Attendance is locked/payroll processed for this date.');
+            }
         }
         if ($row->requested_punch_in) {
             $attendance->punch_in_time = Carbon::parse($row->requested_punch_in)->format('H:i:s');

@@ -623,6 +623,17 @@
                                 </td>
 
                                 <td>
+                                    @php
+                                        $src = strtolower((string) ($attendance->attendance_source ?? 'mobile'));
+                                    @endphp
+                                    @if($src === 'web')
+                                        <span class="flag text-primary border border-primary bg-light" title="Device: {{ $attendance->punch_in_device ?? 'Web Browser' }}">Web</span>
+                                    @elseif($src === 'mobile')
+                                        <span class="flag text-success border border-success bg-light" title="Mobile App">Mobile</span>
+                                    @elseif($src === 'admin')
+                                        <span class="flag text-dark border border-dark bg-light" title="Admin Entry">Admin</span>
+                                    @endif
+
                                     @if($attendance->is_late)
                                     <span class="flag flag-late">Late</span>
                                     @endif

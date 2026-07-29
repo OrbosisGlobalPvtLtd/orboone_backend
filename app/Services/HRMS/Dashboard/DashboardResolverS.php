@@ -2064,7 +2064,12 @@ class DashboardResolverS
                 ->first();
 
             if ($today) {
-                $todayStatus = $today->type_name ?: ucfirst(str_replace('_', ' ', $today->type_code ?: 'Marked'));
+                $statusRaw = $today->type_name ?: ucfirst(str_replace('_', ' ', $today->type_code ?: ($today->attendance_status ?? 'Marked')));
+                if (strtolower((string) $statusRaw) === 'lwp' || strtolower((string) ($today->type_code ?? '')) === 'lwp' || strtolower((string) ($today->attendance_status ?? '')) === 'lwp') {
+                    $todayStatus = 'Absent';
+                } else {
+                    $todayStatus = $statusRaw;
+                }
                 $punchSummary = trim(($today->punch_in_time ?: '--') . ' to ' . ($today->punch_out_time ?: '--'));
                 $remaining = $this->remainingShiftMinutes($today);
             }

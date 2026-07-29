@@ -391,6 +391,16 @@
 <div class="emp-dash">
     <div class="emp-container">
 
+        @php
+            $todayDate = \Carbon\Carbon::now()->toDateString();
+            $empObj = \App\Models\HRMS\Employee\EmployeeM::where('user_id', auth()->id())->first();
+            $canWebPunch = isset($canWebPunch) ? $canWebPunch : ($empObj ? (method_exists($empObj, 'canUseWebAttendance') ? $empObj->canUseWebAttendance() : (bool)($empObj->allow_web_attendance ?? true)) : true);
+            $todayRecord = $empObj ? \Illuminate\Support\Facades\DB::table('attendances')->where('employee_id', $empObj->id)->whereDate('attendance_date', $todayDate)->first() : null;
+            $hasPunchedIn = !empty($todayRecord?->punch_in_time);
+            $hasPunchedOut = !empty($todayRecord?->punch_out_time);
+            $isPunchBlocked = ($todayRecord?->is_blocked || $todayRecord?->is_punch_blocked || ($todayRecord?->attendance_status ?? '') === 'punch_blocked') && !$todayRecord?->is_admin_unlocked;
+        @endphp
+
         <!-- Hero Header -->
         <div class="emp-hero">
             <div class="emp-hero-left">
@@ -399,25 +409,51 @@
                 <small><i class="far fa-clock"></i> {{ $currentDate }}</small>
             </div>
             <div class="emp-hero-right">
-                <span class="emp-hero-badge">
-                    <i class="fas fa-mobile-alt"></i> Mobile App Required for Attendance
-                </span>
+                @if ($canWebPunch)
+                    @if ($isPunchBlocked)
+                        <button type="button" class="btn btn-secondary font-weight-bold px-4 py-2 shadow-none" disabled style="border-radius: 50px; font-weight: 800; font-size: 14px; cursor: not-allowed; opacity: 0.7; background: #64748b !important; color: #fff; border: none;">
+                            <i class="fas fa-ban mr-2"></i> Punch Blocked
+                        </button>
+                    @elseif (!$hasPunchedIn)
+                        <button type="button" class="btn font-weight-bold px-4 py-2 shadow" data-toggle="modal" data-target="#webPunchInModal" style="border-radius: 50px; font-weight: 800; font-size: 14px; background: linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%) !important; color: #fff !important; border: 1px solid rgba(255, 255, 255, 0.3);">
+                            <i class="fas fa-fingerprint mr-2"></i> Punch In
+                        </button>
+                    @elseif (!$hasPunchedOut)
+                        <button type="button" class="btn btn-danger font-weight-bold px-4 py-2 shadow" data-toggle="modal" data-target="#webPunchOutModal" style="border-radius: 50px; font-weight: 800; font-size: 14px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: none;">
+                            <i class="fas fa-sign-out-alt mr-2"></i> Punch Out
+                        </button>
+                    @else
+                        <span class="badge badge-success px-4 py-2 font-weight-bold shadow-sm" style="border-radius: 50px; font-size: 14px;">
+                            <i class="fas fa-check-circle mr-1"></i> Attendance Completed Today
+                        </span>
+                    @endif
+                @else
+                    <span class="emp-hero-badge">
+                        <i class="fas fa-mobile-alt"></i> Mobile App Required for Attendance
+                    </span>
+                @endif
             </div>
         </div>
 
-        <!-- Profile Verification Status Banner -->
+        {{-- Punch Blocked Warning Banner (Displayed right below Hero Header) --}}
+        @if ($isPunchBlocked)
+            <div class="alert alert-danger border-0 shadow-lg mb-4 mt-4" style="border-radius: 20px; background: #fef2f2; border-left: 6px solid #ef4444 !important; padding: 22px;">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-user-lock text-danger fa-3x mr-3"></i>
+                    <div>
+                        <h5 style="color: #991b1b; font-weight: 800; margin: 0 0 4px 0;">Punch In Blocked for Today</h5>
+                        <p class="mb-0 text-dark font-weight-bold">Your attendance punch-in is currently blocked by HR system for today. Please contact HR Administrator to request an unlock.</p>
+                    </div>
+                </div>
+            </div>
+        @endif
+
+        <!-- Profile Verification Status Banner (Only displayed if Profile Incomplete or Pending) -->
+        @if(!$isProfileCompleted && $profileStatus !== 'approved')
         <div class="orb-card mb-4" style="border-radius: 22px; border: 1px solid var(--orb-border); box-shadow: var(--orb-shadow);">
             <div class="orb-card-body d-flex align-items-center justify-content-between flex-wrap gap-3 py-3 px-4" style="padding: 16px 24px;">
                 <div class="d-flex align-items-center gap-3">
-                    @if($isProfileCompleted)
-                        <div class="icon-circle" style="width:46px; height:46px; border-radius:14px; background:#DCFCE7; color:#15803D; display:flex; align-items:center; justify-content:center; font-size:18px;">
-                            <i class="fas fa-check-circle"></i>
-                        </div>
-                        <div>
-                            <h5 style="margin: 0; font-size: 14px; font-weight: 900; color: var(--orb-text);">Profile Verification: <span class="text-success">Approved / Active</span></h5>
-                            <p style="margin: 2px 0 0; font-size: 12px; font-weight: 650; color: var(--orb-muted);">Your profile has been fully verified and is currently locked.</p>
-                        </div>
-                    @elseif($profileStatus === 'pending' && $profileCompletion < 100)
+                    @if($profileStatus === 'pending' && $profileCompletion < 100)
                         <div class="icon-circle" style="width:46px; height:46px; border-radius:14px; background:#FEF3C7; color:#D97706; display:flex; align-items:center; justify-content:center; font-size:18px;">
                             <i class="fas fa-id-card"></i>
                         </div>
@@ -441,22 +477,10 @@
                             <h5 style="margin: 0; font-size: 14px; font-weight: 900; color: var(--orb-text);">Profile Verification: <span class="text-danger">Rejected / Requires Correction</span></h5>
                             <p style="margin: 2px 0 0; font-size: 12px; font-weight: 650; color: var(--orb-muted);">HR has returned your profile for correction. Click 'Correct Profile' to fix your information.</p>
                         </div>
-                    @else
-                        <div class="icon-circle" style="width:46px; height:46px; border-radius:14px; background:#DCFCE7; color:#15803D; display:flex; align-items:center; justify-content:center; font-size:18px;">
-                            <i class="fas fa-check-circle"></i>
-                        </div>
-                        <div>
-                            <h5 style="margin: 0; font-size: 14px; font-weight: 900; color: var(--orb-text);">Profile Verification: <span class="text-success">Approved / Active</span></h5>
-                            <p style="margin: 2px 0 0; font-size: 12px; font-weight: 650; color: var(--orb-muted);">Your profile has been fully verified and is currently locked.</p>
-                        </div>
                     @endif
                 </div>
                 <div>
-                    @if($isProfileCompleted)
-                        <a href="{{ route('profile.index') }}" class="btn btn-success px-4 font-weight-bold" style="border-radius:12px; font-weight:800; font-size:12px; color:#fff; background:#15803D; border-color:#15803D; min-height:36px; display:inline-flex; align-items:center; gap:6px;">
-                            <i class="fas fa-eye"></i> View Profile
-                        </a>
-                    @elseif($profileStatus === 'pending' && $profileCompletion < 100)
+                    @if($profileStatus === 'pending' && $profileCompletion < 100)
                         <a href="{{ route('profile.index') }}" class="btn btn-warning px-4 font-weight-bold" style="border-radius:12px; font-weight:800; font-size:12px; color:#fff; background:#D97706; border-color:#D97706; min-height:36px; display:inline-flex; align-items:center; gap:6px;">
                             <i class="fas fa-edit"></i> Complete Profile
                         </a>
@@ -468,14 +492,11 @@
                         <a href="{{ route('profile.index') }}" class="btn btn-danger px-4 font-weight-bold" style="border-radius:12px; font-weight:800; font-size:12px; color:#fff; background:#B91C1C; border-color:#B91C1C; min-height:36px; display:inline-flex; align-items:center; gap:6px;">
                             <i class="fas fa-tools"></i> Correct Profile
                         </a>
-                    @else
-                        <a href="{{ route('profile.index') }}" class="btn btn-success px-4 font-weight-bold" style="border-radius:12px; font-weight:800; font-size:12px; color:#fff; background:#15803D; border-color:#15803D; min-height:36px; display:inline-flex; align-items:center; gap:6px;">
-                            <i class="fas fa-eye"></i> View Profile
-                        </a>
                     @endif
                 </div>
             </div>
         </div>
+        @endif
 
         <!-- Primary Status Cards Grid -->
         <div class="stat-grid">
@@ -486,7 +507,13 @@
                 </div>
                 <div class="stat-info">
                     <div class="stat-title">Today Attendance</div>
-                    <div class="stat-value">{{ data_get($dashboard, 'attendance_self.today_status') ?? 'Not Marked' }}</div>
+                    @php
+                        $dashStatus = data_get($dashboard, 'attendance_self.today_status') ?? 'Not Marked';
+                        if (strtolower((string) $dashStatus) === 'lwp') {
+                            $dashStatus = 'Absent';
+                        }
+                    @endphp
+                    <div class="stat-value">{{ $dashStatus }}</div>
                     <div class="stat-helper">{{ data_get($dashboard, 'attendance_self.punch_summary') ?? 'No punches registered' }}</div>
                 </div>
             </div>
@@ -755,4 +782,23 @@
 
     </div>
 </div>
+
+{{-- Floating Bottom-Right Fixed Web Punch Button Overlay --}}
+@if ($canWebPunch)
+    <div style="position: fixed; bottom: 32px; right: 32px; z-index: 9999;">
+        @if ($isPunchBlocked)
+            <button type="button" class="btn btn-secondary font-weight-bold px-4 py-3 shadow d-flex align-items-center" disabled style="border-radius: 50px; font-size: 15px; font-weight: 900; cursor: not-allowed; opacity: 0.75; background: #64748b !important; color: #fff; border: 2px solid #ffffff;">
+                <i class="fas fa-ban fa-lg mr-2"></i> PUNCH BLOCKED
+            </button>
+        @elseif (!$hasPunchedIn)
+            <button type="button" class="btn font-weight-bold px-4 py-3 shadow-lg d-flex align-items-center" data-toggle="modal" data-target="#webPunchInModal" style="border-radius: 50px; font-size: 15px; font-weight: 900; background: linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%) !important; color: #fff !important; border: 2px solid #ffffff; box-shadow: 0 12px 30px rgba(75, 0, 232, 0.4) !important;">
+                <i class="fas fa-fingerprint fa-lg mr-2"></i> PUNCH IN
+            </button>
+        @elseif (!$hasPunchedOut)
+            <button type="button" class="btn btn-danger font-weight-bold px-4 py-3 shadow-lg d-flex align-items-center" data-toggle="modal" data-target="#webPunchOutModal" style="border-radius: 50px; font-size: 15px; font-weight: 900; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: 2px solid #ffffff; box-shadow: 0 12px 30px rgba(239, 68, 68, 0.45) !important;">
+                <i class="fas fa-sign-out-alt fa-lg mr-2"></i> PUNCH OUT
+            </button>
+        @endif
+    </div>
+@endif
 @endsection

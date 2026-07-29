@@ -8,7 +8,7 @@ $candidateName = $employee_name ?? $candidate_name ?? 'Candidate Name';
 $candidateFirstName = (!empty($employee_first_name) ? $employee_first_name : null) ?? explode(' ', trim($candidateName))[0] ?? 'Candidate';
 $companyName = $company_name ?? branding_name();
 if (empty($companyName) || $companyName === 'HRMS' || $companyName === 'Default') {
-    $companyName = 'Orbosis Global Pvt. Ltd.';
+$companyName = 'Orbosis Global Pvt. Ltd.';
 }
 $issueDate = $issue_date ?? $current_date ?? date('d M, Y');
 $joiningDate = $joining_date ?? 'To Be Confirmed';
@@ -20,32 +20,32 @@ $stipendAmount = $stipend_amount ?? 18000;
 $compensationType = $compensation_type ?? 'Unpaid';
 
 $resolveParagraph = function($text) use ($companyName, $joiningDate, $internshipDuration, $internshipMode, $officeLocation, $stipendAmount, $compensationType, $designationText, $working_hours, $working_days, $saturday_off_clause) {
-    if (empty($text)) return '';
-    $safeText = e($text);
-    $stipendText = ($compensationType === 'Paid') 
-        ? 'You will receive a monthly stipend of <strong>₹' . e(is_numeric($stipendAmount) ? number_format((float)$stipendAmount) : $stipendAmount) . '</strong> during the internship period.' 
-        : '';
-    $compTypeClause = ($compensationType === 'Unpaid') ? '<strong>unpaid</strong>' : '';
-    $replace = [
-        '{company_name}' => '<strong>' . e($companyName) . '</strong>',
-        '{companyName}' => '<strong>' . e($companyName) . '</strong>',
-        '{designation}' => '<strong>' . e($designationText) . '</strong>',
-        '{designationText}' => '<strong>' . e($designationText) . '</strong>',
-        '{joining_date}' => '<strong>' . e($joiningDate) . '</strong>',
-        '{joiningDate}' => '<strong>' . e($joiningDate) . '</strong>',
-        '{internship_duration}' => '<strong>' . e($internshipDuration) . '</strong>',
-        '{internshipDuration}' => '<strong>' . e($internshipDuration) . '</strong>',
-        '{internship_mode}' => '<strong>' . e($internshipMode) . '</strong>',
-        '{internshipMode}' => '<strong>' . e($internshipMode) . '</strong>',
-        '{office_location}' => '<strong>' . e($officeLocation) . '</strong>',
-        '{officeLocation}' => '<strong>' . e($officeLocation) . '</strong>',
-        '{working_hours}' => '<strong>' . e($working_hours ?? '10:00 AM to 7:00 PM') . '</strong>',
-        '{working_days}' => '<strong>' . e($working_days ?? 'Monday to Saturday') . '</strong>',
-        '{saturday_off_clause}' => '<strong>' . e($saturday_off_clause ?? 'with second and fourth Saturdays observed as off (alternate Saturdays off)') . '</strong>',
-        '{stipend_clause}' => $stipendText,
-        '{compensation_type_clause}' => $compTypeClause,
-    ];
-    return str_ireplace(array_keys($replace), array_values($replace), $safeText);
+if (empty($text)) return '';
+$safeText = e($text);
+$stipendText = ($compensationType === 'Paid')
+? 'You will receive a monthly stipend of <strong>₹' . e(is_numeric($stipendAmount) ? number_format((float)$stipendAmount) : $stipendAmount) . '</strong> during the internship period.'
+: '';
+$compTypeClause = ($compensationType === 'Unpaid') ? '<strong>unpaid</strong>' : '';
+$replace = [
+'{company_name}' => '<strong>' . e($companyName) . '</strong>',
+'{companyName}' => '<strong>' . e($companyName) . '</strong>',
+'{designation}' => '<strong>' . e($designationText) . '</strong>',
+'{designationText}' => '<strong>' . e($designationText) . '</strong>',
+'{joining_date}' => '<strong>' . e($joiningDate) . '</strong>',
+'{joiningDate}' => '<strong>' . e($joiningDate) . '</strong>',
+'{internship_duration}' => '<strong>' . e($internshipDuration) . '</strong>',
+'{internshipDuration}' => '<strong>' . e($internshipDuration) . '</strong>',
+'{internship_mode}' => '<strong>' . e($internshipMode) . '</strong>',
+'{internshipMode}' => '<strong>' . e($internshipMode) . '</strong>',
+'{office_location}' => '<strong>' . e($officeLocation) . '</strong>',
+'{officeLocation}' => '<strong>' . e($officeLocation) . '</strong>',
+'{working_hours}' => '<strong>' . e($working_hours ?? '10:00 AM to 7:00 PM') . '</strong>',
+'{working_days}' => '<strong>' . e($working_days ?? 'Monday to Saturday') . '</strong>',
+'{saturday_off_clause}' => '<strong>' . e($saturday_off_clause ?? 'with second and fourth Saturdays observed as off (alternate Saturdays off)') . '</strong>',
+'{stipend_clause}' => $stipendText,
+'{compensation_type_clause}' => $compTypeClause,
+];
+return str_ireplace(array_keys($replace), array_values($replace), $safeText);
 };
 @endphp
 
@@ -80,22 +80,22 @@ $resolveParagraph = function($text) use ($companyName, $joiningDate, $internship
 
     <p class="text-justify">
         @if(!empty($intro_clause))
-            {!! nl2br($resolveParagraph($intro_clause)) !!}
+        {!! nl2br($resolveParagraph($intro_clause)) !!}
         @else
-            We are pleased to offer you the position of <strong>{{ $designationText }}</strong> with <strong>{{ $companyName }}</strong>, commencing on <strong>{{ $joiningDate }}</strong>. This is a <strong>{{ $internshipDuration }} full-time @if($compensationType === 'Unpaid')unpaid @endif internship</strong> conducted in <strong>{{ $internshipMode }}</strong> mode at our <strong>{{ $officeLocation }}</strong>. The internship is designed to provide you with practical exposure to software development practices, industry methodologies, and corporate work processes.
+        We are pleased to offer you the position of <strong>{{ $designationText }}</strong> with <strong>{{ $companyName }}</strong>, commencing on <strong>{{ $joiningDate }}</strong>. This is a <strong>{{ $internshipDuration }} full-time @if($compensationType === 'Unpaid')unpaid @endif internship</strong> conducted in <strong>{{ $internshipMode }}</strong> mode at our <strong>{{ $officeLocation }}</strong>. The internship is designed to provide you with practical exposure to software development practices, industry methodologies, and corporate work processes.
         @endif
     </p>
 
     <p class="text-justify">
         @if(!empty($working_hours_clause))
-            {!! nl2br($resolveParagraph($working_hours_clause)) !!}
+        {!! nl2br($resolveParagraph($working_hours_clause)) !!}
         @else
-            Your working hours will be <strong>{{ $working_hours ?? '10:00 AM to 7:00 PM' }}</strong>, 
-            <strong>{{ $working_days ?? 'Monday to Saturday' }}</strong>, 
-            {{ $saturday_off_clause ?? 'with second and fourth Saturdays observed as off (alternate Saturdays off)' }}, as per company policy.
-            @if($compensationType === 'Paid')
-                You will receive a monthly stipend of <strong>₹{{ is_numeric($stipendAmount) ? number_format((float)$stipendAmount) : $stipendAmount }}</strong> during the internship period.
-            @endif
+        Your working hours will be <strong>{{ $working_hours ?? '10:00 AM to 7:00 PM' }}</strong>,
+        <strong>{{ $working_days ?? 'Monday to Saturday' }}</strong>,
+        {{ $saturday_off_clause ?? 'with second and fourth Saturdays observed as off (alternate Saturdays off)' }}, as per company policy.
+        @if($compensationType === 'Paid')
+        You will receive a monthly stipend of <strong>₹{{ is_numeric($stipendAmount) ? number_format((float)$stipendAmount) : $stipendAmount }}</strong> during the internship period.
+        @endif
         @endif
     </p>
 
@@ -105,17 +105,17 @@ $resolveParagraph = function($text) use ($companyName, $joiningDate, $internship
 
     <p class="text-justify">
         @if(!empty($completion_clause))
-            {!! nl2br($resolveParagraph($completion_clause)) !!}
+        {!! nl2br($resolveParagraph($completion_clause)) !!}
         @else
-            Upon successful completion of the internship, you will receive an <strong>Internship Completion Certificate</strong>. Based on your performance and organizational requirements, you may be offered a full-time employment opportunity. If performance expectations are not met, the internship may be extended for further evaluation.
+        Upon successful completion of the internship, you will receive an <strong>Internship Completion Certificate</strong>. Based on your performance and organizational requirements, you may be offered a full-time employment opportunity. If performance expectations are not met, the internship may be extended for further evaluation.
         @endif
     </p>
 
     <p class="text-justify">
         @if(!empty($acceptance_clause))
-            {!! nl2br($resolveParagraph($acceptance_clause)) !!}
+        {!! nl2br($resolveParagraph($acceptance_clause)) !!}
         @else
-            Kindly confirm your acceptance of this offer by replying to this email.
+        Kindly confirm your acceptance of this offer by replying to this email.
         @endif
     </p>
 
@@ -126,9 +126,9 @@ $resolveParagraph = function($text) use ($companyName, $joiningDate, $internship
                     <strong>For {{ $companyName }}</strong><br>
                     <div style="height: 50px; margin-top: 5px; margin-bottom: 5px; position: relative;">
                         @if(!empty($signature_image))
-                            <img src="{{ $signature_image }}" style="height: 45px; width: auto; max-width: 150px; display: inline-block; vertical-align: middle;" alt="Signature">
+                        <img src="{{ $signature_image }}" style="height: 45px; width: auto; max-width: 150px; display: inline-block; vertical-align: middle;" alt="Signature">
                         @else
-                            <div style="height: 35px;"></div>
+                        <div style="height: 35px;"></div>
                         @endif
                         <!-- @if(!empty($seal_image))
                             <img src="{{ $seal_image }}" style="height: 65px; width: auto; max-width: 120px; position: absolute; top: -5px; left: 50%; margin-left: -60px; vertical-align: middle;" alt="Seal">

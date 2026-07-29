@@ -795,6 +795,48 @@
         @include('components.topbar')
 
         <section class="page-content">
+            <div class="px-4 pt-3 pb-0" style="max-width: 1500px; margin: 0 auto;">
+                @if(session('success'))
+                    <div class="alert alert-success border-0 shadow-sm mb-3 p-3 d-flex align-items-center" style="border-radius: 16px; font-weight: 600; font-size: 15px; background: #dcfce7; color: #166534;">
+                        <i class="fas fa-check-circle fa-lg mr-3 text-success"></i>
+                        <div>{{ session('success') }}</div>
+                        <button type="button" class="close ml-auto" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    </div>
+                @endif
+
+                @if(session('error'))
+                    <div class="alert alert-danger border-0 shadow-sm mb-3 p-3 d-flex align-items-center" style="border-radius: 16px; font-weight: 600; font-size: 15px; background: #fee2e2; color: #991b1b;">
+                        <i class="fas fa-exclamation-triangle fa-lg mr-3 text-danger"></i>
+                        <div>{{ session('error') }}</div>
+                        <button type="button" class="close ml-auto" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    </div>
+                @endif
+
+                @if(session('warning'))
+                    <div class="alert alert-warning border-0 shadow-sm mb-3 p-3 d-flex align-items-center" style="border-radius: 16px; font-weight: 600; font-size: 15px; background: #fef3c7; color: #92400e;">
+                        <i class="fas fa-exclamation-circle fa-lg mr-3 text-warning"></i>
+                        <div>{{ session('warning') }}</div>
+                        <button type="button" class="close ml-auto" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    </div>
+                @endif
+
+                @if(session('info'))
+                    <div class="alert alert-info border-0 shadow-sm mb-3 p-3 d-flex align-items-center" style="border-radius: 16px; font-weight: 600; font-size: 15px; background: #e0f2fe; color: #075985;">
+                        <i class="fas fa-info-circle fa-lg mr-3 text-info"></i>
+                        <div>{{ session('info') }}</div>
+                        <button type="button" class="close ml-auto" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    </div>
+                @endif
+
+                @if($errors->any())
+                    <div class="alert alert-danger border-0 shadow-sm mb-3 p-3 d-flex align-items-center" style="border-radius: 16px; font-weight: 600; font-size: 15px; background: #fee2e2; color: #991b1b;">
+                        <i class="fas fa-exclamation-triangle fa-lg mr-3 text-danger"></i>
+                        <div>{{ $errors->first() }}</div>
+                        <button type="button" class="close ml-auto" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    </div>
+                @endif
+            </div>
+
             @yield('_content')
         </section>
     </main>

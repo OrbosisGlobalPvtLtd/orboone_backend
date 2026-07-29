@@ -1,6 +1,9 @@
 @php
-    $isAdmin = auth()->user()->isAdmin();
-    $attendanceOpen = request()->routeIs('attendances.*') || request()->routeIs('attendance.*') || request()->routeIs('project_management.tasks.*');
+    $user = auth()->user();
+    $isAdmin = $user ? (method_exists($user, 'isAdmin') ? $user->isAdmin() : false) : false;
+    $empNav = $user ? \Illuminate\Support\Facades\DB::table('employees_new')->where('user_id', $user->id)->first() : null;
+    $canWebPunchNav = $empNav ? (bool) ($empNav->allow_web_attendance ?? false) : false;
+    $attendanceOpen = request()->routeIs('attendances.*') || request()->routeIs('attendance.*') || request()->routeIs('hrms.attendance.*') || request()->routeIs('project_management.tasks.*');
 @endphp
 
 {{-- ========== SECTION: 2. ATTENDANCE & TRACKING ========== --}}
@@ -13,10 +16,26 @@
 
 <ul class="collapse list-unstyled {{ $attendanceOpen ? 'show' : '' }}" id="attendanceSubmenu" data-parent="#sidebarMenu">
     
-    {{-- Sub-module: Attendance Marking (Employee/Both) --}}
+    @if ($canWebPunchNav || $isAdmin)
+    {{-- Sub-module: Today's Attendance (Visible if Web Attendance Enabled or Admin) --}}
     <li>
-        <a href="{{ route('attendances.index') }}" class="nav-link sub-nav-link {{ request()->routeIs('attendances.index') ? 'active' : '' }}">
-            <i class="fas fa-fingerprint small mr-2"></i> Attendance Marking
+        <a href="{{ route('attendances.today') }}" class="nav-link sub-nav-link {{ request()->routeIs('attendances.today') ? 'active' : '' }}">
+            <i class="fas fa-fingerprint small mr-2 text-success"></i> Today's Attendance
+        </a>
+    </li>
+    @endif
+
+    {{-- Sub-module: Attendance History / Daily Records --}}
+    <li>
+        <a href="{{ route('attendances.daily') }}" class="nav-link sub-nav-link {{ request()->routeIs('attendances.daily') ? 'active' : '' }}">
+            <i class="fas fa-history small mr-2"></i> Attendance History
+        </a>
+    </li>
+
+    {{-- Sub-module: Monthly Attendance Report --}}
+    <li>
+        <a href="{{ route('attendances.monthly-report') }}" class="nav-link sub-nav-link {{ request()->routeIs('attendances.monthly-report') ? 'active' : '' }}">
+            <i class="fas fa-calendar-alt small mr-2"></i> Monthly Attendance
         </a>
     </li>
 
@@ -30,6 +49,13 @@
     @if ($isAdmin)
     <div class="border-top mx-3 my-2" style="border-color:rgba(255,255,255,0.1) !important;"></div>
     
+    {{-- Sub-module: Attendance Access Control --}}
+    <li>
+        <a href="{{ route('attendances.access-control') }}" class="nav-link sub-nav-link {{ request()->routeIs('attendances.access-control') ? 'active' : '' }}">
+            <i class="fas fa-user-lock small mr-2 text-info"></i> Access Control
+        </a>
+    </li>
+
     {{-- Sub-module: Late Coming Rules (Admin placeholder) --}}
     <li>
         <a href="{{ route('attendance.rules.index') }}" class="nav-link sub-nav-link {{ request()->routeIs('attendance.rules.*') ? 'active' : '' }}">
@@ -45,3 +71,4 @@
     </li>
     @endif
 </ul>
+

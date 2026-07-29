@@ -126,6 +126,8 @@ class AttendanceMobileService
         $payload['work_mode_label'] = $workModeLabel;
         $payload['is_permanent_wfh'] = $isPermanentWfh;
         $payload['show_wfh_module'] = ! $isPermanentWfh;
+        $payload['can_use_web_attendance'] = $employee->canUseWebAttendance();
+        $payload['can_use_mobile_attendance'] = $employee->canUseMobileAttendance();
 
         return [
             'success' => true,

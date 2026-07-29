@@ -63,38 +63,48 @@ class AttendanceS
             $attendanceTypeId = null;
         }
 
+        $source = strtolower((string) ($meta['attendance_source'] ?? $meta['source'] ?? 'mobile'));
+        if ($source === 'web' && ! $employee->canUseWebAttendance()) {
+            return ['status' => 'error', 'message' => 'Web Attendance is disabled for your account. Please contact HR Administrator.'];
+        }
+        if ($source === 'mobile' && ! $employee->canUseMobileAttendance()) {
+            return ['status' => 'error', 'message' => 'Mobile Attendance is disabled for your account. Please contact HR Administrator.'];
+        }
+
         if ($enforceEmployeeRules && ! $this->employeeEligibleForAttendance($employee)) {
             return ['status' => 'error', 'message' => 'You are not eligible to mark attendance yet.'];
         }
 
         $employeeWorkMode = strtolower((string) ($employee->work_mode ?? 'wfo'));
-        $requestedWorkMode = strtolower($workMode);
+        $requestedWorkMode = strtolower($workMode ?: 'wfo');
+        if (! in_array($requestedWorkMode, ['wfo', 'wfh'], true)) {
+            $requestedWorkMode = 'wfo';
+        }
 
-        if ($employeeWorkMode === 'wfh') {
-            // Permanent WFH employee - direct WFH attendance, no approval/quota check required
-            $workMode = 'wfh';
+        if ($requestedWorkMode === 'wfo') {
+            // Any employee selecting WFO must pass Office Geofence Validation
+            if ($enforceEmployeeRules) {
+                $locationValidation = $this->validateWfoOfficeLocation($meta);
+                if (($locationValidation['status'] ?? null) === 'error') {
+                    return $locationValidation;
+                }
+            }
+            $workMode = 'wfo';
         } else {
-            // WFO employee (or non-permanent WFH)
-            if ($requestedWorkMode === 'wfh') {
+            // Requested WFH
+            if ($employeeWorkMode !== 'wfh') {
+                // Permanent WFO employee selecting WFH requires approved WFH request for today
                 $approvedWfh = $this->wfhRequestService?->approvedForDate((int) $employee->id, $today);
                 if (! $approvedWfh || $approvedWfh->status !== 'approved') {
                     if ($enforceEmployeeRules) {
                         return [
                             'status' => 'error',
-                            'message' => 'You cannot mark WFH attendance because no approved WFH request exists for today.',
+                            'message' => 'No approved Work From Home request found for today. Please contact HR.',
                         ];
                     }
                 }
-                $workMode = 'wfh';
-            } else {
-                $workMode = 'wfo';
-                if ($enforceEmployeeRules) {
-                    $locationValidation = $this->validateWfoOfficeLocation($meta);
-                    if (($locationValidation['status'] ?? null) === 'error') {
-                        return $locationValidation;
-                    }
-                }
             }
+            $workMode = 'wfh';
         }
 
         $policy = $this->ruleResolver->getPolicyForEmployee($employee, $now);
@@ -168,7 +178,7 @@ class AttendanceS
                     'is_punch_blocked' => true,
                     'blocked_reason' => 'Punch-in blocked after allowed time.',
                     'block_reason' => 'Punch-in blocked after allowed time.',
-                    'attendance_source' => 'mobile',
+                    'attendance_source' => $source,
                     'attendance_status' => 'punch_blocked',
                 ]
             );
@@ -229,7 +239,7 @@ class AttendanceS
                 'is_profile_completed_at_punch' => $this->employeeEligibleForAttendance($employee),
                 'is_locked' => false,
                 'punch_in_note' => $note,
-                'attendance_source' => 'mobile',
+                'attendance_source' => $source,
                 'attendance_status' => $attendanceStatusForPunchIn,
             ]
         );
@@ -278,6 +288,14 @@ class AttendanceS
 
         if (! $employee) {
             return ['status' => 'error', 'message' => 'Employee profile not found.'];
+        }
+
+        $source = strtolower((string) ($meta['attendance_source'] ?? $meta['source'] ?? 'mobile'));
+        if ($source === 'web' && ! $employee->canUseWebAttendance()) {
+            return ['status' => 'error', 'message' => 'Web Attendance is disabled for your account. Please contact HR Administrator.'];
+        }
+        if ($source === 'mobile' && ! $employee->canUseMobileAttendance()) {
+            return ['status' => 'error', 'message' => 'Mobile Attendance is disabled for your account. Please contact HR Administrator.'];
         }
 
         $hasApprovedLeave = DB::table('leave_requests')
@@ -1571,11 +1589,10 @@ class AttendanceS
             ];
         }
 
-        if ($lat === null || $lng === null) {
-            $actionWord = ($action === 'punch_out') ? 'punch-out' : 'punch-in';
+        if ($lat === null || $lng === null || ((float) $lat === 0.0 && (float) $lng === 0.0)) {
             return [
                 'allowed' => false,
-                'message' => "Location is required for WFO {$actionWord}.",
+                'message' => 'Location permission is required for Work From Office attendance. Please enable location services and try again.',
                 'distance_meters' => 0.0,
                 'allowed_radius_meters' => (int) $officeLocation->radius_meters,
                 'office_location_name' => $officeLocation->name,
@@ -1591,11 +1608,10 @@ class AttendanceS
         $allowedRadiusMeters = (int) $officeLocation->radius_meters;
 
         $allowed = $distanceMeters <= $allowedRadiusMeters;
-        $actionMsg = ($action === 'punch_out') ? 'punch-out' : 'punch-in';
 
         return [
             'allowed' => $allowed,
-            'message' => $allowed ? 'Success' : 'You are outside the allowed office location.',
+            'message' => $allowed ? 'Success' : 'You are outside the office location. Please move inside the office premises and try again.',
             'distance_meters' => round($distanceMeters, 2),
             'allowed_radius_meters' => $allowedRadiusMeters,
             'office_location_name' => $officeLocation->name,
@@ -1697,7 +1713,7 @@ class AttendanceS
 
     private function employeeIsActive(Employee $employee): bool
     {
-        return (bool) $employee->is_active && (($employee->employment_status ?? 'active') === 'active');
+        return (bool) $employee->is_active && (empty($employee->employment_status) || $employee->employment_status === 'active');
     }
 
     private function employeeProfileApproved(Employee $employee): bool

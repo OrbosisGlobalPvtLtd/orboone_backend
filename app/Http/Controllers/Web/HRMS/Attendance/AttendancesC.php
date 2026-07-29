@@ -991,4 +991,299 @@ class AttendancesC extends Controller
             }
         }
     }
+
+    public function accessControl(Request $request)
+    {
+        $query = DB::table('employees_new')
+            ->leftJoin('users', 'users.id', '=', 'employees_new.user_id')
+            ->leftJoin('departments', 'departments.id', '=', 'employees_new.department_id')
+            ->leftJoin('designations', 'designations.id', '=', 'employees_new.designation_id')
+            ->select([
+                'employees_new.id',
+                'employees_new.employee_code',
+                'employees_new.user_id',
+                'employees_new.work_mode',
+                'employees_new.allow_mobile_attendance',
+                'employees_new.allow_web_attendance',
+                'employees_new.department_id',
+                'employees_new.designation_id',
+                'users.name as user_name',
+                'users.email as user_email',
+                'users.is_app_access',
+                'users.is_web_access',
+                'departments.name as department_name',
+                'designations.name as designation_name',
+            ]);
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('users.name', 'LIKE', "%{$search}%")
+                    ->orWhere('users.email', 'LIKE', "%{$search}%")
+                    ->orWhere('employees_new.employee_code', 'LIKE', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('department_id')) {
+            $query->where('employees_new.department_id', $request->department_id);
+        }
+
+        if ($request->filled('designation_id')) {
+            $query->where('employees_new.designation_id', $request->designation_id);
+        }
+
+        if ($request->filled('web_attendance')) {
+            $val = $request->web_attendance === '1' || $request->web_attendance === 'yes';
+            $query->where('employees_new.allow_web_attendance', $val ? 1 : 0);
+        }
+
+        if ($request->filled('mobile_attendance')) {
+            $val = $request->mobile_attendance === '1' || $request->mobile_attendance === 'yes';
+            $query->where('employees_new.allow_mobile_attendance', $val ? 1 : 0);
+        }
+
+        $employees = $query->orderBy('users.name')->paginate(50)->appends($request->all());
+        $departments = DB::table('departments')->orderBy('name')->pluck('name', 'id')->toArray();
+        $designations = DB::table('designations')->orderBy('name')->pluck('name', 'id')->toArray();
+
+        return view('hrms.attendance.access-control', compact('employees', 'departments', 'designations'));
+    }
+
+    public function updateAccessControl(Request $request, $id)
+    {
+        $request->validate([
+            'allow_mobile_attendance' => 'nullable|boolean',
+            'allow_web_attendance' => 'nullable|boolean',
+            'is_app_access' => 'nullable|boolean',
+            'is_web_access' => 'nullable|boolean',
+        ]);
+
+        $employee = DB::table('employees_new')->where('id', $id)->first();
+        if (! $employee) {
+            return back()->with('error', 'Employee not found.');
+        }
+
+        $updateData = [];
+        if ($request->has('allow_mobile_attendance')) {
+            $updateData['allow_mobile_attendance'] = $request->boolean('allow_mobile_attendance');
+        }
+        if ($request->has('allow_web_attendance')) {
+            $updateData['allow_web_attendance'] = $request->boolean('allow_web_attendance');
+        }
+
+        if (! empty($updateData)) {
+            $updateData['updated_at'] = now();
+            DB::table('employees_new')->where('id', $id)->update($updateData);
+        }
+
+        if ($employee->user_id && ($request->has('is_app_access') || $request->has('is_web_access'))) {
+            $userUpdate = [];
+            if ($request->has('is_app_access')) {
+                $userUpdate['is_app_access'] = $request->boolean('is_app_access') ? 1 : 0;
+            }
+            if ($request->has('is_web_access')) {
+                $userUpdate['is_web_access'] = $request->boolean('is_web_access') ? 1 : 0;
+            }
+            if (! empty($userUpdate)) {
+                $userUpdate['updated_at'] = now();
+                DB::table('users')->where('id', $employee->user_id)->update($userUpdate);
+            }
+        }
+
+        return back()->with('success', 'Access updated for ' . ($employee->employee_code ?? 'Employee'));
+    }
+
+    public function bulkUpdateAccessControl(Request $request)
+    {
+        $request->validate([
+            'update_target' => 'required|in:selected,department,designation,all',
+            'employee_ids' => 'required_if:update_target,selected|array',
+            'employee_ids.*' => 'integer|exists:employees_new,id',
+            'department_id' => 'required_if:update_target,department|nullable|integer',
+            'designation_id' => 'required_if:update_target,designation|nullable|integer',
+            'allow_mobile_attendance' => 'required|in:keep,enable,disable',
+            'allow_web_attendance' => 'required|in:keep,enable,disable',
+        ]);
+
+        $query = DB::table('employees_new');
+
+        if ($request->update_target === 'selected') {
+            $query->whereIn('id', $request->input('employee_ids', []));
+        } elseif ($request->update_target === 'department' && $request->filled('department_id')) {
+            $query->where('department_id', $request->department_id);
+        } elseif ($request->update_target === 'designation' && $request->filled('designation_id')) {
+            $query->where('designation_id', $request->designation_id);
+        }
+
+        $updateData = ['updated_at' => now()];
+
+        if ($request->allow_mobile_attendance === 'enable') {
+            $updateData['allow_mobile_attendance'] = 1;
+        } elseif ($request->allow_mobile_attendance === 'disable') {
+            $updateData['allow_mobile_attendance'] = 0;
+        }
+
+        if ($request->allow_web_attendance === 'enable') {
+            $updateData['allow_web_attendance'] = 1;
+        } elseif ($request->allow_web_attendance === 'disable') {
+            $updateData['allow_web_attendance'] = 0;
+        }
+
+        if (count($updateData) > 1) {
+            $count = $query->update($updateData);
+            return back()->with('success', "Attendance access updated for {$count} employees.");
+        }
+
+        return back()->with('info', 'No changes made.');
+    }
+
+    public function webClockIn(Request $request)
+    {
+        $request->validate([
+            'work_mode' => 'nullable|string|in:wfo,wfh,WFO,WFH',
+            'note' => 'nullable|string|max:1000',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
+            'address' => 'nullable|string|max:2000',
+            'browser' => 'nullable|string|max:255',
+            'os' => 'nullable|string|max:255',
+            'gps_status' => 'nullable|string|max:255',
+        ]);
+
+        $workMode = strtolower((string) $request->input('work_mode', 'wfo'));
+        $lat = ($request->filled('latitude') && (float) $request->latitude !== 0.0) ? (float) $request->latitude : null;
+        $lng = ($request->filled('longitude') && (float) $request->longitude !== 0.0) ? (float) $request->longitude : null;
+
+        $meta = [
+            'latitude' => $lat,
+            'longitude' => $lng,
+            'address' => $request->address,
+            'ip' => $request->ip(),
+            'device' => trim($request->userAgent() . ' | OS: ' . ($request->os ?? 'Unknown') . ' | Browser: ' . ($request->browser ?? 'Unknown') . ' | GPS: ' . ($request->gps_status ?? 'Unknown')),
+            'attendance_source' => 'web',
+            'source' => 'web',
+        ];
+
+        $result = $this->attendanceService->processPunchIn(
+            auth()->id(),
+            $workMode,
+            $request->note,
+            $meta
+        );
+
+        if (($result['status'] ?? null) === 'error') {
+            return back()->with('error', $result['message'] ?? 'Punch in failed.');
+        }
+
+        return back()->with('success', $result['message'] ?? 'Punch in recorded successfully.');
+    }
+
+    public function webClockOut(Request $request)
+    {
+        $request->validate([
+            'task_summary' => 'nullable|string|max:10000',
+            'task_name' => 'nullable|string|max:255',
+            'today_work_description' => 'nullable|string|max:5000',
+            'current_status' => 'nullable|string|max:50',
+            'test_status' => 'nullable',
+            'completed_tasks' => 'nullable|string|max:5000',
+            'pending_tasks' => 'nullable|string|max:5000',
+            'tomorrow_plan' => 'nullable|string|max:5000',
+            'issues_blockers' => 'nullable|string|max:5000',
+            'requirements' => 'nullable|array',
+            'remarks' => 'nullable|string|max:1000',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
+            'address' => 'nullable|string|max:2000',
+            'browser' => 'nullable|string|max:255',
+            'os' => 'nullable|string|max:255',
+            'gps_status' => 'nullable|string|max:255',
+        ]);
+
+        $taskSummaryText = $request->task_summary;
+        if (empty($taskSummaryText)) {
+            $taskSummaryText = trim(($request->task_name ? '[' . $request->task_name . '] ' : '') . ($request->today_work_description ?? 'Daily Work Update Completed'));
+        }
+
+        // Filter out empty requirements
+        $reqs = array_values(array_filter((array) ($request->requirements ?? []), function ($item) {
+            return !empty(trim((string) $item));
+        }));
+
+        $testStatusVal = $request->test_status;
+        if (is_array($testStatusVal)) {
+            $testStatusVal = implode(', ', array_filter($testStatusVal));
+        }
+
+        $taskSummaryJson = [
+            'task_name' => $request->task_name,
+            'today_work_description' => $request->today_work_description,
+            'current_status' => $request->current_status ?? 'Progress',
+            'test_status' => $testStatusVal,
+            'requirements' => $reqs,
+            'completed_tasks' => $request->completed_tasks,
+            'pending_tasks' => $request->pending_tasks,
+            'tomorrow_plan' => $request->tomorrow_plan,
+            'issues_blockers' => $request->issues_blockers,
+            'remarks' => $request->remarks,
+        ];
+
+        $meta = [
+            'latitude' => $request->latitude,
+            'longitude' => $request->longitude,
+            'address' => $request->address,
+            'ip' => $request->ip(),
+            'device' => trim($request->userAgent() . ' | OS: ' . ($request->os ?? 'Unknown') . ' | Browser: ' . ($request->browser ?? 'Unknown') . ' | GPS: ' . ($request->gps_status ?? 'Unknown')),
+            'attendance_source' => 'web',
+            'source' => 'web',
+        ];
+
+        $result = $this->attendanceService->processPunchOut(
+            auth()->id(),
+            $taskSummaryText,
+            $request->remarks,
+            $meta,
+            null,
+            true,
+            $taskSummaryJson
+        );
+
+        if (($result['status'] ?? null) === 'error') {
+            return back()->with('error', $result['message'] ?? 'Punch out failed.');
+        }
+
+        return back()->with('success', $result['message'] ?? 'Punch out recorded successfully.');
+    }
+
+    public function today(Request $request)
+    {
+        $employee = DB::table('employees_new')->where('user_id', auth()->id())->first();
+        if (! $employee) {
+            return back()->with('error', 'Employee profile not found.');
+        }
+
+        $empObj = \App\Models\HRMS\Employee\EmployeeM::find($employee->id);
+        $todayStatusResult = $this->attendanceService ? (new \App\Services\HRMS\Attendance\AttendanceMobileService($this->attendanceService, app(\App\Services\HRMS\Attendance\AttendanceRuleResolverService::class), app(\App\Services\HRMS\Attendance\WfhRequestService::class)))->todayStatus(auth()->id()) : [];
+        $attendancePayload = $todayStatusResult['data'] ?? [];
+
+        $todayDate = Carbon::now($this->attendanceService->attendanceTimezone())->toDateString();
+        $attendanceRecord = Attendance::with(['attendanceType', 'attendanceTime', 'workLogs'])
+            ->where('employee_id', $employee->id)
+            ->whereDate('attendance_date', $todayDate)
+            ->first();
+
+        $workLogs = $attendanceRecord?->workLogs;
+        $workSummaryLog = $workLogs?->first();
+
+        return view('hrms.attendance.today', [
+            'employee' => $empObj,
+            'attendancePayload' => $attendancePayload,
+            'attendanceRecord' => $attendanceRecord,
+            'workSummaryLog' => $workSummaryLog,
+            'canWebPunch' => $empObj ? $empObj->canUseWebAttendance() : false,
+            'canMobilePunch' => $empObj ? $empObj->canUseMobileAttendance() : true,
+        ]);
+    }
 }
+
+

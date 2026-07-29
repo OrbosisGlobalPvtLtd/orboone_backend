@@ -20,6 +20,7 @@ Route::middleware(['auth', 'check.access', 'check.profile.complete'])
     ->name('attendances.')
     ->group(function () {
         Route::get('/', [AttendancesC::class, 'index'])->middleware('permission:attendance.dashboard.view')->name('index');
+        Route::get('/today', [AttendancesC::class, 'today'])->middleware('permission:attendance.my.view|attendance.records.view_all')->name('today');
 
         Route::get('/daily', [AttendancesC::class, 'daily'])->middleware('permission:attendance.records.view_all|attendance.my.view')->name('daily');
         Route::get('/record', [AttendancesC::class, 'attendanceRecord'])->middleware('permission:attendance.records.view_all')->name('record');
@@ -37,6 +38,13 @@ Route::middleware(['auth', 'check.access', 'check.profile.complete'])
         Route::post('/unlock', [AttendancesC::class, 'unlock'])->middleware('permission:attendance.blocked.unlock')->name('unlock');
         Route::post('/admin/punch-in', [AttendancesC::class, 'adminPunchIn'])->name('admin.punch-in');
         Route::post('/admin/punch-out', [AttendancesC::class, 'adminPunchOut'])->name('admin.punch-out');
+
+        Route::get('/access-control', [AttendancesC::class, 'accessControl'])->name('access-control');
+        Route::post('/access-control/update/{id}', [AttendancesC::class, 'updateAccessControl'])->name('access-control.update');
+        Route::post('/access-control/bulk-update', [AttendancesC::class, 'bulkUpdateAccessControl'])->name('access-control.bulk-update');
+
+        Route::post('/clock-in', [AttendancesC::class, 'webClockIn'])->name('clock-in');
+        Route::post('/clock-out', [AttendancesC::class, 'webClockOut'])->name('clock-out');
     });
 
 Route::middleware(['auth', 'check.access', 'employee.user'])

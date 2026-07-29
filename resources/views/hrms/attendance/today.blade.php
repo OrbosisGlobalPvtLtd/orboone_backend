@@ -1,0 +1,629 @@
+@extends('layouts.panel', ['accesses' => $accesses ?? [], 'active' => 'attendances'])
+
+@section('page_title', "Today's Attendance")
+
+@section('_head')
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+@endsection
+
+@section('_content')
+
+@include('hrms.employee.partials.styles')
+
+<style>
+    :root {
+        --orb-bg: #F6F7FB;
+        --orb-card: #FFFFFF;
+        --orb-border: #E7EAF3;
+        --orb-text: #101828;
+        --orb-muted: #667085;
+        --orb-soft: #F4F2FF;
+        --orb-shadow: 0 14px 35px rgba(16, 24, 40, .07);
+    }
+
+    body {
+        background: var(--orb-bg) !important;
+        font-family: 'Outfit', sans-serif !important;
+        overflow-x: hidden !important;
+    }
+
+    .att-page {
+        min-height: calc(100vh - 90px);
+        padding: 24px;
+        background: var(--orb-bg);
+        font-family: 'Outfit', sans-serif;
+    }
+
+    .att-container {
+        max-width: 1500px;
+        margin: 0 auto;
+    }
+
+    /* Dynamic DB Theme Premium Hero Header */
+    .att-header-premium {
+        background: linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%) !important;
+        border-radius: 26px !important;
+        padding: 32px 36px !important;
+        color: #fff !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        gap: 20px !important;
+        box-shadow: 0 12px 30px rgba(75, 0, 232, 0.15) !important;
+        position: relative !important;
+        overflow: hidden !important;
+        margin-bottom: 28px !important;
+        border: none !important;
+    }
+
+    .att-header-premium::before {
+        content: '' !important;
+        position: absolute !important;
+        top: -50% !important;
+        right: -20% !important;
+        width: 300px !important;
+        height: 300px !important;
+        background: rgba(255, 255, 255, 0.08) !important;
+        border-radius: 50% !important;
+        filter: blur(40px) !important;
+        pointer-events: none !important;
+    }
+
+    .att-header-premium .title-area h3 {
+        font-size: 26px !important;
+        font-weight: 900 !important;
+        margin: 0 !important;
+        color: #fff !important;
+        letter-spacing: -0.02em !important;
+    }
+
+    .att-header-premium .title-area p {
+        font-size: 14px !important;
+        color: rgba(255, 255, 255, 0.88) !important;
+        margin: 6px 0 0 0 !important;
+        font-weight: 500 !important;
+    }
+
+    .att-header-premium .header-kicker {
+        font-size: 11px !important;
+        font-weight: 800 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.15em !important;
+        color: rgba(255, 255, 255, 0.75) !important;
+        margin-bottom: 8px !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+    }
+
+    .orb-card-theme {
+        background: #ffffff;
+        border-radius: 22px;
+        border: 1px solid var(--orb-border);
+        box-shadow: var(--orb-shadow);
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+
+    .stat-metric-card {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 18px;
+        padding: 20px;
+        text-align: center;
+        height: 100%;
+        transition: transform .2s ease;
+    }
+
+    .stat-metric-card:hover {
+        transform: translateY(-2px);
+    }
+
+    .metric-value {
+        font-size: 28px;
+        font-weight: 800;
+        color: var(--orb-text);
+        margin: 6px 0;
+        font-feature-settings: "tnum";
+    }
+
+    .metric-label {
+        font-size: 12px;
+        font-weight: 800;
+        color: var(--orb-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .pulse-live {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #22c55e;
+        box-shadow: 0 0 0 rgba(34, 197, 94, 0.4);
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+        70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+    }
+</style>
+
+<div class="att-page">
+    <div class="att-container">
+
+
+
+        {{-- Dynamic DB Theme Hero Header --}}
+        <div class="att-header-premium">
+            <div class="title-area">
+                <div class="header-kicker">
+                    <i class="fas fa-fingerprint"></i> Live Attendance Engine
+                </div>
+                <h3>Today's Attendance</h3>
+                <p>{{ \Carbon\Carbon::now()->format('l, d F Y') }} &bull; Live Mobile & Web Synchronization</p>
+            </div>
+            <div class="text-right">
+                <div class="badge badge-light px-3 py-2 font-weight-bold" style="font-size: 14px; border-radius: 50px; color: var(--orb-primary);">
+                    <i class="fas fa-clock mr-1 text-warning"></i> <span id="liveCurrentTime">--:--:-- --</span>
+                </div>
+            </div>
+        </div>
+
+        @php
+            $todayData = $attendancePayload['attendance'] ?? [];
+            $policyData = $attendancePayload['policy'] ?? [];
+            $dayCtx = $attendancePayload['day_context'] ?? [];
+            $hasPunchedIn = !empty($attendanceRecord->punch_in_time);
+            $hasPunchedOut = !empty($attendanceRecord->punch_out_time);
+            $statusCode = strtolower((string) ($attendanceRecord->attendance_status ?? ($attendancePayload['status_code'] ?? 'not_punched')));
+
+            if ($statusCode === 'lwp') {
+                $statusName = 'Absent';
+            } else {
+                $statusName = ucwords(str_replace('_', ' ', $statusCode));
+            }
+
+            $workMode = strtoupper($attendanceRecord->work_mode ?? ($attendancePayload['today_work_mode'] ?? 'WFO'));
+            $src = strtolower((string) ($attendanceRecord->attendance_source ?? 'web'));
+            $isPunchBlocked = ($attendanceRecord?->is_blocked || $attendanceRecord?->is_punch_blocked || $statusCode === 'punch_blocked') && !$attendanceRecord?->is_admin_unlocked;
+        @endphp
+
+        {{-- Access Control Notice if Web Attendance Disabled --}}
+        @if (!$canWebPunch)
+            <div class="alert alert-warning border-0 shadow-sm mb-4" style="border-radius: 16px; background: #fff8e6; border-left: 6px solid #f59e0b !important; padding: 20px;">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-exclamation-circle text-warning fa-3x mr-3"></i>
+                    <div>
+                        <h5 style="color: #854d0e; font-weight: 800; margin: 0 0 4px 0;">Web Attendance Disabled</h5>
+                        <p class="mb-0 text-muted font-weight-bold">Web Attendance is disabled for your account. Please contact HR Administrator.</p>
+                    </div>
+                </div>
+            </div>
+        @endif
+
+        {{-- Punch Blocked Warning Banner --}}
+        @if ($isPunchBlocked)
+            <div class="alert alert-danger border-0 shadow-lg mb-4" style="border-radius: 20px; background: #fef2f2; border-left: 6px solid #ef4444 !important; padding: 22px;">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-user-lock text-danger fa-3x mr-3"></i>
+                    <div>
+                        <h5 style="color: #991b1b; font-weight: 800; margin: 0 0 4px 0;">Punch In Blocked for Today</h5>
+                        <p class="mb-0 text-dark font-weight-bold">Your attendance punch-in is currently blocked by HR system for today. Please contact HR Administrator to request an unlock.</p>
+                    </div>
+                </div>
+            </div>
+        @endif
+
+        {{-- Metrics Row --}}
+        <div class="row mb-4">
+            <div class="col-md-3 mb-3 mb-md-0">
+                <div class="stat-metric-card">
+                    <div class="metric-label">Current Status</div>
+                    <div class="metric-value" style="font-size: 20px;">
+                        @if ($isPunchBlocked)
+                            <span class="badge badge-danger px-3 py-2"><i class="fas fa-lock mr-1"></i> Punch Blocked</span>
+                        @elseif ($statusCode === 'lwp')
+                            <span class="badge badge-danger px-3 py-2"><i class="fas fa-times-circle mr-1"></i> Absent</span>
+                        @elseif ($hasPunchedOut)
+                            <span class="badge badge-success px-3 py-2">Attendance Completed</span>
+                        @elseif ($hasPunchedIn)
+                            <span class="badge badge-primary px-3 py-2"><span class="pulse-live mr-1"></span> Punched In</span>
+                        @else
+                            <span class="badge badge-secondary px-3 py-2">{{ $statusName }}</span>
+                        @endif
+                    </div>
+                    <div class="small text-muted font-weight-bold">Work Mode: {{ $workMode }}</div>
+                </div>
+            </div>
+
+            <div class="col-md-3 mb-3 mb-md-0">
+                <div class="stat-metric-card">
+                    <div class="metric-label">Shift Details</div>
+                    <div class="metric-value" style="font-size: 18px;">
+                        {{ $policyData['shift_name'] ?? 'General Shift' }}
+                    </div>
+                    <div class="small text-muted font-weight-bold">
+                        {{ $policyData['shift_start_formatted'] ?? '09:30 AM' }} - {{ $policyData['shift_end_formatted'] ?? '06:30 PM' }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3 mb-3 mb-md-0">
+                <div class="stat-metric-card">
+                    <div class="metric-label">Working Hours</div>
+                    <div class="metric-value text-success" id="liveWorkingTimer">
+                        @if ($hasPunchedIn && !$hasPunchedOut)
+                            00:00:00
+                        @elseif ($hasPunchedOut)
+                            @php
+                                $wMins = (int) ($attendanceRecord->gross_work_minutes ?? 0);
+                                if ($wMins <= 0 && !empty($attendanceRecord->punch_in_time) && !empty($attendanceRecord->punch_out_time)) {
+                                    $wMins = \Carbon\Carbon::parse($attendanceRecord->punch_in_time)->diffInMinutes(\Carbon\Carbon::parse($attendanceRecord->punch_out_time));
+                                }
+                                $wh = floor($wMins / 60);
+                                $wm = $wMins % 60;
+                            @endphp
+                            {{ sprintf('%02dh %02dm', $wh, $wm) }}
+                        @else
+                            00:00:00
+                        @endif
+                    </div>
+                    <div class="small text-muted font-weight-bold">Punched In: {{ optional($attendanceRecord)->punch_in_time ? \Carbon\Carbon::parse($attendanceRecord->punch_in_time)->format('h:i A') : '--:--' }}</div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="stat-metric-card">
+                    <div class="metric-label">Remaining Work Timer</div>
+                    <div class="metric-value text-danger" id="liveRemainingTimer">
+                        @if ($hasPunchedIn && !$hasPunchedOut)
+                            --:--:--
+                        @else
+                            00:00:00
+                        @endif
+                    </div>
+                    <div class="small text-muted font-weight-bold">Target Out: {{ optional($attendanceRecord)->target_punch_out_time ? \Carbon\Carbon::parse($attendanceRecord->target_punch_out_time)->format('h:i A') : '--:--' }}</div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Action Panel Card --}}
+        @if ($canWebPunch)
+            <div class="orb-card-theme text-center py-4">
+                @if ($isPunchBlocked)
+                    <h4 class="font-weight-bold text-danger mb-2"><i class="fas fa-lock mr-2"></i> Attendance Punch In Blocked</h4>
+                    <p class="text-muted mb-4">Your punch-in is blocked for today. Please contact HR / Administrator to unlock your attendance.</p>
+                    <button type="button" class="btn btn-secondary btn-lg px-5 py-3 font-weight-bold shadow-none" disabled style="border-radius: 30px; cursor: not-allowed; opacity: 0.65; background: #64748b !important; border: none; color: #fff;">
+                        <i class="fas fa-ban fa-lg mr-2"></i> PUNCH IN BLOCKED
+                    </button>
+                @elseif (!$hasPunchedIn)
+                    <h4 class="font-weight-bold text-dark mb-2">Ready to Start Your Shift?</h4>
+                    <p class="text-muted mb-4">Click below to mark your Punch In. GPS & Browser metadata will be logged securely.</p>
+                    <button type="button" class="btn btn-lg px-5 py-3 font-weight-bold shadow" data-toggle="modal" data-target="#webPunchInModal" style="border-radius: 30px; background: linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%) !important; color: #fff !important; border: none;">
+                        <i class="fas fa-fingerprint fa-lg mr-2"></i> PUNCH IN NOW
+                    </button>
+                @elseif (!$hasPunchedOut)
+                    <h4 class="font-weight-bold text-dark mb-2">Punched In & Active Shift</h4>
+                    <p class="text-muted mb-4">Submit your Daily Work Report (Summary, Completed & Pending Tasks) to Punch Out.</p>
+                    <button type="button" class="btn btn-danger btn-lg px-5 py-3 font-weight-bold shadow" data-toggle="modal" data-target="#webPunchOutModal" style="border-radius: 30px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: none;">
+                        <i class="fas fa-sign-out-alt fa-lg mr-2"></i> PUNCH OUT
+                    </button>
+                @else
+                    <div class="py-2">
+                        <i class="fas fa-check-circle text-success fa-4x mb-3"></i>
+                        <h4 class="font-weight-bold text-dark mb-1">Attendance Completed Today</h4>
+                        <p class="text-muted mb-0">Your Punch Out has been recorded successfully. Have a great day!</p>
+                    </div>
+                @endif
+            </div>
+
+            {{-- Floating Bottom-Right Fixed Web Punch Button Overlay --}}
+            <div style="position: fixed; bottom: 32px; right: 32px; z-index: 9999;">
+                @if ($isPunchBlocked)
+                    <button type="button" class="btn btn-secondary font-weight-bold px-4 py-3 shadow d-flex align-items-center" disabled style="border-radius: 50px; font-size: 15px; font-weight: 900; cursor: not-allowed; opacity: 0.75; background: #64748b !important; color: #fff; border: 2px solid #ffffff;">
+                        <i class="fas fa-ban fa-lg mr-2"></i> PUNCH BLOCKED
+                    </button>
+                @elseif (!$hasPunchedIn)
+                    <button type="button" class="btn font-weight-bold px-4 py-3 shadow-lg d-flex align-items-center" data-toggle="modal" data-target="#webPunchInModal" style="border-radius: 50px; font-size: 15px; font-weight: 900; background: linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%) !important; color: #fff !important; border: 2px solid #ffffff; box-shadow: 0 12px 30px rgba(75, 0, 232, 0.4) !important;">
+                        <i class="fas fa-fingerprint fa-lg mr-2"></i> PUNCH IN
+                    </button>
+                @elseif (!$hasPunchedOut)
+                    <button type="button" class="btn btn-danger font-weight-bold px-4 py-3 shadow-lg d-flex align-items-center" data-toggle="modal" data-target="#webPunchOutModal" style="border-radius: 50px; font-size: 15px; font-weight: 900; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: 2px solid #ffffff; box-shadow: 0 12px 30px rgba(239, 68, 68, 0.45) !important;">
+                        <i class="fas fa-sign-out-alt fa-lg mr-2"></i> PUNCH OUT
+                    </button>
+                @endif
+            </div>
+        @endif
+
+        {{-- Today's Summary & Audit Card --}}
+        <div class="orb-card-theme">
+            <h5 class="font-weight-bold text-dark mb-3"><i class="fas fa-clipboard-list text-primary mr-2"></i> Today's Summary & Audit Log</h5>
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <div class="p-3 bg-light rounded-lg border">
+                        <div class="small text-muted font-weight-bold mb-1">PUNCH IN INFO</div>
+                        <div class="d-flex justify-content-between py-1 border-bottom">
+                            <span>Time:</span> <strong>{{ optional($attendanceRecord)->punch_in_time ? \Carbon\Carbon::parse($attendanceRecord->punch_in_time)->format('h:i A') : 'Not Punched' }}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between py-1 border-bottom">
+                            <span>Source:</span> 
+                            <span class="badge {{ $src === 'web' ? 'badge-primary' : ($src === 'mobile' ? 'badge-success' : 'badge-dark') }}">
+                                {{ strtoupper($src) }}
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between py-1 border-bottom">
+                            <span>Work Mode:</span> 
+                            <strong class="text-primary">{{ $workMode }}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between py-1">
+                            <span>Status:</span> 
+                            @php
+                                $badgeClass = match($statusCode) {
+                                    'lwp', 'absent' => 'badge-danger',
+                                    'half_day' => 'badge-warning',
+                                    'present' => 'badge-success',
+                                    'punch_blocked' => 'badge-danger',
+                                    default => ($hasPunchedOut ? 'badge-success' : ($hasPunchedIn ? 'badge-primary' : 'badge-secondary'))
+                                };
+                            @endphp
+                            <span class="badge {{ $badgeClass }} px-2 py-1">{{ $statusName }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <div class="p-3 bg-light rounded-lg border">
+                        <div class="small text-muted font-weight-bold mb-1">PUNCH OUT INFO</div>
+                        <div class="d-flex justify-content-between py-1 border-bottom">
+                            <span>Time:</span> <strong>{{ optional($attendanceRecord)->punch_out_time ? \Carbon\Carbon::parse($attendanceRecord->punch_out_time)->format('h:i A') : 'Not Punched Out' }}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between py-1 border-bottom">
+                            <span>Gross Work:</span> 
+                            <strong>
+                                @if (!empty($attendanceRecord->punch_in_time) && !empty($attendanceRecord->punch_out_time))
+                                    @php
+                                        $gMins = (int) ($attendanceRecord->gross_work_minutes ?? 0);
+                                        if ($gMins <= 0) {
+                                            $inT = \Carbon\Carbon::parse($attendanceRecord->punch_in_time);
+                                            $outT = \Carbon\Carbon::parse($attendanceRecord->punch_out_time);
+                                            $gMins = $inT->diffInMinutes($outT);
+                                        }
+                                        $gh = floor($gMins / 60);
+                                        $gm = $gMins % 60;
+                                    @endphp
+                                    {{ $gh }} hours {{ $gm }} mins
+                                @else
+                                    -
+                                @endif
+                            </strong>
+                        </div>
+                        <div class="d-flex justify-content-between py-1 border-bottom">
+                            <span>Net Work:</span> 
+                            <strong>
+                                @if (!empty($attendanceRecord->punch_in_time) && !empty($attendanceRecord->punch_out_time))
+                                    @php
+                                        $nMins = (int) ($attendanceRecord->total_work_minutes ?? 0);
+                                        if ($nMins <= 0) { $nMins = $gMins; }
+                                        $nh = floor($nMins / 60);
+                                        $nm = $nMins % 60;
+                                    @endphp
+                                    {{ $nh }} hours {{ $nm }} mins
+                                @else
+                                    -
+                                @endif
+                            </strong>
+                        </div>
+                        <div class="d-flex justify-content-between py-1">
+                            <span>Flags:</span> 
+                            <div>
+                                @if(optional($attendanceRecord)->is_late) <span class="badge badge-warning">Late</span> @endif
+                                @if(optional($attendanceRecord)->is_early_out) <span class="badge badge-warning">Early Out</span> @endif
+                                @if(!$attendanceRecord || (!optional($attendanceRecord)->is_late && !optional($attendanceRecord)->is_early_out)) <span class="badge badge-light text-muted">On Time</span> @endif
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @if ($workSummaryLog)
+                @php
+                    $rawJson = $workSummaryLog->work_summary_json;
+                    if (is_string($rawJson)) {
+                        $json = json_decode($rawJson, true) ?? [];
+                    } elseif (is_array($rawJson)) {
+                        $json = $rawJson;
+                    } else {
+                        $json = [];
+                    }
+
+                    $taskName = $json['task_name'] ?? null;
+                    $workDesc = $json['today_work_description'] ?? ($workSummaryLog->work_summary ?? null);
+                    $currStatus = $json['current_status'] ?? null;
+                    $testStatus = $json['test_status'] ?? null;
+                    $reqs = $json['requirements'] ?? [];
+                    $issues = $json['issues_blockers'] ?? null;
+                    $completedTasks = $json['completed_tasks'] ?? null;
+                    $pendingTasks = $json['pending_tasks'] ?? null;
+                    $tomorrowPlan = $json['tomorrow_plan'] ?? null;
+                    $remarks = $json['remarks'] ?? null;
+                @endphp
+
+                <div class="mt-4 p-4 bg-white rounded-20 border shadow-xs" style="border-radius: 20px; border: 1px solid #e2e8f0;">
+                    <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-3">
+                        <div class="d-flex align-items-center">
+                            <div class="mr-3 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px; background: #f3e8ff; border-radius: 14px; color: #7c3aed; font-size: 18px;">
+                                <i class="fas fa-clipboard-check"></i>
+                            </div>
+                            <div>
+                                <h6 class="font-weight-bold text-dark mb-0" style="font-size: 16px;">Daily Work Report Submission</h6>
+                                <span class="text-muted small">Submitted at Punch Out</span>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            @if ($currStatus)
+                                @php
+                                    $statusBadgeStyle = match($currStatus) {
+                                        'Progress' => 'background: #eff6ff; color: #2563eb; border: 1.5px solid #3b82f6;',
+                                        'Testing'  => 'background: #f3e8ff; color: #7c3aed; border: 1.5px solid #8b5cf6;',
+                                        'Done'     => 'background: #dcfce7; color: #15803d; border: 1.5px solid #22c55e;',
+                                        'Blocked'  => 'background: #fee2e2; color: #b91c1c; border: 1.5px solid #ef4444;',
+                                        default    => 'background: #f1f5f9; color: #475569; border: 1.5px solid #cbd5e1;'
+                                    };
+                                @endphp
+                                <span class="badge px-3 py-2 font-weight-bold mr-2" style="border-radius: 20px; font-size: 12px; {{ $statusBadgeStyle }}">
+                                    Status: {{ $currStatus }}
+                                </span>
+                            @endif
+
+                            @if ($testStatus)
+                                <span class="badge px-3 py-2 font-weight-bold" style="border-radius: 20px; font-size: 12px; background: #e0f2fe; color: #0369a1; border: 1.5px solid #38bdf8;">
+                                    Test: {{ $testStatus }}
+                                </span>
+                            @endif
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        @if ($taskName)
+                            <div class="col-md-12 mb-3">
+                                <div class="small text-muted font-weight-bold text-uppercase mb-1"><i class="fas fa-terminal text-purple mr-1" style="color:#7c3aed;"></i> Task / Module Name</div>
+                                <div class="p-3 bg-light rounded-lg font-weight-bold text-dark border" style="border-radius: 12px; font-size: 14px;">
+                                    {{ $taskName }}
+                                </div>
+                            </div>
+                        @endif
+
+                        @if ($workDesc)
+                            <div class="col-md-12 mb-3">
+                                <div class="small text-muted font-weight-bold text-uppercase mb-1"><i class="fas fa-align-left text-primary mr-1"></i> Today Work Description</div>
+                                <div class="p-3 bg-light rounded-lg text-dark border" style="border-radius: 12px; font-size: 14px; white-space: pre-line; line-height: 1.6;">
+                                    {{ $workDesc }}
+                                </div>
+                            </div>
+                        @endif
+
+                        @if (!empty($reqs) && is_array($reqs))
+                            <div class="col-md-12 mb-3">
+                                <div class="small text-muted font-weight-bold text-uppercase mb-1"><i class="fas fa-tasks text-success mr-1"></i> Requirement Checklist</div>
+                                <div class="p-3 bg-light rounded-lg border" style="border-radius: 12px;">
+                                    <ul class="list-unstyled mb-0">
+                                        @foreach ($reqs as $reqItem)
+                                            <li class="py-1 d-flex align-items-center">
+                                                <i class="fas fa-check-circle text-success mr-2"></i>
+                                                <span class="font-weight-medium text-dark" style="font-size: 14px;">{{ $reqItem }}</span>
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            </div>
+                        @endif
+
+                        @if ($issues)
+                            <div class="col-md-6 mb-3">
+                                <div class="small text-muted font-weight-bold text-uppercase mb-1"><i class="fas fa-bug text-danger mr-1"></i> Issues / Blockers</div>
+                                <div class="p-3 rounded-lg text-danger border" style="border-radius: 12px; font-size: 13px; background: #fef2f2; border-color: #fca5a5 !important;">
+                                    {{ $issues }}
+                                </div>
+                            </div>
+                        @endif
+
+                        @if ($completedTasks)
+                            <div class="col-md-6 mb-3">
+                                <div class="small text-muted font-weight-bold text-uppercase mb-1">Completed Tasks</div>
+                                <div class="p-3 bg-light rounded-lg text-dark border" style="border-radius: 12px; font-size: 13px;">
+                                    {{ $completedTasks }}
+                                </div>
+                            </div>
+                        @endif
+
+                        @if ($pendingTasks)
+                            <div class="col-md-6 mb-3">
+                                <div class="small text-muted font-weight-bold text-uppercase mb-1">Pending Tasks</div>
+                                <div class="p-3 bg-light rounded-lg text-dark border" style="border-radius: 12px; font-size: 13px;">
+                                    {{ $pendingTasks }}
+                                </div>
+                            </div>
+                        @endif
+
+                        @if ($tomorrowPlan)
+                            <div class="col-md-6 mb-3">
+                                <div class="small text-muted font-weight-bold text-uppercase mb-1">Tomorrow Plan</div>
+                                <div class="p-3 bg-light rounded-lg text-dark border" style="border-radius: 12px; font-size: 13px;">
+                                    {{ $tomorrowPlan }}
+                                </div>
+                            </div>
+                        @endif
+
+                        @if ($remarks)
+                            <div class="col-md-6 mb-3">
+                                <div class="small text-muted font-weight-bold text-uppercase mb-1">Remarks / Additional Notes</div>
+                                <div class="p-3 bg-light rounded-lg text-dark border" style="border-radius: 12px; font-size: 13px;">
+                                    {{ $remarks }}
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            @endif
+        </div>
+
+    </div>
+</div>
+
+{{-- Modals for Web Punch In & Punch Out --}}
+@if ($canWebPunch)
+    @include('dashboard.partials.employee-dashboard', ['only_modals' => true])
+@endif
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Real-time clock update
+    function updateClock() {
+        const now = new Date();
+        document.getElementById('liveCurrentTime').textContent = now.toLocaleTimeString();
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Live Timers calculation
+    const punchInTimeStr = "{{ $attendanceRecord->punch_in_time ?? '' }}";
+    const targetOutTimeStr = "{{ $attendanceRecord->target_punch_out_time ?? '' }}";
+    const todayDateStr = "{{ \Carbon\Carbon::now()->toDateString() }}";
+    const isPunchedIn = {{ $hasPunchedIn && !$hasPunchedOut ? 'true' : 'false' }};
+
+    if (isPunchedIn && punchInTimeStr) {
+        const punchInDate = new Date(todayDateStr + 'T' + punchInTimeStr);
+        let targetOutDate = targetOutTimeStr ? new Date(todayDateStr + 'T' + targetOutTimeStr) : null;
+
+        function updateTimers() {
+            const now = new Date();
+            let elapsedSec = Math.floor((now - punchInDate) / 1000);
+            if (elapsedSec < 0) elapsedSec = 0;
+
+            const hours = String(Math.floor(elapsedSec / 3600)).padStart(2, '0');
+            const minutes = String(Math.floor((elapsedSec % 3600) / 60)).padStart(2, '0');
+            const seconds = String(elapsedSec % 60).padStart(2, '0');
+            document.getElementById('liveWorkingTimer').textContent = `${hours}:${minutes}:${seconds}`;
+
+            if (targetOutDate) {
+                let remainSec = Math.floor((targetOutDate - now) / 1000);
+                if (remainSec < 0) remainSec = 0;
+
+                const rHours = String(Math.floor(remainSec / 3600)).padStart(2, '0');
+                const rMinutes = String(Math.floor((remainSec % 3600) / 60)).padStart(2, '0');
+                const rSeconds = String(remainSec % 60).padStart(2, '0');
+                document.getElementById('liveRemainingTimer').textContent = `${rHours}:${rMinutes}:${rSeconds}`;
+            }
+        }
+
+        setInterval(updateTimers, 1000);
+        updateTimers();
+    }
+});
+</script>
+@endsection

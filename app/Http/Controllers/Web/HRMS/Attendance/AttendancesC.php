@@ -1090,6 +1090,10 @@ class AttendancesC extends Controller
             }
         }
 
+        if ($employee->user_id) {
+            app(\App\Services\Core\Menu\SidebarMenuResolverS::class)->clearCache((int) $employee->user_id);
+        }
+
         return back()->with('success', 'Access updated for ' . ($employee->employee_code ?? 'Employee'));
     }
 
@@ -1130,7 +1134,12 @@ class AttendancesC extends Controller
         }
 
         if (count($updateData) > 1) {
+            $userIds = (clone $query)->whereNotNull('user_id')->pluck('user_id');
             $count = $query->update($updateData);
+            $resolver = app(\App\Services\Core\Menu\SidebarMenuResolverS::class);
+            foreach ($userIds as $uId) {
+                $resolver->clearCache((int) $uId);
+            }
             return back()->with('success', "Attendance access updated for {$count} employees.");
         }
 

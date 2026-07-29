@@ -72,7 +72,7 @@ class SidebarMenuResolverS
 
     private function resolveForContext(Collection $menus, Authenticatable $user, array $roleIds, bool $isSuperAdmin, bool $isEmployeeContext): Collection
     {
-        $filtered = $this->filterByRoleMenuAccess($menus, $roleIds, $isSuperAdmin);
+        $filtered = $this->filterByRoleMenuAccess($menus, $user, $roleIds, $isSuperAdmin);
         $filtered = $this->filterByPermission($filtered, $user, $isSuperAdmin);
         $filtered = $this->filterByEmployeeOnlyVisibility($filtered, $isEmployeeContext);
         $filtered = $this->filterByWebAttendancePermission($filtered, $user, $isSuperAdmin);
@@ -142,7 +142,7 @@ class SidebarMenuResolverS
         return array_values(array_unique(array_filter($roleIds)));
     }
 
-    private function filterByRoleMenuAccess(Collection $menus, array $roleIds, bool $isSuperAdmin): Collection
+    private function filterByRoleMenuAccess(Collection $menus, Authenticatable $user, array $roleIds, bool $isSuperAdmin): Collection
     {
         if ($isSuperAdmin) {
             return $menus;
@@ -162,6 +162,15 @@ class SidebarMenuResolverS
         $allowedIds[] = 320;
         $allowedIds[] = 322;
         $allowedIds[] = 9999;
+
+        // Dynamically allow Today's Attendance menu if Web Attendance is enabled in Access Control for the employee
+        $emp = DB::table('employees_new')->where('user_id', $user->id)->first(['allow_web_attendance']);
+        if ($emp && (bool) ($emp->allow_web_attendance ?? false)) {
+            $todayMenu = $menus->firstWhere('route', 'attendances.today');
+            if ($todayMenu) {
+                $allowedIds[] = (int) $todayMenu->id;
+            }
+        }
 
         if (empty($allowedIds)) {
             return collect();

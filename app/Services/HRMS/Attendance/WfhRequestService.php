@@ -562,6 +562,11 @@ class WfhRequestService
         return $request->fresh();
     }
 
+    public function approvedQuotaCount(int $employeeId, int $month, int $year, array $excludeIds = []): int
+    {
+        return $this->approvedQuotaCountExcluding($employeeId, $month, $year, $excludeIds);
+    }
+
     public function approvedQuotaCountForEmployee(int $employeeId, int $month, int $year, array $excludeIds = []): int
     {
         return $this->approvedQuotaCountExcluding($employeeId, $month, $year, $excludeIds);

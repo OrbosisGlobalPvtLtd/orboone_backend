@@ -435,6 +435,47 @@
             </div>
         </div>
 
+        {{-- Flash Messages & Validation Alerts --}}
+        @if (session('error') || session('danger'))
+            <div class="alert alert-danger border-0 shadow-lg mb-4 mt-3" style="border-radius: 18px; background: #fef2f2; border-left: 6px solid #ef4444 !important; padding: 18px 22px;">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-exclamation-circle text-danger fa-2x mr-3"></i>
+                    <div>
+                        <h6 style="color: #991b1b; font-weight: 800; margin: 0 0 2px 0;">Punch-In / Attendance Alert</h6>
+                        <p class="mb-0 text-dark font-weight-bold" style="font-size: 14px;">{{ session('error') ?? session('danger') }}</p>
+                    </div>
+                </div>
+            </div>
+        @endif
+
+        @if (session('success'))
+            <div class="alert alert-success border-0 shadow-lg mb-4 mt-3" style="border-radius: 18px; background: #f0fdf4; border-left: 6px solid #22c55e !important; padding: 18px 22px;">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-check-circle text-success fa-2x mr-3"></i>
+                    <div>
+                        <h6 style="color: #166534; font-weight: 800; margin: 0 0 2px 0;">Success</h6>
+                        <p class="mb-0 text-dark font-weight-bold" style="font-size: 14px;">{{ session('success') }}</p>
+                    </div>
+                </div>
+            </div>
+        @endif
+
+        @if ($errors->any())
+            <div class="alert alert-danger border-0 shadow-lg mb-4 mt-3" style="border-radius: 18px; background: #fef2f2; border-left: 6px solid #ef4444 !important; padding: 18px 22px;">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-exclamation-triangle text-danger fa-2x mr-3"></i>
+                    <div>
+                        <h6 style="color: #991b1b; font-weight: 800; margin: 0 0 2px 0;">Punch-In Form Errors</h6>
+                        <ul class="mb-0 text-dark font-weight-bold pl-3" style="font-size: 14px;">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         {{-- Punch Blocked Warning Banner (Displayed right below Hero Header) --}}
         @if ($isPunchBlocked)
             <div class="alert alert-danger border-0 shadow-lg mb-4 mt-4" style="border-radius: 20px; background: #fef2f2; border-left: 6px solid #ef4444 !important; padding: 22px;">

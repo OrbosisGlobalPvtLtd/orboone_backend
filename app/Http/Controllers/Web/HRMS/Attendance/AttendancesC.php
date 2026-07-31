@@ -15,6 +15,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
@@ -1148,43 +1149,53 @@ class AttendancesC extends Controller
 
     public function webClockIn(Request $request)
     {
-        $request->validate([
-            'work_mode' => 'nullable|string|in:wfo,wfh,WFO,WFH',
-            'note' => 'nullable|string|max:1000',
-            'latitude' => 'nullable|numeric',
-            'longitude' => 'nullable|numeric',
-            'address' => 'nullable|string|max:2000',
-            'browser' => 'nullable|string|max:255',
-            'os' => 'nullable|string|max:255',
-            'gps_status' => 'nullable|string|max:255',
-        ]);
+        try {
+            $request->validate([
+                'work_mode' => 'nullable|string|in:wfo,wfh,WFO,WFH',
+                'note' => 'nullable|string|max:1000',
+                'latitude' => 'nullable|numeric',
+                'longitude' => 'nullable|numeric',
+                'address' => 'nullable|string|max:2000',
+                'browser' => 'nullable|string|max:255',
+                'os' => 'nullable|string|max:255',
+                'gps_status' => 'nullable|string|max:255',
+            ]);
 
-        $workMode = strtolower((string) $request->input('work_mode', 'wfo'));
-        $lat = ($request->filled('latitude') && (float) $request->latitude !== 0.0) ? (float) $request->latitude : null;
-        $lng = ($request->filled('longitude') && (float) $request->longitude !== 0.0) ? (float) $request->longitude : null;
+            $workMode = strtolower((string) $request->input('work_mode', 'wfo'));
+            $lat = ($request->filled('latitude') && (float) $request->latitude !== 0.0) ? (float) $request->latitude : null;
+            $lng = ($request->filled('longitude') && (float) $request->longitude !== 0.0) ? (float) $request->longitude : null;
 
-        $meta = [
-            'latitude' => $lat,
-            'longitude' => $lng,
-            'address' => $request->address,
-            'ip' => $request->ip(),
-            'device' => trim($request->userAgent() . ' | OS: ' . ($request->os ?? 'Unknown') . ' | Browser: ' . ($request->browser ?? 'Unknown') . ' | GPS: ' . ($request->gps_status ?? 'Unknown')),
-            'attendance_source' => 'web',
-            'source' => 'web',
-        ];
+            $meta = [
+                'latitude' => $lat,
+                'longitude' => $lng,
+                'address' => $request->address,
+                'ip' => $request->ip(),
+                'device' => trim($request->userAgent() . ' | OS: ' . ($request->os ?? 'Unknown') . ' | Browser: ' . ($request->browser ?? 'Unknown') . ' | GPS: ' . ($request->gps_status ?? 'Unknown')),
+                'attendance_source' => 'web',
+                'source' => 'web',
+            ];
 
-        $result = $this->attendanceService->processPunchIn(
-            auth()->id(),
-            $workMode,
-            $request->note,
-            $meta
-        );
+            $result = $this->attendanceService->processPunchIn(
+                auth()->id(),
+                $workMode,
+                $request->note,
+                $meta
+            );
 
-        if (($result['status'] ?? null) === 'error') {
-            return back()->with('error', $result['message'] ?? 'Punch in failed.');
+            if (($result['status'] ?? null) === 'error') {
+                return back()->with('error', $result['message'] ?? 'Punch in failed.');
+            }
+
+            return back()->with('success', $result['message'] ?? 'Punch in recorded successfully.');
+        } catch (\Illuminate\Validation\ValidationException $ve) {
+            throw $ve;
+        } catch (\Throwable $e) {
+            Log::error('Web Punch In Exception: ' . $e->getMessage(), [
+                'user_id' => auth()->id(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return back()->with('error', 'Punch in error: ' . $e->getMessage());
         }
-
-        return back()->with('success', $result['message'] ?? 'Punch in recorded successfully.');
     }
 
     public function webClockOut(Request $request)

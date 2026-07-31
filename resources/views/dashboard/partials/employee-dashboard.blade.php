@@ -273,6 +273,17 @@
                     <button type="button" class="close text-white opacity-10" data-dismiss="modal"><span>&times;</span></button>
                 </div>
                 <div class="modal-body p-4">
+                    @if (session('error') || session('danger'))
+                        <div class="alert alert-danger border-0 mb-3" style="border-radius: 12px; background: #fef2f2; border-left: 4px solid #ef4444 !important; font-size: 13px; font-weight: 700; color: #991b1b;">
+                            <i class="fas fa-exclamation-circle text-danger mr-1"></i> {{ session('error') ?? session('danger') }}
+                        </div>
+                    @endif
+                    @if ($errors->any())
+                        <div class="alert alert-danger border-0 mb-3" style="border-radius: 12px; background: #fef2f2; border-left: 4px solid #ef4444 !important; font-size: 13px; font-weight: 700; color: #991b1b;">
+                            <i class="fas fa-exclamation-triangle text-danger mr-1"></i> {{ $errors->first() }}
+                        </div>
+                    @endif
+
                     <div class="form-group mb-3">
                         <label class="font-weight-bold small text-muted">Work Mode</label>
                         <select name="work_mode" id="web_work_mode_select" onchange="handleWorkModeChange(this.value)" class="form-control" style="border-radius: 12px; height: 44px;">
@@ -690,6 +701,10 @@ document.addEventListener('DOMContentLoaded', function () {
             const mode = selectEl ? selectEl.value : 'wfo';
             handleWorkModeChange(mode);
         });
+
+        @if (session('error') || session('danger') || $errors->any())
+            $('#webPunchInModal').modal('show');
+        @endif
     }
 });
 </script>

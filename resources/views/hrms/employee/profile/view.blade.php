@@ -1384,12 +1384,9 @@ $rejectedDocs = $documents->where('verification_status', 'rejected')->count();
                                 <td data-label="Action">
                                     <div class="doc-actions">
                                         @if(!empty($docUrl))
-                                        <button type="button" class="doc-action-btn doc-view-btn js-doc-preview"
-                                            data-title="{{ $docTitle }}"
-                                            data-url="{{ $docUrl }}"
-                                            data-ext="{{ $ext }}">
+                                        <a href="{{ $docUrl }}" target="_blank" rel="noopener noreferrer" class="doc-action-btn doc-view-btn">
                                             <i class="fas fa-eye"></i> View
-                                        </button>
+                                        </a>
                                         @endif
 
                                         @if($isDocEditMode)

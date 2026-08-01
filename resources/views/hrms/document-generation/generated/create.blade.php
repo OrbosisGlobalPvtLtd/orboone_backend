@@ -430,8 +430,8 @@
 
                     <!-- Actions Toolbar -->
                     <div class="card-footer bg-light p-4 d-flex justify-content-end gap-3 border-top">
-                        <button type="button" class="btn-orb-soft" onclick="triggerLivePreview()">
-                            <i class="fas fa-eye me-2"></i> Preview Document
+                        <button type="button" class="btn-orb-soft" onclick="openPreviewInNewTab()">
+                            <i class="fas fa-external-link-alt me-2"></i> Preview Document
                         </button>
                         <button type="submit" class="btn-orb-primary">
                             <i class="fas fa-check-circle me-2"></i> Generate & Save PDF
@@ -447,7 +447,12 @@
             <div class="orb-card d-flex flex-column">
                 <div class="orb-card-header d-flex justify-content-between align-items-center">
                     <h4><i class="fas fa-file-pdf text-danger me-2"></i> Live Document Preview</h4>
-                    <span class="badge bg-primary rounded-pill" id="preview_doc_type_badge">Offer Letter</span>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="openPreviewInNewTab()">
+                            <i class="fas fa-external-link-alt me-1"></i> Open in New Tab
+                        </button>
+                        <span class="badge bg-primary rounded-pill" id="preview_doc_type_badge">Offer Letter</span>
+                    </div>
                 </div>
                 <div class="card-body p-0 position-relative" style="background: #f1f5f9; width: 100%; aspect-ratio: 1 / 1.414; overflow: hidden; box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.05);">
 
@@ -1023,6 +1028,97 @@
 
     // Employee dropdown change listener for smart pre-fills
     document.getElementById('employee_select').addEventListener('change', handleEmployeeAutofill);
+
+    // Open Full Document Preview in a New Tab
+    function openPreviewInNewTab() {
+        const form = document.getElementById('generationForm');
+        if (!form) return;
+
+        const newWin = window.open('about:blank', '_blank');
+        if (newWin) {
+            newWin.document.open();
+            newWin.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Document Preview</title>
+                    <style>
+                        body {
+                            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            height: 100vh;
+                            margin: 0;
+                            background: #F8FAFC;
+                            color: #4B00E8;
+                        }
+                        .loader-box { text-align: center; font-weight: 700; font-size: 18px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="loader-box">⏳ Generating Document Preview...</div>
+                </body>
+                </html>
+            `);
+            newWin.document.close();
+        }
+
+        const formData = new FormData(form);
+
+        fetch("{{ route('hrms.document-generation.generated.preview') }}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => {
+                    throw new Error(err.html || 'Required fields missing or preview rendering failed.');
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data && data.html) {
+                if (newWin) {
+                    newWin.document.open();
+                    newWin.document.write(data.html);
+                    newWin.document.close();
+                }
+            }
+        })
+        .catch(error => {
+            if (newWin) {
+                newWin.document.open();
+                newWin.document.write(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>Preview Error</title>
+                        <style>
+                            body { font-family: sans-serif; padding: 40px; background: #fff5f5; color: #c53030; }
+                            .card { background: white; border: 1px solid #feb2b2; border-radius: 12px; padding: 24px; max-width: 500px; margin: 0 auto; }
+                            h3 { margin: 0 0 10px 0; }
+                            p { margin: 0; font-size: 14px; line-height: 1.5; color: #4a5568; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="card">
+                            <h3>⚠️ Preview Notice</h3>
+                            <p>${error.message || 'Please fill in required fields to generate preview.'}</p>
+                        </div>
+                    </body>
+                    </html>
+                `);
+                newWin.document.close();
+            } else {
+                alert(error.message || 'Error generating preview.');
+            }
+        });
+    }
 
     // Live preview renderer using iframe
     function triggerLivePreview() {

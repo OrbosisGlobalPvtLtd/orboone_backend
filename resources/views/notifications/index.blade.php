@@ -724,11 +724,13 @@
 
     function markSingleAsRead(id, btnElement) {
         var card = document.getElementById('notif-card-' + id);
+        var routeUrl = "{{ route('notifications.mark_as_read', ':id') }}".replace(':id', id);
         
-        fetch('/api/v1/notifications/' + id + '/read', {
+        fetch(routeUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
             }
         })
@@ -754,6 +756,17 @@
 
     function dismissNotification(id) {
         var card = document.getElementById('notif-card-' + id);
+        var routeUrl = "{{ route('notifications.destroy', ':id') }}".replace(':id', id);
+
+        fetch(routeUrl, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            }
+        }).catch(err => console.error('Error dismissing notification:', err));
+
         if (card) {
             card.style.transition = 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)';
             card.style.opacity = '0';
@@ -781,10 +794,11 @@
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
 
-        fetch('/api/v1/notifications/mark-all-read', {
+        fetch("{{ route('notifications.mark_all_read') }}", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
             }
         })
@@ -792,6 +806,9 @@
         .then(data => {
             if (data.success) {
                 window.location.reload();
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check-double"></i> Mark all as read';
             }
         })
         .catch(error => {

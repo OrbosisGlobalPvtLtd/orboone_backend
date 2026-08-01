@@ -1126,6 +1126,27 @@ $rejectedDocs = $documents->where('verification_status', 'rejected')->count();
                                         {{ !empty($doc->is_required) ? 'Required' : 'Optional' }}
                                     </span>
                                 </td>
+                            }
+
+                            $ext = strtolower(pathinfo($doc->file_original_name ?: $docPath, PATHINFO_EXTENSION));
+                            @endphp
+
+                            <tr>
+                                <td data-label="Document">
+                                    <div class="doc-name-cell">
+                                        <div class="doc-icon"><i class="fas fa-file-alt"></i></div>
+                                        <div>
+                                            <div class="doc-title">{{ $docTitle }}</div>
+                                            <div class="doc-sub">{{ $doc->file_original_name ?? 'Uploaded file' }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                <td data-label="Required">
+                                    <span class="doc-pill {{ !empty($doc->is_required) ? 'doc-required' : 'doc-optional' }}">
+                                        {{ !empty($doc->is_required) ? 'Required' : 'Optional' }}
+                                    </span>
+                                </td>
 
                                 <td data-label="Status">
                                     <span class="doc-pill {{ $docStatusClass }}">{{ ucfirst($docStatus) }}</span>
@@ -1144,13 +1165,9 @@ $rejectedDocs = $documents->where('verification_status', 'rejected')->count();
                                 <td data-label="Action">
                                     <div class="doc-actions">
                                         @if(!empty($docUrl))
-                                        <button type="button"
-                                            class="doc-action-btn doc-view-btn js-doc-preview"
-                                            data-title="{{ $docTitle }}"
-                                            data-url="{{ $docUrl }}"
-                                            data-ext="{{ $ext }}">
+                                        <a href="{{ $docUrl }}" target="_blank" rel="noopener noreferrer" class="doc-action-btn doc-view-btn">
                                             <i class="fas fa-eye"></i> View
-                                        </button>
+                                        </a>
                                         @endif
 
                                         @if($docStatus === 'verified')
@@ -1169,20 +1186,6 @@ $rejectedDocs = $documents->where('verification_status', 'rejected')->count();
 
                                         @if(Route::has('hrms.documents.employee.reject'))
                                         <form action="{{ route('documents.employee.reject', $doc->id) }}" method="POST" style="display:inline-block;margin:0;">
-                                            @csrf
-                                            <input type="hidden" name="rejection_reason" value="Document rejected by HR">
-                                            <button type="submit" class="doc-action-btn doc-reject-btn" onclick="return confirm('Reject this document?')">
-                                                <i class="fas fa-times"></i> Reject
-                                            </button>
-                                        </form>
-                                        @endif
-                                        @endif
-                                    </div>
-                                </td>
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
                 </div>
                 @else
                 <div class="profile-value muted">No documents uploaded yet.</div>

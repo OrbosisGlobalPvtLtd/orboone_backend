@@ -22,6 +22,70 @@ class NotificationC extends Controller
     }
 
     /**
+     * Mark single notification as read.
+     */
+    public function markAsRead($id)
+    {
+        $notification = NotificationM::forUser(auth()->id())
+            ->where('id', $id)
+            ->first();
+
+        if ($notification) {
+            $notification->markAsRead();
+        }
+
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Notification marked as read.',
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Notification marked as read.');
+    }
+
+    /**
+     * Mark all notifications as read.
+     */
+    public function markAllAsRead()
+    {
+        NotificationM::forUser(auth()->id())
+            ->unread()
+            ->update([
+                'is_read' => true,
+                'read_at' => now(),
+            ]);
+
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'All notifications marked as read.',
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'All notifications marked as read.');
+    }
+
+    /**
+     * Delete/dismiss a notification.
+     */
+    public function destroy($id)
+    {
+        NotificationM::forUser(auth()->id())
+            ->where('id', $id)
+            ->delete();
+
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Notification dismissed.',
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Notification dismissed.');
+    }
+
+    /**
      * Mark notification as read and redirect to target.
      */
     public function open(NotificationM $notification)

@@ -829,9 +829,9 @@
 
                         $statusPill = function ($value) {
                             return match (strtolower($value ?? 'pending')) {
-                                'completed', 'issued', 'not_required' => 'eo-pill-success',
-                                'processing', 'clearance_pending' => 'eo-pill-info',
-                                'lost', 'damaged' => 'eo-pill-danger',
+                                'completed', 'issued', 'not_required', 'cleared', 'approved', 'paid' => 'eo-pill-success',
+                                'processing', 'clearance_pending', 'generated', 'sent', 'ready_for_final_approval', 'reviewed' => 'eo-pill-info',
+                                'lost', 'damaged', 'rejected', 'cancelled', 'absconded', 'terminated' => 'eo-pill-danger',
                                 default => 'eo-pill-warning',
                             };
                         };
@@ -875,46 +875,46 @@
                                 {{ !empty($employee->relieving_date) ? \Carbon\Carbon::parse($employee->relieving_date)->format('d M Y') : '-' }}
                             </td>
 
-                            <td>
+                            <td class="js-tbl-cell-asset-{{ $employee->id }}">
                                 <span class="eo-pill {{ $statusPill($assetStatus) }}">
                                     {{ ucfirst(str_replace('_', ' ', $assetStatus)) }}
                                 </span>
                             </td>
 
-                            <td>
+                            <td class="js-tbl-cell-fnf-{{ $employee->id }}">
                                 <span class="eo-pill {{ $statusPill($fnfStatus) }}">
                                     {{ ucfirst(str_replace('_', ' ', $fnfStatus)) }}
                                 </span>
                             </td>
-                            <td>
+                            <td class="js-tbl-cell-document-{{ $employee->id }}">
                                 <span class="eo-pill {{ $statusPill($documentStatus) }}">
                                     {{ ucfirst(str_replace('_', ' ', $documentStatus)) }}
                                 </span>
                             </td>
-                            <td>
+                            <td class="js-tbl-cell-handover-{{ $employee->id }}">
                                 <span class="eo-pill {{ $statusPill($handoverStatus) }}">
                                     {{ ucfirst(str_replace('_', ' ', $handoverStatus)) }}
                                 </span>
                             </td>
 
-                            <td>
+                            <td class="js-tbl-cell-experience-{{ $employee->id }}">
                                 <span class="eo-pill {{ $statusPill($experienceStatus) }}">
                                     {{ ucfirst(str_replace('_', ' ', $experienceStatus)) }}
                                 </span>
                             </td>
 
-                            <td>
+                            <td class="js-tbl-cell-relieving-{{ $employee->id }}">
                                 <span class="eo-pill {{ $statusPill($relievingStatus) }}">
                                     {{ ucfirst(str_replace('_', ' ', $relievingStatus)) }}
                                 </span>
                             </td>
-                            <td>
+                            <td class="js-tbl-cell-exit-flow-{{ $employee->id }}">
                                 <span class="eo-pill {{ $statusPill($exitStatus) }}">
                                     {{ ucfirst(str_replace('_', ' ', $exitStatus)) }}
                                 </span>
                             </td>
 
-                            <td>
+                            <td class="js-tbl-cell-final-{{ $employee->id }}">
                                 <span class="eo-pill {{ $statusPill($finalStatus) }}">
                                     {{ ucfirst(str_replace('_', ' ', $finalStatus)) }}
                                 </span>
@@ -981,9 +981,9 @@
 
     $statusPill = function ($value) {
         return match (strtolower($value ?? 'pending')) {
-            'completed', 'issued', 'not_required' => 'eo-pill-success',
-            'processing', 'clearance_pending' => 'eo-pill-info',
-            'lost', 'damaged' => 'eo-pill-danger',
+            'completed', 'issued', 'not_required', 'cleared', 'approved', 'paid' => 'eo-pill-success',
+            'processing', 'clearance_pending', 'generated', 'sent', 'ready_for_final_approval', 'reviewed' => 'eo-pill-info',
+            'lost', 'damaged', 'rejected', 'cancelled', 'absconded', 'terminated' => 'eo-pill-danger',
             default => 'eo-pill-warning',
         };
     };
@@ -1086,19 +1086,19 @@
                             <div class="row">
                                 <div class="col-6 col-md-4 mb-3">
                                     <span class="eo-label mb-1">Asset Status</span>
-                                    <div><span class="eo-pill {{ $statusPill($assetStatus) }}">{{ ucfirst(str_replace('_', ' ', $assetStatus)) }}</span></div>
+                                    <div><span class="eo-pill {{ $statusPill($assetStatus) }} js-top-pill-asset-{{ $employee->id }}">{{ ucfirst(str_replace('_', ' ', $assetStatus)) }}</span></div>
                                 </div>
                                 <div class="col-6 col-md-4 mb-3">
                                     <span class="eo-label mb-1">FNF Status</span>
-                                    <div><span class="eo-pill {{ $statusPill($fnfStatus) }}">{{ ucfirst(str_replace('_', ' ', $fnfStatus)) }}</span></div>
+                                    <div><span class="eo-pill {{ $statusPill($fnfStatus) }} js-top-pill-fnf-{{ $employee->id }}">{{ ucfirst(str_replace('_', ' ', $fnfStatus)) }}</span></div>
                                 </div>
                                 <div class="col-6 col-md-4 mb-3">
                                     <span class="eo-label mb-1">Documents</span>
-                                    <div><span class="eo-pill {{ $statusPill($documentStatus) }}">{{ ucfirst(str_replace('_', ' ', $documentStatus)) }}</span></div>
+                                    <div><span class="eo-pill {{ $statusPill($documentStatus) }} js-top-pill-document-{{ $employee->id }}">{{ ucfirst(str_replace('_', ' ', $documentStatus)) }}</span></div>
                                 </div>
                                 <div class="col-6 col-md-4 mb-3">
                                     <span class="eo-label mb-1">Handover</span>
-                                    <div><span class="eo-pill {{ $statusPill($handoverStatus) }}">{{ ucfirst(str_replace('_', ' ', $handoverStatus)) }}</span></div>
+                                    <div><span class="eo-pill {{ $statusPill($handoverStatus) }} js-top-pill-handover-{{ $employee->id }}">{{ ucfirst(str_replace('_', ' ', $handoverStatus)) }}</span></div>
                                 </div>
                                 <div class="col-6 col-md-4 mb-3">
                                     <span class="eo-label mb-1">Experience Letter</span>
@@ -1295,26 +1295,28 @@
                                     }
                                 @endphp
 
-                                <div class="eo-action-card mb-3" style="border-left: 4px solid {{ $clrStatus === 'approved' ? '#10B981' : ($clrStatus === 'rejected' ? '#EF4444' : '#F59E0B') }};">
+                                <div class="eo-action-card mb-3 js-dept-card-{{ $dKey }}" data-dept="{{ $dKey }}" style="border-left: 4px solid {{ $clrStatus === 'approved' ? '#10B981' : ($clrStatus === 'rejected' ? '#EF4444' : '#F59E0B') }};">
                                     <div class="eo-action-card-head d-flex justify-content-between align-items-center">
                                         <div>
                                             <div class="eo-action-title">{{ $deptLabels[$dKey] }} Clearance</div>
                                             <div class="eo-action-sub mb-0">Status: 
-                                                <span class="badge badge-{{ $clrStatus === 'approved' ? 'success' : ($clrStatus === 'rejected' ? 'danger' : 'warning') }}">
+                                                <span class="badge js-dept-badge-{{ $dKey }} badge-{{ $clrStatus === 'approved' ? 'success' : ($clrStatus === 'rejected' ? 'danger' : 'warning') }}">
                                                     {{ ucfirst($clrStatus) }}
                                                 </span>
+                                                <span class="js-dept-approved-by-{{ $dKey }}">
                                                 @if($approvedBy)
                                                     <span class="text-muted small ml-1">by <strong>{{ $approvedBy }}</strong> on {{ $approvedAt }}</span>
                                                 @endif
+                                                </span>
                                             </div>
                                         </div>
-                                        <div>
+                                        <div class="js-dept-icon-{{ $dKey }}">
                                             <i class="fas {{ $clrStatus === 'approved' ? 'fa-check-circle text-success' : ($clrStatus === 'rejected' ? 'fa-times-circle text-danger' : 'fa-clock text-warning') }} fa-lg"></i>
                                         </div>
                                     </div>
                                     
                                     @if($canApproveDept || $isHRorAdmin)
-                                    <form action="{{ route('hrms.employees.exit.clearance.dept.update', $employee->id) }}" method="POST" class="mb-0">
+                                    <form action="{{ route('hrms.employees.exit.clearance.dept.update', $employee->id) }}" method="POST" class="mb-0 js-dept-clearance-form" data-dept="{{ $dKey }}" data-employee-id="{{ $employee->id }}">
                                         @csrf
                                         <input type="hidden" name="exit_process_id" value="{{ $employee->exit_process_id }}">
                                         <input type="hidden" name="department_key" value="{{ $dKey }}">
@@ -1346,11 +1348,6 @@
                                                         <option value="rejected" {{ $clrStatus === 'rejected' ? 'selected' : '' }}>Reject Clearance</option>
                                                     </select>
                                                 </div>
-                                            </div>
-                                            <div class="d-flex justify-content-end mt-2">
-                                                <button type="submit" class="btn btn-primary btn-orb px-3 py-1" style="height:32px; min-height:32px; font-size:11px;">
-                                                    <i class="fas fa-save mr-1"></i> Save {{ strtoupper($dKey) }} Status
-                                                </button>
                                             </div>
                                         </div>
                                     </form>
@@ -1407,7 +1404,7 @@
                                 <div class="eo-action-sub">Set cleared/waived statuses before final exit approval.</div>
                             </div>
                         </div>
-                        <form action="{{ route('hrms.employees.exit.clearance.update', $employee->id) }}" method="POST" class="mb-0">
+                        <form action="{{ route('hrms.employees.exit.clearance.update', $employee->id) }}" method="POST" class="mb-0 js-overall-clearance-form" data-employee-id="{{ $employee->id }}">
                             @csrf
                             <input type="hidden" name="exit_process_id" value="{{ $employee->exit_process_id }}">
                             <div class="eo-action-body">
@@ -1415,54 +1412,45 @@
                                     <div class="col-md-6 mb-2">
                                         <label class="eo-label">Asset Status</label>
                                         <select name="asset_status" class="eo-control">
-                                            <option value="">No Change</option>
-                                            <option value="pending">Pending</option>
-                                            <option value="cleared">Cleared</option>
-                                            <option value="waived">Waived</option>
+                                            <option value="pending" {{ strtolower($assetStatus) === 'pending' ? 'selected' : '' }}>Pending</option>
+                                            <option value="cleared" {{ strtolower($assetStatus) === 'cleared' ? 'selected' : '' }}>Cleared</option>
+                                            <option value="waived" {{ strtolower($assetStatus) === 'waived' ? 'selected' : '' }}>Waived</option>
                                         </select>
                                     </div>
                                     <div class="col-md-6 mb-2">
                                         <label class="eo-label">FnF Status</label>
                                         <select name="fnf_status" class="eo-control">
-                                            <option value="">No Change</option>
-                                            <option value="pending">Pending</option>
-                                            <option value="processing">Processing</option>
-                                            <option value="approved">Approved</option>
-                                            <option value="paid">Paid</option>
-                                            <option value="completed">Completed</option>
-                                            <option value="waived">Waived</option>
+                                            <option value="pending" {{ strtolower($fnfStatus) === 'pending' ? 'selected' : '' }}>Pending</option>
+                                            <option value="processing" {{ strtolower($fnfStatus) === 'processing' ? 'selected' : '' }}>Processing</option>
+                                            <option value="approved" {{ strtolower($fnfStatus) === 'approved' ? 'selected' : '' }}>Approved</option>
+                                            <option value="paid" {{ strtolower($fnfStatus) === 'paid' ? 'selected' : '' }}>Paid</option>
+                                            <option value="completed" {{ strtolower($fnfStatus) === 'completed' ? 'selected' : '' }}>Completed</option>
+                                            <option value="waived" {{ strtolower($fnfStatus) === 'waived' ? 'selected' : '' }}>Waived</option>
                                         </select>
                                     </div>
                                     <div class="col-md-6 mb-2">
                                         <label class="eo-label">Document Status</label>
                                         <select name="document_status" class="eo-control">
-                                            <option value="">No Change</option>
-                                            <option value="pending">Pending</option>
-                                            <option value="generated">Generated</option>
-                                            <option value="sent">Sent</option>
-                                            <option value="completed">Completed</option>
-                                            <option value="waived">Waived</option>
+                                            <option value="pending" {{ strtolower($documentStatus) === 'pending' ? 'selected' : '' }}>Pending</option>
+                                            <option value="generated" {{ strtolower($documentStatus) === 'generated' ? 'selected' : '' }}>Generated</option>
+                                            <option value="sent" {{ strtolower($documentStatus) === 'sent' ? 'selected' : '' }}>Sent</option>
+                                            <option value="completed" {{ strtolower($documentStatus) === 'completed' ? 'selected' : '' }}>Completed</option>
+                                            <option value="waived" {{ strtolower($documentStatus) === 'waived' ? 'selected' : '' }}>Waived</option>
                                         </select>
                                     </div>
                                     <div class="col-md-6 mb-2">
                                         <label class="eo-label">Handover Status</label>
                                         <select name="handover_status" class="eo-control">
-                                            <option value="">No Change</option>
-                                            <option value="pending">Pending</option>
-                                            <option value="cleared">Cleared</option>
-                                            <option value="completed">Completed</option>
-                                            <option value="waived">Waived</option>
+                                            <option value="pending" {{ strtolower($handoverStatus) === 'pending' ? 'selected' : '' }}>Pending</option>
+                                            <option value="cleared" {{ strtolower($handoverStatus) === 'cleared' ? 'selected' : '' }}>Cleared</option>
+                                            <option value="completed" {{ strtolower($handoverStatus) === 'completed' ? 'selected' : '' }}>Completed</option>
+                                            <option value="waived" {{ strtolower($handoverStatus) === 'waived' ? 'selected' : '' }}>Waived</option>
                                         </select>
                                     </div>
                                     <div class="col-md-12 mb-2">
                                         <label class="eo-label">Remarks</label>
-                                        <input type="text" name="remarks" class="eo-control" placeholder="Optional clearance remarks">
+                                        <input type="text" name="remarks" class="eo-control" value="{{ $employee->exit_remarks ?? '' }}" placeholder="Optional clearance remarks">
                                     </div>
-                                </div>
-                                <div class="d-flex justify-content-end">
-                                    <button type="submit" class="btn btn-primary btn-orb px-3 py-2" style="height:36px; min-height:36px; font-size:12px;">
-                                        <i class="fas fa-save mr-1"></i> Save Clearance
-                                    </button>
                                 </div>
                             </div>
                         </form>
@@ -1492,6 +1480,7 @@
                                         }
                                     }
                                 @endphp
+                                <div class="js-complete-exit-btn-container d-inline-block text-right">
                                 @if($clearanceApproved)
                                     <button type="submit" class="btn btn-success em-btn-success px-3 py-2" style="height:36px; min-height:36px; font-size:12px; border-radius:50px; font-weight:800; border:none;" onclick="return confirm('Complete exit and disable login?')">
                                         <i class="fas fa-user-check mr-1"></i> Complete Exit
@@ -1502,6 +1491,7 @@
                                     </button>
                                     <span class="text-danger small mt-1 d-block w-100"><i class="fas fa-exclamation-triangle mr-1"></i> All mandatory clearances (HR, Manager, IT, Admin, Finance, Assets) must be approved.</span>
                                 @endif
+                                </div>
                             </div>
                         </form>
                     </div>
@@ -1750,6 +1740,269 @@
             assetStatusFilter.value = '';
             fnfStatusFilter.value = '';
             applyFilters();
+        });
+
+        // Toast Notification Helper
+        function showExitToast(message, type = 'success') {
+            let $toast = $('#ajaxExitToast');
+            if (!$toast.length) {
+                $toast = $(`
+                    <div id="ajaxExitToast" style="position: fixed; top: 24px; right: 24px; z-index: 99999; display: none; min-width: 280px; padding: 12px 20px; border-radius: 12px; font-weight: 700; font-size: 13px; color: #fff; box-shadow: 0 10px 25px rgba(0,0,0,0.18); transition: all 0.3s ease;">
+                        <span class="toast-text"></span>
+                    </div>
+                `);
+                $('body').append($toast);
+            }
+            const bgColor = (type === 'success' || type === 'approved') ? '#10B981' : (type === 'rejected' || type === 'danger' ? '#EF4444' : '#F59E0B');
+            $toast.css('background-color', bgColor);
+            $toast.find('.toast-text').html((type === 'success' || type === 'approved' ? '<i class="fas fa-check-circle mr-2"></i>' : '<i class="fas fa-exclamation-circle mr-2"></i>') + message);
+            $toast.stop(true, true).fadeIn(200).delay(2500).fadeOut(400);
+        }
+
+        // Update Main Table Row Pills Live
+        function updateMainTableRowPills(employeeId, process) {
+            if (!employeeId || !process) return;
+
+            const getPillClass = function(val) {
+                val = (val || 'pending').toLowerCase();
+                if (['completed', 'issued', 'not_required', 'cleared', 'approved', 'paid'].includes(val)) return 'eo-pill-success';
+                if (['processing', 'clearance_pending', 'generated', 'sent', 'ready_for_final_approval', 'reviewed'].includes(val)) return 'eo-pill-info';
+                if (['lost', 'damaged', 'rejected', 'cancelled', 'absconded', 'terminated'].includes(val)) return 'eo-pill-danger';
+                return 'eo-pill-warning';
+            };
+
+            const formatLabel = function(val) {
+                if (!val) return 'Pending';
+                return val.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            };
+
+            const updateCell = function(selector, value) {
+                const $td = $(selector);
+                if ($td.length && value !== undefined && value !== null) {
+                    $td.find('.eo-pill')
+                       .removeClass('eo-pill-success eo-pill-info eo-pill-danger eo-pill-warning')
+                       .addClass(getPillClass(value))
+                       .text(formatLabel(value));
+                }
+            };
+
+            const assetVal = process.asset_handover_status || process.asset_status;
+            if (assetVal !== undefined) updateCell('.js-tbl-cell-asset-' + employeeId, assetVal);
+            if (process.fnf_status !== undefined) updateCell('.js-tbl-cell-fnf-' + employeeId, process.fnf_status);
+            if (process.document_status !== undefined) updateCell('.js-tbl-cell-document-' + employeeId, process.document_status);
+            if (process.handover_status !== undefined) updateCell('.js-tbl-cell-handover-' + employeeId, process.handover_status);
+            if (process.experience_letter_status !== undefined) updateCell('.js-tbl-cell-experience-' + employeeId, process.experience_letter_status);
+            if (process.relieving_letter_status !== undefined) updateCell('.js-tbl-cell-relieving-' + employeeId, process.relieving_letter_status);
+            
+            const exitStatusVal = process.status || process.exit_status;
+            if (exitStatusVal !== undefined) updateCell('.js-tbl-cell-exit-flow-' + employeeId, exitStatusVal);
+            if (process.final_status !== undefined) updateCell('.js-tbl-cell-final-' + employeeId, process.final_status);
+        }
+
+        // Auto Save Department Clearance via AJAX
+        function saveDeptClearanceAjax(form) {
+            const $form = $(form);
+            const $card = $form.closest('.eo-action-card');
+            const deptKey = $form.data('dept');
+            const employeeId = $form.data('employee-id');
+            const $submitBtn = $form.find('button[type="submit"]');
+            const originalBtnHtml = $submitBtn.length ? $submitBtn.html() : '';
+
+            if ($submitBtn.length) {
+                $submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
+            }
+
+            $.ajax({
+                url: $form.attr('action'),
+                type: 'POST',
+                data: $form.serialize(),
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                success: function(response) {
+                    if ($submitBtn.length) {
+                        $submitBtn.prop('disabled', false).html(originalBtnHtml);
+                    }
+
+                    if (response.success) {
+                        const status = response.status;
+                        const statusLabel = response.status_label || (status.charAt(0).toUpperCase() + status.slice(1));
+
+                        let borderColor = '#F59E0B';
+                        let badgeClass = 'badge-warning';
+                        let iconHtml = '<i class="fas fa-clock text-warning fa-lg"></i>';
+
+                        if (status === 'approved') {
+                            borderColor = '#10B981';
+                            badgeClass = 'badge-success';
+                            iconHtml = '<i class="fas fa-check-circle text-success fa-lg"></i>';
+                        } else if (status === 'rejected') {
+                            borderColor = '#EF4444';
+                            badgeClass = 'badge-danger';
+                            iconHtml = '<i class="fas fa-times-circle text-danger fa-lg"></i>';
+                        }
+
+                        $card.css('border-left', '4px solid ' + borderColor);
+
+                        const $badge = $card.find('.js-dept-badge-' + deptKey);
+                        if ($badge.length) {
+                            $badge.removeClass('badge-warning badge-success badge-danger').addClass(badgeClass).text(statusLabel);
+                        }
+
+                        const $iconContainer = $card.find('.js-dept-icon-' + deptKey);
+                        if ($iconContainer.length) {
+                            $iconContainer.html(iconHtml);
+                        }
+
+                        const $approvedByContainer = $card.find('.js-dept-approved-by-' + deptKey);
+                        if ($approvedByContainer.length && response.approved_by) {
+                            $approvedByContainer.html('<span class="text-muted small ml-1">by <strong>' + response.approved_by + '</strong> on ' + response.approved_at + '</span>');
+                        }
+
+                        if (response.process) {
+                            updateMainTableRowPills(employeeId, response.process);
+                        }
+
+                        showExitToast(response.message, status === 'rejected' ? 'danger' : 'success');
+
+                        // Dynamic Update Complete Exit Button block
+                        if (response.all_mandatory_approved !== undefined) {
+                            const $modalBody = $form.closest('.modal-body');
+                            const $completeBtnContainer = $modalBody.find('.js-complete-exit-btn-container');
+                            if ($completeBtnContainer.length) {
+                                if (response.all_mandatory_approved) {
+                                    $completeBtnContainer.html(`
+                                        <button type="submit" class="btn btn-success em-btn-success px-3 py-2" style="height:36px; min-height:36px; font-size:12px; border-radius:50px; font-weight:800; border:none;" onclick="return confirm('Complete exit and disable login?')">
+                                            <i class="fas fa-user-check mr-1"></i> Complete Exit
+                                        </button>
+                                    `);
+                                } else {
+                                    $completeBtnContainer.html(`
+                                        <button type="button" class="btn btn-success em-btn-success px-3 py-2" style="height:36px; min-height:36px; font-size:12px; border-radius:50px; font-weight:800; border:none; opacity: 0.5; cursor: not-allowed;" disabled title="Clearances are pending approval">
+                                            <i class="fas fa-ban mr-1"></i> Complete Exit (Blocked)
+                                        </button>
+                                        <span class="text-danger small mt-1 d-block w-100"><i class="fas fa-exclamation-triangle mr-1"></i> All mandatory clearances (HR, Manager, IT, Admin, Finance, Assets) must be approved.</span>
+                                    `);
+                                }
+                            }
+                        }
+                    } else {
+                        showExitToast(response.message || 'Failed to update clearance.', 'danger');
+                    }
+                },
+                error: function(xhr) {
+                    if ($submitBtn.length) {
+                        $submitBtn.prop('disabled', false).html(originalBtnHtml);
+                    }
+                    let errMsg = 'Error updating clearance.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errMsg = xhr.responseJSON.message;
+                    }
+                    showExitToast(errMsg, 'danger');
+                }
+            });
+        }
+
+        // Trigger AJAX auto-save on checklist item toggle
+        $(document).on('change', '.js-dept-clearance-form input[type="checkbox"]', function() {
+            saveDeptClearanceAjax(this.form);
+        });
+
+        // Trigger AJAX auto-save on status select dropdown change
+        $(document).on('change', '.js-dept-clearance-form select[name="status"]', function() {
+            saveDeptClearanceAjax(this.form);
+        });
+
+        // Trigger AJAX auto-save on remarks change
+        $(document).on('change', '.js-dept-clearance-form input[name="remarks"]', function() {
+            saveDeptClearanceAjax(this.form);
+        });
+
+        // Auto Save Overall Exit Clearance Status via AJAX
+        function saveOverallClearanceAjax(form) {
+            const $form = $(form);
+            const employeeId = $form.data('employee-id');
+
+            $.ajax({
+                url: $form.attr('action'),
+                type: 'POST',
+                data: $form.serialize(),
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                success: function(response) {
+                    if (response.success && response.process) {
+                        const proc = response.process;
+                        const getPillClass = function(val) {
+                            val = (val || 'pending').toLowerCase();
+                            if (['completed', 'issued', 'not_required', 'cleared', 'approved', 'paid'].includes(val)) return 'eo-pill-success';
+                            if (['processing', 'clearance_pending', 'generated', 'sent', 'ready_for_final_approval', 'reviewed'].includes(val)) return 'eo-pill-info';
+                            if (['lost', 'damaged', 'rejected', 'cancelled', 'absconded', 'terminated'].includes(val)) return 'eo-pill-danger';
+                            return 'eo-pill-warning';
+                        };
+
+                        const formatLabel = function(val) {
+                            if (!val) return 'Pending';
+                            return val.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                        };
+
+                        if (proc.asset_status) {
+                            $form.find('select[name="asset_status"]').val(proc.asset_status.toLowerCase());
+                            const $assetPill = $('.js-top-pill-asset-' + employeeId);
+                            $assetPill.removeClass('eo-pill-success eo-pill-info eo-pill-danger eo-pill-warning')
+                                .addClass(getPillClass(proc.asset_status))
+                                .text(formatLabel(proc.asset_status));
+                        }
+                        if (proc.fnf_status) {
+                            $form.find('select[name="fnf_status"]').val(proc.fnf_status.toLowerCase());
+                            const $fnfPill = $('.js-top-pill-fnf-' + employeeId);
+                            $fnfPill.removeClass('eo-pill-success eo-pill-info eo-pill-danger eo-pill-warning')
+                                .addClass(getPillClass(proc.fnf_status))
+                                .text(formatLabel(proc.fnf_status));
+                        }
+                        if (proc.document_status) {
+                            $form.find('select[name="document_status"]').val(proc.document_status.toLowerCase());
+                            const $docPill = $('.js-top-pill-document-' + employeeId);
+                            $docPill.removeClass('eo-pill-success eo-pill-info eo-pill-danger eo-pill-warning')
+                                .addClass(getPillClass(proc.document_status))
+                                .text(formatLabel(proc.document_status));
+                        }
+                        if (proc.handover_status) {
+                            $form.find('select[name="handover_status"]').val(proc.handover_status.toLowerCase());
+                            const $handoverPill = $('.js-top-pill-handover-' + employeeId);
+                            $handoverPill.removeClass('eo-pill-success eo-pill-info eo-pill-danger eo-pill-warning')
+                                .addClass(getPillClass(proc.handover_status))
+                                .text(formatLabel(proc.handover_status));
+                        }
+
+                        updateMainTableRowPills(employeeId, proc);
+
+                        showExitToast(response.message || 'Exit clearance status updated.', 'success');
+                    } else {
+                        showExitToast(response.message || 'Failed to update clearance.', 'danger');
+                    }
+                },
+                error: function(xhr) {
+                    let errMsg = 'Error updating clearance.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errMsg = xhr.responseJSON.message;
+                    }
+                    showExitToast(errMsg, 'danger');
+                }
+            });
+        }
+
+        $(document).on('change', '.js-overall-clearance-form select', function() {
+            saveOverallClearanceAjax(this.form);
+        });
+
+        $(document).on('change', '.js-overall-clearance-form input[name="remarks"]', function() {
+            saveOverallClearanceAjax(this.form);
+        });
+
+        $(document).on('submit', '.js-overall-clearance-form', function(e) {
+            e.preventDefault();
+            saveOverallClearanceAjax(this);
         });
     });
 </script>

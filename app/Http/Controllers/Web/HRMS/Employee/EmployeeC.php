@@ -2315,6 +2315,38 @@ class EmployeeC extends Controller
             (int) auth()->id()
         );
 
+        if ($request->ajax() || $request->wantsJson()) {
+            $updatedClearances = DB::table('employee_exit_clearances')
+                ->where('exit_process_id', $request->exit_process_id)
+                ->pluck('status', 'department_key');
+
+            $exitProcessRecord = DB::table('employee_exit_processes')
+                ->where('id', $request->exit_process_id)
+                ->first();
+
+            $mandatoryDepts = ['hr', 'manager', 'it', 'admin', 'finance', 'asset'];
+            $allApproved = true;
+            foreach ($mandatoryDepts as $mDept) {
+                if (($updatedClearances[$mDept] ?? 'pending') !== 'approved') {
+                    $allApproved = false;
+                    break;
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => strtoupper($dept) . ' clearance status updated successfully.',
+                'department_key' => $dept,
+                'status' => $request->status,
+                'status_label' => ucfirst($request->status),
+                'approved_by' => $actor->name ?? 'User',
+                'approved_at' => now()->format('d M Y, h:i A'),
+                'all_mandatory_approved' => $allApproved,
+                'clearances' => $updatedClearances,
+                'process' => $exitProcessRecord,
+            ]);
+        }
+
         return back()->with('success', strtoupper($dept) . ' clearance status updated successfully.');
     }
 
@@ -2359,7 +2391,7 @@ class EmployeeC extends Controller
         abort_if($documentStatus !== null && ! $canDocument, 403, 'You are not allowed to update document clearance.');
         abort_if($fnfStatus !== null && ! $canFnf, 403, 'You are not allowed to update FnF clearance.');
 
-        $this->exitProcessService->updateClearance(
+        $updatedProcess = $this->exitProcessService->updateClearance(
             (int) $request->exit_process_id,
             [
                 'asset_status' => $assetStatus,
@@ -2370,6 +2402,14 @@ class EmployeeC extends Controller
             ],
             (int) auth()->id()
         );
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Exit clearance status updated successfully.',
+                'process' => $updatedProcess,
+            ]);
+        }
 
         return back()->with('success', 'Exit clearance updated successfully.');
     }

@@ -1141,12 +1141,22 @@ class AttendanceS
                     $toConsume->push($newViolation);
                 }
                 foreach ($toConsume as $mv) {
-                    $mv->update([
-                        'is_consumed' => true,
-                        'consumed_at' => Carbon::now($timezone),
-                        'penalty_attendance_id' => $attendance->id,
-                        'converted_to_lwp' => true,
-                    ]);
+                    $mvData = [];
+                    if (Schema::hasColumn('attendance_violations', 'is_consumed')) {
+                        $mvData['is_consumed'] = true;
+                    }
+                    if (Schema::hasColumn('attendance_violations', 'consumed_at')) {
+                        $mvData['consumed_at'] = Carbon::now($timezone);
+                    }
+                    if (Schema::hasColumn('attendance_violations', 'penalty_attendance_id')) {
+                        $mvData['penalty_attendance_id'] = $attendance->id;
+                    }
+                    if (Schema::hasColumn('attendance_violations', 'converted_to_lwp')) {
+                        $mvData['converted_to_lwp'] = true;
+                    }
+                    if (! empty($mvData)) {
+                        $mv->update($mvData);
+                    }
                 }
             }
 
@@ -1559,7 +1569,7 @@ class AttendanceS
             return false;
         }
 
-        AttendanceViolationM::create([
+        $createPayload = [
             'employee_id' => $attendance->employee_id,
             'attendance_id' => $attendance->id,
             'violation_date' => $date,
@@ -1567,10 +1577,16 @@ class AttendanceS
             'minutes' => $payload['minutes'] ?? 0,
             'source' => $payload['source'] ?? 'system_auto',
             'policy_action' => $payload['policy_action'] ?? null,
-            'converted_to_half_day' => (bool) ($payload['converted_to_half_day'] ?? false),
-            'converted_to_lwp' => (bool) ($payload['converted_to_lwp'] ?? false),
             'remarks' => $payload['remarks'] ?? null,
-        ]);
+        ];
+        if (Schema::hasColumn('attendance_violations', 'converted_to_half_day')) {
+            $createPayload['converted_to_half_day'] = (bool) ($payload['converted_to_half_day'] ?? false);
+        }
+        if (Schema::hasColumn('attendance_violations', 'converted_to_lwp')) {
+            $createPayload['converted_to_lwp'] = (bool) ($payload['converted_to_lwp'] ?? false);
+        }
+
+        AttendanceViolationM::create($createPayload);
 
         return true;
     }
@@ -1602,12 +1618,22 @@ class AttendanceS
                 ]))->save();
 
                 if (Schema::hasTable('attendance_violations')) {
-                    AttendanceViolationM::where('penalty_attendance_id', $attendance->id)->update([
-                        'is_consumed' => false,
-                        'consumed_at' => null,
-                        'penalty_attendance_id' => null,
-                        'converted_to_half_day' => false,
-                    ]);
+                    $updatePayload = [];
+                    if (Schema::hasColumn('attendance_violations', 'is_consumed')) {
+                        $updatePayload['is_consumed'] = false;
+                    }
+                    if (Schema::hasColumn('attendance_violations', 'consumed_at')) {
+                        $updatePayload['consumed_at'] = null;
+                    }
+                    if (Schema::hasColumn('attendance_violations', 'penalty_attendance_id')) {
+                        $updatePayload['penalty_attendance_id'] = null;
+                    }
+                    if (Schema::hasColumn('attendance_violations', 'converted_to_half_day')) {
+                        $updatePayload['converted_to_half_day'] = false;
+                    }
+                    if (! empty($updatePayload)) {
+                        AttendanceViolationM::where('penalty_attendance_id', $attendance->id)->update($updatePayload);
+                    }
                 }
             }
             return;
@@ -1672,12 +1698,22 @@ class AttendanceS
 
         $participating = $unconsumedViolations->take($combinedViolationLimit);
         foreach ($participating as $v) {
-            $v->update([
-                'is_consumed' => true,
-                'consumed_at' => Carbon::now($this->attendanceTimezone()),
-                'penalty_attendance_id' => $attendance->id,
-                'converted_to_half_day' => true,
-            ]);
+            $vData = [];
+            if (Schema::hasColumn('attendance_violations', 'is_consumed')) {
+                $vData['is_consumed'] = true;
+            }
+            if (Schema::hasColumn('attendance_violations', 'consumed_at')) {
+                $vData['consumed_at'] = Carbon::now($this->attendanceTimezone());
+            }
+            if (Schema::hasColumn('attendance_violations', 'penalty_attendance_id')) {
+                $vData['penalty_attendance_id'] = $attendance->id;
+            }
+            if (Schema::hasColumn('attendance_violations', 'converted_to_half_day')) {
+                $vData['converted_to_half_day'] = true;
+            }
+            if (! empty($vData)) {
+                $v->update($vData);
+            }
         }
     }
 
@@ -2075,33 +2111,37 @@ class AttendanceS
         $allowedMissed = (int) ($policy?->allowed_missed_punches ?? 2);
         $missedLimit = $allowedMissed + 1;
 
-        $disciplineViolations = AttendanceViolationM::where('employee_id', $employee->id)
+        $disciplineQuery = AttendanceViolationM::where('employee_id', $employee->id)
             ->whereYear('violation_date', $dateObj->year)
             ->whereMonth('violation_date', $dateObj->month)
-            ->whereIn('type', ['late_login', 'early_logout'])
-            ->where(function ($q) {
+            ->whereIn('type', ['late_login', 'early_logout']);
+        if (Schema::hasColumn('attendance_violations', 'is_consumed')) {
+            $disciplineQuery->where(function ($q) {
                 $q->where('is_consumed', false)->orWhereNull('is_consumed');
-            })
-            ->where(function ($q) {
-                $q->whereNull('policy_action')->orWhere('policy_action', '!=', 'resolved');
-            })
-            ->get();
+            });
+        }
+        $disciplineQuery->where(function ($q) {
+            $q->whereNull('policy_action')->orWhere('policy_action', '!=', 'resolved');
+        });
+        $disciplineViolations = $disciplineQuery->get();
 
         $lateCount = $disciplineViolations->where('type', 'late_login')->count();
         $earlyCount = $disciplineViolations->where('type', 'early_logout')->count();
         $disciplineCount = $disciplineViolations->count();
 
-        $missedViolations = AttendanceViolationM::where('employee_id', $employee->id)
+        $missedQuery = AttendanceViolationM::where('employee_id', $employee->id)
             ->whereYear('violation_date', $dateObj->year)
             ->whereMonth('violation_date', $dateObj->month)
-            ->where('type', 'missed_punch')
-            ->where(function ($q) {
+            ->where('type', 'missed_punch');
+        if (Schema::hasColumn('attendance_violations', 'is_consumed')) {
+            $missedQuery->where(function ($q) {
                 $q->where('is_consumed', false)->orWhereNull('is_consumed');
-            })
-            ->where(function ($q) {
-                $q->whereNull('policy_action')->orWhere('policy_action', '!=', 'resolved');
-            })
-            ->get();
+            });
+        }
+        $missedQuery->where(function ($q) {
+            $q->whereNull('policy_action')->orWhere('policy_action', '!=', 'resolved');
+        });
+        $missedViolations = $missedQuery->get();
 
         $missedCount = $missedViolations->count();
 
@@ -2125,16 +2165,29 @@ class AttendanceS
         $timezone = $this->attendanceTimezone();
         $asOfDate = Carbon::parse($dateOrMonth, $timezone);
 
-        AttendanceViolationM::where('employee_id', $employeeId)
-            ->whereYear('violation_date', $asOfDate->year)
-            ->whereMonth('violation_date', $asOfDate->month)
-            ->update([
-                'is_consumed' => false,
-                'consumed_at' => null,
-                'penalty_attendance_id' => null,
-                'converted_to_half_day' => false,
-                'converted_to_lwp' => false,
-            ]);
+        $updatePayload = [];
+        if (Schema::hasColumn('attendance_violations', 'is_consumed')) {
+            $updatePayload['is_consumed'] = false;
+        }
+        if (Schema::hasColumn('attendance_violations', 'consumed_at')) {
+            $updatePayload['consumed_at'] = null;
+        }
+        if (Schema::hasColumn('attendance_violations', 'penalty_attendance_id')) {
+            $updatePayload['penalty_attendance_id'] = null;
+        }
+        if (Schema::hasColumn('attendance_violations', 'converted_to_half_day')) {
+            $updatePayload['converted_to_half_day'] = false;
+        }
+        if (Schema::hasColumn('attendance_violations', 'converted_to_lwp')) {
+            $updatePayload['converted_to_lwp'] = false;
+        }
+
+        if (! empty($updatePayload)) {
+            AttendanceViolationM::where('employee_id', $employeeId)
+                ->whereYear('violation_date', $asOfDate->year)
+                ->whereMonth('violation_date', $asOfDate->month)
+                ->update($updatePayload);
+        }
 
         $attendances = Attendance::where('employee_id', $employeeId)
             ->whereYear('attendance_date', $asOfDate->year)

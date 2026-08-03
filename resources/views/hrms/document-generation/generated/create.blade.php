@@ -720,6 +720,19 @@
             });
         }
 
+        // Attach pronoun & prefix change listeners for automatic synchronization
+        const prefixEl = document.getElementById('field_employee_prefix');
+        const subjectEl = document.getElementById('field_gender_pronoun_subject');
+        const possessiveEl = document.getElementById('field_gender_pronoun_possessive');
+        const subjectCapEl = document.getElementById('field_gender_pronoun_subject_capitalized');
+        const objectEl = document.getElementById('field_gender_pronoun_object');
+
+        if (prefixEl) prefixEl.addEventListener('change', function() { synchronizePronouns('prefix'); debouncedPreview(); });
+        if (subjectEl) subjectEl.addEventListener('change', function() { synchronizePronouns('subject'); debouncedPreview(); });
+        if (possessiveEl) possessiveEl.addEventListener('change', function() { synchronizePronouns('possessive'); debouncedPreview(); });
+        if (subjectCapEl) subjectCapEl.addEventListener('change', function() { synchronizePronouns('subject_cap'); debouncedPreview(); });
+        if (objectEl) objectEl.addEventListener('change', function() { synchronizePronouns('object'); debouncedPreview(); });
+
         // Trigger dynamic auto-fill if employee is already selected
         handleEmployeeAutofill();
 
@@ -731,6 +744,101 @@
 
         // Immediate preview reload
         triggerLivePreview();
+    }
+
+    // Helper function to update gender pronouns in all textareas
+    function updateTextareaPronouns(targetGender) {
+        const textareas = document.querySelectorAll('#dynamic_form_container textarea');
+        textareas.forEach(textarea => {
+            let text = textarea.value;
+            if (!text) return;
+
+            if (targetGender === 'female') {
+                text = text.replace(/\b(He|They)\b/g, 'She');
+                text = text.replace(/\b(he|they)\b/g, 'she');
+                text = text.replace(/\b(His|Their)\b/g, 'Her');
+                text = text.replace(/\b(his|their|him|them)\b/g, 'her');
+            } else if (targetGender === 'male') {
+                text = text.replace(/\b(She|They)\b/g, 'He');
+                text = text.replace(/\b(she|they)\b/g, 'he');
+                text = text.replace(/\b(Her|Their)\b/g, 'His');
+                text = text.replace(/\b(her|their)\b/g, 'his');
+                text = text.replace(/\b(them)\b/g, 'him');
+            } else if (targetGender === 'neutral') {
+                text = text.replace(/\b(He|She)\b/g, 'They');
+                text = text.replace(/\b(he|she)\b/g, 'they');
+                text = text.replace(/\b(His|Her)\b/g, 'Their');
+                text = text.replace(/\b(his|her)\b/g, 'their');
+                text = text.replace(/\b(him)\b/g, 'them');
+            }
+
+            if (textarea.value !== text) {
+                textarea.value = text;
+            }
+        });
+    }
+
+    // Helper function to synchronize salutation prefix, pronouns, and textareas
+    function synchronizePronouns(triggerSource) {
+        const prefixInput = document.getElementById('field_employee_prefix');
+        const subjectInput = document.getElementById('field_gender_pronoun_subject');
+        const possessiveInput = document.getElementById('field_gender_pronoun_possessive');
+        const subjectCapInput = document.getElementById('field_gender_pronoun_subject_capitalized');
+        const objectInput = document.getElementById('field_gender_pronoun_object');
+
+        let genderMode = 'male';
+
+        if (triggerSource === 'prefix' && prefixInput) {
+            const val = prefixInput.value;
+            if (val === 'Ms.' || val === 'Mrs.') genderMode = 'female';
+            else if (val === 'Mr.') genderMode = 'male';
+        } else if (triggerSource === 'subject' && subjectInput) {
+            const val = subjectInput.value;
+            if (val === 'she') genderMode = 'female';
+            else if (val === 'they') genderMode = 'neutral';
+            else genderMode = 'male';
+        } else if (triggerSource === 'possessive' && possessiveInput) {
+            const val = possessiveInput.value;
+            if (val === 'her') genderMode = 'female';
+            else if (val === 'their') genderMode = 'neutral';
+            else genderMode = 'male';
+        } else if (triggerSource === 'subject_cap' && subjectCapInput) {
+            const val = subjectCapInput.value;
+            if (val === 'She') genderMode = 'female';
+            else if (val === 'They') genderMode = 'neutral';
+            else genderMode = 'male';
+        } else if (triggerSource === 'object' && objectInput) {
+            const val = objectInput.value;
+            if (val === 'her') genderMode = 'female';
+            else if (val === 'them') genderMode = 'neutral';
+            else genderMode = 'male';
+        } else if (prefixInput) {
+            const val = prefixInput.value;
+            if (val === 'Ms.' || val === 'Mrs.') genderMode = 'female';
+        }
+
+        // Apply synchronized values to all dropdowns
+        if (genderMode === 'female') {
+            if (prefixInput && (prefixInput.value === 'Mr.' || !prefixInput.value)) prefixInput.value = 'Ms.';
+            if (subjectInput) subjectInput.value = 'she';
+            if (possessiveInput) possessiveInput.value = 'her';
+            if (subjectCapInput) subjectCapInput.value = 'She';
+            if (objectInput) objectInput.value = 'her';
+        } else if (genderMode === 'neutral') {
+            if (subjectInput) subjectInput.value = 'they';
+            if (possessiveInput) possessiveInput.value = 'their';
+            if (subjectCapInput) subjectCapInput.value = 'They';
+            if (objectInput) objectInput.value = 'them';
+        } else {
+            if (prefixInput && (prefixInput.value === 'Ms.' || prefixInput.value === 'Mrs.' || !prefixInput.value)) prefixInput.value = 'Mr.';
+            if (subjectInput) subjectInput.value = 'he';
+            if (possessiveInput) possessiveInput.value = 'his';
+            if (subjectCapInput) subjectCapInput.value = 'He';
+            if (objectInput) objectInput.value = 'him';
+        }
+
+        // Update all paragraph textareas
+        updateTextareaPronouns(genderMode);
     }
 
     // Date helper
@@ -960,18 +1068,7 @@
                 if (prefixInput) {
                     const g = (data.gender || '').toLowerCase();
                     prefixInput.value = (g === 'female' || g === 'f') ? 'Ms.' : 'Mr.';
-                    
-                    const subject = document.getElementById('field_gender_pronoun_subject');
-                    if (subject) subject.value = (g === 'female' || g === 'f') ? 'she' : 'he';
-
-                    const subjectCap = document.getElementById('field_gender_pronoun_subject_capitalized');
-                    if (subjectCap) subjectCap.value = (g === 'female' || g === 'f') ? 'She' : 'He';
-
-                    const possessive = document.getElementById('field_gender_pronoun_possessive');
-                    if (possessive) possessive.value = (g === 'female' || g === 'f') ? 'her' : 'his';
-
-                    const obj = document.getElementById('field_gender_pronoun_object');
-                    if (obj) obj.value = (g === 'female' || g === 'f') ? 'her' : 'him';
+                    synchronizePronouns('prefix');
                 }
 
                 // Trigger salary calculations

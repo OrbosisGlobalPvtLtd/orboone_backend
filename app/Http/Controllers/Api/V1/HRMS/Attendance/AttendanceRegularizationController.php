@@ -199,6 +199,24 @@ class AttendanceRegularizationController extends ApiController
             return response()->json(['success' => false, 'status' => false, 'message' => 'Requested punch in/out time is required for this request type.', 'data' => null], 422);
         }
 
+        try {
+            $service->validateRegularizationTimes(
+                employee: $employee,
+                attendanceDate: $attendanceDate,
+                requestType: $data['request_type'],
+                requestedPunchIn: $data['requested_punch_in'] ?? null,
+                requestedPunchOut: $data['requested_punch_out'] ?? null,
+                existingPunchIn: $attendance?->punch_in_time,
+                existingPunchOut: $attendance?->punch_out_time
+            );
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage() ?: 'Please select the correct Punch Out time. Punch Out must be later than Punch In.',
+                'errors' => $e->errors(),
+            ], 422);
+        }
+
         $pendingExists = AttendanceRegularizationM::where('employee_id', $employee->id)
             ->where('request_type', $data['request_type'])
             ->where('status', 'pending')

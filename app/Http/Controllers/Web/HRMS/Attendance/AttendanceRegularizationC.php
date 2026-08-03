@@ -172,6 +172,20 @@ class AttendanceRegularizationC extends Controller
             return back()->withErrors(['requested_punch_out' => 'Requested punch out time is required.'])->withInput();
         }
 
+        try {
+            $service->validateRegularizationTimes(
+                employee: $employee,
+                attendanceDate: $attendanceDate,
+                requestType: $data['request_type'],
+                requestedPunchIn: $data['requested_punch_in'] ?? null,
+                requestedPunchOut: $data['requested_punch_out'] ?? null,
+                existingPunchIn: $attendance?->punch_in_time,
+                existingPunchOut: $attendance?->punch_out_time
+            );
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return back()->withErrors($e->errors())->withInput();
+        }
+
         $requestedIn = ! empty($data['requested_punch_in']) ? Carbon::parse($attendanceDate . ' ' . $data['requested_punch_in'])->toDateTimeString() : null;
         $requestedOut = ! empty($data['requested_punch_out']) ? Carbon::parse($attendanceDate . ' ' . $data['requested_punch_out'])->toDateTimeString() : null;
         DB::table('attendance_regularizations')->insert(array_merge($data, [
@@ -234,6 +248,25 @@ class AttendanceRegularizationC extends Controller
         ]);
 
         $baseDate = Carbon::parse($row->created_at)->toDateString();
+
+        $employee = EmployeeM::find($data['employee_id']);
+        if ($employee) {
+            try {
+                $service = app(\App\Services\HRMS\Attendance\AttendanceRegularizationService::class);
+                $service->validateRegularizationTimes(
+                    employee: $employee,
+                    attendanceDate: $baseDate,
+                    requestType: $data['request_type'],
+                    requestedPunchIn: $data['requested_punch_in'] ?? null,
+                    requestedPunchOut: $data['requested_punch_out'] ?? null,
+                    existingPunchIn: $row->existing_punch_in,
+                    existingPunchOut: $row->existing_punch_out
+                );
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                return back()->withErrors($e->errors())->withInput();
+            }
+        }
+
         $data['requested_punch_in'] = ! empty($data['requested_punch_in']) ? Carbon::parse($baseDate . ' ' . $data['requested_punch_in'])->toDateTimeString() : null;
         $data['requested_punch_out'] = ! empty($data['requested_punch_out']) ? Carbon::parse($baseDate . ' ' . $data['requested_punch_out'])->toDateTimeString() : null;
         DB::table('attendance_regularizations')->where('id', $id)->update(array_merge($data, ['updated_at' => now()]));

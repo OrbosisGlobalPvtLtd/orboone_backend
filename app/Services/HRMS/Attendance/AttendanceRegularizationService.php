@@ -9,6 +9,7 @@ use App\Services\HRMS\Payroll\PayrollCalculationService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\ValidationException;
 
 class AttendanceRegularizationService
 {
@@ -432,4 +433,123 @@ class AttendanceRegularizationService
             'regularization' => $regularization->fresh(),
         ];
     }
+
+    /**
+     * Centralized validation for regularization punch in and punch out times.
+     * Evaluates shift policy, overnight shift context, and sequence constraints.
+     * Throws ValidationException if Punch Out is not strictly later than Punch In.
+     *
+     * @throws ValidationException
+     */
+    public function validateRegularizationTimes(
+        Employee $employee,
+        Carbon|string $attendanceDate,
+        string $requestType,
+        ?string $requestedPunchIn,
+        ?string $requestedPunchOut,
+        ?string $existingPunchIn = null,
+        ?string $existingPunchOut = null
+    ): void {
+        $dateStr = Carbon::parse($attendanceDate, self::TIMEZONE)->toDateString();
+
+        // 1. Resolve dynamic shift policy for employee and date
+        $shift = $this->ruleResolver->getPolicyForEmployee($employee, $dateStr);
+
+        // 2. Determine effective punch in and punch out times based on request_type
+        $finalPunchInStr = null;
+        $finalPunchOutStr = null;
+
+        if (in_array($requestType, ['regular_attendance', 'wrong_punch_time', 'attendance_correction', 'punch_time_correction'], true)) {
+            $finalPunchInStr = $requestedPunchIn;
+            $finalPunchOutStr = $requestedPunchOut;
+
+            if (empty($finalPunchInStr)) {
+                $exception = ValidationException::withMessages([
+                    'requested_punch_in' => ['Requested punch in time is required.'],
+                    'punch_in_time' => ['Requested punch in time is required.'],
+                ]);
+                throw $exception;
+            }
+            if (empty($finalPunchOutStr)) {
+                $exception = ValidationException::withMessages([
+                    'requested_punch_out' => ['Requested punch out time is required.'],
+                    'punch_out_time' => ['Requested punch out time is required.'],
+                ]);
+                throw $exception;
+            }
+        } elseif ($requestType === 'missed_punch_in') {
+            $finalPunchInStr = $requestedPunchIn;
+            $finalPunchOutStr = $existingPunchOut;
+
+            if (empty($finalPunchInStr)) {
+                $exception = ValidationException::withMessages([
+                    'requested_punch_in' => ['Requested punch in time is required for missed punch in.'],
+                    'punch_in_time' => ['Requested punch in time is required.'],
+                ]);
+                throw $exception;
+            }
+        } elseif ($requestType === 'missed_punch_out') {
+            $finalPunchInStr = $existingPunchIn;
+            $finalPunchOutStr = $requestedPunchOut;
+
+            if (empty($finalPunchOutStr)) {
+                $exception = ValidationException::withMessages([
+                    'requested_punch_out' => ['Requested punch out time is required for missed punch out.'],
+                    'punch_out_time' => ['Requested punch out time is required.'],
+                ]);
+                throw $exception;
+            }
+        } else {
+            // Other request types (e.g. late_mark_exemption, early_logout_correction, geofence_issue, system_error, other)
+            $finalPunchInStr = ! empty($requestedPunchIn) ? $requestedPunchIn : $existingPunchIn;
+            $finalPunchOutStr = ! empty($requestedPunchOut) ? $requestedPunchOut : $existingPunchOut;
+        }
+
+        // If either punch is missing after fallback for types where one or both might not be set, skip order check
+        if (empty($finalPunchInStr) || empty($finalPunchOutStr)) {
+            return;
+        }
+
+        // 3. Extract time component (HH:mm:ss or HH:mm)
+        $inTimeOnly = Carbon::parse($finalPunchInStr, self::TIMEZONE)->format('H:i:s');
+        $outTimeOnly = Carbon::parse($finalPunchOutStr, self::TIMEZONE)->format('H:i:s');
+
+        // 4. Resolve Overnight Shift Status
+        $isOvernight = false;
+        if ($shift && ! empty($shift->shift_start_time) && ! empty($shift->shift_end_time)) {
+            $shiftStartCarbon = Carbon::parse($dateStr . ' ' . $this->ruleResolver->timeString($shift->shift_start_time), self::TIMEZONE);
+            $shiftEndCarbon = Carbon::parse($dateStr . ' ' . $this->ruleResolver->timeString($shift->shift_end_time), self::TIMEZONE);
+            if ($shiftEndCarbon->lt($shiftStartCarbon)) {
+                $isOvernight = true;
+            }
+        }
+
+        // 5. Construct full Carbon datetime objects
+        $inDateTime = Carbon::parse($dateStr . ' ' . $inTimeOnly, self::TIMEZONE);
+        $outDateTime = Carbon::parse($dateStr . ' ' . $outTimeOnly, self::TIMEZONE);
+
+        if ($isOvernight) {
+            // In an overnight shift, if punch out time is earlier or equal to punch in on same day, treat punch out as next calendar day
+            if ($outDateTime->lte($inDateTime)) {
+                $outDateTime->addDay();
+            }
+        }
+
+        // 6. Validate Punch Out > Punch In
+        if ($outDateTime->lte($inDateTime)) {
+            $errorMessage = 'Please select the correct Punch Out time. Punch Out must be later than Punch In.';
+            $validationErrors = [
+                'punch_out_time' => ['Please select the correct Punch Out time.'],
+                'requested_punch_out' => ['Please select the correct Punch Out time.'],
+            ];
+
+            $exception = ValidationException::withMessages($validationErrors);
+            $property = new \ReflectionProperty(ValidationException::class, 'message');
+            $property->setAccessible(true);
+            $property->setValue($exception, $errorMessage);
+
+            throw $exception;
+        }
+    }
 }
+

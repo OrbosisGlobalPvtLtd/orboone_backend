@@ -95,8 +95,10 @@ Route::middleware(['auth', 'check.access'])
         Route::post('/monthly-summary/{id}/lock', [MonthlyAttendanceSummaryC::class, 'lock'])->middleware('permission:attendance.monthly_summary.view')->name('monthly_summary.lock');
         Route::post('/monthly-summary/{id}/unlock', [MonthlyAttendanceSummaryC::class, 'unlock'])->middleware('permission:attendance.monthly_summary.view')->name('monthly_summary.unlock');
 
-        Route::get('/violations', [AttendanceViolationC::class, 'index'])->middleware('permission:attendance.violations.view')->name('violations.index');
-        Route::get('/violations/export-excel', [AttendanceViolationC::class, 'exportExcel'])->middleware('permission:attendance.export')->name('violations.export-excel');
+        Route::get('/violations', [AttendanceViolationC::class, 'index'])->middleware('permission:attendance.violations.view|attendance.violations.view_all|attendance.violations.view_team|attendance.records.view_all|attendance.dashboard.view')->name('violations.index');
+        Route::get('/violations/export-excel', [AttendanceViolationC::class, 'exportExcel'])->middleware('permission:attendance.export|attendance.violations.view|attendance.violations.view_all')->name('violations.export-excel');
+        Route::get('/violations/employee-audit/{employeeId}', [AttendanceViolationC::class, 'employeeAudit'])->middleware('permission:attendance.violations.view|attendance.violations.view_all|attendance.violations.view_team|attendance.records.view_all|attendance.dashboard.view')->name('violations.employee-audit');
+        Route::get('/violations/attendance-audit/{attendanceId}', [AttendanceViolationC::class, 'attendanceAudit'])->middleware('permission:attendance.violations.view|attendance.violations.view_all|attendance.violations.view_team|attendance.records.view_all|attendance.dashboard.view')->name('violations.attendance-audit');
 
         Route::get('/policy-overrides', [AttendancePolicyOverrideC::class, 'index'])->middleware('permission:attendance.policy_overrides.manage')->name('policy_overrides.index');
         Route::post('/policy-overrides', [AttendancePolicyOverrideC::class, 'store'])->middleware('permission:attendance.policy_overrides.manage')->name('policy_overrides.store');

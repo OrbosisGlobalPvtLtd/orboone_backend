@@ -177,6 +177,8 @@ class DocumentFieldConfigS
 
                     // Paragraphs
                     ['name' => 'experience_responsibilities', 'label' => 'Core Roles & Responsibilities', 'type' => 'textarea', 'required' => false, 'default' => 'managing assigned responsibilities, coordinating with team members, supporting day-to-day operations, and ensuring timely completion of work as per organizational requirements.', 'section' => 'paragraphs'],
+                    ['name' => 'work_attitude_paragraph', 'label' => 'Work Approach & Professional Attitude', 'type' => 'textarea', 'required' => false, 'default' => 'He demonstrated a responsible and proactive approach towards his work, along with the ability to manage his responsibilities effectively. He maintained a professional attitude throughout his tenure and handled tasks with clarity and consistency.', 'section' => 'paragraphs'],
+                    ['name' => 'role_commitment_paragraph', 'label' => 'Role Commitment & Contribution', 'type' => 'textarea', 'required' => false, 'default' => 'During his time with the organization, he showed sincerity and commitment towards his role. He was dependable in executing assigned responsibilities, coordinating with team members, and ensuring smooth day-to-day operations. His overall contribution supported the functioning of the department in a positive manner.', 'section' => 'paragraphs'],
                     ['name' => 'performance_summary', 'label' => 'Performance Summary', 'type' => 'textarea', 'required' => false, 'default' => 'Their conduct and performance throughout their tenure were found to be satisfactory.', 'section' => 'paragraphs'],
                 ]
             ],

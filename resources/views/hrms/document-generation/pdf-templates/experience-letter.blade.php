@@ -40,22 +40,11 @@
     </p>
 
     <p class="text-justify" style="font-size:13px; line-height:1.8;">
-        {{ ucfirst($gender_pronoun_subject ?? 'they') }} demonstrated a responsible and proactive
-        approach towards {{ $gender_pronoun_possessive ?? 'their' }} work, along with the ability
-        to manage {{ $gender_pronoun_possessive ?? 'their' }} responsibilities effectively.
-        {{ ucfirst($gender_pronoun_subject ?? 'they') }} maintained a professional attitude
-        throughout {{ $gender_pronoun_possessive ?? 'their' }} tenure and handled tasks with
-        clarity and consistency.
+        {!! nl2br(e($work_attitude_paragraph ?? (ucfirst($gender_pronoun_subject ?? 'He') . ' demonstrated a responsible and proactive approach towards ' . ($gender_pronoun_possessive ?? 'his') . ' work, along with the ability to manage ' . ($gender_pronoun_possessive ?? 'his') . ' responsibilities effectively. ' . ucfirst($gender_pronoun_subject ?? 'He') . ' maintained a professional attitude throughout ' . ($gender_pronoun_possessive ?? 'his') . ' tenure and handled tasks with clarity and consistency.'))) !!}
     </p>
 
     <p class="text-justify" style="font-size:13px; line-height:1.8;">
-        During {{ $gender_pronoun_possessive ?? 'their' }} time with the organization,
-        {{ $gender_pronoun_subject ?? 'they' }} showed sincerity and commitment towards
-        {{ $gender_pronoun_possessive ?? 'their' }} role.
-        {{ ucfirst($gender_pronoun_subject ?? 'they') }} was dependable in executing assigned
-        responsibilities, coordinating with team members, and ensuring smooth day-to-day
-        operations. {{ ucfirst($gender_pronoun_possessive ?? 'their') }} overall contribution
-        supported the functioning of the department in a positive manner.
+        {!! nl2br(e($role_commitment_paragraph ?? ('During ' . ($gender_pronoun_possessive ?? 'his') . ' time with the organization, ' . ($gender_pronoun_subject ?? 'he') . ' showed sincerity and commitment towards ' . ($gender_pronoun_possessive ?? 'his') . ' role. ' . ucfirst($gender_pronoun_subject ?? 'He') . ' was dependable in executing assigned responsibilities, coordinating with team members, and ensuring smooth day-to-day operations. ' . ucfirst($gender_pronoun_possessive ?? 'His') . ' overall contribution supported the functioning of the department in a positive manner.'))) !!}
     </p>
 
     <p class="text-justify" style="font-size:13px; line-height:1.8;">

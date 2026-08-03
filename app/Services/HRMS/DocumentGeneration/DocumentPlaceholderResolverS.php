@@ -271,6 +271,8 @@ class DocumentPlaceholderResolverS
 
             'job_responsibilities' => '',
             'experience_responsibilities' => '',
+            'work_attitude_paragraph' => '',
+            'role_commitment_paragraph' => '',
             'internship_work_summary' => '',
             'performance_summary' => '',
             'handover_status' => '',

@@ -1396,14 +1396,25 @@ if ($user) {
                                     <label>Work Schedule</label>
                                     <select name="work_schedule_type" id="work_schedule_type" class="em-control editable-select" disabled>
                                         <option value="">Select Schedule</option>
-                                        <option value="general" {{ old('work_schedule_type', $employeeData->work_schedule_type ?? '') == 'general' ? 'selected' : '' }}>Full Day</option>
-                                        @if(old('work_schedule_type', $employeeData->work_schedule_type ?? '') == 'wfh')
-                                            <option value="wfh" selected>Work From Home (WFH)</option>
-                                        @endif
-                                        <option value="part_time" {{ old('work_schedule_type', $employeeData->work_schedule_type ?? '') == 'part_time' ? 'selected' : '' }}>Part-Day</option>
-                                        <option value="half_day" {{ old('work_schedule_type', $employeeData->work_schedule_type ?? '') == 'half_day' ? 'selected' : '' }}>Half-Day</option>
-                                        <option value="half_day_morning" {{ old('work_schedule_type', $employeeData->work_schedule_type ?? '') == 'half_day_morning' ? 'selected' : '' }}>Half-Day (Morning)</option>
-                                        <option value="half_day_evening" {{ old('work_schedule_type', $employeeData->work_schedule_type ?? '') == 'half_day_evening' ? 'selected' : '' }}>Half-Day (Evening)</option>
+                                        @foreach($attendanceTimes as $shiftItem)
+                                            @php
+                                                $currentVal = old('work_schedule_type', $employeeData->work_schedule_type ?? '');
+                                                $isMatch = $currentVal == $shiftItem->code 
+                                                        || $currentVal == str_replace('_shift', '', $shiftItem->code)
+                                                        || (in_array($currentVal, ['general', 'full_day']) && str_contains($shiftItem->code, 'general'))
+                                                        || (in_array($currentVal, ['part_time', 'part_day']) && $shiftItem->code === 'part_time_shift')
+                                                        || (in_array($currentVal, ['half_day', 'hourly']) && $shiftItem->code === 'half_day_shift')
+                                                        || (in_array($currentVal, ['wfh']) && $shiftItem->code === 'wfh_shift');
+
+                                                $displayName = $shiftItem->name;
+                                                if (str_contains($shiftItem->code, 'general')) {
+                                                    $displayName = 'General Shift (Full Day)';
+                                                }
+                                            @endphp
+                                            <option value="{{ $shiftItem->code }}" {{ $isMatch ? 'selected' : '' }}>
+                                                {{ $displayName }}
+                                            </option>
+                                        @endforeach
                                     </select>
                                     @error('work_schedule_type') <div class="em-error">{{ $message }}</div> @enderror
                                 </div>

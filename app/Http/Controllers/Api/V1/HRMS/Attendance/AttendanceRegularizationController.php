@@ -17,8 +17,10 @@ use Illuminate\Support\Facades\Schema;
 class AttendanceRegularizationController extends ApiController
 {
     private const REQUEST_TYPES = [
+        'regular_attendance',
         'missed_punch_in',
         'missed_punch_out',
+        'attendance_correction',
         'wrong_punch_time',
         'late_mark_exemption',
         'early_logout_correction',
@@ -26,6 +28,81 @@ class AttendanceRegularizationController extends ApiController
         'system_error',
         'other',
     ];
+
+    public function getOptions(Request $request)
+    {
+        try {
+            $employee = EmployeeM::where('user_id', auth()->id())->first();
+            if (! $employee) {
+                return response()->json([
+                    'success' => false,
+                    'status' => false,
+                    'message' => 'Employee profile not found.',
+                    'data' => [
+                        'can_regularize' => false,
+                        'attendance_status' => null,
+                        'available_options' => [],
+                        'message' => 'Employee profile not found.',
+                    ],
+                ], 404);
+            }
+
+            $rawDate = $request->input('date') ?? $request->input('attendance_date');
+            if (empty($rawDate)) {
+                return response()->json([
+                    'success' => false,
+                    'status' => false,
+                    'message' => 'Attendance date is required.',
+                    'data' => [
+                        'can_regularize' => false,
+                        'attendance_status' => null,
+                        'available_options' => [],
+                        'message' => 'Attendance date is required.',
+                    ],
+                ], 422);
+            }
+
+            try {
+                $date = Carbon::parse($rawDate)->toDateString();
+            } catch (\Throwable $e) {
+                return response()->json([
+                    'success' => false,
+                    'status' => false,
+                    'message' => 'Invalid attendance date format.',
+                    'data' => [
+                        'can_regularize' => false,
+                        'attendance_status' => null,
+                        'available_options' => [],
+                        'message' => 'Invalid attendance date format.',
+                    ],
+                ], 422);
+            }
+
+            $service = app(\App\Services\HRMS\Attendance\AttendanceRegularizationService::class);
+            $result = $service->getAvailableRegularizationTypes($employee, $date);
+
+            return response()->json([
+                'success' => (bool) ($result['success'] ?? true),
+                'status' => (bool) ($result['success'] ?? true),
+                'message' => $result['message'] ?? 'Available regularization options fetched successfully.',
+                'data' => $result,
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('API Attendance Regularization getOptions error: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'status' => false,
+                'message' => config('app.debug') ? $e->getMessage() : 'Unable to load regularization options.',
+                'data' => [
+                    'can_regularize' => false,
+                    'attendance_status' => null,
+                    'available_options' => [],
+                    'message' => config('app.debug') ? $e->getMessage() : 'Unable to load regularization options.',
+                ],
+            ], 500);
+        }
+    }
 
     public function requestRegularization(Request $request)
     {
@@ -57,7 +134,11 @@ class AttendanceRegularizationController extends ApiController
             $attendanceDate = Carbon::parse($attendance->attendance_date)->toDateString();
         }
 
-        if ($attendanceDate && Carbon::parse($attendanceDate)->isFuture()) {
+        if (! $attendanceDate) {
+            return response()->json(['success' => false, 'status' => false, 'message' => 'Attendance date is required.', 'data' => null], 422);
+        }
+
+        if (Carbon::parse($attendanceDate)->isFuture()) {
             return response()->json(['success' => false, 'status' => false, 'message' => 'Future attendance date is not allowed.', 'data' => null], 422);
         }
 
@@ -65,6 +146,18 @@ class AttendanceRegularizationController extends ApiController
             $attendance = Attendance::where('employee_id', $employee->id)
                 ->whereDate('attendance_date', $attendanceDate)
                 ->first();
+        }
+
+        $service = app(\App\Services\HRMS\Attendance\AttendanceRegularizationService::class);
+        $optionsResult = $service->getAvailableRegularizationTypes($employee, $attendanceDate);
+        if (! $optionsResult['can_regularize']) {
+            return response()->json(['success' => false, 'status' => false, 'message' => $optionsResult['message'] ?? 'Regularization is not allowed for this date.', 'data' => null], 422);
+        }
+
+        $allowedOptionIds = array_column($optionsResult['available_options'], 'id');
+        $requestedType = $request->input('request_type');
+        if ($requestedType && ! in_array($requestedType, $allowedOptionIds, true)) {
+            return response()->json(['success' => false, 'status' => false, 'message' => 'Selected regularization type is not valid for this date.', 'data' => null], 422);
         }
 
         $rawPunchIn = $request->input('requested_punch_in') ?? $request->input('requested_punch_in_time');
@@ -89,6 +182,10 @@ class AttendanceRegularizationController extends ApiController
             'reason' => 'required|string',
             'attachment' => 'nullable|file|max:5120',
         ]);
+
+        if ($data['request_type'] === 'regular_attendance' && (empty($data['requested_punch_in']) || empty($data['requested_punch_out']))) {
+            return response()->json(['success' => false, 'status' => false, 'message' => 'Both requested punch in and punch out times are required for Regular Attendance.', 'data' => null], 422);
+        }
 
         if ($data['request_type'] === 'missed_punch_in' && empty($data['requested_punch_in'])) {
             return response()->json(['success' => false, 'status' => false, 'message' => 'Requested punch in time is required for missed punch in.', 'data' => null], 422);
@@ -243,7 +340,6 @@ class AttendanceRegularizationController extends ApiController
 
     public function approveRegularization($id, Request $request)
     {
-        $attendanceService = app(AttendanceS::class);
         if (! $this->canApproveRegularization()) {
             return response()->json(['success' => false, 'status' => false, 'message' => 'Unauthorized.', 'data' => null], 403);
         }
@@ -261,58 +357,17 @@ class AttendanceRegularizationController extends ApiController
             return response()->json(['success' => false, 'status' => false, 'message' => 'Only pending requests can be approved.', 'data' => null], 422);
         }
 
+        $result = null;
         try {
-            DB::transaction(function () use ($row, $attendanceService, $request) {
-            $attendance = $row->attendance_id
-                ? Attendance::where('id', $row->attendance_id)->where('employee_id', $row->employee_id)->first()
-                : null;
+            DB::transaction(function () use ($row, $request, &$result) {
+                $service = app(\App\Services\HRMS\Attendance\AttendanceRegularizationService::class);
+                $result = $service->applyApprovedRegularization($row, auth()->id());
 
-            if (! $attendance) {
-                $date = $row->requested_punch_in
-                    ? Carbon::parse($row->requested_punch_in, $attendanceService->attendanceTimezone())->toDateString()
-                    : Carbon::parse($row->created_at, $attendanceService->attendanceTimezone())->toDateString();
-                $attendance = Attendance::firstOrCreate(
-                    ['employee_id' => $row->employee_id, 'attendance_date' => $date],
-                    ['user_id' => optional(EmployeeM::find($row->employee_id))->user_id]
-                );
-            }
-
-            if ($attendance->payroll_processed) {
-                $summaryLocked = DB::table('monthly_attendance_summaries')
-                    ->where('employee_id', $row->employee_id)
-                    ->where('month', (int) Carbon::parse($attendance->attendance_date)->format('m'))
-                    ->where('year', (int) Carbon::parse($attendance->attendance_date)->format('Y'))
-                    ->where('is_locked', 1)
-                    ->where('payroll_processed', 1)
-                    ->exists();
-                if ($summaryLocked) {
-                    throw new \RuntimeException('Attendance is locked/payroll processed for this date.');
+                if ($request->filled('approval_note')) {
+                    $row->update(['rejection_reason' => $request->input('approval_note')]);
                 }
-            }
-
-            if ($row->requested_punch_in) {
-                $attendance->punch_in_time = Carbon::parse($row->requested_punch_in, $attendanceService->attendanceTimezone())->format('H:i:s');
-            }
-            if ($row->requested_punch_out) {
-                $attendance->punch_out_time = Carbon::parse($row->requested_punch_out, $attendanceService->attendanceTimezone())->format('H:i:s');
-            }
-            $attendance->missed_punch = false;
-            $attendance->is_missed_punch = false;
-            $attendance->missed_punch_reason = null;
-            $attendance->pending_hr_reason = null;
-            $attendance->is_locked = false;
-            $attendance->save();
-            $attendanceService->calculateAttendanceStats($attendance);
-
-            $row->update([
-                'attendance_id' => $attendance->id,
-                'status' => 'approved',
-                'approved_by_user_id' => auth()->id(),
-                'approved_at' => now(),
-                'rejection_reason' => $request->input('approval_note'),
-            ]);
             });
-        } catch (\RuntimeException $e) {
+        } catch (\Throwable $e) {
             return response()->json(['success' => false, 'status' => false, 'message' => app(\App\Services\Shared\MobileApiMessageS::class)->friendly($e), 'data' => null], 422);
         }
 
@@ -333,8 +388,9 @@ class AttendanceRegularizationController extends ApiController
         return response()->json([
             'success' => true,
             'status' => true,
-            'message' => 'Regularization approved successfully.',
-            'data' => new AttendanceRegularizationResource($row->fresh()),
+            'message' => $result['message'] ?? 'Regularization approved successfully.',
+            'warning' => $result['warning'] ?? null,
+            'data' => new AttendanceRegularizationResource($fresh),
         ]);
     }
 
@@ -370,16 +426,7 @@ class AttendanceRegularizationController extends ApiController
                 }
 
                 if ($attendance && !$attendance->payroll_processed && !$attendance->is_locked) {
-                    $lwpType = $attendanceService->attendanceType('lwp');
-                    $attendance->attendance_status = 'lwp';
-                    if ($lwpType) {
-                        $attendance->attendance_type_id = $lwpType->id;
-                    }
-                    $attendance->is_lwp = true;
-                    $attendance->lwp_reason = 'Missed punch regularization rejected';
-                    $attendance->remarks = 'Missed punch regularization rejected';
-                    $attendance->save();
-
+                    $attendanceService->calculateAttendanceStats($attendance);
                     $attendanceService->syncAttendanceViolations($attendance);
                 }
 

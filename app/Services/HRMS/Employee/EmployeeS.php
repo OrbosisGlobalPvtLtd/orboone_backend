@@ -57,11 +57,17 @@ class EmployeeS
             ->orderBy('id')
             ->get();
 
+        $attendanceTimes = DB::table('attendance_times')
+            ->where('is_active', 1)
+            ->orderBy('id')
+            ->get();
+
         return [
             'departments' => $departments,
             'designations' => $designations,
             'reportingManagers' => $reportingManagers,
             'roles' => $roles,
+            'attendanceTimes' => $attendanceTimes,
         ];
     }
 }

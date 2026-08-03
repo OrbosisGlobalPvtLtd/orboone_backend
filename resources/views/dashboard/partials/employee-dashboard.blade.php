@@ -157,6 +157,25 @@
                         <div class="dash-stat"><span>Late</span><strong>{{ $month['late'] ?? 0 }}</strong></div>
                     </div>
                 </div>
+
+                @php
+                    $violationSummary = app(\App\Services\HRMS\Attendance\AttendanceS::class)->getEmployeeViolationSummary($employee);
+                @endphp
+                <div class="dash-panel mt-3">
+                    <h2 class="dash-section-title" style="font-size: 15px; font-weight: 700;"><i class="fas fa-exclamation-triangle text-warning"></i> Violation Cycles (Unconsumed)</h2>
+                    <div class="dash-stat-list">
+                        <div class="dash-stat">
+                            <span>Attendance Discipline</span>
+                            <strong>{{ $violationSummary['discipline']['count'] }} / {{ $violationSummary['discipline']['limit'] }}</strong>
+                            <small class="text-muted d-block" style="font-size: 11px; margin-top: 2px;">Late: {{ $violationSummary['discipline']['late'] }} | Early: {{ $violationSummary['discipline']['early'] }}</small>
+                        </div>
+                        <div class="dash-stat">
+                            <span>Missed Punch</span>
+                            <strong>{{ $violationSummary['missed_punch']['count'] }} / {{ $violationSummary['missed_punch']['limit'] }}</strong>
+                            <small class="text-muted d-block" style="font-size: 11px; margin-top: 2px;">Allowed: {{ $violationSummary['missed_punch']['allowed'] }}</small>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 

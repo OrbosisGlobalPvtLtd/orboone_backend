@@ -18,8 +18,9 @@ class AttendanceRegularizationC extends Controller
 {
     use HrmsCrudPage;
     private const REQUEST_TYPES = [
-        'missed_punch_in','missed_punch_out','wrong_punch_time','late_mark_exemption',
-        'early_logout_correction','geofence_issue','system_error','other',
+        'regular_attendance', 'missed_punch_in', 'missed_punch_out', 'attendance_correction',
+        'wrong_punch_time', 'late_mark_exemption', 'early_logout_correction', 'geofence_issue',
+        'system_error', 'other',
     ];
 
     public function index(Request $request)
@@ -54,6 +55,68 @@ class AttendanceRegularizationC extends Controller
         return view('hrms.attendance.regularizations.index', $this->pageData($query->latest('attendance_regularizations.id')->paginate(50), $request));
     }
 
+    public function getOptions(Request $request)
+    {
+        try {
+            $rawDate = $request->input('date') ?? $request->input('attendance_date');
+            if (empty($rawDate)) {
+                return response()->json([
+                    'success' => false,
+                    'can_regularize' => false,
+                    'attendance_status' => null,
+                    'message' => 'Please select an attendance date.',
+                    'available_options' => [],
+                ]);
+            }
+
+            $employeeId = $request->input('employee_id');
+
+            if (! $this->canViewAll('attendance.regularization.view_all') && ! $this->canViewTeam('attendance.regularization.view_team')) {
+                $employeeId = $this->ownEmployeeId();
+            } elseif (empty($employeeId)) {
+                $employeeId = $this->ownEmployeeId();
+            }
+
+            if (empty($employeeId)) {
+                return response()->json([
+                    'success' => false,
+                    'can_regularize' => false,
+                    'attendance_status' => null,
+                    'message' => 'Please select an employee first.',
+                    'available_options' => [],
+                ]);
+            }
+
+            $employee = EmployeeM::find($employeeId);
+            if (! $employee) {
+                return response()->json([
+                    'success' => false,
+                    'can_regularize' => false,
+                    'attendance_status' => null,
+                    'message' => 'Employee profile not found.',
+                    'available_options' => [],
+                ]);
+            }
+
+            $service = app(\App\Services\HRMS\Attendance\AttendanceRegularizationService::class);
+            $result = $service->getAvailableRegularizationTypes($employee, $rawDate);
+
+            return response()->json($result);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Web Attendance Regularization getOptions error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'can_regularize' => false,
+                'attendance_status' => null,
+                'message' => config('app.debug') ? $e->getMessage() : 'Unable to load regularization options.',
+                'available_options' => [],
+            ]);
+        }
+    }
+
     public function store(Request $request)
     {
         abort_unless($this->userHasPermission('attendance.regularization.create'), 403);
@@ -74,20 +137,33 @@ class AttendanceRegularizationC extends Controller
             $data['employee_id'] = $employeeId;
         }
 
-        $attendance = AttendanceM::where('employee_id', $data['employee_id'])
-            ->whereDate('attendance_date', $data['attendance_date'])
-            ->first();
+        $employee = EmployeeM::find($data['employee_id']);
+        if (! $employee) {
+            return back()->with('error', 'Employee not found.')->withInput();
+        }
+
         $attendanceDate = $data['attendance_date'];
+
+        $service = app(\App\Services\HRMS\Attendance\AttendanceRegularizationService::class);
+        $optionsResult = $service->getAvailableRegularizationTypes($employee, $attendanceDate);
+
+        if (! $optionsResult['can_regularize']) {
+            return back()->with('error', $optionsResult['message'] ?? 'Regularization is not allowed for this date.')->withInput();
+        }
+
+        $allowedOptionIds = array_column($optionsResult['available_options'], 'id');
+        if (! in_array($data['request_type'], $allowedOptionIds, true)) {
+            return back()->with('error', 'Selected regularization type is not valid for this date.')->withInput();
+        }
+
+        $attendance = AttendanceM::where('employee_id', $data['employee_id'])
+            ->whereDate('attendance_date', $attendanceDate)
+            ->first();
+
         unset($data['attendance_date']);
-        $pendingExists = DB::table('attendance_regularizations')
-            ->where('employee_id', $data['employee_id'])
-            ->where('request_type', $data['request_type'])
-            ->where('status', 'pending')
-            ->whereNull('deleted_at')
-            ->whereDate('created_at', $attendanceDate)
-            ->exists();
-        if ($pendingExists) {
-            return back()->with('error', 'Duplicate pending request for same date/type already exists.');
+
+        if ($data['request_type'] === 'regular_attendance' && (empty($data['requested_punch_in']) || empty($data['requested_punch_out']))) {
+            return back()->withErrors(['requested_punch_in' => 'Both Punch In and Punch Out times are required for Regular Attendance.'])->withInput();
         }
         if ($data['request_type'] === 'missed_punch_in' && empty($data['requested_punch_in'])) {
             return back()->withErrors(['requested_punch_in' => 'Requested punch in time is required.'])->withInput();
@@ -118,7 +194,6 @@ class AttendanceRegularizationC extends Controller
 
         $hrEmail = config('hrms.emails.hr');
         if ($hrEmail) {
-            $employee = EmployeeM::with(['user', 'department'])->find($data['employee_id']);
             $details = [
                 'Employee Name' => $employee?->display_name ?: 'Employee',
                 'Employee Code' => $employee?->employee_code ?: 'N/A',
@@ -175,44 +250,14 @@ class AttendanceRegularizationC extends Controller
         if (! $row || $row->status !== 'pending') {
             return back()->with('error', 'Only pending requests can be approved.');
         }
-        $attendance = $row->attendance_id ? AttendanceM::find($row->attendance_id) : null;
-        if (! $attendance) {
-            $attendance = AttendanceM::firstOrCreate(
-                ['employee_id' => $row->employee_id, 'attendance_date' => Carbon::parse($row->created_at)->toDateString()]
-            );
+
+        try {
+            $service = app(\App\Services\HRMS\Attendance\AttendanceRegularizationService::class);
+            $result = $service->applyApprovedRegularization((int) $id, $this->actorId());
+        } catch (\Throwable $e) {
+            return back()->with('error', $e->getMessage());
         }
-        if ($attendance->payroll_processed) {
-            $summaryLocked = DB::table('monthly_attendance_summaries')
-                ->where('employee_id', $row->employee_id)
-                ->where('month', (int) Carbon::parse($attendance->attendance_date)->format('m'))
-                ->where('year', (int) Carbon::parse($attendance->attendance_date)->format('Y'))
-                ->where('is_locked', 1)
-                ->where('payroll_processed', 1)
-                ->exists();
-            if ($summaryLocked) {
-                return back()->with('error', 'Attendance is locked/payroll processed for this date.');
-            }
-        }
-        if ($row->requested_punch_in) {
-            $attendance->punch_in_time = Carbon::parse($row->requested_punch_in)->format('H:i:s');
-        }
-        if ($row->requested_punch_out) {
-            $attendance->punch_out_time = Carbon::parse($row->requested_punch_out)->format('H:i:s');
-        }
-        $attendance->missed_punch = false;
-        $attendance->is_missed_punch = false;
-        $attendance->missed_punch_reason = null;
-        $attendance->pending_hr_reason = null;
-        $attendance->is_locked = false;
-        $attendance->save();
-        app(AttendanceS::class)->calculateAttendanceStats($attendance);
-        DB::table('attendance_regularizations')->where('id', $id)->update([
-            'attendance_id' => $attendance->id,
-            'status' => 'approved',
-            'approved_by_user_id' => $this->actorId(),
-            'approved_at' => $this->nowKolkata(),
-            'updated_at' => now(),
-        ]);
+
         $employee = EmployeeM::find($row->employee_id);
         if ($employee?->user_id) {
             app(NotificationS::class)->notifyEmployee(
@@ -226,7 +271,14 @@ class AttendanceRegularizationC extends Controller
             );
         }
 
-        return back()->with('success', 'Regularization approved.');
+        $warning = $result['warning'] ?? null;
+        $msg = $result['message'] ?? 'Regularization approved and attendance recalculated.';
+
+        if ($warning) {
+            return back()->with('warning', $warning)->with('success', $msg);
+        }
+
+        return back()->with('success', $msg);
     }
 
     public function reject($id)

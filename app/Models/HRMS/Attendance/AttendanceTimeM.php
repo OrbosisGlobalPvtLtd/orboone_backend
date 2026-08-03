@@ -14,6 +14,7 @@ class AttendanceTimeM extends Model
     protected $fillable = [
         'name',
         'code',
+        'shift_type',
         'punch_allowed_from',
         'early_login_from',
         'normal_login_from',

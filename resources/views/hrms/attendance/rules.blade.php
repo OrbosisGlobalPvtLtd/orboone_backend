@@ -765,11 +765,11 @@
                                             <div class="text-muted small">{{ $time->code }}</div>
                                         </td>
 
-                                        <td>{{ \Carbon\Carbon::parse($time->punch_allowed_from)->format('h:i A') }}</td>
-                                        <td>{{ \Carbon\Carbon::parse($time->shift_start_time)->format('h:i A') }}</td>
-                                        <td>{{ \Carbon\Carbon::parse($time->late_after_time)->format('h:i A') }}</td>
+                                        <td>{{ ($time->shift_type ?? 'fixed') === 'flexible_part_time' ? 'Anytime' : ($time->punch_allowed_from ? \Carbon\Carbon::parse($time->punch_allowed_from)->format('h:i A') : '-') }}</td>
+                                        <td>{{ ($time->shift_type ?? 'fixed') === 'flexible_part_time' ? 'Flexible' : ($time->shift_start_time ? \Carbon\Carbon::parse($time->shift_start_time)->format('h:i A') : '-') }}</td>
+                                        <td>{{ ($time->shift_type ?? 'fixed') === 'flexible_part_time' ? '-' : ($time->late_after_time ? \Carbon\Carbon::parse($time->late_after_time)->format('h:i A') : '-') }}</td>
                                         <td>{{ $time->half_day_after_time ? \Carbon\Carbon::parse($time->half_day_after_time)->format('h:i A') : '-' }}</td>
-                                        <td>{{ \Carbon\Carbon::parse($time->shift_end_time)->format('h:i A') }}</td>
+                                        <td>{{ ($time->shift_type ?? 'fixed') === 'flexible_part_time' ? 'Flexible' : ($time->shift_end_time ? \Carbon\Carbon::parse($time->shift_end_time)->format('h:i A') : '-') }}</td>
                                         <td>{{ $time->required_work_minutes }} mins</td>
                                         <td>{{ $time->half_day_min_minutes }} mins</td>
                                         <td>{{ $time->lunch_break_minutes }} mins</td>

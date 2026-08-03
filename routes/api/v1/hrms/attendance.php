@@ -18,6 +18,17 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/history', [AttendanceController::class, 'history']);
             Route::get('/list', [AttendanceController::class, 'getAttendance']);
             Route::get('/monthly', [AttendanceController::class, 'monthly']);
+
+            Route::get('/regularize/options', [AttendanceRegularizationController::class, 'getOptions']);
+            Route::post('/regularize', [AttendanceRegularizationController::class, 'requestRegularization']);
+            Route::get('/regularize/my-requests', [AttendanceRegularizationController::class, 'myRegularizationRequests']);
+            Route::get('/regularize/{id}', [AttendanceRegularizationController::class, 'showRegularizationRequest']);
+            Route::post('/regularize/{id}/cancel', [AttendanceRegularizationController::class, 'cancelRegularizationRequest']);
+            Route::get('/regularization/options', [AttendanceRegularizationController::class, 'getOptions']);
+            Route::post('/regularization', [AttendanceRegularizationController::class, 'requestRegularization']);
+            Route::get('/regularization/my-requests', [AttendanceRegularizationController::class, 'myRegularizationRequests']);
+            Route::get('/regularization/{id}', [AttendanceRegularizationController::class, 'showRegularizationRequest']);
+            Route::post('/regularization/{id}/cancel', [AttendanceRegularizationController::class, 'cancelRegularizationRequest']);
         });
         Route::get('/rules', [AttendanceController::class, 'rules']);
         Route::post('/unlock', [AttendanceController::class, 'unlock']);
@@ -31,10 +42,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/attendance/manual-update', [AttendanceController::class, 'manualAttendanceUpdate']);
         Route::get('/attendance/reports/late-early', [AttendanceController::class, 'lateEarlyReport']);
 
+        Route::get('/attendance/regularize/options', [AttendanceRegularizationController::class, 'getOptions']);
         Route::post('/attendance/regularize', [AttendanceRegularizationController::class, 'requestRegularization']);
         Route::get('/attendance/regularize/my-requests', [AttendanceRegularizationController::class, 'myRegularizationRequests']);
         Route::get('/attendance/regularize/{id}', [AttendanceRegularizationController::class, 'showRegularizationRequest']);
         Route::post('/attendance/regularize/{id}/cancel', [AttendanceRegularizationController::class, 'cancelRegularizationRequest']);
+        Route::get('/attendance/regularization/options', [AttendanceRegularizationController::class, 'getOptions']);
         Route::post('/attendance/regularization', [AttendanceRegularizationController::class, 'requestRegularization']);
         Route::get('/attendance/regularization/my-requests', [AttendanceRegularizationController::class, 'myRegularizationRequests']);
         Route::get('/attendance/regularization/{id}', [AttendanceRegularizationController::class, 'showRegularizationRequest']);

@@ -16,9 +16,11 @@ class AttendanceViolationM extends Model
 
     protected $casts = [
         'violation_date' => 'date',
+        'consumed_at' => 'datetime',
         'minutes' => 'integer',
         'converted_to_half_day' => 'boolean',
         'converted_to_lwp' => 'boolean',
+        'is_consumed' => 'boolean',
     ];
 
     public function employee()
@@ -29,5 +31,10 @@ class AttendanceViolationM extends Model
     public function attendance()
     {
         return $this->belongsTo(AttendanceM::class, 'attendance_id');
+    }
+
+    public function penaltyAttendance()
+    {
+        return $this->belongsTo(AttendanceM::class, 'penalty_attendance_id');
     }
 }

@@ -72,6 +72,7 @@ Route::middleware(['auth', 'check.access'])
     ->name('hrms.attendance.')
     ->group(function () {
         Route::get('/regularizations', [AttendanceRegularizationC::class, 'index'])->middleware('permission:attendance.regularization.view_all|attendance.regularization.view_team|attendance.regularization.view_own|attendance.regularization.view')->name('regularizations.index');
+        Route::get('/regularizations/options', [AttendanceRegularizationC::class, 'getOptions'])->name('regularizations.options');
         Route::get('/regularizations/export-excel', [AttendanceRegularizationC::class, 'exportExcel'])->middleware('permission:attendance.export')->name('regularizations.export-excel');
         Route::post('/regularizations', [AttendanceRegularizationC::class, 'store'])->middleware('permission:attendance.regularization.create')->name('regularizations.store');
         Route::put('/regularizations/{id}', [AttendanceRegularizationC::class, 'update'])->middleware('permission:attendance.regularization.create')->name('regularizations.update');

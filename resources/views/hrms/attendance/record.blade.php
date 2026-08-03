@@ -1165,9 +1165,14 @@
                             <td><strong>{{ $net }}</strong></td>
 
                              <td>
-                                <span class="att-badge badge-{{ $typeCode }}">
+                                <span class="att-badge badge-{{ $typeCode }}" @if(!empty($attendance->half_day_reason) || !empty($attendance->lwp_reason)) title="{{ $attendance->half_day_reason ?: $attendance->lwp_reason }}" @endif>
                                     {{ $statusName }}
                                 </span>
+                                @if(!empty($attendance->half_day_reason))
+                                    <small class="d-block text-muted mt-1" style="font-size: 11px; max-width: 220px; line-height: 1.2;">{{ $attendance->half_day_reason }}</small>
+                                @elseif(!empty($attendance->lwp_reason))
+                                    <small class="d-block text-muted mt-1" style="font-size: 11px; max-width: 220px; line-height: 1.2;">{{ $attendance->lwp_reason }}</small>
+                                @endif
                             </td>
 
                             <td>

@@ -745,27 +745,12 @@ body {
                                     
                                     $type = $row->request_type;
                                     
-                                    $currentInText = 'N/A';
-                                    $currentOutText = 'N/A';
-                                    $requestedInText = 'N/A';
-                                    $requestedOutText = 'N/A';
+                                    $currentInText = $row->existing_punch_in ? \Carbon\Carbon::parse($row->existing_punch_in)->format('h:i A') : 'N/A';
+                                    $currentOutText = $row->existing_punch_out ? \Carbon\Carbon::parse($row->existing_punch_out)->format('h:i A') : 'N/A';
+                                    $requestedInText = $row->requested_punch_in ? \Carbon\Carbon::parse($row->requested_punch_in)->format('h:i A') : 'N/A';
+                                    $requestedOutText = $row->requested_punch_out ? \Carbon\Carbon::parse($row->requested_punch_out)->format('h:i A') : 'N/A';
                                     
-                                    if ($type === 'missed_punch_in') {
-                                        $currentOutText = $row->existing_punch_out ? \Carbon\Carbon::parse($row->existing_punch_out)->format('h:i A') : 'N/A';
-                                        $requestedInText = $row->requested_punch_in ? \Carbon\Carbon::parse($row->requested_punch_in)->format('h:i A') : 'N/A';
-                                    } elseif ($type === 'missed_punch_out') {
-                                        $currentInText = $row->existing_punch_in ? \Carbon\Carbon::parse($row->existing_punch_in)->format('h:i A') : 'N/A';
-                                        $requestedOutText = $row->requested_punch_out ? \Carbon\Carbon::parse($row->requested_punch_out)->format('h:i A') : 'N/A';
-                                    } elseif ($type === 'wrong_punch_time' || $type === 'punch_time_correction') {
-                                        $currentInText = $row->existing_punch_in ? \Carbon\Carbon::parse($row->existing_punch_in)->format('h:i A') : 'N/A';
-                                        $currentOutText = $row->existing_punch_out ? \Carbon\Carbon::parse($row->existing_punch_out)->format('h:i A') : 'N/A';
-                                        $requestedInText = $row->requested_punch_in ? \Carbon\Carbon::parse($row->requested_punch_in)->format('h:i A') : 'N/A';
-                                        $requestedOutText = $row->requested_punch_out ? \Carbon\Carbon::parse($row->requested_punch_out)->format('h:i A') : 'N/A';
-                                    } elseif ($type === 'late_mark_exemption') {
-                                        $currentInText = $row->existing_punch_in ? \Carbon\Carbon::parse($row->existing_punch_in)->format('h:i A') : 'N/A';
-                                    } elseif ($type === 'early_logout_correction' || $type === 'early_logout_exemption') {
-                                        $currentOutText = $row->existing_punch_out ? \Carbon\Carbon::parse($row->existing_punch_out)->format('h:i A') : 'N/A';
-                                    } elseif ($type === 'other' && str_contains($row->reason, '[Attendance Status Correction:')) {
+                                    if ($type === 'other' && str_contains($row->reason, '[Attendance Status Correction:')) {
                                         $currentInText = $currentStatusText;
                                         preg_match('/\[Attendance Status Correction:\s*([^\]]+)\]/', $row->reason, $matches);
                                         $requestedInText = $matches[1] ?? 'Correction';
@@ -906,6 +891,9 @@ body {
                                 <input type="hidden" name="employee_id" value="{{ auth()->user()->employee->id ?? '' }}">
                             @endif
 
+                            <!-- Dynamic Status Alert Box -->
+                            <div id="js-regularization-alert" class="alert d-none"></div>
+
                             <div class="form-group">
                                 <label class="font-weight-bold text-dark">Attendance Date <span class="text-danger">*</span></label>
                                 <input type="date" name="attendance_date" class="form-control" max="{{ date('Y-m-d') }}" required>
@@ -913,14 +901,8 @@ body {
 
                             <div class="form-group">
                                 <label class="font-weight-bold text-dark">Request Type <span class="text-danger">*</span></label>
-                                <select name="request_type" class="form-control custom-select" required>
-                                    <option value="">Select Type</option>
-                                    <option value="missed_punch_in">Missed Punch In</option>
-                                    <option value="missed_punch_out">Missed Punch Out</option>
-                                    <option value="wrong_punch_time">Punch Time Correction</option>
-                                    <option value="late_mark_exemption">Late Mark Exemption</option>
-                                    <option value="early_logout_correction">Early Logout Exemption</option>
-                                    <option value="other">Attendance Status Correction</option>
+                                <select name="request_type" id="create_request_type" class="form-control custom-select" required>
+                                    <option value="">Select Date First</option>
                                 </select>
                             </div>
 
@@ -1306,11 +1288,14 @@ document.addEventListener('DOMContentLoaded', function () {
             } else if (type === 'missed_punch_out') {
                 if (outGroup) outGroup.style.display = '';
                 if (outInput) outInput.setAttribute('required', 'required');
-            } else if (type === 'wrong_punch_time') {
+            } else if (type === 'regular_attendance' || type === 'wrong_punch_time') {
                 if (inGroup) inGroup.style.display = '';
                 if (outGroup) outGroup.style.display = '';
                 if (inInput) inInput.setAttribute('required', 'required');
                 if (outInput) outInput.setAttribute('required', 'required');
+            } else if (type === 'attendance_correction') {
+                if (inGroup) inGroup.style.display = '';
+                if (outGroup) outGroup.style.display = '';
             } else if (type === 'other') {
                 if (statusGroup) statusGroup.style.display = '';
                 if (statusSelect) statusSelect.setAttribute('required', 'required');
@@ -1337,6 +1322,128 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.js-regularization-form').forEach(function(form) {
         initRegularizationForm(form);
     });
+
+    // Dynamic Attendance Options fetcher for Create Modal
+    const createModal = document.getElementById('createModal');
+    if (createModal) {
+        const createForm = createModal.querySelector('form');
+        const dateInput = createForm ? createForm.querySelector('input[name="attendance_date"]') : null;
+        const empSelect = createForm ? (createForm.querySelector('select[name="employee_id"]') || createForm.querySelector('input[name="employee_id"]')) : null;
+        const typeSelect = createForm ? createForm.querySelector('select[name="request_type"]') : null;
+        const alertBox = document.getElementById('js-regularization-alert');
+        const submitBtn = createForm ? createForm.querySelector('button[type="submit"]') : null;
+
+        function fetchAvailableOptions() {
+            if (!dateInput || !typeSelect) return;
+            const dateVal = dateInput.value;
+            const empVal = empSelect ? empSelect.value : '';
+
+            if (empSelect && empSelect.tagName === 'SELECT' && !empVal) {
+                typeSelect.innerHTML = '<option value="">Select Employee First</option>';
+                typeSelect.disabled = true;
+                if (submitBtn) submitBtn.disabled = true;
+                if (alertBox) {
+                    alertBox.className = 'alert alert-info py-2 px-3 mb-3 small font-weight-bold';
+                    alertBox.innerHTML = '<i class="fas fa-info-circle mr-1"></i> Please select an employee to view regularization options.';
+                    alertBox.classList.remove('d-none');
+                }
+                return;
+            }
+
+            if (!dateVal) {
+                typeSelect.innerHTML = '<option value="">Select Date First</option>';
+                typeSelect.disabled = true;
+                if (submitBtn) submitBtn.disabled = true;
+                if (alertBox) {
+                    alertBox.className = 'alert alert-info py-2 px-3 mb-3 small font-weight-bold';
+                    alertBox.innerHTML = '<i class="fas fa-info-circle mr-1"></i> Please select an attendance date to view regularization options.';
+                    alertBox.classList.remove('d-none');
+                }
+                return;
+            }
+
+            typeSelect.innerHTML = '<option value="">Loading options...</option>';
+            typeSelect.disabled = true;
+            if (alertBox) alertBox.classList.add('d-none');
+            if (submitBtn) submitBtn.disabled = true;
+
+            let optionsUrl = `{{ route('hrms.attendance.regularizations.options') }}?date=${encodeURIComponent(dateVal)}`;
+            if (empVal) {
+                optionsUrl += `&employee_id=${encodeURIComponent(empVal)}`;
+            }
+
+            fetch(optionsUrl, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                const isSuccess = data.success !== false && data.can_regularize !== false;
+                const options = data.available_options || [];
+
+                if (isSuccess && options.length > 0) {
+                    let html = options.length > 1 ? '<option value="">Select Type</option>' : '';
+                    options.forEach(function(opt) {
+                        const optVal = opt.value || opt.id;
+                        html += `<option value="${optVal}">${opt.label}</option>`;
+                    });
+                    typeSelect.innerHTML = html;
+                    typeSelect.disabled = false;
+                    if (submitBtn) submitBtn.disabled = false;
+
+                    // If exactly 1 option available, auto-select it
+                    if (options.length === 1) {
+                        typeSelect.value = options[0].value || options[0].id;
+                    }
+
+                    if (alertBox) {
+                        alertBox.className = 'alert alert-info py-2 px-3 mb-3 small font-weight-bold';
+                        alertBox.innerHTML = `<i class="fas fa-info-circle mr-1"></i> Attendance Status for ${dateVal}: <strong>${data.attendance_status || 'Absent'}</strong>`;
+                        alertBox.classList.remove('d-none');
+                    }
+                } else {
+                    typeSelect.innerHTML = '<option value="">No options available</option>';
+                    typeSelect.disabled = true;
+                    if (submitBtn) submitBtn.disabled = true;
+
+                    const msg = data.message || 'Regularization is not allowed for this date.';
+                    if (alertBox) {
+                        alertBox.className = 'alert alert-warning py-2 px-3 mb-3 small font-weight-bold';
+                        alertBox.innerHTML = `<i class="fas fa-exclamation-triangle mr-1"></i> ${msg}`;
+                        alertBox.classList.remove('d-none');
+                    }
+                }
+                typeSelect.dispatchEvent(new Event('change'));
+            })
+            .catch(function(err) {
+                console.error('Error fetching regularization options:', err);
+                typeSelect.innerHTML = '<option value="">Error loading options</option>';
+                typeSelect.disabled = true;
+                if (submitBtn) submitBtn.disabled = true;
+                if (alertBox) {
+                    alertBox.className = 'alert alert-danger py-2 px-3 mb-3 small font-weight-bold';
+                    alertBox.innerHTML = `<i class="fas fa-times-circle mr-1"></i> Failed to connect to server. Please try again.`;
+                    alertBox.classList.remove('d-none');
+                }
+            });
+        }
+
+        if (dateInput) {
+            dateInput.addEventListener('change', fetchAvailableOptions);
+        }
+        if (empSelect && empSelect.tagName === 'SELECT') {
+            empSelect.addEventListener('change', fetchAvailableOptions);
+        }
+
+        // Also fetch on modal show if date is pre-filled
+        $(createModal).on('shown.bs.modal', function () {
+            if (dateInput && dateInput.value) {
+                fetchAvailableOptions();
+            }
+        });
+    }
 
     // Auto filter triggering
     document.querySelectorAll('.js-auto-filter').forEach(function (input) {

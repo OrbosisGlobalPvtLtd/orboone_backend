@@ -416,6 +416,29 @@ class EmployeeExitProcessS
             'updated_at' => now(),
         ];
 
+        if (array_key_exists('exit_type', $payload) && ! empty($payload['exit_type'])) {
+            $exitType = strtolower((string) $payload['exit_type']);
+            $allowedExitTypes = ['resignation', 'termination', 'retirement', 'contract_end', 'mutual_separation', 'layoff_redundancy', 'absconding', 'discontinued', 'deceased', 'other', 'internship_completed', 'internship_exit'];
+            if (in_array($exitType, $allowedExitTypes, true)) {
+                $updates['exit_type'] = $exitType;
+
+                if (Schema::hasColumn($this->employeeTable, 'employment_status')) {
+                    $empStatus = match ($exitType) {
+                        'termination' => 'terminated',
+                        'discontinued' => 'discontinued',
+                        'absconding' => 'absconded',
+                        default => null,
+                    };
+                    if ($empStatus) {
+                        DB::table($this->employeeTable)->where('id', $exit->employee_id)->update([
+                            'employment_status' => $empStatus,
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
+            }
+        }
+
         if (array_key_exists('asset_status', $payload) && $payload['asset_status'] !== null) {
             $asset = strtolower((string) $payload['asset_status']);
             if (in_array($asset, ['pending', 'cleared', 'waived'], true)) {

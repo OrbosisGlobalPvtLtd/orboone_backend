@@ -230,7 +230,7 @@
                         </div>
                     </td>
                     <td class="text-center font-weight-bold text-secondary">
-                        {{ strtoupper($attendance->work_mode ?? 'WFO') }}
+                        {{ ($attendance->punch_in_time && !in_array($typeCode, ['week_off', 'absent', 'leave'], true)) ? strtoupper($attendance->work_mode ?? 'WFO') : '-' }}
                     </td>
                     <td class="text-center font-weight-bold">
                         {{ $attendance->punch_in_time ? \Carbon\Carbon::parse($attendance->punch_in_time)->format('h:i A') : '-' }}
@@ -256,7 +256,7 @@
                                 <span class="flag-tag">{{ $flag }}</span>
                             @endforeach
                         @else
-                            <span class="text-success font-weight-bold">&check; Clear</span>
+                            <span class="text-success font-weight-bold">Clear</span>
                         @endif
                     </td>
                 </tr>

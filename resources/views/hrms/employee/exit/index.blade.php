@@ -112,11 +112,13 @@
             grid-template-columns: repeat(3, 1fr);
         }
     }
+
     @media(max-width:768px) {
         .exit-filter-grid {
             grid-template-columns: repeat(2, 1fr);
         }
     }
+
     @media(max-width:576px) {
         .exit-filter-grid {
             grid-template-columns: 1fr;
@@ -188,17 +190,22 @@
     }
 
     /* Scroll Behavior */
-    .exit-table-card { overflow:hidden; }
+    .exit-table-card {
+        overflow: hidden;
+    }
+
     .exit-table-scroll {
         width: 100%;
         overflow-x: auto;
         overflow-y: hidden;
         -webkit-overflow-scrolling: touch;
     }
+
     .exit-table-scroll table {
         min-width: 1300px;
         margin-bottom: 0;
     }
+
     .exit-dt-footer {
         display: flex;
         justify-content: space-between;
@@ -637,12 +644,12 @@
 </style>
 
 @php
-    // Safe extraction of unique values from existing employee dataset for the filtering system
-    $departments = $employees->pluck('department_name')->filter()->unique()->sort();
-    $statuses = $employees->pluck('employment_status')->filter()->unique()->sort();
-    $exitTypes = $employees->pluck('exit_type')->filter()->unique()->sort();
-    $assetStatuses = $employees->pluck('asset_handover_status')->filter()->unique()->sort();
-    $fnfStatuses = $employees->pluck('fnf_status')->filter()->unique()->sort();
+// Safe extraction of unique values from existing employee dataset for the filtering system
+$departments = $employees->pluck('department_name')->filter()->unique()->sort();
+$statuses = $employees->pluck('employment_status')->filter()->unique()->sort();
+$exitTypes = $employees->pluck('exit_type')->filter()->unique()->sort();
+$assetStatuses = $employees->pluck('asset_handover_status')->filter()->unique()->sort();
+$fnfStatuses = $employees->pluck('fnf_status')->filter()->unique()->sort();
 @endphp
 
 <div class="eo-page">
@@ -716,7 +723,7 @@
                         <select id="filterDepartment" class="eo-control">
                             <option value="">All Departments</option>
                             @foreach ($departments as $dept)
-                                <option value="{{ strtolower($dept) }}">{{ $dept }}</option>
+                            <option value="{{ strtolower($dept) }}">{{ $dept }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -724,18 +731,27 @@
                         <label>Status</label>
                         <select id="filterStatus" class="eo-control">
                             <option value="">All Statuses</option>
-                            @foreach ($statuses as $stat)
-                                <option value="{{ strtolower($stat) }}">{{ ucfirst($stat) }}</option>
-                            @endforeach
+                            <option value="notice_period">Notice Period</option>
+                            <option value="ready_for_final_approval">Ready For Final Approval</option>
+                            <option value="exit_completed">Exit Completed</option>
+                            <option value="exit_initiated">Exit Initiated</option>
+                            <option value="terminated">Terminated</option>
+                            <option value="discontinued">Discontinued</option>
+                            <option value="cancelled">Cancelled</option>
                         </select>
                     </div>
                     <div class="eo-field">
                         <label>Exit Type</label>
                         <select id="filterExitType" class="eo-control">
                             <option value="">All Exit Types</option>
-                            @foreach ($exitTypes as $type)
-                                <option value="{{ strtolower($type) }}">{{ ucfirst(str_replace('_', ' ', $type)) }}</option>
-                            @endforeach
+                            <option value="resignation">Resignation</option>
+                            <option value="termination">Termination</option>
+                            <option value="discontinued">Discontinuation</option>
+                            <option value="absconding">Absconding</option>
+                            <option value="retirement">Retirement</option>
+                            <option value="contract_end">End of Contract</option>
+                            <option value="internship_completed">Completion of Internship</option>
+                            <option value="deceased">Death</option>
                         </select>
                     </div>
                     <div class="eo-field">
@@ -743,7 +759,7 @@
                         <select id="filterAssetStatus" class="eo-control">
                             <option value="">All Asset Statuses</option>
                             @foreach ($assetStatuses as $ast)
-                                <option value="{{ strtolower($ast) }}">{{ ucfirst(str_replace('_', ' ', $ast)) }}</option>
+                            <option value="{{ strtolower($ast) }}">{{ ucfirst(str_replace('_', ' ', $ast)) }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -752,7 +768,7 @@
                         <select id="filterFnfStatus" class="eo-control">
                             <option value="">All FNF Statuses</option>
                             @foreach ($fnfStatuses as $fnf)
-                                <option value="{{ strtolower($fnf) }}">{{ ucfirst(str_replace('_', ' ', $fnf)) }}</option>
+                            <option value="{{ strtolower($fnf) }}">{{ ucfirst(str_replace('_', ' ', $fnf)) }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -788,10 +804,11 @@
                 <table id="exitEmployeesTable" class="table table-hover eo-table">
                     <thead>
                         <tr>
+                            <th style="width: 50px; min-width: 50px;">S. No.</th>
                             <th>Employee</th>
                             <th>Department</th>
                             <th>Designation</th>
-                            <th>Status</th>
+                            <th>Stage</th>
                             <th>Exit Type</th>
                             <th>Joining</th>
                             <th>Last Working</th>
@@ -799,25 +816,30 @@
                             <th>FNF</th>
                             <th>Docs</th>
                             <th>Handover</th>
-                            <th>Experience Letter</th>
-                            <th>Relieving Letter</th>
-                            <th>Exit Flow</th>
-                            <th>Final Status</th>
-                            <th style="min-width: 250px; width: 250px;">Action</th>
+                            <th>Exit Status</th>
+                            <th style="min-width: 200px; width: 200px;">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($employees as $employee)
                         @php
-                        $status = strtolower($employee->employment_status ?? 'inactive');
+                        $empStage = strtolower($employee->employee_stage ?? $employee->employment_type ?? '');
 
-                        $statusClass = match ($status) {
-                            'terminated' => 'eo-pill-terminated',
-                            'inactive' => 'eo-pill-inactive',
-                            default => 'eo-pill-resigned',
+                        $stageClass = match ($empStage) {
+                        'intern', 'internship' => 'eo-pill-info',
+                        'probation' => 'eo-pill-warning',
+                        'permanent', 'confirmed', 'full_time' => 'eo-pill-success',
+                        default => 'eo-pill-info',
                         };
 
-                        $exitType = $employee->exit_type ?? '-';
+                        $stageLabel = match ($empStage) {
+                        'intern', 'internship' => 'Internship',
+                        'probation' => 'Probation',
+                        'permanent', 'confirmed', 'full_time' => 'Permanent',
+                        default => ucfirst(str_replace('_', ' ', $empStage ?: 'Permanent')),
+                        };
+
+                        $exitType = $employee->exit_type ?? 'resignation';
                         $exitStatus = $employee->exit_status ?? 'exit_initiated';
                         $assetStatus = $employee->asset_handover_status ?? 'pending';
                         $fnfStatus = $employee->fnf_status ?? 'pending';
@@ -828,26 +850,39 @@
                         $finalStatus = $employee->final_status ?? 'pending';
 
                         $statusPill = function ($value) {
-                            return match (strtolower($value ?? 'pending')) {
-                                'completed', 'issued', 'not_required', 'cleared', 'approved', 'paid' => 'eo-pill-success',
-                                'processing', 'clearance_pending', 'generated', 'sent', 'ready_for_final_approval', 'reviewed' => 'eo-pill-info',
-                                'lost', 'damaged', 'rejected', 'cancelled', 'absconded', 'terminated' => 'eo-pill-danger',
-                                default => 'eo-pill-warning',
-                            };
+                        return match (strtolower($value ?? 'pending')) {
+                        'completed', 'exit_completed', 'issued', 'not_required', 'cleared', 'approved', 'paid' => 'eo-pill-success',
+                        'processing', 'clearance_pending', 'generated', 'sent', 'ready_for_final_approval', 'reviewed' => 'eo-pill-info',
+                        'lost', 'damaged', 'rejected', 'cancelled', 'absconded', 'terminated', 'discontinued' => 'eo-pill-danger',
+                        default => 'eo-pill-warning',
                         };
+                        };
+
+                        $joiningDateDisplay = '-';
+                        $isIntern = in_array(strtolower($employee->employee_stage ?? $employee->employment_type ?? ''), ['intern', 'internship'], true)
+                        || str_contains(strtolower($employee->designation_name ?? ''), 'intern');
+
+                        if ($isIntern && !empty($employee->internship_start_date)) {
+                        $joiningDateDisplay = \Carbon\Carbon::parse($employee->internship_start_date)->format('d M Y');
+                        } elseif (!empty($employee->joining_date)) {
+                        $joiningDateDisplay = \Carbon\Carbon::parse($employee->joining_date)->format('d M Y');
+                        } elseif (!empty($employee->internship_start_date)) {
+                        $joiningDateDisplay = \Carbon\Carbon::parse($employee->internship_start_date)->format('d M Y');
+                        }
                         @endphp
 
                         <tr id="employee-row-{{ $employee->id }}"
                             data-search="{{ strtolower(($employee->employee_code ?? '') . ' ' . ($employee->name ?? '') . ' ' . ($employee->email ?? '')) }}"
                             data-department="{{ strtolower($employee->department_name ?? '') }}"
-                            data-status="{{ strtolower($employee->employment_status ?? '') }}"
+                            data-status="{{ strtolower($finalStatus === 'completed' ? 'exit_completed' : ($exitStatus ?? $employee->employment_status ?? 'notice_period')) }}"
                             data-exit-type="{{ strtolower($employee->exit_type ?? '') }}"
                             data-asset="{{ strtolower($employee->asset_handover_status ?? 'pending') }}"
                             data-fnf="{{ strtolower($employee->fnf_status ?? 'pending') }}">
+                            <td>{{ $loop->iteration }}</td>
                             <td>
                                 <div class="eo-emp-cell">
-                                    <div class="eo-name">{{ $employee->name ?? '-' }}</div>
                                     <div class="eo-code-under">{{ $employee->employee_code ?? 'EMP-' . $employee->id }}</div>
+                                    <div class="eo-name">{{ $employee->name ?? '-' }}</div>
                                     <div class="eo-muted-text">{{ $employee->email ?? '-' }}</div>
                                 </div>
                             </td>
@@ -855,20 +890,30 @@
                             <td>{{ $employee->department_name ?? '-' }}</td>
                             <td>{{ $employee->designation_name ?? '-' }}</td>
 
-                            <td>
-                                <span class="eo-pill {{ $statusClass }}">
-                                    {{ ucfirst($status) }}
+                            <td class="js-tbl-cell-stage-{{ $employee->id }}">
+                                <span class="eo-pill {{ $stageClass }}">
+                                    {{ $stageLabel }}
                                 </span>
                             </td>
 
-                            <td>
+                            <td class="js-tbl-cell-exit-type-{{ $employee->id }}">
                                 <span class="eo-pill eo-pill-info">
-                                    {{ ucfirst(str_replace('_', ' ', $exitType)) }}
+                                    {{ match(strtolower($exitType)) {
+                                        'resignation' => 'Resignation',
+                                        'termination' => 'Termination',
+                                        'discontinued' => 'Discontinuation',
+                                        'absconding' => 'Absconding',
+                                        'retirement' => 'Retirement',
+                                        'contract_end' => 'End of Contract',
+                                        'internship_completed' => 'Completion of Internship',
+                                        'deceased' => 'Death',
+                                        default => ucfirst(str_replace('_', ' ', $exitType)),
+                                    } }}
                                 </span>
                             </td>
 
                             <td>
-                                {{ !empty($employee->joining_date) ? \Carbon\Carbon::parse($employee->joining_date)->format('d M Y') : '-' }}
+                                {{ $joiningDateDisplay }}
                             </td>
 
                             <td>
@@ -897,26 +942,12 @@
                                 </span>
                             </td>
 
-                            <td class="js-tbl-cell-experience-{{ $employee->id }}">
-                                <span class="eo-pill {{ $statusPill($experienceStatus) }}">
-                                    {{ ucfirst(str_replace('_', ' ', $experienceStatus)) }}
-                                </span>
-                            </td>
-
-                            <td class="js-tbl-cell-relieving-{{ $employee->id }}">
-                                <span class="eo-pill {{ $statusPill($relievingStatus) }}">
-                                    {{ ucfirst(str_replace('_', ' ', $relievingStatus)) }}
-                                </span>
-                            </td>
                             <td class="js-tbl-cell-exit-flow-{{ $employee->id }}">
-                                <span class="eo-pill {{ $statusPill($exitStatus) }}">
-                                    {{ ucfirst(str_replace('_', ' ', $exitStatus)) }}
-                                </span>
-                            </td>
-
-                            <td class="js-tbl-cell-final-{{ $employee->id }}">
-                                <span class="eo-pill {{ $statusPill($finalStatus) }}">
-                                    {{ ucfirst(str_replace('_', ' ', $finalStatus)) }}
+                                @php
+                                $overallExitStatus = $finalStatus === 'completed' ? 'exit_completed' : $exitStatus;
+                                @endphp
+                                <span class="eo-pill {{ $statusPill($overallExitStatus) }}">
+                                    {{ ucfirst(str_replace('_', ' ', $overallExitStatus)) }}
                                 </span>
                             </td>
 
@@ -966,27 +997,27 @@
 <!-- Modal declarations (Rendered outside the scrollable table area for safety and flawless z-indexing) -->
 @foreach($employees as $employee)
 @php
-    $defaultNoticeDays = app(\App\Services\HRMS\Employee\EmployeeExitPolicyS::class)
-        ->getNoticePeriodDays(null, 'resignation');
-    $status = strtolower($employee->employment_status ?? 'inactive');
-    $exitType = $employee->exit_type ?? '-';
-    $exitStatus = $employee->exit_status ?? 'exit_initiated';
-    $assetStatus = $employee->asset_handover_status ?? 'pending';
-    $fnfStatus = $employee->fnf_status ?? 'pending';
-    $documentStatus = $employee->document_status ?? 'pending';
-    $handoverStatus = $employee->handover_status ?? 'pending';
-    $experienceStatus = $employee->experience_letter_status ?? 'pending';
-    $relievingStatus = $employee->relieving_letter_status ?? 'pending';
-    $finalStatus = $employee->final_status ?? 'pending';
+$defaultNoticeDays = app(\App\Services\HRMS\Employee\EmployeeExitPolicyS::class)
+->getNoticePeriodDays(null, 'resignation');
+$status = strtolower($employee->employment_status ?? 'inactive');
+$exitType = $employee->exit_type ?? '-';
+$exitStatus = $employee->exit_status ?? 'exit_initiated';
+$assetStatus = $employee->asset_handover_status ?? 'pending';
+$fnfStatus = $employee->fnf_status ?? 'pending';
+$documentStatus = $employee->document_status ?? 'pending';
+$handoverStatus = $employee->handover_status ?? 'pending';
+$experienceStatus = $employee->experience_letter_status ?? 'pending';
+$relievingStatus = $employee->relieving_letter_status ?? 'pending';
+$finalStatus = $employee->final_status ?? 'pending';
 
-    $statusPill = function ($value) {
-        return match (strtolower($value ?? 'pending')) {
-            'completed', 'issued', 'not_required', 'cleared', 'approved', 'paid' => 'eo-pill-success',
-            'processing', 'clearance_pending', 'generated', 'sent', 'ready_for_final_approval', 'reviewed' => 'eo-pill-info',
-            'lost', 'damaged', 'rejected', 'cancelled', 'absconded', 'terminated' => 'eo-pill-danger',
-            default => 'eo-pill-warning',
-        };
-    };
+$statusPill = function ($value) {
+return match (strtolower($value ?? 'pending')) {
+'completed', 'exit_completed', 'issued', 'not_required', 'cleared', 'approved', 'paid' => 'eo-pill-success',
+'processing', 'clearance_pending', 'generated', 'sent', 'ready_for_final_approval', 'reviewed' => 'eo-pill-info',
+'lost', 'damaged', 'rejected', 'cancelled', 'absconded', 'terminated', 'discontinued' => 'eo-pill-danger',
+default => 'eo-pill-warning',
+};
+};
 @endphp
 
 <div class="modal fade" id="exitModal-{{ $employee->id }}" tabindex="-1" role="dialog" aria-labelledby="exitModalLabel-{{ $employee->id }}" aria-hidden="true">
@@ -1007,334 +1038,298 @@
             </div>
             <div class="modal-body">
                 @if(empty($employee->exit_process_id))
-                    <!-- If exit is NOT yet initiated, show the initiation form -->
-                    @if (Route::has('hrms.employees.exit.mark'))
-                    <form action="{{ route('hrms.employees.exit.mark', $employee->id) }}" method="POST" class="mb-0 eo-exit-init-form">
-                        @csrf
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="eo-label">Exit Type <span class="required">*</span></label>
-                                <select name="exit_type" class="eo-control eo-exit-type" required>
-                                    <option value="" disabled selected>Select Exit Type</option>
-                                    <option value="resignation">Resignation</option>
-                                    <option value="termination">Termination</option>
-                                    <option value="retirement">Retirement</option>
-                                    <option value="contract_end">End of Contract</option>
-                                    <option value="mutual_separation">Mutual Separation</option>
-                                    <option value="layoff_redundancy">Layoff / Redundancy</option>
-                                    <option value="absconding">Absconded</option>
-                                    <option value="deceased">Deceased</option>
-                                    <option value="other">Other</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="eo-label">Resignation Date</label>
-                                <input type="date" name="resignation_date" class="eo-control eo-resignation-date" value="{{ now()->format('Y-m-d') }}">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="eo-label">Termination/Absconding Date</label>
-                                <input type="date" name="termination_date" class="eo-control eo-termination-date" value="{{ now()->format('Y-m-d') }}">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="eo-label">Last Working Day (Optional)</label>
-                                <input type="date" name="last_working_day" class="eo-control eo-last-working-day" value="{{ $employee->relieving_date ?? '' }}">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="eo-label">Notice Period (Days)</label>
-                                <input type="number" name="notice_period_days" class="eo-control eo-notice-days" min="0" value="{{ $defaultNoticeDays }}" placeholder="Auto from policy">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="eo-label">Reason</label>
-                                <input type="text" name="reason" class="eo-control" placeholder="Reason for exit...">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="eo-label">Remarks</label>
-                                <input type="text" name="remarks" class="eo-control" placeholder="Additional remarks...">
-                            </div>
-                            <div class="col-md-12 mb-2">
-                                <label class="mr-3"><input type="checkbox" name="notice_waived" value="1" class="eo-notice-waived"> Notice Waived</label>
-                                <label class="mr-3"><input type="checkbox" name="immediate_exit" value="1" class="eo-immediate-exit"> Immediate Exit</label>
-                                <label class="mr-3"><input type="checkbox" name="buyout_recovery" value="1"> Buyout/Recovery Applicable</label>
-                                <label><input type="checkbox" name="immediate_disable_login" value="1"> Disable Login Immediately</label>
-                            </div>
+                <!-- If exit is NOT yet initiated, show the initiation form -->
+                @if (Route::has('hrms.employees.exit.mark'))
+                <form action="{{ route('hrms.employees.exit.mark', $employee->id) }}" method="POST" class="mb-0 eo-exit-init-form">
+                    @csrf
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="eo-label">Exit Type <span class="required">*</span></label>
+                            <select name="exit_type" class="eo-control eo-exit-type" required>
+                                <option value="" disabled selected>Select Exit Type</option>
+                                <option value="resignation">Resignation</option>
+                                <option value="termination">Termination</option>
+                                <option value="discontinued">Discontinuation</option>
+                                <option value="absconding">Absconding</option>
+                                <option value="retirement">Retirement</option>
+                                <option value="contract_end">End of Contract</option>
+                                <option value="internship_completed">Completion of Internship</option>
+                                <option value="deceased">Death</option>
+                            </select>
                         </div>
-
-                        <div class="modal-footer px-0 pb-0" style="background: transparent; border-top: none; margin-top: 15px;">
-                            <button type="button" class="btn btn-secondary btn-soft" data-dismiss="modal">Cancel</button>
-                            <button type="submit" class="btn btn-primary btn-orb" onclick="return confirm('Initiate employee exit process?')">
-                                <i class="fas fa-play-circle mr-1"></i> Initiate Exit
-                            </button>
+                        <div class="col-md-6 mb-3">
+                            <label class="eo-label">Resignation Date</label>
+                            <input type="date" name="resignation_date" class="eo-control eo-resignation-date" value="{{ now()->format('Y-m-d') }}">
                         </div>
-                    </form>
-                    @else
-                    <div class="text-center py-4 text-muted">
-                        <i class="fas fa-exclamation-triangle fa-2x mb-2 text-warning"></i>
-                        <p class="mb-0">Initiation route is not accessible at this moment.</p>
+                        <div class="col-md-6 mb-3">
+                            <label class="eo-label">Termination/Absconding Date</label>
+                            <input type="date" name="termination_date" class="eo-control eo-termination-date" value="{{ now()->format('Y-m-d') }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="eo-label">Last Working Day (Optional)</label>
+                            <input type="date" name="last_working_day" class="eo-control eo-last-working-day" value="{{ $employee->relieving_date ?? '' }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="eo-label">Notice Period (Days)</label>
+                            <input type="number" name="notice_period_days" class="eo-control eo-notice-days" min="0" value="{{ $defaultNoticeDays }}" placeholder="Auto from policy">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="eo-label">Reason</label>
+                            <input type="text" name="reason" class="eo-control" placeholder="Reason for exit...">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="eo-label">Remarks</label>
+                            <input type="text" name="remarks" class="eo-control" placeholder="Additional remarks...">
+                        </div>
+                        <div class="col-md-12 mb-2">
+                            <label class="mr-3"><input type="checkbox" name="notice_waived" value="1" class="eo-notice-waived"> Notice Waived</label>
+                            <label class="mr-3"><input type="checkbox" name="immediate_exit" value="1" class="eo-immediate-exit"> Immediate Exit</label>
+                            <label class="mr-3"><input type="checkbox" name="buyout_recovery" value="1"> Buyout/Recovery Applicable</label>
+                            <label><input type="checkbox" name="immediate_disable_login" value="1"> Disable Login Immediately</label>
+                        </div>
                     </div>
-                    @endif
+
+                    <div class="modal-footer px-0 pb-0" style="background: transparent; border-top: none; margin-top: 15px;">
+                        <button type="button" class="btn btn-secondary btn-soft" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary btn-orb" onclick="return confirm('Initiate employee exit process?')">
+                            <i class="fas fa-play-circle mr-1"></i> Initiate Exit
+                        </button>
+                    </div>
+                </form>
                 @else
-                    <!-- If exit IS initiated, show live clearance card along with sub-forms inside modal -->
-                    <div class="eo-action-card mb-4">
-                        <div class="eo-action-card-head">
-                            <div class="eo-action-icon"><i class="fas fa-info-circle"></i></div>
-                            <div>
-                                <div class="eo-action-title">Current Clearance Status</div>
-                                <div class="eo-action-sub">Live tracking of clearance checklist and status values.</div>
+                <div class="text-center py-4 text-muted">
+                    <i class="fas fa-exclamation-triangle fa-2x mb-2 text-warning"></i>
+                    <p class="mb-0">Initiation route is not accessible at this moment.</p>
+                </div>
+                @endif
+                @else
+                <!-- Slim & Compact Clearance Status Bar -->
+                <div class="card border-0 shadow-sm mb-3" style="border-radius:12px; background: #FAF5FF; border: 1px solid #E9D5FF;">
+                    <div class="card-body p-2 px-3">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-shield-alt text-primary mr-2"></i>
+                                <strong style="font-size:13px;" class="text-dark">Clearance Overview:</strong>
                             </div>
-                        </div>
-                        <div class="eo-action-body">
-                            <div class="row">
-                                <div class="col-6 col-md-4 mb-3">
-                                    <span class="eo-label mb-1">Asset Status</span>
-                                    <div><span class="eo-pill {{ $statusPill($assetStatus) }} js-top-pill-asset-{{ $employee->id }}">{{ ucfirst(str_replace('_', ' ', $assetStatus)) }}</span></div>
-                                </div>
-                                <div class="col-6 col-md-4 mb-3">
-                                    <span class="eo-label mb-1">FNF Status</span>
-                                    <div><span class="eo-pill {{ $statusPill($fnfStatus) }} js-top-pill-fnf-{{ $employee->id }}">{{ ucfirst(str_replace('_', ' ', $fnfStatus)) }}</span></div>
-                                </div>
-                                <div class="col-6 col-md-4 mb-3">
-                                    <span class="eo-label mb-1">Documents</span>
-                                    <div><span class="eo-pill {{ $statusPill($documentStatus) }} js-top-pill-document-{{ $employee->id }}">{{ ucfirst(str_replace('_', ' ', $documentStatus)) }}</span></div>
-                                </div>
-                                <div class="col-6 col-md-4 mb-3">
-                                    <span class="eo-label mb-1">Handover</span>
-                                    <div><span class="eo-pill {{ $statusPill($handoverStatus) }} js-top-pill-handover-{{ $employee->id }}">{{ ucfirst(str_replace('_', ' ', $handoverStatus)) }}</span></div>
-                                </div>
-                                <div class="col-6 col-md-4 mb-3">
-                                    <span class="eo-label mb-1">Experience Letter</span>
-                                    <div><span class="eo-pill {{ $statusPill($experienceStatus) }}">{{ ucfirst(str_replace('_', ' ', $experienceStatus)) }}</span></div>
-                                </div>
-                                <div class="col-6 col-md-4 mb-3">
-                                    <span class="eo-label mb-1">Relieving Letter</span>
-                                    <div><span class="eo-pill {{ $statusPill($relievingStatus) }}">{{ ucfirst(str_replace('_', ' ', $relievingStatus)) }}</span></div>
-                                </div>
+                            <div class="d-flex flex-wrap gap-2 align-items-center" style="font-size:12px;">
+                                <span>Asset: <span class="eo-pill {{ $statusPill($assetStatus) }} js-top-pill-asset-{{ $employee->id }}">{{ ucfirst(str_replace('_', ' ', $assetStatus)) }}</span></span>
+                                <span>FNF: <span class="eo-pill {{ $statusPill($fnfStatus) }} js-top-pill-fnf-{{ $employee->id }}">{{ ucfirst(str_replace('_', ' ', $fnfStatus)) }}</span></span>
+                                <span>Docs: <span class="eo-pill {{ $statusPill($documentStatus) }} js-top-pill-document-{{ $employee->id }}">{{ ucfirst(str_replace('_', ' ', $documentStatus)) }}</span></span>
+                                <span>Handover: <span class="eo-pill {{ $statusPill($handoverStatus) }} js-top-pill-handover-{{ $employee->id }}">{{ ucfirst(str_replace('_', ' ', $handoverStatus)) }}</span></span>
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Auto Module Verification Summary Cards -->
-                    @if(!empty($employee->module_summary))
-                    <div class="card border-0 shadow-sm mb-4" style="border-radius:20px; background: #fff; border: 1px solid #E7EAF3; box-shadow: 0 10px 28px rgba(16, 24, 40, .06);">
-                        <div class="card-header bg-white border-0 pt-3 pb-0">
-                            <h6 class="font-weight-bold text-dark mb-0"><i class="fas fa-search-dollar text-primary mr-2"></i> Auto Module Verification Summary</h6>
-                            <p class="text-muted small mb-0">Informational overview synced from other HRMS modules before exit finalisation.</p>
+                <!-- Slim Collapsible Auto Module Verification Summary Cards -->
+                @if(!empty($employee->module_summary))
+                <div class="card border-0 shadow-sm mb-3" style="border-radius:12px; background: #fff; border: 1px solid #E7EAF3;">
+                    <div class="card-header bg-white border-0 py-2 px-3 d-flex justify-content-between align-items-center" 
+                         style="cursor:pointer;" 
+                         data-toggle="collapse" 
+                         data-target="#modSummaryCollapse-{{ $employee->id }}" 
+                         aria-expanded="false">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-search-dollar text-primary mr-2"></i>
+                            <span class="font-weight-bold text-dark" style="font-size:13px;">Auto Module Verification Summary</span>
+                            <span class="text-muted small ml-2 d-none d-md-inline">(Synced live from HRMS modules)</span>
                         </div>
-                        <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <span class="badge badge-light border text-muted mr-2" style="font-size:11px;">9 Checks</span>
+                            <i class="fas fa-chevron-down text-muted fa-sm"></i>
+                        </div>
+                    </div>
+                    <div class="collapse" id="modSummaryCollapse-{{ $employee->id }}">
+                        <div class="card-body p-2 px-3 bg-light">
                             <div class="row">
-                                <!-- 1. Attendance -->
-                                <div class="col-6 col-md-4 mb-3">
-                                    <div class="p-3 border rounded shadow-xs" style="background:#F9FAFB; border-radius:15px;">
-                                        <div class="text-muted small font-weight-bold mb-1">Attendance Issues</div>
-                                        <div class="h5 font-weight-bold {{ $employee->module_summary['attendance_pending'] > 0 ? 'text-danger' : 'text-success' }} mb-0">
-                                            {{ $employee->module_summary['attendance_pending'] }} Pending
-                                        </div>
+                                <div class="col-6 col-md-4 mb-2">
+                                    <div class="p-2 border rounded bg-white text-center">
+                                        <div class="text-muted small font-weight-bold">Attendance Issues</div>
+                                        <div class="font-weight-bold {{ $employee->module_summary['attendance_pending'] > 0 ? 'text-danger' : 'text-success' }}" style="font-size:13px;">{{ $employee->module_summary['attendance_pending'] }} Pending</div>
                                     </div>
                                 </div>
-                                
-                                <!-- 2. Leave -->
-                                <div class="col-6 col-md-4 mb-3">
-                                    <div class="p-3 border rounded shadow-xs" style="background:#F9FAFB; border-radius:15px;">
-                                        <div class="text-muted small font-weight-bold mb-1">Leave Balance</div>
-                                        <div class="h5 font-weight-bold text-primary mb-0">
-                                            {{ $employee->module_summary['leave_remaining'] }} Days Left
-                                        </div>
+                                <div class="col-6 col-md-4 mb-2">
+                                    <div class="p-2 border rounded bg-white text-center">
+                                        <div class="text-muted small font-weight-bold">Leave Balance</div>
+                                        <div class="font-weight-bold text-primary" style="font-size:13px;">{{ $employee->module_summary['leave_remaining'] }} Days Left</div>
                                     </div>
                                 </div>
-
-                                <!-- 3. Assets -->
-                                <div class="col-6 col-md-4 mb-3">
-                                    <div class="p-3 border rounded shadow-xs" style="background:#F9FAFB; border-radius:15px;">
-                                        <div class="text-muted small font-weight-bold mb-1">Assigned Assets</div>
-                                        <div class="h5 font-weight-bold {{ $employee->module_summary['assets_assigned'] > 0 ? 'text-warning' : 'text-success' }} mb-0">
-                                            {{ $employee->module_summary['assets_assigned'] }} Assigned
-                                        </div>
+                                <div class="col-6 col-md-4 mb-2">
+                                    <div class="p-2 border rounded bg-white text-center">
+                                        <div class="text-muted small font-weight-bold">Assigned Assets</div>
+                                        <div class="font-weight-bold {{ $employee->module_summary['assets_assigned'] > 0 ? 'text-warning' : 'text-success' }}" style="font-size:13px;">{{ $employee->module_summary['assets_assigned'] }} Assigned</div>
                                     </div>
                                 </div>
-
-                                <!-- 4. Payroll -->
-                                <div class="col-6 col-md-4 mb-3">
-                                    <div class="p-3 border rounded shadow-xs" style="background:#F9FAFB; border-radius:15px;">
-                                        <div class="text-muted small font-weight-bold mb-1">Pending Payroll</div>
-                                        <div class="h5 font-weight-bold {{ $employee->module_summary['payroll_pending'] > 0 ? 'text-danger' : 'text-success' }} mb-0">
-                                            {{ $employee->module_summary['payroll_pending'] }} Pending
-                                        </div>
+                                <div class="col-6 col-md-4 mb-2">
+                                    <div class="p-2 border rounded bg-white text-center">
+                                        <div class="text-muted small font-weight-bold">Pending Payroll</div>
+                                        <div class="font-weight-bold {{ $employee->module_summary['payroll_pending'] > 0 ? 'text-danger' : 'text-success' }}" style="font-size:13px;">{{ $employee->module_summary['payroll_pending'] }} Pending</div>
                                     </div>
                                 </div>
-
-                                <!-- 5. Documents -->
-                                <div class="col-6 col-md-4 mb-3">
-                                    <div class="p-3 border rounded shadow-xs" style="background:#F9FAFB; border-radius:15px;">
-                                        <div class="text-muted small font-weight-bold mb-1">Exit Documents</div>
-                                        <div class="h5 font-weight-bold text-success mb-0">
-                                            {{ $employee->module_summary['documents_count'] }} Generated
-                                        </div>
+                                <div class="col-6 col-md-4 mb-2">
+                                    <div class="p-2 border rounded bg-white text-center">
+                                        <div class="text-muted small font-weight-bold">Exit Documents</div>
+                                        <div class="font-weight-bold text-success" style="font-size:13px;">{{ $employee->module_summary['documents_count'] }} Generated</div>
                                     </div>
                                 </div>
-
-                                <!-- 6. Loans/Recoveries -->
-                                <div class="col-6 col-md-4 mb-3">
-                                    <div class="p-3 border rounded shadow-xs" style="background:#F9FAFB; border-radius:15px;">
-                                        <div class="text-muted small font-weight-bold mb-1">Loans/Adjustments</div>
-                                        <div class="h5 font-weight-bold {{ $employee->module_summary['loans_pending'] > 0 ? 'text-danger' : 'text-success' }} mb-0">
-                                            {{ $employee->module_summary['loans_pending'] }} Pending
-                                        </div>
+                                <div class="col-6 col-md-4 mb-2">
+                                    <div class="p-2 border rounded bg-white text-center">
+                                        <div class="text-muted small font-weight-bold">Loans/Adjustments</div>
+                                        <div class="font-weight-bold {{ $employee->module_summary['loans_pending'] > 0 ? 'text-danger' : 'text-success' }}" style="font-size:13px;">{{ $employee->module_summary['loans_pending'] }} Pending</div>
                                     </div>
                                 </div>
-
-                                <!-- 7. WFH -->
-                                <div class="col-6 col-md-4 mb-3">
-                                    <div class="p-3 border rounded shadow-xs" style="background:#F9FAFB; border-radius:15px;">
-                                        <div class="text-muted small font-weight-bold mb-1">WFH Requests</div>
-                                        <div class="h5 font-weight-bold text-dark mb-0">
-                                            {{ $employee->module_summary['wfh_pending'] }} Pending
-                                        </div>
+                                <div class="col-6 col-md-4 mb-2">
+                                    <div class="p-2 border rounded bg-white text-center">
+                                        <div class="text-muted small font-weight-bold">WFH Requests</div>
+                                        <div class="font-weight-bold text-dark" style="font-size:13px;">{{ $employee->module_summary['wfh_pending'] }} Pending</div>
                                     </div>
                                 </div>
-
-                                <!-- 8. Holiday Work -->
-                                <div class="col-6 col-md-4 mb-3">
-                                    <div class="p-3 border rounded shadow-xs" style="background:#F9FAFB; border-radius:15px;">
-                                        <div class="text-muted small font-weight-bold mb-1">Pending Comp-Off</div>
-                                        <div class="h5 font-weight-bold text-dark mb-0">
-                                            {{ $employee->module_summary['holiday_work_pending'] }} Pending
-                                        </div>
+                                <div class="col-6 col-md-4 mb-2">
+                                    <div class="p-2 border rounded bg-white text-center">
+                                        <div class="text-muted small font-weight-bold">Comp-Off</div>
+                                        <div class="font-weight-bold text-dark" style="font-size:13px;">{{ $employee->module_summary['holiday_work_pending'] }} Pending</div>
                                     </div>
                                 </div>
-
-                                <!-- 9. Notice Period -->
-                                <div class="col-6 col-md-4 mb-3">
-                                    <div class="p-3 border rounded shadow-xs" style="background:#F9FAFB; border-radius:15px;">
-                                        <div class="text-muted small font-weight-bold mb-1">Notice Remaining</div>
-                                        <div class="h5 font-weight-bold text-dark mb-0">
-                                            {{ $employee->module_summary['notice_days_remaining'] }} Days
-                                        </div>
+                                <div class="col-6 col-md-4 mb-2">
+                                    <div class="p-2 border rounded bg-white text-center">
+                                        <div class="text-muted small font-weight-bold">Notice Remaining</div>
+                                        <div class="font-weight-bold text-dark" style="font-size:13px;">{{ $employee->module_summary['notice_days_remaining'] }} Days</div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    @endif
+                </div>
+                @endif
 
-                    <!-- Department Exit Clearances Section -->
-                    <div class="card border-0 shadow-sm mb-4" style="border-radius:20px; background: #fff; border: 1px solid #E7EAF3; box-shadow: 0 10px 28px rgba(16, 24, 40, .06);">
-                        <div class="card-header bg-white border-0 pt-3 pb-0">
-                            <h6 class="font-weight-bold text-dark mb-0"><i class="fas fa-tasks text-primary mr-2"></i> Department Exit Clearances</h6>
-                            <p class="text-muted small mb-0">Approval statuses and checklists across mandatory business departments.</p>
+                <!-- Department Exit Clearances Collapsible Accordion Section -->
+                <div class="card border-0 shadow-sm mb-3" style="border-radius:12px; background: #fff; border: 1px solid #E7EAF3;">
+                    <div class="card-header bg-white border-0 py-2 px-3 d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="font-weight-bold text-dark mb-0" style="font-size:14px;"><i class="fas fa-tasks text-primary mr-2"></i> Department Exit Clearances</h6>
+                            <span class="text-muted small">Click any department below to view checklist & update approval status</span>
                         </div>
-                        <div class="card-body">
+                        <span class="badge badge-light border text-muted" style="font-size:11px;">8 Departments</span>
+                    </div>
+                    <div class="card-body p-2 px-3">
+                        @php
+                        $actor = auth()->user();
+                        $isSuperAdmin = $actor && method_exists($actor, 'isSuperAdmin') && $actor->isSuperAdmin();
+                        $isHrAdmin = $actor && method_exists($actor, 'hasRole') && $actor->hasRole('hr_admin');
+                        $isHRorAdmin = $isSuperAdmin || $isHrAdmin;
+
+                        $deptKeys = ['hr', 'manager', 'it', 'admin', 'finance', 'asset', 'security', 'accounts'];
+                        $deptLabels = [
+                        'hr' => 'Human Resources (HR)',
+                        'manager' => 'Reporting Manager',
+                        'it' => 'IT Department',
+                        'admin' => 'Admin Department',
+                        'finance' => 'Finance Department',
+                        'asset' => 'Asset Management Team',
+                        'security' => 'Security Office',
+                        'accounts' => 'Accounts Department',
+                        ];
+                        @endphp
+
+                        <div class="accordion" id="deptAccordion-{{ $employee->id }}">
+                            @foreach($deptKeys as $dKey)
                             @php
-                                $actor = auth()->user();
-                                $isSuperAdmin = $actor && method_exists($actor, 'isSuperAdmin') && $actor->isSuperAdmin();
-                                $isHrAdmin = $actor && method_exists($actor, 'hasRole') && $actor->hasRole('hr_admin');
-                                $isHRorAdmin = $isSuperAdmin || $isHrAdmin;
-                                
-                                $deptKeys = ['hr', 'manager', 'it', 'admin', 'finance', 'asset', 'security', 'accounts'];
-                                $deptLabels = [
-                                    'hr' => 'Human Resources (HR)',
-                                    'manager' => 'Reporting Manager',
-                                    'it' => 'IT Department',
-                                    'admin' => 'Admin Department',
-                                    'finance' => 'Finance Department',
-                                    'asset' => 'Asset Management Team',
-                                    'security' => 'Security Office',
-                                    'accounts' => 'Accounts Department',
-                                ];
+                            $clearance = isset($employee->clearances[$dKey]) ? $employee->clearances[$dKey] : null;
+                            $clrStatus = $clearance ? $clearance->status : 'pending';
+                            $clrRemarks = $clearance ? $clearance->remarks : '';
+                            $checklist = $clearance ? json_decode($clearance->checklist, true) : [];
+                            $approvedBy = '';
+                            if ($clearance && $clearance->approved_by_user_id) {
+                            $approvedBy = \DB::table('users')->where('id', $clearance->approved_by_user_id)->value('name');
+                            }
+                            $approvedAt = $clearance && $clearance->approved_at ? \Carbon\Carbon::parse($clearance->approved_at)->format('d M Y') : '';
+
+                            // Evaluate security/approve permission
+                            $canApproveDept = false;
+                            if ($isHRorAdmin) {
+                            $canApproveDept = true;
+                            } else {
+                            if ($dKey === 'manager' && $actor->employee && $employee->reporting_manager_employee_id == $actor->employee->id) {
+                            $canApproveDept = true;
+                            }
+
+                            if (!$canApproveDept) {
+                            $pMap = [
+                            'hr' => 'employee_exit.clearance.hr',
+                            'manager' => 'employee_exit.clearance.manager',
+                            'it' => 'employee_exit.clearance.it',
+                            'admin' => 'employee_exit.clearance.admin',
+                            'finance' => 'employee_exit.clearance.finance',
+                            'asset' => 'employee_exit.clearance.asset',
+                            'security' => 'employee_exit.clearance.security',
+                            'accounts' => 'employee_exit.clearance.accounts',
+                            ];
+                            if (isset($pMap[$dKey]) && $actor->hasPermission($pMap[$dKey])) {
+                            $canApproveDept = true;
+                            }
+                            }
+
+                            // Fallback department name check
+                            if (!$canApproveDept && $actor->employee && !empty($actor->employee->department_id)) {
+                            $uDeptName = \DB::table('departments')->where('id', $actor->employee->department_id)->value('name');
+                            if ($uDeptName) {
+                            $uDeptNameLower = strtolower($uDeptName);
+                            if ($dKey === 'it' && (str_contains($uDeptNameLower, 'it') || str_contains($uDeptNameLower, 'infrastructure') || str_contains($uDeptNameLower, 'devops'))) {
+                            $canApproveDept = true;
+                            } elseif ($dKey === 'finance' && (str_contains($uDeptNameLower, 'finance') || str_contains($uDeptNameLower, 'account'))) {
+                            $canApproveDept = true;
+                            } elseif ($dKey === 'accounts' && (str_contains($uDeptNameLower, 'finance') || str_contains($uDeptNameLower, 'account'))) {
+                            $canApproveDept = true;
+                            }
+                            }
+                            }
+                            }
                             @endphp
 
-                            @foreach($deptKeys as $dKey)
-                                @php
-                                    $clearance = isset($employee->clearances[$dKey]) ? $employee->clearances[$dKey] : null;
-                                    $clrStatus = $clearance ? $clearance->status : 'pending';
-                                    $clrRemarks = $clearance ? $clearance->remarks : '';
-                                    $checklist = $clearance ? json_decode($clearance->checklist, true) : [];
-                                    $approvedBy = '';
-                                    if ($clearance && $clearance->approved_by_user_id) {
-                                        $approvedBy = \DB::table('users')->where('id', $clearance->approved_by_user_id)->value('name');
-                                    }
-                                    $approvedAt = $clearance && $clearance->approved_at ? \Carbon\Carbon::parse($clearance->approved_at)->format('d M Y, h:i A') : '';
-                                    
-                                    // Evaluate security/approve permission
-                                    $canApproveDept = false;
-                                    if ($isHRorAdmin) {
-                                        $canApproveDept = true;
-                                    } else {
-                                        if ($dKey === 'manager' && $actor->employee && $employee->reporting_manager_employee_id == $actor->employee->id) {
-                                            $canApproveDept = true;
-                                        }
-                                        
-                                        if (!$canApproveDept) {
-                                            $pMap = [
-                                                'hr' => 'employee_exit.clearance.hr',
-                                                'manager' => 'employee_exit.clearance.manager',
-                                                'it' => 'employee_exit.clearance.it',
-                                                'admin' => 'employee_exit.clearance.admin',
-                                                'finance' => 'employee_exit.clearance.finance',
-                                                'asset' => 'employee_exit.clearance.asset',
-                                                'security' => 'employee_exit.clearance.security',
-                                                'accounts' => 'employee_exit.clearance.accounts',
-                                            ];
-                                            if (isset($pMap[$dKey]) && $actor->hasPermission($pMap[$dKey])) {
-                                                $canApproveDept = true;
-                                            }
-                                        }
-                                        
-                                        // Fallback department name check
-                                        if (!$canApproveDept && $actor->employee && !empty($actor->employee->department_id)) {
-                                            $uDeptName = \DB::table('departments')->where('id', $actor->employee->department_id)->value('name');
-                                            if ($uDeptName) {
-                                                $uDeptNameLower = strtolower($uDeptName);
-                                                if ($dKey === 'it' && (str_contains($uDeptNameLower, 'it') || str_contains($uDeptNameLower, 'infrastructure') || str_contains($uDeptNameLower, 'devops'))) {
-                                                    $canApproveDept = true;
-                                                } elseif ($dKey === 'finance' && (str_contains($uDeptNameLower, 'finance') || str_contains($uDeptNameLower, 'account'))) {
-                                                    $canApproveDept = true;
-                                                } elseif ($dKey === 'accounts' && (str_contains($uDeptNameLower, 'finance') || str_contains($uDeptNameLower, 'account'))) {
-                                                    $canApproveDept = true;
-                                                }
-                                            }
-                                        }
-                                    }
-                                @endphp
-
-                                <div class="eo-action-card mb-3 js-dept-card-{{ $dKey }}" data-dept="{{ $dKey }}" style="border-left: 4px solid {{ $clrStatus === 'approved' ? '#10B981' : ($clrStatus === 'rejected' ? '#EF4444' : '#F59E0B') }};">
-                                    <div class="eo-action-card-head d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <div class="eo-action-title">{{ $deptLabels[$dKey] }} Clearance</div>
-                                            <div class="eo-action-sub mb-0">Status: 
-                                                <span class="badge js-dept-badge-{{ $dKey }} badge-{{ $clrStatus === 'approved' ? 'success' : ($clrStatus === 'rejected' ? 'danger' : 'warning') }}">
-                                                    {{ ucfirst($clrStatus) }}
-                                                </span>
-                                                <span class="js-dept-approved-by-{{ $dKey }}">
-                                                @if($approvedBy)
-                                                    <span class="text-muted small ml-1">by <strong>{{ $approvedBy }}</strong> on {{ $approvedAt }}</span>
-                                                @endif
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div class="js-dept-icon-{{ $dKey }}">
-                                            <i class="fas {{ $clrStatus === 'approved' ? 'fa-check-circle text-success' : ($clrStatus === 'rejected' ? 'fa-times-circle text-danger' : 'fa-clock text-warning') }} fa-lg"></i>
-                                        </div>
+                            <div class="card border mb-2 js-dept-card-{{ $dKey }}" data-dept="{{ $dKey }}" style="border-radius:10px; overflow:hidden; border-left: 4px solid {{ $clrStatus === 'approved' ? '#10B981' : ($clrStatus === 'rejected' ? '#EF4444' : '#F59E0B') }} !important;">
+                                <div class="card-header bg-light py-2 px-3 d-flex justify-content-between align-items-center" 
+                                     style="cursor:pointer;" 
+                                     data-toggle="collapse" 
+                                     data-target="#collapse-dept-{{ $dKey }}-{{ $employee->id }}" 
+                                     aria-expanded="false">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="fas {{ $clrStatus === 'approved' ? 'fa-check-circle text-success' : ($clrStatus === 'rejected' ? 'fa-times-circle text-danger' : 'fa-clock text-warning') }} mr-2"></i>
+                                        <strong style="font-size:13px;">{{ $deptLabels[$dKey] }}</strong>
+                                        <span class="badge js-dept-badge-{{ $dKey }} badge-{{ $clrStatus === 'approved' ? 'success' : ($clrStatus === 'rejected' ? 'danger' : 'warning') }} ml-2">
+                                            {{ ucfirst($clrStatus) }}
+                                        </span>
+                                        <span class="js-dept-approved-by-{{ $dKey }}">
+                                            @if($approvedBy)
+                                            <span class="text-muted small ml-1 d-none d-md-inline">by <strong>{{ $approvedBy }}</strong> on {{ $approvedAt }}</span>
+                                            @endif
+                                        </span>
                                     </div>
-                                    
-                                    @if($canApproveDept || $isHRorAdmin)
-                                    <form action="{{ route('hrms.employees.exit.clearance.dept.update', $employee->id) }}" method="POST" class="mb-0 js-dept-clearance-form" data-dept="{{ $dKey }}" data-employee-id="{{ $employee->id }}">
-                                        @csrf
-                                        <input type="hidden" name="exit_process_id" value="{{ $employee->exit_process_id }}">
-                                        <input type="hidden" name="department_key" value="{{ $dKey }}">
-                                        
-                                        <div class="eo-action-body">
+                                    <div>
+                                        <i class="fas fa-chevron-down fa-sm text-muted"></i>
+                                    </div>
+                                </div>
+
+                                <div id="collapse-dept-{{ $dKey }}-{{ $employee->id }}" class="collapse" data-parent="#deptAccordion-{{ $employee->id }}">
+                                    <div class="card-body p-3 bg-white">
+                                        @if($canApproveDept || $isHRorAdmin)
+                                        <form action="{{ route('hrms.employees.exit.clearance.dept.update', $employee->id) }}" method="POST" class="mb-0 js-dept-clearance-form" data-dept="{{ $dKey }}" data-employee-id="{{ $employee->id }}">
+                                            @csrf
+                                            <input type="hidden" name="exit_process_id" value="{{ $employee->exit_process_id }}">
+                                            <input type="hidden" name="department_key" value="{{ $dKey }}">
+
                                             @if(!empty($checklist))
-                                            <label class="eo-label">Clearance Checklist Items:</label>
+                                            <label class="eo-label mb-1">Clearance Checklist Items:</label>
                                             <div class="mb-3 pl-2">
                                                 @foreach($checklist as $index => $item)
-                                                    <div class="custom-control custom-checkbox mb-1">
-                                                        <input type="hidden" name="checklist[{{ $item['item'] }}]" value="0">
-                                                        <input type="checkbox" name="checklist[{{ $item['item'] }}]" value="1" class="custom-control-input" id="chk-{{ $dKey }}-{{ $index }}-{{ $employee->id }}" {{ $item['completed'] ? 'checked' : '' }}>
-                                                        <label class="custom-control-label font-weight-normal text-dark" for="chk-{{ $dKey }}-{{ $index }}-{{ $employee->id }}">{{ $item['item'] }}</label>
-                                                    </div>
+                                                <div class="custom-control custom-checkbox mb-1">
+                                                    <input type="hidden" name="checklist[{{ $item['item'] }}]" value="0">
+                                                    <input type="checkbox" name="checklist[{{ $item['item'] }}]" value="1" class="custom-control-input" id="chk-{{ $dKey }}-{{ $index }}-{{ $employee->id }}" {{ $item['completed'] ? 'checked' : '' }}>
+                                                    <label class="custom-control-label font-weight-normal text-dark" for="chk-{{ $dKey }}-{{ $index }}-{{ $employee->id }}" style="font-size:12px;">{{ $item['item'] }}</label>
+                                                </div>
                                                 @endforeach
                                             </div>
                                             @endif
-                                            
+
                                             <div class="row">
                                                 <div class="col-md-8 mb-2">
                                                     <label class="eo-label">Remarks</label>
@@ -1349,176 +1344,191 @@
                                                     </select>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </form>
-                                    @else
+                                        </form>
+                                        @else
                                         <!-- Read only view for employees or other departments -->
-                                        <div class="eo-action-body">
+                                        <div class="eo-action-body p-0">
                                             @if(!empty($checklist))
-                                            <label class="eo-label">Clearance Checklist Items:</label>
+                                            <label class="eo-label mb-1">Clearance Checklist Items:</label>
                                             <div class="mb-2 pl-2">
                                                 @foreach($checklist as $item)
-                                                    <div class="mb-1 text-dark">
-                                                        <i class="fas {{ $item['completed'] ? 'fa-check-square text-success' : 'fa-square text-muted' }} mr-2"></i>
-                                                        <span class="{{ $item['completed'] ? 'text-success font-weight-bold' : '' }}">{{ $item['item'] }}</span>
-                                                    </div>
+                                                <div class="mb-1 text-dark" style="font-size:12px;">
+                                                    <i class="fas {{ $item['completed'] ? 'fa-check-square text-success' : 'fa-square text-muted' }} mr-2"></i>
+                                                    <span class="{{ $item['completed'] ? 'text-success font-weight-bold' : '' }}">{{ $item['item'] }}</span>
+                                                </div>
                                                 @endforeach
                                             </div>
                                             @endif
                                             @if($clrRemarks)
-                                                <div class="mt-2 text-muted small"><strong>Remarks:</strong> {{ $clrRemarks }}</div>
+                                            <div class="mt-2 text-muted small"><strong>Remarks:</strong> {{ $clrRemarks }}</div>
                                             @endif
                                         </div>
-                                    @endif
+                                        @endif
+                                    </div>
                                 </div>
+                            </div>
                             @endforeach
                         </div>
                     </div>
+                </div>
 
-                    <!-- Flow Management Section Cards -->
-                    <div class="eo-action-card mb-3">
-                        <div class="eo-action-card-head">
-                            <div class="eo-action-icon" style="background: var(--orb-soft); color: var(--orb-primary);"><i class="fas fa-sync-alt"></i></div>
-                            <div>
-                                <div class="eo-action-title">Refresh Exit Status</div>
-                                <div class="eo-action-sub">Sync clearance levels, assets, FNF and documents from modules.</div>
-                            </div>
+                <!-- Flow Management Section Cards -->
+                <div class="eo-action-card mb-3">
+                    <div class="eo-action-card-head">
+                        <div class="eo-action-icon" style="background: var(--orb-soft); color: var(--orb-primary);"><i class="fas fa-sync-alt"></i></div>
+                        <div>
+                            <div class="eo-action-title">Refresh Exit Status</div>
+                            <div class="eo-action-sub">Sync clearance levels, assets, FNF and documents from modules.</div>
                         </div>
-                        <form action="{{ route('hrms.employees.exit.refresh', $employee->id) }}" method="POST" class="mb-0">
-                            @csrf
-                            <input type="hidden" name="exit_process_id" value="{{ $employee->exit_process_id }}">
-                            <div class="eo-action-body d-flex justify-content-between align-items-center flex-wrap gap-2">
-                                <span class="text-muted small">Update status values dynamically based on live asset/clearance records.</span>
-                                <button type="submit" class="btn btn-primary btn-orb px-3 py-2" style="height:36px; min-height:36px; font-size:12px;">
-                                    <i class="fas fa-sync-alt mr-1"></i> Refresh Status
-                                </button>
-                            </div>
-                        </form>
                     </div>
-
-                    <div class="eo-action-card mb-3">
-                        <div class="eo-action-card-head">
-                            <div class="eo-action-icon" style="background: #EEF2FF; color: #3730A3;"><i class="fas fa-sliders-h"></i></div>
-                            <div>
-                                <div class="eo-action-title">Update Clearance Status</div>
-                                <div class="eo-action-sub">Set cleared/waived statuses before final exit approval.</div>
-                            </div>
+                    <form action="{{ route('hrms.employees.exit.refresh', $employee->id) }}" method="POST" class="mb-0">
+                        @csrf
+                        <input type="hidden" name="exit_process_id" value="{{ $employee->exit_process_id }}">
+                        <div class="eo-action-body d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <span class="text-muted small">Update status values dynamically based on live asset/clearance records.</span>
+                            <button type="submit" class="btn btn-primary btn-orb px-3 py-2" style="height:36px; min-height:36px; font-size:12px;">
+                                <i class="fas fa-sync-alt mr-1"></i> Refresh Status
+                            </button>
                         </div>
-                        <form action="{{ route('hrms.employees.exit.clearance.update', $employee->id) }}" method="POST" class="mb-0 js-overall-clearance-form" data-employee-id="{{ $employee->id }}">
-                            @csrf
-                            <input type="hidden" name="exit_process_id" value="{{ $employee->exit_process_id }}">
-                            <div class="eo-action-body">
-                                <div class="row">
-                                    <div class="col-md-6 mb-2">
-                                        <label class="eo-label">Asset Status</label>
-                                        <select name="asset_status" class="eo-control">
-                                            <option value="pending" {{ strtolower($assetStatus) === 'pending' ? 'selected' : '' }}>Pending</option>
-                                            <option value="cleared" {{ strtolower($assetStatus) === 'cleared' ? 'selected' : '' }}>Cleared</option>
-                                            <option value="waived" {{ strtolower($assetStatus) === 'waived' ? 'selected' : '' }}>Waived</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-6 mb-2">
-                                        <label class="eo-label">FnF Status</label>
-                                        <select name="fnf_status" class="eo-control">
-                                            <option value="pending" {{ strtolower($fnfStatus) === 'pending' ? 'selected' : '' }}>Pending</option>
-                                            <option value="processing" {{ strtolower($fnfStatus) === 'processing' ? 'selected' : '' }}>Processing</option>
-                                            <option value="approved" {{ strtolower($fnfStatus) === 'approved' ? 'selected' : '' }}>Approved</option>
-                                            <option value="paid" {{ strtolower($fnfStatus) === 'paid' ? 'selected' : '' }}>Paid</option>
-                                            <option value="completed" {{ strtolower($fnfStatus) === 'completed' ? 'selected' : '' }}>Completed</option>
-                                            <option value="waived" {{ strtolower($fnfStatus) === 'waived' ? 'selected' : '' }}>Waived</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-6 mb-2">
-                                        <label class="eo-label">Document Status</label>
-                                        <select name="document_status" class="eo-control">
-                                            <option value="pending" {{ strtolower($documentStatus) === 'pending' ? 'selected' : '' }}>Pending</option>
-                                            <option value="generated" {{ strtolower($documentStatus) === 'generated' ? 'selected' : '' }}>Generated</option>
-                                            <option value="sent" {{ strtolower($documentStatus) === 'sent' ? 'selected' : '' }}>Sent</option>
-                                            <option value="completed" {{ strtolower($documentStatus) === 'completed' ? 'selected' : '' }}>Completed</option>
-                                            <option value="waived" {{ strtolower($documentStatus) === 'waived' ? 'selected' : '' }}>Waived</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-6 mb-2">
-                                        <label class="eo-label">Handover Status</label>
-                                        <select name="handover_status" class="eo-control">
-                                            <option value="pending" {{ strtolower($handoverStatus) === 'pending' ? 'selected' : '' }}>Pending</option>
-                                            <option value="cleared" {{ strtolower($handoverStatus) === 'cleared' ? 'selected' : '' }}>Cleared</option>
-                                            <option value="completed" {{ strtolower($handoverStatus) === 'completed' ? 'selected' : '' }}>Completed</option>
-                                            <option value="waived" {{ strtolower($handoverStatus) === 'waived' ? 'selected' : '' }}>Waived</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-12 mb-2">
-                                        <label class="eo-label">Remarks</label>
-                                        <input type="text" name="remarks" class="eo-control" value="{{ $employee->exit_remarks ?? '' }}" placeholder="Optional clearance remarks">
-                                    </div>
+                    </form>
+                </div>
+
+                <div class="eo-action-card mb-3">
+                    <div class="eo-action-card-head">
+                        <div class="eo-action-icon" style="background: #EEF2FF; color: #3730A3;"><i class="fas fa-sliders-h"></i></div>
+                        <div>
+                            <div class="eo-action-title">Update Clearance Status</div>
+                            <div class="eo-action-sub">Set cleared/waived statuses before final exit approval.</div>
+                        </div>
+                    </div>
+                    <form action="{{ route('hrms.employees.exit.clearance.update', $employee->id) }}" method="POST" class="mb-0 js-overall-clearance-form" data-employee-id="{{ $employee->id }}">
+                        @csrf
+                        <input type="hidden" name="exit_process_id" value="{{ $employee->exit_process_id }}">
+                        <div class="eo-action-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-2">
+                                    <label class="eo-label">Exit Type</label>
+                                    <select name="exit_type" class="eo-control">
+                                        <option value="resignation" {{ strtolower($exitType) === 'resignation' ? 'selected' : '' }}>Resignation</option>
+                                        <option value="termination" {{ strtolower($exitType) === 'termination' ? 'selected' : '' }}>Termination</option>
+                                        <option value="discontinued" {{ strtolower($exitType) === 'discontinued' ? 'selected' : '' }}>Discontinuation</option>
+                                        <option value="absconding" {{ strtolower($exitType) === 'absconding' ? 'selected' : '' }}>Absconding</option>
+                                        <option value="retirement" {{ strtolower($exitType) === 'retirement' ? 'selected' : '' }}>Retirement</option>
+                                        <option value="contract_end" {{ strtolower($exitType) === 'contract_end' ? 'selected' : '' }}>End of Contract</option>
+                                        <option value="internship_completed" {{ strtolower($exitType) === 'internship_completed' ? 'selected' : '' }}>Completion of Internship</option>
+                                        <option value="deceased" {{ strtolower($exitType) === 'deceased' ? 'selected' : '' }}>Death</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <label class="eo-label">Asset Status</label>
+                                    <select name="asset_status" class="eo-control">
+                                        <option value="pending" {{ strtolower($assetStatus) === 'pending' ? 'selected' : '' }}>Pending</option>
+                                        <option value="cleared" {{ strtolower($assetStatus) === 'cleared' ? 'selected' : '' }}>Cleared</option>
+                                        <option value="waived" {{ strtolower($assetStatus) === 'waived' ? 'selected' : '' }}>Waived</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <label class="eo-label">FnF Status</label>
+                                    <select name="fnf_status" class="eo-control">
+                                        <option value="pending" {{ strtolower($fnfStatus) === 'pending' ? 'selected' : '' }}>Pending</option>
+                                        <option value="processing" {{ strtolower($fnfStatus) === 'processing' ? 'selected' : '' }}>Processing</option>
+                                        <option value="approved" {{ strtolower($fnfStatus) === 'approved' ? 'selected' : '' }}>Approved</option>
+                                        <option value="paid" {{ strtolower($fnfStatus) === 'paid' ? 'selected' : '' }}>Paid</option>
+                                        <option value="completed" {{ strtolower($fnfStatus) === 'completed' ? 'selected' : '' }}>Completed</option>
+                                        <option value="waived" {{ strtolower($fnfStatus) === 'waived' ? 'selected' : '' }}>Waived</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <label class="eo-label">Document Status</label>
+                                    <select name="document_status" class="eo-control">
+                                        <option value="pending" {{ strtolower($documentStatus) === 'pending' ? 'selected' : '' }}>Pending</option>
+                                        <option value="generated" {{ strtolower($documentStatus) === 'generated' ? 'selected' : '' }}>Generated</option>
+                                        <option value="sent" {{ strtolower($documentStatus) === 'sent' ? 'selected' : '' }}>Sent</option>
+                                        <option value="completed" {{ strtolower($documentStatus) === 'completed' ? 'selected' : '' }}>Completed</option>
+                                        <option value="waived" {{ strtolower($documentStatus) === 'waived' ? 'selected' : '' }}>Waived</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <label class="eo-label">Handover Status</label>
+                                    <select name="handover_status" class="eo-control">
+                                        <option value="pending" {{ strtolower($handoverStatus) === 'pending' ? 'selected' : '' }}>Pending</option>
+                                        <option value="cleared" {{ strtolower($handoverStatus) === 'cleared' ? 'selected' : '' }}>Cleared</option>
+                                        <option value="completed" {{ strtolower($handoverStatus) === 'completed' ? 'selected' : '' }}>Completed</option>
+                                        <option value="waived" {{ strtolower($handoverStatus) === 'waived' ? 'selected' : '' }}>Waived</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-12 mb-2">
+                                    <label class="eo-label">Remarks</label>
+                                    <input type="text" name="remarks" class="eo-control" value="{{ $employee->exit_remarks ?? '' }}" placeholder="Optional clearance remarks">
                                 </div>
                             </div>
-                        </form>
-                    </div>
-
-                    <div class="eo-action-card mb-3">
-                        <div class="eo-action-card-head">
-                            <div class="eo-action-icon" style="background: #DCFCE7; color: #15803D;"><i class="fas fa-check-double"></i></div>
-                            <div>
-                                <div class="eo-action-title">Complete Exit Process (Final Settlement)</div>
-                                <div class="eo-action-sub">Finalize full-and-final, lock user account, and mark inactive.</div>
-                            </div>
                         </div>
-                        <form action="{{ route('hrms.employees.exit.complete', $employee->id) }}" method="POST" class="mb-0">
-                            @csrf
-                            <input type="hidden" name="exit_process_id" value="{{ $employee->exit_process_id }}">
-                            <div class="eo-action-body d-flex justify-content-between align-items-center flex-wrap gap-2">
-                                <span class="text-muted small">This action is permanent and will disable login credentials.</span>
-                                @php
-                                    $clearanceApproved = true;
-                                    $mandatoryDepts = ['hr', 'manager', 'it', 'admin', 'finance', 'asset'];
-                                    foreach ($mandatoryDepts as $mDept) {
-                                        $status = isset($employee->clearances[$mDept]) ? $employee->clearances[$mDept]->status : 'pending';
-                                        if ($status !== 'approved') {
-                                            $clearanceApproved = false;
-                                            break;
-                                        }
-                                    }
-                                @endphp
-                                <div class="js-complete-exit-btn-container d-inline-block text-right">
+                    </form>
+                </div>
+
+                <div class="eo-action-card mb-3">
+                    <div class="eo-action-card-head">
+                        <div class="eo-action-icon" style="background: #DCFCE7; color: #15803D;"><i class="fas fa-check-double"></i></div>
+                        <div>
+                            <div class="eo-action-title">Complete Exit Process (Final Settlement)</div>
+                            <div class="eo-action-sub">Finalize full-and-final, lock user account, and mark inactive.</div>
+                        </div>
+                    </div>
+                    <form action="{{ route('hrms.employees.exit.complete', $employee->id) }}" method="POST" class="mb-0">
+                        @csrf
+                        <input type="hidden" name="exit_process_id" value="{{ $employee->exit_process_id }}">
+                        <div class="eo-action-body d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <span class="text-muted small">This action is permanent and will disable login credentials.</span>
+                            @php
+                            $clearanceApproved = true;
+                            $mandatoryDepts = ['hr', 'manager', 'it', 'admin', 'finance', 'asset'];
+                            foreach ($mandatoryDepts as $mDept) {
+                            $status = isset($employee->clearances[$mDept]) ? $employee->clearances[$mDept]->status : 'pending';
+                            if ($status !== 'approved') {
+                            $clearanceApproved = false;
+                            break;
+                            }
+                            }
+                            @endphp
+                            <div class="js-complete-exit-btn-container d-inline-block text-right">
                                 @if($clearanceApproved)
-                                    <button type="submit" class="btn btn-success em-btn-success px-3 py-2" style="height:36px; min-height:36px; font-size:12px; border-radius:50px; font-weight:800; border:none;" onclick="return confirm('Complete exit and disable login?')">
-                                        <i class="fas fa-user-check mr-1"></i> Complete Exit
-                                    </button>
+                                <button type="submit" class="btn btn-success em-btn-success px-3 py-2" style="height:36px; min-height:36px; font-size:12px; border-radius:50px; font-weight:800; border:none;" onclick="return confirm('Complete exit and disable login?')">
+                                    <i class="fas fa-user-check mr-1"></i> Complete Exit
+                                </button>
                                 @else
-                                    <button type="button" class="btn btn-success em-btn-success px-3 py-2" style="height:36px; min-height:36px; font-size:12px; border-radius:50px; font-weight:800; border:none; opacity: 0.5; cursor: not-allowed;" disabled title="Clearances are pending approval">
-                                        <i class="fas fa-ban mr-1"></i> Complete Exit (Blocked)
-                                    </button>
-                                    <span class="text-danger small mt-1 d-block w-100"><i class="fas fa-exclamation-triangle mr-1"></i> All mandatory clearances (HR, Manager, IT, Admin, Finance, Assets) must be approved.</span>
+                                <button type="button" class="btn btn-success em-btn-success px-3 py-2" style="height:36px; min-height:36px; font-size:12px; border-radius:50px; font-weight:800; border:none; opacity: 0.5; cursor: not-allowed;" disabled title="Clearances are pending approval">
+                                    <i class="fas fa-ban mr-1"></i> Complete Exit (Blocked)
+                                </button>
+                                <span class="text-danger small mt-1 d-block w-100"><i class="fas fa-exclamation-triangle mr-1"></i> All mandatory clearances (HR, Manager, IT, Admin, Finance, Assets) must be approved.</span>
                                 @endif
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-
-                    <div class="eo-action-card">
-                        <div class="eo-action-card-head">
-                            <div class="eo-action-icon" style="background: #FEE2E2; color: #B91C1C;"><i class="fas fa-times-circle"></i></div>
-                            <div>
-                                <div class="eo-action-title">Cancel Exit Process</div>
-                                <div class="eo-action-sub">Abort the exit sequence and restore active employment status.</div>
                             </div>
                         </div>
-                        <form action="{{ route('hrms.employees.exit.cancel', $employee->id) }}" method="POST" class="mb-0">
-                            @csrf
-                            <input type="hidden" name="exit_process_id" value="{{ $employee->exit_process_id }}">
-                            <div class="eo-action-body d-flex justify-content-between align-items-center flex-wrap gap-2">
-                                <span class="text-muted small">Restores the employee's active status and deletes exit record.</span>
-                                <button type="submit" class="btn btn-danger px-3 py-2" style="height:36px; min-height:36px; font-size:12px; border-radius:50px; font-weight:800; border:none; background:#DC2626;" onclick="return confirm('Cancel this exit process?')">
-                                    <i class="fas fa-ban mr-1"></i> Cancel Exit
-                                </button>
-                            </div>
-                        </form>
-                    </div>
+                    </form>
+                </div>
 
-                    <div class="modal-footer px-0 pb-0" style="background: transparent; border-top: none; margin-top: 15px;">
-                        <button type="button" class="btn btn-secondary btn-soft" data-dismiss="modal">Close</button>
+                <div class="eo-action-card">
+                    <div class="eo-action-card-head">
+                        <div class="eo-action-icon" style="background: #FEE2E2; color: #B91C1C;"><i class="fas fa-times-circle"></i></div>
+                        <div>
+                            <div class="eo-action-title">Cancel Exit Process</div>
+                            <div class="eo-action-sub">Abort the exit sequence and restore active employment status.</div>
+                        </div>
                     </div>
+                    <form action="{{ route('hrms.employees.exit.cancel', $employee->id) }}" method="POST" class="mb-0">
+                        @csrf
+                        <input type="hidden" name="exit_process_id" value="{{ $employee->exit_process_id }}">
+                        <div class="eo-action-body d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <span class="text-muted small">Restores the employee's active status and deletes exit record.</span>
+                            <button type="submit" class="btn btn-danger px-3 py-2" style="height:36px; min-height:36px; font-size:12px; border-radius:50px; font-weight:800; border:none; background:#DC2626;" onclick="return confirm('Cancel this exit process?')">
+                                <i class="fas fa-ban mr-1"></i> Cancel Exit
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="modal-footer px-0 pb-0" style="background: transparent; border-top: none; margin-top: 15px;">
+                    <button type="button" class="btn btn-secondary btn-soft" data-dismiss="modal">Close</button>
+                </div>
                 @endif
             </div>
         </div>
@@ -1551,45 +1561,81 @@
         const fnfStatusFilter = document.getElementById('filterFnfStatus');
         const resetBtn = document.getElementById('resetFilter');
 
+        const exportFormat = {
+            body: function (data, row, column, node) {
+                // S. No. column (column index 0)
+                if (column === 0) {
+                    return data.trim();
+                }
+                // For Employee column (column index 1)
+                if (column === 1) {
+                    const code = $(node).find('.eo-code-under').text().trim();
+                    const name = $(node).find('.eo-name').text().trim();
+                    const email = $(node).find('.eo-muted-text').text().trim();
+                    return name + '\n' + code + '\n' + email;
+                }
+                // Strip HTML tags, replace multiple spaces and trim
+                return data ? data.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim() : '';
+            }
+        };
+
         // Initialize DataTable with custom styling and export features
         const table = $('#exitEmployeesTable').DataTable({
             dom: 't<"d-none"ip>', // Generate native info and pagination hidden, we move them to custom footer
             pageLength: 10,
             ordering: true,
             order: [], // Server-side default order preserved
-            columnDefs: [
-                { orderable: false, targets: [15] } // Actions column not sortable
+            columnDefs: [{
+                    orderable: false,
+                    targets: [13]
+                } // Actions column not sortable
             ],
             language: {
                 emptyTable: "No exit employees found."
             },
-            buttons: [
-                {
+            buttons: [{
                     extend: 'csv',
                     className: 'd-none',
                     exportOptions: {
-                        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+                        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+                        format: exportFormat
                     }
                 },
                 {
                     extend: 'excel',
                     className: 'd-none',
                     exportOptions: {
-                        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+                        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+                        format: exportFormat
                     }
                 },
                 {
                     extend: 'pdf',
                     className: 'd-none',
+                    orientation: 'landscape',
+                    pageSize: 'A4',
                     exportOptions: {
-                        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+                        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+                        format: exportFormat
+                    },
+                    customize: function(doc) {
+                        doc.content[1].table.widths = [20, 95, 60, 60, 45, 65, 45, 45, 40, 40, 40, 40, 50];
+                        doc.defaultStyle.fontSize = 7;
+                        doc.styles.tableHeader.fontSize = 7;
+                        doc.styles.tableHeader.fillColor = '#4F46E5';
+                        doc.styles.tableHeader.color = '#ffffff';
                     }
                 },
                 {
                     extend: 'print',
                     className: 'd-none',
                     exportOptions: {
-                        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+                        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+                        format: exportFormat
+                    },
+                    customize: function(win) {
+                        $(win.document.body).css('font-size', '10px');
+                        $(win.document.body).find('table').addClass('compact').css('font-size', 'inherit');
                     }
                 }
             ],
@@ -1773,6 +1819,12 @@
 
             const formatLabel = function(val) {
                 if (!val) return 'Pending';
+                const v = String(val).toLowerCase();
+                if (v === 'discontinued') return 'Discontinuation';
+                if (v === 'absconding') return 'Absconding';
+                if (v === 'contract_end') return 'End of Contract';
+                if (v === 'internship_completed') return 'Completion of Internship';
+                if (v === 'deceased') return 'Death';
                 return val.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
             };
 
@@ -1780,12 +1832,13 @@
                 const $td = $(selector);
                 if ($td.length && value !== undefined && value !== null) {
                     $td.find('.eo-pill')
-                       .removeClass('eo-pill-success eo-pill-info eo-pill-danger eo-pill-warning')
-                       .addClass(getPillClass(value))
-                       .text(formatLabel(value));
+                        .removeClass('eo-pill-success eo-pill-info eo-pill-danger eo-pill-warning')
+                        .addClass(getPillClass(value))
+                        .text(formatLabel(value));
                 }
             };
 
+            if (process.exit_type) updateCell('.js-tbl-cell-exit-type-' + employeeId, process.exit_type);
             const assetVal = process.asset_handover_status || process.asset_status;
             if (assetVal !== undefined) updateCell('.js-tbl-cell-asset-' + employeeId, assetVal);
             if (process.fnf_status !== undefined) updateCell('.js-tbl-cell-fnf-' + employeeId, process.fnf_status);
@@ -1793,7 +1846,7 @@
             if (process.handover_status !== undefined) updateCell('.js-tbl-cell-handover-' + employeeId, process.handover_status);
             if (process.experience_letter_status !== undefined) updateCell('.js-tbl-cell-experience-' + employeeId, process.experience_letter_status);
             if (process.relieving_letter_status !== undefined) updateCell('.js-tbl-cell-relieving-' + employeeId, process.relieving_letter_status);
-            
+
             const exitStatusVal = process.status || process.exit_status;
             if (exitStatusVal !== undefined) updateCell('.js-tbl-cell-exit-flow-' + employeeId, exitStatusVal);
             if (process.final_status !== undefined) updateCell('.js-tbl-cell-final-' + employeeId, process.final_status);

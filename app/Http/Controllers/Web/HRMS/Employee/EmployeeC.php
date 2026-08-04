@@ -333,14 +333,13 @@ class EmployeeC extends Controller
                         && (auth()->user()->hasPermission('employee_exit.initiate') || auth()->user()->hasPermission('employees.update'));
                     if ($canInitiateExit && Route::has('hrms.employees.exit.initiate')) {
                         $actions .= '
-                        <form action="' . route('hrms.employees.exit.initiate', $employee->id) . '" method="POST" style="margin:0;">
-                            ' . csrf_field() . '
-                            <input type="hidden" name="exit_type" value="resignation">
-                            <input type="hidden" name="last_working_day" value="' . e(now()->toDateString()) . '">
-                            <button type="submit" class="dropdown-item text-warning" onclick="return confirm(\'Initiate exit process for this employee?\')">
-                                <i class="fas fa-sign-out-alt"></i> Initiate Exit
-                            </button>
-                        </form>';
+                        <button type="button" class="dropdown-item text-warning btn-open-initiate-exit-modal" 
+                            data-employee-id="' . $employee->id . '" 
+                            data-employee-name="' . e($name) . '" 
+                            data-employee-code="' . e($employeeCode) . '" 
+                            data-action-url="' . route('hrms.employees.exit.initiate', $employee->id) . '">
+                            <i class="fas fa-sign-out-alt"></i> Initiate Exit
+                        </button>';
                     }
 
                     if (auth()->user() && method_exists(auth()->user(), 'isSuperAdmin') && auth()->user()->isSuperAdmin() && Route::has('hrms.employees.destroy')) {
@@ -1699,11 +1698,18 @@ class EmployeeC extends Controller
 
     public function exitEmployees()
     {
+        $latestExitSub = DB::table('employee_exit_processes')
+            ->select('employee_id', DB::raw('MAX(id) as max_exit_id'))
+            ->groupBy('employee_id');
+
         $employees = DB::table($this->employeeTable)
             ->join('users', 'users.id', '=', $this->employeeTable . '.user_id')
             ->leftJoin('departments', 'departments.id', '=', $this->employeeTable . '.department_id')
             ->leftJoin('designations', 'designations.id', '=', $this->employeeTable . '.designation_id')
-            ->leftJoin('employee_exit_processes', 'employee_exit_processes.employee_id', '=', $this->employeeTable . '.id')
+            ->leftJoinSub($latestExitSub, 'latest_exit', function ($join) {
+                $join->on('latest_exit.employee_id', '=', $this->employeeTable . '.id');
+            })
+            ->leftJoin('employee_exit_processes', 'employee_exit_processes.id', '=', 'latest_exit.max_exit_id')
             ->select(
                 $this->employeeTable . '.id',
                 $this->employeeTable . '.employee_code',
@@ -1713,6 +1719,9 @@ class EmployeeC extends Controller
                 'designations.name as designation_name',
                 $this->employeeTable . '.employment_status',
                 $this->employeeTable . '.joining_date',
+                $this->employeeTable . '.internship_start_date',
+                $this->employeeTable . '.employee_stage',
+                $this->employeeTable . '.employment_type',
                 $this->employeeTable . '.relieving_date',
                 $this->employeeTable . '.is_active',
                 'employee_exit_processes.id as exit_process_id',
@@ -2163,7 +2172,7 @@ class EmployeeC extends Controller
         $isSuperAdmin = method_exists($actor, 'isSuperAdmin') && $actor->isSuperAdmin();
 
         $request->validate([
-            'exit_type' => ['required', Rule::in(['resignation', 'termination', 'retirement', 'contract_end', 'mutual_separation', 'layoff_redundancy', 'absconding', 'deceased', 'other', 'internship_completed', 'internship_exit'])],
+            'exit_type' => ['required', Rule::in(['resignation', 'termination', 'discontinued', 'retirement', 'contract_end', 'mutual_separation', 'layoff_redundancy', 'absconding', 'deceased', 'other', 'internship_completed', 'internship_exit'])],
             'resignation_date' => ['nullable', 'date'],
             'termination_date' => ['nullable', 'date'],
             'last_working_day' => ['nullable', 'date'],
@@ -2374,6 +2383,7 @@ class EmployeeC extends Controller
     {
         $request->validate([
             'exit_process_id' => ['required', 'integer'],
+            'exit_type' => ['nullable', Rule::in(['resignation', 'termination', 'retirement', 'contract_end', 'mutual_separation', 'layoff_redundancy', 'absconding', 'discontinued', 'deceased', 'other', 'internship_completed', 'internship_exit'])],
             'asset_status' => ['nullable', Rule::in(['pending', 'cleared', 'waived'])],
             'fnf_status' => ['nullable', Rule::in(['pending', 'processing', 'approved', 'paid', 'completed', 'waived'])],
             'document_status' => ['nullable', Rule::in(['pending', 'generated', 'sent', 'completed', 'waived'])],
@@ -2384,6 +2394,7 @@ class EmployeeC extends Controller
         $actor = auth()->user();
         abort_if(! $actor, 401);
 
+        $exitType = $request->input('exit_type');
         $assetStatus = $request->input('asset_status');
         $fnfStatus = $request->input('fnf_status');
         $documentStatus = $request->input('document_status');
@@ -2403,6 +2414,7 @@ class EmployeeC extends Controller
         $updatedProcess = $this->exitProcessService->updateClearance(
             (int) $request->exit_process_id,
             [
+                'exit_type' => $exitType,
                 'asset_status' => $assetStatus,
                 'fnf_status' => $fnfStatus,
                 'document_status' => $documentStatus,

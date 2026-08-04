@@ -920,6 +920,8 @@
 
     </div>
 </div>
+
+@include('hrms.employee.partials.initiate_exit_modal')
 @endsection
 
 @section('_script')
@@ -1144,6 +1146,24 @@
 
             table.search('');
             table.ajax.reload();
+        });
+
+        // Open Initiate Exit Modal dynamically
+        $(document).on('click', '.btn-open-initiate-exit-modal', function(e) {
+            e.preventDefault();
+            const btn = $(this);
+            const employeeName = btn.data('employee-name');
+            const employeeCode = btn.data('employee-code');
+            const actionUrl = btn.data('action-url');
+
+            const modal = $('#initiateExitModal');
+            const form = $('#initiateExitGlobalForm');
+
+            form.attr('action', actionUrl);
+            $('#initiateExitModalLabel').html('<i class="fas fa-sign-out-alt mr-2"></i> Initiate Exit: ' + employeeName + ' (' + employeeCode + ')');
+            $('#initiateExitModalSub').text('Select exit type and parameters for ' + employeeName);
+
+            modal.modal('show');
         });
     });
 </script>

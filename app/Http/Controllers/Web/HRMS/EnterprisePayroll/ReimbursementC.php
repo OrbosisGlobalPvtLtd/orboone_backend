@@ -21,39 +21,66 @@ class ReimbursementC extends Controller
     {
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $query = $this->employeeJoinedQuery('enterprise_reimbursements')
-            ->orderByDesc('enterprise_reimbursements.created_at');
+        $query = $this->employeeJoinedQuery('enterprise_reimbursements');
 
         if (! $this->userHasPermission('enterprise_reimbursement.manage')) {
             $employeeId = $this->ownEmployeeId();
             abort_if(! $employeeId, 403);
             $query->where('enterprise_reimbursements.employee_id', $employeeId);
+        } else {
+            if ($request->filled('employee_id')) {
+                $query->where('enterprise_reimbursements.employee_id', $request->input('employee_id'));
+            }
+        }
+
+        if ($request->filled('status')) {
+            $query->where('enterprise_reimbursements.status', $request->input('status'));
+        }
+
+        if ($request->filled('from_date')) {
+            $query->whereDate('enterprise_reimbursements.claim_date', '>=', $request->input('from_date'));
+        }
+
+        if ($request->filled('to_date')) {
+            $query->whereDate('enterprise_reimbursements.claim_date', '<=', $request->input('to_date'));
         }
 
         return view('hrms.enterprise-payroll.reimbursements.index', [
             'accesses' => $this->accesses(),
             'active' => 'enterprise_payroll',
-            'rows' => $query->get(),
+            'rows' => $query->orderByDesc('enterprise_reimbursements.created_at')->get(),
             'employees' => $this->employeeOptions(),
             'canManage' => $this->userHasPermission('enterprise_reimbursement.manage'),
             'self' => false,
         ]);
     }
 
-    public function self()
+    public function self(Request $request)
     {
         $employeeId = $this->ownEmployeeId();
         abort_if(! $employeeId, 403);
 
+        $query = $this->employeeJoinedQuery('enterprise_reimbursements')
+            ->where('enterprise_reimbursements.employee_id', $employeeId);
+
+        if ($request->filled('status')) {
+            $query->where('enterprise_reimbursements.status', $request->input('status'));
+        }
+
+        if ($request->filled('from_date')) {
+            $query->whereDate('enterprise_reimbursements.claim_date', '>=', $request->input('from_date'));
+        }
+
+        if ($request->filled('to_date')) {
+            $query->whereDate('enterprise_reimbursements.claim_date', '<=', $request->input('to_date'));
+        }
+
         return view('hrms.enterprise-payroll.reimbursements.index', [
             'accesses' => $this->accesses(),
             'active' => 'employee.salary',
-            'rows' => $this->employeeJoinedQuery('enterprise_reimbursements')
-                ->where('enterprise_reimbursements.employee_id', $employeeId)
-                ->orderByDesc('enterprise_reimbursements.created_at')
-                ->get(),
+            'rows' => $query->orderByDesc('enterprise_reimbursements.created_at')->get(),
             'employees' => collect(),
             'canManage' => false,
             'self' => true,

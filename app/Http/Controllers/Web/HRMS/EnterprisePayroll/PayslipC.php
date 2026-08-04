@@ -9,6 +9,7 @@ use App\Models\HRMS\EnterprisePayroll\EnterprisePayrollRunM;
 use App\Models\HRMS\EnterprisePayroll\EnterprisePayslipM;
 use App\Services\HRMS\EnterprisePayroll\EnterprisePayslipService;
 use App\Services\HRMS\Storage\HrmsFileResolverS;
+use Illuminate\Http\Request;
 
 class PayslipC extends Controller
 {
@@ -21,36 +22,58 @@ class PayslipC extends Controller
     {
     }
 
-    public function index()
+    public function index(Request $request)
     {
         $query = EnterprisePayslipM::with('employee.user', 'payroll')->latest();
         if (! $this->userHasPermission('enterprise_payslip.generate')) {
             $employeeId = $this->ownEmployeeId();
             abort_if(! $employeeId, 403);
             $query->where('employee_id', $employeeId)->where('is_visible_to_employee', 1);
+        } else {
+            if ($request->filled('employee_id')) {
+                $query->where('employee_id', $request->input('employee_id'));
+            }
+        }
+
+        if ($request->filled('month')) {
+            $query->where('month', $request->input('month'));
+        }
+
+        if ($request->filled('year')) {
+            $query->where('year', $request->input('year'));
         }
 
         return view('hrms.enterprise-payroll.payslips.index', [
             'accesses' => $this->accesses(),
             'active' => 'enterprise_payroll',
             'payslips' => $query->get(),
+            'employees' => $this->employeeOptions(),
             'self' => false,
         ]);
     }
 
-    public function self()
+    public function self(Request $request)
     {
         $employeeId = $this->ownEmployeeId();
         abort_if(! $employeeId, 403);
 
+        $query = EnterprisePayslipM::with('employee.user', 'payroll')
+            ->where('employee_id', $employeeId)
+            ->where('is_visible_to_employee', 1);
+
+        if ($request->filled('month')) {
+            $query->where('month', $request->input('month'));
+        }
+
+        if ($request->filled('year')) {
+            $query->where('year', $request->input('year'));
+        }
+
         return view('hrms.enterprise-payroll.payslips.index', [
             'accesses' => $this->accesses(),
             'active' => 'employee.salary',
-            'payslips' => EnterprisePayslipM::with('employee.user', 'payroll')
-                ->where('employee_id', $employeeId)
-                ->where('is_visible_to_employee', 1)
-                ->latest()
-                ->get(),
+            'payslips' => $query->latest()->get(),
+            'employees' => collect(),
             'self' => true,
         ]);
     }

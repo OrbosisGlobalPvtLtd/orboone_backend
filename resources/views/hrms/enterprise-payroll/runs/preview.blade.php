@@ -12,7 +12,7 @@
             <h1>Payroll Preview {{ $month }}/{{ $year }}</h1>
             <p>Calculation preview uses active salary structure, payroll-ready attendance summaries and approved leave/claim data.</p>
         </div>
-        @if(empty($payrollErrors) && auth()->user() && auth()->user()->hasPermission('enterprise_payroll_run.generate'))
+        @if(auth()->user() && auth()->user()->hasPermission('enterprise_payroll_run.generate'))
             <form method="POST" action="{{ route('enterprise-payroll.runs.generate') }}">
                 @csrf
                 <input type="hidden" name="month" value="{{ $month }}">
@@ -25,14 +25,22 @@
         @endif
     </div>
 
-    @if($payrollErrors)
-        <div class="alert alert-danger border-0 shadow-sm">
-            <strong>Payroll cannot be generated until these issues are fixed.</strong>
-            <ul class="mb-0 mt-2">
-                @foreach($payrollErrors as $error)
-                    <li>{{ $error['employee'] }}: {{ $error['error'] }}</li>
-                @endforeach
-            </ul>
+    @if(!empty($hasPendingRegularizations) || !empty($payrollErrors))
+        <div class="alert alert-warning border-0 shadow-sm mb-4" style="background: #FFFBEB; border-left: 4px solid #F59E0B !important; border-radius: 12px; padding: 16px 20px;">
+            <div class="d-flex align-items-center mb-1">
+                <i class="fas fa-exclamation-triangle text-warning mr-2" style="font-size: 18px;"></i>
+                <strong class="text-dark" style="font-size: 15px;">Attendance Review</strong>
+            </div>
+            <p class="mb-0 text-dark small" style="line-height: 1.5;">
+                Pending attendance regularization exists. Payroll can still be generated. Any future approvals should be adjusted in the next payroll or arrears process.
+            </p>
+            @if(!empty($payrollErrors))
+                <ul class="mb-0 mt-2 text-danger small pl-3">
+                    @foreach($payrollErrors as $error)
+                        <li><strong>{{ $error['employee'] }}:</strong> {{ $error['error'] }}</li>
+                    @endforeach
+                </ul>
+            @endif
         </div>
     @endif
 
@@ -58,27 +66,47 @@
                         <tr>
                             <th>Employee</th>
                             <th>Payable</th>
-                            <th class="text-right">Gross</th>
-                            <th class="text-right">Deductions</th>
-                            <th class="text-right">Net</th>
-                            <th class="text-right">Bonus</th>
-                            <th class="text-right">Incentive</th>
+                            <th class="text-right">Base Gross</th>
+                            <th class="text-right">Bonus / Incentive</th>
                             <th class="text-right">Reimbursement</th>
-                            <th class="text-right">Attendance Deduction</th>
+                            <th class="text-right">Gross Earnings</th>
+                            <th class="text-right">Attendance Ded.</th>
+                            <th class="text-right">Statutory & Other Ded.</th>
+                            <th class="text-right">Total Deductions</th>
+                            <th class="text-right">Net Salary</th>
                         </tr>
                     </thead>
                     <tbody>
                     @foreach($rows as $row)
+                        @php
+                            $payableDays = $row['attendance']['payable_days'] ?? $row['payable_days'] ?? 0;
+                            $bonusIncentive = round(($row['bonus_amount'] ?? 0) + ($row['incentive_amount'] ?? 0), 2);
+                            $reimbursement = round($row['reimbursement_amount'] ?? 0, 2);
+                            $grossEarnings = round($row['gross_salary'] ?? 0, 2);
+                            $baseGross = round($grossEarnings - $bonusIncentive - $reimbursement, 2);
+                            $attendanceDed = round($row['attendance_deduction'] ?? 0, 2);
+                            $statutoryDed = round(
+                                ($row['professional_tax'] ?? 0) +
+                                ($row['pf'] ?? 0) +
+                                ($row['esi'] ?? 0) +
+                                ($row['tds'] ?? 0) +
+                                ($row['other_deduction'] ?? 0),
+                                2
+                            );
+                            $totalDeductions = round($row['total_deductions'] ?? 0, 2);
+                            $netSalary = round($row['net_salary'] ?? 0, 2);
+                        @endphp
                         <tr>
-                            <td>{{ $row['employee_name'] }}</td>
-                            <td>{{ $row['attendance']['payable_days'] }}</td>
-                            <td class="text-right">₹{{ number_format($row['gross_salary'], 2) }}</td>
-                            <td class="text-right text-danger">₹{{ number_format($row['total_deductions'], 2) }}</td>
-                            <td class="text-right font-weight-bold text-primary">₹{{ number_format($row['net_salary'], 2) }}</td>
-                            <td class="text-right text-success">₹{{ number_format($row['bonus_amount'], 2) }}</td>
-                            <td class="text-right text-success">₹{{ number_format($row['incentive_amount'], 2) }}</td>
-                            <td class="text-right">₹{{ number_format($row['reimbursement_amount'], 2) }}</td>
-                            <td class="text-right text-danger">₹{{ number_format($row['attendance_deduction'], 2) }}</td>
+                            <td><strong>{{ $row['employee_name'] }}</strong></td>
+                            <td><span class="badge badge-light border font-weight-bold px-2 py-1">{{ $payableDays }}</span></td>
+                            <td class="text-right">₹{{ number_format($baseGross, 2) }}</td>
+                            <td class="text-right text-success">₹{{ number_format($bonusIncentive, 2) }}</td>
+                            <td class="text-right text-success">₹{{ number_format($reimbursement, 2) }}</td>
+                            <td class="text-right font-weight-bold text-dark">₹{{ number_format($grossEarnings, 2) }}</td>
+                            <td class="text-right text-danger">₹{{ number_format($attendanceDed, 2) }}</td>
+                            <td class="text-right text-danger">₹{{ number_format($statutoryDed, 2) }}</td>
+                            <td class="text-right text-danger font-weight-bold">₹{{ number_format($totalDeductions, 2) }}</td>
+                            <td class="text-right font-weight-900 text-primary" style="font-size: 14px; background: #F8FAFC;">₹{{ number_format($netSalary, 2) }}</td>
                         </tr>
                     @endforeach
                     </tbody>

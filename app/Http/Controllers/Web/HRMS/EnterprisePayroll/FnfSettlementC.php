@@ -12,10 +12,27 @@ class FnfSettlementC extends Controller
 {
     use HrmsCrudPage;
 
-    public function index()
+    public function index(Request $request)
     {
-        $rows = $this->employeeJoinedQuery('enterprise_fnf_settlements')
-            ->orderByDesc('enterprise_fnf_settlements.created_at')
+        $query = $this->employeeJoinedQuery('enterprise_fnf_settlements');
+
+        if ($request->filled('employee_id')) {
+            $query->where('enterprise_fnf_settlements.employee_id', $request->input('employee_id'));
+        }
+
+        if ($request->filled('status')) {
+            $query->where('enterprise_fnf_settlements.status', $request->input('status'));
+        }
+
+        if ($request->filled('month')) {
+            $query->where('enterprise_fnf_settlements.settlement_month', $request->input('month'));
+        }
+
+        if ($request->filled('year')) {
+            $query->where('enterprise_fnf_settlements.settlement_year', $request->input('year'));
+        }
+
+        $rows = $query->orderByDesc('enterprise_fnf_settlements.created_at')
             ->get();
 
         return view('hrms.enterprise-payroll.fnf.index', [

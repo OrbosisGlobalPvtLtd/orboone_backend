@@ -17,9 +17,23 @@ class PayrollRunC extends Controller
     {
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $runs = EnterprisePayrollRunM::query()->latest()->get();
+        $query = EnterprisePayrollRunM::query();
+
+        if ($request->filled('month')) {
+            $query->where('month', $request->input('month'));
+        }
+
+        if ($request->filled('year')) {
+            $query->where('year', $request->input('year'));
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        $runs = $query->latest()->get();
         $employees = \App\Models\HRMS\Employee\EmployeeM::query()->active()->with('user')->orderBy('id')->get();
 
         return view('hrms.enterprise-payroll.runs.index', [
@@ -50,6 +64,7 @@ class PayrollRunC extends Controller
             'employee_id' => $employeeId,
             'rows' => $preview['rows'],
             'payrollErrors' => $preview['errors'],
+            'hasPendingRegularizations' => $preview['hasPendingRegularizations'] ?? false,
         ]);
     }
 

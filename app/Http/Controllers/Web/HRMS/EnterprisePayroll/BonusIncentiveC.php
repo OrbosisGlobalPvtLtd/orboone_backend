@@ -17,10 +17,24 @@ class BonusIncentiveC extends Controller
     {
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $rows = $this->employeeJoinedQuery('enterprise_bonus_incentives')
-            ->orderByDesc('enterprise_bonus_incentives.created_at')
+        $query = $this->employeeJoinedQuery('enterprise_bonus_incentives');
+
+        if ($request->filled('employee_id')) {
+            $query->where('enterprise_bonus_incentives.employee_id', $request->input('employee_id'));
+        }
+        if ($request->filled('type')) {
+            $query->where('enterprise_bonus_incentives.type', $request->input('type'));
+        }
+        if ($request->filled('month')) {
+            $query->where('enterprise_bonus_incentives.month', $request->input('month'));
+        }
+        if ($request->filled('year')) {
+            $query->where('enterprise_bonus_incentives.year', $request->input('year'));
+        }
+
+        $rows = $query->orderByDesc('enterprise_bonus_incentives.created_at')
             ->get();
 
         return view('hrms.enterprise-payroll.bonus-incentives.index', [

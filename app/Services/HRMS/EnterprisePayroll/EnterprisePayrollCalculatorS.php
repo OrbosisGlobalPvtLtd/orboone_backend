@@ -53,7 +53,27 @@ class EnterprisePayrollCalculatorS
             }
         }
 
-        return compact('rows', 'errors');
+        $hasPendingRegularizations = DB::table('attendance_regularizations')
+            ->leftJoin('attendances', 'attendances.id', '=', 'attendance_regularizations.attendance_id')
+            ->where('attendance_regularizations.status', 'pending')
+            ->where(function ($q) use ($month, $year) {
+                $q->where(function ($sub) use ($month, $year) {
+                    $sub->whereMonth('attendances.attendance_date', $month)
+                        ->whereYear('attendances.attendance_date', $year);
+                })
+                ->orWhere(function ($sub) use ($month, $year) {
+                    $sub->whereMonth('attendance_regularizations.requested_punch_in', $month)
+                        ->whereYear('attendance_regularizations.requested_punch_in', $year);
+                })
+                ->orWhere(function ($sub) use ($month, $year) {
+                    $sub->whereMonth('attendance_regularizations.created_at', $month)
+                        ->whereYear('attendance_regularizations.created_at', $year);
+                });
+            })
+            ->when($employeeId, fn ($q) => $q->where('attendance_regularizations.employee_id', $employeeId))
+            ->exists();
+
+        return compact('rows', 'errors', 'hasPendingRegularizations');
     }
 
     public function generate(int $month, int $year, ?int $actorId = null, ?int $employeeId = null): EnterprisePayrollRunM
@@ -270,30 +290,21 @@ class EnterprisePayrollCalculatorS
 
     public function calculateEmployee(EmployeeM $employee, int $month, int $year): array
     {
-        $unresolvedRecord = AttendanceM::query()
+        $blockedRecord = AttendanceM::query()
             ->where('employee_id', $employee->id)
             ->whereMonth('attendance_date', $month)
             ->whereYear('attendance_date', $year)
             ->where(function ($q) {
-                $q->where('attendance_status', 'pending_hr')
-                    ->orWhere('attendance_status', 'missed_punch')
-                    ->orWhere('attendance_status', 'punch_blocked')
+                $q->where('attendance_status', 'punch_blocked')
                     ->orWhere('is_punch_blocked', true)
-                    ->orWhere('is_blocked', true)
-                    ->orWhere('is_missed_punch', true)
-                    ->orWhere('missed_punch', true);
+                    ->orWhere('is_blocked', true);
             })
             ->first();
 
-        if ($unresolvedRecord) {
-            $formattedDate = Carbon::parse($unresolvedRecord->attendance_date)->format('Y-m-d');
-            if ($unresolvedRecord->attendance_status === 'missed_punch' || $unresolvedRecord->missed_punch || $unresolvedRecord->is_missed_punch) {
-                throw ValidationException::withMessages([
-                    'attendance' => "Unresolved missed punch exists for {$formattedDate}. Regularization approval or LWP conversion required.",
-                ]);
-            }
+        if ($blockedRecord) {
+            $formattedDate = Carbon::parse($blockedRecord->attendance_date)->format('Y-m-d');
             throw ValidationException::withMessages([
-                'attendance' => 'Attendance contains unresolved records. Please resolve before payroll processing.',
+                'attendance' => "Punch blocked attendance exists for {$formattedDate}. HR resolution required before payroll processing.",
             ]);
         }
 

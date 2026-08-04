@@ -21,12 +21,19 @@ class AttendancePayableDayResolver
             return $this->row(0.0, 'unpaid', true, 'Punch blocked attendance is unresolved.');
         }
 
-        if ($isPendingHr) {
-            return $this->row(0.0, 'requires_resolution', true, 'Pending HR attendance must be resolved before payroll.');
-        }
+        if ($isPendingHr || $isMissedPunch) {
+            // Check if an approved regularization exists for this attendance
+            $hasApprovedReg = DB::table('attendance_regularizations')
+                ->where('attendance_id', $attendance->id)
+                ->where('status', 'approved')
+                ->exists();
 
-        if ($isMissedPunch) {
-            return $this->row(0.0, 'requires_resolution', true, 'Missed punch attendance must be resolved before payroll.');
+            if ($hasApprovedReg) {
+                return $this->row(1.0, 'paid', false, 'Missed punch regularized and approved.');
+            }
+
+            // Unapproved, pending, or rejected missed punch is automatically treated as LWP for payroll calculation (NO payroll block)
+            return $this->row(0.0, 'unpaid', false, 'Missed punch treated as LWP for payroll calculation.');
         }
 
         if ((bool) $attendance->is_lwp || in_array($effective, ['lwp', 'absent'], true)) {

@@ -14,10 +14,23 @@ class SalaryStructureC extends Controller
 {
     use HrmsCrudPage;
 
-    public function index()
+    public function index(Request $request)
     {
-        $rows = $this->employeeJoinedQuery('enterprise_salary_structures')
-            ->orderByDesc('enterprise_salary_structures.effective_from')
+        $query = $this->employeeJoinedQuery('enterprise_salary_structures');
+
+        if ($request->filled('employee_id')) {
+            $query->where('enterprise_salary_structures.employee_id', $request->input('employee_id'));
+        }
+
+        if ($request->filled('stage')) {
+            $query->where('enterprise_salary_structures.stage', $request->input('stage'));
+        }
+
+        if ($request->filled('status')) {
+            $query->where('enterprise_salary_structures.status', $request->input('status'));
+        }
+
+        $rows = $query->orderByDesc('enterprise_salary_structures.effective_from')
             ->get();
 
         return view('hrms.enterprise-payroll.salary-structures.index', [

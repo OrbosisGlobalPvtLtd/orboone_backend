@@ -167,15 +167,24 @@
             body {
                 width: 100%;
                 height: auto;
-                overflow: visible;
-                background: transparent;
+                min-height: 100vh;
+                overflow-x: hidden;
+                overflow-y: auto !important;
+                background-color: #f1f5f9;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                padding: 24px 0;
+                box-sizing: border-box;
             }
 
             .certificate-container {
-                width: 100%;
-                max-width: 100%;
+                width: 210mm;
+                max-width: 95%;
                 height: auto;
                 aspect-ratio: 210 / 297;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+                border-radius: 4px;
             }
 
             .certificate-bg,

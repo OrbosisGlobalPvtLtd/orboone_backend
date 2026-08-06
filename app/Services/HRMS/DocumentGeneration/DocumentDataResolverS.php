@@ -33,7 +33,14 @@ class DocumentDataResolverS
 
         // Explicitly merge all raw form data keys to ensure they take top priority in Blade views
         foreach ($formData as $key => $value) {
-            if ($value !== null && $value !== '') {
+            if ($value === null || (is_string($value) && trim($value) === '')) {
+                if ($this->isParagraphField($key)) {
+                    $resolved[$key] = ' ';
+                } else {
+                    // Skip empty/null values for other fields to prevent breaking calculations
+                    continue;
+                }
+            } else {
                 // Do not overwrite signature_image and seal_image if they were already resolved to base64
                 if (in_array($key, ['signature_image', 'seal_image']) && str_starts_with($resolved[$key] ?? '', 'data:image')) {
                     continue;
@@ -61,5 +68,23 @@ class DocumentDataResolverS
         }
 
         return $resolved;
+    }
+
+    /**
+     * Check if a field key is a paragraph / clause field.
+     */
+    private function isParagraphField(string $key): bool
+    {
+        $key = strtolower($key);
+        $suffixes = ['_clause', '_paragraph', '_reason', '_status', '_remarks', '_summary', '_responsibilities'];
+        foreach ($suffixes as $suffix) {
+            if (str_ends_with($key, $suffix)) {
+                return true;
+            }
+        }
+        return in_array($key, [
+            'job_responsibilities',
+            'handover_clause'
+        ]);
     }
 }

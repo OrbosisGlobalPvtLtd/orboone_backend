@@ -304,6 +304,48 @@
             grid-column: span 1;
         }
     }
+
+    @media (min-width: 992px) {
+        .workspace-row {
+            height: calc(100vh - 120px);
+            min-height: 820px;
+        }
+        .workspace-col {
+            height: 100%;
+        }
+        .workspace-card {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            margin-bottom: 0 !important;
+        }
+        .workspace-card-body-scroll {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            min-height: 0;
+        }
+        .workspace-card-body-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .workspace-card-body-scroll::-webkit-scrollbar-track {
+            background: #F8FAFC;
+        }
+        .workspace-card-body-scroll::-webkit-scrollbar-thumb {
+            background: #CBD5E1;
+            border-radius: 10px;
+        }
+        .workspace-card-body-scroll::-webkit-scrollbar-thumb:hover {
+            background: #94A3B8;
+        }
+        .workspace-preview-body {
+            aspect-ratio: unset !important;
+            height: 100% !important;
+            flex-grow: 1;
+            min-height: 0;
+        }
+    }
 </style>
 @endsection
 
@@ -335,13 +377,16 @@
         </div>
     @endif
 
-    <div class="row align-items-start">
+    <div class="row align-items-start workspace-row">
         <!-- Input & Form Config Side -->
-        <div class="col-lg-6 mb-4">
-            <div class="orb-card">
+        <div class="col-lg-6 mb-4 workspace-col">
+            <div class="orb-card workspace-card">
 
-                <form id="generationForm" method="POST" action="{{ route('hrms.document-generation.generated.store') }}" enctype="multipart/form-data">
+                <form id="generationForm" method="POST" action="{{ route('hrms.document-generation.generated.store') }}" enctype="multipart/form-data" class="d-flex flex-column h-100 overflow-hidden">
                     @csrf
+
+                    <!-- Scrollable Form Body -->
+                    <div class="workspace-card-body-scroll">
 
                     <!-- Step 1: Employee/Candidate Select -->
                     <div class="orb-card-header step-active">
@@ -427,6 +472,7 @@
                             </div>
                         </div>
                     </div>
+                    </div>
 
                     <!-- Actions Toolbar -->
                     <div class="card-footer bg-light p-4 d-flex justify-content-end gap-3 border-top">
@@ -443,8 +489,8 @@
         </div>
 
         <!-- Live Preview IFrame Side -->
-        <div class="col-lg-6 mb-4 sticky-lg-top" style="z-index: 10;">
-            <div class="orb-card d-flex flex-column">
+        <div class="col-lg-6 mb-4 sticky-lg-top workspace-col" style="z-index: 10;">
+            <div class="orb-card d-flex flex-column workspace-card">
                 <div class="orb-card-header d-flex justify-content-between align-items-center">
                     <h4><i class="fas fa-file-pdf text-danger me-2"></i> Live Document Preview</h4>
                     <div class="d-flex align-items-center gap-2">
@@ -454,7 +500,7 @@
                         <span class="badge bg-primary rounded-pill" id="preview_doc_type_badge">Offer Letter</span>
                     </div>
                 </div>
-                <div class="card-body p-0 position-relative" style="background: #f1f5f9; width: 100%; aspect-ratio: 1 / 1.414; overflow: hidden; box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.05);">
+                <div class="card-body p-0 position-relative workspace-preview-body" style="background: #f1f5f9; width: 100%; aspect-ratio: 1 / 1.414; overflow: hidden; box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.05);">
 
                     <div id="previewLoader" class="position-absolute top-0 start-0 w-100 h-100 d-none justify-content-center align-items-center" style="background: rgba(255, 255, 255, 0.85); z-index: 10; backdrop-filter: blur(4px);">
                         <div class="text-center text-dark">
@@ -487,6 +533,74 @@
         $companyNameDefaultVal = $dbCompany?->company_name ?: (branding_name() === 'HRMS' || branding_name() === 'Default' ? 'Orbosis Global Pvt. Ltd.' : branding_name());
     @endphp
     const COMPANY_NAME_DEFAULT = "{!! addslashes($companyNameDefaultVal) !!}";
+
+    // Map of form values for placeholder replacement in rich text fields
+    function getFormValuesMap() {
+        const values = {
+            'company_name': COMPANY_NAME_DEFAULT,
+            'candidate_name': document.getElementById('candidate_name')?.value || 'Candidate Name',
+            'employee_name': document.getElementById('candidate_name')?.value || 'Candidate Name',
+        };
+        
+        const inputs = document.querySelectorAll('#generationForm input, #generationForm select, #generationForm textarea');
+        inputs.forEach(input => {
+            const id = input.id;
+            if (id && id.startsWith('field_')) {
+                const name = id.substring(6); // remove 'field_'
+                let val = input.value;
+                
+                // Format dates nicely
+                if (input.type === 'date' && val) {
+                    try {
+                        const dateObj = new Date(val);
+                        if (!isNaN(dateObj.getTime())) {
+                            const day = String(dateObj.getDate()).padStart(2, '0');
+                            const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                            const month = months[dateObj.getMonth()];
+                            const year = dateObj.getFullYear();
+                            val = `${day} ${month}, ${year}`;
+                        }
+                    } catch(e) {}
+                }
+                values[name] = val;
+            }
+        });
+        
+        return values;
+    }
+
+    // Resolve template placeholders in textareas in real-time
+    function updateParagraphsWithPlaceholders() {
+        const values = getFormValuesMap();
+        
+        const compensationType = values['compensation_type'];
+        values['compensation_type_clause'] = (compensationType === 'Unpaid') ? 'unpaid' : '';
+        
+        const stipendAmount = values['stipend_amount'];
+        values['stipend_clause'] = (compensationType === 'Paid')
+            ? 'You will receive a monthly stipend of ₹' + (stipendAmount ? Number(stipendAmount).toLocaleString('en-IN') : '0') + ' during the internship period.'
+            : '';
+
+        const textareas = document.querySelectorAll('#dynamic_form_container textarea');
+        textareas.forEach(textarea => {
+            const template = textarea.getAttribute('data-template');
+            if (!template) return;
+            
+            const currentVal = textarea.value;
+            const lastResolved = textarea.getAttribute('data-last-resolved');
+            
+            if (!lastResolved || currentVal === lastResolved) {
+                let resolvedText = template;
+                Object.keys(values).forEach(placeholder => {
+                    const regex = new RegExp('\\{' + placeholder + '\\}', 'gi');
+                    resolvedText = resolvedText.replace(regex, values[placeholder]);
+                });
+                
+                textarea.value = resolvedText;
+                textarea.setAttribute('data-last-resolved', resolvedText);
+            }
+        });
+    }
 
     // Employee structural data lookup map for automatic field pre-filling
     const employeesMap = {
@@ -627,7 +741,8 @@
 
                 let inputHtml = '';
                 if (field.type === 'textarea') {
-                    inputHtml = `<textarea name="manual_fields[${field.name}]" id="field_${field.name}" class="smart-form-control" rows="4" ${autofillData} ${reqAttr} ${readonlyAttr} placeholder="${field.placeholder || ''}">${val}</textarea>`;
+                    const escapedTemplate = (field.default || '').replace(/"/g, '&quot;');
+                    inputHtml = `<textarea name="manual_fields[${field.name}]" id="field_${field.name}" data-template="${escapedTemplate}" class="smart-form-control" rows="4" ${autofillData} ${reqAttr} ${readonlyAttr} placeholder="${field.placeholder || ''}">${val}</textarea>`;
                 } else if (field.type === 'select') {
                     const opts = field.options || [];
                     inputHtml = `<select name="manual_fields[${field.name}]" id="field_${field.name}" class="smart-select" ${autofillData} ${reqAttr}>`;
@@ -741,6 +856,9 @@
 
         // Attach field listeners for calculations
         attachCalculationListeners(selectedType);
+
+        // Update paragraphs with current placeholder values
+        updateParagraphsWithPlaceholders();
 
         // Immediate preview reload
         triggerLivePreview();
@@ -1075,6 +1193,9 @@
                 const selectedType = document.getElementById('document_type_select').value;
                 attachCalculationListeners(selectedType);
 
+                // Update paragraphs with current placeholder values
+                updateParagraphsWithPlaceholders();
+
                 // Update live preview
                 triggerLivePreview();
             })
@@ -1332,12 +1453,14 @@
         if (form) {
             form.addEventListener('input', function(e) {
                 if (e.target && e.target.matches('input, textarea')) {
+                    updateParagraphsWithPlaceholders();
                     debouncedPreview();
                 }
             });
             form.addEventListener('change', function(e) {
                 if (e.target && e.target.matches('select, input, textarea')) {
                     evaluateConditionalVisibility();
+                    updateParagraphsWithPlaceholders();
                     debouncedPreview();
                 }
             });

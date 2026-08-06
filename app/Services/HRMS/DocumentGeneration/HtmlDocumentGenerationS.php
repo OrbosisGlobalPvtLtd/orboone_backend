@@ -65,18 +65,37 @@ class HtmlDocumentGenerationS
             html, body {
                 width: 100%;
                 height: auto;
-                background-color: transparent;
+                min-height: 100vh;
+                overflow-x: hidden;
+                overflow-y: auto !important;
+                background-color: #f1f5f9;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                box-sizing: border-box;
+                padding: 24px 0;
+            }
+            .cert-wrapper {
+                width: 210mm;
+                max-width: 95%;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+                border-radius: 4px;
+                overflow: hidden;
+                background: #ffffff;
             }
             img {
                 width: 100%;
                 height: auto;
+                display: block;
                 aspect-ratio: 210 / 297;
             }
         }
     </style>
 </head>
 <body>
-    <img src="' . $base64 . '" alt="Composed Certificate">
+    <div class="cert-wrapper">
+        <img src="' . $base64 . '" alt="Composed Certificate">
+    </div>
 </body>
 </html>';
         }

@@ -18,10 +18,15 @@ use Illuminate\Support\Facades\Schema;
 
 class AttendanceS
 {
+    private AttendanceContextResolverService $contextResolver;
+
     public function __construct(
         private AttendanceRuleResolverService $ruleResolver,
-        private ?WfhRequestService $wfhRequestService = null
-    ) {}
+        private ?WfhRequestService $wfhRequestService = null,
+        ?AttendanceContextResolverService $contextResolver = null
+    ) {
+        $this->contextResolver = $contextResolver ?: new AttendanceContextResolverService($ruleResolver);
+    }
 
     public function processPunchIn(
         int $userId,
@@ -41,14 +46,32 @@ class AttendanceS
             return ['status' => 'error', 'message' => 'Employee profile not found.'];
         }
 
-        $hasApprovedLeave = DB::table('leave_requests')
-            ->where('employee_id', $employee->id)
-            ->where('status', 'approved')
-            ->whereRaw('? BETWEEN start_date AND end_date', [$today])
-            ->exists();
+        $eligibilityService = app(\App\Services\HRMS\Employee\EmployeeEligibilityS::class);
+        if (! $eligibilityService->canUseAttendance($employee)) {
+            if ($eligibilityService->isExitCompleted($employee) || $eligibilityService->isTerminated($employee)) {
+                return ['status' => 'error', 'message' => 'Your employment has ended. Please contact HR.'];
+            }
+            if ($eligibilityService->isProfilePending($employee)) {
+                return ['status' => 'error', 'message' => 'Complete your profile to access HRMS services.'];
+            }
+            return ['status' => 'error', 'message' => 'Employee is not eligible for attendance.'];
+        }
 
-        if ($hasApprovedLeave) {
-            return ['status' => 'error', 'message' => 'Attendance punch is disabled during approved leave.'];
+        $approvedLeave = $this->ruleResolver->getApprovedLeaveOnDate($employee, $today);
+        $isFirstHalfLeave = false;
+        $isSecondHalfLeave = false;
+        $leaveRequestId = null;
+
+        if ($approvedLeave) {
+            $leaveRequestId = $approvedLeave['id'] ?? null;
+            if (! $approvedLeave['is_half_day']) {
+                return ['status' => 'error', 'message' => 'Attendance punch is disabled during approved leave.'];
+            }
+            if (($approvedLeave['leave_slot'] ?? '') === 'second_half') {
+                $isSecondHalfLeave = true;
+            } else {
+                $isFirstHalfLeave = true;
+            }
         }
 
         if (! is_array($meta)) {
@@ -110,7 +133,7 @@ class AttendanceS
         $policy = $this->ruleResolver->getPolicyForEmployee($employee, $now);
         $dayContext = $this->ruleResolver->getDayContext($employee, $now);
 
-        if (! $dayContext['is_working_day']) {
+        if (! $dayContext['is_working_day'] && ! $isFirstHalfLeave && ! $isSecondHalfLeave) {
             return ['status' => 'error', 'message' => 'Attendance punch is not allowed for leave, holiday, or week off.'];
         }
 
@@ -123,7 +146,15 @@ class AttendanceS
             return ['status' => 'error', 'message' => 'Punch in already recorded for today.'];
         }
 
-        if ($existing && in_array(optional($existing->attendanceType)->code, ['absent', 'leave', 'week_off', 'holiday'], true)) {
+        $existingTypeCode = $existing?->attendanceType?->code;
+        $isHalfDayContext = (bool) ($existing?->is_half_day ?? false)
+            || ($existing?->attendance_status === 'half_day')
+            || $isFirstHalfLeave
+            || $isSecondHalfLeave;
+
+        $isFullLeave = $existingTypeCode === 'leave' && ! $isHalfDayContext;
+
+        if ($existing && (in_array($existingTypeCode, ['absent', 'week_off', 'holiday'], true) || $isFullLeave)) {
             return ['status' => 'error', 'message' => 'Attendance is already marked for today.'];
         }
 
@@ -143,13 +174,13 @@ class AttendanceS
                     'remarks' => 'Punch-in blocked after allowed time.',
                 ]);
             }
-            return ['status' => 'error', 'message' => 'Your punch-in is blocked. Please contact HR/Admin.'];
+            return ['status' => 'error', 'code' => 'PUNCH_BLOCKED', 'message' => 'Your punch-in is blocked. Please contact HR/Admin.'];
         }
 
         $shift = $policy ?: $this->shiftFor($workMode);
         $window = $this->ruleResolver->calculatePunchWindowState($shift, $now);
-        if ($enforceEmployeeRules && $window['is_before_allowed_from']) {
-            return ['status' => 'error', 'message' => 'Punch-in is allowed from ' . $window['allowed_from']->format('h:i A') . '.'];
+        if ($window['is_before_early_login'] ?? $window['is_before_allowed_from']) {
+            return ['status' => 'error', 'message' => 'Too early to punch in. Punch-in allowed from ' . ($window['allowed_from'] ? $window['allowed_from']->format('h:i A') : 'allowed time') . '.'];
         }
 
         $time = $now->format('H:i:s');
@@ -157,6 +188,7 @@ class AttendanceS
         $isBlocked = $window['is_blocked']
             && ! $attendanceTypeId
             && ! $isUnlocked
+            && ! $approvedLeave
             && ! optional($existing)->is_late_exempted
             && ! optional($existing)->is_admin_unlocked;
 
@@ -176,8 +208,8 @@ class AttendanceS
                     'punch_in_device' => $meta['device'] ?? null,
                     'is_blocked' => true,
                     'is_punch_blocked' => true,
-                    'blocked_reason' => 'Punch-in blocked after allowed time.',
-                    'block_reason' => 'Punch-in blocked after allowed time.',
+                    'blocked_reason' => 'Punch-in window has closed for today\'s shift.',
+                    'block_reason' => 'Punch-in window has closed for today\'s shift.',
                     'attendance_source' => $source,
                     'attendance_status' => 'punch_blocked',
                 ]
@@ -192,27 +224,38 @@ class AttendanceS
                     'minutes' => 0,
                     'source' => 'mobile',
                     'policy_action' => 'blocked',
-                    'remarks' => 'Punch-in blocked after allowed time.',
+                    'remarks' => 'Punch-in window has closed for today\'s shift.',
                 ]);
             }
-            $this->notifyAttendance($employee, 'punch_blocked', 'Punch In Blocked', 'Your punch-in is blocked after ' . $blockAfter->format('h:i A') . '. Please contact HR/Admin.', $today);
-            return ['status' => 'error', 'message' => 'Punch in is blocked after ' . $blockAfter->format('h:i A') . '. Please contact HR/Admin.'];
+            $this->notifyAttendance($employee, 'punch_blocked', 'Punch In Blocked', 'Your punch-in window has closed for today\'s shift (after ' . ($blockAfter ? $blockAfter->format('h:i A') : 'cutoff') . '). Please contact HR/Admin.', $today);
+            return ['status' => 'error', 'code' => 'PUNCH_BLOCKED', 'message' => 'Punch-in window has closed for today\'s shift.'];
         }
 
         $isFlexible = ($shift?->shift_type ?? 'fixed') === 'flexible_part_time';
-        $targetPunchOut = $this->targetPunchOutTime($now, $shift);
-        $isLate = ! $isFlexible && ! optional($existing)->is_late_exempted && $this->isLatePunch($now, $shift);
+        $isHalfDayPunch = ($window['is_half_day_punch'] ?? false) && ! $isFirstHalfLeave;
+        $isLate = ! $isFlexible && ! $approvedLeave && ! optional($existing)->is_late_exempted && $this->isLatePunch($now, $shift);
         $lateMinutes = $isLate ? $this->lateMinutes($now, $shift) : 0;
+        
         $presentType = $this->attendanceType('present');
-        $existingTypeCode = optional($existing?->attendanceType)->code;
-        $attendanceTypeForPunchIn = $attendanceTypeId
-            ?: (in_array($existingTypeCode, ['punch_blocked', 'pending_hr'], true) ? $presentType?->id : ($existing->attendance_type_id ?? $presentType?->id));
-
-        $attendanceStatusForPunchIn = ($existing && ! in_array($existing->attendance_status, ['pending_hr', 'punch_blocked', 'unlocked'], true)) ? $existing->attendance_status : 'present';
-        if (($isUnlocked || ($existing && $existing->is_admin_unlocked)) && ! ($existing && $existing->punch_in_time)) {
-            $attendanceTypeForPunchIn = $presentType?->id ?: $attendanceTypeForPunchIn;
-            $attendanceStatusForPunchIn = 'present';
+        $halfDayType = $this->attendanceType('half_day');
+        
+        $attendanceStatusForPunchIn = 'present';
+        if ($isHalfDayPunch || $isFirstHalfLeave || $isSecondHalfLeave) {
+            $attendanceStatusForPunchIn = 'half_day';
+        } elseif ($existing && ! in_array($existing->attendance_status, ['pending_hr', 'punch_blocked', 'unlocked'], true)) {
+            $attendanceStatusForPunchIn = $existing->attendance_status;
         }
+
+        $attendanceTypeForPunchIn = $attendanceTypeId;
+        if (! $attendanceTypeForPunchIn) {
+            if ($attendanceStatusForPunchIn === 'half_day') {
+                $attendanceTypeForPunchIn = $halfDayType?->id ?: $presentType?->id;
+            } else {
+                $attendanceTypeForPunchIn = $presentType?->id ?: ($existing->attendance_type_id ?? null);
+            }
+        }
+
+        $targetPunchOut = $this->targetPunchOutTime($now, $shift, $attendanceStatusForPunchIn);
 
         $attendance = Attendance::updateOrCreate(
             ['employee_id' => $employee->id, 'attendance_date' => $today],
@@ -230,6 +273,7 @@ class AttendanceS
                 'punch_in_device' => $meta['device'] ?? null,
                 'is_late' => $isLate,
                 'late_minutes' => $lateMinutes,
+                'is_half_day' => $attendanceStatusForPunchIn === 'half_day',
                 'is_blocked' => false,
                 'is_punch_blocked' => false,
                 'is_admin_unlocked' => $isUnlocked || (bool) optional($existing)->is_admin_unlocked,
@@ -250,6 +294,13 @@ class AttendanceS
                 'attendance_id' => $attendance->id,
                 'late_minutes' => $lateMinutes,
             ]);
+        }
+
+        if (Schema::hasTable('attendance_violations')) {
+            AttendanceViolationM::where('employee_id', $employee->id)
+                ->whereDate('violation_date', $today)
+                ->whereNull('attendance_id')
+                ->update(['attendance_id' => $attendance->id]);
         }
 
         $this->syncAttendanceViolations($attendance);
@@ -299,13 +350,8 @@ class AttendanceS
             return ['status' => 'error', 'message' => 'Mobile Attendance is disabled for your account. Please contact HR Administrator.'];
         }
 
-        $hasApprovedLeave = DB::table('leave_requests')
-            ->where('employee_id', $employee->id)
-            ->where('status', 'approved')
-            ->whereRaw('? BETWEEN start_date AND end_date', [$today])
-            ->exists();
-
-        if ($hasApprovedLeave) {
+        $approvedLeaveData = $this->ruleResolver->getApprovedLeaveOnDate($employee, $today);
+        if ($approvedLeaveData && ! $approvedLeaveData['is_half_day']) {
             return ['status' => 'error', 'message' => 'Attendance punch is disabled during approved leave.'];
         }
 
@@ -621,7 +667,7 @@ class AttendanceS
         foreach ($legacyRecords as $attendance) {
             $counts['total_checked']++;
             $employee = $attendance->employee ?: Employee::find($attendance->employee_id);
-            $policy = $employee ? $this->ruleResolver->getPolicyForEmployee($employee, $date) : null;
+            $policy = $employee ? $this->ruleResolver->resolveShiftPolicy($employee, $date, $attendance->attendance_time_id) : null;
             if (! $policy || ! (bool) ($policy->auto_absent_enabled ?? false)) {
                 $counts['skipped_policy_disabled']++;
                 continue;
@@ -814,7 +860,7 @@ class AttendanceS
         }
 
         $employee = $attendance->employee ?: Employee::find($attendance->employee_id);
-        $shift = $employee ? $this->ruleResolver->getPolicyForEmployee($employee, $attendance->attendance_date) : ($attendance->attendanceTime ?: $this->defaultShift());
+        $shift = $employee ? $this->ruleResolver->resolveShiftPolicy($employee, $attendance->attendance_date, $attendance->attendance_time_id) : ($attendance->attendanceTime ?: $this->defaultShift());
         $timezone = $this->attendanceTimezone();
         $date = Carbon::parse($attendance->attendance_date, $timezone)->toDateString();
         $in = Carbon::parse($date . ' ' . $this->ruleResolver->timeString($attendance->punch_in_time), $timezone);
@@ -824,8 +870,14 @@ class AttendanceS
             $out->addDay();
         }
 
+        $approvedLeaveOnAttDate = $employee ? $this->ruleResolver->getApprovedLeaveOnDate($employee, $date) : null;
+        $isPreExistingHalfDay = (bool) $attendance->is_half_day 
+            || in_array(strtolower((string) $attendance->attendance_status), ['half_day', 'half_leave', 'first_half_leave', 'second_half_leave'], true)
+            || ! empty($attendance->half_day_reason);
+        $isHalfDayContext = $isPreExistingHalfDay || ($approvedLeaveOnAttDate && $approvedLeaveOnAttDate['is_half_day']);
+
         $grossMinutes = $in->diffInMinutes($out);
-        $breakMinutes = (int) ($shift?->lunch_break_minutes ?? $shift?->break_minutes ?? 0);
+        $breakMinutes = $isHalfDayContext ? 0 : (int) ($shift?->lunch_break_minutes ?? $shift?->break_minutes ?? 0);
         $netMinutes = max(0, $grossMinutes - $breakMinutes);
         $requiredMinutes = (int) ($shift?->required_work_minutes ?? 0);
         $halfDayMinutes = (int) ($shift?->half_day_min_minutes ?? 0);
@@ -837,11 +889,24 @@ class AttendanceS
             ? Carbon::parse($date . ' ' . $this->ruleResolver->timeString($attendance->target_punch_out_time), $timezone)
             : Carbon::parse($date . ' ' . $this->targetPunchOutTime($in, $shift), $timezone);
 
-        if ($target->lt($in)) {
-            $target->addDay();
+        $policyRule = $shift ?: ($employee ? $this->ruleResolver->getPolicyForEmployee($employee, $date) : null);
+        $earlyOutHalfDayMins = (int) ($policyRule?->early_out_half_day_minutes ?? 60);
+        $missedPunchAfterMins = (int) ($policyRule?->missed_punch_after_minutes ?? 60);
+
+        $effectiveTargetOut = $target->copy();
+        if ($effectiveTargetOut->lt($in)) {
+            $effectiveTargetOut->addDay();
         }
-        $isEarly = $out->lt($target);
-        $violationCount = ($isFlexible ? 0 : (int) $attendance->is_late) + (int) $isEarly;
+        $shiftEnd = $effectiveTargetOut;
+
+        $halfDayCutoff = $effectiveTargetOut->copy()->subMinutes($earlyOutHalfDayMins);
+        $missedPunchCutoff = $effectiveTargetOut->copy()->addMinutes($missedPunchAfterMins);
+
+        $isHalfDayByPunchOut = $out->lt($halfDayCutoff);
+        $isEarly = ($approvedLeaveOnAttDate || $isHalfDayByPunchOut) ? false : $out->lt($effectiveTargetOut);
+        $isMissedPunchByCutoff = $out->gt($missedPunchCutoff);
+
+        $violationCount = ($isFlexible || $approvedLeaveOnAttDate ? 0 : (int) $attendance->is_late) + (int) $isEarly;
 
         $typeCode = 'present';
         $isHalfDay = false;
@@ -852,22 +917,67 @@ class AttendanceS
             ? $absentBelowMinutes
             : (int)($effectiveHalfDayMin / 2);
 
-        if ($requiredMinutes > 0 && $netMinutes >= $requiredMinutes) {
-            $typeCode = 'present';
-            $isHalfDay = false;
-            $isLwp = false;
-        } elseif ($netMinutes < $effectiveAbsentBelow || ($effectiveHalfDayMin > 0 && $netMinutes < $effectiveHalfDayMin)) {
+        $isPreExistingLwp = (bool) $attendance->is_lwp 
+            || strtolower((string) $attendance->attendance_status) === 'lwp'
+            || ! empty($attendance->lwp_reason);
+
+        $isPreExistingHalfDay = (bool) $attendance->is_half_day 
+            || in_array(strtolower((string) $attendance->attendance_status), ['half_day', 'half_leave', 'first_half_leave', 'second_half_leave'], true)
+            || ! empty($attendance->half_day_reason);
+
+        if ($isPreExistingLwp) {
             $typeCode = 'lwp';
             $isLwp = true;
             $isHalfDay = false;
-        } elseif ($requiredMinutes > 0 && $netMinutes < $requiredMinutes) {
-            $typeCode = 'half_day';
-            $isHalfDay = true;
-            $isLwp = false;
-        } else {
-            $typeCode = 'present';
+        } elseif ($isPreExistingHalfDay) {
+            // Already marked Half Day via Step 1 Leave, Step 2 Half Day Punch Window, or Violation Penalty
+            if ($effectiveAbsentBelow > 0 && $netMinutes < $effectiveAbsentBelow) {
+                $typeCode = 'lwp';
+                $isLwp = true;
+                $isHalfDay = false;
+            } elseif ($effectiveHalfDayMin > 0 && $netMinutes < $effectiveHalfDayMin) {
+                $typeCode = 'lwp';
+                $isLwp = true;
+                $isHalfDay = false;
+            } else {
+                $typeCode = 'half_day';
+                $isHalfDay = true;
+                $isLwp = false;
+            }
+        } elseif ($isHalfDayByPunchOut) {
+            // Punch-out recorded before early_out_half_day_cutoff (target_punch_out_time - early_out_half_day_minutes)
+            if ($effectiveAbsentBelow > 0 && $netMinutes < $effectiveAbsentBelow) {
+                $typeCode = 'lwp';
+                $isLwp = true;
+                $isHalfDay = false;
+                $unapprovedLwpReason = 'Insufficient worked minutes for attendance.';
+            } elseif (! $approvedLeaveOnAttDate && $effectiveHalfDayMin > 0 && $netMinutes < $effectiveHalfDayMin) {
+                $typeCode = 'lwp';
+                $isLwp = true;
+                $isHalfDay = false;
+                $unapprovedLwpReason = 'Half day attendance without approved leave.';
+            } else {
+                $typeCode = 'half_day';
+                $isHalfDay = true;
+                $isLwp = false;
+            }
+        } elseif (! $isFlexible && $effectiveHalfDayMin > 0 && $netMinutes < $effectiveHalfDayMin) {
+            $typeCode = 'lwp';
+            $isLwp = true;
             $isHalfDay = false;
-            $isLwp = false;
+            $unapprovedLwpReason = $approvedLeaveOnAttDate ? 'Insufficient worked minutes for attendance.' : 'Half day attendance without approved leave.';
+        } else {
+            // Standard Attendance Punch (halfDayCutoff <= out)
+            if ($effectiveAbsentBelow > 0 && $netMinutes < $effectiveAbsentBelow) {
+                $typeCode = 'lwp';
+                $isLwp = true;
+                $isHalfDay = false;
+                $unapprovedLwpReason = 'Insufficient worked minutes for attendance.';
+            } else {
+                $typeCode = 'present';
+                $isHalfDay = false;
+                $isLwp = false;
+            }
         }
 
         \Illuminate\Support\Facades\Log::info('AttendanceS calculateWorkingHours Audit', [
@@ -882,18 +992,21 @@ class AttendanceS
             'punch_in' => (string) $attendance->punch_in_time,
             'punch_out' => (string) $attendance->punch_out_time,
             'gross_minutes' => $grossMinutes,
-            'break_minutes' => $breakMinutes,
             'net_minutes' => $netMinutes,
-            'late_minutes' => $isFlexible ? 0 : (int) $attendance->late_minutes,
-            'early_out_minutes' => ($isEarly && $target) ? $out->diffInMinutes($target) : 0,
             'resolved_type' => $typeCode,
             'is_half_day' => $isHalfDay,
             'is_lwp' => $isLwp,
+            'half_day_cutoff' => $halfDayCutoff->format('H:i:s'),
+            'missed_punch_cutoff' => $missedPunchCutoff->format('H:i:s'),
         ]);
 
         $threshold = $this->policyDayEndTime($shift) ?: '23:59:00';
         $dayCloseTime = Carbon::parse($date . ' ' . $threshold, $timezone);
         $isCheckedOutBeforeClose = $out->lte($dayCloseTime);
+
+        $pOutFmt = $out->format('g:i A');
+        $cutoffFmt = $halfDayCutoff->format('g:i A');
+        $earlyPunchOutReason = "Half Day — Punch Out at {$pOutFmt}, which is before the half-day cutoff of {$cutoffFmt}.";
 
         $updateData = [
             'target_punch_out_time' => $attendance->target_punch_out_time ?: ($target ? $target->format('H:i:s') : null),
@@ -901,20 +1014,25 @@ class AttendanceS
             'break_minutes' => $breakMinutes,
             'lunch_break_minutes' => $breakMinutes,
             'total_work_minutes' => $netMinutes,
-            'is_late' => $isFlexible ? false : (bool) $attendance->is_late,
-            'late_minutes' => $isFlexible ? 0 : (int) $attendance->late_minutes,
-            'is_early_out' => $isEarly,
-            'early_out_minutes' => ($isEarly && $target) ? $out->diffInMinutes($target) : 0,
-            'violation_count' => $violationCount,
+            'is_late' => ($isFlexible || $approvedLeaveOnAttDate) ? false : (bool) $attendance->is_late,
+            'late_minutes' => ($isFlexible || $approvedLeaveOnAttDate) ? 0 : (int) $attendance->late_minutes,
+            'is_early_out' => ($approvedLeaveOnAttDate || $isHalfDay) ? false : $isEarly,
+            'early_out_minutes' => ($isEarly && ! $isHalfDay && $shiftEnd && ! $approvedLeaveOnAttDate) ? $out->diffInMinutes($shiftEnd) : 0,
+            'violation_count' => $approvedLeaveOnAttDate ? 0 : $violationCount,
             'is_half_day' => $isHalfDay,
-            'half_day_reason' => $isHalfDay ? $attendance->half_day_reason : (str_contains((string) $attendance->half_day_reason, 'Auto half-day due to') ? null : $attendance->half_day_reason),
+            'half_day_reason' => $isHalfDay ? ($isHalfDayByPunchOut ? $earlyPunchOutReason : ($attendance->half_day_reason ?: 'Early out half day threshold exceeded.')) : (str_contains((string) $attendance->half_day_reason, 'Auto half-day due to') ? null : $attendance->half_day_reason),
             'is_lwp' => $isLwp,
+            'lwp_reason' => $isLwp ? ($unapprovedLwpReason ?? $attendance->lwp_reason ?? 'Half day attendance without approved leave.') : null,
         ];
 
-        if ($isCheckedOutBeforeClose) {
+        if ($isCheckedOutBeforeClose && ! $isMissedPunchByCutoff) {
             $updateData['missed_punch'] = false;
             $updateData['is_missed_punch'] = false;
             $updateData['missed_punch_reason'] = null;
+        } elseif ($isMissedPunchByCutoff) {
+            $updateData['missed_punch'] = true;
+            $updateData['is_missed_punch'] = true;
+            $updateData['missed_punch_reason'] = 'Punch out exceeded missed punch cutoff (' . $missedPunchCutoff->format('H:i:s') . ').';
         }
 
         $attendance->fill($updateData);
@@ -926,10 +1044,17 @@ class AttendanceS
 
         $attendance->save();
 
-        if ($isCheckedOutBeforeClose && Schema::hasTable('attendance_violations')) {
+        if ($isCheckedOutBeforeClose && ! $isMissedPunchByCutoff && Schema::hasTable('attendance_violations')) {
             AttendanceViolationM::where('attendance_id', $attendance->id)
                 ->where('type', 'missed_punch')
                 ->delete();
+        } elseif ($isMissedPunchByCutoff) {
+            $this->recordAttendanceViolation($attendance, 'missed_punch', $date, [
+                'minutes' => $out->diffInMinutes($missedPunchCutoff),
+                'source' => 'system',
+                'policy_action' => 'missed_punch',
+                'remarks' => 'Punch out exceeded missed punch cutoff of ' . $missedPunchCutoff->format('H:i:s') . '.',
+            ]);
         }
 
         if ($isHalfDay) {
@@ -1040,7 +1165,7 @@ class AttendanceS
         foreach ($records as $attendance) {
             $counts['total_checked']++;
             $employee = $attendance->employee ?: Employee::find($attendance->employee_id);
-            $policy = $employee ? $this->ruleResolver->getPolicyForEmployee($employee, $date) : null;
+            $policy = $employee ? $this->ruleResolver->resolveShiftPolicy($employee, $date, $attendance->attendance_time_id) : null;
 
             if (! $policy) {
                 $counts['skipped_missing_policy']++;
@@ -1280,7 +1405,7 @@ class AttendanceS
                 ->first();
         }
 
-        $shift = $employee ? $this->ruleResolver->getPolicyForEmployee($employee, $now) : ($attendance?->attendanceTime ?: $this->defaultShift());
+        $shift = $employee ? $this->ruleResolver->resolveShiftPolicy($employee, $now, $attendance?->attendance_time_id) : ($attendance?->attendanceTime ?: $this->defaultShift());
         $completed = (int) ($attendance?->total_work_minutes ?? 0);
         if ($attendance?->punch_in_time && ! $attendance->punch_out_time) {
             $in = Carbon::parse($now->toDateString() . ' ' . $this->ruleResolver->timeString($attendance->punch_in_time), $timezone);
@@ -1593,126 +1718,10 @@ class AttendanceS
 
     private function applyCombinedViolationHalfDay(Attendance $attendance, string $date): void
     {
-        if ($attendance->is_lwp || $attendance->is_blocked || $attendance->is_punch_blocked) {
-            return;
-        }
-
-        // Do not apply combined violation half day penalty while shift is actively in progress (punched in but not punched out)
-        if ($attendance->punch_in_time && ! $attendance->punch_out_time) {
-            return;
-        }
-
-        $employee = $attendance->employee ?: Employee::find($attendance->employee_id);
-        $policy = $employee ? $this->ruleResolver->getPolicyForEmployee($employee, $date) : null;
-        $requiredMinutes = (int) ($policy?->required_work_minutes ?? 0);
-
-        // If employee worked required full day minutes, do not penalty-override to Half Day
-        if ($requiredMinutes > 0 && (int) $attendance->total_work_minutes >= $requiredMinutes) {
-            if ((bool) $attendance->is_half_day && (str_contains((string) $attendance->half_day_reason, 'Auto half-day due to') || str_contains((string) $attendance->half_day_reason, 'Attendance Discipline'))) {
-                $presentType = $this->attendanceType('present');
-                $attendance->fill($this->attendancePayload([
-                    'is_half_day' => false,
-                    'half_day_reason' => null,
-                    'attendance_type_id' => $presentType?->id ?: $attendance->attendance_type_id,
-                    'attendance_status' => 'present',
-                ]))->save();
-
-                if (Schema::hasTable('attendance_violations')) {
-                    $updatePayload = [];
-                    if (Schema::hasColumn('attendance_violations', 'is_consumed')) {
-                        $updatePayload['is_consumed'] = false;
-                    }
-                    if (Schema::hasColumn('attendance_violations', 'consumed_at')) {
-                        $updatePayload['consumed_at'] = null;
-                    }
-                    if (Schema::hasColumn('attendance_violations', 'penalty_attendance_id')) {
-                        $updatePayload['penalty_attendance_id'] = null;
-                    }
-                    if (Schema::hasColumn('attendance_violations', 'converted_to_half_day')) {
-                        $updatePayload['converted_to_half_day'] = false;
-                    }
-                    if (! empty($updatePayload)) {
-                        AttendanceViolationM::where('penalty_attendance_id', $attendance->id)->update($updatePayload);
-                    }
-                }
-            }
-            return;
-        }
-
-        $asOfDate = Carbon::parse($date, $this->attendanceTimezone());
-        $query = AttendanceViolationM::where('employee_id', $attendance->employee_id)
-            ->whereYear('violation_date', $asOfDate->year)
-            ->whereMonth('violation_date', $asOfDate->month)
-            ->whereIn('type', ['late_login', 'early_logout']);
-
-        if (Schema::hasColumn('attendance_violations', 'is_consumed')) {
-            $query->where(function ($q) {
-                $q->where('is_consumed', false)->orWhereNull('is_consumed');
-            });
-        }
-        if (Schema::hasColumn('attendance_violations', 'deleted_at')) {
-            $query->whereNull('deleted_at');
-        }
-        if (Schema::hasColumn('attendance_violations', 'status')) {
-            $query->where(function ($q) {
-                $q->whereNull('status')->orWhere('status', '!=', 'resolved');
-            });
-        }
-        if (Schema::hasColumn('attendance_violations', 'policy_action')) {
-            $query->where(function ($q) {
-                $q->whereNull('policy_action')->orWhere('policy_action', '!=', 'resolved');
-            });
-        }
-
-        $unconsumedViolations = $query->orderBy('violation_date', 'asc')->get();
-        $count = $unconsumedViolations->count();
-        $combinedViolationLimit = $policy ? (int) ($policy->combined_violation_limit ?? 3) : 3;
-
-        if ($combinedViolationLimit <= 0 || $count < $combinedViolationLimit) {
-            return;
-        }
-
-        $effectiveCode = strtolower((string) (optional($attendance->attendanceType)->code ?: $attendance->attendance_status));
-        if (
-            (bool) $attendance->is_lwp
-            || in_array($effectiveCode, ['lwp', 'absent'], true)
-        ) {
-            return;
-        }
-
-        $lateCount = $unconsumedViolations->where('type', 'late_login')->count();
-        $earlyCount = $unconsumedViolations->where('type', 'early_logout')->count();
-        $reason = "Half Day applied because monthly Attendance Discipline violations reached policy limit. Late Login : {$lateCount}, Early Logout : {$earlyCount}";
-
-        $halfDayType = $this->attendanceType('half_day');
-        $updates = [
-            'is_half_day' => true,
-            'half_day_reason' => $reason,
-            'violation_count' => max((int) $attendance->violation_count, $count),
-        ];
-        if ($halfDayType) {
-            $updates['attendance_type_id'] = $halfDayType->id;
-            $updates['attendance_status'] = 'half_day';
-        }
-        $attendance->fill($this->attendancePayload($updates))->save();
-
-        $participating = $unconsumedViolations->take($combinedViolationLimit);
-        foreach ($participating as $v) {
-            $vData = [];
-            if (Schema::hasColumn('attendance_violations', 'is_consumed')) {
-                $vData['is_consumed'] = true;
-            }
-            if (Schema::hasColumn('attendance_violations', 'consumed_at')) {
-                $vData['consumed_at'] = Carbon::now($this->attendanceTimezone());
-            }
-            if (Schema::hasColumn('attendance_violations', 'penalty_attendance_id')) {
-                $vData['penalty_attendance_id'] = $attendance->id;
-            }
-            if (Schema::hasColumn('attendance_violations', 'converted_to_half_day')) {
-                $vData['converted_to_half_day'] = true;
-            }
-            if (! empty($vData)) {
-                $v->update($vData);
+        if ($attendance->employee_id) {
+            $employee = $attendance->employee ?: Employee::find($attendance->employee_id);
+            if ($employee) {
+                app(AttendanceViolationResolverService::class)->evaluateViolationsAndApplyPenalties($employee, $date, $attendance);
             }
         }
     }
@@ -1784,9 +1793,9 @@ class AttendanceS
         ];
     }
 
-    private function targetPunchOutTime(Carbon $punchIn, ?object $shift): string
+    private function targetPunchOutTime(Carbon $punchIn, ?object $shift, string $status = 'present'): string
     {
-        return $this->ruleResolver->targetPunchOut($punchIn, $shift)->format('H:i:s');
+        return $this->ruleResolver->targetPunchOut($punchIn, $shift, $status)->format('H:i:s');
     }
 
     private function employeeEligibleForAttendance(Employee $employee): bool
@@ -1879,7 +1888,7 @@ class AttendanceS
 
     private function employeeIsActive(Employee $employee): bool
     {
-        return (bool) $employee->is_active && (empty($employee->employment_status) || $employee->employment_status === 'active');
+        return (bool) ($employee->is_active ?? true) && (empty($employee->employment_status) || strtolower((string)$employee->employment_status) === 'active');
     }
 
     private function employeeProfileApproved(Employee $employee): bool
@@ -1953,104 +1962,61 @@ class AttendanceS
             return;
         }
 
+        $resolver = app(AttendanceViolationResolverService::class);
         $date = Carbon::parse($attendance->attendance_date)->toDateString();
 
+        $employee = $attendance->employee ?: Employee::find($attendance->employee_id);
+        $approvedLeave = $employee ? $this->ruleResolver->getApprovedLeaveOnDate($employee, $date) : null;
+        if ($approvedLeave) {
+            $resolver->clearViolation($attendance, 'late_login');
+            $resolver->clearViolation($attendance, 'early_logout');
+            $resolver->clearViolation($attendance, 'blocked_punch');
+            $resolver->clearViolation($attendance, 'missed_punch');
+            return;
+        }
+
+        $policy = $employee ? $this->ruleResolver->getPolicyForEmployee($employee, $date) : null;
+        $lateViolationEnabled = $policy ? (bool) ($policy->late_violation_enabled ?? true) : true;
+        $earlyViolationEnabled = $policy ? (bool) ($policy->early_violation_enabled ?? true) : true;
+
         // 1. Late Login
-        if ($attendance->is_late || (int) $attendance->late_minutes > 0) {
-            $this->recordAttendanceViolation($attendance, 'late_login', $date, [
+        if ($lateViolationEnabled && ($attendance->is_late || (int) $attendance->late_minutes > 0)) {
+            $resolver->recordOrSyncViolation($attendance, 'late_login', [
                 'minutes' => (int) $attendance->late_minutes,
                 'source' => $attendance->attendance_source ?: 'system',
                 'policy_action' => 'late_mark',
                 'remarks' => $attendance->punch_in_note ?: 'Late login detected.',
             ]);
         } else {
-            // Check if there is an active late login violation to resolve
-            $violation = AttendanceViolationM::where('attendance_id', $attendance->id)
-                ->where('type', 'late_login')
-                ->whereDate('violation_date', $date)
-                ->first();
-            if ($violation && $violation->policy_action !== 'resolved') {
-                $reason = $attendance->is_late_exempted ? 'Exempted by HR/Admin' : 'Regularized/recalculated';
-                $violation->update([
-                    'policy_action' => 'resolved',
-                    'remarks' => $violation->remarks . " [Resolved: {$reason}.]",
-                ]);
-            }
+            $resolver->clearViolation($attendance, 'late_login');
         }
 
         // 2. Early Logout
-        if ($attendance->is_early_out || (int) $attendance->early_out_minutes > 0) {
-            $this->recordAttendanceViolation($attendance, 'early_logout', $date, [
+        if ($earlyViolationEnabled && ($attendance->is_early_out || (int) $attendance->early_out_minutes > 0)) {
+            $resolver->recordOrSyncViolation($attendance, 'early_logout', [
                 'minutes' => (int) $attendance->early_out_minutes,
                 'source' => $attendance->attendance_source ?: 'system',
                 'policy_action' => 'early_logout',
                 'remarks' => $attendance->punch_out_note ?: 'Early logout detected.',
             ]);
         } else {
-            // Check if there is an active early logout violation to resolve
-            $violation = AttendanceViolationM::where('attendance_id', $attendance->id)
-                ->where('type', 'early_logout')
-                ->whereDate('violation_date', $date)
-                ->first();
-            if ($violation && $violation->policy_action !== 'resolved') {
-                $violation->update([
-                    'policy_action' => 'resolved',
-                    'remarks' => $violation->remarks . ' [Resolved: Adjusted by HR/Admin / recalculated.]',
-                ]);
-            }
+            $resolver->clearViolation($attendance, 'early_logout');
         }
 
         // 3. Blocked Punch
         $isBlocked = $attendance->is_blocked || $attendance->is_punch_blocked || optional($attendance->attendanceType)->code === 'punch_blocked' || $attendance->attendance_status === 'punch_blocked';
-        if ($isBlocked) {
-            // Only log blocked punch violation if it was an actual user punch attempt (source is NOT system_auto)
-            if ($attendance->attendance_source !== 'system_auto') {
-                // Check by employee and date
-                $exists = AttendanceViolationM::where('employee_id', $attendance->employee_id)
-                    ->where('type', 'blocked_punch')
-                    ->whereDate('violation_date', $date)
-                    ->first();
-                if (! $exists) {
-                    AttendanceViolationM::create([
-                        'employee_id' => $attendance->employee_id,
-                        'attendance_id' => $attendance->id,
-                        'violation_date' => $date,
-                        'type' => 'blocked_punch',
-                        'minutes' => 0,
-                        'source' => $attendance->attendance_source ?: 'system_auto',
-                        'policy_action' => 'blocked',
-                        'remarks' => $attendance->blocked_reason ?: ($attendance->block_reason ?: 'Punch blocked.'),
-                    ]);
-                } else {
-                    if (! $exists->attendance_id) {
-                        $exists->update(['attendance_id' => $attendance->id]);
-                    }
-                }
-            }
-        } else {
-            // Check if there is an active blocked punch violation to resolve (by employee and date)
-            $violation = AttendanceViolationM::where('employee_id', $attendance->employee_id)
-                ->where('type', 'blocked_punch')
-                ->whereDate('violation_date', $date)
-                ->first();
-            if ($violation) {
-                $violationUpdates = [];
-                if (! $violation->attendance_id) {
-                    $violationUpdates['attendance_id'] = $attendance->id;
-                }
-                if ($violation->policy_action !== 'resolved') {
-                    $violationUpdates['policy_action'] = 'resolved';
-                    $violationUpdates['remarks'] = ($violation->remarks ?: '') . ' [Resolved: Unlocked/approved by HR/Admin.]';
-                }
-                if (! empty($violationUpdates)) {
-                    $violation->update($violationUpdates);
-                }
-            }
+        if ($isBlocked && $attendance->attendance_source !== 'system_auto') {
+            $resolver->recordOrSyncViolation($attendance, 'blocked_punch', [
+                'minutes' => 0,
+                'source' => $attendance->attendance_source ?: 'system_auto',
+                'policy_action' => 'blocked',
+                'remarks' => $attendance->blocked_reason ?: ($attendance->block_reason ?: 'Punch blocked.'),
+            ]);
         }
 
         // 4. Missed Punch
         if ($attendance->missed_punch || $attendance->is_missed_punch || $attendance->attendance_status === 'missed_punch') {
-            $this->recordAttendanceViolation($attendance, 'missed_punch', $date, [
+            $resolver->recordOrSyncViolation($attendance, 'missed_punch', [
                 'minutes' => 0,
                 'source' => $attendance->attendance_source ?: 'system_auto',
                 'policy_action' => $attendance->is_lwp ? 'lwp' : 'warning',
@@ -2058,13 +2024,24 @@ class AttendanceS
                 'remarks' => $attendance->missed_punch_reason ?: 'Missed punch detected.',
             ]);
         }
+
+        // Evaluate cycle thresholds and apply penalties
+        if ($attendance->employee_id) {
+            $employee = $attendance->employee ?: Employee::find($attendance->employee_id);
+            if ($employee) {
+                $resolver->evaluateViolationsAndApplyPenalties($employee, $date, $attendance);
+                $attendance->refresh();
+            }
+        }
     }
 
     private function resolveShiftIdForPolicy(?object $policy, ?object $existing = null, ?int $fallback = null): ?int
     {
         $resolvedShiftId = null;
         if ($policy) {
-            if (($policy->source_table ?? null) === 'attendance_times') {
+            if (isset($policy->attendance_time_id)) {
+                $resolvedShiftId = $policy->attendance_time_id;
+            } elseif (($policy->source_table ?? null) === 'attendance_times') {
                 $resolvedShiftId = $policy->id;
             } else {
                 $policyName = $policy->policy_name ?? $policy->name ?? '';
@@ -2104,130 +2081,12 @@ class AttendanceS
     public function getEmployeeViolationSummary(Employee $employee, Carbon|string|null $date = null): array
     {
         $timezone = $this->attendanceTimezone();
-        $dateObj = $date ? Carbon::parse($date, $timezone) : Carbon::now($timezone);
-        $policy = $this->ruleResolver->getPolicyForEmployee($employee, $dateObj);
-
-        $combinedLimit = (int) ($policy?->combined_violation_limit ?? 3);
-        $allowedMissed = (int) ($policy?->allowed_missed_punches ?? 2);
-        $missedLimit = $allowedMissed + 1;
-
-        $disciplineQuery = AttendanceViolationM::where('employee_id', $employee->id)
-            ->whereYear('violation_date', $dateObj->year)
-            ->whereMonth('violation_date', $dateObj->month)
-            ->whereIn('type', ['late_login', 'early_logout']);
-        if (Schema::hasColumn('attendance_violations', 'is_consumed')) {
-            $disciplineQuery->where(function ($q) {
-                $q->where('is_consumed', false)->orWhereNull('is_consumed');
-            });
-        }
-        $disciplineQuery->where(function ($q) {
-            $q->whereNull('policy_action')->orWhere('policy_action', '!=', 'resolved');
-        });
-        $disciplineViolations = $disciplineQuery->get();
-
-        $lateCount = $disciplineViolations->where('type', 'late_login')->count();
-        $earlyCount = $disciplineViolations->where('type', 'early_logout')->count();
-        $disciplineCount = $disciplineViolations->count();
-
-        $missedQuery = AttendanceViolationM::where('employee_id', $employee->id)
-            ->whereYear('violation_date', $dateObj->year)
-            ->whereMonth('violation_date', $dateObj->month)
-            ->where('type', 'missed_punch');
-        if (Schema::hasColumn('attendance_violations', 'is_consumed')) {
-            $missedQuery->where(function ($q) {
-                $q->where('is_consumed', false)->orWhereNull('is_consumed');
-            });
-        }
-        $missedQuery->where(function ($q) {
-            $q->whereNull('policy_action')->orWhere('policy_action', '!=', 'resolved');
-        });
-        $missedViolations = $missedQuery->get();
-
-        $missedCount = $missedViolations->count();
-
-        return [
-            'discipline' => [
-                'count' => $disciplineCount,
-                'limit' => $combinedLimit,
-                'late' => $lateCount,
-                'early' => $earlyCount,
-            ],
-            'missed_punch' => [
-                'count' => $missedCount,
-                'limit' => $missedLimit,
-                'allowed' => $allowedMissed,
-            ],
-        ];
+        $dateStr = $date ? Carbon::parse($date, $timezone)->toDateString() : Carbon::now($timezone)->toDateString();
+        return app(AttendanceViolationResolverService::class)->getEmployeeViolationSummary($employee, $dateStr);
     }
 
     public function rebuildEmployeeViolationCycles(int $employeeId, string $dateOrMonth): void
     {
-        $timezone = $this->attendanceTimezone();
-        $asOfDate = Carbon::parse($dateOrMonth, $timezone);
-
-        $updatePayload = [];
-        if (Schema::hasColumn('attendance_violations', 'is_consumed')) {
-            $updatePayload['is_consumed'] = false;
-        }
-        if (Schema::hasColumn('attendance_violations', 'consumed_at')) {
-            $updatePayload['consumed_at'] = null;
-        }
-        if (Schema::hasColumn('attendance_violations', 'penalty_attendance_id')) {
-            $updatePayload['penalty_attendance_id'] = null;
-        }
-        if (Schema::hasColumn('attendance_violations', 'converted_to_half_day')) {
-            $updatePayload['converted_to_half_day'] = false;
-        }
-        if (Schema::hasColumn('attendance_violations', 'converted_to_lwp')) {
-            $updatePayload['converted_to_lwp'] = false;
-        }
-
-        if (! empty($updatePayload)) {
-            AttendanceViolationM::where('employee_id', $employeeId)
-                ->whereYear('violation_date', $asOfDate->year)
-                ->whereMonth('violation_date', $asOfDate->month)
-                ->update($updatePayload);
-        }
-
-        $attendances = Attendance::where('employee_id', $employeeId)
-            ->whereYear('attendance_date', $asOfDate->year)
-            ->whereMonth('attendance_date', $asOfDate->month)
-            ->orderBy('attendance_date', 'asc')
-            ->get();
-
-        foreach ($attendances as $attendance) {
-            $wasHalfDayFromDiscipline = str_contains((string) $attendance->half_day_reason, 'Attendance Discipline') || str_contains((string) $attendance->half_day_reason, 'Auto half-day due to');
-            $wasLwpFromMissedPunch = str_contains((string) $attendance->lwp_reason, 'Missed Punch Policy') || str_contains((string) $attendance->lwp_reason, 'missed punch converted to LWP');
-
-            if ($wasHalfDayFromDiscipline || $wasLwpFromMissedPunch) {
-                $updates = [];
-                if ($wasHalfDayFromDiscipline) {
-                    $updates['is_half_day'] = false;
-                    $updates['half_day_reason'] = null;
-                    if ($attendance->attendance_status === 'half_day') {
-                        $presentType = $this->attendanceType('present');
-                        if ($presentType) {
-                            $updates['attendance_type_id'] = $presentType->id;
-                        }
-                        $updates['attendance_status'] = 'present';
-                    }
-                }
-                if ($wasLwpFromMissedPunch) {
-                    $updates['is_lwp'] = false;
-                    $updates['lwp_reason'] = null;
-                    if ($attendance->attendance_status === 'lwp') {
-                        $presentType = $this->attendanceType('present');
-                        if ($presentType) {
-                            $updates['attendance_type_id'] = $presentType->id;
-                        }
-                        $updates['attendance_status'] = 'present';
-                    }
-                }
-                $attendance->fill($this->attendancePayload($updates))->save();
-            }
-
-            $this->syncAttendanceViolations($attendance);
-            $this->applyCombinedViolationHalfDay($attendance, (string) $attendance->attendance_date);
-        }
+        app(AttendanceViolationResolverService::class)->rebuildEmployeeViolationCycles($employeeId, $dateOrMonth);
     }
 }

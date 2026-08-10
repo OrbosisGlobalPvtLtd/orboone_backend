@@ -47,7 +47,13 @@ class AttendanceAbsent extends Command
         $attendanceTimeId = AttendanceTime::whereName('OTHER')->first()->id;
         $attendanceTypeId = AttendanceType::where('name', ["ABSENT"])->first()->id;
 
+        $eligibilityService = app(\App\Services\HRMS\Employee\EmployeeEligibilityS::class);
+
         foreach($employees as $employee) {
+            if (!$eligibilityService->canUseAttendance($employee)) {
+                continue;
+            }
+
             $hasCheckedIn = $attendances->contains( function ($attendance, $key) use ($employee){
                 return $attendance->employee_id == $employee->id;
             });

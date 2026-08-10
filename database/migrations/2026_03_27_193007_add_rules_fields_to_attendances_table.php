@@ -23,7 +23,7 @@ class AddRulesFieldsToAttendancesTable extends Migration
             $table->unsignedBigInteger('manual_unlock_by')->nullable()->after('is_blocked');
             $table->text('punch_in_note')->nullable()->after('note');
             $table->text('punch_out_note')->nullable()->after('punch_in_note');
-            
+
             $table->foreign('manual_unlock_by')->references('id')->on('users')->onDelete('set null');
         });
     }
@@ -38,9 +38,15 @@ class AddRulesFieldsToAttendancesTable extends Migration
         Schema::table('attendances', function (Blueprint $table) {
             $table->dropForeign(['manual_unlock_by']);
             $table->dropColumn([
-                'is_late', 'is_early_out', 'working_hours', 'is_blocked', 
-                'total_break_time', 'leave_marking', 'manual_unlock_by', 
-                'punch_in_note', 'punch_out_note'
+                'is_late',
+                'is_early_out',
+                'working_hours',
+                'is_blocked',
+                'total_break_time',
+                'leave_marking',
+                'manual_unlock_by',
+                'punch_in_note',
+                'punch_out_note'
             ]);
         });
     }

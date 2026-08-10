@@ -15,6 +15,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/profile-status', [AttendanceController::class, 'profileStatus']);
             Route::get('/today', [AttendanceController::class, 'today']);
             Route::get('/today-status', [AttendanceController::class, 'todayStatus']);
+            Route::get('/today-context', [AttendanceController::class, 'todayContext']);
             Route::get('/history', [AttendanceController::class, 'history']);
             Route::get('/list', [AttendanceController::class, 'getAttendance']);
             Route::get('/monthly', [AttendanceController::class, 'monthly']);

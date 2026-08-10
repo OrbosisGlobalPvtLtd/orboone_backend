@@ -14,9 +14,7 @@ class AttendanceController extends Controller
     public function __construct(
         private AttendanceS $attendanceService,
         private AttendanceMobileService $mobileService
-    )
-    {
-    }
+    ) {}
 
     public function clockIn(Request $request)
     {
@@ -103,9 +101,9 @@ class AttendanceController extends Controller
     {
         $query = Attendance::with(['attendanceType', 'attendanceTime', 'workLogs'])
             ->where('user_id', auth()->id())
-            ->when($request->filled('date'), fn ($query) => $query->whereDate('attendance_date', $request->date))
-            ->when($request->filled('month'), fn ($query) => $query->whereMonth('attendance_date', (int) $request->month))
-            ->when($request->filled('year'), fn ($query) => $query->whereYear('attendance_date', (int) $request->year));
+            ->when($request->filled('date'), fn($query) => $query->whereDate('attendance_date', $request->date))
+            ->when($request->filled('month'), fn($query) => $query->whereMonth('attendance_date', (int) $request->month))
+            ->when($request->filled('year'), fn($query) => $query->whereYear('attendance_date', (int) $request->year));
 
         $summaryRecords = (clone $query)->get();
 
@@ -115,7 +113,7 @@ class AttendanceController extends Controller
             ->paginate((int) $request->input('per_page', 100));
 
         $records = collect($attendance->items())
-            ->map(fn ($item) => $this->formatAttendanceRecord($item))
+            ->map(fn($item) => $this->formatAttendanceRecord($item))
             ->values();
 
         return $this->apiResponse(true, 'Attendance records fetched successfully.', [
@@ -142,6 +140,19 @@ class AttendanceController extends Controller
         $result = $this->mobileService->todayStatus(auth()->id());
 
         return $this->apiResponse($result['status'], $result['message'], $result['data'], $result['status'] ? 200 : 404);
+    }
+
+    public function todayContext()
+    {
+        $employee = \App\Models\HRMS\Employee\EmployeeM::where('user_id', auth()->id())->first();
+        if (! $employee) {
+            return $this->apiResponse(false, 'Employee profile not found.', null, 404);
+        }
+
+        $contextResolver = app(\App\Services\HRMS\Attendance\AttendanceContextResolverService::class);
+        $data = $contextResolver->resolveContext($employee);
+
+        return $this->apiResponse(true, 'Attendance context fetched successfully.', $data);
     }
 
     public function profileStatus()
@@ -230,7 +241,7 @@ class AttendanceController extends Controller
             ->whereYear('attendance_date', $year)
             ->orderBy('attendance_date')
             ->get()
-            ->map(fn ($item) => $this->formatAttendanceRecord($item))
+            ->map(fn($item) => $this->formatAttendanceRecord($item))
             ->values();
 
         return $this->apiResponse(true, 'Attendance calendar fetched successfully.', $records);
@@ -285,14 +296,14 @@ class AttendanceController extends Controller
                 $query->where('is_late', true)
                     ->orWhere('is_early_out', true);
             })
-            ->when($request->filled('from_date'), fn ($query) => $query->whereDate('attendance_date', '>=', $request->from_date))
-            ->when($request->filled('to_date'), fn ($query) => $query->whereDate('attendance_date', '<=', $request->to_date))
+            ->when($request->filled('from_date'), fn($query) => $query->whereDate('attendance_date', '>=', $request->from_date))
+            ->when($request->filled('to_date'), fn($query) => $query->whereDate('attendance_date', '<=', $request->to_date))
             ->orderByDesc('attendance_date')
             ->paginate((int) $request->input('per_page', 20));
 
         $records->setCollection(
             $records->getCollection()
-                ->map(fn ($item) => $this->formatAttendanceRecord($item))
+                ->map(fn($item) => $this->formatAttendanceRecord($item))
         );
 
         return $this->apiResponse(true, 'Late and early out report fetched successfully.', $records);
@@ -311,17 +322,17 @@ class AttendanceController extends Controller
 
     private function summaryFromRecords($records): array
     {
-        $code = fn ($item) => strtolower((string) optional($item->attendanceType)->code);
+        $code = fn($item) => strtolower((string) optional($item->attendanceType)->code);
 
         return [
-            'present' => $records->filter(fn ($item) => $code($item) === 'present')->count(),
-            'absent' => $records->filter(fn ($item) => $code($item) === 'absent' || $code($item) === 'lwp' || $item->is_lwp)->count(),
-            'half_day' => $records->filter(fn ($item) => $code($item) === 'half_day')->count(),
-            'leave' => $records->filter(fn ($item) => $code($item) === 'leave')->count(),
-            'week_off' => $records->filter(fn ($item) => $code($item) === 'week_off')->count(),
-            'holiday' => $records->filter(fn ($item) => $code($item) === 'holiday')->count(),
-            'pending_hr' => $records->filter(fn ($item) => (string) ($item->attendance_status ?? '') === 'pending_hr')->count(),
-            'punch_blocked' => $records->filter(fn ($item) => $item->is_blocked || $item->is_punch_blocked || $item->attendance_status === 'punch_blocked')->count(),
+            'present' => $records->filter(fn($item) => $code($item) === 'present')->count(),
+            'absent' => $records->filter(fn($item) => $code($item) === 'absent' || $code($item) === 'lwp' || $item->is_lwp)->count(),
+            'half_day' => $records->filter(fn($item) => $code($item) === 'half_day')->count(),
+            'leave' => $records->filter(fn($item) => $code($item) === 'leave')->count(),
+            'week_off' => $records->filter(fn($item) => $code($item) === 'week_off')->count(),
+            'holiday' => $records->filter(fn($item) => $code($item) === 'holiday')->count(),
+            'pending_hr' => $records->filter(fn($item) => (string) ($item->attendance_status ?? '') === 'pending_hr')->count(),
+            'punch_blocked' => $records->filter(fn($item) => $item->is_blocked || $item->is_punch_blocked || $item->attendance_status === 'punch_blocked')->count(),
             'late' => $records->where('is_late', true)->count(),
             'early_out' => $records->where('is_early_out', true)->count(),
             'lwp' => 0,

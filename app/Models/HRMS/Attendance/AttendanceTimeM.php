@@ -42,4 +42,9 @@ class AttendanceTimeM extends Model
     {
         return $this->hasMany(AttendanceM::class, 'attendance_time_id');
     }
+
+    public function employeeShiftTimings()
+    {
+        return $this->hasMany(\App\Models\HRMS\Employee\EmployeeShiftTimingM::class, 'attendance_time_id');
+    }
 }

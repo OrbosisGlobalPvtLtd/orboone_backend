@@ -187,18 +187,23 @@ class HrmsFileStorageS
         if ($existing) {
             $status = $existing->verification_status; // 'pending', 'verified', 'rejected'
 
-            if ($status === 'verified') {
-                // Case 3: Approved/verified - do NOT delete old file, keep it in storage (archive it)
-                if (Schema::hasColumn('employee_documents_new', 'is_active')) {
-                    $existing->is_active = false;
-                    $existing->archived_at = now();
-                    $existing->archived_by = Auth::id();
-                    $existing->archive_reason = 'Re-uploaded by employee/admin';
-                    $existing->save();
-                }
-            } else {
-                // Case 1 & 2: Pending or Rejected - delete old physical file to clean up storage
+            if ($status !== 'verified') {
+                // Pending or Rejected - delete old physical file to clean up storage
                 $this->deleteFileIfExists($existing->file_path);
+            }
+
+            if (Schema::hasColumn('employee_documents_new', 'is_active')) {
+                $existing->is_active = false;
+                if (Schema::hasColumn('employee_documents_new', 'archived_at')) {
+                    $existing->archived_at = now();
+                }
+                if (Schema::hasColumn('employee_documents_new', 'archived_by')) {
+                    $existing->archived_by = Auth::id();
+                }
+                if (Schema::hasColumn('employee_documents_new', 'archive_reason')) {
+                    $existing->archive_reason = 'Re-uploaded by employee/admin';
+                }
+                $existing->save();
             }
         }
 

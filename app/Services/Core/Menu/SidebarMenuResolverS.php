@@ -384,8 +384,11 @@ class SidebarMenuResolverS
     private function menuPermissionMap(): array
     {
         return [
+            'employee.shift-assignment.index' => ['employee.shift.assign.manage'],
             'attendances.today' => ['attendance.my.view', 'attendance.records.view_all', 'attendance.dashboard.view'],
-            'attendances.access-control' => ['attendance.access_control.manage', 'attendance.records.view_all', 'attendance.dashboard.view'],
+            'attendance.policies.index' => ['attendance.rules.manage'],
+            'attendance.rules.index' => ['attendance.rules.manage'],
+            'attendances.access-control' => ['attendance.blocked.view', 'attendance.access_control.manage', 'attendance.records.view_all', 'attendance.dashboard.view'],
             'documents.compliance.index' => ['documents.compliance.view'],
             'documents.verification.index' => ['documents.verification.view'],
             'documents.types.index' => ['documents.types.manage'],

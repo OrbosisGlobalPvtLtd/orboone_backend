@@ -38,7 +38,7 @@ return new class extends Migration
                 'updated_at' => now(),
             ]
         );
-        
+
         $menuId = DB::table('menus')->where('route', 'settings.notification-retention.index')->value('id');
 
         // 4. Map Menu to Role (role_menu_access)

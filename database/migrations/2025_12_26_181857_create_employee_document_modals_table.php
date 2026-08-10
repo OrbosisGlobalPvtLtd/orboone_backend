@@ -13,7 +13,7 @@ class CreateEmployeeDocumentModalsTable extends Migration
      */
     public function up()
     {
-     Schema::create('employee_documents', function (Blueprint $table) {
+        Schema::create('employee_documents', function (Blueprint $table) {
             $table->id();
 
             $table->unsignedBigInteger('user_id');

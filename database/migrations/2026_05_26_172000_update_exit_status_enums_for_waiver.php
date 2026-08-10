@@ -32,4 +32,3 @@ return new class extends Migration
         // Intentionally left empty to avoid destructive enum rollback.
     }
 };
-

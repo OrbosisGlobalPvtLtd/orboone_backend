@@ -388,7 +388,7 @@ return new class extends Migration
 
         $roleIds = DB::table('roles')->pluck('id', 'slug')->toArray();
         $allKeys = array_keys($permissionIds);
-        $operationalKeys = array_values(array_filter($allKeys, fn ($key) => $key !== 'enterprise_payroll_run.reopen'));
+        $operationalKeys = array_values(array_filter($allKeys, fn($key) => $key !== 'enterprise_payroll_run.reopen'));
         $roleKeys = [
             'super_admin' => $allKeys,
             'finance_admin' => $operationalKeys,

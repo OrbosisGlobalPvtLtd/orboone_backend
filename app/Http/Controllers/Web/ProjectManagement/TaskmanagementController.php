@@ -229,6 +229,18 @@ class TaskmanagementController extends Controller
 
         $user = User::find($request->user_id);
         $employee = EmployeeM::where('user_id', $request->user_id)->first();
+        $eligibilityService = app(\App\Services\HRMS\Employee\EmployeeEligibilityS::class);
+
+        if ($employee && !$eligibilityService->canUseTasks($employee)) {
+            if ($eligibilityService->isExitCompleted($employee) || $eligibilityService->isTerminated($employee)) {
+                return redirect()->back()->with('error', 'Cannot assign task. Employee employment has ended.');
+            }
+            if ($eligibilityService->isProfilePending($employee)) {
+                return redirect()->back()->with('error', 'Cannot assign task. Employee profile is pending completion.');
+            }
+            return redirect()->back()->with('error', 'Selected employee is not eligible to receive tasks.');
+        }
+
         $assigneeName = $user ? $user->name : ($employee->display_name ?? 'User #' . $request->user_id);
         $status = $request->status ?: 'pending';
 

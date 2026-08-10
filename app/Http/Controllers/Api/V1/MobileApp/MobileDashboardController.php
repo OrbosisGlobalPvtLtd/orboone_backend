@@ -58,8 +58,38 @@ class MobileDashboardController extends Controller
                 'employee_id' => $employee->id,
             ]);
             $employee->load('profile');
-            $profile = $employee->profile;
         }
+
+        $eligibilityService = app(\App\Services\HRMS\Employee\EmployeeEligibilityS::class);
+
+        if ($eligibilityService->isExitCompleted($employee) || $eligibilityService->isTerminated($employee)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your employment has ended.',
+                'code' => 'employment_ended',
+                'data' => null
+            ], 403);
+        }
+
+        if ($eligibilityService->isProfilePending($employee)) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Complete your profile to access HRMS services.',
+                'code' => 'profile_pending',
+                'data' => [
+                    'employee' => [
+                        'id' => $employee->id,
+                        'code' => $employee->employee_code,
+                        'name' => $employee->display_name ?? $user->name,
+                        'email' => $user->email,
+                    ],
+                    'restricted' => true,
+                    'allowed_modules' => ['profile', 'documents'],
+                ]
+            ], 200);
+        }
+
+        $profile = $employee->profile;
 
         // 1. Profile completion and gate status
         $profileGateStatus = $this->buildCompletionStatus($employee, $profile);
@@ -151,11 +181,12 @@ class MobileDashboardController extends Controller
                 ->groupBy('status')
                 ->pluck('total', 'status');
 
-            $leaveSummary['summary'] = [
-                'pending' => (int) ($statusCounts['pending'] ?? 0),
-                'approved' => (int) ($statusCounts['approved'] ?? 0),
-                'rejected' => (int) ($statusCounts['rejected'] ?? 0),
-                'total' => (int) $statusCounts->sum(),
+            $quota = app(\App\Services\HRMS\Leave\MonthlyLeaveQuotaService::class)->getMonthlyQuota($employee);
+            $leaveSummary['monthly_quota'] = [
+                'limit' => $quota['monthly_limit'],
+                'used' => $quota['current_month_used'],
+                'carry_forward' => $quota['carry_forward_available'],
+                'available' => $quota['available_this_month'],
             ];
 
             $year = Carbon::now('Asia/Kolkata')->year;

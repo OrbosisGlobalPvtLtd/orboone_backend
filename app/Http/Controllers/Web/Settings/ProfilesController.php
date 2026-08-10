@@ -87,8 +87,14 @@ class ProfilesController extends Controller
             }
 
             if (Schema::hasTable('employee_documents_new')) {
-                $employeeDocuments = DB::table('employee_documents_new')
-                    ->where('employee_id', $employee->id)
+                $docQuery = DB::table('employee_documents_new')
+                    ->where('employee_id', $employee->id);
+
+                if (Schema::hasColumn('employee_documents_new', 'is_active')) {
+                    $docQuery->where('is_active', 1);
+                }
+
+                $employeeDocuments = $docQuery->orderByDesc('id')
                     ->get()
                     ->keyBy('document_type_id');
             }

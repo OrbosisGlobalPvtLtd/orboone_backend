@@ -43,6 +43,12 @@ class CheckEmployeeProfileCompletion
             return $next($request);
         }
 
+        $eligibilityService = app(\App\Services\HRMS\Employee\EmployeeEligibilityS::class);
+        if ($eligibilityService->isExitCompleted($employee) || $eligibilityService->isTerminated($employee)) {
+            Auth::logout();
+            return redirect('/login')->with('fail', 'Your employment has ended. Please contact HR.');
+        }
+
         // if employee found, apply existing completion logic
         // Only apply to logged-in employees who are not admins
         if (!method_exists($user, 'isEmployee') || !$user->isEmployee() || $user->isAdmin()) {

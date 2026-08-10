@@ -171,3 +171,19 @@ Route::middleware(['auth', 'web.admin.access', 'module:hrms'])
                     ->name('destroy');
             });
     });
+
+Route::middleware(['auth', 'check.access'])
+    ->group(function () {
+        Route::get('/employee/shift-assignment', [\App\Http\Controllers\Web\HRMS\Employee\EmployeeShiftAssignmentC::class, 'index'])
+            ->middleware('permission:employee.shift.assign.manage')
+            ->name('employee.shift-assignment.index');
+
+        Route::post('/employee/shift-assignment/store', [\App\Http\Controllers\Web\HRMS\Employee\EmployeeShiftAssignmentC::class, 'store'])
+            ->middleware('permission:employee.shift.assign.manage')
+            ->name('employee.shift-assignment.store');
+
+        Route::put('/employee/shift-assignment/{id}/update', [\App\Http\Controllers\Web\HRMS\Employee\EmployeeShiftAssignmentC::class, 'update'])
+            ->middleware('permission:employee.shift.assign.manage')
+            ->name('employee.shift-assignment.update');
+    });
+

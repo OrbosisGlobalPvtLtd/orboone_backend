@@ -77,13 +77,13 @@ class EmployeeC extends Controller
             ->join('attendance_policy_rules', 'attendance_policy_rules.id', '=', 'employee_policy_assignments.policy_id')
             ->where('employee_policy_assignments.policy_type', 'attendance')
             ->where('employee_policy_assignments.is_active', 1)
-            ->where(function($q) use ($today) {
+            ->where(function ($q) use ($today) {
                 $q->whereNull('employee_policy_assignments.effective_from')
-                  ->orWhereDate('employee_policy_assignments.effective_from', '<=', $today);
+                    ->orWhereDate('employee_policy_assignments.effective_from', '<=', $today);
             })
-            ->where(function($q) use ($today) {
+            ->where(function ($q) use ($today) {
                 $q->whereNull('employee_policy_assignments.effective_to')
-                  ->orWhereDate('employee_policy_assignments.effective_to', '>=', $today);
+                    ->orWhereDate('employee_policy_assignments.effective_to', '>=', $today);
             })
             ->select('employee_policy_assignments.employee_id', 'attendance_policy_rules.policy_name');
 
@@ -240,13 +240,13 @@ class EmployeeC extends Controller
                             ->whereIn('employee_documents_new.employee_id', $empIds)
                             ->where(function ($q) {
                                 $q->where('document_types.name', 'Passport Size Photo')
-                                  ->orWhere('document_types.code', 'passport_size_photo')
-                                  ->orWhere('document_types.name', 'Passport Photo')
-                                  ->orWhere('document_types.code', 'passport_photo')
-                                  ->orWhere('document_types.name', 'Photo')
-                                  ->orWhere('document_types.name', 'Passport')
-                                  ->orWhere('document_types.name', 'like', '%Passport%Photo%')
-                                  ->orWhere('document_types.name', 'like', '%Passport%Size%Photo%');
+                                    ->orWhere('document_types.code', 'passport_size_photo')
+                                    ->orWhere('document_types.name', 'Passport Photo')
+                                    ->orWhere('document_types.code', 'passport_photo')
+                                    ->orWhere('document_types.name', 'Photo')
+                                    ->orWhere('document_types.name', 'Passport')
+                                    ->orWhere('document_types.name', 'like', '%Passport%Photo%')
+                                    ->orWhere('document_types.name', 'like', '%Passport%Size%Photo%');
                             })
                             ->select('employee_documents_new.employee_id', 'employee_documents_new.file_path', 'employee_documents_new.verification_status')
                             ->orderByRaw("CASE WHEN employee_documents_new.verification_status = 'verified' THEN 0 ELSE 1 END")
@@ -260,7 +260,8 @@ class EmployeeC extends Controller
                                 ? route('hrms.documents.file', ['path' => $document->file_path])
                                 : null;
                         }
-                    } catch (\Throwable $e) {}
+                    } catch (\Throwable $e) {
+                    }
                 }
 
                 $data = $employees->map(function ($employee) {
@@ -483,6 +484,14 @@ class EmployeeC extends Controller
             'actual_salary' => ['nullable', 'numeric', 'min:0'],
             'salary_effective_from' => ['nullable', 'date'],
             'salary_change_reason' => ['nullable', 'string', 'max:255'],
+            'punch_allowed_from' => ['required_if:work_schedule_type,flexible_part_time', 'nullable'],
+            'shift_start_time' => ['required_if:work_schedule_type,flexible_part_time', 'nullable'],
+            'late_after_time' => ['required_if:work_schedule_type,flexible_part_time', 'nullable'],
+            'half_day_after_time' => ['required_if:work_schedule_type,flexible_part_time', 'nullable'],
+            'block_after_time' => ['required_if:work_schedule_type,flexible_part_time', 'nullable'],
+            'shift_end_time' => ['required_if:work_schedule_type,flexible_part_time', 'nullable'],
+            'required_work_minutes' => ['required_if:work_schedule_type,flexible_part_time', 'nullable', 'integer'],
+            'lunch_minutes' => ['required_if:work_schedule_type,flexible_part_time', 'nullable', 'integer'],
         ]);
 
         $lifecyclePayload = $this->lifecycleService->buildLifecyclePayload($request->all());
@@ -589,6 +598,38 @@ class EmployeeC extends Controller
                     'effective_from' => $lifecyclePayload['joining_date'] ?: Carbon::now('Asia/Kolkata')->toDateString(),
                     'is_active' => 1,
                     'assigned_by_user_id' => auth()->id() ?: 1,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            if ($shift) {
+                $isFlexible = $request->work_schedule_type === 'flexible_part_time';
+
+                $punchAllowed = $isFlexible ? $request->punch_allowed_from : $shift->punch_allowed_from;
+                $shiftStart = $isFlexible ? $request->shift_start_time : $shift->shift_start_time;
+                $lateAfter = $isFlexible ? $request->late_after_time : $shift->late_after_time;
+                $halfDayAfter = $isFlexible ? $request->half_day_after_time : $shift->half_day_after_time;
+                $blockAfter = $isFlexible ? $request->block_after_time : $shift->block_after_time;
+                $shiftEnd = $isFlexible ? $request->shift_end_time : $shift->shift_end_time;
+                $reqMinutes = $isFlexible ? $request->required_work_minutes : $shift->required_work_minutes;
+                $lunchMinutes = $isFlexible ? $request->lunch_minutes : $shift->lunch_break_minutes;
+
+                DB::table('employee_shift_timings')->insert([
+                    'employee_id' => $employeeId,
+                    'attendance_time_id' => $shift->id,
+                    'attendance_policy_rule_id' => $request->attendance_policy_rule_id ?? $request->attendance_policy_id ?? DB::table('employees_new')->where('id', $employeeId)->value('attendance_policy_rule_id'),
+                    'punch_allowed_from' => $punchAllowed ? Carbon::parse($punchAllowed)->format('H:i:s') : null,
+                    'shift_start_time' => $shiftStart ? Carbon::parse($shiftStart)->format('H:i:s') : null,
+                    'late_after_time' => $lateAfter ? Carbon::parse($lateAfter)->format('H:i:s') : null,
+                    'half_day_after_time' => $halfDayAfter ? Carbon::parse($halfDayAfter)->format('H:i:s') : null,
+                    'block_after_time' => $blockAfter ? Carbon::parse($blockAfter)->format('H:i:s') : null,
+                    'shift_end_time' => $shiftEnd ? Carbon::parse($shiftEnd)->format('H:i:s') : null,
+                    'required_work_minutes' => $reqMinutes,
+                    'lunch_minutes' => $lunchMinutes,
+                    'effective_from' => $lifecyclePayload['joining_date'] ?: Carbon::now('Asia/Kolkata')->toDateString(),
+                    'is_active' => 1,
+                    'created_by' => auth()->id() ?: 1,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
@@ -731,7 +772,7 @@ class EmployeeC extends Controller
             ->where(function ($query) use ($currentManagerId) {
                 $query->where(function ($q) {
                     $q->where($this->profileTable . '.is_profile_completed', 1)
-                      ->where($this->profileTable . '.profile_status', 'approved');
+                        ->where($this->profileTable . '.profile_status', 'approved');
                 });
                 if ($currentManagerId) {
                     $query->orWhere($this->employeeTable . '.id', $currentManagerId);
@@ -774,15 +815,27 @@ class EmployeeC extends Controller
 
         $uploadedDocs = collect();
         if (Schema::hasTable('employee_documents_new')) {
-            $uploadedDocs = DB::table('employee_documents_new')
+            $query = DB::table('employee_documents_new')
                 ->leftJoin('users as verifier', 'verifier.id', '=', 'employee_documents_new.verified_by_user_id')
-                ->where('employee_documents_new.employee_id', $employee)
-                ->select('employee_documents_new.*', 'verifier.name as verifier_name')
+                ->where('employee_documents_new.employee_id', $employee);
+
+            if (Schema::hasColumn('employee_documents_new', 'is_active')) {
+                $query->where('employee_documents_new.is_active', 1);
+            }
+
+            $uploadedDocs = $query->select('employee_documents_new.*', 'verifier.name as verifier_name')
+                ->orderByDesc('employee_documents_new.id')
                 ->get();
         }
 
         $documentsList = [];
+        $seenDocTypes = [];
         foreach ($uploadedDocs as $uploaded) {
+            $typeKey = $uploaded->document_type_id ?: ('title_' . \Illuminate\Support\Str::slug($uploaded->title ?? 'doc'));
+            if (isset($seenDocTypes[$typeKey])) {
+                continue;
+            }
+            $seenDocTypes[$typeKey] = true;
             $type = $docTypes->firstWhere('id', $uploaded->document_type_id);
             if (!$type && $uploaded->document_type_id) {
                 $type = DB::table('document_types')->where('id', $uploaded->document_type_id)->first();
@@ -815,6 +868,19 @@ class EmployeeC extends Controller
         $employeeDocuments = collect($documentsList);
         $attendanceTimes = DB::table('attendance_times')->where('is_active', 1)->orderBy('id')->get();
 
+        $activeShiftTiming = DB::table('employee_shift_timings')
+            ->where('employee_id', $employeeData->id)
+            ->where('is_active', 1)
+            ->first();
+
+        $shiftHistory = DB::table('employee_shift_timings')
+            ->leftJoin('attendance_times', 'attendance_times.id', '=', 'employee_shift_timings.attendance_time_id')
+            ->where('employee_shift_timings.employee_id', $employeeData->id)
+            ->select('employee_shift_timings.*', 'attendance_times.name as shift_name')
+            ->orderByDesc('employee_shift_timings.effective_from')
+            ->orderByDesc('employee_shift_timings.id')
+            ->get();
+
         return view('hrms.employee.manage', compact(
             'employeeData',
             'departments',
@@ -823,7 +889,9 @@ class EmployeeC extends Controller
             'reportingManagers',
             'salaryHistories',
             'employeeDocuments',
-            'attendanceTimes'
+            'attendanceTimes',
+            'activeShiftTiming',
+            'shiftHistory'
         ));
     }
 
@@ -856,6 +924,15 @@ class EmployeeC extends Controller
             'probation_months' => ['nullable', 'integer', 'min:1'],
             'probation_start_date' => ['nullable', 'date'],
             'probation_end_date' => ['nullable', 'date'],
+
+            'punch_allowed_from' => ['required_if:work_schedule_type,flexible_part_time', 'nullable'],
+            'shift_start_time' => ['required_if:work_schedule_type,flexible_part_time', 'nullable'],
+            'late_after_time' => ['required_if:work_schedule_type,flexible_part_time', 'nullable'],
+            'half_day_after_time' => ['required_if:work_schedule_type,flexible_part_time', 'nullable'],
+            'block_after_time' => ['required_if:work_schedule_type,flexible_part_time', 'nullable'],
+            'shift_end_time' => ['required_if:work_schedule_type,flexible_part_time', 'nullable'],
+            'required_work_minutes' => ['required_if:work_schedule_type,flexible_part_time', 'nullable', 'integer'],
+            'lunch_minutes' => ['required_if:work_schedule_type,flexible_part_time', 'nullable', 'integer'],
 
             'actual_salary' => ['nullable', 'numeric', 'min:0'],
             'salary_effective_from' => ['nullable', 'date'],
@@ -1036,6 +1113,163 @@ class EmployeeC extends Controller
                 ]);
             }
 
+            if ($newShift) {
+                $isFlexible = $request->work_schedule_type === 'flexible_part_time';
+
+                $punchAllowed = $isFlexible ? ($request->punch_allowed_from ? Carbon::parse($request->punch_allowed_from)->format('H:i:s') : null) : $newShift->punch_allowed_from;
+                $shiftStart = $isFlexible ? ($request->shift_start_time ? Carbon::parse($request->shift_start_time)->format('H:i:s') : null) : $newShift->shift_start_time;
+                $lateAfter = $isFlexible ? ($request->late_after_time ? Carbon::parse($request->late_after_time)->format('H:i:s') : null) : $newShift->late_after_time;
+                $halfDayAfter = $isFlexible ? ($request->half_day_after_time ? Carbon::parse($request->half_day_after_time)->format('H:i:s') : null) : $newShift->half_day_after_time;
+                $blockAfter = $isFlexible ? ($request->block_after_time ? Carbon::parse($request->block_after_time)->format('H:i:s') : null) : $newShift->block_after_time;
+                $shiftEnd = $isFlexible ? ($request->shift_end_time ? Carbon::parse($request->shift_end_time)->format('H:i:s') : null) : $newShift->shift_end_time;
+                $reqMinutes = $isFlexible ? ($request->required_work_minutes !== null ? (int) $request->required_work_minutes : null) : $newShift->required_work_minutes;
+                $lunchMinutes = $isFlexible ? ($request->lunch_minutes !== null ? (int) $request->lunch_minutes : null) : $newShift->lunch_break_minutes;
+
+                $activeTiming = DB::table('employee_shift_timings')
+                    ->where('employee_id', $employee)
+                    ->where('is_active', 1)
+                    ->first();
+
+                // Format values for active timing comparison
+                $activePunchAllowed = $activeTiming ? ($activeTiming->punch_allowed_from ? Carbon::parse($activeTiming->punch_allowed_from)->format('H:i:s') : null) : null;
+                $activeShiftStart = $activeTiming ? ($activeTiming->shift_start_time ? Carbon::parse($activeTiming->shift_start_time)->format('H:i:s') : null) : null;
+                $activeLateAfter = $activeTiming ? ($activeTiming->late_after_time ? Carbon::parse($activeTiming->late_after_time)->format('H:i:s') : null) : null;
+                $activeHalfDayAfter = $activeTiming ? ($activeTiming->half_day_after_time ? Carbon::parse($activeTiming->half_day_after_time)->format('H:i:s') : null) : null;
+                $activeBlockAfter = $activeTiming ? ($activeTiming->block_after_time ? Carbon::parse($activeTiming->block_after_time)->format('H:i:s') : null) : null;
+                $activeShiftEnd = $activeTiming ? ($activeTiming->shift_end_time ? Carbon::parse($activeTiming->shift_end_time)->format('H:i:s') : null) : null;
+
+                $hasChanges = !$activeTiming
+                    || (int)$activeTiming->attendance_time_id !== (int)$newShift->id
+                    || $activePunchAllowed !== $punchAllowed
+                    || $activeShiftStart !== $shiftStart
+                    || $activeLateAfter !== $lateAfter
+                    || $activeHalfDayAfter !== $halfDayAfter
+                    || $activeBlockAfter !== $blockAfter
+                    || $activeShiftEnd !== $shiftEnd
+                    || (int)$activeTiming->required_work_minutes !== $reqMinutes
+                    || (int)$activeTiming->lunch_minutes !== $lunchMinutes;
+
+                if (! $hasChanges) {
+                    throw new \Exception('DEBUG_NO_CHANGES: activeTiming_shift=' . ($activeTiming ? $activeTiming->attendance_time_id : 'null') . ' newShift_id=' . ($newShift ? $newShift->id : 'null'));
+                }
+
+                if ($hasChanges) {
+                    $targetEffectiveFrom = $request->shift_effective_from ?: Carbon::now('Asia/Kolkata')->toDateString();
+                    
+                    $hasPunchedIn = DB::table('attendances')
+                        ->where('employee_id', $employee)
+                        ->whereDate('attendance_date', $targetEffectiveFrom)
+                        ->whereNotNull('punch_in_time')
+                        ->exists();
+
+                    if ($hasPunchedIn) {
+                        $newEffectiveFrom = Carbon::parse($targetEffectiveFrom)->addDay()->toDateString();
+
+                        if ($activeTiming) {
+                            if ($activeTiming->effective_from && Carbon::parse($activeTiming->effective_from)->gt(Carbon::parse($targetEffectiveFrom))) {
+                                DB::table('employee_shift_timings')
+                                    ->where('id', $activeTiming->id)
+                                    ->delete();
+                            } else {
+                                DB::table('employee_shift_timings')
+                                    ->where('id', $activeTiming->id)
+                                    ->update([
+                                        'is_active' => 1,
+                                        'effective_to' => $targetEffectiveFrom,
+                                        'updated_at' => now(),
+                                    ]);
+                            }
+                        }
+
+                        DB::table('employee_shift_timings')->insert([
+                            'employee_id' => $employee,
+                            'attendance_time_id' => $newShift->id,
+                            'attendance_policy_rule_id' => $request->attendance_policy_rule_id ?? $request->attendance_policy_id ?? DB::table('employees_new')->where('id', $employee)->value('attendance_policy_rule_id'),
+                            'punch_allowed_from' => $punchAllowed,
+                            'shift_start_time' => $shiftStart,
+                            'late_after_time' => $lateAfter,
+                            'half_day_after_time' => $halfDayAfter,
+                            'block_after_time' => $blockAfter,
+                            'shift_end_time' => $shiftEnd,
+                            'required_work_minutes' => $reqMinutes,
+                            'lunch_minutes' => $lunchMinutes,
+                            'effective_from' => $newEffectiveFrom,
+                            'is_active' => 1,
+                            'created_by' => auth()->id() ?: 1,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+
+                        session()->flash('warning', "The employee has already punched in today. The current day's attendance will remain on the existing shift. The new shift will automatically become effective from tomorrow.");
+                    } else {
+                        $newEffectiveFrom = $targetEffectiveFrom;
+                        $yesterday = Carbon::parse($targetEffectiveFrom)->subDay()->toDateString();
+
+                        $isFlexibleNew = $request->work_schedule_type === 'flexible_part_time';
+                        $isFlexibleOld = false;
+                        if ($activeTiming) {
+                            $oldShiftType = DB::table('attendance_times')->where('id', $activeTiming->attendance_time_id)->value('shift_type');
+                            $isFlexibleOld = ($oldShiftType === 'flexible_part_time');
+                        }
+
+                        if ($activeTiming && $isFlexibleOld && $isFlexibleNew && ($activeTiming->effective_from && Carbon::parse($activeTiming->effective_from)->eq(Carbon::parse($newEffectiveFrom)))) {
+                            // CASE 4: Flexible -> Flexible. Update timing fields of current active Flexible assignment in place.
+                            DB::table('employee_shift_timings')
+                                ->where('id', $activeTiming->id)
+                                ->update([
+                                    'punch_allowed_from' => $punchAllowed,
+                                    'shift_start_time' => $shiftStart,
+                                    'late_after_time' => $lateAfter,
+                                    'half_day_after_time' => $halfDayAfter,
+                                    'block_after_time' => $blockAfter,
+                                    'shift_end_time' => $shiftEnd,
+                                    'required_work_minutes' => $reqMinutes,
+                                    'lunch_minutes' => $lunchMinutes,
+                                    'updated_at' => now(),
+                                ]);
+                        } else {
+                            if ($activeTiming) {
+                                if ($activeTiming->effective_from && Carbon::parse($activeTiming->effective_from)->gte(Carbon::parse($newEffectiveFrom))) {
+                                    // Overwriting timing changed today/future - delete old row to avoid date overlap
+                                    DB::table('employee_shift_timings')
+                                        ->where('id', $activeTiming->id)
+                                        ->delete();
+                                } else {
+                                    // Deactivate old row: is_active = 0, effective_to = yesterday
+                                    DB::table('employee_shift_timings')
+                                        ->where('id', $activeTiming->id)
+                                        ->update([
+                                            'is_active' => 0,
+                                            'effective_to' => $yesterday,
+                                            'updated_at' => now(),
+                                        ]);
+                                }
+                            }
+
+                            // Insert new row: is_active = 1, effective_from = newEffectiveFrom, effective_to = null
+                            DB::table('employee_shift_timings')->insert([
+                                'employee_id' => $employee,
+                                'attendance_time_id' => $newShift->id,
+                                'attendance_policy_rule_id' => $request->attendance_policy_rule_id ?? $request->attendance_policy_id ?? DB::table('employees_new')->where('id', $employee)->value('attendance_policy_rule_id'),
+                                'punch_allowed_from' => $punchAllowed,
+                                'shift_start_time' => $shiftStart,
+                                'late_after_time' => $lateAfter,
+                                'half_day_after_time' => $halfDayAfter,
+                                'block_after_time' => $blockAfter,
+                                'shift_end_time' => $shiftEnd,
+                                'required_work_minutes' => $reqMinutes,
+                                'lunch_minutes' => $lunchMinutes,
+                                'effective_from' => $newEffectiveFrom,
+                                'is_active' => 1,
+                                'created_by' => auth()->id() ?: 1,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
+                        }
+                    }
+                }
+            }
+
             $oldSalary = round((float)($employeeData->actual_salary ?? 0), 2);
             $newSalary = round((float)($lifecyclePayload['actual_salary'] ?? 0), 2);
 
@@ -1190,16 +1424,28 @@ class EmployeeC extends Controller
         // 3. Fetch uploaded documents
         $uploadedDocs = collect();
         if (Schema::hasTable('employee_documents_new')) {
-            $uploadedDocs = DB::table('employee_documents_new')
+            $query = DB::table('employee_documents_new')
                 ->leftJoin('users as verifier', 'verifier.id', '=', 'employee_documents_new.verified_by_user_id')
-                ->where('employee_documents_new.employee_id', $employee)
-                ->select('employee_documents_new.*', 'verifier.name as verifier_name')
+                ->where('employee_documents_new.employee_id', $employee);
+
+            if (Schema::hasColumn('employee_documents_new', 'is_active')) {
+                $query->where('employee_documents_new.is_active', 1);
+            }
+
+            $uploadedDocs = $query->select('employee_documents_new.*', 'verifier.name as verifier_name')
+                ->orderByDesc('employee_documents_new.id')
                 ->get();
         }
 
-        // 4. Map only uploaded documents
+        // 4. Map only latest active uploaded document per document_type_id
         $documentsList = [];
+        $seenDocTypes = [];
         foreach ($uploadedDocs as $uploaded) {
+            $typeKey = $uploaded->document_type_id ?: ('title_' . \Illuminate\Support\Str::slug($uploaded->title ?? 'doc'));
+            if (isset($seenDocTypes[$typeKey])) {
+                continue;
+            }
+            $seenDocTypes[$typeKey] = true;
             // Find corresponding document type if it exists
             $type = $docTypes->firstWhere('id', $uploaded->document_type_id);
             if (!$type && $uploaded->document_type_id) {
@@ -1250,13 +1496,19 @@ class EmployeeC extends Controller
         $roles = $formData['roles'];
         $attendanceTimes = $formData['attendanceTimes'];
 
+        $activeShiftTiming = DB::table('employee_shift_timings')
+            ->where('employee_id', $employeeData->id)
+            ->where('is_active', 1)
+            ->first();
+
         return view('hrms.employee.edit', compact(
             'employeeData',
             'departments',
             'designations',
             'reportingManagers',
             'roles',
-            'attendanceTimes'
+            'attendanceTimes',
+            'activeShiftTiming'
         ));
     }
 
@@ -1342,17 +1594,25 @@ class EmployeeC extends Controller
         $documents = collect();
 
         if (Schema::hasTable('employee_documents_new')) {
-            $documents = DB::table('employee_documents_new')
+            $query = DB::table('employee_documents_new')
                 ->leftJoin('document_types', 'document_types.id', '=', 'employee_documents_new.document_type_id')
-                ->where('employee_documents_new.employee_id', $id)
-                ->select(
+                ->where('employee_documents_new.employee_id', $id);
+
+            if (Schema::hasColumn('employee_documents_new', 'is_active')) {
+                $query->where('employee_documents_new.is_active', 1);
+            }
+
+            $allDocs = $query->select(
                     'employee_documents_new.*',
                     DB::raw("COALESCE(document_types.name, employee_documents_new.title, 'Document') as document_type_name"),
                     'document_types.code as document_type_code'
                 )
-                ->orderByDesc('employee_documents_new.is_required')
-                ->orderBy('document_type_name')
+                ->orderByDesc('employee_documents_new.id')
                 ->get();
+
+            $documents = $allDocs->unique(function ($doc) {
+                return $doc->document_type_id ?: ('title_' . \Illuminate\Support\Str::slug($doc->title ?? 'doc'));
+            })->sortByDesc('is_required')->values();
         }
 
         return view('hrms.employee.profile.view', compact('profile', 'documents'));
@@ -1739,7 +1999,7 @@ class EmployeeC extends Controller
                     $sq->whereNotNull('employee_exit_processes.id')
                         ->whereNotIn('employee_exit_processes.status', ['cancelled', 'rejected', 'rolled_back']);
                 })
-                ->orWhereIn($this->employeeTable . '.employment_status', ['terminated', 'absconded']);
+                    ->orWhereIn($this->employeeTable . '.employment_status', ['terminated', 'absconded']);
             })
             ->orderByDesc($this->employeeTable . '.id')
             ->get();
@@ -1750,7 +2010,7 @@ class EmployeeC extends Controller
                 $clearanceList = DB::table('employee_exit_clearances')
                     ->where('exit_process_id', $emp->exit_process_id)
                     ->get();
-                
+
                 // If it's empty, initialize them dynamically for safety
                 if ($clearanceList->isEmpty()) {
                     $this->exitProcessService->initializeClearances($emp->exit_process_id);
@@ -1758,9 +2018,9 @@ class EmployeeC extends Controller
                         ->where('exit_process_id', $emp->exit_process_id)
                         ->get();
                 }
-                
+
                 $emp->clearances = $clearanceList->keyBy('department_key');
-                
+
                 // Fetch module summary for auto verification display
                 $emp->module_summary = $this->exitProcessService->getModuleSummary($emp->id, $emp);
             } else {
@@ -1798,12 +2058,12 @@ class EmployeeC extends Controller
         if (Schema::hasColumn($employeeTable, 'is_active')) {
             $query->where($employeeTable . '.is_active', 1);
         }
-        
+
         $query->where($employeeTable . '.employment_status', 'active');
 
         $query->where(function ($q) use ($profileTable) {
             $q->whereNull($profileTable . '.employee_id')
-              ->orWhere($profileTable . '.profile_status', 'approved');
+                ->orWhere($profileTable . '.profile_status', 'approved');
         });
 
         $employees = $query->get();
@@ -1849,7 +2109,7 @@ class EmployeeC extends Controller
 
                 // Notify HR/Super Admin & Employee
                 $empName = DB::table('users')->where('id', $employeeData->user_id)->value('name') ?: 'Employee';
-                
+
                 app(\App\Services\HRMS\Notification\NotificationS::class)
                     ->notifyEmployee(
                         'Permanent Confirmation Scheduled',
@@ -1935,7 +2195,7 @@ class EmployeeC extends Controller
 
                 // Notify HR/Super Admin & Employee
                 $empName = DB::table('users')->where('id', $employeeData->user_id)->value('name') ?: 'Employee';
-                
+
                 app(\App\Services\HRMS\Notification\NotificationS::class)
                     ->notifyEmployee(
                         'Permanent Confirmation Activated',
@@ -2721,7 +2981,7 @@ class EmployeeC extends Controller
             if ($shift) {
                 $updates = [];
                 foreach (['shift_start_time', 'shift_end_time', 'required_work_minutes', 'half_day_min_minutes', 'absent_below_minutes', 'lunch_break_minutes'] as $field) {
-                    if (isset($shift->{$field}) && (!isset($policy->{$field}) || $policy->{$field} != $shift->{$field})) {
+                    if (Schema::hasColumn('attendance_policy_rules', $field) && isset($shift->{$field}) && (!isset($policy->{$field}) || $policy->{$field} != $shift->{$field})) {
                         $updates[$field] = $shift->{$field};
                     }
                 }
@@ -2767,7 +3027,7 @@ class EmployeeC extends Controller
                 'updated_at' => now(),
             ];
             // Filter fields to match columns in database
-            $policyData = collect($policyData)->filter(fn ($value, $column) => Schema::hasColumn('attendance_policy_rules', $column))->all();
+            $policyData = collect($policyData)->filter(fn($value, $column) => Schema::hasColumn('attendance_policy_rules', $column))->all();
             return DB::table('attendance_policy_rules')->insertGetId($policyData);
         }
 

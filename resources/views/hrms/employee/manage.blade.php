@@ -173,13 +173,40 @@
         border: 1px solid rgba(255, 255, 255, 0.2) !important;
     }
 
-    .ev-header .ev-pill-active { background: rgba(22, 163, 74, 0.3) !important; border-color: rgba(22, 163, 74, 0.4) !important; }
-    .ev-header .ev-pill-inactive { background: rgba(220, 38, 38, 0.3) !important; border-color: rgba(220, 38, 38, 0.4) !important; }
-    .ev-header .ev-pill-completed { background: rgba(22, 163, 74, 0.3) !important; border-color: rgba(22, 163, 74, 0.4) !important; }
-    .ev-header .ev-pill-pending { background: rgba(217, 119, 6, 0.3) !important; border-color: rgba(217, 119, 6, 0.4) !important; }
-    .ev-header .ev-pill-submitted { background: rgba(2, 132, 199, 0.3) !important; border-color: rgba(2, 132, 199, 0.4) !important; }
-    .ev-header .ev-pill-rejected { background: rgba(220, 38, 38, 0.3) !important; border-color: rgba(220, 38, 38, 0.4) !important; }
-    .ev-header .ev-pill-default { background: rgba(255, 255, 255, 0.1) !important; border-color: rgba(255, 255, 255, 0.15) !important; }
+    .ev-header .ev-pill-active {
+        background: rgba(22, 163, 74, 0.3) !important;
+        border-color: rgba(22, 163, 74, 0.4) !important;
+    }
+
+    .ev-header .ev-pill-inactive {
+        background: rgba(220, 38, 38, 0.3) !important;
+        border-color: rgba(220, 38, 38, 0.4) !important;
+    }
+
+    .ev-header .ev-pill-completed {
+        background: rgba(22, 163, 74, 0.3) !important;
+        border-color: rgba(22, 163, 74, 0.4) !important;
+    }
+
+    .ev-header .ev-pill-pending {
+        background: rgba(217, 119, 6, 0.3) !important;
+        border-color: rgba(217, 119, 6, 0.4) !important;
+    }
+
+    .ev-header .ev-pill-submitted {
+        background: rgba(2, 132, 199, 0.3) !important;
+        border-color: rgba(2, 132, 199, 0.4) !important;
+    }
+
+    .ev-header .ev-pill-rejected {
+        background: rgba(220, 38, 38, 0.3) !important;
+        border-color: rgba(220, 38, 38, 0.4) !important;
+    }
+
+    .ev-header .ev-pill-default {
+        background: rgba(255, 255, 255, 0.1) !important;
+        border-color: rgba(255, 255, 255, 0.15) !important;
+    }
 
     .em-layout {
         display: grid;
@@ -704,13 +731,13 @@
         border: 1px solid #E2E8F0;
         box-shadow: 0 4px 18px rgba(148, 163, 184, 0.08);
     }
-    
+
     .em-card.is-editing {
         border-color: var(--orb-primary);
         box-shadow: 0 8px 30px rgba(75, 0, 232, 0.1);
         transform: translateY(-2px);
     }
-    
+
     .em-card-head {
         display: flex;
         justify-content: space-between;
@@ -718,13 +745,13 @@
         gap: 16px;
         flex-wrap: wrap;
     }
-    
+
     .card-header-actions {
         display: flex;
         gap: 8px;
         align-items: center;
     }
-    
+
     /* Document grid layout styles */
     .em-doc-grid {
         display: grid;
@@ -1009,6 +1036,7 @@
             transform: translateX(100%);
             opacity: 0;
         }
+
         to {
             transform: translateX(0);
             opacity: 1;
@@ -1016,43 +1044,43 @@
     }
 
     .manage-action-btn {
-      height: 40px;
-      border-radius: 12px;
-      padding: 0 16px;
-      font-size: 13px;
-      font-weight: 900;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      text-decoration: none !important;
+        height: 40px;
+        border-radius: 12px;
+        padding: 0 16px;
+        font-size: 13px;
+        font-weight: 900;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        text-decoration: none !important;
     }
 
     .manage-btn-cancel {
-      background: #fff !important;
-      color: #344054 !important;
-      border: 1px solid #E7EAF3 !important;
-      box-shadow: 0 8px 18px rgba(16,24,40,.06) !important;
+        background: #fff !important;
+        color: #344054 !important;
+        border: 1px solid #E7EAF3 !important;
+        box-shadow: 0 8px 18px rgba(16, 24, 40, .06) !important;
     }
 
     .manage-btn-save {
-      background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary)) !important;
-      color: #fff !important;
-      border: 0 !important;
-      box-shadow: 0 10px 24px rgba(75,0,232,.24) !important;
+        background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary)) !important;
+        color: #fff !important;
+        border: 0 !important;
+        box-shadow: 0 10px 24px rgba(75, 0, 232, .24) !important;
     }
 
     .manage-btn-save:hover,
     .manage-btn-save:focus,
     .manage-btn-save:active {
-      background: linear-gradient(135deg,#3F00C8,#7600D6) !important;
-      color: #fff !important;
+        background: linear-gradient(135deg, #3F00C8, #7600D6) !important;
+        color: #fff !important;
     }
 
     .manage-btn-save:disabled {
-      opacity: .6 !important;
-      color: #fff !important;
-      cursor: not-allowed !important;
+        opacity: .6 !important;
+        color: #fff !important;
+        cursor: not-allowed !important;
     }
 
     .btn-doc-edit-pill {
@@ -1108,6 +1136,30 @@
     .btn-doc-reject:hover {
         background: #FEE2E2 !important;
     }
+
+    .time-picker-container {
+        position: relative;
+        width: 100%;
+    }
+    .native-time-input {
+        color: transparent !important;
+        caret-color: transparent !important;
+        background: transparent !important;
+    }
+    .native-time-input::-webkit-calendar-picker-indicator {
+        cursor: pointer;
+        opacity: 1;
+    }
+    .time-display-val {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+        font-size: 13px;
+        font-weight: 800;
+        color: var(--orb-text);
+    }
 </style>
 
 @php
@@ -1156,18 +1208,18 @@ $employeeDocuments = $employeeDocuments ?? collect();
 $user = auth()->user();
 $canSeeSalary = false;
 if ($user) {
-    $canSeeSalary = $user->hasRole('super_admin') 
-        || $user->hasRole('Super Admin') 
-        || $user->hasRole('hr_admin') 
-        || $user->hasRole('hr') 
-        || $user->hasRole('admin') 
-        || $user->hasRole('finance_admin')
-        || $user->can('hrms.employees.salary')
-        || $user->can('employees.salary')
-        || $user->can('salary.view')
-        || $user->can('payroll.view')
-        || $user->can('employees.edit')
-        || $user->can('hrms.employees.edit');
+$canSeeSalary = $user->hasRole('super_admin')
+|| $user->hasRole('Super Admin')
+|| $user->hasRole('hr_admin')
+|| $user->hasRole('hr')
+|| $user->hasRole('admin')
+|| $user->hasRole('finance_admin')
+|| $user->can('hrms.employees.salary')
+|| $user->can('employees.salary')
+|| $user->can('salary.view')
+|| $user->can('payroll.view')
+|| $user->can('employees.edit')
+|| $user->can('hrms.employees.edit');
 }
 @endphp
 
@@ -1177,6 +1229,12 @@ if ($user) {
         @if (session('success'))
         <div class="alert alert-success border-0 shadow-sm mb-3" style="border-radius:14px;font-weight:800;">
             <i class="fas fa-check-circle mr-2"></i>{{ session('success') }}
+        </div>
+        @endif
+
+        @if (session('warning'))
+        <div class="alert alert-warning border-0 shadow-sm mb-3" style="border-radius:14px;font-weight:800;background-color:#fff3cd;color:#856404;border-color:#ffeeba;">
+            <i class="fas fa-exclamation-triangle mr-2"></i>{{ session('warning') }}
         </div>
         @endif
 
@@ -1200,25 +1258,24 @@ if ($user) {
             <div class="ev-header">
                 <div class="ev-user">
                     @php
-                        $passportPhotoUrl = resolveEmployeePassportPhoto($employeeData);
-                        $employeeInitial = $initial;
-                        $employeeName = $employeeData->name ?? 'Employee';
+                    $passportPhotoUrl = resolveEmployeePassportPhoto($employeeData);
+                    $employeeInitial = $initial;
+                    $employeeName = $employeeData->name ?? 'Employee';
                     @endphp
                     <span class="hrms-emp-avatar mr-3">
                         @if($passportPhotoUrl)
-                            <img
-                                src="{{ $passportPhotoUrl }}"
-                                alt="{{ $employeeName }}"
-                                class="hrms-emp-avatar-img"
-                                onerror="this.style.display='none'; this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.remove('is-hidden'); this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.add('is-visible');"
-                            >
-                            <span class="hrms-emp-avatar-fallback is-hidden">
-                                {{ $employeeInitial }}
-                            </span>
+                        <img
+                            src="{{ $passportPhotoUrl }}"
+                            alt="{{ $employeeName }}"
+                            class="hrms-emp-avatar-img"
+                            onerror="this.style.display='none'; this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.remove('is-hidden'); this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.add('is-visible');">
+                        <span class="hrms-emp-avatar-fallback is-hidden">
+                            {{ $employeeInitial }}
+                        </span>
                         @else
-                            <span class="hrms-emp-avatar-fallback is-visible">
-                                {{ $employeeInitial }}
-                            </span>
+                        <span class="hrms-emp-avatar-fallback is-visible">
+                            {{ $employeeInitial }}
+                        </span>
                         @endif
                     </span>
 
@@ -1397,23 +1454,23 @@ if ($user) {
                                     <select name="work_schedule_type" id="work_schedule_type" class="em-control editable-select" disabled>
                                         <option value="">Select Schedule</option>
                                         @foreach($attendanceTimes as $shiftItem)
-                                            @php
-                                                $currentVal = old('work_schedule_type', $employeeData->work_schedule_type ?? '');
-                                                $isMatch = $currentVal == $shiftItem->code 
-                                                        || $currentVal == str_replace('_shift', '', $shiftItem->code)
-                                                        || (in_array($currentVal, ['general', 'full_day']) && str_contains($shiftItem->code, 'general'))
-                                                        || (in_array($currentVal, ['part_time', 'part_day']) && $shiftItem->code === 'part_time_shift')
-                                                        || (in_array($currentVal, ['half_day', 'hourly']) && $shiftItem->code === 'half_day_shift')
-                                                        || (in_array($currentVal, ['wfh']) && $shiftItem->code === 'wfh_shift');
+                                        @php
+                                        $currentVal = old('work_schedule_type', $employeeData->work_schedule_type ?? '');
+                                        $isMatch = $currentVal == $shiftItem->code
+                                        || $currentVal == str_replace('_shift', '', $shiftItem->code)
+                                        || (in_array($currentVal, ['general', 'full_day']) && str_contains($shiftItem->code, 'general'))
+                                        || (in_array($currentVal, ['part_time', 'part_day']) && $shiftItem->code === 'part_time_shift')
+                                        || (in_array($currentVal, ['half_day', 'hourly']) && $shiftItem->code === 'half_day_shift')
+                                        || (in_array($currentVal, ['wfh']) && $shiftItem->code === 'wfh_shift');
 
-                                                $displayName = $shiftItem->name;
-                                                if (str_contains($shiftItem->code, 'general')) {
-                                                    $displayName = 'General Shift (Full Day)';
-                                                }
-                                            @endphp
-                                            <option value="{{ $shiftItem->code }}" {{ $isMatch ? 'selected' : '' }}>
-                                                {{ $displayName }}
-                                            </option>
+                                        $displayName = $shiftItem->name;
+                                        if (str_contains($shiftItem->code, 'general')) {
+                                        $displayName = 'General Shift (Full Day)';
+                                        }
+                                        @endphp
+                                        <option value="{{ $shiftItem->code }}" {{ $isMatch ? 'selected' : '' }}>
+                                            {{ $displayName }}
+                                        </option>
                                         @endforeach
                                     </select>
                                     @error('work_schedule_type') <div class="em-error">{{ $message }}</div> @enderror
@@ -1441,6 +1498,73 @@ if ($user) {
                                     <label>Relieving Date</label>
                                     <input type="date" name="relieving_date" class="em-control editable" value="{{ old('relieving_date', $employeeData->relieving_date) }}" readonly>
                                     @error('relieving_date') <div class="em-error">{{ $message }}</div> @enderror
+                                </div>
+                            </div>
+
+                            <!-- Flexible Shift Timings Box -->
+                            <div id="flexible_shift_timings_box" class="em-section" style="display: none; border-top: 1px dashed var(--orb-border); margin-top: 20px; padding-top: 15px;">
+                                <h6 class="em-section-title" style="color: var(--orb-primary); font-weight: 750; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                                    <i class="fas fa-clock"></i> Flexible Shift Timing Customisation
+                                </h6>
+                                <div class="em-form-grid">
+                                    <div class="em-field">
+                                        <label>Punch Allowed From <span class="required">*</span></label>
+                                        <div class="time-picker-container">
+                                            <input type="time" name="punch_allowed_from" id="punch_allowed_from" class="em-control editable native-time-input" value="{{ old('punch_allowed_from', isset($activeShiftTiming) && $activeShiftTiming->punch_allowed_from ? \Carbon\Carbon::parse($activeShiftTiming->punch_allowed_from)->format('H:i') : '') }}" readonly>
+                                            <span class="time-display-val">--:--</span>
+                                        </div>
+                                        @error('punch_allowed_from') <div class="em-error">{{ $message }}</div> @enderror
+                                    </div>
+                                    <div class="em-field">
+                                        <label>Shift Start <span class="required">*</span></label>
+                                        <div class="time-picker-container">
+                                            <input type="time" name="shift_start_time" id="shift_start_time" class="em-control editable native-time-input" value="{{ old('shift_start_time', isset($activeShiftTiming) && $activeShiftTiming->shift_start_time ? \Carbon\Carbon::parse($activeShiftTiming->shift_start_time)->format('H:i') : '') }}" readonly>
+                                            <span class="time-display-val">--:--</span>
+                                        </div>
+                                        @error('shift_start_time') <div class="em-error">{{ $message }}</div> @enderror
+                                    </div>
+                                    <div class="em-field">
+                                        <label>Late After <span class="required">*</span></label>
+                                        <div class="time-picker-container">
+                                            <input type="time" name="late_after_time" id="late_after_time" class="em-control editable native-time-input" value="{{ old('late_after_time', isset($activeShiftTiming) && $activeShiftTiming->late_after_time ? \Carbon\Carbon::parse($activeShiftTiming->late_after_time)->format('H:i') : '') }}" readonly>
+                                            <span class="time-display-val">--:--</span>
+                                        </div>
+                                        @error('late_after_time') <div class="em-error">{{ $message }}</div> @enderror
+                                    </div>
+                                    <div class="em-field">
+                                        <label>Half Day After <span class="required">*</span></label>
+                                        <div class="time-picker-container">
+                                            <input type="time" name="half_day_after_time" id="half_day_after_time" class="em-control editable native-time-input" value="{{ old('half_day_after_time', isset($activeShiftTiming) && $activeShiftTiming->half_day_after_time ? \Carbon\Carbon::parse($activeShiftTiming->half_day_after_time)->format('H:i') : '') }}" readonly>
+                                            <span class="time-display-val">--:--</span>
+                                        </div>
+                                        @error('half_day_after_time') <div class="em-error">{{ $message }}</div> @enderror
+                                    </div>
+                                    <div class="em-field">
+                                        <label>Blocked Punch <span class="required">*</span></label>
+                                        <div class="time-picker-container">
+                                            <input type="time" name="block_after_time" id="block_after_time" class="em-control editable native-time-input" value="{{ old('block_after_time', isset($activeShiftTiming) && $activeShiftTiming->block_after_time ? \Carbon\Carbon::parse($activeShiftTiming->block_after_time)->format('H:i') : '') }}" readonly>
+                                            <span class="time-display-val">--:--</span>
+                                        </div>
+                                        @error('block_after_time') <div class="em-error">{{ $message }}</div> @enderror
+                                    </div>
+                                    <div class="em-field">
+                                        <label>Shift End <span class="required">*</span></label>
+                                        <div class="time-picker-container">
+                                            <input type="time" name="shift_end_time" id="shift_end_time" class="em-control editable native-time-input" value="{{ old('shift_end_time', isset($activeShiftTiming) && $activeShiftTiming->shift_end_time ? \Carbon\Carbon::parse($activeShiftTiming->shift_end_time)->format('H:i') : '') }}" readonly>
+                                            <span class="time-display-val">--:--</span>
+                                        </div>
+                                        @error('shift_end_time') <div class="em-error">{{ $message }}</div> @enderror
+                                    </div>
+                                    <div class="em-field">
+                                        <label>Required Minutes <span class="required">*</span></label>
+                                        <input type="number" name="required_work_minutes" id="required_work_minutes" class="em-control editable" placeholder="e.g. 480" value="{{ old('required_work_minutes', isset($activeShiftTiming) ? $activeShiftTiming->required_work_minutes : '') }}" readonly>
+                                        @error('required_work_minutes') <div class="em-error">{{ $message }}</div> @enderror
+                                    </div>
+                                    <div class="em-field">
+                                        <label>Lunch Minutes <span class="required">*</span></label>
+                                        <input type="number" name="lunch_minutes" id="lunch_minutes" class="em-control editable" placeholder="e.g. 60" value="{{ old('lunch_minutes', isset($activeShiftTiming) ? $activeShiftTiming->lunch_minutes : '') }}" readonly>
+                                        @error('lunch_minutes') <div class="em-error">{{ $message }}</div> @enderror
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1753,79 +1877,153 @@ if ($user) {
                     </div>
                 </div>
 
-            @if ($canSeeSalary)
-            <div class="em-card em-card-full animate__animated animate__fadeInUp">
-                <div class="em-card-head">
-                    <div>
-                        <h5 class="em-card-title"><i class="fas fa-history mr-2"></i>Salary History</h5>
-                        <div class="em-card-sub">Date-wise salary/stipend records. Old records are preserved.</div>
+                <div class="em-card em-card-full animate__animated animate__fadeInUp" style="margin-bottom: 25px;">
+                    <div class="em-card-head">
+                        <div>
+                            <h5 class="em-card-title"><i class="fas fa-clock mr-2"></i>Shift Assignment History</h5>
+                            <div class="em-card-sub">Complete record of shift schedules assigned to this employee.</div>
+                        </div>
+                    </div>
+
+                    <div class="em-card-body" style="padding: 0;">
+                        <div class="salary-table-wrap">
+                            @if (isset($shiftHistory) && $shiftHistory->count())
+                            <table class="salary-table">
+                                <thead>
+                                    <tr>
+                                        <th>Effective Period</th>
+                                        <th>Shift Name</th>
+                                        <th>Shift Type</th>
+                                        <th>Timing Details</th>
+                                        <th style="text-align: right;">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($shiftHistory as $history)
+                                    @php
+                                        $typeLabel = (empty($history->punch_allowed_from) && empty($history->shift_start_time)) || stripos($history->shift_name ?? '', 'flexible') !== false ? 'Flexible' : 'Fixed';
+                                    @endphp
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex flex-column">
+                                                <span class="font-weight-bold" style="color: var(--orb-text);">{{ !empty($history->effective_from) ? \Carbon\Carbon::parse($history->effective_from)->format('d M Y') : '-' }}</span>
+                                                @if(!empty($history->effective_to))
+                                                <span class="text-muted" style="font-size: 11px;">to {{ \Carbon\Carbon::parse($history->effective_to)->format('d M Y') }}</span>
+                                                @else
+                                                <span class="text-success" style="font-size: 11px; font-weight: 750;"><i class="fas fa-dot-circle" style="font-size: 8px;"></i> Active / Present</span>
+                                                @endif
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="font-weight-bold">{{ $history->shift_name ?: 'Custom/Flexible Shift' }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="ev-pill {{ $typeLabel === 'Flexible' ? 'ev-pill-warning' : 'ev-pill-default' }}">
+                                                {{ $typeLabel }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            @if($typeLabel === 'Flexible')
+                                                <span class="text-muted" style="font-size: 12px;">
+                                                    Punch From: Flexible | Shift End: Dynamic
+                                                </span>
+                                            @else
+                                                <span class="text-muted" style="font-size: 12px;">
+                                                    {{ $history->shift_start_time ? \Carbon\Carbon::parse($history->shift_start_time)->format('h:i A') : '--:--' }} - {{ $history->shift_end_time ? \Carbon\Carbon::parse($history->shift_end_time)->format('h:i A') : '--:--' }}
+                                                </span>
+                                            @endif
+                                        </td>
+                                        <td style="text-align: right;">
+                                            @if($history->is_active)
+                                                <span class="att-badge badge-active">Active</span>
+                                            @else
+                                                <span class="att-badge badge-muted">Inactive</span>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                            @else
+                            <div class="text-center text-muted py-4">No shift history found.</div>
+                            @endif
+                        </div>
                     </div>
                 </div>
 
-                <div class="em-card-body" style="padding: 0;">
-                    <div class="salary-table-wrap">
-                        @if (isset($salaryHistories) && $salaryHistories->count())
-                        <table class="salary-table">
-                            <thead>
-                                <tr>
-                                    <th>Effective Date</th>
-                                    <th>Lifecycle Stage</th>
-                                    <th>Salary Type</th>
-                                    <th>Authorized By</th>
-                                    <th>Reason / Revision Type</th>
-                                    <th style="text-align: right;">Gross Salary / CTC</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($salaryHistories as $history)
-                                @php
-                                $historyStage = $history->employment_stage ?? ($history->stage ?? '-');
-                                $historyType = $history->salary_type ?? ((float) ($history->salary_amount ?? 0) <= 0 ? 'unpaid' : ($historyStage==='internship' ? 'stipend' : 'salary' ));
-                                $active = isset($history->is_active) ? (int) $history->is_active === 1 : empty($history->effective_to);
-                                @endphp
-                                <tr>
-                                    <td>
-                                        <div class="d-flex flex-column">
-                                            <span class="font-weight-bold" style="color: var(--orb-text);">{{ !empty($history->effective_from) ? \Carbon\Carbon::parse($history->effective_from)->format('d M Y') : '-' }}</span>
-                                            @if(!empty($history->effective_to))
-                                                <span class="text-muted" style="font-size: 11px;">to {{ \Carbon\Carbon::parse($history->effective_to)->format('d M Y') }}</span>
-                                            @else
-                                                <span class="text-success" style="font-size: 11px; font-weight: 750;"><i class="fas fa-dot-circle" style="font-size: 8px;"></i> Active / Present</span>
-                                            @endif
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <span class="ev-pill ev-pill-default">
-                                            {{ ucfirst(str_replace('_', ' ', $historyStage)) }}
-                                        </span>
-                                    </td>
-                                    <td><span class="salary-pill salary-type">{{ ucfirst($historyType) }}</span></td>
-                                    <td>
-                                        <span class="text-muted" style="font-size: 12px; font-weight: 700;">
-                                            <i class="far fa-user-circle"></i> {{ $history->creator_name ?? 'System' }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span class="font-weight-medium" style="color: var(--orb-text); font-size: 13px;">
-                                            {{ $history->reason ?: 'Regular revision' }}
-                                        </span>
-                                    </td>
-                                    <td style="text-align: right; font-size: 14px; font-weight: 900; color: var(--orb-primary);">
-                                        ₹{{ number_format((float) ($history->salary_amount ?? 0), 2) }}
-                                    </td>
-                                </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                        @else
-                        <div class="empty-history">
-                            <i class="fas fa-info-circle mr-1"></i> No salary history found.
+                @if ($canSeeSalary)
+                <div class="em-card em-card-full animate__animated animate__fadeInUp">
+                    <div class="em-card-head">
+                        <div>
+                            <h5 class="em-card-title"><i class="fas fa-history mr-2"></i>Salary History</h5>
+                            <div class="em-card-sub">Date-wise salary/stipend records. Old records are preserved.</div>
                         </div>
-                        @endif
+                    </div>
+
+                    <div class="em-card-body" style="padding: 0;">
+                        <div class="salary-table-wrap">
+                            @if (isset($salaryHistories) && $salaryHistories->count())
+                            <table class="salary-table">
+                                <thead>
+                                    <tr>
+                                        <th>Effective Date</th>
+                                        <th>Lifecycle Stage</th>
+                                        <th>Salary Type</th>
+                                        <th>Authorized By</th>
+                                        <th>Reason / Revision Type</th>
+                                        <th style="text-align: right;">Gross Salary / CTC</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($salaryHistories as $history)
+                                    @php
+                                    $historyStage = $history->employment_stage ?? ($history->stage ?? '-');
+                                    $historyType = $history->salary_type ?? ((float) ($history->salary_amount ?? 0) <= 0 ? 'unpaid' : ($historyStage==='internship' ? 'stipend' : 'salary' ));
+                                        $active=isset($history->is_active) ? (int) $history->is_active === 1 : empty($history->effective_to);
+                                        @endphp
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex flex-column">
+                                                    <span class="font-weight-bold" style="color: var(--orb-text);">{{ !empty($history->effective_from) ? \Carbon\Carbon::parse($history->effective_from)->format('d M Y') : '-' }}</span>
+                                                    @if(!empty($history->effective_to))
+                                                    <span class="text-muted" style="font-size: 11px;">to {{ \Carbon\Carbon::parse($history->effective_to)->format('d M Y') }}</span>
+                                                    @else
+                                                    <span class="text-success" style="font-size: 11px; font-weight: 750;"><i class="fas fa-dot-circle" style="font-size: 8px;"></i> Active / Present</span>
+                                                    @endif
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="ev-pill ev-pill-default">
+                                                    {{ ucfirst(str_replace('_', ' ', $historyStage)) }}
+                                                </span>
+                                            </td>
+                                            <td><span class="salary-pill salary-type">{{ ucfirst($historyType) }}</span></td>
+                                            <td>
+                                                <span class="text-muted" style="font-size: 12px; font-weight: 700;">
+                                                    <i class="far fa-user-circle"></i> {{ $history->creator_name ?? 'System' }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="font-weight-medium" style="color: var(--orb-text); font-size: 13px;">
+                                                    {{ $history->reason ?: 'Regular revision' }}
+                                                </span>
+                                            </td>
+                                            <td style="text-align: right; font-size: 14px; font-weight: 900; color: var(--orb-primary);">
+                                                ₹{{ number_format((float) ($history->salary_amount ?? 0), 2) }}
+                                            </td>
+                                        </tr>
+                                        @endforeach
+                                </tbody>
+                            </table>
+                            @else
+                            <div class="empty-history">
+                                <i class="fas fa-info-circle mr-1"></i> No salary history found.
+                            </div>
+                            @endif
+                        </div>
                     </div>
                 </div>
-            </div>
-            @endif
+                @endif
 
                 <div class="em-card em-card-full animate__animated animate__fadeInUp" id="documentCard">
                     <div class="em-card-head">
@@ -1842,33 +2040,33 @@ if ($user) {
                             @php
                             $docTitle = $doc->document_type_name ?? $doc->title ?? 'Document';
                             $docStatus = strtolower($doc->verification_status ?? 'pending');
-                            
+
                             $docStatusClass = match($docStatus) {
-                                'verified' => 'em-doc-verified',
-                                'rejected' => 'em-doc-rejected',
-                                default => 'em-doc-pending',
+                            'verified' => 'em-doc-verified',
+                            'rejected' => 'em-doc-rejected',
+                            default => 'em-doc-pending',
                             };
 
                             $docStatusText = match($docStatus) {
-                                'verified' => 'Verified & Locked',
-                                'rejected' => 'Rejected / Needs Reupload',
-                                default => 'Pending Verification',
+                            'verified' => 'Verified & Locked',
+                            'rejected' => 'Rejected / Needs Reupload',
+                            default => 'Pending Verification',
                             };
 
                             $docPath = $doc->file_path ?? null;
                             $docUrl = !empty($docPath) && Route::has('hrms.documents.file')
-                                ? route('hrms.documents.file', $docPath)
-                                : (!empty($docPath) ? route('hrms.documents.file', ['path' => $docPath]) : null);
+                            ? route('hrms.documents.file', $docPath)
+                            : (!empty($docPath) ? route('hrms.documents.file', ['path' => $docPath]) : null);
 
                             $documentTypeId = $doc->document_type_id ?? $doc->category_id ?? null;
                             $fileName = $doc->file_original_name ?? null;
                             $fileExt = strtolower(pathinfo($fileName ?? '', PATHINFO_EXTENSION));
-                            
+
                             $iconClass = 'fa-file-alt text-primary';
                             if ($fileExt === 'pdf') {
-                                $iconClass = 'fa-file-pdf text-danger';
+                            $iconClass = 'fa-file-pdf text-danger';
                             } elseif (in_array($fileExt, ['jpg', 'jpeg', 'png', 'webp'])) {
-                                $iconClass = 'fa-file-image text-success';
+                            $iconClass = 'fa-file-image text-success';
                             }
                             @endphp
 
@@ -1982,12 +2180,12 @@ if ($user) {
                 container.id = 'orb-toast-container';
                 document.body.appendChild(container);
             }
-            
+
             const toast = document.createElement('div');
             toast.className = `orb-toast orb-toast-${type}`;
-            
+
             const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
-            
+
             toast.innerHTML = `
                 <div class="orb-toast-content">
                     <span class="orb-toast-icon"><i class="fas ${icon}"></i></span>
@@ -1995,16 +2193,16 @@ if ($user) {
                 </div>
                 <button class="orb-toast-close"><i class="fas fa-times"></i></button>
             `;
-            
+
             container.appendChild(toast);
-            
+
             // Close event
             toast.querySelector('.orb-toast-close').addEventListener('click', function() {
                 toast.style.opacity = '0';
                 toast.style.transform = 'translateX(100%)';
                 setTimeout(() => toast.remove(), 300);
             });
-            
+
             // Auto close
             setTimeout(() => {
                 if (toast.parentNode) {
@@ -2219,63 +2417,63 @@ if ($user) {
                     });
 
                     fetch(form.action, {
-                        method: 'POST',
-                        body: formData,
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Network response was not ok');
-                        }
-                        return response.text();
-                    })
-                    .then(htmlText => {
-                        const parser = new DOMParser();
-                        const doc = parser.parseFromString(htmlText, 'text/html');
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        })
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok');
+                            }
+                            return response.text();
+                        })
+                        .then(htmlText => {
+                            const parser = new DOMParser();
+                            const doc = parser.parseFromString(htmlText, 'text/html');
 
-                        const hasError = doc.querySelector('.alert-danger');
-                        if (hasError) {
-                            const errorMsg = hasError.textContent.trim();
-                            showToast(errorMsg || 'Validation failed. Please check inputs.', 'error');
+                            const hasError = doc.querySelector('.alert-danger');
+                            if (hasError) {
+                                const errorMsg = hasError.textContent.trim();
+                                showToast(errorMsg || 'Validation failed. Please check inputs.', 'error');
+
+                                saveBtn.innerHTML = originalHtml;
+                                saveBtn.removeAttribute('disabled');
+                                cancelBtn.removeAttribute('disabled');
+                                return;
+                            }
+
+                            // Success! Update DOM sections dynamically
+                            const updateSection = (id) => {
+                                const oldSec = document.getElementById(id);
+                                const newSec = doc.getElementById(id);
+                                if (oldSec && newSec) {
+                                    oldSec.innerHTML = newSec.innerHTML;
+                                }
+                            };
+
+                            updateSection('cardA');
+                            updateSection('cardB');
+
+                            const oldHeader = document.querySelector('.ev-header');
+                            const newHeader = doc.querySelector('.ev-header');
+                            if (oldHeader && newHeader) {
+                                oldHeader.innerHTML = newHeader.innerHTML;
+                            }
+
+                            rebindAllListeners();
+
+                            showToast(sectionId === 'cardA' ? 'Employee details updated successfully!' : 'Profile details updated successfully!', 'success');
+                        })
+                        .catch(error => {
+                            console.error('Save error:', error);
+                            showToast('An error occurred while saving. Please try again.', 'error');
 
                             saveBtn.innerHTML = originalHtml;
                             saveBtn.removeAttribute('disabled');
                             cancelBtn.removeAttribute('disabled');
-                            return;
-                        }
-
-                        // Success! Update DOM sections dynamically
-                        const updateSection = (id) => {
-                            const oldSec = document.getElementById(id);
-                            const newSec = doc.getElementById(id);
-                            if (oldSec && newSec) {
-                                oldSec.innerHTML = newSec.innerHTML;
-                            }
-                        };
-
-                        updateSection('cardA');
-                        updateSection('cardB');
-
-                        const oldHeader = document.querySelector('.ev-header');
-                        const newHeader = doc.querySelector('.ev-header');
-                        if (oldHeader && newHeader) {
-                            oldHeader.innerHTML = newHeader.innerHTML;
-                        }
-
-                        rebindAllListeners();
-
-                        showToast(sectionId === 'cardA' ? 'Employee details updated successfully!' : 'Profile details updated successfully!', 'success');
-                    })
-                    .catch(error => {
-                        console.error('Save error:', error);
-                        showToast('An error occurred while saving. Please try again.', 'error');
-
-                        saveBtn.innerHTML = originalHtml;
-                        saveBtn.removeAttribute('disabled');
-                        cancelBtn.removeAttribute('disabled');
-                    });
+                        });
                 });
             });
 
@@ -2307,40 +2505,40 @@ if ($user) {
                     formData.append('_token', '{{ csrf_token() }}');
 
                     fetch(fileInput.getAttribute('data-action'), {
-                        method: 'POST',
-                        body: formData,
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Upload failed');
-                        }
-                        return response.text();
-                    })
-                    .then(htmlText => {
-                        const parser = new DOMParser();
-                        const doc = parser.parseFromString(htmlText, 'text/html');
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        })
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Upload failed');
+                            }
+                            return response.text();
+                        })
+                        .then(htmlText => {
+                            const parser = new DOMParser();
+                            const doc = parser.parseFromString(htmlText, 'text/html');
 
-                        const newCardC = doc.getElementById('documentCard');
-                        if (newCardC) {
-                            document.getElementById('documentCard').innerHTML = newCardC.innerHTML;
-                        }
+                            const newCardC = doc.getElementById('documentCard');
+                            if (newCardC) {
+                                document.getElementById('documentCard').innerHTML = newCardC.innerHTML;
+                            }
 
-                        rebindAllListeners();
-                        showToast(`${docTitle} uploaded successfully!`, 'success');
-                    })
-                    .catch(error => {
-                        console.error('Upload error:', error);
-                        showToast(`Failed to upload ${docTitle}. Please try again.`, 'error');
+                            rebindAllListeners();
+                            showToast(`${docTitle} uploaded successfully!`, 'success');
+                        })
+                        .catch(error => {
+                            console.error('Upload error:', error);
+                            showToast(`Failed to upload ${docTitle}. Please try again.`, 'error');
 
-                        if (labelSpan) labelSpan.textContent = originalText;
-                        if (labelIcon) {
-                            labelIcon.className = 'fas fa-cloud-upload-alt mr-1';
-                        }
-                        fileInput.removeAttribute('disabled');
-                    });
+                            if (labelSpan) labelSpan.textContent = originalText;
+                            if (labelIcon) {
+                                labelIcon.className = 'fas fa-cloud-upload-alt mr-1';
+                            }
+                            fileInput.removeAttribute('disabled');
+                        });
                 });
             });
 
@@ -2353,48 +2551,48 @@ if ($user) {
                 btn.addEventListener('click', function() {
                     const actionUrl = this.getAttribute('data-action');
                     const docTitle = this.getAttribute('data-doc-title') || 'Document';
-                    
+
                     if (!confirm(`Are you sure you want to verify and lock ${docTitle}?`)) return;
-                    
+
                     const verifyBtn = this;
                     const originalHtml = verifyBtn.innerHTML;
                     verifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Verifying...';
                     verifyBtn.setAttribute('disabled', 'disabled');
-                    
+
                     const formData = new FormData();
                     formData.append('_token', '{{ csrf_token() }}');
-                    
+
                     fetch(actionUrl, {
-                        method: 'POST',
-                        body: formData,
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Verification failed');
-                        }
-                        return response.text();
-                    })
-                    .then(htmlText => {
-                        const parser = new DOMParser();
-                        const doc = parser.parseFromString(htmlText, 'text/html');
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        })
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Verification failed');
+                            }
+                            return response.text();
+                        })
+                        .then(htmlText => {
+                            const parser = new DOMParser();
+                            const doc = parser.parseFromString(htmlText, 'text/html');
 
-                        const newCardC = doc.getElementById('documentCard');
-                        if (newCardC) {
-                            document.getElementById('documentCard').innerHTML = newCardC.innerHTML;
-                        }
+                            const newCardC = doc.getElementById('documentCard');
+                            if (newCardC) {
+                                document.getElementById('documentCard').innerHTML = newCardC.innerHTML;
+                            }
 
-                        rebindAllListeners();
-                        showToast(`${docTitle} verified successfully!`, 'success');
-                    })
-                    .catch(error => {
-                        console.error('Verify error:', error);
-                        showToast(`Failed to verify ${docTitle}. Please try again.`, 'error');
-                        verifyBtn.innerHTML = originalHtml;
-                        verifyBtn.removeAttribute('disabled');
-                    });
+                            rebindAllListeners();
+                            showToast(`${docTitle} verified successfully!`, 'success');
+                        })
+                        .catch(error => {
+                            console.error('Verify error:', error);
+                            showToast(`Failed to verify ${docTitle}. Please try again.`, 'error');
+                            verifyBtn.innerHTML = originalHtml;
+                            verifyBtn.removeAttribute('disabled');
+                        });
                 });
             });
 
@@ -2407,54 +2605,54 @@ if ($user) {
                 btn.addEventListener('click', function() {
                     const actionUrl = this.getAttribute('data-action');
                     const docTitle = this.getAttribute('data-doc-title') || 'Document';
-                    
+
                     const reason = prompt(`Enter rejection reason for ${docTitle}:`);
                     if (reason === null) return; // cancelled
                     if (!reason.trim()) {
                         showToast('Rejection reason is required!', 'error');
                         return;
                     }
-                    
+
                     const rejectBtn = this;
                     const originalHtml = rejectBtn.innerHTML;
                     rejectBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Rejecting...';
                     rejectBtn.setAttribute('disabled', 'disabled');
-                    
+
                     const formData = new FormData();
                     formData.append('_token', '{{ csrf_token() }}');
                     formData.append('rejection_reason', reason);
-                    
+
                     fetch(actionUrl, {
-                        method: 'POST',
-                        body: formData,
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Rejection failed');
-                        }
-                        return response.text();
-                    })
-                    .then(htmlText => {
-                        const parser = new DOMParser();
-                        const doc = parser.parseFromString(htmlText, 'text/html');
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        })
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Rejection failed');
+                            }
+                            return response.text();
+                        })
+                        .then(htmlText => {
+                            const parser = new DOMParser();
+                            const doc = parser.parseFromString(htmlText, 'text/html');
 
-                        const newCardC = doc.getElementById('documentCard');
-                        if (newCardC) {
-                            document.getElementById('documentCard').innerHTML = newCardC.innerHTML;
-                        }
+                            const newCardC = doc.getElementById('documentCard');
+                            if (newCardC) {
+                                document.getElementById('documentCard').innerHTML = newCardC.innerHTML;
+                            }
 
-                        rebindAllListeners();
-                        showToast(`${docTitle} rejected successfully!`, 'success');
-                    })
-                    .catch(error => {
-                        console.error('Reject error:', error);
-                        showToast(`Failed to reject ${docTitle}. Please try again.`, 'error');
-                        rejectBtn.innerHTML = originalHtml;
-                        rejectBtn.removeAttribute('disabled');
-                    });
+                            rebindAllListeners();
+                            showToast(`${docTitle} rejected successfully!`, 'success');
+                        })
+                        .catch(error => {
+                            console.error('Reject error:', error);
+                            showToast(`Failed to reject ${docTitle}. Please try again.`, 'error');
+                            rejectBtn.innerHTML = originalHtml;
+                            rejectBtn.removeAttribute('disabled');
+                        });
                 });
             });
 
@@ -2479,12 +2677,200 @@ if ($user) {
                 });
             }
 
+            // 6b. Work Schedule Type custom timings toggle
+            const workScheduleSelect = document.getElementById('work_schedule_type');
+            if (workScheduleSelect) {
+                const newSchedule = workScheduleSelect.cloneNode(true);
+                workScheduleSelect.replaceWith(newSchedule);
+                newSchedule.addEventListener('change', function() {
+                    handleScheduleChange(false);
+                });
+            }
+
+            // 6c. Timing calculation and helper bindings
+            const timeFields = ['punch_allowed_from', 'shift_start_time', 'late_after_time', 'half_day_after_time', 'block_after_time', 'shift_end_time'];
+            timeFields.forEach(field => {
+                const el = document.getElementById(field);
+                if (el) {
+                    const newEl = el.cloneNode(true);
+                    el.replaceWith(newEl);
+                    newEl.addEventListener('input', updateAllTimeDisplays);
+                    newEl.addEventListener('change', updateAllTimeDisplays);
+
+                    if (field === 'shift_start_time') {
+                        newEl.addEventListener('input', autoCalculateTimings);
+                        newEl.addEventListener('change', autoCalculateTimings);
+                    }
+                }
+            });
+
+            const reqMinEl = document.getElementById('required_work_minutes');
+            const lunchMinEl = document.getElementById('lunch_minutes');
+
+            if (reqMinEl) {
+                const newReqMin = reqMinEl.cloneNode(true);
+                reqMinEl.replaceWith(newReqMin);
+                newReqMin.addEventListener('input', autoCalculateTimings);
+                newReqMin.addEventListener('change', autoCalculateTimings);
+            }
+            if (lunchMinEl) {
+                const newLunchMin = lunchMinEl.cloneNode(true);
+                lunchMinEl.replaceWith(newLunchMin);
+                newLunchMin.addEventListener('input', autoCalculateTimings);
+                newLunchMin.addEventListener('change', autoCalculateTimings);
+            }
+
             // 7. Toggle experience fields initially
             const manageExpSelect = document.getElementById('manage_experience_type');
             if (manageExpSelect) {
                 toggleManageExperienceFields(manageExpSelect.value);
             }
         }
+
+        const shiftDefaultTimings = {
+            @foreach($attendanceTimes as $shiftItem)
+            '{{ $shiftItem->code }}': {
+                'punch_allowed_from': '{{ $shiftItem->punch_allowed_from ? \Carbon\Carbon::parse($shiftItem->punch_allowed_from)->format('H:i') : '' }}',
+                'shift_start_time': '{{ $shiftItem->shift_start_time ? \Carbon\Carbon::parse($shiftItem->shift_start_time)->format('H:i') : '' }}',
+                'late_after_time': '{{ $shiftItem->late_after_time ? \Carbon\Carbon::parse($shiftItem->late_after_time)->format('H:i') : '' }}',
+                'half_day_after_time': '{{ $shiftItem->half_day_after_time ? \Carbon\Carbon::parse($shiftItem->half_day_after_time)->format('H:i') : '' }}',
+                'block_after_time': '{{ $shiftItem->block_after_time ? \Carbon\Carbon::parse($shiftItem->block_after_time)->format('H:i') : '' }}',
+                'shift_end_time': '{{ $shiftItem->shift_end_time ? \Carbon\Carbon::parse($shiftItem->shift_end_time)->format('H:i') : '' }}',
+                'required_work_minutes': '{{ $shiftItem->required_work_minutes ?? '' }}',
+                'lunch_minutes': '{{ $shiftItem->lunch_break_minutes ?? '' }}'
+            },
+            @endforeach
+        };
+
+        function formatTimeTo12Hour(timeStr) {
+            if (!timeStr) return '--:--';
+            const [hoursStr, minutesStr] = timeStr.split(':');
+            let hours = Number(hoursStr);
+            const minutes = Number(minutesStr);
+            if (isNaN(hours) || isNaN(minutes)) return '--:--';
+
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            const strMinutes = String(minutes).padStart(2, '0');
+            const strHours = String(hours).padStart(2, '0');
+            return `${strHours}:${strMinutes} ${ampm}`;
+        }
+
+        function updateAllTimeDisplays() {
+            const timeFields = ['punch_allowed_from', 'shift_start_time', 'late_after_time', 'half_day_after_time', 'block_after_time', 'shift_end_time'];
+            timeFields.forEach(field => {
+                const input = document.getElementById(field);
+                if (input) {
+                    const overlay = input.parentNode.querySelector('.time-display-val');
+                    if (overlay) {
+                        overlay.textContent = formatTimeTo12Hour(input.value);
+                    }
+                }
+            });
+        }
+        window.updateAllTimeDisplays = updateAllTimeDisplays;
+
+        function addMinutesToTime(timeStr, minutesToAdd) {
+            if (!timeStr) return '';
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            const date = new Date();
+            date.setHours(hours);
+            date.setMinutes(minutes + minutesToAdd);
+            date.setSeconds(0);
+
+            const h = String(date.getHours()).padStart(2, '0');
+            const m = String(date.getMinutes()).padStart(2, '0');
+            return `${h}:${m}`;
+        }
+
+        function autoCalculateTimings() {
+            const shiftStartInput = document.getElementById('shift_start_time');
+            const lateAfterInput = document.getElementById('late_after_time');
+            const halfDayAfterInput = document.getElementById('half_day_after_time');
+            const shiftEndInput = document.getElementById('shift_end_time');
+            const reqMinutesInput = document.getElementById('required_work_minutes');
+            const lunchMinutesInput = document.getElementById('lunch_minutes');
+            const punchAllowedInput = document.getElementById('punch_allowed_from');
+            const blockedPunchInput = document.getElementById('block_after_time');
+
+            if (!shiftStartInput) return;
+
+            const startTime = shiftStartInput.value;
+            if (!startTime) return;
+
+            // 1. Late After: Start + 65 mins
+            if (lateAfterInput) {
+                lateAfterInput.value = addMinutesToTime(startTime, 65);
+            }
+
+            // 2. Half Day After: Start + 240 mins (4 hours)
+            if (halfDayAfterInput) {
+                halfDayAfterInput.value = addMinutesToTime(startTime, 240);
+            }
+
+            // 3. Punch Allowed From: Start - 60 mins (1 hour before)
+            if (punchAllowedInput) {
+                punchAllowedInput.value = addMinutesToTime(startTime, -60);
+            }
+
+            // 4. Shift End Time: Start + Required Minutes + Lunch Minutes
+            const reqMin = Number(reqMinutesInput?.value || 0);
+            const lunchMin = Number(lunchMinutesInput?.value || 0);
+            let calculatedEnd = '';
+            if (shiftEndInput && (reqMin > 0 || lunchMin > 0)) {
+                calculatedEnd = addMinutesToTime(startTime, reqMin + lunchMin);
+                shiftEndInput.value = calculatedEnd;
+            }
+
+            // 5. Blocked Punch: Start + 75 mins
+            if (blockedPunchInput) {
+                blockedPunchInput.value = addMinutesToTime(startTime, 75);
+            }
+
+            updateAllTimeDisplays();
+        }
+        window.autoCalculateTimings = autoCalculateTimings;
+
+        function toggleFlexibleTimingFields() {
+            const workScheduleSelect = document.getElementById('work_schedule_type');
+            const flexibleShiftTimingsBox = document.getElementById('flexible_shift_timings_box');
+            if (!workScheduleSelect || !flexibleShiftTimingsBox) return;
+
+            if (workScheduleSelect.value === 'flexible_part_time') {
+                flexibleShiftTimingsBox.style.display = 'block';
+                flexibleShiftTimingsBox.querySelectorAll('input').forEach(input => {
+                    input.setAttribute('required', 'required');
+                });
+            } else {
+                flexibleShiftTimingsBox.style.display = 'none';
+                flexibleShiftTimingsBox.querySelectorAll('input').forEach(input => {
+                    input.removeAttribute('required');
+                });
+            }
+        }
+        window.toggleFlexibleTimingFields = toggleFlexibleTimingFields;
+
+        function handleScheduleChange(isInit = false) {
+            const workScheduleSelect = document.getElementById('work_schedule_type');
+            if (!workScheduleSelect) return;
+            const code = workScheduleSelect.value;
+            const defaults = shiftDefaultTimings[code];
+            if (defaults) {
+                const fields = ['punch_allowed_from', 'shift_start_time', 'late_after_time', 'half_day_after_time', 'block_after_time', 'shift_end_time', 'required_work_minutes', 'lunch_minutes'];
+                fields.forEach(field => {
+                    const el = document.getElementById(field);
+                    if (el) {
+                        if (!isInit || !el.value) {
+                            el.value = defaults[field];
+                        }
+                    }
+                });
+            }
+            toggleFlexibleTimingFields();
+            updateAllTimeDisplays();
+        }
+        window.handleScheduleChange = handleScheduleChange;
 
         function toggleManageExperienceFields(value) {
             const container = document.getElementById('manage_total_experience_container');
@@ -2508,6 +2894,7 @@ if ($user) {
         // Initial setup
         rebindAllListeners();
         toggleEmploymentSections();
+        handleScheduleChange(true);
 
         // Handle Laravel validation redirect fallbacks (if any non-ajax errors exist)
         @if($errors->any())

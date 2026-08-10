@@ -357,7 +357,13 @@ class AttendanceRegularizationService
         }
 
         // Step 4: Recalculate Late Login using approved punch in against shift policy
-        $shift = $this->ruleResolver->getPolicyForEmployee($employee, $attDateStr);
+        $shift = null;
+        if ($attendance->attendance_time_id) {
+            $shift = $this->ruleResolver->getPolicyFromAttendanceTimeId($attendance->attendance_time_id, $employee, $attDateStr);
+        }
+        if (! $shift) {
+            $shift = $this->ruleResolver->getPolicyForEmployee($employee, $attDateStr);
+        }
         if ($attendance->punch_in_time) {
             $punchInDate = Carbon::parse($attDateStr . ' ' . $this->ruleResolver->timeString($attendance->punch_in_time), self::TIMEZONE);
             $isLate = ! $attendance->is_late_exempted && $shift && $shift->late_after_time && $punchInDate->gt(Carbon::parse($attDateStr . ' ' . $shift->late_after_time, self::TIMEZONE));
@@ -453,7 +459,14 @@ class AttendanceRegularizationService
         $dateStr = Carbon::parse($attendanceDate, self::TIMEZONE)->toDateString();
 
         // 1. Resolve dynamic shift policy for employee and date
-        $shift = $this->ruleResolver->getPolicyForEmployee($employee, $dateStr);
+        $attendance = \App\Models\HRMS\Attendance\AttendanceM::where('employee_id', $employee->id)->whereDate('attendance_date', $dateStr)->first();
+        $shift = null;
+        if ($attendance && $attendance->attendance_time_id) {
+            $shift = $this->ruleResolver->getPolicyFromAttendanceTimeId($attendance->attendance_time_id, $employee, $dateStr);
+        }
+        if (! $shift) {
+            $shift = $this->ruleResolver->getPolicyForEmployee($employee, $dateStr);
+        }
 
         // 2. Determine effective punch in and punch out times based on request_type
         $finalPunchInStr = null;

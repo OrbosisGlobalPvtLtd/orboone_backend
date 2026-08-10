@@ -26,7 +26,9 @@ class EmployeeDocumentsC extends Controller
     {
         $documentTypes = DocumentTypeM::where('scope', 'employee')->where('is_active', 1)->get();
         $departments = \App\Models\HRMS\Department\DepartmentM::where('is_active', 1)->orderBy('name')->get();
-        $query = EmployeeM::with(['user', 'profile', 'department', 'documents.documentType']);
+        $query = EmployeeM::with(['user', 'profile', 'department', 'documents.documentType'])
+            ->where('is_active', 1)
+            ->whereNotIn('employment_status', ['exited', 'terminated', 'resigned_and_exited']);
 
         $search = $request->get('search', $request->get('employee'));
         if (!empty($search)) {

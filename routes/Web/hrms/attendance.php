@@ -56,8 +56,11 @@ Route::middleware(['auth', 'check.access'])
     ->prefix('attendance-settings')
     ->name('attendance.')
     ->group(function () {
+        Route::get('/policies', [AttendancesC::class, 'policies'])->middleware('permission:attendance.rules.manage')->name('policies.index');
         Route::get('/rules', [AttendancesC::class, 'rules'])->middleware('permission:attendance.rules.manage')->name('rules.index');
         Route::put('/rules/{attendanceTime}', [AttendancesC::class, 'updateRule'])->middleware('permission:attendance.rules.manage')->name('rules.update');
+        Route::post('/employee-shifts', [AttendancesC::class, 'storeEmployeeShift'])->middleware('permission:attendance.rules.manage')->name('employee_shifts.store');
+        Route::put('/employee-shifts/{employeeShiftTiming}', [AttendancesC::class, 'updateEmployeeShift'])->middleware('permission:attendance.rules.manage')->name('employee_shifts.update');
         Route::post('/policy-rules', [AttendancesC::class, 'storePolicyRule'])->middleware('permission:attendance.rules.manage')->name('policy_rules.store');
         Route::put('/policy-rules/{attendancePolicyRule}', [AttendancesC::class, 'updatePolicyRule'])->middleware('permission:attendance.rules.manage')->name('policy_rules.update');
 

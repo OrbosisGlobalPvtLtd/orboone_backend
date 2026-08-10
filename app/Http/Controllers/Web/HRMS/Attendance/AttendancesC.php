@@ -10,6 +10,8 @@ use App\Models\HRMS\Attendance\AttendancePolicyRuleM as AttendancePolicyRule;
 use App\Models\HRMS\Attendance\AttendanceTimeM as AttendanceTime;
 use App\Models\HRMS\Attendance\AttendanceTypeM as AttendanceType;
 use App\Models\HRMS\Department\DepartmentM;
+use App\Models\HRMS\Employee\EmployeeM;
+use App\Models\HRMS\Employee\EmployeeShiftTimingM;
 use App\Services\HRMS\Attendance\AttendanceS;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -384,12 +386,19 @@ class AttendancesC extends Controller
                 $query->where('is_blocked', true)
                     ->orWhere('is_punch_blocked', true)
                     ->orWhere('attendance_status', 'punch_blocked')
+                    ->orWhere('attendance_status', 'unlocked')
+                    ->orWhere('is_admin_unlocked', true)
+                    ->orWhereNotNull('unlocked_at')
                     ->orWhere('missed_punch', true);
             })
             ->where(function ($q) use ($request) {
                 if ($request->flag === 'unlocked') {
-                    $q->where('is_admin_unlocked', true);
-                } else {
+                    $q->where(function ($sq) {
+                        $sq->where('is_admin_unlocked', true)
+                           ->orWhereNotNull('unlocked_at')
+                           ->orWhere('attendance_status', 'unlocked');
+                    });
+                } elseif ($request->flag === 'blocked') {
                     $q->where(function ($sq) {
                         $sq->whereNull('is_admin_unlocked')
                            ->orWhere('is_admin_unlocked', false)
@@ -405,7 +414,7 @@ class AttendancesC extends Controller
             ->where(function ($q) use ($request) {
                 if ($request->flag === 'unlocked') {
                     $q->where('policy_action', 'resolved');
-                } else {
+                } elseif ($request->flag === 'blocked') {
                     $q->where(function ($sq) {
                         $sq->whereNull('policy_action')
                            ->orWhere('policy_action', '<>', 'resolved');
@@ -481,12 +490,17 @@ class AttendancesC extends Controller
         // Now get the real ones
         $realAttendances = $this->applyFilters($query, $request)->get();
 
-        // Merge, sort, and paginate manually
+        // Merge, sort latest on top (date desc, timestamp desc, id desc), and paginate manually
         $merged = $realAttendances->concat($virtualAttendances)
-            ->sortByDesc('attendance_date');
+            ->sortByDesc(function ($item) {
+                $dateTs = $item->attendance_date ? Carbon::parse($item->attendance_date)->timestamp : 0;
+                $timeTs = ($item->unlocked_at ?? $item->updated_at ?? $item->created_at) ? Carbon::parse($item->unlocked_at ?? $item->updated_at ?? $item->created_at)->timestamp : 0;
+                $idNum = (int) preg_replace('/[^0-9]/', '', (string) $item->id);
+                return [$dateTs, $timeTs, $idNum];
+            })->values();
 
         $currentPage = \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPage();
-        $perPage = 20;
+        $perPage = 25;
         $currentPageItems = $merged->slice(($currentPage - 1) * $perPage, $perPage)->values();
 
         $attendances = new \Illuminate\Pagination\LengthAwarePaginator(
@@ -635,11 +649,28 @@ class AttendancesC extends Controller
         ));
     }
 
+    public function policies()
+    {
+        $attendancePolicies = AttendancePolicyRule::orderByDesc('is_active')->orderBy('policy_name')->get();
+        return view('hrms.attendance.policies', compact('attendancePolicies'));
+    }
+
     public function rules()
     {
-        $attendanceTimes = AttendanceTime::orderByDesc('is_default')->orderBy('name')->get();
+        $attendanceTimes = AttendanceTime::withCount(['employeeShiftTimings as active_assigned_count' => function ($q) {
+            $q->where('is_active', true);
+        }])->orderByDesc('is_default')->orderBy('name')->get();
+
+        $employeeShiftTimings = EmployeeShiftTimingM::with(['employee.user', 'attendanceTime'])
+            ->orderByDesc('is_active')
+            ->orderByDesc('effective_from')
+            ->get();
+
+        $employees = EmployeeM::with('user')->where('employment_status', 'active')->orderBy('id')->get();
+
         $attendancePolicies = AttendancePolicyRule::orderByDesc('is_active')->orderBy('policy_name')->get();
-        return view('hrms.attendance.rules', compact('attendanceTimes', 'attendancePolicies'));
+
+        return view('hrms.attendance.rules', compact('attendanceTimes', 'employeeShiftTimings', 'employees', 'attendancePolicies'));
     }
 
     public function updateRule(Request $request, AttendanceTime $attendanceTime)
@@ -676,6 +707,63 @@ class AttendancesC extends Controller
 
         $attendanceTime->update($data);
         return back()->with('status', 'Shift rule updated successfully.');
+    }
+
+    public function storeEmployeeShift(Request $request)
+    {
+        abort_unless($this->canManageAttendance(), 403, 'Only Super Admin / HR can assign employee shifts.');
+
+        $data = $request->validate([
+            'employee_id' => 'required|exists:employees_new,id',
+            'attendance_time_id' => 'required|exists:attendance_times,id',
+            'effective_from' => 'required|date',
+            'effective_to' => 'nullable|date|after_or_equal:effective_from',
+            'punch_allowed_from' => 'nullable',
+            'shift_start_time' => 'nullable',
+            'late_after_time' => 'nullable',
+            'half_day_after_time' => 'nullable',
+            'shift_end_time' => 'nullable',
+            'required_work_minutes' => 'nullable|integer',
+            'lunch_minutes' => 'nullable|integer',
+            'is_active' => 'boolean',
+        ]);
+        $data['is_active'] = $request->boolean('is_active', true);
+        $data['created_by'] = auth()->id();
+
+        if ($data['is_active']) {
+            EmployeeShiftTimingM::where('employee_id', $data['employee_id'])
+                ->where('is_active', true)
+                ->update(['is_active' => false]);
+        }
+
+        EmployeeShiftTimingM::create($data);
+
+        return back()->with('status', 'Employee shift timing assigned successfully.');
+    }
+
+    public function updateEmployeeShift(Request $request, EmployeeShiftTimingM $employeeShiftTiming)
+    {
+        abort_unless($this->canManageAttendance(), 403, 'Only Super Admin / HR can modify employee shifts.');
+
+        $data = $request->validate([
+            'attendance_time_id' => 'required|exists:attendance_times,id',
+            'effective_from' => 'required|date',
+            'effective_to' => 'nullable|date|after_or_equal:effective_from',
+            'punch_allowed_from' => 'nullable',
+            'shift_start_time' => 'nullable',
+            'late_after_time' => 'nullable',
+            'half_day_after_time' => 'nullable',
+            'shift_end_time' => 'nullable',
+            'required_work_minutes' => 'nullable|integer',
+            'lunch_minutes' => 'nullable|integer',
+            'is_active' => 'boolean',
+        ]);
+        $data['is_active'] = $request->boolean('is_active');
+        $data['updated_by'] = auth()->id();
+
+        $employeeShiftTiming->update($data);
+
+        return back()->with('status', 'Employee shift timing updated successfully.');
     }
 
     public function storePolicyRule(Request $request)
@@ -938,30 +1026,42 @@ class AttendancesC extends Controller
     {
         $data = $request->validate([
             'policy_name' => 'required|string|max:255',
-            'punch_allowed_from' => 'required',
-            'shift_start_time' => 'required',
-            'late_after_time' => 'required',
-            'warning_after_time' => 'required',
-            'block_after_time' => 'required',
-            'shift_end_time' => 'required',
-            'required_work_minutes' => 'required|integer|min:0',
-            'half_day_min_minutes' => 'required|integer|min:0',
-            'absent_below_minutes' => 'required|integer|min:0',
-            'lunch_break_minutes' => 'required|integer|min:0',
-            'allowed_missed_punches' => 'required|integer|min:0',
-            'combined_violation_limit' => 'required|integer|min:0',
-            'late_violation_limit' => 'required|integer|min:0',
-            'early_violation_limit' => 'required|integer|min:0',
-            'auto_block_enabled' => 'boolean',
-            'auto_absent_enabled' => 'boolean',
-            'is_active' => 'boolean',
+            'punch_allowed_from' => 'nullable',
+            'shift_start_time' => 'nullable',
+            'late_after_time' => 'nullable',
+            'warning_after_time' => 'nullable',
+            'block_after_time' => 'nullable',
+            'shift_end_time' => 'nullable',
+            'required_work_minutes' => 'nullable|integer|min:0',
+            'half_day_min_minutes' => 'nullable|integer|min:0',
+            'absent_below_minutes' => 'nullable|integer|min:0',
+            'early_out_half_day_minutes' => 'nullable|integer|min:0',
+            'missed_punch_after_minutes' => 'nullable|integer|min:0',
+            'allowed_missed_punches' => 'nullable|integer|min:0',
+            'combined_violation_limit' => 'nullable|integer|min:0',
+            'late_violation_limit' => 'nullable|integer|min:0',
+            'early_violation_limit' => 'nullable|integer|min:0',
+            'missed_punch_lwp_after' => 'nullable|integer|min:0',
+            'monthly_wfh_limit' => 'nullable|integer|min:0',
+            'punch_block_enabled' => 'nullable|boolean',
+            'auto_block_enabled' => 'nullable|boolean',
+            'auto_absent_enabled' => 'nullable|boolean',
+            'wfh_enabled' => 'nullable|boolean',
+            'regularization_enabled' => 'nullable|boolean',
+            'is_active' => 'nullable|boolean',
         ]);
 
-        foreach (['auto_block_enabled', 'auto_absent_enabled', 'is_active'] as $flag) {
+        foreach (['punch_block_enabled', 'auto_block_enabled', 'auto_absent_enabled', 'wfh_enabled', 'regularization_enabled', 'is_active'] as $flag) {
             $data[$flag] = $request->boolean($flag);
         }
 
-        return $data;
+        if (isset($data['auto_block_enabled']) && ! isset($data['punch_block_enabled'])) {
+            $data['punch_block_enabled'] = $data['auto_block_enabled'];
+        }
+
+        return collect($data)
+            ->filter(fn ($val, $col) => Schema::hasColumn('attendance_policy_rules', $col))
+            ->all();
     }
 
     private function orderAttendanceQuery($query, Request $request)

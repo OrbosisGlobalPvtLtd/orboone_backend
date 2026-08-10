@@ -35,7 +35,12 @@ class EnterprisePayrollCalculatorS
         $rows = [];
         $errors = [];
 
+        $eligibilityService = app(\App\Services\HRMS\Employee\EmployeeEligibilityS::class);
         foreach ($employees as $employee) {
+            if (!$eligibilityService->canUsePayroll($employee)) {
+                \Illuminate\Support\Facades\Log::info("Payroll generation skipped for employee #{$employee->id} ({$employee->display_name}): Profile pending, exit completed, or terminated.");
+                continue;
+            }
             try {
                 $rows[] = $this->calculateEmployee($employee, $month, $year);
             } catch (ValidationException $e) {
@@ -112,7 +117,12 @@ class EnterprisePayrollCalculatorS
             $employees = $employeesQuery->get();
 
             $runErrors = [];
+            $eligibilityService = app(\App\Services\HRMS\Employee\EmployeeEligibilityS::class);
             foreach ($employees as $employee) {
+                if (!$eligibilityService->canUsePayroll($employee)) {
+                    \Illuminate\Support\Facades\Log::info("Payroll generation skipped for employee #{$employee->id} ({$employee->display_name}): Profile pending, exit completed, or terminated.");
+                    continue;
+                }
                 try {
                     $calculation = $this->calculateEmployee($employee, $month, $year);
                     $payroll = $this->storePayroll($run, $employee, $calculation, $actorId);

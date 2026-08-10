@@ -17,6 +17,7 @@ Route::middleware('auth:sanctum')
         Route::get('/dashboard', [LeaveApiC::class, 'dashboard']);
         Route::get('/types', [LeaveApiC::class, 'types']);
         Route::get('/balance', [LeaveApiC::class, 'balance']);
+        Route::get('/balance/history', [LeaveApiC::class, 'balanceHistory']);
         Route::get('/history', [LeaveApiC::class, 'myRequests']);
         Route::get('/holidays', [LeaveApiC::class, 'holidays']);
         Route::get('/comp-offs', [LeaveApiC::class, 'compOffs']);
@@ -48,4 +49,3 @@ Route::middleware('auth:sanctum')
 
         Route::get('/{id}', [LeaveApiC::class, 'show']);
     });
-    

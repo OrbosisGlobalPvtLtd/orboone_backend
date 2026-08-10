@@ -17,7 +17,7 @@ class CreateEmployeeDocumentsNewTable extends Migration
             $table->string('file_path', 255);
 
             $table->enum('verification_status', ['pending', 'verified', 'rejected'])
-                  ->default('pending');
+                ->default('pending');
 
             $table->unsignedBigInteger('verified_by_user_id')->nullable();
             $table->dateTime('uploaded_at')->nullable();
@@ -25,19 +25,19 @@ class CreateEmployeeDocumentsNewTable extends Migration
             $table->timestamps();
 
             $table->foreign('employee_id')
-                  ->references('id')
-                  ->on('employees_new')
-                  ->onDelete('cascade');
+                ->references('id')
+                ->on('employees_new')
+                ->onDelete('cascade');
 
             $table->foreign('category_id')
-                  ->references('id')
-                  ->on('document_categories')
-                  ->onDelete('set null');
+                ->references('id')
+                ->on('document_categories')
+                ->onDelete('set null');
 
             $table->foreign('verified_by_user_id')
-                  ->references('id')
-                  ->on('users')
-                  ->onDelete('set null');
+                ->references('id')
+                ->on('users')
+                ->onDelete('set null');
         });
     }
 

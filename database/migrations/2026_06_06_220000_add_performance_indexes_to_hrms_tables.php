@@ -20,7 +20,7 @@ class AddPerformanceIndexesToHrmsTables extends Migration
                 AND index_name = ?
                 LIMIT 1
             ", [$db, $table, $indexName]);
-            
+
             return count($result) > 0;
         } catch (\Throwable $e) {
             return false;

@@ -467,6 +467,12 @@
         color: #475569;
     }
 
+    .badge-unlocked {
+        background: #DCFCE7;
+        color: #15803D;
+        border: 1px solid #86EFAC;
+    }
+
     .att-action-btn {
         border-radius: 999px;
         padding: 7px 14px;
@@ -815,17 +821,17 @@
                         <tbody>
                             @forelse($attendances as $attendance)
                             @php
-                            // Rule 1: Jo employee unlock/approved ho chuka hai, wo Pending Approval table me bilkul show nahi hona chahiye.
-                            if (request('flag') !== 'unlocked' && ($attendance->is_admin_unlocked || $attendance->unlocked_at)) {
-                            continue;
-                            }
-
+                             $isUnlocked = (bool) ($attendance->is_admin_unlocked || $attendance->unlocked_at || ($attendance->attendance_status ?? '') === 'unlocked');
                              $typeCode = optional($attendance->attendanceType)->code ?? 'default';
                              $rawStatus = strtolower($attendance->attendance_status ?? '');
                              if (empty($rawStatus)) {
                                  $rawStatus = $typeCode;
                              }
-                             if ($rawStatus === 'absent' || $rawStatus === 'lwp') {
+
+                             if ($isUnlocked) {
+                                 $statusCode = 'unlocked';
+                                 $statusLabel = '🔓 UNLOCKED';
+                             } elseif ($rawStatus === 'absent' || $rawStatus === 'lwp') {
                                  $statusCode = 'absent';
                                  $statusLabel = '🔴 ABSENT';
                              } else {
@@ -855,7 +861,18 @@
                                      }
                                  }
                              }
-                            $attDate = $attendance->attendance_date ? \Carbon\Carbon::parse($attendance->attendance_date)->format('d M Y') : '-';
+                             $attDate = $attendance->attendance_date ? \Carbon\Carbon::parse($attendance->attendance_date)->format('d M Y') : '-';
+                             
+                             $displayReason = $attendance->block_reason ?? $attendance->auto_block_reason ?? $attendance->blocked_reason;
+                             if (empty($displayReason)) {
+                                 if ($isUnlocked) {
+                                     $displayReason = 'Unlocked by HR';
+                                 } elseif ($statusCode === 'missed_punch' || $attendance->missed_punch) {
+                                     $displayReason = 'Missed Punch (Out Time Pending)';
+                                 } else {
+                                     $displayReason = 'Punch-in blocked after cutoff time';
+                                 }
+                             }
                             @endphp
                             <tr>
                                 <td>
@@ -897,27 +914,24 @@
                                     <span class="att-badge badge-{{ $statusCode }}">
                                         {{ $statusLabel }}
                                     </span>
+                                    @if($isUnlocked && $attendance->unlocked_at)
+                                        <div class="small text-muted mt-1" style="font-size: 10px;">
+                                            <i class="fas fa-check-circle text-success"></i> Unlocked {{ \Carbon\Carbon::parse($attendance->unlocked_at)->format('d M h:i A') }}
+                                        </div>
+                                    @endif
                                 </td>
                                 <td>
-                                    <span class="text-danger font-weight-bold" style="font-size: 11px;">
-                                        {{ $attendance->block_reason ?? $attendance->auto_block_reason ?? $attendance->blocked_reason ?? 'Punch blocked' }}
+                                    <span class="{{ $isUnlocked ? 'text-success' : ($statusCode === 'missed_punch' ? 'text-warning' : 'text-danger') }} font-weight-bold" style="font-size: 11px;">
+                                        {{ $displayReason }}
                                     </span>
                                 </td>
-                                <!-- <td>{{ $attendance->punch_in_time ? \Carbon\Carbon::parse($attendance->punch_in_time)->format('h:i A') : '-' }}</td>
-                                    <td>{{ $attendance->punch_out_time ? \Carbon\Carbon::parse($attendance->punch_out_time)->format('h:i A') : '-' }}</td> -->
-                                <!-- <td>
-                                        @if($attendance->is_admin_unlocked)
-                                            <span class="badge badge-success px-2 py-1">{{ str_replace('_', ' ', strtoupper($attendance->unlock_type)) }}</span>
-                                        @else
-                                            <span class="text-muted small">-</span>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        <div class="small text-muted">{{ $attendance->unlock_reason_category ?? '-' }}</div>
-                                    </td> -->
                                 <td class="text-right no-export">
                                     <div class="d-flex justify-content-end align-items-center" style="gap: 6px;">
-                                        @if(($canUnlockAttendance ?? false) && ($attendance->is_blocked || $attendance->is_punch_blocked || $statusCode === 'punch_blocked'))
+                                        @if($isUnlocked)
+                                        <span class="badge badge-success px-2 py-1" style="border-radius: 8px; font-weight: 700; font-size: 11px;">
+                                            <i class="fas fa-check-circle"></i> Unlocked by HR
+                                        </span>
+                                        @elseif(($canUnlockAttendance ?? false) && ($attendance->is_blocked || $attendance->is_punch_blocked || $statusCode === 'punch_blocked'))
                                         <button type="button" class="att-action-btn att-action-approve" data-toggle="modal" data-target="#unlockModal{{ $attendance->id }}" title="Unlock/Approve">
                                             <i class="fas fa-unlock"></i> Unlock
                                         </button>
@@ -984,22 +998,16 @@
 
         $('#pendingDataTable').DataTable({
             destroy: true,
-            pageLength: 25,
-            lengthMenu: [
-                [10, 25, 50, 100, -1],
-                [10, 25, 50, 100, 'All']
-            ],
-            ordering: true,
+            ordering: false,
             responsive: false,
             autoWidth: false,
             scrollX: true,
             scrollCollapse: true,
-            paging: true,
-            info: true,
+            paging: false,
+            info: false,
             searching: false,
-            dom: "<'row align-items-center mb-3'<'col-md-4'l><'col-md-8 text-md-right'B>>" +
-                "<'row'<'col-md-12'tr>>" +
-                "<'row align-items-center mt-3'<'col-md-5'i><'col-md-7'p>>",
+            dom: "<'row align-items-center mb-3'<'col-md-12 text-md-right'B>>" +
+                "<'row'<'col-md-12'tr>>",
             buttons: [{
                     extend: 'csvHtml5',
                     text: '<i class="fas fa-file-csv"></i> CSV',
@@ -1038,13 +1046,7 @@
                 }
             ],
             language: {
-                lengthMenu: 'Show _MENU_ entries',
-                emptyTable: 'No pending approvals found.',
-                info: 'Showing _START_ to _END_ of _TOTAL_ entries',
-                paginate: {
-                    previous: 'Prev',
-                    next: 'Next'
-                }
+                emptyTable: 'No pending approvals found.'
             }
         });
 

@@ -38,6 +38,10 @@ class LeaveAllocationService
         ?Carbon $effectiveDate = null
     ): LeaveAllocationM
     {
+        if (!app(\App\Services\HRMS\Employee\EmployeeEligibilityS::class)->canUseLeave($employee)) {
+            return LeaveAllocationM::firstOrNew(['employee_id' => $employee->id, 'year' => $year]);
+        }
+
         return DB::transaction(function () use ($employee, $year, $userId, $forceStage, $effectiveDate) {
             $policy = $this->policyService->forEmployee($employee, Carbon::create($year, 1, 1, 0, 0, 0, 'Asia/Kolkata'));
             $stage = $forceStage ? strtolower($forceStage) : $this->stageFor($employee);
@@ -67,7 +71,10 @@ class LeaveAllocationService
                 'paid_allocated' => $paid,
                 'sick_allocated' => $sick,
                 'comp_off_allocated' => (float) ($allocation->comp_off_allocated ?? 0),
-                'allocation_reason' => $this->allocationReason($stage),
+                'monthly_used_this_month' => 0.0,
+                'monthly_carry_forward' => 0.0,
+                'last_month_processed' => sprintf('%04d-%02d', $year, 1),
+                'allocation_reason' => "Annual Allocation for {$year}",
                 'created_by_user_id' => $userId,
             ]);
 
@@ -130,11 +137,35 @@ class LeaveAllocationService
 
     public function recalculateAllocationFields(LeaveAllocationM $allocation): LeaveAllocationM
     {
+        $allocation->paid_remaining = round(max(0.0, (float) $allocation->paid_allocated - (float) $allocation->paid_used), 2);
+        $allocation->sick_remaining = round(max(0.0, (float) $allocation->sick_allocated - (float) $allocation->sick_used), 2);
+        $allocation->comp_off_remaining = round(max(0.0, (float) $allocation->comp_off_allocated - (float) $allocation->comp_off_used), 2);
+
         $allocation->total_used = round((float) $allocation->paid_used + (float) $allocation->sick_used + (float) $allocation->comp_off_used, 2);
-        $allocation->paid_remaining = round(max(0, (float) $allocation->paid_allocated - (float) $allocation->paid_used), 2);
-        $allocation->sick_remaining = round(max(0, (float) $allocation->sick_allocated - (float) $allocation->sick_used), 2);
-        $allocation->comp_off_remaining = round(max(0, (float) $allocation->comp_off_allocated - (float) $allocation->comp_off_used), 2);
         $allocation->total_remaining = round((float) $allocation->paid_remaining + (float) $allocation->sick_remaining + (float) $allocation->comp_off_remaining, 2);
+
+        $stage = strtolower((string) ($allocation->employment_stage ?? ''));
+        $isInternOrProbation = str_contains($stage, 'intern') || str_contains($stage, 'probation');
+
+        if ($isInternOrProbation) {
+            // Interns and probationers receive 1 fixed allocation, NO monthly carry-forward!
+            $allocation->monthly_carry_forward = 0.0;
+        } else {
+            // Permanent employees cannot carry forward more than their total remaining paid leaves
+            $allocation->monthly_carry_forward = min((float) ($allocation->monthly_carry_forward ?? 0.0), (float) $allocation->paid_remaining);
+        }
+
+        // Monthly quota cannot exceed total paid allocation/remaining
+        $rawQuota = (float) ($allocation->monthly_quota ?? 2.0);
+        $allocation->monthly_quota = round(min($rawQuota, (float) $allocation->paid_remaining), 2);
+
+        $carry = (float) $allocation->monthly_carry_forward;
+        $quota = (float) $allocation->monthly_quota;
+        $usedThisMonth = (float) ($allocation->monthly_used_this_month ?? 0.0);
+
+        // Total monthly remaining paid leaves CANNOT exceed total remaining paid leaves!
+        $monthlyRemainingRaw = max(0.0, ($quota + $carry) - $usedThisMonth);
+        $allocation->total_monthly_remaining_paid = round(min((float) $allocation->paid_remaining, $monthlyRemainingRaw), 2);
 
         return $allocation;
     }

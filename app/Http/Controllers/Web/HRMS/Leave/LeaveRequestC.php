@@ -85,7 +85,8 @@ class LeaveRequestC extends Controller
 
             $leaveType = LeaveTypeM::findOrFail($request->leave_type_id);
             $attachmentPath = $this->storeAttachment($request);
-            $payload = array_merge($request->validated(), ['attachment_path' => $attachmentPath]);
+            $sanitized = \App\Services\HRMS\Leave\LeaveValidationService::sanitizePayload($request->validated());
+            $payload = array_merge($sanitized, ['attachment_path' => $attachmentPath]);
             $calculation = $this->calculationService->calculate($employee, $leaveType, $payload);
 
             $leaveRequest = LeaveRequestM::create([
@@ -93,12 +94,12 @@ class LeaveRequestC extends Controller
                 'user_id' => $employee->user_id,
                 'leave_type_id' => $leaveType->id,
                 'reporting_manager_employee_id' => $employee->reporting_manager_employee_id,
-                'start_date' => $request->start_date,
-                'end_date' => $request->end_date,
+                'start_date' => $sanitized['start_date'],
+                'end_date' => $sanitized['end_date'],
                 'requested_days' => $calculation['requested_days'],
                 'deducted_days' => $calculation['deducted_days'],
-                'is_half_day' => $request->boolean('is_half_day'),
-                'half_day_type' => $request->half_day_type,
+                'is_half_day' => $sanitized['is_half_day'],
+                'half_day_type' => $sanitized['half_day_type'],
                 'reason' => $request->reason,
                 'attachment_path' => $attachmentPath,
                 'status' => 'pending',

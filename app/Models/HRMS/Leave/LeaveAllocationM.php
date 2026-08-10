@@ -32,8 +32,17 @@ class LeaveAllocationM extends Model
         'paid_remaining' => 'decimal:2',
         'sick_remaining' => 'decimal:2',
         'comp_off_remaining' => 'decimal:2',
+        'monthly_used_this_month' => 'decimal:2',
+        'monthly_carry_forward' => 'decimal:2',
+        'monthly_quota' => 'decimal:2',
+        'total_monthly_remaining_paid' => 'decimal:2',
         'is_locked' => 'boolean',
     ];
+
+    public function getTotalRemainingPaidAttribute(): float
+    {
+        return (float) ($this->attributes['total_monthly_remaining_paid'] ?? $this->attributes['paid_remaining'] ?? 0.00);
+    }
 
     public function employee()
     {

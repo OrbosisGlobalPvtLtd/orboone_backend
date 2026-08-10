@@ -404,6 +404,30 @@
             width: 100% !important;
         }
     }
+
+    .time-picker-container {
+        position: relative;
+        width: 100%;
+    }
+    .native-time-input {
+        color: transparent !important;
+        caret-color: transparent !important;
+        background: transparent !important;
+    }
+    .native-time-input::-webkit-calendar-picker-indicator {
+        cursor: pointer;
+        opacity: 1;
+    }
+    .time-display-val {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--orb-text);
+    }
 </style>
 
 @php
@@ -564,23 +588,23 @@ $probationMonths = old('probation_months', $employeeData->probation_months ?? 3)
                             <select name="work_schedule_type" id="work_schedule_type" class="form-select @error('work_schedule_type') is-invalid @enderror">
                                 <option value="">Select Schedule</option>
                                 @foreach($attendanceTimes as $shiftItem)
-                                    @php
-                                        $currentVal = old('work_schedule_type', $employeeData->work_schedule_type ?? '');
-                                        $isMatch = $currentVal == $shiftItem->code 
-                                                || $currentVal == str_replace('_shift', '', $shiftItem->code)
-                                                || (in_array($currentVal, ['general', 'full_day']) && str_contains($shiftItem->code, 'general'))
-                                                || (in_array($currentVal, ['part_time', 'part_day']) && $shiftItem->code === 'part_time_shift')
-                                                || (in_array($currentVal, ['half_day', 'hourly']) && $shiftItem->code === 'half_day_shift')
-                                                || (in_array($currentVal, ['wfh']) && $shiftItem->code === 'wfh_shift');
+                                @php
+                                $currentVal = old('work_schedule_type', $employeeData->work_schedule_type ?? '');
+                                $isMatch = $currentVal == $shiftItem->code
+                                || $currentVal == str_replace('_shift', '', $shiftItem->code)
+                                || (in_array($currentVal, ['general', 'full_day']) && str_contains($shiftItem->code, 'general'))
+                                || (in_array($currentVal, ['part_time', 'part_day']) && $shiftItem->code === 'part_time_shift')
+                                || (in_array($currentVal, ['half_day', 'hourly']) && $shiftItem->code === 'half_day_shift')
+                                || (in_array($currentVal, ['wfh']) && $shiftItem->code === 'wfh_shift');
 
-                                        $displayName = $shiftItem->name;
-                                        if (str_contains($shiftItem->code, 'general')) {
-                                            $displayName = 'General Shift (Full Day)';
-                                        }
-                                    @endphp
-                                    <option value="{{ $shiftItem->code }}" {{ $isMatch ? 'selected' : '' }}>
-                                        {{ $displayName }}
-                                    </option>
+                                $displayName = $shiftItem->name;
+                                if (str_contains($shiftItem->code, 'general')) {
+                                $displayName = 'General Shift (Full Day)';
+                                }
+                                @endphp
+                                <option value="{{ $shiftItem->code }}" {{ $isMatch ? 'selected' : '' }}>
+                                    {{ $displayName }}
+                                </option>
                                 @endforeach
                             </select>
                             @error('work_schedule_type') <div class="invalid-feedback">{{ $message }}</div> @enderror
@@ -625,6 +649,64 @@ $probationMonths = old('probation_months', $employeeData->probation_months ?? 3)
                                 @endforeach
                             </select>
                             @error('reporting_manager_employee_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+                    </div>
+
+                    <div id="flexible_shift_timings_box" class="eo-smart-panel" style="display: none; margin-bottom: 14px;">
+                        <div class="eo-panel-title">
+                            <i class="fas fa-clock"></i> Flexible Shift Timing Customisation
+                        </div>
+                        <div class="row">
+                            <div class="col-xl-3 col-lg-4 col-md-6 eo-field mb-3">
+                                <label style="font-weight: 600; font-size: 13px; color: var(--orb-text); margin-bottom: 6px; display: block;">Punch Allowed From <span class="required">*</span></label>
+                                <div class="time-picker-container">
+                                    <input type="time" name="punch_allowed_from" id="punch_allowed_from" class="form-control native-time-input" value="{{ old('punch_allowed_from', isset($activeShiftTiming) && $activeShiftTiming->punch_allowed_from ? \Carbon\Carbon::parse($activeShiftTiming->punch_allowed_from)->format('H:i') : '') }}">
+                                    <span class="time-display-val">--:--</span>
+                                </div>
+                            </div>
+                            <div class="col-xl-3 col-lg-4 col-md-6 eo-field mb-3">
+                                <label style="font-weight: 600; font-size: 13px; color: var(--orb-text); margin-bottom: 6px; display: block;">Shift Start <span class="required">*</span></label>
+                                <div class="time-picker-container">
+                                    <input type="time" name="shift_start_time" id="shift_start_time" class="form-control native-time-input" value="{{ old('shift_start_time', isset($activeShiftTiming) && $activeShiftTiming->shift_start_time ? \Carbon\Carbon::parse($activeShiftTiming->shift_start_time)->format('H:i') : '') }}">
+                                    <span class="time-display-val">--:--</span>
+                                </div>
+                            </div>
+                            <div class="col-xl-3 col-lg-4 col-md-6 eo-field mb-3">
+                                <label style="font-weight: 600; font-size: 13px; color: var(--orb-text); margin-bottom: 6px; display: block;">Late After <span class="required">*</span></label>
+                                <div class="time-picker-container">
+                                    <input type="time" name="late_after_time" id="late_after_time" class="form-control native-time-input" value="{{ old('late_after_time', isset($activeShiftTiming) && $activeShiftTiming->late_after_time ? \Carbon\Carbon::parse($activeShiftTiming->late_after_time)->format('H:i') : '') }}">
+                                    <span class="time-display-val">--:--</span>
+                                </div>
+                            </div>
+                            <div class="col-xl-3 col-lg-4 col-md-6 eo-field mb-3">
+                                <label style="font-weight: 600; font-size: 13px; color: var(--orb-text); margin-bottom: 6px; display: block;">Half Day After <span class="required">*</span></label>
+                                <div class="time-picker-container">
+                                    <input type="time" name="half_day_after_time" id="half_day_after_time" class="form-control native-time-input" value="{{ old('half_day_after_time', isset($activeShiftTiming) && $activeShiftTiming->half_day_after_time ? \Carbon\Carbon::parse($activeShiftTiming->half_day_after_time)->format('H:i') : '') }}">
+                                    <span class="time-display-val">--:--</span>
+                                </div>
+                            </div>
+                            <div class="col-xl-3 col-lg-4 col-md-6 eo-field mb-3">
+                                <label style="font-weight: 600; font-size: 13px; color: var(--orb-text); margin-bottom: 6px; display: block;">Blocked Punch <span class="required">*</span></label>
+                                <div class="time-picker-container">
+                                    <input type="time" name="block_after_time" id="block_after_time" class="form-control native-time-input" value="{{ old('block_after_time', isset($activeShiftTiming) && $activeShiftTiming->block_after_time ? \Carbon\Carbon::parse($activeShiftTiming->block_after_time)->format('H:i') : '') }}">
+                                    <span class="time-display-val">--:--</span>
+                                </div>
+                            </div>
+                            <div class="col-xl-3 col-lg-4 col-md-6 eo-field mb-3">
+                                <label style="font-weight: 600; font-size: 13px; color: var(--orb-text); margin-bottom: 6px; display: block;">Shift End <span class="required">*</span></label>
+                                <div class="time-picker-container">
+                                    <input type="time" name="shift_end_time" id="shift_end_time" class="form-control native-time-input" value="{{ old('shift_end_time', isset($activeShiftTiming) && $activeShiftTiming->shift_end_time ? \Carbon\Carbon::parse($activeShiftTiming->shift_end_time)->format('H:i') : '') }}">
+                                    <span class="time-display-val">--:--</span>
+                                </div>
+                            </div>
+                            <div class="col-xl-3 col-lg-4 col-md-6 eo-field mb-3">
+                                <label style="font-weight: 600; font-size: 13px; color: var(--orb-text); margin-bottom: 6px; display: block;">Required Minutes <span class="required">*</span></label>
+                                <input type="number" name="required_work_minutes" id="required_work_minutes" class="form-control" placeholder="e.g. 480" value="{{ old('required_work_minutes', isset($activeShiftTiming) ? $activeShiftTiming->required_work_minutes : '') }}">
+                            </div>
+                            <div class="col-xl-3 col-lg-4 col-md-6 eo-field mb-3">
+                                <label style="font-weight: 600; font-size: 13px; color: var(--orb-text); margin-bottom: 6px; display: block;">Lunch Minutes <span class="required">*</span></label>
+                                <input type="number" name="lunch_minutes" id="lunch_minutes" class="form-control" placeholder="e.g. 60" value="{{ old('lunch_minutes', isset($activeShiftTiming) ? $activeShiftTiming->lunch_minutes : '') }}">
+                            </div>
                         </div>
                     </div>
 
@@ -1125,12 +1207,184 @@ $probationMonths = old('probation_months', $employeeData->probation_months ?? 3)
 
         employmentStatus?.addEventListener('change', updateRelievingVisibility);
 
+        const flexibleShiftTimingsBox = document.getElementById('flexible_shift_timings_box');
+
+        const shiftDefaultTimings = {
+            @foreach($attendanceTimes as $shiftItem)
+            '{{ $shiftItem->code }}': {
+                'punch_allowed_from': '{{ $shiftItem->punch_allowed_from ? \Carbon\Carbon::parse($shiftItem->punch_allowed_from)->format('H:i') : '' }}',
+                'shift_start_time': '{{ $shiftItem->shift_start_time ? \Carbon\Carbon::parse($shiftItem->shift_start_time)->format('H:i') : '' }}',
+                'late_after_time': '{{ $shiftItem->late_after_time ? \Carbon\Carbon::parse($shiftItem->late_after_time)->format('H:i') : '' }}',
+                'half_day_after_time': '{{ $shiftItem->half_day_after_time ? \Carbon\Carbon::parse($shiftItem->half_day_after_time)->format('H:i') : '' }}',
+                'block_after_time': '{{ $shiftItem->block_after_time ? \Carbon\Carbon::parse($shiftItem->block_after_time)->format('H:i') : '' }}',
+                'shift_end_time': '{{ $shiftItem->shift_end_time ? \Carbon\Carbon::parse($shiftItem->shift_end_time)->format('H:i') : '' }}',
+                'required_work_minutes': '{{ $shiftItem->required_work_minutes ?? '' }}',
+                'lunch_minutes': '{{ $shiftItem->lunch_break_minutes ?? '' }}'
+            },
+            @endforeach
+        };
+
+        function toggleFlexibleTimingFields() {
+            if (!workScheduleType || !flexibleShiftTimingsBox) return;
+            if (workScheduleType.value === 'flexible_part_time') {
+                flexibleShiftTimingsBox.style.display = 'block';
+                flexibleShiftTimingsBox.querySelectorAll('input').forEach(input => {
+                    input.setAttribute('required', 'required');
+                });
+            } else {
+                flexibleShiftTimingsBox.style.display = 'none';
+                flexibleShiftTimingsBox.querySelectorAll('input').forEach(input => {
+                    input.removeAttribute('required');
+                });
+            }
+        }
+
+        function formatTimeTo12Hour(timeStr) {
+            if (!timeStr) return '--:--';
+            const [hoursStr, minutesStr] = timeStr.split(':');
+            let hours = Number(hoursStr);
+            const minutes = Number(minutesStr);
+            if (isNaN(hours) || isNaN(minutes)) return '--:--';
+
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            const strMinutes = String(minutes).padStart(2, '0');
+            const strHours = String(hours).padStart(2, '0');
+            return `${strHours}:${strMinutes} ${ampm}`;
+        }
+
+        function updateAllTimeDisplays() {
+            const timeFields = ['punch_allowed_from', 'shift_start_time', 'late_after_time', 'half_day_after_time', 'block_after_time', 'shift_end_time'];
+            timeFields.forEach(field => {
+                const input = document.getElementById(field);
+                if (input) {
+                    const overlay = input.parentNode.querySelector('.time-display-val');
+                    if (overlay) {
+                        overlay.textContent = formatTimeTo12Hour(input.value);
+                    }
+                }
+            });
+        }
+
+        function handleScheduleChange(isInit = false) {
+            if (!workScheduleType) return;
+            const code = workScheduleType.value;
+            const defaults = shiftDefaultTimings[code];
+            if (defaults) {
+                const fields = ['punch_allowed_from', 'shift_start_time', 'late_after_time', 'half_day_after_time', 'block_after_time', 'shift_end_time', 'required_work_minutes', 'lunch_minutes'];
+                fields.forEach(field => {
+                    const el = document.getElementById(field);
+                    if (el) {
+                        if (!isInit || !el.value) {
+                            el.value = defaults[field];
+                        }
+                    }
+                });
+            }
+            toggleFlexibleTimingFields();
+            updateAllTimeDisplays();
+        }
+
+        function addMinutesToTime(timeStr, minutesToAdd) {
+            if (!timeStr) return '';
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            const date = new Date();
+            date.setHours(hours);
+            date.setMinutes(minutes + minutesToAdd);
+            date.setSeconds(0);
+
+            const h = String(date.getHours()).padStart(2, '0');
+            const m = String(date.getMinutes()).padStart(2, '0');
+            return `${h}:${m}`;
+        }
+
+        function autoCalculateTimings() {
+            const shiftStartInput = document.getElementById('shift_start_time');
+            const lateAfterInput = document.getElementById('late_after_time');
+            const halfDayAfterInput = document.getElementById('half_day_after_time');
+            const shiftEndInput = document.getElementById('shift_end_time');
+            const reqMinutesInput = document.getElementById('required_work_minutes');
+            const lunchMinutesInput = document.getElementById('lunch_minutes');
+            const punchAllowedInput = document.getElementById('punch_allowed_from');
+            const blockedPunchInput = document.getElementById('block_after_time');
+
+            if (!shiftStartInput) return;
+
+            const startTime = shiftStartInput.value;
+            if (!startTime) return;
+
+            // 1. Late After: Start + 65 mins
+            if (lateAfterInput) {
+                lateAfterInput.value = addMinutesToTime(startTime, 65);
+            }
+
+            // 2. Half Day After: Start + 240 mins (4 hours)
+            if (halfDayAfterInput) {
+                halfDayAfterInput.value = addMinutesToTime(startTime, 240);
+            }
+
+            // 3. Punch Allowed From: Start - 60 mins (1 hour before)
+            if (punchAllowedInput) {
+                punchAllowedInput.value = addMinutesToTime(startTime, -60);
+            }
+
+            // 4. Shift End Time: Start + Required Minutes + Lunch Minutes
+            const reqMin = Number(reqMinutesInput?.value || 0);
+            const lunchMin = Number(lunchMinutesInput?.value || 0);
+            let calculatedEnd = '';
+            if (shiftEndInput && (reqMin > 0 || lunchMin > 0)) {
+                calculatedEnd = addMinutesToTime(startTime, reqMin + lunchMin);
+                shiftEndInput.value = calculatedEnd;
+            }
+
+            // 5. Blocked Punch: Start + 75 mins
+            if (blockedPunchInput) {
+                blockedPunchInput.value = addMinutesToTime(startTime, 75);
+            }
+
+            updateAllTimeDisplays();
+        }
+
+        if (workScheduleType) {
+            workScheduleType.addEventListener('change', function() {
+                handleScheduleChange(false);
+            });
+        }
+
+        const shiftStartEl = document.getElementById('shift_start_time');
+        const reqMinEl = document.getElementById('required_work_minutes');
+        const lunchMinEl = document.getElementById('lunch_minutes');
+
+        if (shiftStartEl) {
+            shiftStartEl.addEventListener('input', autoCalculateTimings);
+            shiftStartEl.addEventListener('change', autoCalculateTimings);
+        }
+        if (reqMinEl) {
+            reqMinEl.addEventListener('input', autoCalculateTimings);
+            reqMinEl.addEventListener('change', autoCalculateTimings);
+        }
+        if (lunchMinEl) {
+            lunchMinEl.addEventListener('input', autoCalculateTimings);
+            lunchMinEl.addEventListener('change', autoCalculateTimings);
+        }
+
+        const timeFields = ['punch_allowed_from', 'shift_start_time', 'late_after_time', 'half_day_after_time', 'block_after_time', 'shift_end_time'];
+        timeFields.forEach(field => {
+            const el = document.getElementById(field);
+            if (el) {
+                el.addEventListener('input', updateAllTimeDisplays);
+                el.addEventListener('change', updateAllTimeDisplays);
+            }
+        });
+
         filterDesignations();
         updateEmploymentFields();
         updateProbation();
         updateInternshipEndDate();
         updateSalary();
         updateRelievingVisibility();
+        handleScheduleChange(true);
     });
 </script>
 @endsection

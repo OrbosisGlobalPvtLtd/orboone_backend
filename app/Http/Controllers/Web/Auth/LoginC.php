@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web\Auth;
 use App\Http\Controllers\Controller;
 use App\Providers\RouteServiceProvider;
 use App\Services\HRMS\Employee\EmployeeProfileS;
+use App\Services\HRMS\Employee\EmployeeEligibilityS;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -54,11 +55,19 @@ class LoginC extends Controller
      */
     protected function authenticated(Request $request, $user)
     {
+        // Check Employee Eligibility
+        $eligibilityService = app(EmployeeEligibilityS::class);
+        $loginCheck = $eligibilityService->canLogin($user);
+
+        if (!$loginCheck['allowed']) {
+            Auth::logout();
+            return redirect('/login')->with('fail', $loginCheck['message']);
+        }
+
         // Inactive user block
         if (!$user->is_active) {
             Auth::logout();
-
-            return redirect('/login')->with('fail', 'Your account is inactive. Please contact admin.');
+            return redirect('/login')->with('fail', 'Your employment has ended. Please contact HR.');
         }
 
         // Update last login time if column exists
@@ -68,22 +77,9 @@ class LoginC extends Controller
             ]);
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Temporary Web Login Logic
-        |--------------------------------------------------------------------------
-        | Current phase:
-        | - Admin roles allowed
-        | - Employee also temporarily allowed
-        | Later:
-        | - Employee web can be restricted if needed
-        |--------------------------------------------------------------------------
-        */
-
         // If explicit web access flag exists and user has no web access
         if (\Schema::hasColumn('users', 'is_web_access') && !$user->is_web_access) {
             Auth::logout();
-
             return redirect('/login')->with('fail', 'Web access is not enabled for your account.');
         }
 
@@ -133,7 +129,6 @@ class LoginC extends Controller
 
         if (!$hasAllowedRole) {
             Auth::logout();
-
             return redirect('/login')->with('fail', 'Access denied. You do not have permission to login here.');
         }
 
@@ -148,23 +143,6 @@ class LoginC extends Controller
                 ->route('profile.index')
                 ->with('warning', 'Login with temporary password successful. Please change your password to continue.');
         }
-
-        $profileService = app(EmployeeProfileS::class);
-        $incompleteEmployeeId = $profileService->getIncompleteEmployeeIdForUser((int) $user->id);
-
-        // if ($incompleteEmployeeId) {
-        //     if (Route::has('profile')) {
-        //         return redirect()
-        //             ->route('profile')
-        //             ->with('warning', 'Please complete your profile before continuing.');
-        //     }
-
-        //     if (Route::has('hrms.employees.profile.complete')) {
-        //         return redirect()
-        //             ->route('hrms.employees.profile.complete', $incompleteEmployeeId)
-        //             ->with('warning', 'Please complete your profile before continuing.');
-        //     }
-        // }
 
         return redirect()->route('dashboard');
     }

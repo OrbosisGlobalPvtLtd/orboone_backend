@@ -37,6 +37,7 @@ class Kernel extends ConsoleKernel
         LapseYearEndLeaves::class,
         RecalculateLeaveBalances::class,
         GenerateMonthlyAttendanceSummary::class,
+        \App\Console\Commands\AttendanceBackfillShiftAssignments::class,
     ];
 
     /**

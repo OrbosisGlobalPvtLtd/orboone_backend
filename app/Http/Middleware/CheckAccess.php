@@ -52,6 +52,8 @@ class CheckAccess
         // Map sub-routes/actions to their primary menu route
         if (strpos($routeName, 'attendance.policy_rules.') === 0 || strpos($routeName, 'attendance.rules.') === 0) {
             $routeName = 'attendance.rules.index';
+        } elseif (strpos($routeName, 'employee.shift-assignment.') === 0) {
+            $routeName = 'employee.shift-assignment.index';
         } elseif (strpos($routeName, 'attendance.types.') === 0) {
             $routeName = 'attendance.types.index';
         } elseif (strpos($routeName, 'documents.hr.') === 0) {

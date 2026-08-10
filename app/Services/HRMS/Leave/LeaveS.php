@@ -34,6 +34,10 @@ class LeaveS
 
     public function calculateAllocationForEmployee(Employee $employee, int $year): ?LeaveAllocation
     {
+        if (!app(\App\Services\HRMS\Employee\EmployeeEligibilityS::class)->canUseLeave($employee)) {
+            return null;
+        }
+
         $joiningDateValue = $employee->joining_date ?? $employee->start_of_contract ?? null;
 
         if (! $joiningDateValue) {
@@ -101,26 +105,8 @@ class LeaveS
             'year' => $year,
         ]);
 
-        $allocation->paid_allocated = $pl;
-        $allocation->sick_allocated = $sl;
-        $allocation->comp_off_allocated = (float) ($allocation->comp_off_allocated ?? 0);
-        $allocation->total_allocated = $allocation->paid_allocated + $allocation->sick_allocated + $allocation->comp_off_allocated;
-
-        if (! $allocation->exists) {
-            $allocation->paid_used = 0;
-            $allocation->sick_used = 0;
-            $allocation->comp_off_used = 0;
-            $allocation->lwp_used = 0;
-        }
-
-        $allocation->total_used = (float) ($allocation->paid_used ?? 0)
-            + (float) ($allocation->sick_used ?? 0)
-            + (float) ($allocation->comp_off_used ?? 0);
-        $allocation->paid_remaining = max(0, (float) $allocation->paid_allocated - (float) ($allocation->paid_used ?? 0));
-        $allocation->sick_remaining = max(0, (float) $allocation->sick_allocated - (float) ($allocation->sick_used ?? 0));
-        $allocation->comp_off_remaining = max(0, (float) $allocation->comp_off_allocated - (float) ($allocation->comp_off_used ?? 0));
-        $allocation->total_remaining = $allocation->paid_remaining + $allocation->sick_remaining + $allocation->comp_off_remaining;
-
+        $allocation->pl_allocated = $pl;
+        $allocation->sl_allocated = $sl;
         $allocation->save();
 
         return $allocation;

@@ -55,13 +55,18 @@ class LeaveApprovalService
                 ]));
             }
 
-            $before = (float) $allocation->total_remaining;
+            $before = (float) $allocation->total_monthly_remaining_paid;
             $allocation->paid_used = (float) $allocation->paid_used + (float) $calculation['paid_days'];
             $allocation->sick_used = (float) $allocation->sick_used + (float) $calculation['sick_days'];
             $allocation->comp_off_used = (float) $allocation->comp_off_used + (float) $calculation['comp_off_days'];
             $allocation->lwp_used = (float) $allocation->lwp_used + (float) $calculation['lwp_days'];
-            $this->allocationService->recalculateAllocationFields($allocation);
-            $allocation->save();
+
+            if ((float) $calculation['paid_days'] > 0) {
+                app(\App\Services\HRMS\Leave\MonthlyLeaveQuotaService::class)->recordMonthlyLeaveUsage($allocation, (float) $calculation['paid_days']);
+            } else {
+                $this->allocationService->recalculateAllocationFields($allocation);
+                $allocation->save();
+            }
 
             if ((float) $calculation['comp_off_days'] > 0) {
                 $this->compOffService->consume($leaveRequest->employee, (float) $calculation['comp_off_days'], $leaveRequest->id);
@@ -84,7 +89,7 @@ class LeaveApprovalService
                 'auto_converted_to_lwp' => (float) $calculation['lwp_days'] > 0,
             ])->save();
 
-            $this->logBalance($leaveRequest, $allocation, 'leave_approved', $before, (float) $allocation->total_remaining, $approvedByUserId);
+            $this->logBalance($leaveRequest, $allocation, 'leave_approved', $before, (float) $allocation->total_monthly_remaining_paid, $approvedByUserId);
             $this->attendanceSyncService->syncApprovedLeave($leaveRequest->fresh(['dates']), $approvedByUserId);
             $this->createPayrollImpacts($leaveRequest->fresh(['dates']), $approvedByUserId);
             $this->notifyLeaveDecision($leaveRequest->fresh(['employee.user', 'leaveType', 'dates']), 'leave_approved');
@@ -149,20 +154,25 @@ class LeaveApprovalService
 
             $this->attendanceSyncService->reverseLeaveSync($leaveRequest, $userId);
 
-            $before = (float) $allocation->total_remaining;
+            $before = (float) $allocation->total_monthly_remaining_paid;
             $allocation->paid_used = max(0, (float) $allocation->paid_used - (float) $leaveRequest->paid_days);
             $allocation->sick_used = max(0, (float) $allocation->sick_used - (float) $leaveRequest->sick_days);
             $allocation->comp_off_used = max(0, (float) $allocation->comp_off_used - (float) $leaveRequest->comp_off_days);
             $allocation->lwp_used = max(0, (float) $allocation->lwp_used - (float) $leaveRequest->lwp_days);
-            $this->allocationService->recalculateAllocationFields($allocation);
-            $allocation->save();
+
+            if ((float) $leaveRequest->paid_days > 0) {
+                app(\App\Services\HRMS\Leave\MonthlyLeaveQuotaService::class)->refundMonthlyLeaveUsage($allocation, (float) $leaveRequest->paid_days);
+            } else {
+                $this->allocationService->recalculateAllocationFields($allocation);
+                $allocation->save();
+            }
 
             DB::table('payroll_attendance_impacts')
                 ->where('leave_request_id', $leaveRequest->id)
                 ->where('is_processed_in_payroll', 0)
                 ->delete();
 
-            $this->logBalance($leaveRequest, $allocation, $action, $before, (float) $allocation->total_remaining, $userId);
+            $this->logBalance($leaveRequest, $allocation, $action, $before, (float) $allocation->total_monthly_remaining_paid, $userId);
         } catch (\Throwable $e) {
             Log::error('Leave reversal failed', ['leave_request_id' => $leaveRequest->id, 'error' => $e->getMessage()]);
             throw $e;

@@ -154,7 +154,7 @@ class DashboardResolverS
         if (isset($rolePayloadMethods[$role])) {
             return $this->{$rolePayloadMethods[$role]}($user);
         }
-        
+
         $base = $this->baseDashboardPayload(self::ROLE_PRIORITY[$role]['title'], 'HRMS Dashboard');
         $base['meta']['user_name'] = $user->name ?? 'User';
 
@@ -228,7 +228,7 @@ class DashboardResolverS
             'punch_blocked' => 0,
             'pending_hr' => 0,
             'missed_punch' => 0,
-            
+
             'total_employees' => 0,
             'active_employees' => 0,
             'pending_profiles' => 0,
@@ -238,18 +238,18 @@ class DashboardResolverS
             'permanent' => 0,
             'exit_process' => 0,
         ];
-        
+
         // Employee logic
         if (Schema::hasTable('employees_new')) {
             $cards['total_employees'] = DB::table('employees_new')->count();
-            
+
             if (Schema::hasColumn('employees_new', 'status')) {
                 $cards['active_employees'] = DB::table('employees_new')->where('status', 'active')->count();
                 $cards['exit_process'] = DB::table('employees_new')->whereIn('status', ['exit_process', 'exited', 'terminated'])->count();
             } else {
                 $cards['active_employees'] = $cards['total_employees'];
             }
-            
+
             if (Schema::hasColumn('employees_new', 'employee_stage')) {
                 $cards['interns'] = DB::table('employees_new')->where('employee_stage', 'internship')->count();
                 $cards['probation'] = DB::table('employees_new')->where('employee_stage', 'probation')->count();
@@ -260,27 +260,37 @@ class DashboardResolverS
                 $cards['permanent'] = DB::table('employees_new')->where('employment_type', 'permanent')->count();
             }
         }
-        
+
         if (Schema::hasTable('employee_profiles') && Schema::hasColumn('employee_profiles', 'profile_status')) {
             $cards['pending_profiles'] = DB::table('employee_profiles')->whereIn('profile_status', ['pending', 'submitted'])->count();
             $cards['rejected_profiles'] = DB::table('employee_profiles')->where('profile_status', 'rejected')->count();
         } elseif (Schema::hasTable('employee_profiles') && Schema::hasColumn('employee_profiles', 'is_profile_completed')) {
             $cards['pending_profiles'] = DB::table('employee_profiles')->where('is_profile_completed', 0)->count();
         }
-        
+
         // Attendance logic
         if (Schema::hasTable('attendances') && Schema::hasTable('attendance_types')) {
             $today = Carbon::today(config('app.timezone', 'Asia/Kolkata'))->toDateString();
             $attRows = DB::table('attendances as a')->join('attendance_types as t', 't.id', '=', 'a.attendance_type_id')->whereDate('a.attendance_date', $today)->select('t.code', 'a.is_late', 'a.is_early_out', 'a.is_half_day', 'a.is_blocked', 'a.is_lwp')->get();
-            
+
             $cards['present_today'] = $attRows->whereIn('code', ['present', 'late', 'early_leave'])->count();
             $cards['absent_today'] = $attRows->where('code', 'absent')->count();
-            
-            $cards['late_today'] = $attRows->filter(function($r) { return $r->code === 'late' || (isset($r->is_late) && $r->is_late == 1); })->count();
-            $cards['early_logout'] = $attRows->filter(function($r) { return $r->code === 'early_leave' || (isset($r->is_early_out) && $r->is_early_out == 1); })->count();
-            $cards['half_day'] = $attRows->filter(function($r) { return $r->code === 'half_day' || (isset($r->is_half_day) && $r->is_half_day == 1); })->count();
-            $cards['lwp_count'] = $attRows->filter(function($r) { return $r->code === 'lwp' || (isset($r->is_lwp) && $r->is_lwp == 1); })->count();
-            $cards['punch_blocked'] = DB::table('attendance_violations')->where('type', 'blocked_punch')->whereDate('violation_date', $today)->where(function($q) { $q->whereNull('policy_action')->orWhere('policy_action', '<>', 'resolved'); })->count();
+
+            $cards['late_today'] = $attRows->filter(function ($r) {
+                return $r->code === 'late' || (isset($r->is_late) && $r->is_late == 1);
+            })->count();
+            $cards['early_logout'] = $attRows->filter(function ($r) {
+                return $r->code === 'early_leave' || (isset($r->is_early_out) && $r->is_early_out == 1);
+            })->count();
+            $cards['half_day'] = $attRows->filter(function ($r) {
+                return $r->code === 'half_day' || (isset($r->is_half_day) && $r->is_half_day == 1);
+            })->count();
+            $cards['lwp_count'] = $attRows->filter(function ($r) {
+                return $r->code === 'lwp' || (isset($r->is_lwp) && $r->is_lwp == 1);
+            })->count();
+            $cards['punch_blocked'] = DB::table('attendance_violations')->where('type', 'blocked_punch')->whereDate('violation_date', $today)->where(function ($q) {
+                $q->whereNull('policy_action')->orWhere('policy_action', '<>', 'resolved');
+            })->count();
             $cards['pending_hr'] = $attRows->where('code', 'pending_hr')->count();
             $cards['missed_punch'] = $attRows->where('code', 'missed_punch')->count();
         }
@@ -893,7 +903,7 @@ class DashboardResolverS
             ->orderByDesc($this->columnExists('attendances', 'created_at') ? 'a.created_at' : 'a.id')
             ->limit($limit)
             ->get()
-            ->map(fn ($row) => $this->rowToArray($row))
+            ->map(fn($row) => $this->rowToArray($row))
             ->all();
     }
 
@@ -918,7 +928,7 @@ class DashboardResolverS
                 DB::raw($this->columnExists('leave_requests', 'start_date') && $this->columnExists('leave_requests', 'end_date') ? "CONCAT(lr.start_date, ' to ', lr.end_date) as period" : "'-' as period"),
                 DB::raw($this->columnExists('leave_requests', 'total_days') ? 'lr.total_days as days' : "'-' as days"),
                 'lr.status'
-            )->orderByDesc('lr.id')->limit($limit)->get()->map(fn ($row) => $this->rowToArray($row))->all();
+            )->orderByDesc('lr.id')->limit($limit)->get()->map(fn($row) => $this->rowToArray($row))->all();
         }
 
         return [];
@@ -966,7 +976,7 @@ class DashboardResolverS
             DB::raw("COALESCE(d.title, 'Document') as document"),
             DB::raw($this->columnExists('employee_documents_new', 'uploaded_at') ? "COALESCE(DATE_FORMAT(d.uploaded_at, '%d %b %Y'), '-') as uploaded" : "COALESCE(DATE_FORMAT(d.created_at, '%d %b %Y'), '-') as uploaded"),
             'd.verification_status as status'
-        )->orderByDesc('d.id')->limit($limit)->get()->map(fn ($row) => $this->rowToArray($row))->all();
+        )->orderByDesc('d.id')->limit($limit)->get()->map(fn($row) => $this->rowToArray($row))->all();
     }
 
     private function pendingDocumentCount(?array $employeeIds = null): int
@@ -1002,7 +1012,7 @@ class DashboardResolverS
             ->orderByDesc('created_at')
             ->limit($limit)
             ->get()
-            ->map(fn ($row) => $this->rowToArray($row))
+            ->map(fn($row) => $this->rowToArray($row))
             ->all();
     }
 
@@ -1095,7 +1105,7 @@ class DashboardResolverS
             ->orderByDesc('r.claim_date')
             ->limit($limit)
             ->get()
-            ->map(fn ($row) => [
+            ->map(fn($row) => [
                 'employee' => $row->employee,
                 'title' => $row->title,
                 'amount' => $this->money($row->amount),
@@ -1116,7 +1126,7 @@ class DashboardResolverS
             ->orderByDesc('p.generated_at')
             ->limit($limit)
             ->get()
-            ->map(fn ($row) => [
+            ->map(fn($row) => [
                 'employee' => $row->employee,
                 'period' => Carbon::createFromDate((int) $row->year, (int) $row->month, 1)->format('M Y'),
                 'payslip_no' => $row->payslip_no,
@@ -1153,12 +1163,12 @@ class DashboardResolverS
             DB::raw("COALESCE(u.name, 'Employee') as employee"),
             DB::raw($this->columnExists('employees_new', 'employee_code') ? "COALESCE(e.employee_code, '-') as code" : "'-' as code"),
             DB::raw($this->tableExists('departments') && $this->columnExists('employees_new', 'department_id') ? "COALESCE(d.name, '-') as department" : "'-' as department")
-        )->limit($limit)->get()->map(fn ($row) => $this->rowToArray($row))->all();
+        )->limit($limit)->get()->map(fn($row) => $this->rowToArray($row))->all();
     }
 
     private function payrollActivityRows(): array
     {
-        return collect($this->latestPayrollRunRows(3))->map(fn ($row) => [
+        return collect($this->latestPayrollRunRows(3))->map(fn($row) => [
             'title' => 'Payroll run',
             'description' => ($row['period'] ?? '-') . ' payroll is ' . strtolower($row['status'] ?? '-'),
             'time' => now(),
@@ -1198,7 +1208,7 @@ class DashboardResolverS
             ->orderByDesc('id')
             ->limit($limit)
             ->get()
-            ->map(fn ($row) => [
+            ->map(fn($row) => [
                 'title' => $row->title,
                 'employee' => $row->employee_name ?: '-',
                 'due_date' => $row->due_date ? Carbon::parse($row->due_date)->format('d M Y') : '-',
@@ -1220,7 +1230,7 @@ class DashboardResolverS
             DB::raw($this->columnExists('projects', 'deadline') ? 'deadline' : ($this->columnExists('projects', 'end_date') ? 'end_date as deadline' : "'-' as deadline")),
         ];
 
-        return DB::table('projects')->select($select)->limit(8)->get()->map(fn ($row) => $this->rowToArray($row))->all();
+        return DB::table('projects')->select($select)->limit(8)->get()->map(fn($row) => $this->rowToArray($row))->all();
     }
 
     private function workLogRows(int $limit = 8, ?array $employeeIds = null): array
@@ -1245,12 +1255,12 @@ class DashboardResolverS
             DB::raw("COALESCE(u.name, 'Employee') as employee"),
             DB::raw($this->columnExists('attendance_work_logs', 'work_date') ? "DATE_FORMAT(w.work_date, '%d %b %Y') as date" : "DATE_FORMAT(w.created_at, '%d %b %Y') as date"),
             DB::raw("COALESCE(w.work_summary, '-') as summary")
-        )->orderByDesc('w.id')->limit($limit)->get()->map(fn ($row) => $this->rowToArray($row))->all();
+        )->orderByDesc('w.id')->limit($limit)->get()->map(fn($row) => $this->rowToArray($row))->all();
     }
 
     private function workLogActivityRows(?array $employeeIds = null): array
     {
-        return collect($this->workLogRows(5, $employeeIds))->map(fn ($row) => [
+        return collect($this->workLogRows(5, $employeeIds))->map(fn($row) => [
             'title' => 'Work log submitted',
             'description' => ($row['employee'] ?? 'Employee') . ': ' . ($row['summary'] ?? '-'),
             'time' => $row['date'] ?? now(),
@@ -1260,7 +1270,7 @@ class DashboardResolverS
 
     private function deadlineRows(): array
     {
-        return collect($this->recentTaskRows(8))->filter(fn ($row) => ! empty($row['due_date']) && $row['due_date'] !== '-')->map(fn ($row) => [
+        return collect($this->recentTaskRows(8))->filter(fn($row) => ! empty($row['due_date']) && $row['due_date'] !== '-')->map(fn($row) => [
             'item' => $row['title'],
             'owner' => $row['employee'],
             'deadline' => $row['due_date'],
@@ -1275,7 +1285,7 @@ class DashboardResolverS
         }
 
         return (int) DB::table('asset_allocations')
-            ->when($this->columnExists('asset_allocations', 'status'), fn ($query) => $query->whereIn('status', ['Active', 'active', 'assigned']))
+            ->when($this->columnExists('asset_allocations', 'status'), fn($query) => $query->whereIn('status', ['Active', 'active', 'assigned']))
             ->count();
     }
 
@@ -1295,7 +1305,7 @@ class DashboardResolverS
             DB::raw($this->columnExists('asset_allocations', 'asset_type') ? "COALESCE(a.asset_type, '-') as asset" : "'-' as asset"),
             DB::raw($this->columnExists('asset_allocations', 'assigned_date') ? "COALESCE(DATE_FORMAT(a.assigned_date, '%d %b %Y'), '-') as assigned" : "'-' as assigned"),
             DB::raw($this->columnExists('asset_allocations', 'status') ? "COALESCE(a.status, '-') as status" : "'-' as status")
-        )->orderByDesc('a.id')->limit($limit)->get()->map(fn ($row) => $this->rowToArray($row))->all();
+        )->orderByDesc('a.id')->limit($limit)->get()->map(fn($row) => $this->rowToArray($row))->all();
     }
 
     private function upcomingHolidayCount(): int
@@ -1333,7 +1343,7 @@ class DashboardResolverS
             ->orderBy($dateColumn)
             ->limit($limit)
             ->get()
-            ->map(fn ($row) => $this->rowToArray($row))
+            ->map(fn($row) => $this->rowToArray($row))
             ->all();
     }
 
@@ -1347,7 +1357,7 @@ class DashboardResolverS
             ->join('employees_new as e', 'e.id', '=', 'v.employee_id')
             ->leftJoin('users as u', 'u.id', '=', 'e.user_id')
             ->where('v.type', 'blocked_punch')
-            ->where(function($q) {
+            ->where(function ($q) {
                 $q->whereNull('v.policy_action')->orWhere('v.policy_action', '<>', 'resolved');
             })
             ->whereDate('v.violation_date', today()->toDateString());
@@ -1357,7 +1367,7 @@ class DashboardResolverS
             DB::raw($this->columnExists('employees_new', 'employee_code') ? "COALESCE(e.employee_code, '-') as code" : "'-' as code"),
             DB::raw("COALESCE(v.remarks, 'Punch blocked') as reason"),
             DB::raw("'Blocked' as status")
-        )->limit($limit)->get()->map(fn ($row) => $this->rowToArray($row))->all();
+        )->limit($limit)->get()->map(fn($row) => $this->rowToArray($row))->all();
     }
 
     private function customAdminQuickActions($user): array
@@ -1431,12 +1441,12 @@ class DashboardResolverS
             $query->leftJoin('employee_profiles', 'employee_profiles.employee_id', '=', 'employees_new.id')
                 ->where(function ($q) {
                     $q->whereNull('employee_profiles.employee_id')
-                      ->orWhere('employee_profiles.profile_status', 'approved');
+                        ->orWhere('employee_profiles.profile_status', 'approved');
                 });
         }
 
         return $query->pluck('employees_new.id')
-            ->map(fn ($id) => (int) $id)
+            ->map(fn($id) => (int) $id)
             ->all();
     }
 
@@ -1460,7 +1470,7 @@ class DashboardResolverS
             ->orderByDesc('lr.id')
             ->limit(8)
             ->get()
-            ->map(fn ($row) => $this->rowToArray($row))
+            ->map(fn($row) => $this->rowToArray($row))
             ->all();
     }
 
@@ -1471,7 +1481,7 @@ class DashboardResolverS
         }
 
         return collect($this->workLogActivityRows($employeeIds))
-            ->merge(collect($this->todayAttendanceRows(5, $employeeIds))->map(fn ($row) => [
+            ->merge(collect($this->todayAttendanceRows(5, $employeeIds))->map(fn($row) => [
                 'title' => 'Attendance marked',
                 'description' => ($row['employee'] ?? 'Employee') . ' is ' . strtolower($row['status'] ?? 'marked'),
                 'time' => now(),
@@ -1588,21 +1598,10 @@ class DashboardResolverS
     private function employeeStats(): array
     {
         if (! $this->tableExists('employees_new')) {
-            return ['total'=>0, 'active'=>0, 'lifecycle'=>['total'=>0,'active'=>0,'pending_profiles'=>0,'rejected_profiles'=>0,'interns'=>0,'probation'=>0,'permanent'=>0,'exit'=>0]];
+            return ['total' => 0, 'active' => 0, 'pending_profiles' => 0, 'exited' => 0, 'suspended' => 0, 'inactive' => 0, 'lifecycle' => ['total' => 0, 'active' => 0, 'pending_profiles' => 0, 'rejected_profiles' => 0, 'interns' => 0, 'probation' => 0, 'permanent' => 0, 'exit_process' => 0]];
         }
 
         $total = DB::table('employees_new')->count();
-        
-        $active = $total;
-        if ($this->columnExists('employees_new', 'employment_status')) {
-            $active = DB::table('employees_new')->where('employment_status', 'active')->count();
-        }
-        if ($this->columnExists('employees_new', 'is_active')) {
-            $active = DB::table('employees_new')
-                ->when($this->columnExists('employees_new', 'employment_status'), fn ($q) => $q->where('employment_status', 'active'))
-                ->where('is_active', 1)
-                ->count();
-        }
 
         $pending_profiles = 0;
         $rejected_profiles = 0;
@@ -1612,6 +1611,53 @@ class DashboardResolverS
         } elseif ($this->tableExists('employee_profiles') && $this->columnExists('employee_profiles', 'is_profile_completed')) {
             $pending_profiles = DB::table('employee_profiles')->where('is_profile_completed', 0)->count();
         }
+
+        $exited_count = 0;
+        if ($this->columnExists('employees_new', 'employment_status')) {
+            $exited_count = DB::table('employees_new')->whereIn('employment_status', ['exited', 'resigned_and_exited'])->count();
+        }
+        if ($this->tableExists('employee_exit_processes')) {
+            $exitCompletedFromTable = DB::table('employee_exit_processes')->where('status', 'exit_completed')->pluck('employee_id')->toArray();
+            $exited_count = max($exited_count, count(array_unique($exitCompletedFromTable)));
+        }
+
+        $suspended_count = 0;
+        if ($this->columnExists('employees_new', 'employment_status')) {
+            $suspended_count = DB::table('employees_new')->where('employment_status', 'suspended')->count();
+        }
+
+        $inactive_count = 0;
+        if ($this->columnExists('employees_new', 'is_active')) {
+            $inactive_count = DB::table('employees_new')
+                ->where(function ($q) {
+                    $q->where('is_active', 0);
+                    if ($this->columnExists('employees_new', 'employment_status')) {
+                        $q->orWhereIn('employment_status', ['terminated', 'inactive']);
+                    }
+                })->count();
+        }
+
+        // Active count MUST exclude exited, terminated, inactive, suspended, and profile pending
+        $activeQuery = DB::table('employees_new as e')
+            ->leftJoin('employee_profiles as p', 'p.employee_id', '=', 'e.id');
+
+        if ($this->columnExists('employees_new', 'is_active')) {
+            $activeQuery->where('e.is_active', 1);
+        }
+        if ($this->columnExists('employees_new', 'employment_status')) {
+            $activeQuery->where('e.employment_status', 'active');
+        }
+        if ($this->tableExists('employee_profiles')) {
+            $activeQuery->where(function ($q) {
+                if ($this->columnExists('employee_profiles', 'profile_status')) {
+                    $q->where('p.profile_status', 'approved');
+                }
+                if ($this->columnExists('employee_profiles', 'is_profile_completed')) {
+                    $q->orWhere('p.is_profile_completed', 1);
+                }
+            });
+        }
+        $active = $activeQuery->count();
 
         $interns = 0;
         $probation = 0;
@@ -1626,14 +1672,13 @@ class DashboardResolverS
             $permanent = DB::table('employees_new')->where('employment_type', 'permanent')->count();
         }
 
-        $exit_process = 0;
-        if ($this->columnExists('employees_new', 'employment_status')) {
-            $exit_process = DB::table('employees_new')->whereIn('employment_status', ['exit_process', 'exited', 'terminated'])->count();
-        }
-
         return [
             'total' => $total,
             'active' => $active,
+            'pending_profiles' => $pending_profiles,
+            'exited' => $exited_count,
+            'suspended' => $suspended_count,
+            'inactive' => $inactive_count,
             'lifecycle' => [
                 'total' => $total,
                 'active' => $active,
@@ -1642,7 +1687,7 @@ class DashboardResolverS
                 'interns' => $interns,
                 'probation' => $probation,
                 'permanent' => $permanent,
-                'exit_process' => $exit_process
+                'exit_process' => $exited_count
             ]
         ];
     }
@@ -1693,7 +1738,7 @@ class DashboardResolverS
             $violationQuery = DB::table('attendance_violations')
                 ->where('type', 'blocked_punch')
                 ->whereDate('violation_date', $date)
-                ->where(function($q) {
+                ->where(function ($q) {
                     $q->whereNull('policy_action')->orWhere('policy_action', '<>', 'resolved');
                 });
             if ($employeeId) {
@@ -1787,7 +1832,7 @@ class DashboardResolverS
 
         return [
             'labels' => $rows->pluck('name')->all(),
-            'values' => $rows->pluck('total')->map(fn ($value) => (int) $value)->all(),
+            'values' => $rows->pluck('total')->map(fn($value) => (int) $value)->all(),
         ];
     }
 
@@ -1807,7 +1852,7 @@ class DashboardResolverS
 
         if ($this->tableExists('leave_requests') && $this->columnExists('leave_requests', 'status')) {
             $pending += DB::table('leave_requests')->whereRaw('LOWER(status) = ?', ['pending'])->count();
-            
+
             if ($this->columnExists('leave_requests', 'start_date') && $this->columnExists('leave_requests', 'end_date')) {
                 $today = today()->toDateString();
                 $on_leave_today += DB::table('leave_requests')->whereRaw('LOWER(status) = ?', ['approved'])
@@ -1832,19 +1877,19 @@ class DashboardResolverS
         $year = (int) now()->year;
         $statusRows = collect();
         $status = 'Not Run';
-        
+
         $gross_payroll = 0;
         $net_payroll = 0;
         $total_deductions = 0;
         $payslips_generated = 0;
-        
+
         // Legacy Payroll retired. Enterprise Payroll is the only active payroll engine.
         if ($this->tableExists('enterprise_payrolls')) {
-             $payslips_generated = DB::table('enterprise_payrolls')->where('month', $month)->where('year', $year)->count();
-             $gross_payroll = DB::table('enterprise_payrolls')->where('month', $month)->where('year', $year)->sum('gross_salary');
-             $net_payroll = DB::table('enterprise_payrolls')->where('month', $month)->where('year', $year)->sum('net_salary');
-             $total_deductions = DB::table('enterprise_payrolls')->where('month', $month)->where('year', $year)->sum('total_deductions');
-             $statusRows = DB::table('enterprise_payrolls')
+            $payslips_generated = DB::table('enterprise_payrolls')->where('month', $month)->where('year', $year)->count();
+            $gross_payroll = DB::table('enterprise_payrolls')->where('month', $month)->where('year', $year)->sum('gross_salary');
+            $net_payroll = DB::table('enterprise_payrolls')->where('month', $month)->where('year', $year)->sum('net_salary');
+            $total_deductions = DB::table('enterprise_payrolls')->where('month', $month)->where('year', $year)->sum('total_deductions');
+            $statusRows = DB::table('enterprise_payrolls')
                 ->where('month', $month)
                 ->where('year', $year)
                 ->select('status', DB::raw('COUNT(*) as total'))
@@ -1903,8 +1948,8 @@ class DashboardResolverS
 
             $employeesQuery = DB::table('employees_new as e')
                 ->leftJoin('employee_profiles as p', 'p.employee_id', '=', 'e.id')
-                ->when($this->columnExists('employees_new', 'employment_status'), fn ($q) => $q->where('e.employment_status', 'active'))
-                ->when($this->columnExists('employees_new', 'is_active'), fn ($q) => $q->where('e.is_active', 1));
+                ->when($this->columnExists('employees_new', 'employment_status'), fn($q) => $q->where('e.employment_status', 'active'))
+                ->when($this->columnExists('employees_new', 'is_active'), fn($q) => $q->where('e.is_active', 1));
 
             $selectColumns = ['e.id'];
             if ($this->columnExists('employees_new', 'experience_type')) {
@@ -1918,7 +1963,7 @@ class DashboardResolverS
 
             foreach ($employees as $employee) {
                 $experienceType = strtolower(trim((string) (($employee->experience_type ?? $employee->profile_experience_type ?? null) ?: 'fresher')));
-                
+
                 $isExperienced = in_array($experienceType, [
                     'experienced',
                     'experience',
@@ -1938,11 +1983,11 @@ class DashboardResolverS
 
                 $employeeDocs = $uploadedDocs->get($employee->id) ?? collect();
                 $latestDocs = $employeeDocs->whereIn('document_type_id', $requiredDocs->pluck('id'))->unique('document_type_id');
-                
+
                 $uploadedCount = $latestDocs->where('verification_status', '!=', 'rejected')->count();
                 $missing_documents += max(0, $requiredDocs->count() - $uploadedCount);
-                
-                $expired_documents += $latestDocs->whereNotNull('expiry_date')->filter(function($doc) {
+
+                $expired_documents += $latestDocs->whereNotNull('expiry_date')->filter(function ($doc) {
                     try {
                         return now()->gt(\Carbon\Carbon::parse($doc->expiry_date));
                     } catch (\Exception $e) {
@@ -1967,7 +2012,7 @@ class DashboardResolverS
         $total = 0;
         $active = 0;
         $published_today = 0;
-        
+
         if ($this->tableExists('announcements')) {
             $total = DB::table('announcements')->count();
             if ($this->columnExists('announcements', 'status')) {
@@ -1977,7 +2022,7 @@ class DashboardResolverS
             }
             $published_today = DB::table('announcements')->whereDate('created_at', today()->toDateString())->count();
         }
-        
+
         return [
             'total' => $total,
             'active' => $active,
@@ -2011,9 +2056,9 @@ class DashboardResolverS
                 ->pluck('user_id')
                 ->filter()
                 ->all();
-            $query->where(function($q) use ($user, $subordinateUserIds) {
+            $query->where(function ($q) use ($user, $subordinateUserIds) {
                 $q->where('user_id', $user->id ?? 0)
-                  ->orWhereIn('user_id', $subordinateUserIds);
+                    ->orWhereIn('user_id', $subordinateUserIds);
             });
         }
 
@@ -2587,7 +2632,7 @@ class DashboardResolverS
         }
 
         return $activities
-            ->filter(fn ($activity) => ! empty($activity['title']) && ! empty($activity['time']))
+            ->filter(fn($activity) => ! empty($activity['title']) && ! empty($activity['time']))
             ->sortByDesc('time')
             ->take(10)
             ->values();
@@ -2641,7 +2686,7 @@ class DashboardResolverS
         })->values()->all();
     }
 
-            private function quickActionsFor(string $role, $employeeId = null): array
+    private function quickActionsFor(string $role, $employeeId = null): array
     {
         $actions = [
             'super_admin' => [
@@ -2705,7 +2750,7 @@ class DashboardResolverS
         if ($this->tableExists('user_roles')) {
             $ids = array_merge(
                 $ids,
-                DB::table('user_roles')->where('user_id', $user->id ?? 0)->pluck('role_id')->map(fn ($id) => (int) $id)->all()
+                DB::table('user_roles')->where('user_id', $user->id ?? 0)->pluck('role_id')->map(fn($id) => (int) $id)->all()
             );
         }
 
@@ -2929,7 +2974,7 @@ class DashboardResolverS
             if (!empty($row['is_missed_punch']) || !empty($row['missed_punch'])) $flags[] = 'Missed Punch';
             if (!empty($row['is_admin_unlocked'])) $flags[] = 'Unlocked';
             if (!empty($row['is_half_day'])) $flags[] = 'Half Day';
-            
+
             $workMode = $row['work_mode'] ?? 'WFO';
             $flags[] = strtoupper($workMode);
 
@@ -2961,13 +3006,13 @@ class DashboardResolverS
                 ->whereDate('for_month', '>=', $currentMonth)
                 ->selectRaw('SUM(gross_pay) as gross, SUM(net_pay) as net, SUM(total_deductions) as deductions, COUNT(id) as count')
                 ->first();
-                
+
             $overview['gross_payroll'] = $latestRun->gross ?? 0;
             $overview['net_payroll'] = $latestRun->net ?? 0;
             $overview['total_deductions'] = $latestRun->deductions ?? 0;
             $overview['payslips_generated'] = $latestRun->count ?? 0;
         }
-        
+
         if ($this->tableExists('employees_new') && $this->tableExists('enterprise_salary_structures')) {
             $activeCount = $this->countActiveEmployees();
             $withStructure = \Illuminate\Support\Facades\DB::table('enterprise_salary_structures')->distinct('employee_id')->count('employee_id');
@@ -2981,7 +3026,7 @@ class DashboardResolverS
                 ->orderBy('for_month', 'desc')
                 ->limit(6)
                 ->get();
-            
+
             foreach ($trend->reverse() as $t) {
                 $overview['monthly_trend']['labels'][] = $t->month;
                 $overview['monthly_trend']['net'][] = (float) $t->net;
@@ -3002,7 +3047,7 @@ class DashboardResolverS
             'lwp' => 0,
             'sandwich_leave' => 0,
         ];
-        
+
         if ($this->tableExists('leave_requests')) {
             $query = \Illuminate\Support\Facades\DB::table('leave_requests')->whereRaw('LOWER(status) = ?', ['approved']);
             if ($this->columnExists('leave_requests', 'start_date')) {
@@ -3013,7 +3058,7 @@ class DashboardResolverS
             }
             $overview['on_leave_today'] = $query->count();
         }
-        
+
         return $overview;
     }
 
@@ -3057,7 +3102,7 @@ class DashboardResolverS
             'values' => $rows->pluck('total')->map(fn($v) => (int) $v)->values()->all(),
         ];
     }
-    
+
     private function monthlyHiringTrendChart(): array
     {
         if (! $this->tableExists('employees_new') || ! $this->columnExists('employees_new', 'joining_date')) {
@@ -3077,20 +3122,59 @@ class DashboardResolverS
             'values' => $rows->pluck('total')->reverse()->map(fn($v) => (int) $v)->values()->all(),
         ];
     }
-    
-    private function monthlyAttendanceChart(): array { return ['labels' => [], 'present' => [], 'late' => [], 'absent' => []]; }
-    private function departmentAttendanceChart(): array { return ['labels' => [], 'values' => []]; }
-    private function leaveDistributionChart(): array { return ['labels' => [], 'values' => []]; }
-    private function getLatestApkVersion() { return '1.0.0'; }
-    private function getMobileAppHealth(): array { return []; }
-    private function getLatestAnnouncements(): array { return []; }
-    private function routeUrlOrNull(array $routes) { return null; }
-    private function getShiftOverview($date): array { return []; }
-    private function getActionRequiredCards($a, $b, $c, $d, $e): array { return []; }
-    private function getLiveActivity(): array { return []; }
-    private function getPunchInRunningCount($date) { return 0; }
-    private function getYetToPunchInCount($date) { return 0; }
-    private function getLifecycleCount($stage) { return 0; }
+
+    private function monthlyAttendanceChart(): array
+    {
+        return ['labels' => [], 'present' => [], 'late' => [], 'absent' => []];
+    }
+    private function departmentAttendanceChart(): array
+    {
+        return ['labels' => [], 'values' => []];
+    }
+    private function leaveDistributionChart(): array
+    {
+        return ['labels' => [], 'values' => []];
+    }
+    private function getLatestApkVersion()
+    {
+        return '1.0.0';
+    }
+    private function getMobileAppHealth(): array
+    {
+        return [];
+    }
+    private function getLatestAnnouncements(): array
+    {
+        return [];
+    }
+    private function routeUrlOrNull(array $routes)
+    {
+        return null;
+    }
+    private function getShiftOverview($date): array
+    {
+        return [];
+    }
+    private function getActionRequiredCards($a, $b, $c, $d, $e): array
+    {
+        return [];
+    }
+    private function getLiveActivity(): array
+    {
+        return [];
+    }
+    private function getPunchInRunningCount($date)
+    {
+        return 0;
+    }
+    private function getYetToPunchInCount($date)
+    {
+        return 0;
+    }
+    private function getLifecycleCount($stage)
+    {
+        return 0;
+    }
 
     public function superAdminData(): array
     {
@@ -3104,13 +3188,13 @@ class DashboardResolverS
 
             // Cards structure for attendance
             $cards = $this->superAdminCards($attendance, $employee);
-            
+
             // Build live attendance
             $liveAttendance = $this->buildLiveAttendance();
-            
+
             // Action required
             $actionRequired = $this->buildActionRequired();
-            
+
             // Charts
             $charts = $this->buildCharts();
 
@@ -3418,14 +3502,14 @@ class DashboardResolverS
     private function getAttendanceCardsData(array $cards): array
     {
         return [
-            ['label'=>'Present Today','value'=>$cards['present_today'] ?? 0,'icon'=>'fa-user-check','tone'=>'success','url'=>$this->routeUrl('attendances.index')],
-            ['label'=>'Absent Today','value'=>$cards['absent_today'] ?? 0,'icon'=>'fa-user-times','tone'=>'danger','url'=>$this->routeUrl('attendances.index')],
-            ['label'=>'Late Employees','value'=>$cards['late_today'] ?? 0,'icon'=>'fa-clock','tone'=>'warning','url'=>$this->routeUrl('attendances.index')],
-            ['label'=>'Early Logout','value'=>$cards['early_logout'] ?? 0,'icon'=>'fa-sign-out-alt','tone'=>'warning','url'=>$this->routeUrl('attendances.index')],
-            ['label'=>'Half Day','value'=>$cards['half_day'] ?? 0,'icon'=>'fa-adjust','tone'=>'info','url'=>$this->routeUrl('attendances.index')],
-            ['label'=>'LWP','value'=>$cards['lwp_count'] ?? 0,'icon'=>'fa-ban','tone'=>'danger','url'=>$this->routeUrl('attendances.index')],
-            ['label'=>'Punch Blocked','value'=>$cards['punch_blocked'] ?? 0,'icon'=>'fa-lock','tone'=>'danger','url'=>$this->routeUrl('attendances.pending-approval')],
-            ['label'=>'Pending HR','value'=>$cards['pending_hr'] ?? 0,'icon'=>'fa-user-shield','tone'=>'primary','url'=>$this->routeUrl('attendances.pending-approval')],
+            ['label' => 'Present Today', 'value' => $cards['present_today'] ?? 0, 'icon' => 'fa-user-check', 'tone' => 'success', 'url' => $this->routeUrl('attendances.index')],
+            ['label' => 'Absent Today', 'value' => $cards['absent_today'] ?? 0, 'icon' => 'fa-user-times', 'tone' => 'danger', 'url' => $this->routeUrl('attendances.index')],
+            ['label' => 'Late Employees', 'value' => $cards['late_today'] ?? 0, 'icon' => 'fa-clock', 'tone' => 'warning', 'url' => $this->routeUrl('attendances.index')],
+            ['label' => 'Early Logout', 'value' => $cards['early_logout'] ?? 0, 'icon' => 'fa-sign-out-alt', 'tone' => 'warning', 'url' => $this->routeUrl('attendances.index')],
+            ['label' => 'Half Day', 'value' => $cards['half_day'] ?? 0, 'icon' => 'fa-adjust', 'tone' => 'info', 'url' => $this->routeUrl('attendances.index')],
+            ['label' => 'LWP', 'value' => $cards['lwp_count'] ?? 0, 'icon' => 'fa-ban', 'tone' => 'danger', 'url' => $this->routeUrl('attendances.index')],
+            ['label' => 'Punch Blocked', 'value' => $cards['punch_blocked'] ?? 0, 'icon' => 'fa-lock', 'tone' => 'danger', 'url' => $this->routeUrl('attendances.pending-approval')],
+            ['label' => 'Pending HR', 'value' => $cards['pending_hr'] ?? 0, 'icon' => 'fa-user-shield', 'tone' => 'primary', 'url' => $this->routeUrl('attendances.pending-approval')],
         ];
     }
 
@@ -3433,14 +3517,14 @@ class DashboardResolverS
     {
         $lifecycle = $employee['lifecycle'] ?? [];
         return [
-            ['label'=>'Total Employees','value'=>$lifecycle['total'] ?? 0,'icon'=>'fa-users','tone'=>'primary'],
-            ['label'=>'Active Employees','value'=>$employee['active'] ?? 0,'icon'=>'fa-user-check','tone'=>'success'],
-            ['label'=>'Pending Profiles','value'=>$lifecycle['pending_profiles'] ?? 0,'icon'=>'fa-user-clock','tone'=>'warning'],
-            ['label'=>'Rejected Profiles','value'=>$lifecycle['rejected_profiles'] ?? 0,'icon'=>'fa-user-times','tone'=>'danger'],
-            ['label'=>'Interns','value'=>$lifecycle['interns'] ?? 0,'icon'=>'fa-user-graduate','tone'=>'primary'],
-            ['label'=>'Probation','value'=>$lifecycle['probation'] ?? 0,'icon'=>'fa-hourglass-half','tone'=>'warning'],
-            ['label'=>'Permanent','value'=>$lifecycle['permanent'] ?? 0,'icon'=>'fa-id-badge','tone'=>'success'],
-            ['label'=>'Exit Process','value'=>$lifecycle['exit_process'] ?? 0,'icon'=>'fa-person-walking-arrow-right','tone'=>'danger'],
+            ['label' => 'Total Employees', 'value' => $lifecycle['total'] ?? 0, 'icon' => 'fa-users', 'tone' => 'primary'],
+            ['label' => 'Active Employees', 'value' => $employee['active'] ?? 0, 'icon' => 'fa-user-check', 'tone' => 'success'],
+            ['label' => 'Pending Profiles', 'value' => $lifecycle['pending_profiles'] ?? 0, 'icon' => 'fa-user-clock', 'tone' => 'warning'],
+            ['label' => 'Rejected Profiles', 'value' => $lifecycle['rejected_profiles'] ?? 0, 'icon' => 'fa-user-times', 'tone' => 'danger'],
+            ['label' => 'Interns', 'value' => $lifecycle['interns'] ?? 0, 'icon' => 'fa-user-graduate', 'tone' => 'primary'],
+            ['label' => 'Probation', 'value' => $lifecycle['probation'] ?? 0, 'icon' => 'fa-hourglass-half', 'tone' => 'warning'],
+            ['label' => 'Permanent', 'value' => $lifecycle['permanent'] ?? 0, 'icon' => 'fa-id-badge', 'tone' => 'success'],
+            ['label' => 'Exit Process', 'value' => $lifecycle['exit_process'] ?? 0, 'icon' => 'fa-person-walking-arrow-right', 'tone' => 'danger'],
         ];
     }
 
@@ -3605,7 +3689,7 @@ class DashboardResolverS
                 DB::raw("COALESCE(w.reason_category, '-') as reason_category"),
                 DB::raw("CASE WHEN w.counts_in_monthly_quota = 1 THEN 'Counts in Quota' ELSE 'Non-Quota' END as quota_impact"),
                 'w.status'
-            )->orderByDesc('w.created_at')->limit(20)->get()->map(fn ($r) => (array) $r)->all();
+            )->orderByDesc('w.created_at')->limit(20)->get()->map(fn($r) => (array) $r)->all();
         } catch (\Throwable $e) {
             return [];
         }
@@ -3668,21 +3752,21 @@ class DashboardResolverS
     {
         $count = 0;
         $today = Carbon::today(config('app.timezone', 'Asia/Kolkata'))->toDateString();
-        
+
         if ($this->tableExists('attendance_violations')) {
             $count += DB::table('attendance_violations')
                 ->where('type', 'blocked_punch')
                 ->whereDate('violation_date', $today)
-                ->where(function($q) {
+                ->where(function ($q) {
                     $q->whereNull('policy_action')->orWhere('policy_action', '<>', 'resolved');
                 })
                 ->count();
         }
-        
+
         if ($this->tableExists('attendances')) {
             $query = DB::table('attendances as a')
                 ->whereDate('a.attendance_date', $today);
-                
+
             if ($this->tableExists('attendance_types') && $this->columnExists('attendances', 'attendance_type_id')) {
                 $query->whereIn('a.attendance_type_id', DB::table('attendance_types')->whereIn('code', ['pending_hr'])->select('id'));
             } else {

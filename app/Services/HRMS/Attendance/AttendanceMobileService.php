@@ -58,8 +58,18 @@ class AttendanceMobileService
         $payload['status_code'] = $attendanceData['status_code'] ?? ($payload['ui']['status_code'] ?? 'not_punched');
         $payload['status_name'] = $attendanceData['status_name'] ?? ucwords(str_replace('_', ' ', $payload['status_code']));
 
-        $isFinal = in_array($payload['status_code'], ['absent', 'present', 'half_day', 'lwp', 'leave', 'holiday', 'week_off', 'missed_punch'], true);
-        if ($isFinal) {
+        $hasPunchIn = ! empty($attendanceData['punch_in_time']);
+        $hasPunchOut = ! empty($attendanceData['punch_out_time']);
+
+        $hasWorkReq = ! empty($payload['day_context']['has_approved_work_request']);
+        $isClosedState = in_array($payload['status_code'], ['absent', 'present', 'lwp', 'leave', 'holiday', 'week_off', 'missed_punch'], true)
+            || ($payload['status_code'] === 'half_day' && $hasPunchOut);
+
+        if ($hasWorkReq && in_array($payload['status_code'], ['holiday', 'week_off'], true)) {
+            $isClosedState = false;
+        }
+
+        if ($isClosedState) {
             $payload['is_blocked'] = false;
             $payload['is_punch_blocked'] = false;
             $payload['can_punch_in'] = false;
@@ -75,6 +85,14 @@ class AttendanceMobileService
             $payload['is_blocked'] = (bool) ($attendanceData['is_blocked'] ?? $payload['ui']['is_blocked'] ?? false);
             $payload['is_punch_blocked'] = (bool) ($attendanceData['is_punch_blocked'] ?? $payload['ui']['is_punch_blocked'] ?? false);
             $payload['can_punch_in'] = (bool) ($attendanceData['can_punch_in'] ?? $payload['ui']['can_punch_in'] ?? false);
+            if (! $hasPunchIn && ($hasWorkReq || ($payload['day_context']['is_half_day_leave'] ?? false) || ($payload['ui']['status_code'] ?? '') === 'half_day' || $payload['status_code'] === 'half_day')) {
+                $payload['can_punch_in'] = true;
+                $payload['next_action'] = 'punch_in';
+                if (isset($payload['ui']) && is_array($payload['ui'])) {
+                    $payload['ui']['can_punch_in'] = true;
+                    $payload['ui']['next_action'] = 'punch_in';
+                }
+            }
         }
 
         if ($payload['status_code'] === 'leave') {
@@ -105,15 +123,18 @@ class AttendanceMobileService
         $todayWorkMode = 'wfo';
         $workModeLabel = 'Working From Office';
 
-        if (! empty($dayCtx['is_holiday'])) {
+        if (! empty($dayCtx['is_holiday']) && ! $hasWorkReq) {
             $todayWorkMode = 'holiday';
             $workModeLabel = 'Holiday';
-        } elseif (! empty($dayCtx['is_weekoff'])) {
+        } elseif (! empty($dayCtx['is_weekoff']) && ! $hasWorkReq) {
             $todayWorkMode = 'week_off';
             $workModeLabel = 'Weekly Off';
         } elseif (! empty($dayCtx['is_on_leave'])) {
             $todayWorkMode = 'leave';
             $workModeLabel = 'Leave';
+        } elseif ($hasWorkReq) {
+            $todayWorkMode = $wfhApproved ? 'wfh' : 'wfo';
+            $workModeLabel = $wfhApproved ? 'Working From Home (Approved Work Request)' : 'Working From Office (Approved Work Request)';
         } elseif ($isPermanentWfh) {
             $todayWorkMode = 'wfh';
             $workModeLabel = 'Working From Home (Permanent)';
@@ -268,6 +289,104 @@ class AttendanceMobileService
         } else {
             $data['target_punch_out_time'] = null;
             $data['target_punch_out_time_formatted'] = null;
+        }
+
+        $reqMins = (int) ($policy->required_work_minutes ?? $data['required_work_minutes'] ?? 0);
+        if ($reqMins <= 0 && $empForPolicy) {
+            $policyObj = $this->resolver->getPolicyForEmployee($empForPolicy, $dateForPolicy);
+            $reqMins = (int) ($policyObj->required_work_minutes ?? 0);
+        }
+
+        $workedMins = 0;
+        if ($punchIn) {
+            if ($punchOut) {
+                $workedMins = max(0, $punchIn->diffInMinutes($punchOut));
+            } else {
+                $workedMins = max(0, $punchIn->diffInMinutes(Carbon::now(AttendanceRuleResolverService::TIMEZONE)));
+            }
+        }
+
+        $remainingMins = max(0, $reqMins - $workedMins);
+        $workProgressPercent = ($reqMins > 0) ? min(100, (int) round(($workedMins / $reqMins) * 100)) : 0;
+        $workCompleted = ($workedMins >= $reqMins && $reqMins > 0);
+
+        $hours = (int) ($reqMins / 60);
+        $mins = $reqMins % 60;
+        $reqDuration = "{$hours}h {$mins}m";
+
+        $data['required_work_minutes'] = $reqMins;
+        $data['requiredWorkMinutes'] = $reqMins;
+        $data['required_work_duration'] = $reqDuration;
+        $data['requiredWorkDuration'] = $reqDuration;
+        $data['worked_minutes'] = $workedMins;
+        $data['workedMinutes'] = $workedMins;
+        $data['remaining_work_minutes'] = $remainingMins;
+        $data['remainingWorkMinutes'] = $remainingMins;
+        $data['remaining_work_seconds'] = $remainingMins * 60;
+        $data['remainingWorkSeconds'] = $remainingMins * 60;
+        $data['work_progress_percent'] = $workProgressPercent;
+        $data['workProgressPercent'] = $workProgressPercent;
+        $data['work_completed'] = $workCompleted;
+        $data['workCompleted'] = $workCompleted;
+
+        $policyObj = $policy ?: ($empForPolicy ? $this->resolver->getPolicyForEmployee($empForPolicy, $dateForPolicy) : null);
+        $earlyOutHalfDayMins = (int) ($policyObj->early_out_half_day_minutes ?? 60);
+        $missedPunchAfterMins = (int) ($policyObj->missed_punch_after_minutes ?? 60);
+        $targetOutVal = $targetOutTime ?: $this->resolver->timeString($policyObj->shift_end_time ?? '18:00:00');
+        $shiftEndCarbon = $targetOutVal ? Carbon::parse($attendanceDate . ' ' . $targetOutVal, AttendanceRuleResolverService::TIMEZONE) : null;
+        $earlyOutCutoff = $shiftEndCarbon ? $shiftEndCarbon->copy()->subMinutes($earlyOutHalfDayMins)->format('H:i:s') : null;
+        $missedPunchCutoff = $shiftEndCarbon ? $shiftEndCarbon->copy()->addMinutes($missedPunchAfterMins)->format('H:i:s') : null;
+
+        $data['early_out_half_day_minutes'] = $earlyOutHalfDayMins;
+        $data['earlyOutHalfDayMinutes'] = $earlyOutHalfDayMins;
+        $data['missed_punch_after_minutes'] = $missedPunchAfterMins;
+        $data['missedPunchAfterMinutes'] = $missedPunchAfterMins;
+        $data['early_out_half_day_cutoff'] = $earlyOutCutoff;
+        $data['earlyOutHalfDayCutoff'] = $earlyOutCutoff;
+        $data['missed_punch_cutoff'] = $missedPunchCutoff;
+        $data['missedPunchCutoff'] = $missedPunchCutoff;
+
+        $isHalfDay = (bool) ($data['is_half_day'] ?? false) || strtolower((string) ($data['attendance_status'] ?? '')) === 'half_day';
+        if ($isHalfDay) {
+            $data['is_early_out'] = false;
+            $data['isEarlyOut'] = false;
+            $data['early_out_minutes'] = 0;
+            $data['earlyOutMinutes'] = 0;
+        }
+
+        if ($punchOut && $earlyOutCutoff) {
+            $pOutTimeStr = $punchOut->format('H:i:s');
+            if ($pOutTimeStr < $earlyOutCutoff) {
+                $pOutFmt = $punchOut->format('g:i A');
+                $cutoffCarbon = Carbon::parse($attendanceDate . ' ' . $earlyOutCutoff, AttendanceRuleResolverService::TIMEZONE);
+                $cutoffFmt = $cutoffCarbon->format('g:i A');
+                $targetCarbon = $shiftEndCarbon;
+                $targetFmt = $targetCarbon ? $targetCarbon->format('g:i A') : null;
+                $earlyByMins = $targetCarbon ? max(0, $punchOut->diffInMinutes($targetCarbon)) : 0;
+
+                $reasonText = "Half Day — Punch Out at {$pOutFmt}, which is before the half-day cutoff of {$cutoffFmt}.";
+                $reasonPayload = [
+                    'reason_code' => 'EARLY_PUNCH_OUT_HALF_DAY',
+                    'reason' => $reasonText,
+                    'punch_out_time' => $pOutTimeStr,
+                    'punch_out_time_formatted' => $pOutFmt,
+                    'target_punch_out_time' => $targetOutVal,
+                    'target_punch_out_time_formatted' => $targetFmt,
+                    'early_out_half_day_cutoff' => $earlyOutCutoff,
+                    'early_out_half_day_cutoff_formatted' => $cutoffFmt,
+                    'early_by_minutes' => $earlyByMins,
+                ];
+
+                $data['reason_code'] = 'EARLY_PUNCH_OUT_HALF_DAY';
+                $data['reasonCode'] = 'EARLY_PUNCH_OUT_HALF_DAY';
+                $data['reason'] = $reasonText;
+                $data['half_day_reason'] = $reasonText;
+                $data['halfDayReason'] = $reasonText;
+                $data['early_by_minutes'] = $earlyByMins;
+                $data['earlyByMinutes'] = $earlyByMins;
+                $data['reason_payload'] = $reasonPayload;
+                $data['reasonPayload'] = $reasonPayload;
+            }
         }
 
         $fields = ['auto_blocked_at', 'unlocked_at', 'hr_approved_at', 'created_at', 'updated_at'];

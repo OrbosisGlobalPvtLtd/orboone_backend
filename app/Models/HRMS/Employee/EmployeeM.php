@@ -98,6 +98,16 @@ class EmployeeM extends Model
         return $this->belongsTo(PositionM::class, 'designation_id');
     }
 
+    public function shiftTimings()
+    {
+        return $this->hasMany(\App\Models\HRMS\Employee\EmployeeShiftTimingM::class, 'employee_id');
+    }
+
+    public function currentShiftTiming()
+    {
+        return $this->hasOne(\App\Models\HRMS\Employee\EmployeeShiftTimingM::class, 'employee_id')->where('is_active', 1)->latestOfMany();
+    }
+
 
 
     public function getDisplayNameAttribute()

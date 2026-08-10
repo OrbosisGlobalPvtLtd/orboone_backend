@@ -14,6 +14,7 @@ class AttendanceSyncFromLeaveService
     public function syncApprovedLeave(LeaveRequestM $leaveRequest, ?int $userId = null): void
     {
         $leaveTypeId = AttendanceTypeM::where('code', 'leave')->value('id');
+        $halfDayTypeId = AttendanceTypeM::where('code', 'half_day')->value('id') ?: $leaveTypeId;
         $lwpTypeId = AttendanceTypeM::where('code', 'lwp')->value('id') ?: $leaveTypeId;
 
         foreach ($leaveRequest->dates()->where('deduct_as_leave', true)->get() as $dateRow) {
@@ -28,20 +29,43 @@ class AttendanceSyncFromLeaveService
                 }
 
                 $oldStatus = $attendance->attendance_status;
-                $dayValue = (float) $dateRow->paid_day + (float) $dateRow->sick_day + (float) $dateRow->comp_off_day + (float) $dateRow->lwp_day;
+                $paidDay = (float) ($dateRow->paid_day ?? 0);
+                $lwpDay = (float) ($dateRow->lwp_day ?? 0);
+                $dayValue = $paidDay + (float) ($dateRow->sick_day ?? 0) + (float) ($dateRow->comp_off_day ?? 0) + $lwpDay;
+                $isHalfDay = ($dayValue > 0 && $dayValue < 1) || (bool) $leaveRequest->is_half_day;
+
+                $isLwpHalfDay = false;
+                if ($isHalfDay) {
+                    if ($lwpDay > 0) {
+                        $isLwpHalfDay = true;
+                    } elseif ($paidDay <= 0 && (float) ($dateRow->sick_day ?? 0) <= 0 && (float) ($dateRow->comp_off_day ?? 0) <= 0) {
+                        $isLwpHalfDay = true;
+                    } else {
+                        $year = Carbon::parse($dateRow->leave_date)->year;
+                        $allocation = \App\Models\HRMS\Leave\LeaveAllocationM::where('employee_id', $leaveRequest->employee_id)
+                            ->where('year', $year)
+                            ->first();
+                        if ($allocation && (float) $allocation->paid_remaining <= 0 && (float) $allocation->sick_remaining <= 0 && (float) $allocation->comp_off_remaining <= 0) {
+                            $isLwpHalfDay = true;
+                        }
+                    }
+                }
+
+                $attendanceStatus = $isHalfDay ? ($isLwpHalfDay ? 'lwp' : 'half_day') : 'leave';
+                $attendanceTypeId = $isHalfDay ? ($isLwpHalfDay ? $lwpTypeId : $halfDayTypeId) : $leaveTypeId;
 
                 $attendance->fill([
                     'user_id' => $leaveRequest->user_id,
                     'employee_id' => $leaveRequest->employee_id,
-                    'attendance_type_id' => $leaveTypeId,
+                    'attendance_type_id' => $attendanceTypeId,
                     'leave_request_id' => $leaveRequest->id,
                     'attendance_date' => $dateRow->leave_date->toDateString(),
-                    'attendance_status' => 'leave',
+                    'attendance_status' => $attendanceStatus,
                     'attendance_source' => 'leave_auto',
-                    'is_lwp' => false,
-                    'lwp_reason' => null,
-                    'is_half_day' => $dayValue > 0 && $dayValue < 1,
-                    'half_day_reason' => $dayValue > 0 && $dayValue < 1 ? 'Half-day leave' : null,
+                    'is_lwp' => $isLwpHalfDay,
+                    'lwp_reason' => $isLwpHalfDay ? 'Half day leave applied but paid leave balance unavailable.' : null,
+                    'is_half_day' => $isHalfDay,
+                    'half_day_reason' => $isHalfDay ? ($isLwpHalfDay ? 'Half day leave applied but paid leave balance unavailable.' : 'Approved half-day leave') : null,
                     'total_work_minutes' => 0,
                     'gross_work_minutes' => 0,
                     'is_late' => false,

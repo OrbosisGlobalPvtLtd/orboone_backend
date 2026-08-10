@@ -80,7 +80,9 @@ class LeavePolicyCalculatorS
         $isLwp = (bool) $leaveType->is_lwp;
         $isEmergency = (bool) ($payload['emergency_leave'] ?? false);
 
-        if (! $isSick && ! $isLwp && ! $isEmergency) {
+        $isHalfDay = (bool) ($payload['is_half_day'] ?? false);
+
+        if (! $isSick && ! $isLwp && ! $isEmergency && ! $isHalfDay && ! $existingRequest) {
             $today = Carbon::now('Asia/Kolkata')->startOfDay();
             $startDate = Carbon::parse($payload['start_date'], 'Asia/Kolkata')->startOfDay();
             if ($today->diffInDays($startDate, false) < 2) {
@@ -163,51 +165,29 @@ class LeavePolicyCalculatorS
         $compOff = 0.0;
         $lwp = 0.0;
 
+        $quota = app(MonthlyLeaveQuotaService::class)->getMonthlyQuota($employee, $start);
+        $monthlyAvailable = (float) $quota['available_this_month'];
+
         $paidCapacity = (float) $allocation->paid_remaining;
         $sickCapacity = (float) $allocation->sick_remaining;
         $compCapacity = (float) $allocation->comp_off_remaining;
 
-        // confirmation check
-        if (! $employee->is_permanent) {
-            $paidCapacity = 0.0;
-            $sickCapacity = 0.0;
-            $compCapacity = 0.0;
-        }
-
-        // November & December rule
-        if (in_array((int) $start->month, [11, 12], true)) {
+        // November & December rule (100% DB Driven)
+        if (in_array((int) $start->month, [11, 12], true) && (bool) ($policy->nov_dec_half_usage_enabled ?? true)) {
+            $threshold = (float) ($policy->nov_dec_half_usage_threshold ?? $policy->nov_dec_full_balance_threshold ?? $policy->nov_dec_threshold_balance ?? 10.0);
+            $usagePct = (float) ($policy->nov_dec_half_usage_percentage ?? $policy->nov_dec_usage_percentage ?? 50.0);
             $remaining = (float) $allocation->total_remaining;
-            if ($remaining > 10.0) {
-                $allowed = round($remaining * 0.5, 2);
+
+            if ($remaining > $threshold) {
+                $allowed = round($remaining * ($usagePct / 100.0), 2);
                 $paidCapacity = min($paidCapacity, $allowed);
                 $sickCapacity = min($sickCapacity, $allowed);
                 $compCapacity = min($compCapacity, $allowed);
             }
         }
 
-        // For Comp-Off, validate balance at the beginning
-        if ($leaveType->is_comp_off) {
-            if ($compCapacity <= 0) {
-                throw ValidationException::withMessages([
-                    'leave_type_id' => 'Comp-Off balance is not available.'
-                ]);
-            }
-            // Check pending holiday work requests as in original code
-            $hasApprovedPendingWorkRequest = DB::table('holiday_work_requests')
-                ->where('employee_id', $employee->id)
-                ->where('status', 'approved')
-                ->where('comp_off_generated', 0)
-                ->whereNull('deleted_at')
-                ->exists();
-
-            if ($hasApprovedPendingWorkRequest) {
-                throw ValidationException::withMessages([
-                    'leave_type_id' => 'You cannot use comp-off leave before completing approved holiday/weekoff work.',
-                ]);
-            }
-        }
-
-        $monthlyPlUsed = [];
+        // Paid leave capacity is driven by total_remaining_paid ($paidCapacity) and monthly available quota
+        $maxAllowedPaid = min($paidCapacity, $monthlyAvailable);
 
         foreach ($dateRows as $row) {
             if (! $row['deduct_as_leave']) {
@@ -218,7 +198,6 @@ class LeavePolicyCalculatorS
             $dayUnit = $deductCount > 0 ? ($deductedDays / $deductCount) : 1.0;
 
             $d = Carbon::parse($row['leave_date'], 'Asia/Kolkata');
-            $monthKey = $d->format('Y-m');
 
             if ($leaveType->is_lwp) {
                 $lwp += $dayUnit;
@@ -233,26 +212,10 @@ class LeavePolicyCalculatorS
                 $sickCapacity = round($sickCapacity - $allocatedSick, 2);
                 $lwp += round($dayUnit - $allocatedSick, 2);
             } else {
-                // Paid Leave
-                if (! isset($monthlyPlUsed[$monthKey])) {
-                    $used = DB::table('leave_request_dates')
-                        ->join('leave_requests', 'leave_requests.id', '=', 'leave_request_dates.leave_request_id')
-                        ->where('leave_request_dates.employee_id', $employee->id)
-                        ->where('leave_requests.status', 'approved')
-                        ->whereMonth('leave_request_dates.leave_date', $d->month)
-                        ->whereYear('leave_request_dates.leave_date', $d->year)
-                        ->where('leave_request_dates.deduct_as_leave', 1)
-                        ->when($excludeRequestId, fn($q) => $q->where('leave_requests.id', '<>', $excludeRequestId))
-                        ->sum('leave_request_dates.paid_day');
-                    $monthlyPlUsed[$monthKey] = (float) $used;
-                }
-
-                $monthlyAvailable = max(0.0, 2.0 - $monthlyPlUsed[$monthKey]);
-                $allocatedPaid = min($dayUnit, $paidCapacity, $monthlyAvailable);
+                $remAllowed = max(0.0, round($maxAllowedPaid - $paid, 2));
+                $allocatedPaid = min($dayUnit, $remAllowed);
 
                 $paid += $allocatedPaid;
-                $paidCapacity = round($paidCapacity - $allocatedPaid, 2);
-                $monthlyPlUsed[$monthKey] = round($monthlyPlUsed[$monthKey] + $allocatedPaid, 2);
                 $lwp += round($dayUnit - $allocatedPaid, 2);
             }
         }

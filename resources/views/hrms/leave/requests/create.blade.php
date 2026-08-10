@@ -100,18 +100,18 @@
 
                         <div>
                             <label class="set-label">Half Day</label>
-                            <select name="is_half_day" class="set-control">
+                            <select name="is_half_day" id="is_half_day_select" class="set-control">
                                 <option value="0" {{ old('is_half_day') == '0' ? 'selected' : '' }}>No</option>
                                 <option value="1" {{ old('is_half_day') == '1' ? 'selected' : '' }}>Yes</option>
                             </select>
                         </div>
 
-                        <div>
-                            <label class="set-label">Half Day Type</label>
-                            <select name="half_day_type" class="set-control">
-                                <option value="" {{ old('half_day_type') == '' ? 'selected' : '' }}>Full day</option>
-                                <option value="first_half" {{ old('half_day_type') == 'first_half' ? 'selected' : '' }}>First half</option>
-                                <option value="second_half" {{ old('half_day_type') == 'second_half' ? 'selected' : '' }}>Second half</option>
+                        <div id="half_day_type_container" style="{{ old('is_half_day') == '1' ? '' : 'display: none;' }}">
+                            <label class="set-label">Half Day Session <span class="text-danger">*</span></label>
+                            <select name="half_day_type" id="half_day_type_select" class="set-control">
+                                <option value="" {{ old('half_day_type') == '' ? 'selected' : '' }}>-- Select Session --</option>
+                                <option value="first_half" {{ old('half_day_type') == 'first_half' ? 'selected' : '' }}>First Half</option>
+                                <option value="second_half" {{ old('half_day_type') == 'second_half' ? 'selected' : '' }}>Second Half</option>
                             </select>
                         </div>
 
@@ -134,4 +134,25 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const isHalfDaySelect = document.getElementById('is_half_day_select');
+    const halfDayContainer = document.getElementById('half_day_type_container');
+    const halfDayTypeSelect = document.getElementById('half_day_type_select');
+
+    if (isHalfDaySelect && halfDayContainer) {
+        function toggleHalfDaySession() {
+            if (isHalfDaySelect.value === '1') {
+                halfDayContainer.style.display = '';
+            } else {
+                halfDayContainer.style.display = 'none';
+                if (halfDayTypeSelect) halfDayTypeSelect.value = '';
+            }
+        }
+        isHalfDaySelect.addEventListener('change', toggleHalfDaySession);
+        toggleHalfDaySession();
+    }
+});
+</script>
 @endsection

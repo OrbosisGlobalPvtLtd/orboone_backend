@@ -76,6 +76,9 @@ class LeaveApprovalC extends Controller
             $this->approvalService->approve($leaveRequest, Auth::id(), $request->input('note') ?: $request->input('remark') ?: $request->input('admin_remark'));
 
             return back()->with('success', 'Leave request approved and attendance synced.');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $firstError = collect($e->errors())->flatten()->first() ?: 'Validation failed for leave approval.';
+            return back()->with('error', $firstError);
         } catch (\Throwable $e) {
             Log::error('Leave approval failed', ['leave_request_id' => $id, 'error' => $e->getMessage()]);
             return back()->with('error', $e->getMessage());
@@ -96,6 +99,9 @@ class LeaveApprovalC extends Controller
             $this->approvalService->reject($leaveRequest, Auth::id(), $reason);
 
             return back()->with('success', 'Leave request rejected.');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $firstError = collect($e->errors())->flatten()->first() ?: 'Validation failed for leave rejection.';
+            return back()->with('error', $firstError);
         } catch (\Throwable $e) {
             Log::error('Leave rejection failed', ['leave_request_id' => $id, 'error' => $e->getMessage()]);
             return back()->with('error', $e->getMessage());

@@ -10,6 +10,7 @@ use App\Models\HRMS\Leave\LeaveAllocationM;
 use App\Models\HRMS\Leave\LeaveRequestM;
 use App\Models\HRMS\Leave\LeaveTypeM;
 use App\Services\HRMS\Leave\LeaveApprovalService;
+use App\Services\HRMS\Leave\LeaveBalanceService;
 use App\Services\HRMS\Leave\LeaveCalculationService;
 use App\Services\HRMS\Storage\HrmsFileResolverS;
 use App\Services\HRMS\Storage\HrmsStoragePathS;
@@ -26,50 +27,33 @@ class LeaveApiC extends Controller
     public function __construct(
         private LeaveCalculationService $calculationService,
         private LeaveApprovalService $approvalService,
+        private LeaveBalanceService $balanceService,
         private HrmsStoragePathS $paths,
         private HrmsFileResolverS $resolver
-    ) {
-    }
+    ) {}
 
     public function types()
     {
         $employee = $this->employee();
-        $year = Carbon::now('Asia/Kolkata')->year;
-        $allocation = LeaveAllocationM::where('employee_id', $employee->id)
-            ->where('year', $year)
-            ->first();
-
+        $typeBalances = $this->balanceService->getTypeWiseBalances($employee);
         $types = LeaveTypeM::where('is_active', true)->orderBy('name')->get();
-        $isPermanent = $employee->is_permanent;
 
         foreach ($types as $type) {
-            $balance = 0.0;
-            if ($isPermanent && $allocation) {
-                if ($type->is_paid) {
-                    $balance = (float) $allocation->paid_remaining;
-                } elseif ($type->is_sick) {
-                    $balance = (float) $allocation->sick_remaining;
-                } elseif ($type->is_comp_off) {
-                    $balance = (float) $allocation->comp_off_remaining;
-                }
-            }
-
-            // Apply November & December rule to dynamic available balance
-            if ($balance > 0 && in_array((int) Carbon::now('Asia/Kolkata')->month, [11, 12], true)) {
-                $remaining = (float) ($allocation->total_remaining ?? 0);
-                if ($remaining > 10.0) {
-                    $balance = round($balance * 0.5, 2);
-                }
-            }
-
-            $type->available_balance = $balance;
+            $matching = collect($typeBalances)->firstWhere('leave_type_id', (int) $type->id);
+            $available = (float) ($matching['available'] ?? 0.0);
+            $type->available_balance = $available;
             $type->policy = [
-                'available_balance' => $balance,
+                'available_balance' => $available,
                 'max_consecutive_days' => (int) $type->max_days_per_request,
                 'sandwich_applicable' => true,
                 'attachment_required' => (bool) $type->requires_attachment,
                 'description' => $type->description ?? '',
             ];
+            if ($matching) {
+                foreach ($matching as $k => $v) {
+                    $type->{$k} = $v;
+                }
+            }
         }
 
         return $this->ok('Leave types fetched successfully.', $types);
@@ -81,6 +65,10 @@ class LeaveApiC extends Controller
             $employee = $this->employee();
             $today = Carbon::now('Asia/Kolkata')->toDateString();
             $year = Carbon::now('Asia/Kolkata')->year;
+            $currentMonth = Carbon::now('Asia/Kolkata')->month;
+
+            $policy = app(\App\Services\HRMS\Leave\LeavePolicyService::class)->forEmployee($employee, Carbon::now('Asia/Kolkata'));
+            $quota = app(\App\Services\HRMS\Leave\MonthlyLeaveQuotaService::class)->getMonthlyQuota($employee);
 
             $statusCounts = LeaveRequestM::query()
                 ->where('employee_id', $employee->id)
@@ -88,79 +76,121 @@ class LeaveApiC extends Controller
                 ->groupBy('status')
                 ->pluck('total', 'status');
 
-            $currentMonth = Carbon::now('Asia/Kolkata')->month;
-            $currentYear = Carbon::now('Asia/Kolkata')->year;
-
-            $alreadyUsedThisMonth = (float) DB::table('leave_request_dates')
-                ->join('leave_requests', 'leave_requests.id', '=', 'leave_request_dates.leave_request_id')
-                ->where('leave_request_dates.employee_id', $employee->id)
-                ->where('leave_requests.status', 'approved')
-                ->whereMonth('leave_request_dates.leave_date', $currentMonth)
-                ->whereYear('leave_request_dates.leave_date', $currentYear)
-                ->where('leave_request_dates.deduct_as_leave', 1)
-                ->sum('leave_request_dates.paid_day');
-
             $allocation = LeaveAllocationM::where('employee_id', $employee->id)
                 ->where('year', $year)
                 ->latest()
                 ->first();
 
-            $isPermanent = $employee->is_permanent;
-            $paidRemaining = $isPermanent && $allocation ? (float) $allocation->paid_remaining : 0.0;
-            $sickRemaining = $isPermanent && $allocation ? (float) $allocation->sick_remaining : 0.0;
-            $compRemaining = $isPermanent && $allocation ? (float) $allocation->comp_off_remaining : 0.0;
-            $totalRemaining = $isPermanent && $allocation ? (float) $allocation->total_remaining : 0.0;
+            $paidAlloc = $allocation ? (float) $allocation->paid_allocated : 0.0;
+            $paidUsed = $allocation ? (float) $allocation->paid_used : 0.0;
+            $paidRemaining = $allocation ? (float) $allocation->paid_remaining : 0.0;
+
+            $sickAlloc = $allocation ? (float) $allocation->sick_allocated : 0.0;
+            $sickUsed = $allocation ? (float) $allocation->sick_used : 0.0;
+            $sickRemaining = $allocation ? (float) $allocation->sick_remaining : 0.0;
+
+            $totalAlloc = $allocation ? (float) $allocation->total_allocated : 0.0;
+            $totalUsed = $allocation ? (float) $allocation->total_used : 0.0;
+            $totalRemaining = $allocation ? (float) $allocation->total_remaining : 0.0;
+
             $lwpUsed = $allocation ? (float) $allocation->lwp_used : 0.0;
 
             // Apply November/December rule to dynamic balances
             if (in_array((int) $currentMonth, [11, 12], true) && $totalRemaining > 10.0) {
                 $paidRemaining = round($paidRemaining * 0.5, 2);
                 $sickRemaining = round($sickRemaining * 0.5, 2);
-                $compRemaining = round($compRemaining * 0.5, 2);
+                $totalRemaining = round($totalRemaining * 0.5, 2);
             }
 
-            $remainingThisMonth = $isPermanent ? max(0.0, 2.0 - $alreadyUsedThisMonth) : 0.0;
+            $balance = [
+                'paid' => [
+                    'allocated' => $paidAlloc,
+                    'used' => $paidUsed,
+                    'remaining' => $paidRemaining,
+                ],
+                'sick' => [
+                    'allocated' => $sickAlloc,
+                    'used' => $sickUsed,
+                    'remaining' => $sickRemaining,
+                ],
+                'total' => [
+                    'allocated' => $totalAlloc,
+                    'used' => $totalUsed,
+                    'remaining' => $totalRemaining,
+                ],
+            ];
 
-            $emergencyUsed = DB::table('leave_requests')
-                ->where('employee_id', $employee->id)
-                ->where('status', 'approved')
-                ->where('emergency_leave', 1)
-                ->count();
+            $monthlyQuota = [
+                'limit' => $quota['monthly_limit'],
+                'used' => $quota['current_month_used'],
+                'carry_forward' => $quota['carry_forward_available'],
+                'available' => $quota['available_this_month'],
+            ];
 
-            $summary = [
+            $leaveSummary = [
                 'pending' => (int) ($statusCounts['pending'] ?? 0),
                 'approved' => (int) ($statusCounts['approved'] ?? 0),
                 'rejected' => (int) ($statusCounts['rejected'] ?? 0),
-                'total' => (int) $statusCounts->sum(),
-                
-                // Detailed metrics required by rules
-                'paid_leave_remaining' => $paidRemaining,
-                'paid_leave_used' => $isPermanent && $allocation ? (float) $allocation->paid_used : 0.0,
-                'paid_leave_available_this_month' => $isPermanent ? 2.0 : 0.0,
-                'already_used_this_month' => $alreadyUsedThisMonth,
-                'remaining_this_month' => $remainingThisMonth,
-                'sick_leave_remaining' => $sickRemaining,
-                'comp_off_balance' => $compRemaining,
-                'lwp_count' => $lwpUsed,
-                'emergency_leave_used' => $emergencyUsed,
+                'lwp' => $lwpUsed,
             ];
 
-            $balances = $this->formatBalances($allocation);
+            $policyData = [
+                'half_day_enabled' => (bool) ($policy->allow_half_day ?? true),
+                'monthly_limit' => $quota['monthly_limit'],
+            ];
+
+            $upcomingLeaves = LeaveRequestM::with(['leaveType:id,name,code,color', 'dates'])
+                ->where('employee_id', $employee->id)
+                ->where('status', 'approved')
+                ->whereDate('start_date', '>=', $today)
+                ->orderBy('start_date')
+                ->get()
+                ->map(fn(LeaveRequestM $leaveRequest) => $this->formatLeaveRequest($leaveRequest))
+                ->values();
 
             $recentRequests = LeaveRequestM::with(['leaveType:id,name,code,color', 'dates'])
                 ->where('employee_id', $employee->id)
                 ->latest()
                 ->limit(5)
                 ->get()
-                ->map(fn (LeaveRequestM $leaveRequest) => $this->formatLeaveRequest($leaveRequest))
+                ->map(fn(LeaveRequestM $leaveRequest) => $this->formatLeaveRequest($leaveRequest))
                 ->values();
+
+            $central = $this->balanceService->getCentralBalance($employee);
+            $lb = $central['leave_balance'];
+
+            $summary = [
+                'pending' => (int) ($statusCounts['pending'] ?? 0),
+                'approved' => (int) ($statusCounts['approved'] ?? 0),
+                'rejected' => (int) ($statusCounts['rejected'] ?? 0),
+                'total' => (int) $statusCounts->sum(),
+                'monthly_quota' => (float) $lb['monthly_quota'],
+                'monthly_carry_forward' => (float) $lb['monthly_carry_forward'],
+                'monthly_used_this_month' => (float) $lb['monthly_used_this_month'],
+                'total_monthly_remaining_paid' => (float) $lb['total_monthly_remaining_paid'],
+                'total_remaining_paid' => (float) $lb['total_remaining_paid'],
+                'total_leave_balance' => (float) ($lb['total_remaining_paid'] + $lb['total_remaining_sick'] + $lb['total_remaining_comp_off']),
+                'paid_leave' => (float) $lb['total_remaining_paid'],
+                'sick_leave' => (float) $lb['total_remaining_sick'],
+                'used_leave' => $totalUsed,
+                'paid_leave_remaining' => (float) $lb['total_remaining_paid'],
+                'paid_leave_used' => $paidUsed,
+                'already_used_this_month' => (float) $lb['monthly_used_this_month'],
+                'remaining_this_month' => (float) $lb['total_monthly_remaining_paid'],
+                'carry_forward' => (float) $lb['monthly_carry_forward'],
+                'sick_leave_remaining' => (float) $lb['total_remaining_sick'],
+                'comp_off_balance' => (float) $lb['total_remaining_comp_off'],
+                'lwp_count' => $lwpUsed,
+            ];
+
+            $balances = $this->formatBalances($allocation);
 
             $upcomingHolidays = $this->holidayQuery()
                 ->whereDate('holiday_date', '>=', $today)
                 ->orderBy('holiday_date')
                 ->limit(5)
                 ->get()
-                ->map(fn (HolidayM $holiday) => $this->formatHoliday($holiday))
+                ->map(fn(HolidayM $holiday) => $this->formatHoliday($holiday))
                 ->values();
 
             $teamEmployeeIds = EmployeeM::query()
@@ -168,36 +198,46 @@ class LeaveApiC extends Controller
                 ->where('employees_new.reporting_manager_employee_id', $employee->id)
                 ->where(function ($query) {
                     $query->whereNull('employee_profiles.employee_id')
-                          ->orWhere('employee_profiles.profile_status', 'approved');
+                        ->orWhere('employee_profiles.profile_status', 'approved');
                 })
                 ->pluck('employees_new.id');
 
             $teamOnLeave = $teamEmployeeIds->isEmpty()
                 ? collect()
                 : LeaveRequestM::with(['employee.user:id,name', 'leaveType:id,name,code,color'])
-                    ->whereIn('employee_id', $teamEmployeeIds)
-                    ->where('status', 'approved')
-                    ->whereDate('start_date', '<=', $today)
-                    ->whereDate('end_date', '>=', $today)
-                    ->orderBy('start_date')
-                    ->get()
-                    ->map(fn (LeaveRequestM $leaveRequest) => [
-                        'id' => $leaveRequest->id,
-                        'employee_id' => $leaveRequest->employee_id,
-                        'employee_name' => $leaveRequest->employee?->display_name,
-                        'leave_type' => $leaveRequest->leaveType,
-                        'start_date' => optional($leaveRequest->start_date)->toDateString(),
-                        'end_date' => optional($leaveRequest->end_date)->toDateString(),
-                        'total_days' => (float) ($leaveRequest->requested_days ?? $leaveRequest->deducted_days ?? 0),
-                    ])
-                    ->values();
+                ->whereIn('employee_id', $teamEmployeeIds)
+                ->where('status', 'approved')
+                ->whereDate('start_date', '<=', $today)
+                ->whereDate('end_date', '>=', $today)
+                ->orderBy('start_date')
+                ->get()
+                ->map(fn(LeaveRequestM $leaveRequest) => [
+                    'id' => $leaveRequest->id,
+                    'employee_id' => $leaveRequest->employee_id,
+                    'employee_name' => $leaveRequest->employee?->display_name,
+                    'leave_type' => $leaveRequest->leaveType,
+                    'start_date' => optional($leaveRequest->start_date)->toDateString(),
+                    'end_date' => optional($leaveRequest->end_date)->toDateString(),
+                    'total_days' => (float) ($leaveRequest->requested_days ?? $leaveRequest->deducted_days ?? 0),
+                ])
+                ->values();
 
             $compOffs = $this->compOffRecords($employee->id, 5);
 
+            $central = $this->balanceService->getCentralBalance($employee);
+
             return $this->ok('Leave dashboard fetched successfully.', [
+                'employee_id' => (int) $employee->id,
+                'leave_balance' => $central['leave_balance'],
+                'balance' => $balance,
+                'monthly_quota' => $monthlyQuota,
+                'leave_summary' => $leaveSummary,
+                'upcoming_leaves' => $upcomingLeaves,
+                'recent_requests' => $recentRequests,
+                'policy' => $policyData,
+                // Backward compatibility keys:
                 'summary' => $summary,
                 'balances' => $balances,
-                'recent_requests' => $recentRequests,
                 'upcoming_holidays' => $upcomingHolidays,
                 'team_on_leave' => $teamOnLeave,
                 'comp_offs' => $compOffs,
@@ -213,43 +253,26 @@ class LeaveApiC extends Controller
     public function balance()
     {
         $employee = $this->employee();
-        $allocation = LeaveAllocationM::where('employee_id', $employee->id)
-            ->where('year', Carbon::now('Asia/Kolkata')->year)
-            ->latest()
-            ->first();
+        $central = $this->balanceService->getCentralBalance($employee);
+        $typeBalances = $this->balanceService->getTypeWiseBalances($employee);
 
-        $isPermanent = $employee->is_permanent;
-        $totalRem = $isPermanent ? (float) ($allocation->total_remaining ?? 0) : 0.0;
-        $paidRem = $isPermanent ? (float) ($allocation->paid_remaining ?? 0) : 0.0;
-        $sickRem = $isPermanent ? (float) ($allocation->sick_remaining ?? 0) : 0.0;
-        $compRem = $isPermanent ? (float) ($allocation->comp_off_remaining ?? 0) : 0.0;
+        return $this->ok('Leave balance fetched successfully.', array_merge($central, [
+            'leave_types' => $typeBalances,
+        ]));
+    }
 
-        if (in_array((int) Carbon::now('Asia/Kolkata')->month, [11, 12], true) && $totalRem > 10.0) {
-            $totalRem = round($totalRem * 0.5, 2);
-            $paidRem = round($paidRem * 0.5, 2);
-            $sickRem = round($sickRem * 0.5, 2);
-            $compRem = round($compRem * 0.5, 2);
-        }
+    public function balanceHistory(Request $request)
+    {
+        $employee = $this->employee();
+        $perPage = (int) $request->input('per_page', 20);
+        $data = $this->balanceService->getBalanceHistory($employee, $perPage);
 
-        return $this->ok('Leave balance fetched successfully.', [
-            'allocation' => $allocation,
-            'total_remaining' => $totalRem,
-            'paid_remaining' => $paidRem,
-            'sick_remaining' => $sickRem,
-            'comp_off_remaining' => $compRem,
-            'lwp_used' => (float) ($allocation->lwp_used ?? 0),
-        ]);
+        return $this->ok('Leave balance history fetched successfully.', $data);
     }
 
     public function calculate(Request $request)
     {
-        $data = $request->validate([
-            'leave_type_id' => 'required|exists:leave_types,id',
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
-            'is_half_day' => 'nullable|boolean',
-            'attachment' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
-        ]);
+        $data = \App\Services\HRMS\Leave\LeaveValidationService::validate($request->all());
 
         $employee = $this->employee();
         $leaveType = LeaveTypeM::findOrFail($data['leave_type_id']);
@@ -260,19 +283,22 @@ class LeaveApiC extends Controller
 
     public function apply(Request $request)
     {
-        $data = $request->validate([
-            'leave_type_id' => 'required|exists:leave_types,id',
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
-            'is_half_day' => 'nullable|boolean',
-            'half_day_type' => 'nullable|in:first_half,second_half',
-            'reason' => 'required|string|max:2000',
-            'attachment' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
-            'emergency_leave' => 'nullable|boolean',
-        ]);
+        $data = \App\Services\HRMS\Leave\LeaveValidationService::validate($request->all());
 
         try {
             $employee = $this->employee();
+
+            $eligibilityService = app(\App\Services\HRMS\Employee\EmployeeEligibilityS::class);
+            if (! $eligibilityService->canApplyLeave($employee)) {
+                if ($eligibilityService->isExitCompleted($employee) || $eligibilityService->isTerminated($employee)) {
+                    return $this->fail('Your employment has ended. Please contact HR.', 422);
+                }
+                if ($eligibilityService->isProfilePending($employee)) {
+                    return $this->fail('Complete your profile to access HRMS services.', 422);
+                }
+                return $this->fail('You are not eligible to apply for leave.', 422);
+            }
+
             $leaveType = LeaveTypeM::findOrFail($data['leave_type_id']);
             $attachmentPath = $this->storeAttachment($request);
             $calculation = $this->calculationService->calculate($employee, $leaveType, array_merge($data, ['attachment_path' => $attachmentPath]));
@@ -287,8 +313,8 @@ class LeaveApiC extends Controller
                     'end_date' => $data['end_date'],
                     'requested_days' => $calculation['requested_days'],
                     'deducted_days' => $calculation['deducted_days'],
-                    'is_half_day' => $request->boolean('is_half_day'),
-                    'half_day_type' => $data['half_day_type'] ?? null,
+                    'is_half_day' => $data['is_half_day'],
+                    'half_day_type' => $data['half_day_type'],
                     'reason' => $data['reason'],
                     'attachment_path' => $attachmentPath,
                     'status' => 'pending',
@@ -386,7 +412,7 @@ class LeaveApiC extends Controller
         $employee = $this->employee();
         $requests = LeaveRequestM::with(['leaveType', 'dates'])
             ->where('employee_id', $employee->id)
-            ->when($request->status, fn ($query) => $query->where('status', $request->status))
+            ->when($request->status, fn($query) => $query->where('status', $request->status))
             ->latest()
             ->paginate((int) ($request->per_page ?: 20));
 
@@ -407,7 +433,7 @@ class LeaveApiC extends Controller
                 ->whereYear('holiday_date', $year)
                 ->orderBy('holiday_date')
                 ->get()
-                ->map(fn (HolidayM $holiday) => $this->formatHoliday($holiday))
+                ->map(fn(HolidayM $holiday) => $this->formatHoliday($holiday))
                 ->values();
 
             return $this->ok('Holidays fetched successfully.', $holidays);
@@ -451,7 +477,7 @@ class LeaveApiC extends Controller
                 'hrApprover:id,name',
                 'canceller:id,name',
             ])
-                ->when(! $canViewAll, fn ($query) => $query->where('employee_id', $employee->id))
+                ->when(! $canViewAll, fn($query) => $query->where('employee_id', $employee->id))
                 ->find($id);
 
             if (! $leaveRequest) {
@@ -568,7 +594,7 @@ class LeaveApiC extends Controller
         }
 
         return $query->get()
-            ->map(fn (CompOffM $compOff) => [
+            ->map(fn(CompOffM $compOff) => [
                 'id' => $compOff->id,
                 'employee_id' => $compOff->employee_id,
                 'earned_date' => optional($compOff->worked_date)->toDateString(),

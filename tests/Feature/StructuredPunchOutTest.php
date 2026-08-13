@@ -48,6 +48,8 @@ class StructuredPunchOutTest extends TestCase
             'employee_code' => 'EMP-STR-' . rand(1000, 9999),
             'employment_type' => 'full_time',
             'work_mode' => 'wfh',
+            'allow_web_attendance' => 1,
+            'allow_mobile_attendance' => 1,
             'employment_status' => 'active',
             'is_active' => 1,
         ]);
@@ -58,6 +60,19 @@ class StructuredPunchOutTest extends TestCase
             'profile_status' => 'approved',
             'is_profile_completed' => true,
         ]);
+
+        \App\Models\HRMS\Attendance\AttendanceLocationM::where('code', '!=', 'mumbai_office')->update(['is_default' => false]);
+        \App\Models\HRMS\Attendance\AttendanceLocationM::updateOrCreate(
+            ['code' => 'mumbai_office'],
+            [
+                'name' => 'Mumbai Office',
+                'latitude' => 19.0760000,
+                'longitude' => 72.8777000,
+                'radius_meters' => 100,
+                'is_default' => true,
+                'is_active' => true,
+            ]
+        );
 
         // Create Attendance Types
         $this->presentType = AttendanceType::firstOrCreate(['code' => 'present'], ['name' => 'Present', 'is_active' => true]);
@@ -195,5 +210,38 @@ class StructuredPunchOutTest extends TestCase
         $this->assertNotNull($workLog);
         $this->assertEquals('Completed all tasks without sending json.', $workLog->work_summary);
         $this->assertNull($workLog->work_summary_json);
+    }
+
+    public function test_web_clock_out_updates_existing_wfo_attendance(): void
+    {
+        Carbon::setTestNow(Carbon::create(2026, 5, 23, 17, 30, 0, 'Asia/Kolkata'));
+
+        // Create an existing WFO attendance record (punched in, not punched out)
+        $attendance = Attendance::create([
+            'employee_id' => $this->employee->id,
+            'user_id' => $this->user->id,
+            'attendance_date' => '2026-05-23',
+            'punch_in_time' => '09:00:00',
+            'work_mode' => 'wfo',
+            'attendance_status' => 'present',
+            'attendance_type_id' => $this->presentType->id,
+            'is_locked' => false,
+        ]);
+
+        $this->actingAs($this->user);
+
+        $response = $this->post('/attendances/clock-out', [
+            'task_name' => 'WFO Punch Out Fix',
+            'today_work_description' => 'Completed Web Attendance Fixes',
+            'latitude' => 19.0760,
+            'longitude' => 72.8777,
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success', 'Punch out recorded successfully.');
+
+        $attendance->refresh();
+        $this->assertNotNull($attendance->punch_out_time);
+        $this->assertEquals('wfo', $attendance->work_mode);
     }
 }

@@ -1,11 +1,15 @@
 @php
-$employee = $dashboard['employee'] ?? null;
+$employee = $dashboard['employee'] ?? ($employee ?? null);
 $cards = $dashboard['cards'] ?? [];
 $actions = $dashboard['quick_actions'] ?? [];
 $attendance = $dashboard['attendance_self'] ?? [];
 $month = $attendance['month'] ?? [];
 $announcements = $dashboard['latest_announcements'] ?? collect();
 $recentAttendance = $attendance['recent'] ?? collect();
+$todayRecord = $attendance['today'] ?? ($attendanceRecord ?? null);
+$hasPunchedIn = !empty($todayRecord->punch_in_time);
+$hasPunchedOut = !empty($todayRecord->punch_out_time);
+$existingWorkMode = strtolower($todayRecord->work_mode ?? 'wfo');
 @endphp
 
 @if (empty($only_modals))
@@ -111,9 +115,6 @@ $recentAttendance = $attendance['recent'] ?? collect();
 
                     @php
                     $canWebPunch = optional($employee)->canUseWebAttendance();
-                    $todayRecord = $attendance['today'] ?? null;
-                    $hasPunchedIn = !empty($todayRecord->punch_in_time);
-                    $hasPunchedOut = !empty($todayRecord->punch_out_time);
                     @endphp
 
                     @if (!$canWebPunch)
@@ -338,6 +339,7 @@ $recentAttendance = $attendance['recent'] ?? collect();
         <div class="modal-content border-0 shadow-lg" style="border-radius: 28px; overflow: hidden; background: #f8fafc;">
             <form method="POST" action="{{ route('attendances.clock-out') }}" id="webPunchOutForm">
                 @csrf
+                <input type="hidden" name="work_mode" id="punch_out_work_mode" value="{{ $existingWorkMode }}">
                 <input type="hidden" name="latitude" id="punch_out_lat">
                 <input type="hidden" name="longitude" id="punch_out_lng">
                 <input type="hidden" name="browser" id="punch_out_browser">
@@ -352,7 +354,7 @@ $recentAttendance = $attendance['recent'] ?? collect();
                         </div>
                         <div>
                             <h4 class="font-weight-bold mb-1 text-white" style="font-size: 20px; letter-spacing: -0.3px;">Daily Task Update</h4>
-                            <p class="mb-0 text-white-50 small font-weight-semibold">Punch out based on assigned shift policy</p>
+                            <p class="mb-0 text-white-50 small font-weight-semibold">Work Mode: {{ strtoupper($existingWorkMode) }} | Punch out based on assigned shift policy</p>
                         </div>
                     </div>
                     <button type="button" class="close text-white opacity-10 position-absolute" data-dismiss="modal" style="top: 20px; right: 24px; font-size: 28px; text-shadow: none;"><span>&times;</span></button>
@@ -508,7 +510,11 @@ $recentAttendance = $attendance['recent'] ?? collect();
                     </div>
 
                     <div class="p-3 mb-1 border" id="locationStatusOut" style="border-radius: 14px; background: #f8fafc !important; border: 1px solid #e2e8f0 !important; font-size: 13px; font-weight: 600;">
-                        <i class="fas fa-location-arrow text-danger mr-1"></i> Location verification will trigger on Punch Out.
+                        @if ($existingWorkMode === 'wfo')
+                            <i class="fas fa-location-arrow text-danger mr-1"></i> Location verification will trigger on Punch Out (WFO).
+                        @else
+                            <i class="fas fa-home text-info mr-1"></i> Work From Home (WFH) active. No location verification required.
+                        @endif
                     </div>
 
                 </div>
@@ -745,6 +751,46 @@ $recentAttendance = $attendance['recent'] ?? collect();
             });
         }
 
+        const punchOutForm = document.getElementById('webPunchOutForm');
+        if (punchOutForm) {
+            punchOutForm.addEventListener('submit', function(e) {
+                const modeInput = document.getElementById('punch_out_work_mode');
+                const mode = modeInput ? modeInput.value : 'wfo';
+
+                // WFH Flow: Skip location check, submit directly to backend
+                if (mode === 'wfh') {
+                    return true;
+                }
+
+                const latVal = document.getElementById('punch_out_lat') ? document.getElementById('punch_out_lat').value : '';
+                const lngVal = document.getElementById('punch_out_lng') ? document.getElementById('punch_out_lng').value : '';
+
+                // If coordinates already captured, allow form submit
+                if (latVal && lngVal && parseFloat(latVal) !== 0 && parseFloat(lngVal) !== 0) {
+                    return true;
+                }
+
+                // WFO Flow: Intercept form submit, trigger native browser location permission popup automatically
+                e.preventDefault();
+
+                const submitBtn = punchOutForm.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Verifying Location...';
+                }
+
+                requestGPSLocation('punch_out_lat', 'punch_out_lng', 'punch_out_browser', 'punch_out_os', 'punch_out_gps', 'locationStatusOut', function(success) {
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i> Submit & Punch Out';
+                    }
+                    if (success) {
+                        punchOutForm.submit();
+                    }
+                });
+            });
+        }
+
         if (window.jQuery) {
             $('#webPunchInModal').on('shown.bs.modal', function() {
                 const selectEl = document.getElementById('web_work_mode_select');
@@ -752,8 +798,26 @@ $recentAttendance = $attendance['recent'] ?? collect();
                 handleWorkModeChange(mode);
             });
 
+            $('#webPunchOutModal').on('shown.bs.modal', function() {
+                const modeInput = document.getElementById('punch_out_work_mode');
+                const mode = modeInput ? modeInput.value : 'wfo';
+                const statusEl = document.getElementById('locationStatusOut');
+                const latVal = document.getElementById('punch_out_lat') ? document.getElementById('punch_out_lat').value : '';
+                const lngVal = document.getElementById('punch_out_lng') ? document.getElementById('punch_out_lng').value : '';
+
+                if (mode === 'wfo' && (!latVal || !lngVal || parseFloat(latVal) === 0 || parseFloat(lngVal) === 0)) {
+                    requestGPSLocation('punch_out_lat', 'punch_out_lng', 'punch_out_browser', 'punch_out_os', 'punch_out_gps', 'locationStatusOut', null);
+                } else if (mode !== 'wfo' && statusEl) {
+                    statusEl.innerHTML = '<i class="fas fa-home text-info mr-1"></i> Work From Home (WFH) Active. No Office GPS validation required.';
+                }
+            });
+
             @if(session('error') || session('danger') || $errors->any())
-            $('#webPunchInModal').modal('show');
+                @if(!empty($hasPunchedIn) && empty($hasPunchedOut))
+                    $('#webPunchOutModal').modal('show');
+                @else
+                    $('#webPunchInModal').modal('show');
+                @endif
             @endif
         }
     });

@@ -752,7 +752,7 @@ $recentAttendance = $attendance['recent'] ?? collect();
                 handleWorkModeChange(mode);
             });
 
-            @if(session('error') || session('danger') || $errors - > any())
+            @if(session('error') || session('danger') || $errors->any())
             $('#webPunchInModal').modal('show');
             @endif
         }

@@ -865,13 +865,8 @@ class EmployeeC extends Controller
             ];
         }
 
-        $attendanceTimes = DB::table('attendance_times')
-            ->where('is_active', 1)
-            ->where('code', 'NOT LIKE', 'ARCH_SHIFT%')
-            ->where('code', 'NOT LIKE', '%test%')
-            ->whereNotIn('code', ['first_half_leave_shift', 'second_half_leave_shift', 'insufficient_work_shift'])
-            ->orderBy('id')
-            ->get();
+        $employeeDocuments = collect($documentsList);
+        $attendanceTimes = DB::table('attendance_times')->where('is_active', 1)->orderBy('id')->get();
 
         $activeShiftTiming = DB::table('employee_shift_timings')
             ->where('employee_id', $employeeData->id)
@@ -1154,13 +1149,9 @@ class EmployeeC extends Controller
                     || (int)$activeTiming->required_work_minutes !== $reqMinutes
                     || (int)$activeTiming->lunch_minutes !== $lunchMinutes;
 
-                if (! $hasChanges) {
-                    throw new \Exception('DEBUG_NO_CHANGES: activeTiming_shift=' . ($activeTiming ? $activeTiming->attendance_time_id : 'null') . ' newShift_id=' . ($newShift ? $newShift->id : 'null'));
-                }
-
                 if ($hasChanges) {
                     $targetEffectiveFrom = $request->shift_effective_from ?: Carbon::now('Asia/Kolkata')->toDateString();
-                    
+
                     $hasPunchedIn = DB::table('attendances')
                         ->where('employee_id', $employee)
                         ->whereDate('attendance_date', $targetEffectiveFrom)
@@ -1608,10 +1599,10 @@ class EmployeeC extends Controller
             }
 
             $allDocs = $query->select(
-                    'employee_documents_new.*',
-                    DB::raw("COALESCE(document_types.name, employee_documents_new.title, 'Document') as document_type_name"),
-                    'document_types.code as document_type_code'
-                )
+                'employee_documents_new.*',
+                DB::raw("COALESCE(document_types.name, employee_documents_new.title, 'Document') as document_type_name"),
+                'document_types.code as document_type_code'
+            )
                 ->orderByDesc('employee_documents_new.id')
                 ->get();
 

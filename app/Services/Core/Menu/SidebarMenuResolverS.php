@@ -407,6 +407,7 @@ class SidebarMenuResolverS
             'hrms.attendance.work-reports' => ['attendance.work_reports.view_all', 'attendance.work_reports.view_team'],
             'hrms.attendance.my-work-reports' => ['attendance.work_reports.view_own'],
             'enterprise-payroll.policies.index' => ['enterprise_payroll.policy.view'],
+            'hrms.organization.index' => ['departments.manage', 'designations.manage', 'employees.organization.manage'],
             'hrms.attendance.wfh.index' => ['attendance.wfh.view', 'attendance.wfh.own'],
             'hrms.attendance.my-wfh.index' => ['attendance.wfh.own'],
         ];

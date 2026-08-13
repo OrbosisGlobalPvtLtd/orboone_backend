@@ -12,7 +12,7 @@ Route::middleware(['auth', 'web.admin.access', 'module:hrms'])
     ->name('hrms.')
     ->group(function () {
         Route::get('/organization', [OrganizationC::class, 'index'])
-            ->middleware('permission:departments.manage')
+            ->middleware('permission:departments.manage|designations.manage|employees.organization.manage')
             ->name('organization.index');
 
         Route::post('/organization/departments', [DepartmentC::class, 'store'])

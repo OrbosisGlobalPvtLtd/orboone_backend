@@ -89,6 +89,7 @@
     display:grid;
     grid-template-columns:360px minmax(0,1fr);
     gap:14px;
+    align-items:stretch;
 }
 
 .org-card{
@@ -97,6 +98,9 @@
     border-radius:18px;
     box-shadow:var(--orb-shadow);
     overflow:hidden;
+    display:flex;
+    flex-direction:column;
+    height:100%;
 }
 
 .org-card-head{
@@ -107,6 +111,7 @@
     justify-content:space-between;
     gap:12px;
     background:#fff;
+    flex:0 0 auto;
 }
 
 .org-title{
@@ -144,6 +149,10 @@
 
 .org-body{
     padding:14px;
+    flex:1 1 auto;
+    display:flex;
+    flex-direction:column;
+    min-height:0;
 }
 
 .btn-orb{
@@ -195,16 +204,21 @@
     display:flex;
     flex-direction:column;
     gap:10px;
-    max-height:calc(100vh - 245px);
+    flex:1 1 auto;
+    min-height:0;
+    max-height:calc(100vh - 310px);
     overflow-y:auto;
-    padding-right:2px;
+    padding-right:4px;
 }
 
-.dept-list::-webkit-scrollbar{
+.dept-list::-webkit-scrollbar,
+.table-wrap::-webkit-scrollbar{
     width:5px;
+    height:5px;
 }
 
-.dept-list::-webkit-scrollbar-thumb{
+.dept-list::-webkit-scrollbar-thumb,
+.table-wrap::-webkit-scrollbar-thumb{
     background:#D9DDE8;
     border-radius:999px;
 }
@@ -222,6 +236,7 @@
     cursor:pointer;
     transition:.18s ease;
     text-align:left;
+    flex-shrink:0;
 }
 
 .dept-item:hover,
@@ -281,6 +296,13 @@
     flex:0 0 auto;
 }
 
+#designationPanel{
+    display:flex;
+    flex-direction:column;
+    flex:1 1 auto;
+    min-height:0;
+}
+
 .selected-box{
     border-radius:16px;
     padding:14px;
@@ -291,6 +313,7 @@
     align-items:center;
     justify-content:space-between;
     gap:12px;
+    flex:0 0 auto;
 }
 
 .selected-box h4{
@@ -311,6 +334,9 @@
     border:1px solid #EEF1F6;
     border-radius:16px;
     overflow:auto;
+    flex:1 1 auto;
+    min-height:0;
+    max-height:calc(100vh - 400px);
 }
 
 .org-table{
@@ -466,8 +492,9 @@ textarea.form-control{
         grid-template-columns:1fr;
     }
 
-    .dept-list{
-        max-height:none;
+    .dept-list,
+    .table-wrap{
+        max-height:480px;
     }
 
     .org-header-premium{

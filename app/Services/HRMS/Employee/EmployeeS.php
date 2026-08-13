@@ -59,6 +59,9 @@ class EmployeeS
 
         $attendanceTimes = DB::table('attendance_times')
             ->where('is_active', 1)
+            ->where('code', 'NOT LIKE', 'ARCH_SHIFT%')
+            ->where('code', 'NOT LIKE', '%test%')
+            ->whereNotIn('code', ['first_half_leave_shift', 'second_half_leave_shift', 'insufficient_work_shift'])
             ->orderBy('id')
             ->get();
 

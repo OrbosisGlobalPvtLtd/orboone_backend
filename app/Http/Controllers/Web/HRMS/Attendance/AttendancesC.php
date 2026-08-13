@@ -196,7 +196,12 @@ class AttendancesC extends Controller
 
         $employees = $this->attendanceEmployees();
         $attendanceTypes = $this->activeAttendanceTypes();
-        $attendanceTimes = AttendanceTime::where('is_active', true)->orderByDesc('is_default')->get();
+        $attendanceTimes = AttendanceTime::where('is_active', true)
+            ->where('code', 'NOT LIKE', 'ARCH_SHIFT%')
+            ->where('code', 'NOT LIKE', '%test%')
+            ->whereNotIn('code', ['first_half_leave_shift', 'second_half_leave_shift', 'insufficient_work_shift'])
+            ->orderByDesc('is_default')
+            ->get();
         $canManageAttendance = $this->canManageAttendance();
         $canUnlockAttendance = $this->canUnlockAttendance();
         $blockedAttendances = $this->scopeAttendanceQuery($this->baseQuery(), 'attendance.records.view_all', 'attendance.regularization.view_team')
@@ -231,7 +236,13 @@ class AttendancesC extends Controller
         $this->normalizeAttendanceCollection($attendances->getCollection());
         $employees = $this->attendanceEmployees();
         $attendanceTypes = $this->activeAttendanceTypes();
-        $attendanceTimes = AttendanceTime::where('is_active', true)->orderByDesc('is_default')->orderBy('name')->get();
+        $attendanceTimes = AttendanceTime::where('is_active', true)
+            ->where('code', 'NOT LIKE', 'ARCH_SHIFT%')
+            ->where('code', 'NOT LIKE', '%test%')
+            ->whereNotIn('code', ['first_half_leave_shift', 'second_half_leave_shift', 'insufficient_work_shift'])
+            ->orderByDesc('is_default')
+            ->orderBy('name')
+            ->get();
         $departments = DepartmentM::orderBy('name')->get();
         $canManageAttendance = $this->canManageAttendance();
 
@@ -260,7 +271,13 @@ class AttendancesC extends Controller
         $this->normalizeAttendanceCollection($attendances->getCollection());
         $employees = $this->attendanceEmployees();
         $attendanceTypes = $this->activeAttendanceTypes();
-        $attendanceTimes = AttendanceTime::where('is_active', true)->orderByDesc('is_default')->orderBy('name')->get();
+        $attendanceTimes = AttendanceTime::where('is_active', true)
+            ->where('code', 'NOT LIKE', 'ARCH_SHIFT%')
+            ->where('code', 'NOT LIKE', '%test%')
+            ->whereNotIn('code', ['first_half_leave_shift', 'second_half_leave_shift', 'insufficient_work_shift'])
+            ->orderByDesc('is_default')
+            ->orderBy('name')
+            ->get();
         $departments = DepartmentM::orderBy('name')->get();
         $canManageAttendance = $this->canManageAttendance();
 
@@ -657,9 +674,12 @@ class AttendancesC extends Controller
 
     public function rules()
     {
-        $attendanceTimes = AttendanceTime::withCount(['employeeShiftTimings as active_assigned_count' => function ($q) {
-            $q->where('is_active', true);
-        }])->orderByDesc('is_default')->orderBy('name')->get();
+        $attendanceTimes = AttendanceTime::where('code', 'NOT LIKE', 'ARCH_SHIFT%')
+            ->where('code', 'NOT LIKE', '%test%')
+            ->whereNotIn('code', ['first_half_leave_shift', 'second_half_leave_shift', 'insufficient_work_shift'])
+            ->withCount(['employeeShiftTimings as active_assigned_count' => function ($q) {
+                $q->where('is_active', true);
+            }])->orderByDesc('is_default')->orderBy('name')->get();
 
         $employeeShiftTimings = EmployeeShiftTimingM::with(['employee.user', 'attendanceTime'])
             ->orderByDesc('is_active')

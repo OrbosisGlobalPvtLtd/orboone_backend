@@ -127,9 +127,65 @@ class PermissionSyncService
             return [];
         }
 
-        // Search permissions table dynamically
-        $allPermissions = DB::table('permissions')->get();
         $matchedIds = [];
+
+        $menuPermissionMap = [
+            'employee.shift-assignment.index' => ['employee.shift.assign.manage'],
+            'attendances.today' => ['attendance.my.view', 'attendance.records.view_all', 'attendance.dashboard.view'],
+            'attendance.policies.index' => ['attendance.rules.manage'],
+            'attendance.rules.index' => ['attendance.rules.manage'],
+            'attendances.access-control' => ['attendance.blocked.view', 'attendance.access_control.manage', 'attendance.records.view_all', 'attendance.dashboard.view'],
+            'documents.compliance.index' => ['documents.compliance.view'],
+            'documents.verification.index' => ['documents.verification.view'],
+            'documents.types.index' => ['documents.types.manage'],
+            'documents.policies.index' => ['documents.company.view'],
+            'hrms.documents.self.index' => ['documents.upload.self', 'documents_self.view'],
+            'hrms.document-generation.dashboard' => ['document_generation.view'],
+            'hrms.document-generation.self.index' => ['document_generation.view', 'employee_documents.view', 'documents.upload.self', 'documents_self.view'],
+            'settings.hrms_exit_policies.index' => ['hrms_exit_policy.view', 'hrms_exit_policy.manage', 'hrms_exit_policy.update'],
+            'settings.system.index' => ['settings.system.manage'],
+            'settings.company.index' => ['settings.company.manage'],
+            'settings.branding.index' => ['settings.branding.view', 'settings.branding.update'],
+            'hrms.mobile-app-versions.index' => ['mobile_app_versions.view', 'mobile_app_versions.manage'],
+            'roles.index' => ['roles.manage', 'access.roles.manage'],
+            'permissions.index' => ['permissions.manage', 'access.permissions.manage'],
+            'admins.index' => ['admins.manage', 'access.admins.manage'],
+            'hrms.attendance.work-reports' => ['attendance.work_reports.view_all', 'attendance.work_reports.view_team'],
+            'hrms.attendance.my-work-reports' => ['attendance.work_reports.view_own'],
+            'enterprise-payroll.policies.index' => ['enterprise_payroll.policy.view'],
+            'hrms.attendance.wfh.index' => ['attendance.wfh.view', 'attendance.wfh.own'],
+            'hrms.attendance.my-wfh.index' => ['attendance.wfh.own'],
+        ];
+
+        foreach ($menus as $m) {
+            $route = (string) ($m->route ?? '');
+            if ($route !== '' && isset($menuPermissionMap[$route])) {
+                foreach ($menuPermissionMap[$route] as $permKey) {
+                    $p = DB::table('permissions')->where('key', $permKey)->first(['id']);
+                    if (! $p) {
+                        $parts = explode('.', $permKey);
+                        $module = $parts[0] ?? 'hrms';
+                        $submodule = isset($parts[1]) ? $parts[0] . '_' . $parts[1] : $module;
+                        $action = end($parts) ?: 'manage';
+
+                        $permId = DB::table('permissions')->insertGetId([
+                            'module' => $module,
+                            'submodule' => $submodule,
+                            'action' => $action,
+                            'key' => $permKey,
+                            'description' => 'Permission for ' . $permKey,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                        $matchedIds[] = (int) $permId;
+                    } else {
+                        $matchedIds[] = (int) $p->id;
+                    }
+                }
+            }
+        }
+
+        $allPermissions = DB::table('permissions')->get();
 
         foreach ($allPermissions as $p) {
             $key = strtolower($p->key);

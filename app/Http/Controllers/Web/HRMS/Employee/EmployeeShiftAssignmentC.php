@@ -24,7 +24,7 @@ class EmployeeShiftAssignmentC extends Controller
                 $q->where('employee_code', 'like', "%{$search}%")
                     ->orWhereHas('user', function ($u) use ($search) {
                         $u->where('name', 'like', "%{$search}%")
-                          ->orWhere('email', 'like', "%{$search}%");
+                            ->orWhere('email', 'like', "%{$search}%");
                     });
             });
         }
@@ -40,12 +40,7 @@ class EmployeeShiftAssignmentC extends Controller
         $employees = $query->orderBy('id', 'desc')->paginate(15)->withQueryString();
 
         $allEmployeesList = EmployeeM::with('user')->orderBy('id', 'desc')->get();
-        $attendanceTimes = AttendanceTimeM::where('is_active', 1)
-            ->where('code', 'NOT LIKE', 'ARCH_SHIFT%')
-            ->where('code', 'NOT LIKE', '%test%')
-            ->whereNotIn('code', ['first_half_leave_shift', 'second_half_leave_shift', 'insufficient_work_shift'])
-            ->orderBy('name')
-            ->get();
+        $attendanceTimes = AttendanceTimeM::where('is_active', 1)->orderBy('name')->get();
         $departments = DepartmentM::orderBy('name')->get();
 
         $defaultShift = AttendanceTimeM::where('is_default', 1)->first() ?? AttendanceTimeM::first();

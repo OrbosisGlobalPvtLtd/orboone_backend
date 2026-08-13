@@ -11,7 +11,7 @@ class EmployeeS
         string $prefix = 'OG-EMP-'
     ): string {
         $lastCode = DB::table($table)
-            ->where('employee_code', 'like', $prefix.'%')
+            ->where('employee_code', 'like', $prefix . '%')
             ->orderByDesc('id')
             ->value('employee_code');
 
@@ -21,7 +21,7 @@ class EmployeeS
             $next = ((int) str_replace($prefix, '', $lastCode)) + 1;
         }
 
-        return $prefix.str_pad((string) $next, 3, '0', STR_PAD_LEFT);
+        return $prefix . str_pad((string) $next, 3, '0', STR_PAD_LEFT);
     }
 
     public function createFormData(?int $includeManagerId = null): array
@@ -42,7 +42,7 @@ class EmployeeS
             ->where(function ($query) use ($includeManagerId) {
                 $query->where(function ($q) {
                     $q->where('employee_profiles.is_profile_completed', 1)
-                      ->where('employee_profiles.profile_status', 'approved');
+                        ->where('employee_profiles.profile_status', 'approved');
                 });
                 if ($includeManagerId) {
                     $query->orWhere('employees_new.id', $includeManagerId);
@@ -59,9 +59,6 @@ class EmployeeS
 
         $attendanceTimes = DB::table('attendance_times')
             ->where('is_active', 1)
-            ->where('code', 'NOT LIKE', 'ARCH_SHIFT%')
-            ->where('code', 'NOT LIKE', '%test%')
-            ->whereNotIn('code', ['first_half_leave_shift', 'second_half_leave_shift', 'insufficient_work_shift'])
             ->orderBy('id')
             ->get();
 

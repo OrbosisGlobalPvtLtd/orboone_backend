@@ -196,12 +196,7 @@ class AttendancesC extends Controller
 
         $employees = $this->attendanceEmployees();
         $attendanceTypes = $this->activeAttendanceTypes();
-        $attendanceTimes = AttendanceTime::where('is_active', true)
-            ->where('code', 'NOT LIKE', 'ARCH_SHIFT%')
-            ->where('code', 'NOT LIKE', '%test%')
-            ->whereNotIn('code', ['first_half_leave_shift', 'second_half_leave_shift', 'insufficient_work_shift'])
-            ->orderByDesc('is_default')
-            ->get();
+        $attendanceTimes = AttendanceTime::where('is_active', true)->orderByDesc('is_default')->get();
         $canManageAttendance = $this->canManageAttendance();
         $canUnlockAttendance = $this->canUnlockAttendance();
         $blockedAttendances = $this->scopeAttendanceQuery($this->baseQuery(), 'attendance.records.view_all', 'attendance.regularization.view_team')
@@ -236,13 +231,7 @@ class AttendancesC extends Controller
         $this->normalizeAttendanceCollection($attendances->getCollection());
         $employees = $this->attendanceEmployees();
         $attendanceTypes = $this->activeAttendanceTypes();
-        $attendanceTimes = AttendanceTime::where('is_active', true)
-            ->where('code', 'NOT LIKE', 'ARCH_SHIFT%')
-            ->where('code', 'NOT LIKE', '%test%')
-            ->whereNotIn('code', ['first_half_leave_shift', 'second_half_leave_shift', 'insufficient_work_shift'])
-            ->orderByDesc('is_default')
-            ->orderBy('name')
-            ->get();
+        $attendanceTimes = AttendanceTime::where('is_active', true)->orderByDesc('is_default')->orderBy('name')->get();
         $departments = DepartmentM::orderBy('name')->get();
         $canManageAttendance = $this->canManageAttendance();
 
@@ -253,8 +242,8 @@ class AttendancesC extends Controller
     {
         abort_unless(
             $this->userHasPermission('attendance.records.view_all')
-            || $this->userHasPermission('attendance.my.view')
-            || $this->userHasPermission('attendance.regularization.view_team'),
+                || $this->userHasPermission('attendance.my.view')
+                || $this->userHasPermission('attendance.regularization.view_team'),
             403
         );
 
@@ -271,13 +260,7 @@ class AttendancesC extends Controller
         $this->normalizeAttendanceCollection($attendances->getCollection());
         $employees = $this->attendanceEmployees();
         $attendanceTypes = $this->activeAttendanceTypes();
-        $attendanceTimes = AttendanceTime::where('is_active', true)
-            ->where('code', 'NOT LIKE', 'ARCH_SHIFT%')
-            ->where('code', 'NOT LIKE', '%test%')
-            ->whereNotIn('code', ['first_half_leave_shift', 'second_half_leave_shift', 'insufficient_work_shift'])
-            ->orderByDesc('is_default')
-            ->orderBy('name')
-            ->get();
+        $attendanceTimes = AttendanceTime::where('is_active', true)->orderByDesc('is_default')->orderBy('name')->get();
         $departments = DepartmentM::orderBy('name')->get();
         $canManageAttendance = $this->canManageAttendance();
 
@@ -412,14 +395,14 @@ class AttendancesC extends Controller
                 if ($request->flag === 'unlocked') {
                     $q->where(function ($sq) {
                         $sq->where('is_admin_unlocked', true)
-                           ->orWhereNotNull('unlocked_at')
-                           ->orWhere('attendance_status', 'unlocked');
+                            ->orWhereNotNull('unlocked_at')
+                            ->orWhere('attendance_status', 'unlocked');
                     });
                 } elseif ($request->flag === 'blocked') {
                     $q->where(function ($sq) {
                         $sq->whereNull('is_admin_unlocked')
-                           ->orWhere('is_admin_unlocked', false)
-                           ->orWhere('is_admin_unlocked', 0);
+                            ->orWhere('is_admin_unlocked', false)
+                            ->orWhere('is_admin_unlocked', 0);
                     })->whereNull('unlocked_at');
                 }
             })
@@ -434,7 +417,7 @@ class AttendancesC extends Controller
                 } elseif ($request->flag === 'blocked') {
                     $q->where(function ($sq) {
                         $sq->whereNull('policy_action')
-                           ->orWhere('policy_action', '<>', 'resolved');
+                            ->orWhere('policy_action', '<>', 'resolved');
                     });
                 }
             });
@@ -493,14 +476,14 @@ class AttendancesC extends Controller
             $att->block_reason = $violation->remarks ?: 'Punch-in blocked after allowed time.';
             $att->auto_block_reason = $violation->remarks ?: 'Punch-in blocked after allowed time.';
             $att->blocked_reason = $violation->remarks ?: 'Punch-in blocked after allowed time.';
-            
+
             $att->setRelation('employee', $violation->employee);
             if ($violation->employee) {
                 $att->setRelation('user', $violation->employee->user);
             }
-            
+
             $att->setRelation('attendanceType', $violation->policy_action === 'resolved' ? $presentType : $blockedType);
-            
+
             return $att;
         });
 
@@ -535,14 +518,14 @@ class AttendancesC extends Controller
         $attendanceTypes = $this->activeAttendanceTypes();
         $canManageAttendance = $this->canManageAttendance();
         $canUnlockAttendance = $this->canUnlockAttendance();
-        
+
         $approvalRecords = Attendance::with('attendanceType')->get();
         $today = Carbon::now($this->attendanceService->attendanceTimezone())->toDateString();
-        
+
         // Count stats including violations
         $totalBlockedViolations = \App\Models\HRMS\Attendance\AttendanceViolationM::where('type', 'blocked_punch')->count();
         $pendingUnlockViolations = \App\Models\HRMS\Attendance\AttendanceViolationM::where('type', 'blocked_punch')
-            ->where(function($q) {
+            ->where(function ($q) {
                 $q->whereNull('policy_action')->orWhere('policy_action', '<>', 'resolved');
             })
             ->count();
@@ -567,9 +550,9 @@ class AttendancesC extends Controller
     {
         abort_unless(
             $this->userHasPermission('attendance.monthly_report.view_all')
-            || $this->userHasPermission('attendance.monthly_report.view_team')
-            || $this->userHasPermission('attendance.monthly_report.view_own')
-            || $this->userHasPermission('attendance.monthly_report.view'),
+                || $this->userHasPermission('attendance.monthly_report.view_team')
+                || $this->userHasPermission('attendance.monthly_report.view_own')
+                || $this->userHasPermission('attendance.monthly_report.view'),
             403
         );
 
@@ -674,12 +657,9 @@ class AttendancesC extends Controller
 
     public function rules()
     {
-        $attendanceTimes = AttendanceTime::where('code', 'NOT LIKE', 'ARCH_SHIFT%')
-            ->where('code', 'NOT LIKE', '%test%')
-            ->whereNotIn('code', ['first_half_leave_shift', 'second_half_leave_shift', 'insufficient_work_shift'])
-            ->withCount(['employeeShiftTimings as active_assigned_count' => function ($q) {
-                $q->where('is_active', true);
-            }])->orderByDesc('is_default')->orderBy('name')->get();
+        $attendanceTimes = AttendanceTime::withCount(['employeeShiftTimings as active_assigned_count' => function ($q) {
+            $q->where('is_active', true);
+        }])->orderByDesc('is_default')->orderBy('name')->get();
 
         $employeeShiftTimings = EmployeeShiftTimingM::with(['employee.user', 'attendanceTime'])
             ->orderByDesc('is_active')
@@ -927,7 +907,7 @@ class AttendancesC extends Controller
         $callback = function () use ($rows) {
             $handle = fopen('php://output', 'w');
             // Write UTF-8 BOM for Excel compatibility
-            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
+            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
 
             fputcsv($handle, [
                 'S.No',
@@ -1007,7 +987,7 @@ class AttendancesC extends Controller
             $ids = $this->userHasPermission('attendance.monthly_report.view_team') || $this->userHasPermission('attendance.regularization.view_team')
                 ? $this->teamEmployeeIds(true)
                 : array_filter([$this->ownEmployeeId()]);
-            $query->whereHas('employee', fn ($employeeQuery) => $employeeQuery->whereIn('id', $ids));
+            $query->whereHas('employee', fn($employeeQuery) => $employeeQuery->whereIn('id', $ids));
         }
 
         return $query->get();
@@ -1080,7 +1060,7 @@ class AttendancesC extends Controller
         }
 
         return collect($data)
-            ->filter(fn ($val, $col) => Schema::hasColumn('attendance_policy_rules', $col))
+            ->filter(fn($val, $col) => Schema::hasColumn('attendance_policy_rules', $col))
             ->all();
     }
 
@@ -1429,5 +1409,3 @@ class AttendancesC extends Controller
         ]);
     }
 }
-
-

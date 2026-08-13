@@ -5,7 +5,6 @@
 @section('_content')
 <style>
     :root {
-
         --orb-bg: #F6F7FB;
         --orb-border: #E7EAF3;
         --orb-text: #101828;
@@ -219,51 +218,137 @@
         border-color: #D0D5DD;
     }
 
+    /* TREE TOOLBAR */
+    .eo-tree-toolbar {
+        padding: 12px 28px;
+        background: #F1F5F9;
+        border-bottom: 1px solid var(--orb-border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .eo-counter-badge {
+        font-size: 12px;
+        font-weight: 800;
+        color: var(--orb-primary);
+        background: #fff;
+        padding: 6px 14px;
+        border-radius: 20px;
+        border: 1px solid var(--orb-border);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    }
+
+    .eo-toolbar-right {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .eo-tool-btn {
+        background: #fff;
+        border: 1px solid var(--orb-border);
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 750;
+        color: var(--orb-text);
+        cursor: pointer;
+        transition: all 0.15s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .eo-tool-btn:hover {
+        background: var(--orb-soft);
+        color: var(--orb-primary);
+        border-color: rgba(75, 0, 232, 0.3);
+    }
+
+    .eo-zoom-text {
+        font-size: 12px;
+        font-weight: 800;
+        color: var(--orb-muted);
+        min-width: 45px;
+        text-align: center;
+    }
+
+    .eo-tool-divider {
+        width: 1px;
+        height: 20px;
+        background: var(--orb-border);
+        margin: 0 4px;
+    }
+
     /* ORG CHART TREE VIEW STYLE */
     .eo-tree-container {
         padding: 40px 28px;
         overflow-x: auto;
-        min-height: 500px;
-        background: #fff;
+        overflow-y: auto;
+        min-height: 550px;
+        background: #F8FAFC;
         display: flex;
         justify-content: center;
+        align-items: flex-start;
+        position: relative;
     }
 
     .org-tree {
         display: flex;
         flex-direction: column;
         align-items: center;
-        width: 100%;
+        width: max-content;
+        min-width: 100%;
+        transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        transform-origin: top center;
     }
 
     .org-tree ul {
+        display: flex;
+        justify-content: center;
         padding-top: 24px;
         position: relative;
         transition: all 0.3s;
-        display: flex;
-        justify-content: center;
         margin: 0;
         padding-left: 0;
+    }
+
+    /* Vertical line coming DOWN from parent node card to children list */
+    .org-tree ul ul::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 50%;
+        border-left: 2px solid #CBD5E1;
+        width: 0;
+        height: 24px;
+        transform: translateX(-50%);
     }
 
     .org-tree li {
         text-align: center;
         list-style-type: none;
         position: relative;
-        padding: 24px 10px 0 10px;
+        padding: 24px 14px 0 14px;
         transition: all 0.3s;
         display: flex;
         flex-direction: column;
         align-items: center;
     }
 
-    /* Connecting Lines */
+    /* Connecting Horizontal Lines for Siblings */
     .org-tree li::before, .org-tree li::after {
         content: '';
         position: absolute;
         top: 0;
         right: 50%;
-        border-top: 2px solid var(--orb-border);
+        border-top: 2px solid #CBD5E1;
         width: 50%;
         height: 24px;
     }
@@ -271,36 +356,45 @@
     .org-tree li::after {
         right: auto;
         left: 50%;
-        border-left: 2px solid var(--orb-border);
+        border-top: 2px solid #CBD5E1;
+        border-left: none;
     }
 
-    /* Single child connector removal */
-    .org-tree li:only-child::after, .org-tree li:only-child::before {
-        display: none;
+    /* Remove outer horizontal lines for first/last/only siblings */
+    .org-tree li:first-child::before {
+        border-top: none;
     }
-    .org-tree li:only-child {
-        padding-top: 0;
+    .org-tree li:last-child::after {
+        border-top: none;
     }
-
-    /* Borders for multiple siblings */
-    .org-tree li:first-child::before, .org-tree li:last-child::after {
-        border: 0 none;
-    }
-    .org-tree li:last-child::before {
-        border-right: 2px solid var(--orb-border);
-        border-radius: 0 8px 0 0;
-    }
-    .org-tree li:first-child::after {
-        border-radius: 8px 0 0 0;
+    .org-tree li:only-child::before, .org-tree li:only-child::after {
+        border-top: none;
     }
 
-    /* Connector downward from parent node */
-    .org-tree ul ul::before {
+    /* Vertical stem going UP from node card to horizontal sibling line */
+    .org-tree li > .eo-node-card::before {
         content: '';
         position: absolute;
-        top: 0;
+        top: -24px;
         left: 50%;
-        border-left: 2px solid var(--orb-border);
+        border-left: 2px solid #CBD5E1;
+        width: 0;
+        height: 24px;
+        transform: translateX(-50%);
+    }
+
+    /* Top-level root node card has no top line */
+    .org-tree > ul > li > .eo-node-card::before {
+        display: none;
+    }
+
+    /* Vertical stem going DOWN from parent node card to children list */
+    .org-tree li.has-children > .eo-node-card::after {
+        content: '';
+        position: absolute;
+        bottom: -24px;
+        left: 50%;
+        border-left: 2px solid #CBD5E1;
         width: 0;
         height: 24px;
         transform: translateX(-50%);
@@ -323,14 +417,28 @@
 
     .eo-node-card:hover {
         border-color: var(--orb-primary);
-        box-shadow: 0 12px 30px rgba(75, 0, 232, 0.1);
+        box-shadow: 0 12px 30px rgba(75, 0, 232, 0.12);
         transform: translateY(-3px);
     }
 
     .eo-node-card.highlighted {
-        border-color: var(--orb-secondary);
-        box-shadow: 0 0 0 4px rgba(134, 0, 238, 0.15), 0 12px 30px rgba(134, 0, 238, 0.12);
+        border-color: #10B981;
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15), 0 12px 30px rgba(16, 185, 129, 0.15);
         animation: pulseHighlight 2s infinite;
+    }
+
+    .eo-match-pill {
+        position: absolute;
+        top: -10px;
+        right: 14px;
+        background: linear-gradient(135deg, #10B981, #059669);
+        color: #fff;
+        font-size: 10px;
+        font-weight: 850;
+        padding: 2px 8px;
+        border-radius: 20px;
+        box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
+        z-index: 20;
     }
 
     @keyframes pulseHighlight {
@@ -449,15 +557,15 @@
         bottom: -11px;
         left: 50%;
         transform: translateX(-50%);
-        z-index: 15;
+        z-index: 25;
         transition: 0.2s ease;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
     }
 
     .eo-toggle-branch:hover {
         border-color: var(--orb-primary);
         color: var(--orb-primary);
-        transform: translateX(-50%) scale(1.1);
+        transform: translateX(-50%) scale(1.15);
     }
 
     /* Stacked Collapsible List Style */
@@ -649,6 +757,24 @@
                 </div>
             </div>
 
+            <!-- Tree View Toolbar (Zoom, Counters, Expand/Collapse) -->
+            <div id="treeToolbar" class="eo-tree-toolbar">
+                <div class="eo-toolbar-left">
+                    <span id="matchCounterBadge" class="eo-counter-badge">
+                        <i class="fas fa-users"></i> Loading employees...
+                    </span>
+                </div>
+                <div class="eo-toolbar-right">
+                    <button type="button" id="btnZoomOut" class="eo-tool-btn" title="Zoom Out"><i class="fas fa-search-minus"></i></button>
+                    <span id="zoomLevelText" class="eo-zoom-text">100%</span>
+                    <button type="button" id="btnZoomIn" class="eo-tool-btn" title="Zoom In"><i class="fas fa-search-plus"></i></button>
+                    <button type="button" id="btnResetZoom" class="eo-tool-btn" title="Reset Zoom"><i class="fas fa-compress-arrows-alt"></i> Fit</button>
+                    <span class="eo-tool-divider"></span>
+                    <button type="button" id="btnExpandAll" class="eo-tool-btn" title="Expand All Branches"><i class="fas fa-expand-alt"></i> Expand All</button>
+                    <button type="button" id="btnCollapseAll" class="eo-tool-btn" title="Collapse All Branches"><i class="fas fa-compress-alt"></i> Collapse All</button>
+                </div>
+            </div>
+
             <!-- Tree Visualization Viewport -->
             <div id="treeViewContainer" class="eo-tree-container">
                 <div id="orgTreeWrapper" class="org-tree">
@@ -667,7 +793,7 @@
             <div id="emptyStateContainer" class="eo-empty-state" style="display:none;">
                 <div class="eo-empty-icon"><i class="fas fa-users-slash"></i></div>
                 <h5 class="eo-empty-title">No reporting structure available.</h5>
-                <p class="eo-empty-sub">No active employees matching filters are registered in the directory.</p>
+                <p class="eo-empty-sub">No active employees matching the selected filters were found in the organization chart.</p>
             </div>
         </div>
 
@@ -687,6 +813,7 @@
         const btnTreeView = document.getElementById('btnTreeView');
         const btnListView = document.getElementById('btnListView');
         
+        const treeToolbar = document.getElementById('treeToolbar');
         const treeContainer = document.getElementById('treeViewContainer');
         const listContainer = document.getElementById('listViewContainer');
         const emptyState = document.getElementById('emptyStateContainer');
@@ -694,8 +821,16 @@
         const treeWrapper = document.getElementById('orgTreeWrapper');
         const listWrapper = document.getElementById('stackedListWrapper');
 
+        const btnZoomIn = document.getElementById('btnZoomIn');
+        const btnZoomOut = document.getElementById('btnZoomOut');
+        const btnResetZoom = document.getElementById('btnResetZoom');
+        const zoomLevelText = document.getElementById('zoomLevelText');
+        const btnExpandAll = document.getElementById('btnExpandAll');
+        const btnCollapseAll = document.getElementById('btnCollapseAll');
+
         let currentView = 'tree'; // 'tree' or 'list'
         let collapsedNodes = new Set();
+        let currentZoom = 1.0;
 
         // 1. Sanitize & check circular dependencies
         function checkCircularDependency(emp, visited = new Set()) {
@@ -739,7 +874,7 @@
         }
 
         // 4. Render a single Node Card
-        function renderNodeCard(emp) {
+        function renderNodeCard(emp, isMatch, hasChildren) {
             const initials = emp.name ? emp.name.split(' ').map(n => n[0]).slice(0,2).join('').toUpperCase() : '?';
             const baseFileUrl = '{{ $privateFileUrl("PLACEHOLDER") }}';
             const imgPath = emp.profile_image ? baseFileUrl.replace('PLACEHOLDER', emp.profile_image) : null;
@@ -751,7 +886,6 @@
             const directCount = reports.length;
             const totalCount = getDescendantsCount(emp.id);
 
-            const hasChildren = directCount > 0;
             const isCollapsed = collapsedNodes.has(emp.id);
 
             const toggleBtnHtml = hasChildren 
@@ -760,7 +894,7 @@
                    </button>`
                 : '';
 
-            const badgeHtml = hasChildren 
+            const badgeHtml = directCount > 0 
                 ? `<div class="eo-reportees-badge" title="${totalCount} total reports recursively">
                      <i class="fas fa-users mr-1"></i> ${directCount} / ${totalCount} Team
                    </div>`
@@ -769,9 +903,12 @@
                    </div>`;
 
             const profileUrl = `{{ url('/hrms/employees') }}/${emp.id}/profile-view`;
+            const highlightClass = isMatch ? 'highlighted' : '';
+            const matchTagHtml = isMatch ? `<span class="eo-match-pill"><i class="fas fa-check-circle"></i> Match</span>` : '';
 
             return `
-                <div class="eo-node-card" id="card-${emp.id}">
+                <div class="eo-node-card ${highlightClass}" id="card-${emp.id}">
+                    ${matchTagHtml}
                     <div class="eo-node-top">
                         ${avatarHtml}
                         <div class="eo-node-info">
@@ -780,10 +917,10 @@
                         </div>
                     </div>
                     <div class="eo-node-detail-line" title="${emp.designation_name || '-'}">
-                        <i class="fas fa-briefcase"></i> ${emp.designation_name || '-'}
+                        <i class="fas fa-briefcase"></i> ${emp.designation_name || 'No Designation'}
                     </div>
                     <div class="eo-node-detail-line" title="${emp.department_name || '-'}">
-                        <i class="fas fa-building"></i> ${emp.department_name || '-'}
+                        <i class="fas fa-building"></i> ${emp.department_name || 'No Department'}
                     </div>
                     <div class="eo-node-badges">
                         ${badgeHtml}
@@ -796,13 +933,16 @@
             `;
         }
 
-        // 5. Build dynamic Tree DOM recursively
-        function buildTreeHtml(managerId) {
+        // 5. Build dynamic Tree DOM recursively based on visible set
+        function buildTreeHtml(managerId, visibleNodeIds, matchingNodeIds) {
             const employeesAtThisLevel = sanitizedEmployees.filter(emp => {
+                if (!visibleNodeIds.has(emp.id)) return false;
+
                 if (!managerId) {
-                    // Roots are employees without a valid active manager in the active set
-                    const hasActiveManager = sanitizedEmployees.some(m => m.id == emp.reporting_manager_employee_id);
-                    return !emp.reporting_manager_employee_id || !hasActiveManager;
+                    // Roots are visible employees without a visible manager in current set
+                    const managerInVisibleSet = emp.reporting_manager_employee_id && 
+                        visibleNodeIds.has(parseInt(emp.reporting_manager_employee_id));
+                    return !emp.reporting_manager_employee_id || !managerInVisibleSet;
                 }
                 return emp.reporting_manager_employee_id == managerId;
             });
@@ -811,14 +951,18 @@
 
             let html = '<ul>';
             employeesAtThisLevel.forEach(emp => {
-                const reports = childrenMap.get(emp.id) || [];
+                const allChildren = childrenMap.get(emp.id) || [];
+                const visibleChildren = allChildren.filter(c => visibleNodeIds.has(c.id));
                 const isCollapsed = collapsedNodes.has(emp.id);
 
-                html += `<li>`;
-                html += renderNodeCard(emp);
+                const hasChildrenClass = (visibleChildren.length > 0 && !isCollapsed) ? 'has-children' : '';
+                const isMatch = matchingNodeIds.has(emp.id);
+
+                html += `<li class="${hasChildrenClass}">`;
+                html += renderNodeCard(emp, isMatch, visibleChildren.length > 0);
                 
-                if (reports.length > 0 && !isCollapsed) {
-                    html += buildTreeHtml(emp.id);
+                if (visibleChildren.length > 0 && !isCollapsed) {
+                    html += buildTreeHtml(emp.id, visibleNodeIds, matchingNodeIds);
                 }
                 
                 html += `</li>`;
@@ -843,7 +987,6 @@
                 const directCount = reports.length;
                 const totalCount = getDescendantsCount(emp.id);
 
-                // Find manager name
                 const manager = sanitizedEmployees.find(m => m.id == emp.reporting_manager_employee_id);
                 const managerName = manager ? manager.name : 'Unassigned / Top Root';
 
@@ -883,22 +1026,62 @@
             const dept = (departmentFilter.value || '').toLowerCase().trim();
             const desg = (designationFilter.value || '').toLowerCase().trim();
 
-            // Clear card highlights
-            document.querySelectorAll('.eo-node-card').forEach(c => c.classList.remove('highlighted'));
-            document.querySelectorAll('.eo-list-item').forEach(c => c.style.display = '');
+            const isFilterActive = !!(search || dept || desg);
 
-            // List of matching employee nodes
-            const matches = sanitizedEmployees.filter(emp => {
+            const matchingNodeIds = new Set();
+            const visibleNodeIds = new Set();
+
+            sanitizedEmployees.forEach(emp => {
                 const matchSearch = !search || 
                     (emp.name || '').toLowerCase().includes(search) || 
                     (emp.employee_code || '').toLowerCase().includes(search);
-                const matchDept = !dept || (emp.department_name || '').toLowerCase() === dept;
-                const matchDesg = !desg || (emp.designation_name || '').toLowerCase() === desg;
+                const matchDept = !dept || (emp.department_name || '').toLowerCase().trim() === dept;
+                const matchDesg = !desg || (emp.designation_name || '').toLowerCase().trim() === desg;
 
-                return matchSearch && matchDept && matchDesg;
+                if (matchSearch && matchDept && matchDesg) {
+                    matchingNodeIds.add(emp.id);
+                }
             });
 
-            if (sanitizedEmployees.length === 0) {
+            if (!isFilterActive) {
+                // If no filter is active, show all employees
+                sanitizedEmployees.forEach(emp => visibleNodeIds.add(emp.id));
+            } else {
+                // Include all matching nodes AND all their ancestors up to root
+                matchingNodeIds.forEach(empId => {
+                    let currentId = empId;
+                    while (currentId) {
+                        visibleNodeIds.add(parseInt(currentId));
+                        const currentEmp = sanitizedEmployees.find(e => e.id == currentId);
+                        currentId = currentEmp ? currentEmp.reporting_manager_employee_id : null;
+                    }
+                });
+
+                // Auto-expand ancestors of matching nodes so they are visible
+                matchingNodeIds.forEach(empId => {
+                    let currentId = empId;
+                    while (currentId) {
+                        const currentEmp = sanitizedEmployees.find(e => e.id == currentId);
+                        if (currentEmp && currentEmp.reporting_manager_employee_id) {
+                            collapsedNodes.delete(parseInt(currentEmp.reporting_manager_employee_id));
+                        }
+                        currentId = currentEmp ? currentEmp.reporting_manager_employee_id : null;
+                    }
+                });
+            }
+
+            // Update counter badge
+            const matchCounter = document.getElementById('matchCounterBadge');
+            if (matchCounter) {
+                if (isFilterActive) {
+                    matchCounter.innerHTML = `<i class="fas fa-filter"></i> Showing ${matchingNodeIds.size} of ${sanitizedEmployees.length} Employees`;
+                } else {
+                    matchCounter.innerHTML = `<i class="fas fa-users"></i> Total ${sanitizedEmployees.length} Active Employees`;
+                }
+            }
+
+            if (sanitizedEmployees.length === 0 || (isFilterActive && matchingNodeIds.size === 0)) {
+                treeToolbar.style.display = 'none';
                 treeContainer.style.display = 'none';
                 listContainer.style.display = 'none';
                 emptyState.style.display = 'block';
@@ -906,58 +1089,58 @@
             }
 
             if (currentView === 'tree') {
+                treeToolbar.style.display = 'flex';
                 treeContainer.style.display = 'flex';
                 listContainer.style.display = 'none';
                 emptyState.style.display = 'none';
 
-                // Redraw tree
-                treeWrapper.innerHTML = buildTreeHtml(null);
-
-                // Highlight matches in tree view
-                if (search || dept || desg) {
-                    if (matches.length === 0) {
-                        treeContainer.style.display = 'none';
-                        emptyState.style.display = 'block';
-                    } else {
-                        matches.forEach(m => {
-                            const card = document.getElementById(`card-${m.id}`);
-                            if (card) {
-                                card.classList.add('highlighted');
-                                // Ensure ancestors are expanded so matches are visible
-                                expandAncestors(m.reporting_manager_employee_id);
-                            }
-                        });
-                    }
-                }
+                treeWrapper.innerHTML = buildTreeHtml(null, visibleNodeIds, matchingNodeIds);
             } else {
+                treeToolbar.style.display = 'none';
                 treeContainer.style.display = 'none';
                 listContainer.style.display = 'block';
                 emptyState.style.display = 'none';
 
-                if (matches.length === 0) {
-                    listContainer.style.display = 'none';
-                    emptyState.style.display = 'block';
-                } else {
-                    listWrapper.innerHTML = renderListView(matches);
+                const matchingEmployeesList = sanitizedEmployees.filter(emp => matchingNodeIds.has(emp.id));
+                listWrapper.innerHTML = renderListView(matchingEmployeesList);
+            }
+        }
+
+        // 8. Zoom Controls
+        function updateZoom(newZoom) {
+            currentZoom = Math.max(0.5, Math.min(1.5, newZoom));
+            treeWrapper.style.transform = `scale(${currentZoom})`;
+            zoomLevelText.innerText = `${Math.round(currentZoom * 100)}%`;
+        }
+
+        btnZoomIn.addEventListener('click', function() {
+            updateZoom(currentZoom + 0.1);
+        });
+
+        btnZoomOut.addEventListener('click', function() {
+            updateZoom(currentZoom - 0.1);
+        });
+
+        btnResetZoom.addEventListener('click', function() {
+            updateZoom(1.0);
+        });
+
+        btnExpandAll.addEventListener('click', function() {
+            collapsedNodes.clear();
+            evaluateFilters();
+        });
+
+        btnCollapseAll.addEventListener('click', function() {
+            sanitizedEmployees.forEach(emp => {
+                const children = childrenMap.get(emp.id) || [];
+                if (children.length > 0) {
+                    collapsedNodes.add(emp.id);
                 }
-            }
-        }
+            });
+            evaluateFilters();
+        });
 
-        // Expand manager node recursively
-        function expandAncestors(managerId) {
-            if (!managerId) return;
-            if (collapsedNodes.has(managerId)) {
-                collapsedNodes.delete(managerId);
-                // Re-evaluate to render
-                treeWrapper.innerHTML = buildTreeHtml(null);
-            }
-            const parent = sanitizedEmployees.find(e => e.id == managerId);
-            if (parent) {
-                expandAncestors(parent.reporting_manager_employee_id);
-            }
-        }
-
-        // 8. Bind collapsible branch toggles
+        // 9. Bind collapsible branch toggles
         document.addEventListener('click', function(e) {
             const toggleBtn = e.target.closest('.eo-toggle-branch');
             if (toggleBtn) {
@@ -971,12 +1154,13 @@
             }
         });
 
-        // 9. Input bindings
+        // 10. Input bindings
         searchInput.addEventListener('keyup', evaluateFilters);
+        searchInput.addEventListener('change', evaluateFilters);
         departmentFilter.addEventListener('change', evaluateFilters);
         designationFilter.addEventListener('change', evaluateFilters);
 
-        // 10. View selection bindings
+        // 11. View selection bindings
         btnTreeView.addEventListener('click', function() {
             btnTreeView.classList.add('active');
             btnListView.classList.remove('active');
@@ -991,12 +1175,13 @@
             evaluateFilters();
         });
 
-        // 11. Reset action
+        // 12. Reset action
         resetBtn.addEventListener('click', function() {
             searchInput.value = '';
             departmentFilter.value = '';
             designationFilter.value = '';
             collapsedNodes.clear();
+            updateZoom(1.0);
             evaluateFilters();
         });
 

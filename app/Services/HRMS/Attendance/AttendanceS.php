@@ -132,9 +132,15 @@ class AttendanceS
 
         $policy = $this->ruleResolver->getPolicyForEmployee($employee, $now);
         $dayContext = $this->ruleResolver->getDayContext($employee, $now);
+//  if (! $dayContext['is_working_day'] && ! $isFirstHalfLeave && ! $isSecondHalfLeave) {
+//             return ['status' => 'error', 'message' => 'Attendance punch is not allowed for leave, holiday, or week off.'];
+        $hasApprovedHolidayWork = \App\Models\HRMS\Attendance\HolidayWorkRequestM::where('employee_id', $employee->id)
+            ->whereDate('worked_date', $today)
+            ->where('status', 'approved')
+            ->exists();
 
-        if (! $dayContext['is_working_day'] && ! $isFirstHalfLeave && ! $isSecondHalfLeave) {
-            return ['status' => 'error', 'message' => 'Attendance punch is not allowed for leave, holiday, or week off.'];
+        if (! $dayContext['is_working_day'] && ! $isFirstHalfLeave && ! $isSecondHalfLeave && ! $hasApprovedHolidayWork) {
+            return ['status' => 'error', 'message' => 'Attendance punch is not allowed for leave, holiday, or week off without an approved Work Request.'];
         }
 
         $existing = Attendance::with('attendanceType')
@@ -417,6 +423,26 @@ class AttendanceS
         $this->calculateAttendanceStats($attendance);
 
         $this->wfhRequestService?->applyLwpConversionIfRequired($attendance->fresh());
+
+        // Auto-generate Comp-Off credit if today has an approved Holiday Work Request
+        $approvedHolidayWork = \App\Models\HRMS\Attendance\HolidayWorkRequestM::where('employee_id', $employee->id)
+            ->whereDate('worked_date', $today)
+            ->where('status', 'approved')
+            ->where('comp_off_generated', false)
+            ->first();
+
+        if ($approvedHolidayWork) {
+            try {
+                $approvedHolidayWork->update(['attendance_id' => $attendance->id]);
+                app(\App\Services\HRMS\Leave\CompOffService::class)->generateFromHolidayWork($approvedHolidayWork, $userId);
+            } catch (\Throwable $e) {
+                Log::error('Comp-Off Auto Generation Exception: ' . $e->getMessage(), [
+                    'employee_id' => $employee->id,
+                    'date' => $today,
+                    'trace' => $e->getTraceAsString()
+                ]);
+            }
+        }
 
         return [
             'status' => true,

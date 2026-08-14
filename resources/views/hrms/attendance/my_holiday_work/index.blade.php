@@ -28,7 +28,7 @@
     </div>
     @endif
 
-    @if($errors->any())
+    @if(isset($errors) && $errors->any())
     <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm mb-4" role="alert" style="border-radius: 12px; background: #FEF3F2; color: #B42318;">
         <i class="fas fa-exclamation-circle mr-2"></i> {{ $errors->first() }}
         <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
@@ -59,7 +59,6 @@
                             <th>S.No.</th>
                             <th>Worked Date</th>
                             <th>Work Type</th>
-                            <th>Work Time</th>
                             <th>Work Mode</th>
                             <th>Reason</th>
                             <th>Status</th>
@@ -79,15 +78,6 @@
                                 {{ str_contains(strtolower($row->work_type), 'weekoff') ? 'Week-Off Work' : 'Holiday Work' }}
                             </td>
                             <td>
-                                @php
-                                    $workTime = '-';
-                                    if ($row->notes && preg_match('/^Hours:\s*([^\n]+)/', $row->notes, $matches)) {
-                                        $workTime = trim($matches[1]);
-                                    }
-                                @endphp
-                                {{ $workTime }}
-                            </td>
-                            <td>
                                 <span class="ep-badge {{ strtolower($row->work_mode) === 'wfh' ? 'ep-badge-primary' : 'ep-badge-success' }}">
                                     {{ strtoupper($row->work_mode ?? 'wfo') }}
                                 </span>
@@ -102,6 +92,8 @@
                                     <span class="ep-badge ep-badge-success">Approved</span>
                                 @elseif($row->status === 'rejected')
                                     <span class="ep-badge ep-badge-danger">Rejected</span>
+                                @elseif($row->status === 'cancelled')
+                                    <span class="ep-badge ep-badge-secondary">Cancelled</span>
                                 @else
                                     <span class="ep-badge ep-badge-danger">{{ ucfirst($row->status) }}</span>
                                 @endif
@@ -121,9 +113,24 @@
                                 {{ $row->created_at ? $row->created_at->format('d M Y h:i A') : 'N/A' }}
                             </td>
                             <td class="text-right pr-4">
-                                <button type="button" class="ep-btn ep-btn-light js-view-details" data-row='@json($row)' style="height:32px;padding:0 12px; font-size:12px;">
-                                    <i class="fas fa-eye"></i> View Details
-                                </button>
+                                <div class="d-flex align-items-center justify-content-end" style="gap: 8px;">
+                                    <button type="button" class="btn btn-sm btn-light border shadow-sm js-view-details" data-row='@json($row)' title="View Details" style="width:34px; height:34px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; padding:0;">
+                                        <i class="fas fa-eye text-primary"></i>
+                                    </button>
+
+                                    @if($row->status === 'pending')
+                                        <button type="button" class="btn btn-sm btn-outline-warning shadow-sm js-edit-request" data-row='@json($row)' title="Edit Request" style="width:34px; height:34px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; padding:0;">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+
+                                        <form method="POST" action="{{ route('hrms.attendance.my-holiday-work.cancel', $row->id) }}" style="display:inline;" onsubmit="return confirm('Are you sure you want to cancel this request?');">
+                                            @csrf
+                                            <button type="submit" class="btn btn-sm btn-outline-danger shadow-sm" title="Cancel Request" style="width:34px; height:34px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; padding:0;">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </form>
+                                    @endif
+                                </div>
                             </td>
                         </tr>
                         @empty
@@ -152,32 +159,45 @@
      ================================================== -->
 <div class="modal fade" id="applyHolidayWorkModal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-md modal-dialog-centered" role="document">
-        <form method="POST" action="{{ route('hrms.attendance.my-holiday-work.store') }}" class="modal-content ep-form border-0 shadow-lg">
+        <form method="POST" action="{{ route('hrms.attendance.my-holiday-work.store') }}" class="modal-content ep-form border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
             @csrf
-            <div class="ep-modal-header">
-                <h5 class="modal-title">Apply Holiday Work Request</h5>
-                <p>Submit details of holiday/weekoff work for HR approval.</p>
-                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+            <div class="ep-modal-header" style="background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%); color: #fff; padding: 20px 24px;">
+                <h5 class="modal-title font-weight-bold text-white mb-1"><i class="fas fa-calendar-plus mr-2"></i> Apply Holiday Work Request</h5>
+                <p class="mb-0 text-white-50" style="font-size: 13px;">Submit details of holiday/weekoff work for HR approval.</p>
+                <button type="button" class="close text-white opacity-100" data-dismiss="modal" style="margin-top: -30px;"><span>&times;</span></button>
             </div>
-            <div class="ep-modal-body">
-                <div class="ep-form-group">
-                    <label>Work Type <span class="text-danger">*</span></label>
-                    <select name="work_type" id="work_type" class="form-control" required>
-                        <option value="">Select Work Type</option>
-                        <option value="holiday_work" @selected(old('work_type') === 'holiday_work')>Holiday Work</option>
-                        <option value="weekoff_work" @selected(old('work_type') === 'weekoff_work')>Week-Off Work</option>
-                    </select>
+            <div class="ep-modal-body" style="padding: 24px;">
+                <div class="row">
+                    <div class="col-md-6 col-12">
+                        <div class="ep-form-group mb-3">
+                            <label class="font-weight-bold text-dark mb-1" style="font-size: 13px;">Work Type <span class="text-danger">*</span></label>
+                            <select name="work_type" id="work_type" class="form-control shadow-none" style="border-radius: 10px; height: 42px;" required>
+                                <option value="">Select Work Type</option>
+                                <option value="holiday_work" @selected(old('work_type') === 'holiday_work')>Holiday Work</option>
+                                <option value="weekoff_work" @selected(old('work_type') === 'weekoff_work')>Week-Off Work</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-12">
+                        <div class="ep-form-group mb-3">
+                            <label class="font-weight-bold text-dark mb-1" style="font-size: 13px;">Work Mode <span class="text-danger">*</span></label>
+                            <select name="work_mode" class="form-control shadow-none" style="border-radius: 10px; height: 42px;" required>
+                                <option value="wfo" @selected(old('work_mode') === 'wfo')>WFO (Work From Office)</option>
+                                <option value="wfh" @selected(old('work_mode') === 'wfh')>WFH (Work From Home)</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="ep-form-group">
-                    <label>Worked Dates <span class="text-danger">*</span></label>
+                <div class="ep-form-group mb-3">
+                    <label class="font-weight-bold text-dark mb-1" style="font-size: 13px;">Worked Dates <span class="text-danger">*</span></label>
                     <div id="worked-dates-container">
                         @if(old('worked_dates') && is_array(old('worked_dates')))
                             @foreach(old('worked_dates') as $index => $oldDate)
                                 <div class="worked-date-row d-flex align-items-center mb-2">
-                                    <input type="date" name="worked_dates[]" class="form-control" required value="{{ $oldDate }}" style="flex: 1; @if($index > 0) margin-right: 8px; @endif">
+                                    <input type="date" name="worked_dates[]" class="form-control shadow-none" required value="{{ $oldDate }}" style="flex: 1; border-radius: 10px; height: 42px; @if($index > 0) margin-right: 8px; @endif">
                                     @if($index > 0)
-                                        <button type="button" class="btn btn-outline-danger remove-date-btn" style="height: calc(1.5em + .75rem + 2px); display: flex; align-items: center; justify-content: center; padding: 0 12px;" onclick="this.closest('.worked-date-row').remove();">
+                                        <button type="button" class="btn btn-outline-danger remove-date-btn" style="height: 42px; width: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; padding: 0;" onclick="this.closest('.worked-date-row').remove();">
                                             <i class="fas fa-times"></i>
                                         </button>
                                     @endif
@@ -185,51 +205,32 @@
                             @endforeach
                         @else
                             <div class="worked-date-row d-flex align-items-center mb-2">
-                                <input type="date" name="worked_dates[]" class="form-control" required value="{{ date('Y-m-d') }}">
+                                <input type="date" name="worked_dates[]" class="form-control shadow-none" style="border-radius: 10px; height: 42px;" required value="{{ date('Y-m-d') }}">
                             </div>
                         @endif
                     </div>
-                    <button type="button" id="add-date-btn" class="ep-btn ep-btn-light btn-sm mt-1" style="padding: 4px 12px; font-size: 13px;">
-                        <i class="fas fa-plus-circle"></i> Add Date
+                    <button type="button" id="add-date-btn" class="btn btn-sm btn-light border shadow-sm font-weight-bold text-primary mt-1" style="border-radius: 8px; padding: 6px 14px; font-size: 12px;">
+                        <i class="fas fa-plus-circle mr-1"></i> Add Date
                     </button>
                 </div>
 
-                <div class="row">
-                    <div class="col-md-6 col-12">
-                        <div class="ep-form-group">
-                            <label>Work Start Time <span class="text-danger">*</span></label>
-                            <input type="time" name="start_time" class="form-control" required value="{{ old('start_time') ?? '09:00' }}">
-                        </div>
-                    </div>
-                    <div class="col-md-6 col-12">
-                        <div class="ep-form-group">
-                            <label>Work End Time <span class="text-danger">*</span></label>
-                            <input type="time" name="end_time" class="form-control" required value="{{ old('end_time') ?? '18:00' }}">
-                        </div>
-                    </div>
+                <!-- Hidden default work times -->
+                <input type="hidden" name="start_time" value="09:00">
+                <input type="hidden" name="end_time" value="18:00">
+
+                <div class="ep-form-group mb-3">
+                    <label class="font-weight-bold text-dark mb-1" style="font-size: 13px;">Reason / Work Summary <span class="text-danger">*</span></label>
+                    <textarea class="form-control shadow-none" name="reason" rows="3" style="border-radius: 10px;" required placeholder="Describe the reason or tasks completed...">{{ old('reason') }}</textarea>
                 </div>
 
-                <div class="ep-form-group">
-                    <label>Work Mode <span class="text-danger">*</span></label>
-                    <select name="work_mode" class="form-control" required>
-                        <option value="wfo" @selected(old('work_mode') === 'wfo')>WFO (Work From Office)</option>
-                        <option value="wfh" @selected(old('work_mode') === 'wfh')>WFH (Work From Home)</option>
-                    </select>
-                </div>
-
-                <div class="ep-form-group">
-                    <label>Reason / Work Summary <span class="text-danger">*</span></label>
-                    <textarea class="form-control" name="reason" rows="3" required placeholder="Describe the reason or tasks completed...">{{ old('reason') }}</textarea>
-                </div>
-
-                <div class="ep-form-group">
-                    <label>Additional Notes</label>
-                    <textarea class="form-control" name="notes" rows="2" placeholder="Any additional notes...">{{ old('notes') }}</textarea>
+                <div class="ep-form-group mb-0">
+                    <label class="font-weight-bold text-dark mb-1" style="font-size: 13px;">Additional Notes</label>
+                    <textarea class="form-control shadow-none" name="notes" rows="2" style="border-radius: 10px;" placeholder="Any additional notes...">{{ old('notes') }}</textarea>
                 </div>
             </div>
-            <div class="ep-modal-footer">
-                <button type="button" class="ep-modal-btn ep-modal-btn-light" data-dismiss="modal">Cancel</button>
-                <button class="ep-modal-btn ep-modal-btn-primary"><i class="fas fa-check"></i> Submit Request</button>
+            <div class="ep-modal-footer bg-light" style="padding: 16px 24px; border-top: 1px solid #E5E7EB;">
+                <button type="button" class="btn btn-light border font-weight-bold" data-dismiss="modal" style="border-radius: 10px; padding: 8px 18px;">Cancel</button>
+                <button class="btn btn-primary font-weight-bold border-0 shadow-sm" style="border-radius: 10px; padding: 8px 22px; background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);"><i class="fas fa-check mr-1"></i> Submit Request</button>
             </div>
         </form>
     </div>
@@ -240,73 +241,131 @@
      ================================================== -->
 <div class="modal fade" id="holidayWorkDetailsModal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
-        <div class="modal-content ep-form border-0 shadow-lg">
-            <div class="ep-modal-header">
-                <h5 class="modal-title">Holiday Work Request Details</h5>
-                <p>View complete submission history, status, and validation logs.</p>
-                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+        <div class="modal-content ep-form border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
+            <div class="ep-modal-header" style="background: linear-gradient(135deg, #1E293B 0%, #334155 100%); color: #fff; padding: 20px 24px;">
+                <h5 class="modal-title font-weight-bold text-white mb-1"><i class="fas fa-info-circle mr-2"></i> Holiday Work Request Details</h5>
+                <p class="mb-0 text-white-50" style="font-size: 13px;">View complete submission history, status, and validation logs.</p>
+                <button type="button" class="close text-white opacity-100" data-dismiss="modal" style="margin-top: -30px;"><span>&times;</span></button>
             </div>
-            <div class="ep-modal-body">
-                <div class="ep-section-card mb-3">
-                    <div class="ep-section-title"><i class="fas fa-info-circle"></i> Request Details</div>
+            <div class="ep-modal-body" style="padding: 24px;">
+                <div class="ep-section-card mb-3 p-3" style="background: #F8FAFC; border-radius: 12px; border: 1px solid #E2E8F0;">
+                    <div class="ep-section-title font-weight-bold text-primary mb-2" style="font-size: 14px;"><i class="fas fa-file-alt mr-1"></i> Request Details</div>
                     <div class="row">
                         <div class="col-md-6 mb-2">
-                            <small class="text-muted d-block">Holiday Date</small>
-                            <strong id="hw_worked_date">-</strong>
+                            <small class="text-muted d-block" style="font-size: 11px;">Holiday Date</small>
+                            <strong id="hw_worked_date" class="text-dark">-</strong>
                         </div>
                         <div class="col-md-6 mb-2">
-                            <small class="text-muted d-block">Work Mode</small>
-                            <strong id="hw_work_mode">-</strong>
+                            <small class="text-muted d-block" style="font-size: 11px;">Work Mode</small>
+                            <strong id="hw_work_mode" class="text-dark">-</strong>
                         </div>
                         <div class="col-md-6 mb-2">
-                            <small class="text-muted d-block">Work Type</small>
-                            <strong id="hw_work_type">-</strong>
+                            <small class="text-muted d-block" style="font-size: 11px;">Work Type</small>
+                            <strong id="hw_work_type" class="text-dark">-</strong>
                         </div>
                         <div class="col-md-6 mb-2">
-                            <small class="text-muted d-block">Applied On</small>
-                            <strong id="hw_applied_on">-</strong>
+                            <small class="text-muted d-block" style="font-size: 11px;">Applied On</small>
+                            <strong id="hw_applied_on" class="text-dark">-</strong>
                         </div>
                         <div class="col-12 mb-2">
-                            <small class="text-muted d-block">Reason / Work Summary</small>
-                            <p class="mb-0 font-weight-bold text-dark" id="hw_reason" style="white-space: pre-wrap;"></p>
+                            <small class="text-muted d-block" style="font-size: 11px;">Reason / Work Summary</small>
+                            <p class="mb-0 font-weight-bold text-dark" id="hw_reason" style="white-space: pre-wrap; font-size: 13px;"></p>
                         </div>
-                        <div class="col-12 mb-2">
-                            <small class="text-muted d-block">Notes / Hours Log</small>
-                            <p class="mb-0 font-weight-bold text-dark" id="hw_notes" style="white-space: pre-wrap;"></p>
+                        <div class="col-12 mb-0">
+                            <small class="text-muted d-block" style="font-size: 11px;">Notes</small>
+                            <p class="mb-0 font-weight-bold text-dark" id="hw_notes" style="white-space: pre-wrap; font-size: 13px;"></p>
                         </div>
                     </div>
                 </div>
 
-                <div class="ep-section-card mb-0">
-                    <div class="ep-section-title"><i class="fas fa-history"></i> Verification & Status</div>
+                <div class="ep-section-card mb-0 p-3" style="background: #F8FAFC; border-radius: 12px; border: 1px solid #E2E8F0;">
+                    <div class="ep-section-title font-weight-bold text-primary mb-2" style="font-size: 14px;"><i class="fas fa-history mr-1"></i> Verification & Status</div>
                     <div class="row">
                         <div class="col-md-6 mb-2">
-                            <small class="text-muted d-block">Approval Status</small>
-                            <strong id="hw_status">-</strong>
+                            <small class="text-muted d-block" style="font-size: 11px;">Approval Status</small>
+                            <strong id="hw_status" class="text-dark">-</strong>
                         </div>
                         <div class="col-md-6 mb-2">
-                            <small class="text-muted d-block">Comp Off Status</small>
-                            <strong id="hw_comp_off">-</strong>
+                            <small class="text-muted d-block" style="font-size: 11px;">Comp Off Status</small>
+                            <strong id="hw_comp_off" class="text-dark">-</strong>
                         </div>
                         <div class="col-md-6 mb-2">
-                            <small class="text-muted d-block">Processed By</small>
-                            <strong id="hw_processed_by">-</strong>
+                            <small class="text-muted d-block" style="font-size: 11px;">Processed By</small>
+                            <strong id="hw_processed_by" class="text-dark">-</strong>
                         </div>
                         <div class="col-md-6 mb-2">
-                            <small class="text-muted d-block">Processed At</small>
-                            <strong id="hw_processed_at">-</strong>
+                            <small class="text-muted d-block" style="font-size: 11px;">Processed At</small>
+                            <strong id="hw_processed_at" class="text-dark">-</strong>
                         </div>
-                        <div class="col-12 mb-2" id="hw_rejection_reason_row">
-                            <small class="text-muted d-block text-danger">Rejection Reason</small>
+                        <div class="col-12 mb-0" id="hw_rejection_reason_row">
+                            <small class="text-muted d-block text-danger" style="font-size: 11px;">Rejection Reason</small>
                             <strong class="text-danger" id="hw_rejection_reason">-</strong>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="ep-modal-footer">
-                <button type="button" class="ep-modal-btn ep-modal-btn-light" data-dismiss="modal">Close</button>
+            <div class="ep-modal-footer bg-light" style="padding: 14px 24px; border-top: 1px solid #E5E7EB;">
+                <button type="button" class="btn btn-secondary font-weight-bold" data-dismiss="modal" style="border-radius: 10px; padding: 8px 20px;">Close</button>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- ==================================================
+     EDIT HOLIDAY WORK REQUEST MODAL
+     ================================================== -->
+<div class="modal fade" id="editHolidayWorkModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-md modal-dialog-centered" role="document">
+        <form id="editHolidayWorkForm" method="POST" action="" class="modal-content ep-form border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
+            @csrf
+            @method('PUT')
+            <div class="ep-modal-header" style="background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); color: #fff; padding: 20px 24px;">
+                <h5 class="modal-title font-weight-bold text-white mb-1"><i class="fas fa-edit mr-2"></i> Edit Holiday Work Request</h5>
+                <p class="mb-0 text-white-50" style="font-size: 13px;">Update your pending work request details.</p>
+                <button type="button" class="close text-white opacity-100" data-dismiss="modal" style="margin-top: -30px;"><span>&times;</span></button>
+            </div>
+            <div class="ep-modal-body" style="padding: 24px;">
+                <div class="row">
+                    <div class="col-md-6 col-12">
+                        <div class="ep-form-group mb-3">
+                            <label class="font-weight-bold text-dark mb-1" style="font-size: 13px;">Work Type <span class="text-danger">*</span></label>
+                            <select name="work_type" id="edit_work_type" class="form-control shadow-none" style="border-radius: 10px; height: 42px;" required>
+                                <option value="holiday_work">Holiday Work</option>
+                                <option value="weekoff_work">Week-Off Work</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-12">
+                        <div class="ep-form-group mb-3">
+                            <label class="font-weight-bold text-dark mb-1" style="font-size: 13px;">Work Mode <span class="text-danger">*</span></label>
+                            <select name="work_mode" id="edit_work_mode" class="form-control shadow-none" style="border-radius: 10px; height: 42px;" required>
+                                <option value="wfo">WFO (Work From Office)</option>
+                                <option value="wfh">WFH (Work From Home)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ep-form-group mb-3">
+                    <label class="font-weight-bold text-dark mb-1" style="font-size: 13px;">Worked Date <span class="text-danger">*</span></label>
+                    <input type="date" name="worked_date" id="edit_worked_date" class="form-control shadow-none" style="border-radius: 10px; height: 42px;" required>
+                </div>
+
+                <div class="ep-form-group mb-3">
+                    <label class="font-weight-bold text-dark mb-1" style="font-size: 13px;">Reason / Work Summary <span class="text-danger">*</span></label>
+                    <textarea class="form-control shadow-none" name="reason" id="edit_reason" rows="3" style="border-radius: 10px;" required placeholder="Describe the reason or tasks completed..."></textarea>
+                </div>
+
+                <div class="ep-form-group mb-0">
+                    <label class="font-weight-bold text-dark mb-1" style="font-size: 13px;">Additional Notes</label>
+                    <textarea class="form-control shadow-none" name="notes" id="edit_notes" rows="2" style="border-radius: 10px;" placeholder="Any additional notes..."></textarea>
+                </div>
+            </div>
+            <div class="ep-modal-footer bg-light" style="padding: 16px 24px; border-top: 1px solid #E5E7EB;">
+                <button type="button" class="btn btn-light border font-weight-bold" data-dismiss="modal" style="border-radius: 10px; padding: 8px 18px;">Cancel</button>
+                <button class="btn btn-warning text-white font-weight-bold border-0 shadow-sm" style="border-radius: 10px; padding: 8px 22px; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);"><i class="fas fa-save mr-1"></i> Save Changes</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -378,6 +437,25 @@
                 }
 
                 $('#holidayWorkDetailsModal').modal('show');
+            });
+        });
+
+        document.querySelectorAll('.js-edit-request').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var row = JSON.parse(this.getAttribute('data-row') || '{}');
+                var updateUrl = "{{ route('hrms.attendance.my-holiday-work.update', ':id') }}".replace(':id', row.id);
+                document.getElementById('editHolidayWorkForm').setAttribute('action', updateUrl);
+                document.getElementById('edit_work_type').value = row.work_type || 'holiday_work';
+                
+                // Parse date cleanly into YYYY-MM-DD format for HTML date input
+                var rawDate = (row.worked_date || '').toString();
+                var cleanDate = rawDate.split('T')[0].split(' ')[0];
+                document.getElementById('edit_worked_date').value = cleanDate;
+
+                document.getElementById('edit_work_mode').value = (row.work_mode || 'wfo').toLowerCase();
+                document.getElementById('edit_reason').value = row.reason || '';
+                document.getElementById('edit_notes').value = row.notes || '';
+                $('#editHolidayWorkModal').modal('show');
             });
         });
 

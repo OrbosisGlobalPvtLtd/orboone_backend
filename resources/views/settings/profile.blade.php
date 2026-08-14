@@ -42,6 +42,48 @@
     $fieldStatusClass = function($fieldName) use ($isFieldEditable) {
         return $isFieldEditable($fieldName) ? '' : 'field-locked';
     };
+
+    $isBankTypeSelected = function($targetType) use ($employeeProfile) {
+        $val = strtolower(trim((string) old('bank_account_type', $employeeProfile?->bank_account_type)));
+        $target = strtolower(trim((string) $targetType));
+        if ($target === 'savings' || $target === 'saving') {
+            return in_array($val, ['savings', 'saving', 'saved'], true);
+        }
+        if ($target === 'current') {
+            return in_array($val, ['current', 'curr'], true);
+        }
+        if ($target === 'salary') {
+            return in_array($val, ['salary', 'sal'], true);
+        }
+        return $val === $target;
+    };
+
+    $isGenderSelected = function($targetGender) use ($employeeProfile) {
+        $val = strtolower(trim((string) old('gender', $employeeProfile?->gender)));
+        $target = strtolower(trim((string) $targetGender));
+        if ($target === 'male') {
+            return in_array($val, ['male', 'm'], true);
+        }
+        if ($target === 'female') {
+            return in_array($val, ['female', 'f'], true);
+        }
+        if ($target === 'other') {
+            return in_array($val, ['other', 'o'], true);
+        }
+        return $val === $target;
+    };
+
+    $isExpTypeSelected = function($targetExp) use ($employeeProfile) {
+        $val = strtolower(trim((string) old('experience_type', $employeeProfile?->experience_type)));
+        $target = strtolower(trim((string) $targetExp));
+        if ($target === 'fresher') {
+            return in_array($val, ['fresher', 'fresh', '0', ''], true);
+        }
+        if ($target === 'experienced') {
+            return in_array($val, ['experienced', 'experience', 'exp', 'yes', '1'], true);
+        }
+        return $val === $target;
+    };
 @endphp
 
 <style>
@@ -96,6 +138,8 @@
         position: relative;
         width: 100px;
         height: 100px;
+        min-width: 100px;
+        flex-shrink: 0;
         border-radius: 24px;
         overflow: hidden;
         border: 4px solid rgba(255, 255, 255, 0.3);
@@ -103,7 +147,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 36px;
+        font-size: 32px;
         font-weight: 900;
         color: white;
         box-shadow: 0 8px 24px rgba(0,0,0,0.12);
@@ -267,6 +311,47 @@
         box-shadow: 0 6px 20px rgba(75, 0, 232, 0.25);
     }
 
+    .btn-save-submit {
+        background: #4B00E8 !important;
+        color: #ffffff !important;
+        font-weight: 800 !important;
+        font-size: 12px !important;
+        padding: 6px 16px !important;
+        border-radius: 10px !important;
+        border: 1px solid #4B00E8 !important;
+        box-shadow: 0 4px 12px rgba(75, 0, 232, 0.25) !important;
+        transition: all 0.2s ease-in-out !important;
+        cursor: pointer !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    .btn-save-submit:hover {
+        background: #3600B3 !important;
+        color: #ffffff !important;
+        border-color: #3600B3 !important;
+        box-shadow: 0 6px 16px rgba(75, 0, 232, 0.35) !important;
+        transform: translateY(-1px);
+    }
+    .btn-cancel-edit {
+        background: #F2F4F7 !important;
+        color: #344054 !important;
+        font-weight: 800 !important;
+        font-size: 12px !important;
+        padding: 6px 14px !important;
+        border-radius: 10px !important;
+        border: 1px solid #D0D5DD !important;
+        transition: all 0.2s ease-in-out !important;
+        cursor: pointer !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    .btn-cancel-edit:hover {
+        background: #E4E7EC !important;
+        color: #101828 !important;
+    }
+
     .profile-sidebar-item {
         padding: 14px 16px;
         border: 1px solid #E7EAF3;
@@ -408,37 +493,44 @@
             <!-- Left Column: Forms -->
             <div>
                 
-                <!-- B. Personal Information -->
-                <form action="{{ route('profile.update') }}" method="POST" enctype="multipart/form-data">
+                <!-- Master Single Profile Update Form -->
+                <form id="master_profile_form" action="{{ route('profile.update') }}" method="POST" enctype="multipart/form-data">
                     @csrf
                     @method('PUT')
+
+                    <!-- B. Personal Information -->
                     <div class="profile-card">
                         <h3>
                             <span><i class="fas fa-user-circle mr-2"></i>Personal Information</span>
                             @if(!$isLocked)
                                 <div>
-                                    <button type="button" class="btn-edit-section profile-btn" style="min-height: 32px; font-size: 11px; padding: 4px 10px;" onclick="enableSectionEdit(this)">
-                                        <i class="fas fa-edit"></i> Edit
+                                    <button type="button" class="btn-edit-section profile-btn" style="min-height: 32px; font-size: 11px; padding: 4px 12px; border-radius: 10px; font-weight: 800;" onclick="enableSectionEdit(this)">
+                                        <i class="fas fa-edit mr-1"></i> Edit
                                     </button>
-                                    <div class="btn-save-group" style="display: none; gap: 6px;">
-                                        <button type="button" class="profile-btn" style="min-height: 32px; font-size: 11px; padding: 4px 10px;" onclick="cancelSectionEdit(this)">Cancel</button>
-                                        <button type="submit" class="profile-btn profile-btn-primary" style="min-height: 32px; font-size: 11px; padding: 4px 10px;">Save</button>
+                                    <div class="btn-save-group" style="display: none; gap: 8px;">
+                                        <button type="button" class="btn-cancel-edit" onclick="cancelSectionEdit(this)">Cancel</button>
+                                        <button type="submit" class="btn-save-submit"><i class="fas fa-check mr-1"></i> Save Changes</button>
                                     </div>
                                 </div>
                             @endif
                         </h3>
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label class="profile-label">Date of Birth</label>
+                                <label class="profile-label">Date of Birth <span class="text-muted font-weight-normal" style="font-size:10px; text-transform:none;">(DD-MM-YYYY)</span></label>
                                 <input type="date" name="date_of_birth" class="profile-control section-editable {{ $fieldStatusClass('date_of_birth') }}" value="{{ old('date_of_birth', $employeeProfile?->date_of_birth ? \Carbon\Carbon::parse($employeeProfile->date_of_birth)->format('Y-m-d') : '') }}" {{ $fieldStatusAttr('date_of_birth') }}>
+                                @if($employeeProfile?->date_of_birth)
+                                    <div class="mt-1" style="font-size: 11px; font-weight: 700; color: #475467;">
+                                        <i class="fas fa-calendar-alt text-primary mr-1"></i> Formatted DOB: <strong>{{ \Carbon\Carbon::parse($employeeProfile->date_of_birth)->format('d-m-Y') }}</strong>
+                                    </div>
+                                @endif
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="profile-label">Gender</label>
                                 <select name="gender" class="profile-control section-editable {{ $fieldStatusClass('gender') }}" {{ $fieldSelectStatusAttr('gender') }}>
                                     <option value="">Select Gender</option>
-                                    <option value="male" {{ old('gender', $employeeProfile?->gender) === 'male' ? 'selected' : '' }}>Male</option>
-                                    <option value="female" {{ old('gender', $employeeProfile?->gender) === 'female' ? 'selected' : '' }}>Female</option>
-                                    <option value="other" {{ old('gender', $employeeProfile?->gender) === 'other' ? 'selected' : '' }}>Other</option>
+                                    <option value="male" {{ $isGenderSelected('male') ? 'selected' : '' }}>Male</option>
+                                    <option value="female" {{ $isGenderSelected('female') ? 'selected' : '' }}>Female</option>
+                                    <option value="other" {{ $isGenderSelected('other') ? 'selected' : '' }}>Other</option>
                                 </select>
                             </div>
                             <div class="col-12 mb-3">
@@ -456,8 +548,8 @@
                             <div class="col-md-6 mb-3">
                                 <label class="profile-label">Experience Type</label>
                                 <select name="experience_type" id="experience_type" class="profile-control section-editable {{ $fieldStatusClass('experience_type') }}" {{ $fieldSelectStatusAttr('experience_type') }}>
-                                    <option value="fresher" {{ old('experience_type', $employeeProfile?->experience_type ?? 'fresher') === 'fresher' ? 'selected' : '' }}>Fresher</option>
-                                    <option value="experienced" {{ old('experience_type', $employeeProfile?->experience_type) === 'experienced' ? 'selected' : '' }}>Experienced</option>
+                                    <option value="fresher" {{ $isExpTypeSelected('fresher') ? 'selected' : '' }}>Fresher</option>
+                                    <option value="experienced" {{ $isExpTypeSelected('experienced') ? 'selected' : '' }}>Experienced</option>
                                 </select>
                             </div>
                             <div class="col-md-6 mb-3" id="experience_years_wrapper">
@@ -481,23 +573,19 @@
                             </div>
                         </div>
                     </div>
-                </form>
 
-                <!-- C. Contact Information -->
-                <form action="{{ route('profile.update') }}" method="POST">
-                    @csrf
-                    @method('PUT')
+                    <!-- C. Contact Information -->
                     <div class="profile-card">
                         <h3>
                             <span><i class="fas fa-phone mr-2"></i>Contact Information</span>
                             @if(!$isLocked)
                                 <div>
-                                    <button type="button" class="btn-edit-section profile-btn" style="min-height: 32px; font-size: 11px; padding: 4px 10px;" onclick="enableSectionEdit(this)">
-                                        <i class="fas fa-edit"></i> Edit
+                                    <button type="button" class="btn-edit-section profile-btn" style="min-height: 32px; font-size: 11px; padding: 4px 12px; border-radius: 10px; font-weight: 800;" onclick="enableSectionEdit(this)">
+                                        <i class="fas fa-edit mr-1"></i> Edit
                                     </button>
-                                    <div class="btn-save-group" style="display: none; gap: 6px;">
-                                        <button type="button" class="profile-btn" style="min-height: 32px; font-size: 11px; padding: 4px 10px;" onclick="cancelSectionEdit(this)">Cancel</button>
-                                        <button type="submit" class="profile-btn profile-btn-primary" style="min-height: 32px; font-size: 11px; padding: 4px 10px;">Save</button>
+                                    <div class="btn-save-group" style="display: none; gap: 8px;">
+                                        <button type="button" class="btn-cancel-edit" onclick="cancelSectionEdit(this)">Cancel</button>
+                                        <button type="submit" class="btn-save-submit"><i class="fas fa-check mr-1"></i> Save Changes</button>
                                     </div>
                                 </div>
                             @endif
@@ -521,23 +609,19 @@
                             </div>
                         </div>
                     </div>
-                </form>
 
-                <!-- F. Bank Details -->
-                <form action="{{ route('profile.update') }}" method="POST">
-                    @csrf
-                    @method('PUT')
+                    <!-- F. Bank Details -->
                     <div class="profile-card">
                         <h3>
                             <span><i class="fas fa-credit-card mr-2"></i>Bank Details</span>
                             @if(!$isLocked)
                                 <div>
-                                    <button type="button" class="btn-edit-section profile-btn" style="min-height: 32px; font-size: 11px; padding: 4px 10px;" onclick="enableSectionEdit(this)">
-                                        <i class="fas fa-edit"></i> Edit
+                                    <button type="button" class="btn-edit-section profile-btn" style="min-height: 32px; font-size: 11px; padding: 4px 12px; border-radius: 10px; font-weight: 800;" onclick="enableSectionEdit(this)">
+                                        <i class="fas fa-edit mr-1"></i> Edit
                                     </button>
-                                    <div class="btn-save-group" style="display: none; gap: 6px;">
-                                        <button type="button" class="profile-btn" style="min-height: 32px; font-size: 11px; padding: 4px 10px;" onclick="cancelSectionEdit(this)">Cancel</button>
-                                        <button type="submit" class="profile-btn profile-btn-primary" style="min-height: 32px; font-size: 11px; padding: 4px 10px;">Save</button>
+                                    <div class="btn-save-group" style="display: none; gap: 8px;">
+                                        <button type="button" class="btn-cancel-edit" onclick="cancelSectionEdit(this)">Cancel</button>
+                                        <button type="submit" class="btn-save-submit"><i class="fas fa-check mr-1"></i> Save Changes</button>
                                     </div>
                                 </div>
                             @endif
@@ -555,8 +639,9 @@
                                 <label class="profile-label">Account Type</label>
                                 <select name="bank_account_type" class="profile-control section-editable {{ $fieldStatusClass('bank_account_type') }}" {{ $fieldSelectStatusAttr('bank_account_type') }}>
                                     <option value="">Select Account Type</option>
-                                    <option value="Savings" {{ old('bank_account_type', $employeeProfile?->bank_account_type) === 'Savings' ? 'selected' : '' }}>Savings</option>
-                                    <option value="Current" {{ old('bank_account_type', $employeeProfile?->bank_account_type) === 'Current' ? 'selected' : '' }}>Current</option>
+                                    <option value="Savings" {{ $isBankTypeSelected('Savings') ? 'selected' : '' }}>Savings</option>
+                                    <option value="Current" {{ $isBankTypeSelected('Current') ? 'selected' : '' }}>Current</option>
+                                    <option value="Salary" {{ $isBankTypeSelected('Salary') ? 'selected' : '' }}>Salary</option>
                                 </select>
                             </div>
                             <div class="col-md-6 mb-3">
@@ -836,7 +921,10 @@
             el.classList.remove('field-locked');
         });
         button.style.display = 'none';
-        card.querySelector('.btn-save-group').style.display = 'inline-flex';
+        var saveGroup = card.querySelector('.btn-save-group');
+        if (saveGroup) {
+            saveGroup.style.display = 'inline-flex';
+        }
     }
 
     function cancelSectionEdit(button) {
@@ -846,28 +934,49 @@
             el.setAttribute('readonly', 'readonly');
             el.setAttribute('disabled', 'disabled');
             el.classList.add('field-locked');
+            if (el.dataset.initialValue !== undefined) {
+                el.value = el.dataset.initialValue;
+            }
         });
-        card.querySelector('.btn-save-group').style.display = 'none';
+        var saveGroup = card.querySelector('.btn-save-group');
+        if (saveGroup) {
+            saveGroup.style.display = 'none';
+        }
         if (card.querySelector('.btn-edit-section')) {
             card.querySelector('.btn-edit-section').style.display = 'inline-flex';
         }
         
-        // Reset the parent form to original values
-        button.closest('form').reset();
-        
-        // Trigger experience display refresh in case toggled
         var expSelect = card.querySelector('#experience_type');
         if (expSelect) {
             var expWrapper = card.querySelector('#experience_years_wrapper');
-            if (expSelect.value === 'fresher') {
-                expWrapper.style.display = 'none';
-            } else {
-                expWrapper.style.display = 'block';
+            if (expWrapper) {
+                expWrapper.style.display = (expSelect.value === 'fresher') ? 'none' : 'block';
             }
         }
     }
 
     document.addEventListener('DOMContentLoaded', function () {
+        // Store initial values on section-editable fields for clean reset
+        document.querySelectorAll('.section-editable').forEach(function(el) {
+            el.dataset.initialValue = el.value;
+        });
+
+        var masterForm = document.getElementById('master_profile_form');
+        if (masterForm) {
+            masterForm.addEventListener('submit', function (e) {
+                // Enable all section-editable fields inside master form so their current values are posted
+                masterForm.querySelectorAll('.section-editable').forEach(function(el) {
+                    el.removeAttribute('disabled');
+                });
+                
+                var submitBtns = masterForm.querySelectorAll('.btn-save-submit');
+                submitBtns.forEach(function(btn) {
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Saving...';
+                });
+            });
+        }
+
         // Experience type toggle logic
         var expSelect = document.getElementById('experience_type');
         var expWrapper = document.getElementById('experience_years_wrapper');

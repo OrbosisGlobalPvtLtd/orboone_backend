@@ -303,7 +303,7 @@ $existingWorkMode = strtolower($todayRecord->work_mode ?? 'wfo');
                         <i class="fas fa-exclamation-circle text-danger mr-1"></i> {{ session('error') ?? session('danger') }}
                     </div>
                     @endif
-                    @if ($errors->any())
+                    @if (isset($errors) && $errors->any())
                     <div class="alert alert-danger border-0 mb-3" style="border-radius: 12px; background: #fef2f2; border-left: 4px solid #ef4444 !important; font-size: 13px; font-weight: 700; color: #991b1b;">
                         <i class="fas fa-exclamation-triangle text-danger mr-1"></i> {{ $errors->first() }}
                     </div>
@@ -812,7 +812,7 @@ $existingWorkMode = strtolower($todayRecord->work_mode ?? 'wfo');
                 }
             });
 
-            @if(session('error') || session('danger') || $errors->any())
+            @if(session('error') || session('danger') || (isset($errors) && $errors->any()))
                 @if(!empty($hasPunchedIn) && empty($hasPunchedOut))
                     $('#webPunchOutModal').modal('show');
                 @else

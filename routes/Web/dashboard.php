@@ -16,6 +16,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/custom-admin', [DashboardC::class, 'customAdmin'])->name('custom_admin');
         Route::get('/manager', [DashboardC::class, 'manager'])->name('manager');
         Route::get('/employee', [DashboardC::class, 'employee'])->middleware(['employee.user', 'check.profile.complete'])->name('employee');
+        Route::get('/attendance-calendar', [DashboardC::class, 'getAttendanceCalendar'])->name('attendance_calendar');
     });
 
     Route::get('/admin/dashboard', [DashboardC::class, 'adminIndex'])->name('admin.dashboard');

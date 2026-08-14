@@ -580,6 +580,11 @@
             $totalSickRem = $balances->sum('sick_remaining');
             $totalLwpUsed = $balances->sum('lwp_used');
 
+            $empProfile = $balances->first()?->employee;
+            $monthlyQuotaInfo = $empProfile ? app(\App\Services\HRMS\Leave\MonthlyLeaveQuotaService::class)->getMonthlyQuota($empProfile) : null;
+            $monthlyPaidBalance = $monthlyQuotaInfo ? (float) $monthlyQuotaInfo['total_monthly_remaining_paid'] : 0.0;
+            $monthlyCarryForward = $monthlyQuotaInfo ? (float) $monthlyQuotaInfo['carry_forward_available'] : 0.0;
+
             $user = auth()->user();
             $isSuperAdmin = $user && method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
             $hasViewAll = $user && method_exists($user, 'hasPermission') && $user->hasPermission('leave.balance.view_all');
@@ -587,9 +592,9 @@
             $isAdminOrHr = $isSuperAdmin || $hasViewAll || $hasViewTeam;
         @endphp
 
-        <!-- Premium Stat Cards exactly styled like the second image -->
+        <!-- Premium Stat Cards -->
         <div class="premium-stat-row">
-            <!-- 1. Total Allocated -->
+            <!-- 1. Total Leave Allocated -->
             <div class="premium-stat-card">
                 <div class="premium-stat-card-top">
                     <div class="premium-stat-icon-wrapper bg-soft-purple">
@@ -597,11 +602,11 @@
                     </div>
                     <div class="premium-stat-value">{{ number_format((float) $totalAllocated, 2) }}</div>
                 </div>
-                <div class="premium-stat-label">Total Allocated</div>
+                <div class="premium-stat-label">Total Leave Allocated</div>
                 <div class="premium-stat-indicator indicator-purple"></div>
             </div>
 
-            <!-- 2. Available Balance -->
+            <!-- 2. Total Leave Available Balance -->
             <div class="premium-stat-card">
                 <div class="premium-stat-card-top">
                     <div class="premium-stat-icon-wrapper bg-soft-green">
@@ -609,11 +614,23 @@
                     </div>
                     <div class="premium-stat-value">{{ number_format((float) $totalRemaining, 2) }}</div>
                 </div>
-                <div class="premium-stat-label">Available Balance</div>
+                <div class="premium-stat-label">Total Leave Available Balance</div>
                 <div class="premium-stat-indicator indicator-green"></div>
             </div>
 
-            <!-- 3. Paid Remaining -->
+            <!-- 3. Monthly Paid Leave Balance -->
+            <div class="premium-stat-card">
+                <div class="premium-stat-card-top">
+                    <div class="premium-stat-icon-wrapper" style="background: #E0F2FE; color: #0284C7;">
+                        <i class="fas fa-calendar-day"></i>
+                    </div>
+                    <div class="premium-stat-value" style="color: #0284C7;">{{ number_format((float) $monthlyPaidBalance, 2) }}</div>
+                </div>
+                <div class="premium-stat-label">Monthly Paid Leave Balance</div>
+                <div class="premium-stat-indicator" style="background: linear-gradient(90deg, #0284C7, #38BDF8);"></div>
+            </div>
+
+            <!-- 4. Annual Paid Leave Remaining -->
             <div class="premium-stat-card">
                 <div class="premium-stat-card-top">
                     <div class="premium-stat-icon-wrapper bg-soft-blue">
@@ -621,11 +638,11 @@
                     </div>
                     <div class="premium-stat-value">{{ number_format((float) $totalPaidRem, 2) }}</div>
                 </div>
-                <div class="premium-stat-label">Paid Remaining</div>
+                <div class="premium-stat-label">Annual Paid Leave Remaining</div>
                 <div class="premium-stat-indicator indicator-blue"></div>
             </div>
 
-            <!-- 4. Sick Remaining -->
+            <!-- 5. Sick Leave Remaining -->
             <div class="premium-stat-card">
                 <div class="premium-stat-card-top">
                     <div class="premium-stat-icon-wrapper bg-soft-orange">
@@ -633,20 +650,8 @@
                     </div>
                     <div class="premium-stat-value">{{ number_format((float) $totalSickRem, 2) }}</div>
                 </div>
-                <div class="premium-stat-label">Sick Remaining</div>
+                <div class="premium-stat-label">Sick Leave Remaining</div>
                 <div class="premium-stat-indicator indicator-orange"></div>
-            </div>
-
-            <!-- 5. LWP Used -->
-            <div class="premium-stat-card">
-                <div class="premium-stat-card-top">
-                    <div class="premium-stat-icon-wrapper bg-soft-red">
-                        <i class="fas fa-user-times"></i>
-                    </div>
-                    <div class="premium-stat-value">{{ number_format((float) $totalLwpUsed, 2) }}</div>
-                </div>
-                <div class="premium-stat-label">LWP Used</div>
-                <div class="premium-stat-indicator indicator-red"></div>
             </div>
         </div>
 
@@ -715,9 +720,12 @@
                                             <div class="breakdown-progress-bg">
                                                 <div class="breakdown-progress-bar indicator-blue" style="width: {{ $paidPct }}%;"></div>
                                             </div>
-                                            <div class="breakdown-stats">
-                                                <span><span class="breakdown-stat-dot" style="background: #2563EB;"></span>Allocated: {{ number_format($paidAllocated, 2) }}</span>
-                                                <span><span class="breakdown-stat-dot" style="background: #E2E8F0;"></span>Used: {{ number_format($paidUsed, 2) }}</span>
+                                            <div class="breakdown-stats flex-wrap" style="gap: 12px;">
+                                                 <span><span class="breakdown-stat-dot" style="background: #2563EB;"></span>Annual Allocated: {{ number_format($paidAllocated, 2) }}</span>
+                                                 <span><span class="breakdown-stat-dot" style="background: #64748B;"></span>Annual Used: {{ number_format($paidUsed, 2) }}</span>
+                                                 @if(isset($monthlyPaidBalance))
+                                                     <span class="text-success font-weight-bold"><span class="breakdown-stat-dot" style="background: #10B981;"></span>Monthly Paid Leave Balance: {{ number_format($monthlyPaidBalance, 2) }} @if($monthlyCarryForward > 0)<small class="text-muted">(Includes {{ number_format($monthlyCarryForward, 2) }} Carry Forward)</small>@endif</span>
+                                                 @endif
                                             </div>
                                         </div>
                                     </div>
@@ -869,43 +877,6 @@
                                     <div style="font-size: 18px; font-weight: 900; color: #7E22CE;">{{ number_format($totalAllocated, 2) }}</div>
                                     <small class="text-muted font-weight-bold" style="font-size: 9px; text-transform: uppercase;">Total Quota</small>
                                 </div>
-                            </div>
-                        </div>
-
-                        <!-- Policy Guidelines Card -->
-                        <div class="emp-quota-card">
-                            <div class="emp-quota-header">
-                                <div class="premium-stat-icon-wrapper bg-soft-orange" style="width: 36px; height: 36px; border-radius: 10px; font-size: 14px;">
-                                    <i class="fas fa-info-circle"></i>
-                                </div>
-                                <div>
-                                    <h5 class="emp-quota-title">Leave Request Guidelines</h5>
-                                    <p class="emp-quota-subtitle">Quick policies for standard compliance.</p>
-                                </div>
-                            </div>
-
-                            <div style="font-size: 12.5px; color: #475569; line-height: 1.6; text-align: left;">
-                                <div class="d-flex gap-2 mb-3 align-items-start">
-                                    <i class="fas fa-dot-circle text-primary mt-1" style="font-size: 8px; flex-shrink:0;"></i>
-                                    <div><strong>Planned Leaves:</strong> Should be requested at least 3 business days in advance to ensure smooth work handovers.</div>
-                                </div>
-                                <div class="d-flex gap-2 mb-3 align-items-start">
-                                    <i class="fas fa-dot-circle text-primary mt-1" style="font-size: 8px; flex-shrink:0;"></i>
-                                    <div><strong>Unplanned/Sick Leaves:</strong> Must be reported to your supervisor within 2 hours of your regular shift start time.</div>
-                                </div>
-                                <div class="d-flex gap-2 align-items-start">
-                                    <i class="fas fa-dot-circle text-primary mt-1" style="font-size: 8px; flex-shrink:0;"></i>
-                                    <div><strong>Comp Off:</strong> Valid for 90 days from the credit date. Ensure you consume your accrued compensation offsets timely.</div>
-                                </div>
-                            </div>
-
-                            <div class="mt-4 pt-3 border-top d-flex flex-column gap-2">
-                                <a href="{{ route('leave-requests.create') }}" class="btn btn-primary w-100 font-weight-bold" style="border-radius: 12px; height: 42px; display:inline-flex; align-items:center; justify-content:center; gap:8px;">
-                                    <i class="fas fa-plus-circle"></i> Submit New Application
-                                </a>
-                                <a href="{{ route('leave-requests.index') }}" class="btn btn-outline-light w-100 font-weight-bold" style="border-radius: 12px; height: 42px; border: 1px solid #E2E8F0; color: #475569; display:inline-flex; align-items:center; justify-content:center; gap:8px;">
-                                    <i class="fas fa-history"></i> View Submission History
-                                </a>
                             </div>
                         </div>
                     </div>

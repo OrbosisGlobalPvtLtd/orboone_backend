@@ -62,6 +62,9 @@ class LeaveAllocationService
 
             $before = (float) ($allocation->total_remaining ?? 0);
 
+            $currentSystemYear = (int) Carbon::now('Asia/Kolkata')->year;
+            $isPastYear = $year < $currentSystemYear;
+
             $allocation->fill([
                 'policy_id' => $policy->id,
                 'confirmation_date' => $employee->confirmation_date,
@@ -75,6 +78,7 @@ class LeaveAllocationService
                 'monthly_carry_forward' => 0.0,
                 'last_month_processed' => sprintf('%04d-%02d', $year, 1),
                 'allocation_reason' => "Annual Allocation for {$year}",
+                'is_locked' => $isPastYear,
                 'created_by_user_id' => $userId,
             ]);
 

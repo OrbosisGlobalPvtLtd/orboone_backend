@@ -54,7 +54,7 @@ $topbarNotifications = collect();
 
                 <div style="min-width:0;">
                     <h5 class="mb-0 fw-bold text-dark" style="line-height:1.2;">
-                        {{ ucfirst($active ?? 'dashboard') }}
+                        {{ ucwords(str_replace(['_', '-'], ' ', $active ?? 'dashboard')) }}
                     </h5>
                     <small class="text-muted d-block" style="font-size:12px;">
                         {{ $branding['company_name'] ?? config('app.name', 'OrboOne HRMS') }}
@@ -469,7 +469,7 @@ $topbarNotifications = collect();
             });
         });
 
-        @if($errors->has('current_password') || $errors->has('password'))
+        @if(isset($errors) && ($errors->has('current_password') || $errors->has('password')))
             $('#topbarChangePasswordModal').modal('show');
         @endif
     });

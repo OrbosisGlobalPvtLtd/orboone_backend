@@ -202,9 +202,16 @@ class ProfilesController extends Controller
                                 $profileData[$field] = $data[$field];
                             }
                         }
-                        if ($profile && $profile->profile_status === 'approved') {
-                            $profileData['profile_status'] = 'incomplete';
-                            $profileData['is_profile_completed'] = 0;
+
+                        if (isset($profileData['bank_account_type'])) {
+                            $rawBank = strtolower(trim((string) $profileData['bank_account_type']));
+                            if (in_array($rawBank, ['saving', 'savings'], true)) {
+                                $profileData['bank_account_type'] = 'Savings';
+                            } elseif (in_array($rawBank, ['current'], true)) {
+                                $profileData['bank_account_type'] = 'Current';
+                            } elseif (in_array($rawBank, ['salary'], true)) {
+                                $profileData['bank_account_type'] = 'Salary';
+                            }
                         }
                     }
 
@@ -241,8 +248,8 @@ class ProfilesController extends Controller
                     $exists = DB::table('employee_profiles')->where('employee_id', $employee->id)->exists();
 
                     if (!$exists) {
-                        $profileData['profile_status'] = 'pending';
-                        $profileData['is_profile_completed'] = 0;
+                        $profileData['profile_status'] = 'approved';
+                        $profileData['is_profile_completed'] = 1;
                         $profileData['created_at'] = now();
                     }
 

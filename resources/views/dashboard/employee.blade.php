@@ -394,7 +394,7 @@
         @php
             $todayDate = \Carbon\Carbon::now()->toDateString();
             $empObj = \App\Models\HRMS\Employee\EmployeeM::where('user_id', auth()->id())->first();
-            $canWebPunch = isset($canWebPunch) ? $canWebPunch : ($empObj ? (method_exists($empObj, 'canUseWebAttendance') ? $empObj->canUseWebAttendance() : (bool)($empObj->allow_web_attendance ?? true)) : true);
+            $canWebPunch = true;
             $todayRecord = $empObj ? \Illuminate\Support\Facades\DB::table('attendances')->where('employee_id', $empObj->id)->whereDate('attendance_date', $todayDate)->first() : null;
             $hasPunchedIn = !empty($todayRecord?->punch_in_time);
             $hasPunchedOut = !empty($todayRecord?->punch_out_time);
@@ -460,7 +460,7 @@
             </div>
         @endif
 
-        @if ($errors->any())
+        @if (isset($errors) && $errors->any())
             <div class="alert alert-danger border-0 shadow-lg mb-4 mt-3" style="border-radius: 18px; background: #fef2f2; border-left: 6px solid #ef4444 !important; padding: 18px 22px;">
                 <div class="d-flex align-items-center">
                     <i class="fas fa-exclamation-triangle text-danger fa-2x mr-3"></i>
@@ -603,52 +603,136 @@
         </div>
 
         <div class="dash-grid">
-            <!-- Row 1 Left: Attendance Action/Info -->
+            <!-- Row 1 Left: Sleek Compact Monthly Attendance Calendar Card -->
             <div class="orb-card">
-                <div class="orb-card-head">
-                    <h5><i class="fas fa-fingerprint"></i> Attendance Actions</h5>
-                </div>
-                <div class="orb-card-body d-flex flex-column justify-content-center align-items-center text-center py-4" style="min-height: 220px;">
-                    @if($profileStatus === 'pending' && $profileCompletion < 100)
-                        <div class="icon-circle mb-3" style="width:54px; height:54px; border-radius:50%; background:#FEF3C7; color:#D97706; display:flex; align-items:center; justify-content:center; font-size:22px;">
-                            <i class="fas fa-exclamation-triangle"></i>
-                        </div>
-                        <h6 class="font-weight-bold mb-1" style="color:var(--orb-text); font-size:15px;">Complete your profile to enable attendance</h6>
-                        <p class="text-muted small px-3 mb-3">Some required employee fields are incomplete. Setup your profile details to activate attendance.</p>
-                        <a href="{{ Route::has('profile.index') ? route('profile.index') : '#' }}" class="btn btn-warning px-4 font-weight-bold" style="border-radius:12px; font-weight:800; color:#fff; background:#D97706; border-color:#D97706;">
-                            <i class="fas fa-id-card"></i> Complete Profile
-                        </a>
-                    @elseif($profileStatus === 'submitted' || ($profileStatus === 'pending' && $profileCompletion == 100))
-                        <div class="icon-circle mb-3" style="width:54px; height:54px; border-radius:50%; background:#E0F2FE; color:#0369A1; display:flex; align-items:center; justify-content:center; font-size:22px;">
-                            <i class="fas fa-hourglass-half"></i>
-                        </div>
-                        <h6 class="font-weight-bold mb-1" style="color:var(--orb-text); font-size:15px;">Profile under verification</h6>
-                        <p class="text-muted small px-3 mb-0">Your profile details are currently being verified by HR. Attendance tracking will unlock soon.</p>
-                    @elseif($profileStatus === 'rejected')
-                        <div class="icon-circle mb-3" style="width:54px; height:54px; border-radius:50%; background:#FEE2E2; color:#B91C1C; display:flex; align-items:center; justify-content:center; font-size:22px;">
-                            <i class="fas fa-times-circle"></i>
-                        </div>
-                        <h6 class="font-weight-bold text-danger mb-1" style="font-size:15px;">Profile requires correction</h6>
-                        <p class="text-muted small px-3 mb-3">HR rejected your submitted profile details. Please review corrections and re-submit.</p>
-                        <a href="{{ Route::has('profile.index') ? route('profile.index') : '#' }}" class="btn btn-danger px-4 font-weight-bold" style="border-radius:12px; font-weight:800;">
-                            <i class="fas fa-id-card"></i> Correct Profile
-                        </a>
-                    @else
-                        <div class="icon-circle mb-3" style="width:54px; height:54px; border-radius:50%; background:#DCFCE7; color:#15803D; display:flex; align-items:center; justify-content:center; font-size:22px;">
-                            <i class="fas fa-check-circle"></i>
-                        </div>
-                        <h6 class="font-weight-bold mb-1" style="color:var(--orb-text); font-size:15px;">Attendance Tracking Active</h6>
-                        <p class="text-muted small px-3 mb-0">Your profile details are approved. Your attendance logs are successfully sync'd from mobile.</p>
-                    @endif
+                <div class="orb-card-head d-flex align-items-center justify-content-between flex-wrap gap-2 py-2 px-3">
+                    <h5 style="margin: 0; font-size: 14px; font-weight: 950; color: var(--orb-text); display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-calendar-alt text-primary" style="font-size: 16px;"></i>
+                        <span>Attendance Calendar</span>
+                    </h5>
 
-                    <div class="w-100 mt-4 p-3 text-left" style="background:#F8FAFC; border-radius:16px; border:1px dashed #E2E8F0;">
-                        <small class="text-muted d-block font-weight-bold mb-1"><i class="fas fa-mobile-alt text-primary"></i> Punch Policy Notice</small>
-                        <span class="small text-muted d-block" style="font-size:11.5px; line-height:1.4;">Web punches are disabled. Please download the {{ $branding['company_name'] ?? config('app.name', 'OrboOne HRMS') }} Mobile Application to mark your daily attendance.</span>
+                    <!-- Compact Month Navigation Controls -->
+                    <div class="d-flex align-items-center gap-1">
+                        <button type="button" class="btn btn-sm btn-light border shadow-sm px-2 py-1" id="cal_prev_btn" onclick="changeCalMonth(-1)" style="border-radius: 8px; font-weight: 800;">
+                            <i class="fas fa-chevron-left" style="font-size: 10px;"></i>
+                        </button>
+                        
+                        <select id="cal_month_select" class="form-control form-control-sm border shadow-sm px-1" style="border-radius: 8px; font-weight: 800; width: 88px; font-size: 11px; height: 28px;" onchange="fetchCalData()">
+                            @foreach(range(1, 12) as $m)
+                                <option value="{{ $m }}" {{ $m == now()->month ? 'selected' : '' }}>
+                                    {{ \Carbon\Carbon::create()->month($m)->format('M') }}
+                                </option>
+                            @endforeach
+                        </select>
+
+                        <select id="cal_year_select" class="form-control form-control-sm border shadow-sm px-1" style="border-radius: 8px; font-weight: 800; width: 68px; font-size: 11px; height: 28px;" onchange="fetchCalData()">
+                            @foreach(range(now()->year - 2, now()->year + 1) as $y)
+                                <option value="{{ $y }}" {{ $y == now()->year ? 'selected' : '' }}>{{ $y }}</option>
+                            @endforeach
+                        </select>
+
+                        <button type="button" class="btn btn-sm btn-light border shadow-sm px-2 py-1" id="cal_next_btn" onclick="changeCalMonth(1)" style="border-radius: 8px; font-weight: 800;">
+                            <i class="fas fa-chevron-right" style="font-size: 10px;"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="orb-card-body p-3 d-flex flex-column justify-content-between">
+                    <div>
+                        <!-- Calendar Grid Headers (MON TUE WED THU FRI SAT SUN) -->
+                        <div class="calendar-grid-header mb-2" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center;">
+                            <div class="cal-day-header font-weight-bold text-dark" style="font-size: 10.5px; letter-spacing: 0.5px; text-transform: uppercase;">MON</div>
+                            <div class="cal-day-header font-weight-bold text-dark" style="font-size: 10.5px; letter-spacing: 0.5px; text-transform: uppercase;">TUE</div>
+                            <div class="cal-day-header font-weight-bold text-dark" style="font-size: 10.5px; letter-spacing: 0.5px; text-transform: uppercase;">WED</div>
+                            <div class="cal-day-header font-weight-bold text-dark" style="font-size: 10.5px; letter-spacing: 0.5px; text-transform: uppercase;">THU</div>
+                            <div class="cal-day-header font-weight-bold text-dark" style="font-size: 10.5px; letter-spacing: 0.5px; text-transform: uppercase;">FRI</div>
+                            <div class="cal-day-header font-weight-bold text-secondary" style="font-size: 10.5px; letter-spacing: 0.5px; text-transform: uppercase;">SAT</div>
+                            <div class="cal-day-header font-weight-bold text-danger" style="font-size: 10.5px; letter-spacing: 0.5px; text-transform: uppercase;">SUN</div>
+                        </div>
+
+                        <!-- Compact Dynamic Days Grid Container -->
+                        <div id="attendance_calendar_grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; min-height: 180px;">
+                            <!-- Rendered dynamically by JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Shifted Bottom Summary Badges Bar -->
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-1 mt-3 pt-2" style="border-top: 1px solid #F1F5F9; font-size: 10.5px;">
+                        <span class="px-2 py-1 rounded-pill" style="background:#DCFCE7; color:#15803D; font-weight:800; display:inline-flex; align-items:center; gap:4px;">
+                            <span style="width:6px; height:6px; border-radius:50%; background:#16A34A;"></span> Present: <strong id="cal_count_present">0</strong>
+                        </span>
+                        <span class="px-2 py-1 rounded-pill" style="background:#FEE2E2; color:#B91C1C; font-weight:800; display:inline-flex; align-items:center; gap:4px;">
+                            <span style="width:6px; height:6px; border-radius:50%; background:#EF4444;"></span> Absent: <strong id="cal_count_absent">0</strong>
+                        </span>
+                        <span class="px-2 py-1 rounded-pill" style="background:#FEF3C7; color:#B45309; font-weight:800; display:inline-flex; align-items:center; gap:4px;">
+                            <span style="width:6px; height:6px; border-radius:50%; background:#F59E0B;"></span> Half Day: <strong id="cal_count_half_day">0</strong>
+                        </span>
+                        <span class="px-2 py-1 rounded-pill" style="background:#DBEAFE; color:#1D4ED8; font-weight:800; display:inline-flex; align-items:center; gap:4px;">
+                            <span style="width:6px; height:6px; border-radius:50%; background:#3B82F6;"></span> Leave: <strong id="cal_count_leave">0</strong>
+                        </span>
+                        <span class="px-2 py-1 rounded-pill" style="background:#F1F5F9; color:#475467; font-weight:800; display:inline-flex; align-items:center; gap:4px;">
+                            <span style="width:6px; height:6px; border-radius:50%; background:#64748B;"></span> Holiday/Off: <strong id="cal_count_holiday_off">0</strong>
+                        </span>
                     </div>
                 </div>
             </div>
 
-            <!-- Row 1 Right: Latest Announcements -->
+            <!-- Row 1 Right: Quick Actions -->
+            <div class="orb-card">
+                <div class="orb-card-head">
+                    <h5><i class="fas fa-bolt text-primary"></i> Quick Actions</h5>
+                </div>
+                <div class="orb-card-body p-3">
+                    <div class="quick-actions-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                        <a href="{{ Route::has('leave-requests.create') ? route('leave-requests.create') : '#' }}" class="quick-action-btn">
+                            <div class="quick-action-icon"><i class="fas fa-plane-departure text-primary"></i></div>
+                            <div class="quick-action-label">Apply Leave</div>
+                        </a>
+                        
+                        <a href="{{ Route::has('hrms.attendance.my-wfh.index') ? route('hrms.attendance.my-wfh.index') : (Route::has('hrms.attendance.wfh.index') ? route('hrms.attendance.wfh.index') : '#') }}" class="quick-action-btn">
+                            <div class="quick-action-icon"><i class="fas fa-laptop-house text-info"></i></div>
+                            <div class="quick-action-label">WFH Apply</div>
+                        </a>
+
+                        <a href="{{ Route::has('hrms.attendance.my-holiday-work.index') ? route('hrms.attendance.my-holiday-work.index') : (Route::has('hrms.attendance.work-reports') ? route('hrms.attendance.work-reports') : '#') }}" class="quick-action-btn">
+                            <div class="quick-action-icon"><i class="fas fa-briefcase text-warning"></i></div>
+                            <div class="quick-action-label">Work Request</div>
+                        </a>
+
+                        <a href="{{ Route::has('hrms.attendance.regularizations.index') ? route('hrms.attendance.regularizations.index') : '#' }}" class="quick-action-btn">
+                            <div class="quick-action-icon"><i class="fas fa-user-clock text-danger"></i></div>
+                            <div class="quick-action-label">Regularization</div>
+                        </a>
+
+                        <a href="{{ Route::has('attendances.monthly-report') ? route('attendances.monthly-report') : (Route::has('hrms.attendance.monthly_summary.index') ? route('hrms.attendance.monthly_summary.index') : '#') }}" class="quick-action-btn">
+                            <div class="quick-action-icon"><i class="fas fa-chart-bar" style="color:#6366F1;"></i></div>
+                            <div class="quick-action-label">Monthly Report</div>
+                        </a>
+
+                        <a href="{{ Route::has('hrms.attendance.my') ? route('hrms.attendance.my') : '#' }}" class="quick-action-btn">
+                            <div class="quick-action-icon"><i class="fas fa-calendar-check text-success"></i></div>
+                            <div class="quick-action-label">Attendance</div>
+                        </a>
+
+                        <a href="{{ Route::has('enterprise-payroll.self.payslips') ? route('enterprise-payroll.self.payslips') : '#' }}" class="quick-action-btn">
+                            <div class="quick-action-icon"><i class="fas fa-file-invoice-dollar" style="color:#7C3AED;"></i></div>
+                            <div class="quick-action-label">Payslips</div>
+                        </a>
+
+                        <a href="{{ Route::has('hrms.leave.balances.index') ? route('hrms.leave.balances.index') : '#' }}" class="quick-action-btn">
+                            <div class="quick-action-icon"><i class="fas fa-balance-scale text-secondary"></i></div>
+                            <div class="quick-action-label">Balances</div>
+                        </a>
+
+                        <a href="{{ Route::has('hrms.documents.self.index') ? route('hrms.documents.self.index') : '#' }}" class="quick-action-btn">
+                            <div class="quick-action-icon"><i class="fas fa-folder-open text-primary"></i></div>
+                            <div class="quick-action-label">Documents</div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row 2 Left: Latest Announcements -->
             <div class="orb-card">
                 <div class="orb-card-head">
                     <h5><i class="fas fa-bullhorn"></i> Latest Announcements</h5>
@@ -679,7 +763,7 @@
                 </div>
             </div>
 
-            <!-- Row 2 Left: My Payslips -->
+            <!-- Row 2 Right: My Payslips -->
             <div class="orb-card">
                 <div class="orb-card-head">
                     <h5><i class="fas fa-file-invoice-dollar"></i> My Payslips</h5>
@@ -708,7 +792,7 @@
                 </div>
             </div>
 
-            <!-- Row 2 Right: My Leaves -->
+            <!-- Row 3 Left: My Leaves -->
             <div class="orb-card">
                 <div class="orb-card-head">
                     <h5><i class="fas fa-plane-departure"></i> My Leave Applications</h5>
@@ -742,7 +826,7 @@
                 </div>
             </div>
 
-            <!-- Row 3 Left: Documents & Profile -->
+            <!-- Row 3 Right: Documents & Profile -->
             <div class="orb-card">
                 <div class="orb-card-head">
                     <h5><i class="fas fa-id-card"></i> Documents & Profile Status</h5>
@@ -784,41 +868,6 @@
                     </a>
                 </div>
             </div>
-
-            <!-- Row 3 Right: Quick Actions -->
-            <div class="orb-card">
-                <div class="orb-card-head">
-                    <h5><i class="fas fa-bolt"></i> Quick Actions</h5>
-                </div>
-                <div class="orb-card-body">
-                    <div class="quick-actions-grid">
-                        <a href="{{ Route::has('hrms.attendance.my') ? route('hrms.attendance.my') : '#' }}" class="quick-action-btn">
-                            <div class="quick-action-icon"><i class="fas fa-calendar-check"></i></div>
-                            <div class="quick-action-label">Attendance</div>
-                        </a>
-                        <a href="{{ Route::has('leave-requests.create') ? route('leave-requests.create') : '#' }}" class="quick-action-btn">
-                            <div class="quick-action-icon"><i class="fas fa-plane-departure"></i></div>
-                            <div class="quick-action-label">Apply Leave</div>
-                        </a>
-                        <a href="{{ Route::has('hrms.leave.balances.index') ? route('hrms.leave.balances.index') : '#' }}" class="quick-action-btn">
-                            <div class="quick-action-icon"><i class="fas fa-balance-scale"></i></div>
-                            <div class="quick-action-label">Balances</div>
-                        </a>
-                        <a href="{{ Route::has('enterprise-payroll.self.payslips') ? route('enterprise-payroll.self.payslips') : '#' }}" class="quick-action-btn">
-                            <div class="quick-action-icon"><i class="fas fa-file-invoice-dollar"></i></div>
-                            <div class="quick-action-label">Payslips</div>
-                        </a>
-                        <a href="{{ Route::has('hrms.documents.self.index') ? route('hrms.documents.self.index') : '#' }}" class="quick-action-btn">
-                            <div class="quick-action-icon"><i class="fas fa-folder-open"></i></div>
-                            <div class="quick-action-label">Documents</div>
-                        </a>
-                        <a href="{{ Route::has('documents.policies.self') ? route('documents.policies.self') : (Route::has('documents.policies.self') ? route('documents.policies.self') : '#') }}" class="quick-action-btn">
-                            <div class="quick-action-icon"><i class="fas fa-shield-alt"></i></div>
-                            <div class="quick-action-label">Policies</div>
-                        </a>
-                    </div>
-                </div>
-            </div>
         </div>
 
     </div>
@@ -845,4 +894,104 @@
 
 {{-- Include Punch In & Punch Out Modals and Scripts --}}
 @include('dashboard.partials.employee-dashboard', ['only_modals' => true])
+
+<script>
+function fetchCalData() {
+    var m = $('#cal_month_select').val();
+    var y = $('#cal_year_select').val();
+    
+    $('#attendance_calendar_grid').html('<div class="w-100 text-center py-5" style="grid-column: span 7;"><i class="fas fa-spinner fa-spin fa-2x text-primary mb-2"></i><p class="text-muted font-weight-bold" style="font-size:13px;">Loading attendance calendar...</p></div>');
+
+    $.ajax({
+        url: "{{ route('dashboard.attendance_calendar') }}",
+        type: "GET",
+        data: { month: m, year: y },
+        success: function(res) {
+            if (res && res.status) {
+                renderCalendarGrid(res);
+            }
+        },
+        error: function() {
+            $('#attendance_calendar_grid').html('<div class="w-100 text-center py-5 text-danger" style="grid-column: span 7;"><i class="fas fa-exclamation-circle fa-2x mb-2"></i><p class="font-weight-bold" style="font-size:13px;">Failed to load calendar data.</p></div>');
+        }
+    });
+}
+
+function renderCalendarGrid(data) {
+    var s = data.summary || {};
+    var totalPresent = (s.present || 0) + (s.late || 0);
+    var totalHolidayOff = (s.holiday || 0) + (s.week_off || 0);
+
+    $('#cal_count_present').text(totalPresent);
+    $('#cal_count_absent').text(s.absent || 0);
+    $('#cal_count_half_day').text(s.half_day || 0);
+    $('#cal_count_leave').text(s.leave || 0);
+    $('#cal_count_holiday_off').text(totalHolidayOff);
+
+    var gridHtml = '';
+    var firstDay = data.first_day_of_week;
+    
+    for (var i = 0; i < firstDay; i++) {
+        gridHtml += '<div class="cal-day-cell empty-cell" style="background: #FAFAFA; border: 1px dashed #E2E8F0; border-radius: 8px; min-height: 42px;"></div>';
+    }
+
+    var days = data.days || {};
+    Object.keys(days).forEach(function(dateKey) {
+        var item = days[dateKey];
+        var isToday = item.is_today;
+        
+        var todayBorder = isToday ? 'border: 2px solid #4B00E8 !important; box-shadow: 0 0 8px rgba(75, 0, 232, 0.35);' : 'border: 1px solid #E7EAF3;';
+        
+        var displayLabel = item.label || '';
+        if (item.status === 'holiday') {
+            displayLabel = displayLabel.replace(/^Holiday:\s*/i, '');
+        } else if (item.status === 'week_off') {
+            displayLabel = 'Week Off';
+        }
+
+        var tooltip = item.date + ': ' + displayLabel + (item.punch_in ? ' (In: ' + item.punch_in + ' - Out: ' + (item.punch_out || '--') + ')' : '');
+        
+        gridHtml += '<div class="cal-day-cell p-1 position-relative text-center" title="' + tooltip + '" style="background: ' + item.bg + '; border-radius: 10px; min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; ' + todayBorder + ' transition: all 0.2s ease; cursor: pointer;">';
+        
+        gridHtml += '<div style="font-size: 11.5px; font-weight: 900; color: #1E293B; line-height: 1.1;">' + item.day + '</div>';
+        
+        gridHtml += '<div style="font-size: 7.5px; font-weight: 900; color: ' + item.color + '; text-transform: uppercase; margin-top: 3px; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; width: 100%; padding: 0 2px;" title="' + displayLabel + '">' + displayLabel + '</div>';
+
+        gridHtml += '</div>';
+    });
+
+    $('#attendance_calendar_grid').html(gridHtml);
+}
+
+function changeCalMonth(delta) {
+    var curM = parseInt($('#cal_month_select').val());
+    var curY = parseInt($('#cal_year_select').val());
+    
+    curM += delta;
+    if (curM > 12) {
+        curM = 1;
+        curY++;
+    } else if (curM < 1) {
+        curM = 12;
+        curY--;
+    }
+    
+    $('#cal_month_select').val(curM);
+    $('#cal_year_select').val(curY);
+    fetchCalData();
+}
+
+function resetCalToToday() {
+    var d = new Date();
+    $('#cal_month_select').val(d.getMonth() + 1);
+    $('#cal_year_select').val(d.getFullYear());
+    fetchCalData();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof $ !== 'undefined') {
+        fetchCalData();
+    }
+});
+</script>
 @endsection

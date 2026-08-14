@@ -642,9 +642,9 @@
                         <i class="fas fa-history"></i>
                     </div>
                     <div>
-                        <h5 class="leave-section-title">Recent Leave Applications</h5>
+                        <h5 class="leave-section-title">Pending Leave Applications</h5>
                         <p class="leave-section-subtitle">
-                            Latest requests with leave type, period, LWP impact and approval status.
+                            Active pending requests awaiting manager/HR approval action.
                         </p>
                     </div>
                 </div>

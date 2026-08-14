@@ -53,8 +53,8 @@ class MyHolidayWorkRequestC extends Controller
         $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'work_type' => 'required',
             'reason' => 'required|string|max:1000',
-            'start_time' => 'required|string',
-            'end_time' => 'required|string',
+            'start_time' => 'nullable|string',
+            'end_time' => 'nullable|string',
             'work_mode' => 'nullable|in:wfo,wfh,WFO,WFH',
             'notes' => 'nullable|string|max:1000',
         ], [
@@ -81,9 +81,9 @@ class MyHolidayWorkRequestC extends Controller
             return redirect()->back()->withInput()->with('error', 'Please select at least one worked date.');
         }
 
-        // Validate time ordering
-        $startTime = $request->input('start_time');
-        $endTime = $request->input('end_time');
+        // Validate time ordering if provided
+        $startTime = $request->input('start_time', '09:00');
+        $endTime = $request->input('end_time', '18:00');
         if ($startTime && $endTime) {
             $start = Carbon::parse($startTime);
             $end = Carbon::parse($endTime);
@@ -131,15 +131,14 @@ class MyHolidayWorkRequestC extends Controller
         $workMode = strtolower($request->input('work_mode', 'wfo'));
         $createdRequests = [];
 
-        DB::transaction(function () use ($employee, $dates, $workType, $workMode, $request, &$createdRequests) {
+        DB::transaction(function () use ($employee, $dates, $workType, $workMode, $request, &$createdRequests, $startTime, $endTime) {
             foreach ($dates as $dateStr) {
                 $workedDate = Carbon::parse($dateStr, 'Asia/Kolkata')->toDateString();
                 $attendance = \App\Models\HRMS\Attendance\AttendanceM::where('employee_id', $employee->id)
                     ->whereDate('attendance_date', $workedDate)
                     ->first();
 
-                $timeDetails = "Hours: " . $request->input('start_time') . " - " . $request->input('end_time');
-                $notes = trim($timeDetails . "\n" . ($request->input('notes') ?? ''));
+                $notes = trim(($request->input('notes') ?? ''));
 
                 $row = HolidayWorkRequestM::create([
                     'employee_id' => $employee->id,
@@ -193,5 +192,61 @@ class MyHolidayWorkRequestC extends Controller
 
         return redirect()->route('hrms.attendance.my-holiday-work.index')
             ->with('success', 'Holiday/Weekoff work request submitted successfully.');
+    }
+
+    public function update(Request $request, $id)
+    {
+        $employee = EmployeeM::where('user_id', Auth::id())->first();
+        if (!$employee) {
+            abort(404, 'Employee record not found.');
+        }
+
+        $holidayWorkRequest = HolidayWorkRequestM::where('employee_id', $employee->id)
+            ->where('id', $id)
+            ->firstOrFail();
+
+        if ($holidayWorkRequest->status !== 'pending') {
+            return redirect()->back()->with('error', 'Cannot edit request after approval or rejection.');
+        }
+
+        $request->validate([
+            'work_type' => 'required|in:holiday_work,weekoff_work',
+            'worked_date' => 'required|date',
+            'work_mode' => 'nullable|in:wfo,wfh,WFO,WFH',
+            'reason' => 'required|string|max:1000',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        $holidayWorkRequest->update([
+            'work_type' => $request->work_type,
+            'worked_date' => Carbon::parse($request->worked_date)->toDateString(),
+            'work_mode' => strtolower($request->work_mode ?: 'wfo'),
+            'reason' => $request->reason,
+            'notes' => $request->notes,
+        ]);
+
+        return redirect()->route('hrms.attendance.my-holiday-work.index')
+            ->with('success', 'Work request updated successfully.');
+    }
+
+    public function cancel(Request $request, $id)
+    {
+        $employee = EmployeeM::where('user_id', Auth::id())->first();
+        if (!$employee) {
+            abort(404, 'Employee record not found.');
+        }
+
+        $holidayWorkRequest = HolidayWorkRequestM::where('employee_id', $employee->id)
+            ->where('id', $id)
+            ->firstOrFail();
+
+        if ($holidayWorkRequest->status !== 'pending') {
+            return redirect()->back()->with('error', 'Only pending requests can be cancelled.');
+        }
+
+        $holidayWorkRequest->update(['status' => 'cancelled']);
+
+        return redirect()->route('hrms.attendance.my-holiday-work.index')
+            ->with('success', 'Work request cancelled successfully.');
     }
 }

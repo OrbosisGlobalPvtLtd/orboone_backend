@@ -20,7 +20,11 @@ class LeaveDashboardC extends Controller
             'allocated_employees' => LeaveAllocationM::where('year', $now->year)->distinct('employee_id')->count('employee_id'),
         ];
 
-        $recentRequests = LeaveRequestM::with(['employee.user', 'leaveType'])->latest()->limit(12)->get();
+        $recentRequests = LeaveRequestM::with(['employee.user', 'leaveType'])
+            ->where('status', 'pending')
+            ->latest()
+            ->limit(20)
+            ->get();
         $accesses = $this->accesses();
 
         return view('hrms.leave.dashboard.index', compact('stats', 'recentRequests', 'accesses'))->with('active', 'leave_management');

@@ -58,7 +58,6 @@ class EmployeeM extends Model
         'designation', // ✅ NEW STANDARD
         'position',
         'systemRole',
-        'reportingManager',
         'profile',
     ];
 

@@ -91,6 +91,8 @@ Route::middleware(['auth', 'check.access'])
         Route::post('/holiday-work/{id}/reject', [HolidayWorkRequestC::class, 'reject'])->middleware('permission:attendance.holiday_work.manage')->name('holiday_work.reject');
         Route::get('/my-holiday-work', [\App\Http\Controllers\Web\HRMS\Attendance\MyHolidayWorkRequestC::class, 'index'])->name('my-holiday-work.index');
         Route::post('/my-holiday-work', [\App\Http\Controllers\Web\HRMS\Attendance\MyHolidayWorkRequestC::class, 'store'])->name('my-holiday-work.store');
+        Route::put('/my-holiday-work/{id}', [\App\Http\Controllers\Web\HRMS\Attendance\MyHolidayWorkRequestC::class, 'update'])->name('my-holiday-work.update');
+        Route::post('/my-holiday-work/{id}/cancel', [\App\Http\Controllers\Web\HRMS\Attendance\MyHolidayWorkRequestC::class, 'cancel'])->name('my-holiday-work.cancel');
 
         Route::get('/monthly-summary', [MonthlyAttendanceSummaryC::class, 'index'])->middleware('permission:attendance.monthly_summary.view')->name('monthly_summary.index');
         Route::post('/monthly-summary/generate', [MonthlyAttendanceSummaryC::class, 'generate'])->middleware('permission:attendance.monthly_summary.view')->name('monthly_summary.generate');

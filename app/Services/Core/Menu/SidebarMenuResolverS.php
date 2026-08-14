@@ -442,6 +442,7 @@ class SidebarMenuResolverS
 
         $employeeRoutePrefixes = [
             'hrms.attendance.my-wfh.',
+            'hrms.attendance.my-holiday-work.',
             'hrms.documents.self.',
             'employee.announcements.',
             'enterprise-payroll.self.',
@@ -458,6 +459,7 @@ class SidebarMenuResolverS
             'attendances.today',
             'hrms.document-generation.self.index',
             'hrms.attendance.my',
+            'hrms.attendance.my-holiday-work.index',
             'employee.announcements.index',
             'enterprise-payroll.self.payslips',
             'enterprise-payroll.self.reimbursements',
@@ -467,6 +469,8 @@ class SidebarMenuResolverS
 
         $employeeNames = [
             'my attendance',
+            'my holiday work',
+            'my work requests',
             'my leave requests',
             'my documents',
             'upload documents',

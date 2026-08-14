@@ -32,6 +32,9 @@ class LeaveApprovalC extends Controller
             403
         );
 
+        // Auto-expire past pending leaves
+        app(\App\Services\HRMS\Leave\AutoExpireLeaveService::class)->expirePastPendingRequests();
+
         $requests = LeaveRequestM::with(['employee.user', 'employee.employeeDetail', 'leaveType', 'dates'])
             ->when($request->status, fn ($query) => $query->where('status', $request->status));
 

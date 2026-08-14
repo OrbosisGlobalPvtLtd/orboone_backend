@@ -508,17 +508,19 @@
 </style>
 @endsection
 
+@section('page_title', 'Leave History')
+
 @section('_content')
 <div class="leave-page-wrap">
 
     <div class="orb-page-header">
         <div class="orb-page-header-content">
             <div class="orb-page-kicker">
-                <i class="fas fa-user-check"></i> HRMS &bull; Leave Approval Panel
+                <i class="fas fa-history"></i> HRMS &bull; LEAVE HISTORY
             </div>
-            <h1 class="orb-page-title">Leave Approvals</h1>
+            <h1 class="orb-page-title">Leave History</h1>
             <p class="orb-page-subtitle">
-                Approve or reject employee leave requests with payroll impact, leave balance deduction, attendance sync and complete approval workflow tracking.
+                Comprehensive log of all employee leave applications, approval statuses, and historical records.
             </p>
         </div>
     </div>
@@ -529,12 +531,12 @@
         <div class="orb-table-toolbar justify-content-between align-items-end flex-wrap gap-3">
             <div class="leave-card-title-wrap">
                 <div class="leave-card-icon">
-                    <i class="fas fa-calendar-check"></i>
+                    <i class="fas fa-history"></i>
                 </div>
                 <div>
-                    <h5 class="leave-card-title">Leave Approval Requests</h5>
+                    <h5 class="leave-card-title">Leave Request History</h5>
                     <div class="leave-card-subtitle">
-                        Manage employee leave requests with payroll and attendance impact.
+                        Review and manage employee leave request history with payroll and attendance impact.
                     </div>
                 </div>
             </div>
@@ -563,7 +565,7 @@
                         <div class="leave-label">Approval Status</div>
                         <select name="status" class="leave-control">
                             <option value="">All Status</option>
-                            @foreach(['pending','approved','rejected','cancelled'] as $status)
+                            @foreach(['pending','approved','rejected','expired','cancelled'] as $status)
                             <option value="{{ $status }}" {{ request('status') === $status ? 'selected' : '' }}>
                                 {{ ucfirst($status) }}
                             </option>
@@ -611,13 +613,12 @@
                 <table class="leave-table js-leave-approval-datatable">
                     <thead>
                         <tr>
-                            <th data-orderable="false" data-searchable="false">S.No.</th>
-                            <th>Employee</th>
-                            <th>Leave Type</th>
-                            <th>Period</th>
-                            <th>Days</th>
-                            <th>Balance Split</th>
-                            <th>Status</th>
+                            <th data-orderable="false" data-searchable="false" style="width: 50px;">S.No.</th>
+                            <th style="min-width: 180px;">Employee</th>
+                            <th style="min-width: 140px;">Leave Type</th>
+                            <th style="min-width: 160px;">Period</th>
+                            <th style="min-width: 90px;">Days</th>
+                            <th style="min-width: 110px;">Status</th>
                             <th class="text-end" data-orderable="false" data-searchable="false" style="width: 190px;">Actions</th>
                         </tr>
                     </thead>
@@ -627,16 +628,40 @@
                         @php
                         $employeeName = optional($request->employee)->display_name ?? 'Unknown Employee';
                         $employeeCode = optional($request->employee)->employee_code ?? 'EMP';
-                        $leaveType = optional($request->leaveType)->name ?? 'Leave';
+                        $typeName = optional($request->leaveType)->name ?? 'Leave';
+                        $typeCode = strtolower(optional($request->leaveType)->code ?? '');
                         $initial = strtoupper(substr(trim($employeeName),0,1));
 
                         $statusClass = 'pill-pending';
                         if($request->status === 'approved'){
-                        $statusClass = 'pill-approved';
+                            $statusClass = 'pill-approved';
                         }elseif($request->status === 'rejected'){
-                        $statusClass = 'pill-rejected';
+                            $statusClass = 'pill-rejected';
                         }elseif($request->status === 'cancelled'){
-                        $statusClass = 'pill-cancelled';
+                            $statusClass = 'pill-cancelled';
+                        }elseif($request->status === 'expired'){
+                            $statusClass = 'pill-expired';
+                        }
+
+                        $startDate = optional($request->start_date);
+                        $endDate = optional($request->end_date);
+                        $isSingleDay = $startDate && $endDate && $startDate->toDateString() === $endDate->toDateString();
+
+                        $typeBadgeBg = '#EEF2FF';
+                        $typeBadgeColor = '#4F46E5';
+                        $typeIcon = 'fa-tag';
+                        if (str_contains($typeCode, 'paid')) {
+                            $typeBadgeBg = '#ECFDF5';
+                            $typeBadgeColor = '#047857';
+                            $typeIcon = 'fa-star';
+                        } elseif (str_contains($typeCode, 'sick')) {
+                            $typeBadgeBg = '#FFF7ED';
+                            $typeBadgeColor = '#C2410C';
+                            $typeIcon = 'fa-heartbeat';
+                        } elseif (str_contains($typeCode, 'comp')) {
+                            $typeBadgeBg = '#F5F3FF';
+                            $typeBadgeColor = '#6D28D9';
+                            $typeIcon = 'fa-clock';
                         }
                         @endphp
 
@@ -666,30 +691,23 @@
                             </td>
 
                             <td>
-                                <span class="leave-pill pill-type">
-                                    <i class="fas fa-tag"></i>
-                                    {{ $leaveType }}
+                                <span class="leave-pill" style="background: {{ $typeBadgeBg }}; color: {{ $typeBadgeColor }}; font-weight: 700; border-radius: 8px; padding: 4px 10px; display: inline-flex; align-items: center; gap: 4px;">
+                                    <i class="fas {{ $typeIcon }}" style="font-size: 10px;"></i>
+                                    {{ $typeName }}
                                 </span>
                             </td>
 
                             <td>
-                                <div style="font-weight:800;">
-                                    {{ optional($request->start_date)->format('d M') }}
-                                    -
-                                    {{ optional($request->end_date)->format('d M Y') }}
+                                <div style="font-weight: 800; color: #1E293B;">
+                                    @if($isSingleDay)
+                                        {{ $startDate->format('d M Y') }}
+                                    @else
+                                        {{ $startDate->format('d M Y') }} - {{ $endDate->format('d M Y') }}
+                                    @endif
                                 </div>
                             </td>
 
-                            <td><strong>{{ $request->deducted_days }}</strong></td>
-
-                            <td>
-                                <div class="leave-split">
-                                    <div class="leave-split-item"><span>Paid</span><span class="leave-split-value">{{ $request->paid_days }}</span></div>
-                                    <div class="leave-split-item"><span>Sick</span><span class="leave-split-value">{{ $request->sick_days }}</span></div>
-                                    <div class="leave-split-item"><span>Comp Off</span><span class="leave-split-value">{{ $request->comp_off_days }}</span></div>
-                                    <div class="leave-split-item"><span>LWP</span><span class="leave-split-value">{{ $request->lwp_days }}</span></div>
-                                </div>
-                            </td>
+                            <td><strong>{{ $request->deducted_days }} Days</strong></td>
 
                             <td class="leave-status">
                                 <span class="leave-pill {{ $statusClass }}">
@@ -725,14 +743,14 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="8">
+                            <td colspan="7">
                                 <div class="empty-state">
                                     <i class="fas fa-calendar-times"></i>
                                     <div style="font-weight:900;color:var(--leave-text);">
                                         No Leave Requests Found
                                     </div>
                                     <div style="font-size:12px;margin-top:4px;color:var(--leave-muted);">
-                                        New leave approval requests will appear here.
+                                        New leave history records will appear here.
                                     </div>
                                 </div>
                             </td>
@@ -840,25 +858,45 @@
                                          </td>
                                      </tr>
                                      <tr>
-                                         <td style="font-weight:700; background:#F9FAFB; color:var(--leave-text);">Leave Consumption</td>
+                                         <td style="font-weight:700; background:#F9FAFB; color:var(--leave-text);">Quota Deduction Split</td>
                                          <td>
-                                             <div class="leave-split" style="min-width:auto;">
-                                                 <div class="leave-split-item"><span>Paid Leave</span><span class="leave-split-value">{{ (float) $request->paid_days }}</span></div>
-                                                 <div class="leave-split-item"><span>Sick Leave</span><span class="leave-split-value">{{ (float) $request->sick_days }}</span></div>
-                                                 <div class="leave-split-item"><span>Comp Off</span><span class="leave-split-value">{{ (float) $request->comp_off_days }}</span></div>
-                                                 <div class="leave-split-item"><span>LWP</span><span class="leave-split-value">{{ (float) $request->lwp_days }}</span></div>
+                                             <div class="d-flex align-items-center flex-wrap" style="gap: 8px;">
+                                                 <span class="badge" style="background: #ECFDF5; color: #047857; font-size: 12px; padding: 6px 12px; border-radius: 8px; font-weight: 800;">
+                                                     <i class="fas fa-star mr-1"></i> Paid Days: {{ number_format((float) $request->paid_days, 1) }}
+                                                 </span>
+                                                 @if((float) $request->sick_days > 0)
+                                                     <span class="badge" style="background: #FFF7ED; color: #C2410C; font-size: 12px; padding: 6px 12px; border-radius: 8px; font-weight: 800;">
+                                                         <i class="fas fa-heartbeat mr-1"></i> Sick Days: {{ number_format((float) $request->sick_days, 1) }}
+                                                     </span>
+                                                 @endif
+                                                 @if((float) $request->comp_off_days > 0)
+                                                     <span class="badge" style="background: #F5F3FF; color: #6D28D9; font-size: 12px; padding: 6px 12px; border-radius: 8px; font-weight: 800;">
+                                                         <i class="fas fa-clock mr-1"></i> Comp Off: {{ number_format((float) $request->comp_off_days, 1) }}
+                                                     </span>
+                                                 @endif
+                                                 @if((float) $request->lwp_days > 0)
+                                                     <span class="badge" style="background: #FEF2F2; color: #B91C1C; font-size: 12px; padding: 6px 12px; border-radius: 8px; font-weight: 800;">
+                                                         <i class="fas fa-exclamation-triangle mr-1"></i> LWP (Unpaid) Days: {{ number_format((float) $request->lwp_days, 1) }}
+                                                     </span>
+                                                 @endif
                                              </div>
                                          </td>
                                      </tr>
+
+                                     @php
+                                         $typeCode = strtolower(optional($request->leaveType)->code ?? '');
+                                         $isSickLeave = optional($request->leaveType)->is_sick || str_contains($typeCode, 'sick');
+                                     @endphp
+
+                                     @if($isSickLeave)
                                      <tr>
                                          <td style="font-weight:700; background:#F9FAFB; color:var(--leave-text);">Medical Certificate</td>
                                          <td>
                                              @php
                                                  $sickType = \App\Models\HRMS\Leave\LeaveTypeM::where('code', 'sick_leave')->first();
                                                  $consecLimit = $sickType ? ($sickType->medical_certificate_after_days ?: 2) : 2;
-                                                 $isSick = optional($request->leaveType)->is_sick || optional($request->leaveType)->code === 'sick_leave';
                                                  $consecRun = 0;
-                                                 if ($isSick && $request->dates) {
+                                                 if ($request->dates) {
                                                      $reqDates = $request->dates->filter(fn($d) => $d->sick_day > 0 || $d->deduct_as_leave)->pluck('leave_date')->map(fn($d) => \Carbon\Carbon::parse($d)->toDateString())->all();
                                                      if (!empty($reqDates)) {
                                                          $appSickDates = \Illuminate\Support\Facades\DB::table('leave_request_dates')
@@ -882,15 +920,20 @@
                                                          $consecRun = $leftC + count($reqDates) + $rightC;
                                                      }
                                                  }
-                                                 $certRequired = $isSick && $consecRun > $consecLimit;
+                                                 $certRequired = $consecRun > $consecLimit;
                                                  $uploaded = !empty($request->attachment_path);
                                              @endphp
-                                             <div class="leave-split" style="min-width:auto;">
-                                                 <div class="leave-split-item"><span>Required</span><span class="leave-split-value">{{ $certRequired ? 'Yes' : 'No' }}</span></div>
-                                                 <div class="leave-split-item"><span>Uploaded</span><span class="leave-split-value">{{ $uploaded ? 'Yes' : 'No' }}</span></div>
+                                             <div class="d-flex align-items-center" style="gap: 8px;">
+                                                 <span class="badge" style="background: #F1F5F9; color: #475569; padding: 5px 10px; border-radius: 6px; font-weight: 700;">
+                                                     Required: <strong>{{ $certRequired ? 'Yes' : 'No' }}</strong>
+                                                 </span>
+                                                 <span class="badge" style="background: {{ $uploaded ? '#ECFDF5' : '#FEF2F2' }}; color: {{ $uploaded ? '#047857' : '#B91C1C' }}; padding: 5px 10px; border-radius: 6px; font-weight: 700;">
+                                                     Uploaded: <strong>{{ $uploaded ? 'Yes' : 'No' }}</strong>
+                                                 </span>
                                              </div>
                                          </td>
                                      </tr>
+                                     @endif
                                     <tr>
                                         <td style="font-weight:700; background:#F9FAFB; color:var(--leave-text);">Reason</td>
                                         <td style="white-space:normal; word-break:break-word; color:var(--leave-text);">{{ $request->reason ?: 'No reason provided.' }}</td>
@@ -926,8 +969,27 @@
                             </table>
                         </div>
                     </div>
-                    <div class="modal-footer leave-modal-footer">
-                        <button type="button" class="leave-modal-btn leave-modal-btn-light w-100" data-dismiss="modal" data-bs-dismiss="modal">Close</button>
+                    <div class="modal-footer leave-modal-footer d-flex align-items-center justify-content-between">
+                        <button type="button" class="btn btn-light border font-weight-bold px-4" style="border-radius: 12px; height: 40px;" data-dismiss="modal" data-bs-dismiss="modal">Close</button>
+
+                        @if($request->status === 'pending')
+                            <div class="d-flex align-items-center" style="gap: 10px;">
+                                @if(auth()->user()->hasPermission('leave.approvals.reject'))
+                                    <button type="button" class="btn btn-danger font-weight-bold px-3" style="border-radius: 12px; height: 40px; background: #EF4444; border: none;" data-dismiss="modal" data-bs-dismiss="modal" data-toggle="modal" data-bs-toggle="modal" data-target="#rejectModal-{{ $request->id }}" data-bs-target="#rejectModal-{{ $request->id }}">
+                                        <i class="fas fa-times mr-1"></i> Reject Request
+                                    </button>
+                                @endif
+
+                                @if(auth()->user()->hasPermission('leave.approvals.approve'))
+                                    <form method="POST" action="{{ route('leave-approvals.approve', $request->id) }}" class="d-inline" onsubmit="return confirm('Are you sure you want to approve the leave request for {{ $employeeName }}?')">
+                                        @csrf
+                                        <button type="submit" class="btn btn-success font-weight-bold px-4" style="border-radius: 12px; height: 40px; background: #10B981; border: none;">
+                                            <i class="fas fa-check mr-1"></i> Approve Request
+                                        </button>
+                                    </form>
+                                @endif
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -1001,15 +1063,80 @@
                              "<'row'<'col-sm-12'tr>>" +
                              "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
                         buttons: [
-                            { extend: 'excel', className: 'btn btn-light border shadow-sm d-none' },
-                            { extend: 'csv', className: 'btn btn-light border shadow-sm d-none' },
-                            { extend: 'pdf', className: 'btn btn-light border shadow-sm d-none' },
-                            { extend: 'print', className: 'btn btn-light border shadow-sm d-none' }
+                            {
+                                extend: 'excel',
+                                title: 'Leave History Report',
+                                className: 'btn btn-light border shadow-sm d-none',
+                                exportOptions: {
+                                    columns: [0, 1, 2, 3, 4, 5],
+                                    format: {
+                                        body: function (data, row, column, node) {
+                                            return $(node).text().trim().replace(/\s+/g, ' ');
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                extend: 'csv',
+                                title: 'Leave History Report',
+                                className: 'btn btn-light border shadow-sm d-none',
+                                exportOptions: {
+                                    columns: [0, 1, 2, 3, 4, 5],
+                                    format: {
+                                        body: function (data, row, column, node) {
+                                            return $(node).text().trim().replace(/\s+/g, ' ');
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                extend: 'pdf',
+                                title: 'Leave History Report',
+                                orientation: 'landscape',
+                                pageSize: 'A4',
+                                className: 'btn btn-light border shadow-sm d-none',
+                                exportOptions: {
+                                    columns: [0, 1, 2, 3, 4, 5],
+                                    format: {
+                                        body: function (data, row, column, node) {
+                                            return $(node).text().trim().replace(/\s+/g, ' ');
+                                        }
+                                    }
+                                },
+                                customize: function (doc) {
+                                    doc.defaultStyle.fontSize = 9;
+                                    doc.styles.tableHeader.fontSize = 10;
+                                    doc.styles.tableHeader.bold = true;
+                                    doc.styles.tableHeader.fillColor = '#4F46E5';
+                                    doc.styles.tableHeader.color = '#FFFFFF';
+                                    if (doc.content[1] && doc.content[1].table) {
+                                        doc.content[1].table.widths = ['8%', '30%', '20%', '24%', '10%', '8%'];
+                                    }
+                                }
+                            },
+                            {
+                                extend: 'print',
+                                title: 'Leave History Report',
+                                className: 'btn btn-light border shadow-sm d-none',
+                                exportOptions: {
+                                    columns: [0, 1, 2, 3, 4, 5],
+                                    format: {
+                                        body: function (data, row, column, node) {
+                                            return $(node).text().trim().replace(/\s+/g, ' ');
+                                        }
+                                    }
+                                },
+                                customize: function (win) {
+                                    $(win.document.body).css('font-family', 'sans-serif').css('padding', '20px');
+                                    $(win.document.body).find('h1').css('text-align', 'center').css('font-size', '20px').css('margin-bottom', '20px');
+                                    $(win.document.body).find('table').addClass('compact').css('font-size', '12px').css('width', '100%');
+                                }
+                            }
                         ],
                         columnDefs: [
-                            { targets: 0, width: "60px", orderable: false, searchable: false }, // S.No
-                            { targets: 6, width: "130px" }, // Status
-                            { targets: 7, width: "190px", orderable: false, searchable: false } // Actions
+                            { targets: 0, width: "50px", orderable: false, searchable: false },
+                            { targets: 5, width: "110px" },
+                            { targets: 6, width: "190px", orderable: false, searchable: false }
                         ],
                         drawCallback: function() {
                             $('.dataTables_paginate > .pagination').addClass('pagination-rounded justify-content-end mb-0');

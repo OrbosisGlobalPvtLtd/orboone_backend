@@ -483,4 +483,16 @@ body {
     text-transform: uppercase;
     letter-spacing: .05em;
 }
+
+.leave-pill.pill-expired {
+    background: #F3E8FF !important;
+    color: #6B21A8 !important;
+    border: 1px solid #E9D5FF !important;
+}
+
+.leave-pill.pill-cancelled {
+    background: #F1F5F9 !important;
+    color: #475569 !important;
+    border: 1px solid #E2E8F0 !important;
+}
 </style>

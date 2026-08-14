@@ -4,6 +4,6 @@
 @if(session('error'))
     <div class="alert alert-danger border-0">{{ session('error') }}</div>
 @endif
-@if($errors->any())
+@if(isset($errors) && $errors->any())
     <div class="alert alert-danger border-0">{{ $errors->first() }}</div>
 @endif

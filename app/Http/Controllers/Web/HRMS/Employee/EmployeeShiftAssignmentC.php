@@ -17,7 +17,7 @@ class EmployeeShiftAssignmentC extends Controller
         $departmentId = $request->input('department_id');
         $employeeId = $request->input('employee_id');
 
-        $query = EmployeeM::with(['user', 'department', 'designation', 'currentShiftTiming.attendanceTime']);
+        $query = EmployeeM::active()->with(['user', 'department', 'designation', 'currentShiftTiming.attendanceTime']);
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
@@ -39,13 +39,16 @@ class EmployeeShiftAssignmentC extends Controller
 
         $employees = $query->orderBy('id', 'desc')->paginate(15)->withQueryString();
 
-        $allEmployeesList = EmployeeM::with('user')->orderBy('id', 'desc')->get();
+        $allEmployeesList = EmployeeM::active()->with('user')->orderBy('id', 'desc')->get();
         $attendanceTimes = AttendanceTimeM::where('is_active', 1)->orderBy('name')->get();
         $departments = DepartmentM::orderBy('name')->get();
 
         $defaultShift = AttendanceTimeM::where('is_default', 1)->first() ?? AttendanceTimeM::first();
 
-        $allShiftAssignments = EmployeeShiftTimingM::with(['employee.user', 'attendanceTime'])
+        $allShiftAssignments = EmployeeShiftTimingM::whereHas('employee', function ($q) {
+                $q->active();
+            })
+            ->with(['employee.user', 'attendanceTime'])
             ->orderByDesc('id')
             ->get();
 

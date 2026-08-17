@@ -224,6 +224,18 @@ class SidebarMenuResolverS
             $isEmployeeOnly = $this->isEmployeeOnlyMenu($menu);
 
             if ($isEmployeeContext) {
+                $route = strtolower(trim((string) ($menu->route ?? '')));
+                if (in_array($route, [
+                    'hrms.leave.dashboard',
+                    'hrms.leave.history',
+                    'leave-requests.create',
+                    'leave-requests.index',
+                    'hrms.leave.balances.index',
+                    'employees-leave-request.summary',
+                    'hrms.holidays.index',
+                ], true)) {
+                    return true;
+                }
                 return $isEmployeeOnly || $this->isEmployeeParentContainer($menu);
             }
 
@@ -410,6 +422,14 @@ class SidebarMenuResolverS
             'hrms.organization.index' => ['departments.manage', 'designations.manage', 'employees.organization.manage'],
             'hrms.attendance.wfh.index' => ['attendance.wfh.view', 'attendance.wfh.own'],
             'hrms.attendance.my-wfh.index' => ['attendance.wfh.own'],
+            'hrms.leave.dashboard' => ['leave.dashboard.view', 'leave.my_requests.view'],
+            'leave-approvals.index' => ['leave.approvals.view_all', 'leave.approvals.view_team', 'leave.approvals.view', 'leave.approve'],
+            'hrms.leave.history' => ['leave.history.view', 'leave.my_requests.view', 'leave.approvals.view_all', 'leave.approvals.view_team'],
+            'leave-requests.create' => ['leave.my_requests.create', 'leave.my_requests.view', 'leave.apply', 'leave_self.apply'],
+            'leave-allocations.index' => ['leave.allocation.manage', 'leave.allocation.view_all', 'leave.allocation.view'],
+            'hrms.leave.balances.index' => ['leave.balance.view_all', 'leave.balance.view_team', 'leave.balance.view_own', 'leave.balance.view', 'leave_self.view_balance'],
+            'employees-leave-request.summary' => ['leave.balance.view_all', 'leave.balance.view_team', 'leave.balance.view_own', 'leave.balance.view', 'leave_self.view_balance'],
+            'hrms.holidays.index' => ['leave.holidays.manage', 'leave.team_calendar.view'],
         ];
     }
 

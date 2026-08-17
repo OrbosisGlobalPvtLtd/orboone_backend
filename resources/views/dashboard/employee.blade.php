@@ -877,7 +877,7 @@
 @if ($canWebPunch)
     <div style="position: fixed; bottom: 32px; right: 32px; z-index: 9999;">
         @if ($isPunchBlocked)
-            <button type="button" class="btn btn-secondary font-weight-bold px-4 py-3 shadow d-flex align-items-center" disabled style="border-radius: 50px; font-size: 15px; font-weight: 900; cursor: not-allowed; opacity: 0.75; background: #64748b !important; color: #fff; border: 2px solid #ffffff;">
+            <button type="button" class="btn font-weight-bold px-4 py-3 shadow-lg d-flex align-items-center" data-toggle="modal" data-target="#webPunchInModal" style="border-radius: 50px; font-size: 15px; font-weight: 900; background: linear-gradient(135deg, #64748b 0%, #475569 100%) !important; color: #fff; border: 2px solid #ffffff; cursor: pointer;">
                 <i class="fas fa-ban fa-lg mr-2"></i> PUNCH BLOCKED
             </button>
         @elseif (!$hasPunchedIn)
@@ -919,7 +919,7 @@ function fetchCalData() {
 
 function renderCalendarGrid(data) {
     var s = data.summary || {};
-    var totalPresent = (s.present || 0) + (s.late || 0);
+    var totalPresent = s.present || 0;
     var totalHolidayOff = (s.holiday || 0) + (s.week_off || 0);
 
     $('#cal_count_present').text(totalPresent);
@@ -947,9 +947,12 @@ function renderCalendarGrid(data) {
             displayLabel = displayLabel.replace(/^Holiday:\s*/i, '');
         } else if (item.status === 'week_off') {
             displayLabel = 'Week Off';
+        } else if (item.status === 'no_record') {
+            displayLabel = 'N/A';
         }
 
-        var tooltip = item.date + ': ' + displayLabel + (item.punch_in ? ' (In: ' + item.punch_in + ' - Out: ' + (item.punch_out || '--') + ')' : '');
+        var tooltipLabel = (item.status === 'no_record') ? 'No Record' : displayLabel;
+        var tooltip = item.date + ': ' + tooltipLabel + (item.punch_in ? ' (In: ' + item.punch_in + ' - Out: ' + (item.punch_out || '--') + ')' : '');
         
         gridHtml += '<div class="cal-day-cell p-1 position-relative text-center" title="' + tooltip + '" style="background: ' + item.bg + '; border-radius: 10px; min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; ' + todayBorder + ' transition: all 0.2s ease; cursor: pointer;">';
         

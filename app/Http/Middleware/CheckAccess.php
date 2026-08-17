@@ -43,8 +43,8 @@ class CheckAccess
             return $next($request);
         }
 
-        // Always allow web attendance clock-in and clock-out action routes for authenticated users
-        if (in_array($routeName, ['attendances.clock-in', 'attendances.clock-out'], true)) {
+        // Always allow web attendance clock-in, clock-out, today, and my-attendance action routes for authenticated users
+        if (in_array($routeName, ['attendances.today', 'attendances.clock-in', 'attendances.clock-out', 'hrms.attendance.my'], true)) {
             return $next($request);
         }
 

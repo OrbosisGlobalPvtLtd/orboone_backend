@@ -283,7 +283,7 @@ $existingWorkMode = strtolower($todayRecord->work_mode ?? 'wfo');
 
 {{-- Web Punch In Modal --}}
 <div class="modal fade" id="webPunchInModal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" role="document" style="max-width: 450px; margin: 1.75rem auto;">
+    <div class="modal-dialog modal-dialog-centered" role="document" style="max-width: 480px; margin: 1.75rem auto;">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 24px; overflow: hidden;">
             <form method="POST" action="{{ route('attendances.clock-in') }}" id="webPunchInForm">
                 @csrf
@@ -298,35 +298,84 @@ $existingWorkMode = strtolower($todayRecord->work_mode ?? 'wfo');
                     <button type="button" class="close text-white opacity-10" data-dismiss="modal"><span>&times;</span></button>
                 </div>
                 <div class="modal-body p-4">
-                    @if (session('error') || session('danger'))
-                    <div class="alert alert-danger border-0 mb-3" style="border-radius: 12px; background: #fef2f2; border-left: 4px solid #ef4444 !important; font-size: 13px; font-weight: 700; color: #991b1b;">
-                        <i class="fas fa-exclamation-circle text-danger mr-1"></i> {{ session('error') ?? session('danger') }}
-                    </div>
-                    @endif
-                    @if (isset($errors) && $errors->any())
-                    <div class="alert alert-danger border-0 mb-3" style="border-radius: 12px; background: #fef2f2; border-left: 4px solid #ef4444 !important; font-size: 13px; font-weight: 700; color: #991b1b;">
-                        <i class="fas fa-exclamation-triangle text-danger mr-1"></i> {{ $errors->first() }}
-                    </div>
+                    @php
+                        $errorMsg = session('error') ?? session('danger') ?? (isset($errors) && $errors->any() ? $errors->first() : null);
+                        $isBlocked = !empty($isPunchBlocked) || ($errorMsg && (
+                            str_contains(strtolower($errorMsg), 'closed') || 
+                            str_contains(strtolower($errorMsg), 'blocked') || 
+                            str_contains(strtolower($errorMsg), 'cutoff') || 
+                            str_contains(strtolower($errorMsg), 'late') || 
+                            str_contains(strtolower($errorMsg), 'lock') ||
+                            str_contains(strtolower($errorMsg), 'failed')
+                        ));
+                    @endphp
+
+                    @if ($errorMsg)
+                        <div class="card border-0 mb-3 shadow-xs" style="border-radius: 18px; background: linear-gradient(135deg, #fff5f5 0%, #ffeef0 100%); border: 1.5px solid #fca5a5 !important;">
+                            <div class="card-body p-3">
+                                <div class="d-flex align-items-start mb-2">
+                                    <div class="mr-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px; background: #ef4444; color: #ffffff; border-radius: 12px; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);">
+                                        <i class="fas fa-user-lock fa-lg"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <h6 class="font-weight-bold text-danger m-0" style="font-size: 15px;">
+                                                Attendance Punch Blocked
+                                            </h6>
+                                            <span class="badge badge-danger px-2 py-1" style="border-radius: 6px; font-size: 10px; font-weight: 800;">
+                                                NOT RECORDED
+                                            </span>
+                                        </div>
+                                        <p class="text-dark font-weight-bold mb-0 mt-1" style="font-size: 13px; line-height: 1.4;">
+                                            {{ $errorMsg }}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="p-3 mt-2" style="background: rgba(255, 255, 255, 0.9); border-radius: 12px; border-left: 4px solid #ef4444; font-size: 12.5px; color: #334155; line-height: 1.5;">
+                                    <p class="font-weight-bold mb-1 text-danger" style="font-size: 12px;">
+                                        <i class="fas fa-info-circle mr-1"></i> Next Steps & Required Actions:
+                                    </p>
+                                    <ul class="pl-3 mb-0" style="font-weight: 600; font-size: 12px; color: #475569;">
+                                        <li class="mb-1">Contact your <strong>HR Manager or Administrator</strong> to request an attendance unlock.</li>
+                                        <li>Submit an <strong>Attendance Regularization</strong> request for your late entry or missed punch.</li>
+                                    </ul>
+                                </div>
+
+                                <div class="d-flex align-items-center justify-content-between mt-3 gap-2">
+                                    @if(Route::has('hrms.attendance.regularizations.index'))
+                                    <a href="{{ route('hrms.attendance.regularizations.index') }}" class="btn btn-warning btn-sm font-weight-bold text-white shadow-xs px-3" style="border-radius: 10px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; font-size: 12px; padding: 7px 12px;">
+                                        <i class="fas fa-calendar-check mr-1"></i> Apply Regularization
+                                    </a>
+                                    @endif
+                                    <button type="button" onclick="$('#webPunchInFormInputs').slideToggle(); $('#webPunchInSubmitBtn').toggle();" class="btn btn-outline-secondary btn-sm font-weight-bold px-3" style="border-radius: 10px; font-size: 11.5px; padding: 6px 12px;">
+                                        <i class="fas fa-redo mr-1"></i> Try Again / View Form
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     @endif
 
-                    <div class="form-group mb-3">
-                        <label class="font-weight-bold small text-muted">Work Mode</label>
-                        <select name="work_mode" id="web_work_mode_select" onchange="handleWorkModeChange(this.value)" class="form-control" style="border-radius: 12px; height: 44px;">
-                            <option value="wfo">Working From Office (WFO)</option>
-                            <option value="wfh">Working From Home (WFH)</option>
-                        </select>
-                    </div>
-                    <div class="form-group mb-3">
-                        <label class="font-weight-bold small text-muted">Punch In Note (Optional)</label>
-                        <textarea name="note" class="form-control" rows="2" placeholder="Add optional remarks..." style="border-radius: 12px;"></textarea>
-                    </div>
-                    <div class="p-3 mb-3 border rounded-3" id="locationStatusIn" style="border-radius: 14px; background: #f8fafc !important; border: 1px solid #e2e8f0 !important; font-size: 13px; font-weight: 600;">
-                        <i class="fas fa-location-arrow text-primary mr-1"></i> Location verification will trigger on Punch In.
+                    <div id="webPunchInFormInputs" style="{{ $errorMsg ? 'display: none;' : '' }}">
+                        <div class="form-group mb-3">
+                            <label class="font-weight-bold small text-muted">Work Mode</label>
+                            <select name="work_mode" id="web_work_mode_select" onchange="handleWorkModeChange(this.value)" class="form-control" style="border-radius: 12px; height: 44px;">
+                                <option value="wfo">Working From Office (WFO)</option>
+                                <option value="wfh">Working From Home (WFH)</option>
+                            </select>
+                        </div>
+                        <div class="form-group mb-3">
+                            <label class="font-weight-bold small text-muted">Punch In Note (Optional)</label>
+                            <textarea name="note" class="form-control" rows="2" placeholder="Add optional remarks..." style="border-radius: 12px;"></textarea>
+                        </div>
+                        <div class="p-3 mb-3 border rounded-3" id="locationStatusIn" style="border-radius: 14px; background: #f8fafc !important; border: 1px solid #e2e8f0 !important; font-size: 13px; font-weight: 600;">
+                            <i class="fas fa-location-arrow text-primary mr-1"></i> Location verification will trigger on Punch In.
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer bg-light p-3 border-0">
-                    <button type="button" class="btn btn-light font-weight-bold px-3" data-dismiss="modal" style="border-radius: 12px;">Cancel</button>
-                    <button type="submit" class="btn font-weight-bold px-4" style="border-radius: 12px; background: linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%) !important; color: #fff !important; border: none; height: 42px;"><i class="fas fa-check mr-1"></i> Confirm Punch In</button>
+                    <button type="button" class="btn btn-light font-weight-bold px-3" data-dismiss="modal" style="border-radius: 12px;">Close</button>
+                    <button type="submit" id="webPunchInSubmitBtn" class="btn font-weight-bold px-4" style="border-radius: 12px; background: linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%) !important; color: #fff !important; border: none; height: 42px; {{ $errorMsg ? 'display: none;' : '' }}"><i class="fas fa-check mr-1"></i> Confirm Punch In</button>
                 </div>
             </form>
         </div>

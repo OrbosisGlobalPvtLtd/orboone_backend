@@ -21,6 +21,11 @@ class HolidayWorkRequestController extends ApiController
             return $this->error('Employee profile not found.', 404);
         }
 
+        HolidayWorkRequestM::where('employee_id', $employee->id)
+            ->where('status', 'pending')
+            ->whereDate('worked_date', '<', Carbon::today('Asia/Kolkata'))
+            ->update(['status' => 'expired']);
+
         $rows = HolidayWorkRequestM::where('employee_id', $employee->id)
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
             ->latest('id')
@@ -304,6 +309,99 @@ class HolidayWorkRequestController extends ApiController
         }
 
         return $this->success('Holiday work request rejected successfully.', new HolidayWorkRequestResource($row->fresh()));
+    }
+
+    public function cancel(int $id)
+    {
+        $employee = $this->employee();
+        if (! $employee) {
+            return $this->error('Employee profile not found.', 404);
+        }
+
+        $row = HolidayWorkRequestM::where('id', $id)
+            ->where('employee_id', $employee->id)
+            ->first();
+
+        if (! $row) {
+            return $this->error('Holiday work request not found.', 404);
+        }
+
+        if ($row->status !== 'pending') {
+            return $this->error('Only pending requests can be cancelled.', 422);
+        }
+
+        $row->update(['status' => 'cancelled']);
+
+        return $this->success('Holiday work request cancelled successfully.', new HolidayWorkRequestResource($row->fresh()));
+    }
+
+    public function update(Request $request, int $id, WeekoffHolidayService $weekoffHolidayService)
+    {
+        $employee = $this->employee();
+        if (! $employee) {
+            return $this->error('Employee profile not found.', 404);
+        }
+
+        $row = HolidayWorkRequestM::where('id', $id)
+            ->where('employee_id', $employee->id)
+            ->first();
+
+        if (! $row) {
+            return $this->error('Holiday work request not found.', 404);
+        }
+
+        if ($row->status !== 'pending') {
+            return $this->error('Only pending requests can be edited.', 422);
+        }
+
+        $request->validate([
+            'worked_date' => 'nullable|date',
+            'work_type' => 'nullable|in:holiday_work,weekoff_work,holiday,weekoff',
+            'work_mode' => 'nullable|in:wfo,wfh,WFO,WFH',
+            'reason' => 'required|string',
+            'notes' => 'nullable|string',
+        ]);
+
+        if ($request->filled('worked_date')) {
+            $workedDate = Carbon::parse($request->input('worked_date'), 'Asia/Kolkata');
+            $dayInfo = $weekoffHolidayService->dayInfo($workedDate);
+            if (!($dayInfo['is_holiday'] ?? false) && !($dayInfo['is_weekoff'] ?? false)) {
+                return $this->error("Date {$request->input('worked_date')} is a regular working day. Work request can only be submitted for holidays or weekoffs.", 422);
+            }
+
+            $duplicate = HolidayWorkRequestM::where('employee_id', $employee->id)
+                ->where('id', '!=', $id)
+                ->whereDate('worked_date', $workedDate->toDateString())
+                ->whereIn('status', ['pending', 'approved', 'completed'])
+                ->exists();
+
+            if ($duplicate) {
+                return $this->error("A work request already exists for {$request->input('worked_date')}.", 422);
+            }
+            $row->worked_date = $workedDate->toDateString();
+        }
+
+        if ($request->filled('work_type')) {
+            $workTypeMap = [
+                'holiday' => 'holiday_work',
+                'weekoff' => 'weekoff_work',
+                'holiday_work' => 'holiday_work',
+                'weekoff_work' => 'weekoff_work',
+            ];
+            $row->work_type = $workTypeMap[strtolower($request->input('work_type'))] ?? $row->work_type;
+        }
+
+        if ($request->filled('work_mode')) {
+            $row->work_mode = strtolower($request->input('work_mode'));
+        }
+
+        $row->reason = $request->input('reason');
+        if ($request->has('notes')) {
+            $row->notes = $request->input('notes');
+        }
+        $row->save();
+
+        return $this->success('Holiday work request updated successfully.', new HolidayWorkRequestResource($row->fresh()));
     }
 
     private function employee(): ?EmployeeM

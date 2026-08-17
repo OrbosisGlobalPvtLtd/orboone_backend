@@ -135,12 +135,16 @@ class DashboardC extends Controller
             'week_off' => 0,
         ];
 
+        $joiningDateRaw = $employee->joining_date ?? $employee->created_at ?? null;
+        $joiningDate = $joiningDateRaw ? \Carbon\Carbon::parse($joiningDateRaw)->startOfDay() : null;
+
         for ($day = 1; $day <= $daysInMonth; $day++) {
-            $dateObj = \Carbon\Carbon::createFromDate($year, $month, $day);
+            $dateObj = \Carbon\Carbon::createFromDate($year, $month, $day)->startOfDay();
             $dateStr = $dateObj->toDateString();
             $isSunday = $dateObj->isSunday();
             $isPast = $dateObj->lt(now()->startOfDay());
             $isToday = $dateStr === $todayDate;
+            $isBeforeJoining = $joiningDate ? $dateObj->lt($joiningDate) : false;
 
             $att = $attendances[$dateStr] ?? null;
             $holiday = $holidays[$dateStr] ?? null;
@@ -189,24 +193,21 @@ class DashboardC extends Controller
                     $color = '#D97706';
                     $bg = '#FEF3C7';
                     $summary['half_day']++;
-                } elseif ($att->is_late || $typeCode === 'late' || $st === 'late' || $st === 'late_present') {
-                    $statusKey = 'late';
-                    $label = 'Late';
-                    $color = '#F59E0B';
-                    $bg = '#FEF3C7';
-                    $summary['late']++;
                 } elseif ($att->is_lwp || $typeCode === 'lwp' || $typeCode === 'absent' || $st === 'absent' || $st === 'lwp') {
                     $statusKey = 'absent';
                     $label = 'Absent';
                     $color = '#EF4444';
                     $bg = '#FEE2E2';
                     $summary['absent']++;
-                } elseif (!empty($att->punch_in_time) || $typeCode === 'present' || $st === 'present') {
+                } elseif (!empty($att->punch_in_time) || $typeCode === 'present' || $st === 'present' || $att->is_late || $typeCode === 'late' || $st === 'late' || $st === 'late_present') {
                     $statusKey = 'present';
                     $label = 'Present';
                     $color = '#10B981';
                     $bg = '#D1FAE5';
                     $summary['present']++;
+                    if ($att->is_late) {
+                        $summary['late']++;
+                    }
                 } else {
                     if ($isSunday) {
                         $statusKey = 'week_off';
@@ -215,11 +216,10 @@ class DashboardC extends Controller
                         $bg = '#F1F5F9';
                         $summary['week_off']++;
                     } elseif ($isPast) {
-                        $statusKey = 'absent';
-                        $label = 'Absent';
-                        $color = '#EF4444';
-                        $bg = '#FEE2E2';
-                        $summary['absent']++;
+                        $statusKey = 'no_record';
+                        $label = $isBeforeJoining ? 'N/A' : 'N/A';
+                        $color = '#94A3B8';
+                        $bg = '#F8FAFC';
                     } else {
                         $statusKey = 'upcoming';
                         $label = 'Upcoming';
@@ -246,11 +246,10 @@ class DashboardC extends Controller
                 $bg = '#F1F5F9';
                 $summary['week_off']++;
             } elseif ($isPast) {
-                $statusKey = 'absent';
-                $label = 'Absent';
-                $color = '#EF4444';
-                $bg = '#FEE2E2';
-                $summary['absent']++;
+                $statusKey = 'no_record';
+                $label = $isBeforeJoining ? 'N/A' : 'N/A';
+                $color = '#94A3B8';
+                $bg = '#F8FAFC';
             } else {
                 $statusKey = 'upcoming';
                 $label = 'Upcoming';

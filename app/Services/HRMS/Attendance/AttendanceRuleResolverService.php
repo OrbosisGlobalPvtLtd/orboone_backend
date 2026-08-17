@@ -361,13 +361,13 @@ class AttendanceRuleResolverService
         $hasApprovedWorkRequest = (bool) ($dayContext['has_approved_work_request'] ?? false);
 
         // Check for Final Attendance States
-        $isLeave = ! $isAttendanceHalfDay && ($isFullLeave || $rawStatus === 'leave' || in_array($typeCode, ['leave'], true) || (bool) ($attendance?->is_leave ?? false));
+        $isLwp = (bool) ($attendance?->is_lwp ?? false) || $rawStatus === 'lwp' || in_array($typeCode, ['lwp'], true);
+        $isLeave = ! $isAttendanceHalfDay && ! $isLwp && ($isFullLeave || $rawStatus === 'leave' || $typeCode === 'leave' || (bool) ($attendance?->is_leave ?? false));
         $isHoliday = ! $hasApprovedWorkRequest && ! $hasPunchIn && ((bool) ($dayContext['is_holiday'] ?? false) || $rawStatus === 'holiday' || in_array($typeCode, ['holiday'], true));
         $isWeekoff = ! $hasApprovedWorkRequest && ! $hasPunchIn && ((bool) ($dayContext['is_weekoff'] ?? false) || $rawStatus === 'week_off' || in_array($typeCode, ['week_off'], true));
         $isHalfDay = $isAttendanceHalfDay || $rawStatus === 'half_day' || in_array($typeCode, ['half_day'], true);
         $isMissedPunch = (bool) ($attendance?->missed_punch ?? $attendance?->is_missed_punch ?? false) || $rawStatus === 'missed_punch' || in_array($typeCode, ['missed_punch'], true);
-        $isLwp = (bool) ($attendance?->is_lwp ?? false) || $rawStatus === 'lwp' || in_array($typeCode, ['lwp'], true);
-        $isAbsent = ($rawStatus === 'absent' || in_array($typeCode, ['absent'], true)) && ! $isUnlocked;
+        $isAbsent = ($rawStatus === 'absent' || in_array($typeCode, ['absent'], true) || $isLwp) && (! $isUnlocked || $hasPunchOut || ! $hasPunchIn);
         $isPresent = $hasPunchIn && ! $isHalfDay && ! $isMissedPunch && ! $isLwp && ! $isAbsent;
 
         $isBlockedDb = (bool) (

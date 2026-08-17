@@ -20,7 +20,7 @@ class AttendanceRegularizationC extends Controller
     private const REQUEST_TYPES = [
         'regular_attendance', 'missed_punch_in', 'missed_punch_out', 'attendance_correction',
         'wrong_punch_time', 'late_mark_exemption', 'early_logout_correction', 'geofence_issue',
-        'system_error', 'other',
+        'system_error', 'unlock_attendance', 'other',
     ];
 
     public function index(Request $request)
@@ -41,7 +41,20 @@ class AttendanceRegularizationC extends Controller
                 DB::raw('attendances.punch_out_time as mapped_current_punch_out'),
             ])
             ->whereNull('attendance_regularizations.deleted_at');
-        $this->scopeEmployeeVisibility($query, 'attendance.regularization.view_all', 'attendance.regularization.view_team', 'attendance_regularizations.employee_id');
+
+        $user = auth()->user();
+        $isEmployeeRole = ($user->role_id ?? null) == 7 
+            || ($user->system_role_id ?? null) == 7 
+            || ! $this->userHasPermission('attendance.regularization.approve');
+
+        if ($isEmployeeRole) {
+            $ownEmpId = $this->ownEmployeeId();
+            if ($ownEmpId) {
+                $query->where('attendance_regularizations.employee_id', $ownEmpId);
+            }
+        } else {
+            $this->scopeEmployeeVisibility($query, 'attendance.regularization.view_all', 'attendance.regularization.view_team', 'attendance_regularizations.employee_id');
+        }
 
         $this->applyCommonFilters($query, $request, [
             'dateColumn' => 'attendance_regularizations.created_at',
@@ -359,6 +372,15 @@ class AttendanceRegularizationC extends Controller
     {
         $this->authorizeRegularizationRow($id, true);
 
+        $row = DB::table('attendance_regularizations')->where('id', $id)->first();
+        if (! $row) {
+            return back()->with('error', 'Regularization request not found.');
+        }
+
+        if ($row->status !== 'pending') {
+            return back()->with('error', 'Approved or processed regularization requests cannot be deleted.');
+        }
+
         DB::table('attendance_regularizations')->where('id', $id)->update(['deleted_at' => now(), 'updated_at' => now()]);
 
         return back()->with('success', 'Regularization deleted.');
@@ -404,8 +426,29 @@ class AttendanceRegularizationC extends Controller
 
     private function pageData($rows, Request $request): array
     {
-        $employees = $this->scopedEmployeeOptions('attendance.regularization.view_all', 'attendance.regularization.view_team')->pluck('display_name', 'id')->toArray();
+        $user = auth()->user();
+        $isEmployeeRole = ($user->role_id ?? null) == 7 
+            || ($user->system_role_id ?? null) == 7 
+            || ! $this->userHasPermission('attendance.regularization.approve');
+
+        if ($isEmployeeRole) {
+            $ownEmp = $user->employee ?? $this->currentEmployee();
+            $employees = $ownEmp ? [$ownEmp->id => ($user->name ?? $ownEmp->employee_code)] : [];
+        } else {
+            $employees = $this->scopedEmployeeOptions('attendance.regularization.view_all', 'attendance.regularization.view_team')->pluck('display_name', 'id')->toArray();
+        }
         $requestTypes = DB::table('attendance_regularizations')->whereNull('deleted_at')->whereNotNull('request_type')->distinct()->pluck('request_type', 'request_type')->toArray();
+
+        $filters = [
+            ['name' => 'status', 'label' => 'Status', 'type' => 'select', 'options' => ['pending' => 'Pending', 'approved' => 'Approved', 'rejected' => 'Rejected', 'cancelled' => 'Cancelled']],
+            ['name' => 'request_type', 'label' => 'Request Type', 'type' => 'select', 'options' => $requestTypes],
+            ['name' => 'from', 'label' => 'From', 'type' => 'date'],
+            ['name' => 'to', 'label' => 'To', 'type' => 'date'],
+        ];
+
+        if (! $isEmployeeRole && ($this->canViewAll('attendance.regularization.view_all') || $this->canViewTeam('attendance.regularization.view_team'))) {
+            array_unshift($filters, ['name' => 'employee_id', 'label' => 'Employee', 'type' => 'select', 'options' => $employees]);
+        }
 
         return [
             'accesses' => $this->accesses(),
@@ -413,6 +456,9 @@ class AttendanceRegularizationC extends Controller
             'pageTitle' => 'Attendance Regularizations',
             'pageSubtitle' => 'Review, create, approve, and reject attendance correction requests.',
             'rows' => $rows,
+            'canViewAll' => $isEmployeeRole ? false : $this->canViewAll('attendance.regularization.view_all'),
+            'canViewTeam' => $isEmployeeRole ? false : $this->canViewTeam('attendance.regularization.view_team'),
+            'isEmployeeRole' => $isEmployeeRole,
             'columns' => [
                 ['key' => 'employee_display_name', 'label' => 'Employee'],
                 ['key' => 'employee_code', 'label' => 'Code'],
@@ -426,13 +472,7 @@ class AttendanceRegularizationC extends Controller
                 ['key' => 'status', 'label' => 'Status', 'type' => 'badge'],
                 ['key' => 'created_at', 'label' => 'Submitted At', 'type' => 'datetime'],
             ],
-            'filters' => [
-                ['name' => 'employee_id', 'label' => 'Employee', 'type' => 'select', 'options' => $employees],
-                ['name' => 'status', 'label' => 'Status', 'type' => 'select', 'options' => ['pending' => 'Pending', 'approved' => 'Approved', 'rejected' => 'Rejected', 'cancelled' => 'Cancelled']],
-                ['name' => 'request_type', 'label' => 'Request Type', 'type' => 'select', 'options' => $requestTypes],
-                ['name' => 'from', 'label' => 'From', 'type' => 'date'],
-                ['name' => 'to', 'label' => 'To', 'type' => 'date'],
-            ],
+            'filters' => $filters,
             'formFields' => [
                 ['name' => 'employee_id', 'label' => 'Employee', 'type' => 'select', 'options' => $employees],
                 ['name' => 'attendance_date', 'label' => 'Attendance Date', 'type' => 'date'],
@@ -453,6 +493,8 @@ class AttendanceRegularizationC extends Controller
             'canCreate' => true,
             'canEdit' => true,
             'canDelete' => true,
+            'canApprove' => ! $isEmployeeRole && ($this->userHasPermission('attendance.regularization.approve') || $this->canViewAll('attendance.regularization.view_all') || $this->canViewTeam('attendance.regularization.view_team')),
+            'canReject' => ! $isEmployeeRole && ($this->userHasPermission('attendance.regularization.approve') || $this->canViewAll('attendance.regularization.view_all') || $this->canViewTeam('attendance.regularization.view_team')),
             'storeRoute' => 'hrms.attendance.regularizations.store',
             'updateRoute' => 'hrms.attendance.regularizations.update',
             'deleteRoute' => 'hrms.attendance.regularizations.destroy',

@@ -67,6 +67,16 @@ trait HrmsCrudPage
 
     protected function scopeEmployeeVisibility($query, string $allPermission, ?string $teamPermission = null, string $column = 'employee_id')
     {
+        $user = auth()->user();
+        $isEmployeeRole = ($user->role_id ?? null) == 7 
+            || ($user->system_role_id ?? null) == 7;
+
+        if ($isEmployeeRole) {
+            $employeeId = $this->ownEmployeeId();
+            abort_if(! $employeeId, 403);
+            return $query->where($column, $employeeId);
+        }
+
         if ($this->canViewAll($allPermission)) {
             return $query;
         }

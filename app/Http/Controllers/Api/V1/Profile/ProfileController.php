@@ -391,19 +391,33 @@ class ProfileController extends Controller
                 ], 404);
             }
 
-            $validator = Validator::make($request->all(), [
+            // Sanitize input payload by removing non-printable/invisible unicode characters
+            $rawInput = $request->all();
+            $input = [];
+            foreach ($rawInput as $key => $val) {
+                if (is_string($val)) {
+                    // Remove invisible spaces (\u200B, \u00A0, \u200E, etc.) and trim
+                    $cleaned = preg_replace('/[\x{200B}-\x{200D}\x{FEFF}\x{00A0}]/u', '', $val);
+                    $input[$key] = trim($cleaned);
+                } else {
+                    $input[$key] = $val;
+                }
+            }
+            $request->merge($input);
+
+            $validator = Validator::make($input, [
                 'date_of_birth' => ['sometimes', 'nullable', 'date'],
                 'gender' => ['sometimes', 'nullable', 'in:male,female,other'],
                 'address' => ['sometimes', 'nullable'],
                 'highest_qualification' => ['sometimes', 'nullable'],
-                'cgpa_percentage' => ['sometimes', 'nullable'],
-                'total_experience' => ['sometimes', 'nullable'],
+                'cgpa_percentage' => ['sometimes', 'nullable', 'regex:/^\d+(\.\d+)?$/'],
+                'total_experience' => ['sometimes', 'nullable', 'regex:/^\d+(\.\d+)?$/'],
                 'experience_type' => ['sometimes', 'nullable', 'in:fresher,experienced'],
 
-                'bank_account_no' => ['sometimes', 'nullable'],
-                'bank_account_type' => ['sometimes', 'nullable'],
-                'bank_holder_name' => ['sometimes', 'nullable'],
-                'ifsc_code' => ['sometimes', 'nullable'],
+                'bank_account_no' => ['sometimes', 'nullable', 'regex:/^\d{8,20}$/'],
+                'bank_account_type' => ['sometimes', 'nullable', 'in:saving,savings,current'],
+                'bank_holder_name' => ['sometimes', 'nullable', 'regex:/^[a-zA-Z\s\.]+$/'],
+                'ifsc_code' => ['sometimes', 'nullable', 'regex:/^[A-Z]{4}0[A-Z0-9]{6}$/i'],
                 'bank_branch' => ['sometimes', 'nullable'],
                 'emergency_contact_number' => [
                     'sometimes',
@@ -419,13 +433,21 @@ class ProfileController extends Controller
                         $userPhone = $normalize($employee->user->phone ?? null);
 
                         if ($userPhone !== '' && $normalizedEmergency !== '' && str_ends_with($normalizedEmergency, $userPhone)) {
-                            $fail('Please enter a valid emergency contact number.');
+                            $fail('Emergency contact cannot be the same as your primary phone number.');
                         }
                     },
                 ],
 
                 'profile_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
                 'resume_file' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:5120'],
+            ], [
+                'bank_account_no.regex' => 'Bank account number must contain digits only (8 to 20 digits).',
+                'ifsc_code.regex' => 'Invalid IFSC code format (e.g. SBIN00010168).',
+                'bank_holder_name.regex' => 'Account holder name can only contain letters and spaces.',
+                'emergency_contact_number.regex' => 'Please enter a valid 10-digit emergency contact number.',
+                'cgpa_percentage.regex' => 'CGPA / Percentage must be a valid number.',
+                'total_experience.regex' => 'Total experience must be a valid number.',
+                'bank_account_type.in' => 'Please select a valid account type (Saving or Current).',
             ]);
 
             if ($validator->fails()) {

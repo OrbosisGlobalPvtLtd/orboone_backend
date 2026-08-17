@@ -57,6 +57,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/attendance/holiday-work', [HolidayWorkRequestController::class, 'store']);
         Route::get('/attendance/holiday-work/my-requests', [HolidayWorkRequestController::class, 'index']);
         Route::get('/attendance/holiday-work/{id}', [HolidayWorkRequestController::class, 'show']);
+        Route::post('/attendance/holiday-work/{id}/cancel', [HolidayWorkRequestController::class, 'cancel']);
+        Route::post('/attendance/holiday-work/{id}/update', [HolidayWorkRequestController::class, 'update']);
     });
 
     Route::post('/attendance/regularize/{id}/approve', [AttendanceRegularizationController::class, 'approveRegularization']);

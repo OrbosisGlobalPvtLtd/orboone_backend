@@ -190,10 +190,7 @@ class MobileDashboardController extends Controller
             ];
 
             $year = Carbon::now('Asia/Kolkata')->year;
-            $allocation = LeaveAllocation::where('employee_id', $employee->id)
-                ->where('year', $year)
-                ->latest()
-                ->first();
+            $allocation = app(\App\Services\HRMS\Leave\LeaveAllocationService::class)->getOrGenerate($employee, $year);
 
             if ($allocation) {
                 $leaveSummary['balances'] = [

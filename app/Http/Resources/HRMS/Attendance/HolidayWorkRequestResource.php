@@ -9,6 +9,11 @@ class HolidayWorkRequestResource extends JsonResource
     public function toArray($request): array
     {
         $status = (string) $this->status;
+        $workedDate = $this->worked_date ? \Carbon\Carbon::parse($this->worked_date) : null;
+        if ($status === 'pending' && $workedDate && $workedDate->isPast() && ! $workedDate->isToday()) {
+            $status = 'expired';
+        }
+
         $lifecycleStatus = $status;
         $lifecycleLabel = ucfirst($status);
 
@@ -22,6 +27,8 @@ class HolidayWorkRequestResource extends JsonResource
             $lifecycleLabel = 'Rejected';
         } elseif ($status === 'pending') {
             $lifecycleLabel = 'Pending Approval';
+        } elseif ($status === 'expired') {
+            $lifecycleLabel = 'Expired';
         }
 
         return [

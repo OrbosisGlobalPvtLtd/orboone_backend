@@ -274,8 +274,27 @@ class EmployeeM extends Model
 
     public function scopeActive($query)
     {
-        return $query->where('is_active', 1)
-            ->where('employment_status', 'active');
+        $exitedEmployeeIds = \Illuminate\Support\Facades\DB::table('employee_exit_processes')
+            ->whereNotIn('status', ['cancelled', 'rejected', 'rolled_back'])
+            ->pluck('employee_id')
+            ->filter()
+            ->toArray();
+
+        return $query->where(function ($q) {
+            $q->where('employees_new.is_active', 1)
+              ->orWhereNull('employees_new.is_active');
+        })
+        ->where(function ($q) {
+            $q->whereNull('employees_new.employment_status')
+              ->orWhereNotIn('employees_new.employment_status', ['exited', 'inactive', 'terminated', 'resigned']);
+        })
+        ->where(function ($q) {
+            $q->whereNull('employees_new.employee_stage')
+              ->orWhereNotIn('employees_new.employee_stage', ['exited', 'resigned']);
+        })
+        ->when(!empty($exitedEmployeeIds), function ($q) use ($exitedEmployeeIds) {
+            $q->whereNotIn('employees_new.id', $exitedEmployeeIds);
+        });
     }
 
     public function scopeInterns($query)

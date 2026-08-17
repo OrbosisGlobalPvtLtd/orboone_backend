@@ -22,6 +22,12 @@ class FcmNotificationS
             return false;
         }
 
+        if (app()->environment('local')) {
+            $this->lastResponse = ['success' => true, 'reason' => 'skipped_local_environment'];
+            Log::info('FCM Push Notification skipped: Running on local environment.');
+            return true;
+        }
+
         try {
             $projectId = (string) config('services.firebase.project_id');
             $serverKey = (string) config('services.firebase.server_key');

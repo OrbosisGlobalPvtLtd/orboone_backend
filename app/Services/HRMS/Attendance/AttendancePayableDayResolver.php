@@ -4,6 +4,7 @@ namespace App\Services\HRMS\Attendance;
 
 use App\Models\HRMS\Attendance\AttendanceM;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class AttendancePayableDayResolver
 {

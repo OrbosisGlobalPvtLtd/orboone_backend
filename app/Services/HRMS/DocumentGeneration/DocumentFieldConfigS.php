@@ -515,6 +515,63 @@ class DocumentFieldConfigS
                     ['name' => 'resignation_remarks', 'label' => 'Resignation Acceptance Notes', 'type' => 'textarea', 'required' => false, 'default' => 'We hereby accept your formal resignation. We appreciate your contributions during your service. Please coordinate with the IT and Admin team for asset return and clearance procedures.', 'section' => 'paragraphs'],
                 ]
             ],
+
+            'salary_revision_letter' => [
+                'name' => 'Salary Revision Letter',
+                'fields' => [
+                    // Recipient Section
+                    ['name' => 'employee_name', 'label' => 'Employee Name', 'type' => 'text', 'required' => true, 'default' => 'Employee Name', 'autofill' => 'name', 'section' => 'recipient'],
+                    ['name' => 'employee_code', 'label' => 'Employee ID / Code', 'type' => 'text', 'required' => true, 'default' => 'EMP001', 'autofill' => 'code', 'section' => 'recipient'],
+                    ['name' => 'designation', 'label' => 'Designation', 'type' => 'text', 'required' => true, 'default' => 'Software Engineer', 'autofill' => 'designation', 'section' => 'recipient'],
+                    ['name' => 'department', 'label' => 'Department', 'type' => 'text', 'required' => true, 'default' => 'Engineering', 'autofill' => 'department', 'section' => 'recipient'],
+                    ['name' => 'employee_city', 'label' => 'City', 'type' => 'text', 'required' => false, 'default' => 'Indore', 'autofill' => 'city', 'section' => 'recipient'],
+
+                    // Details Section
+                    ['name' => 'issue_date', 'label' => 'Issue Date', 'type' => 'date', 'required' => true, 'default' => 'today', 'section' => 'details'],
+                    ['name' => 'salary_revision_date', 'label' => 'Salary Revision Effective Date', 'type' => 'date', 'required' => true, 'default' => 'today', 'section' => 'details'],
+
+                    // Compensation Section (Existing vs Revised)
+                    ['name' => 'existing_gross_salary', 'label' => 'Existing Gross Salary (₹)', 'type' => 'number', 'required' => true, 'default' => '10000', 'autofill' => 'salary', 'section' => 'salary'],
+                    ['name' => 'revised_gross_salary', 'label' => 'Revised Gross Salary (₹)', 'type' => 'number', 'required' => true, 'default' => '12500', 'autofill' => 'salary', 'section' => 'salary'],
+
+                    ['name' => 'existing_basic', 'label' => 'Existing Basic (₹)', 'type' => 'number', 'required' => true, 'default' => '5000', 'section' => 'salary'],
+                    ['name' => 'revised_basic', 'label' => 'Revised Basic (₹)', 'type' => 'number', 'required' => true, 'default' => '6250', 'section' => 'salary'],
+
+                    ['name' => 'existing_hra', 'label' => 'Existing HRA (₹)', 'type' => 'number', 'required' => true, 'default' => '2000', 'section' => 'salary'],
+                    ['name' => 'revised_hra', 'label' => 'Revised HRA (₹)', 'type' => 'number', 'required' => true, 'default' => '2500', 'section' => 'salary'],
+
+                    ['name' => 'existing_special_allowance', 'label' => 'Existing Special Allowance (₹)', 'type' => 'number', 'required' => true, 'default' => '3000', 'section' => 'salary'],
+                    ['name' => 'revised_special_allowance', 'label' => 'Revised Special Allowance (₹)', 'type' => 'number', 'required' => true, 'default' => '3750', 'section' => 'salary'],
+
+                    ['name' => 'existing_subtotal_a', 'label' => 'Existing Subtotal (A) (₹)', 'type' => 'number', 'required' => true, 'default' => '10000', 'section' => 'salary'],
+                    ['name' => 'revised_subtotal_a', 'label' => 'Revised Subtotal (A) (₹)', 'type' => 'number', 'required' => true, 'default' => '12500', 'section' => 'salary'],
+
+                    ['name' => 'existing_pt', 'label' => 'Existing Professional Tax (₹)', 'type' => 'number', 'required' => true, 'default' => '200', 'section' => 'salary'],
+                    ['name' => 'revised_pt', 'label' => 'Revised Professional Tax (₹)', 'type' => 'number', 'required' => true, 'default' => '200', 'section' => 'salary'],
+
+                    ['name' => 'existing_subtotal_b', 'label' => 'Existing Subtotal (B) (₹)', 'type' => 'number', 'required' => true, 'default' => '200', 'section' => 'salary'],
+                    ['name' => 'revised_subtotal_b', 'label' => 'Revised Subtotal (B) (₹)', 'type' => 'number', 'required' => true, 'default' => '200', 'section' => 'salary'],
+
+                    ['name' => 'existing_ctc', 'label' => 'Existing CTC (A-B) (₹)', 'type' => 'number', 'required' => true, 'default' => '10000', 'section' => 'salary'],
+                    ['name' => 'revised_ctc', 'label' => 'Revised CTC (A-B) (₹)', 'type' => 'number', 'required' => true, 'default' => '12500', 'section' => 'salary'],
+
+                    ['name' => 'existing_net_pay', 'label' => 'Existing Net Pay / Take Home (₹)', 'type' => 'number', 'required' => true, 'default' => '9800', 'section' => 'salary'],
+                    ['name' => 'revised_net_pay', 'label' => 'Revised Net Pay / Take Home (₹)', 'type' => 'number', 'required' => true, 'default' => '12300', 'section' => 'salary'],
+
+                    ['name' => 'revised_annual_ctc_lpa', 'label' => 'Revised Annual CTC (LPA)', 'type' => 'text', 'required' => true, 'default' => '1.5 LPA', 'section' => 'salary'],
+
+                    // Signatory Section
+                    ['name' => 'hr_manager_name', 'label' => 'HR Manager Name', 'type' => 'text', 'required' => true, 'default' => 'Vanshika Dhunna', 'section' => 'signatory'],
+                    ['name' => 'signatory_designation', 'label' => 'Signatory Designation', 'type' => 'text', 'required' => true, 'default' => 'Human Resource Manager', 'section' => 'signatory'],
+                    ['name' => 'company_name', 'label' => 'Company Name', 'type' => 'text', 'required' => true, 'default' => 'company_name', 'section' => 'signatory'],
+
+                    // Paragraphs
+                    ['name' => 'intro_clause', 'label' => '1. Introductory Paragraph', 'type' => 'textarea', 'required' => false, 'default' => 'This is to certify that your salary has been revised with effect from {salary_revision_date}, in recognition of your performance, contribution, and responsibilities within the organization. Your revised compensation structure is as follows:', 'section' => 'paragraphs'],
+                    ['name' => 'applicability_clause', 'label' => '2. Applicability Paragraph', 'type' => 'textarea', 'required' => false, 'default' => 'The revised salary will be applicable from {salary_revision_date} and will be subject to applicable company policies, statutory deductions, and the terms of your employment.', 'section' => 'paragraphs'],
+                    ['name' => 'unchanged_terms_clause', 'label' => '3. Unchanged Terms Paragraph', 'type' => 'textarea', 'required' => false, 'default' => 'All other terms and conditions of your employment will remain unchanged.', 'section' => 'paragraphs'],
+                    ['name' => 'closing_clause', 'label' => '4. Closing Paragraph', 'type' => 'textarea', 'required' => false, 'default' => 'We appreciate your continued efforts and contribution to the organization and look forward to your continued association with us.', 'section' => 'paragraphs'],
+                ]
+            ],
         ];
     }
 }

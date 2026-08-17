@@ -914,6 +914,7 @@
                             <input type="number" name="year" class="form-control auto-filter" value="{{ $year }}">
                         </div>
 
+                        @if(count($employees) > 1)
                         <div class="orb-filter-item">
                             <label>Employee</label>
                             <select name="employee_id" class="form-control auto-filter">
@@ -942,6 +943,7 @@
                                 @endforeach
                             </select>
                         </div>
+                        @endif
 
                     </form>
                 </div>

@@ -148,6 +148,7 @@ class GeneratedDocumentC extends Controller
             'experience_letter' => 'Experience Letter',
             'relieving_letter' => 'Relieving Letter',
             'internship_certificate' => 'Internship Certificate',
+            'salary_revision_letter' => 'Salary Revision Letter',
             'salary_certificate' => 'Salary Certificate',
             'warning_letter' => 'Warning Letter',
             'appreciation_letter' => 'Appreciation Letter',
@@ -507,6 +508,11 @@ class GeneratedDocumentC extends Controller
                 return [
                     'subject' => "Salary Certificate - {$companyName}",
                     'body' => "Dear {$employeeName},<br><br>Please find attached your salary certificate as requested."
+                ];
+            case 'salary_revision_letter':
+                return [
+                    'subject' => "Salary Revision Letter - {$companyName}",
+                    'body' => "Dear {$employeeName},<br><br>Please find attached your Salary Revision Letter from {$companyName}.<br><br>We appreciate your continued efforts and contribution to the organization."
                 ];
             case 'internship_certificate':
                 return [

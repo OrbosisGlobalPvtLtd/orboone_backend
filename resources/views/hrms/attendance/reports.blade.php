@@ -840,20 +840,7 @@
                                         </button>
 
                                         <div class="dropdown-menu dropdown-menu-right att-action-menu">
-
-                                            @if($attendance->is_blocked)
-
-                                            <button type="button"
-                                                class="dropdown-item"
-                                                data-toggle="modal"
-                                                data-target="#unlockModal{{ $attendance->id }}">
-
-                                                <i class="fas fa-unlock text-success"></i>
-                                                Unlock
-
-                                            </button>
-
-                                            @endif
+                                            {{-- Direct unlock disabled: Unlock must be done via Regularization Request Approval --}}
 
                                             @if(auth()->user()?->hasRole('super_admin'))
 

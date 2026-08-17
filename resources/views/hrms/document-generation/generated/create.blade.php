@@ -1086,6 +1086,71 @@
                 salaryInput.addEventListener('input', calculate);
                 calculate();
             }
+        } else if (docType === 'salary_revision_letter') {
+            const existingGrossInput = document.getElementById('field_existing_gross_salary');
+            const revisedGrossInput = document.getElementById('field_revised_gross_salary');
+            const existingPtInput = document.getElementById('field_existing_pt');
+            const revisedPtInput = document.getElementById('field_revised_pt');
+
+            const calculate = () => {
+                const existGross = parseFloat(existingGrossInput ? existingGrossInput.value : 0) || 0;
+                const revGross = parseFloat(revisedGrossInput ? revisedGrossInput.value : 0) || 0;
+                const existPt = parseFloat(existingPtInput ? existingPtInput.value : 200) || 0;
+                const revPt = parseFloat(revisedPtInput ? revisedPtInput.value : 200) || 0;
+
+                // 1. Calculate Existing Salary Breakdown
+                if (existGross > 0) {
+                    const eBasic = existGross * 0.50;
+                    const eHra = existGross * 0.20;
+                    const eSpl = Math.max(0, existGross - eBasic - eHra);
+                    const eSubA = existGross;
+                    const eSubB = existPt;
+                    const eCtc = existGross;
+                    const eNet = Math.max(0, eSubA - existPt);
+
+                    if (document.getElementById('field_existing_basic')) document.getElementById('field_existing_basic').value = Math.round(eBasic);
+                    if (document.getElementById('field_existing_hra')) document.getElementById('field_existing_hra').value = Math.round(eHra);
+                    if (document.getElementById('field_existing_special_allowance')) document.getElementById('field_existing_special_allowance').value = Math.round(eSpl);
+                    if (document.getElementById('field_existing_subtotal_a')) document.getElementById('field_existing_subtotal_a').value = Math.round(eSubA);
+                    if (document.getElementById('field_existing_subtotal_b')) document.getElementById('field_existing_subtotal_b').value = Math.round(eSubB);
+                    if (document.getElementById('field_existing_ctc')) document.getElementById('field_existing_ctc').value = Math.round(eCtc);
+                    if (document.getElementById('field_existing_net_pay')) document.getElementById('field_existing_net_pay').value = Math.round(eNet);
+                }
+
+                // 2. Calculate Revised Salary Breakdown
+                if (revGross > 0) {
+                    const rBasic = revGross * 0.50;
+                    const rHra = revGross * 0.20;
+                    const rSpl = Math.max(0, revGross - rBasic - rHra);
+                    const rSubA = revGross;
+                    const rSubB = revPt;
+                    const rCtc = revGross;
+                    const rNet = Math.max(0, rSubA - revPt);
+
+                    if (document.getElementById('field_revised_basic')) document.getElementById('field_revised_basic').value = Math.round(rBasic);
+                    if (document.getElementById('field_revised_hra')) document.getElementById('field_revised_hra').value = Math.round(rHra);
+                    if (document.getElementById('field_revised_special_allowance')) document.getElementById('field_revised_special_allowance').value = Math.round(rSpl);
+                    if (document.getElementById('field_revised_subtotal_a')) document.getElementById('field_revised_subtotal_a').value = Math.round(rSubA);
+                    if (document.getElementById('field_revised_subtotal_b')) document.getElementById('field_revised_subtotal_b').value = Math.round(rSubB);
+                    if (document.getElementById('field_revised_ctc')) document.getElementById('field_revised_ctc').value = Math.round(rCtc);
+                    if (document.getElementById('field_revised_net_pay')) document.getElementById('field_revised_net_pay').value = Math.round(rNet);
+
+                    // 3. Dynamic Calculation of Revised Annual CTC (LPA)
+                    const annualCtc = revGross * 12;
+                    const lpa = annualCtc / 100000;
+                    const lpaStr = (Math.round(lpa * 100) / 100).toString() + ' LPA';
+                    if (document.getElementById('field_revised_annual_ctc_lpa')) {
+                        document.getElementById('field_revised_annual_ctc_lpa').value = lpaStr;
+                    }
+                }
+            };
+
+            if (existingGrossInput) existingGrossInput.addEventListener('input', calculate);
+            if (revisedGrossInput) revisedGrossInput.addEventListener('input', calculate);
+            if (existingPtInput) existingPtInput.addEventListener('input', calculate);
+            if (revisedPtInput) revisedPtInput.addEventListener('input', calculate);
+            
+            calculate();
         }
     }
 

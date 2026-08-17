@@ -187,12 +187,46 @@ class AttendanceRegularizationService
         $hasIn = ! empty($attendance?->punch_in_time);
         $hasOut = ! empty($attendance?->punch_out_time);
 
+        $isBlocked = (bool) (
+            $attendance?->is_blocked 
+            || $attendance?->is_punch_blocked 
+            || ($attendance?->attendance_status ?? '') === 'punch_blocked'
+        ) && !($attendance?->is_admin_unlocked ?? false);
+
+        if (! $isBlocked && $carbonDate->isToday()) {
+            try {
+                $evalResult = $this->ruleResolver->evaluatePunchInRules($employee->user_id, Carbon::now(self::TIMEZONE));
+                if (($evalResult['can_punch'] ?? true) === false && str_contains(strtolower($evalResult['message'] ?? ''), 'closed')) {
+                    $isBlocked = true;
+                }
+            } catch (\Throwable $e) {
+                // Ignore evaluation exception
+            }
+        }
+
         $availableOptions = [];
         $statusLabel = $attendance?->attendance_status
             ? ucfirst(str_replace('_', ' ', $attendance->attendance_status))
             : 'Absent';
+        $defaultOption = null;
 
-        if (! $hasIn && ! $hasOut) {
+        if ($isBlocked) {
+            $statusLabel = 'Punch Blocked';
+            $defaultOption = 'unlock_attendance';
+            $availableOptions[] = [
+                'id' => 'unlock_attendance',
+                'value' => 'unlock_attendance',
+                'label' => 'Unlock Attendance',
+                'description' => 'Request HR/Admin to unlock attendance punch for blocked shift.',
+                'is_auto_selected' => true,
+            ];
+            $availableOptions[] = [
+                'id' => 'regular_attendance',
+                'value' => 'regular_attendance',
+                'label' => 'Regular Attendance',
+                'description' => 'Create full attendance record for blocked day.',
+            ];
+        } elseif (! $hasIn && ! $hasOut) {
             // Case 1: Absent (Punch In = NULL, Punch Out = NULL or record missing)
             $availableOptions[] = [
                 'id' => 'regular_attendance',
@@ -216,7 +250,7 @@ class AttendanceRegularizationService
                 'id' => 'missed_punch_in',
                 'value' => 'missed_punch_in',
                 'label' => 'Missed Punch In',
-                'description' => 'Punch Out recorded. Add missing Punch Out.',
+                'description' => 'Punch Out recorded. Add missing Punch In.',
             ];
             $statusLabel = 'Punch Out Recorded';
         } else {
@@ -235,6 +269,8 @@ class AttendanceRegularizationService
             'can_regularize' => true,
             'code' => null,
             'attendance_status' => $statusLabel,
+            'is_blocked' => $isBlocked,
+            'default_option' => $defaultOption ?: ($availableOptions[0]['id'] ?? null),
             'message' => null,
             'warning' => null,
             'available_options' => $availableOptions,
@@ -331,18 +367,22 @@ class AttendanceRegularizationService
 
         $attDateStr = $carbonAttDate->toDateString();
 
-        // Step 2: Clear temporary flags only (do NOT manually force attendance_status, attendance_type_id, is_half_day, or is_lwp)
+        // Step 2: Clear temporary flags and set admin unlock
         $attendance->missed_punch = false;
         $attendance->is_missed_punch = false;
         $attendance->is_blocked = false;
         $attendance->is_punch_blocked = false;
+        $attendance->is_admin_unlocked = true;
+        $attendance->unlocked_by = $approvedByUserId ?: auth()->id();
+        $attendance->unlocked_at = now();
+        $attendance->unlock_type = 'regularization_approval';
         $attendance->missed_punch_reason = null;
         $attendance->pending_hr_reason = null;
         $attendance->blocked_reason = null;
         $attendance->block_reason = null;
         $attendance->is_locked = false;
 
-        // Step 3: Delete stale violations belonging strictly to this attendance record
+        // Step 3: Delete/resolve stale violations belonging strictly to this attendance record
         if (Schema::hasTable('attendance_violations')) {
             DB::table('attendance_violations')
                 ->where(function ($q) use ($attendance, $attDateStr) {
@@ -352,7 +392,6 @@ class AttendanceRegularizationService
                               ->whereDate('violation_date', $attDateStr);
                       });
                 })
-                ->whereIn('type', ['late_login', 'early_logout', 'missed_punch'])
                 ->delete();
         }
 

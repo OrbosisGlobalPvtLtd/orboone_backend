@@ -172,7 +172,7 @@ class AttendanceS
 
         $isUnlocked = $blockedViolation && $blockedViolation->policy_action === 'resolved';
 
-        if ($existing && ($existing->is_blocked || $existing->is_punch_blocked) && ! $existing->is_admin_unlocked && ! $isUnlocked) {
+        if ($existing && ($existing->is_blocked || $existing->is_punch_blocked || $existing->attendance_status === 'punch_blocked') && ! $existing->is_admin_unlocked && ! $isUnlocked) {
             if (! $blockedViolation) {
                 $this->recordAttendanceViolation($existing, 'blocked_punch', $today, [
                     'source' => 'mobile',
@@ -1437,7 +1437,7 @@ class AttendanceS
             $in = Carbon::parse($now->toDateString() . ' ' . $this->ruleResolver->timeString($attendance->punch_in_time), $timezone);
             $completed = max(0, $in->diffInMinutes($now) - (int) ($shift?->lunch_break_minutes ?? $shift?->break_minutes ?? 0));
         }
-        $required = (int) ($shift?->required_work_minutes ?? 0);
+        $required = (int) ($shift?->required_work_minutes ?: 540);
         $target = null;
         if ($attendance?->target_punch_out_time) {
             $target = Carbon::parse($now->toDateString() . ' ' . $this->ruleResolver->timeString($attendance->target_punch_out_time), $timezone);
@@ -1446,6 +1446,11 @@ class AttendanceS
             $target = $this->ruleResolver->targetPunchOut($in, $shift);
         }
         $remainingSeconds = $target && ! $attendance?->punch_out_time ? max(0, $now->diffInSeconds($target, false)) : 0;
+        if ($remainingSeconds <= 0 && $attendance?->punch_in_time && ! $attendance->punch_out_time) {
+            $in = Carbon::parse($now->toDateString() . ' ' . $this->ruleResolver->timeString($attendance->punch_in_time), $timezone);
+            $target = $in->copy()->addMinutes($required);
+            $remainingSeconds = max(0, $now->diffInSeconds($target, false));
+        }
 
         $typeCode = optional($attendance?->attendanceType)->code;
         $statusCode = $attendance?->attendance_status;

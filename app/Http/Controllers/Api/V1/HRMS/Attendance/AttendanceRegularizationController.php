@@ -26,6 +26,7 @@ class AttendanceRegularizationController extends ApiController
         'early_logout_correction',
         'geofence_issue',
         'system_error',
+        'unlock_attendance',
         'other',
     ];
 

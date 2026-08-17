@@ -338,8 +338,8 @@
                 @if ($isPunchBlocked)
                     <h4 class="font-weight-bold text-danger mb-2"><i class="fas fa-lock mr-2"></i> Attendance Punch In Blocked</h4>
                     <p class="text-muted mb-4">Your punch-in is blocked for today. Please contact HR / Administrator to unlock your attendance.</p>
-                    <button type="button" class="btn btn-secondary btn-lg px-5 py-3 font-weight-bold shadow-none" disabled style="border-radius: 30px; cursor: not-allowed; opacity: 0.65; background: #64748b !important; border: none; color: #fff;">
-                        <i class="fas fa-ban fa-lg mr-2"></i> PUNCH IN BLOCKED
+                    <button type="button" class="btn font-weight-bold px-5 py-3 shadow" data-toggle="modal" data-target="#webPunchInModal" style="border-radius: 30px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important; border: none; color: #fff;">
+                        <i class="fas fa-ban fa-lg mr-2"></i> PUNCH IN BLOCKED (VIEW DETAILS)
                     </button>
                 @elseif (!$hasPunchedIn)
                     <h4 class="font-weight-bold text-dark mb-2">Ready to Start Your Shift?</h4>
@@ -365,7 +365,7 @@
             {{-- Floating Bottom-Right Fixed Web Punch Button Overlay --}}
             <div style="position: fixed; bottom: 32px; right: 32px; z-index: 9999;">
                 @if ($isPunchBlocked)
-                    <button type="button" class="btn btn-secondary font-weight-bold px-4 py-3 shadow d-flex align-items-center" disabled style="border-radius: 50px; font-size: 15px; font-weight: 900; cursor: not-allowed; opacity: 0.75; background: #64748b !important; color: #fff; border: 2px solid #ffffff;">
+                    <button type="button" class="btn font-weight-bold px-4 py-3 shadow-lg d-flex align-items-center" data-toggle="modal" data-target="#webPunchInModal" style="border-radius: 50px; font-size: 15px; font-weight: 900; background: linear-gradient(135deg, #64748b 0%, #475569 100%) !important; color: #fff; border: 2px solid #ffffff; cursor: pointer;">
                         <i class="fas fa-ban fa-lg mr-2"></i> PUNCH BLOCKED
                     </button>
                 @elseif (!$hasPunchedIn)

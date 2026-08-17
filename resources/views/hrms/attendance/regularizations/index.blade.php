@@ -25,6 +25,76 @@ body {
     overflow-x: hidden !important;
 }
 
+#regularizationDataTable thead th[colspan]::before,
+#regularizationDataTable thead th[colspan]::after,
+#regularizationDataTable thead tr:first-child th[colspan]::before,
+#regularizationDataTable thead tr:first-child th[colspan]::after {
+    display: none !important;
+    content: "" !important;
+}
+#regularizationDataTable thead th[colspan] {
+    cursor: default !important;
+    pointer-events: none !important;
+    padding: 3px 6px !important;
+}
+#regularizationDataTable thead th {
+    vertical-align: middle !important;
+    padding: 4px 8px !important;
+    line-height: 1.2 !important;
+    font-size: 11px !important;
+}
+#regularizationDataTable thead tr {
+    height: auto !important;
+}
+
+.table-responsive-wrap,
+.att-table-responsive {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 12px;
+}
+#regularizationDataTable {
+    width: 100% !important;
+    min-width: 1400px !important;
+    table-layout: auto !important;
+}
+
+.dataTables_length {
+    margin-bottom: 0 !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    color: var(--orb-muted) !important;
+}
+.dataTables_length label {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    margin-bottom: 0 !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+}
+.dataTables_length select,
+.dataTables_length select.custom-select,
+.dataTables_length select.form-control {
+    height: 34px !important;
+    min-width: 68px !important;
+    padding: 2px 28px 2px 10px !important;
+    font-size: 13px !important;
+    font-weight: 800 !important;
+    color: var(--orb-text) !important;
+    border-radius: 8px !important;
+    border: 1px solid var(--orb-border) !important;
+    background-color: #fff !important;
+    line-height: 1.4 !important;
+    vertical-align: middle !important;
+    display: inline-block !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+}
+
 .att-page {
     min-height: calc(100vh - 90px);
     background: var(--orb-bg);
@@ -186,7 +256,7 @@ body {
 }
 
 .att-filter-panel {
-    padding: 20px 24px;
+    padding: 12px 20px !important;
     border-bottom: 1px solid var(--orb-border);
     background: #fff;
 }
@@ -194,28 +264,28 @@ body {
 .att-filter-grid {
     display: grid;
     grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 16px;
+    gap: 10px !important;
     align-items: end;
 }
 
 .att-filter-grid label {
-    font-size: 11px;
-    font-weight: 800;
+    font-size: 10px !important;
+    font-weight: 800 !important;
     color: var(--orb-muted);
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    margin-bottom: 6px;
+    margin-bottom: 3px !important;
     display: block;
 }
 
 .att-filter-grid .form-control,
 .att-filter-grid .custom-select {
-    height: 44px;
-    border-radius: 12px;
+    height: 36px !important;
+    border-radius: 8px !important;
     border: 1px solid var(--orb-border);
-    font-size: 13px;
+    font-size: 12px !important;
     font-weight: 600;
-    padding: 0 14px;
+    padding: 0 10px !important;
     box-shadow: none !important;
     background: #fff;
     width: 100%;
@@ -612,8 +682,14 @@ body {
 
         @php
             $currentUser = auth()->user();
-            $canApprove = $currentUser && method_exists($currentUser, 'hasPermission') && $currentUser->hasPermission('attendance.regularization.approve');
-            $canReject = $currentUser && method_exists($currentUser, 'hasPermission') && $currentUser->hasPermission('attendance.regularization.reject');
+            $ownEmpId = $currentUser?->employee?->id ?? (DB::table('employees_new')->where('user_id', $currentUser?->id)->value('id') ?? null);
+            $isEmpRole = (!empty($isEmployeeRole) || ($currentUser->role_id ?? null) == 7 || ($currentUser->system_role_id ?? null) == 7);
+            
+            $hasApprovePerm = $currentUser && method_exists($currentUser, 'hasPermission') && $currentUser->hasPermission('attendance.regularization.approve');
+            $hasRejectPerm = $currentUser && method_exists($currentUser, 'hasPermission') && ($currentUser->hasPermission('attendance.regularization.reject') || $currentUser->hasPermission('attendance.regularization.approve'));
+            
+            $canApproveGlobal = !$isEmpRole && $hasApprovePerm;
+            $canRejectGlobal = !$isEmpRole && $hasRejectPerm;
             $canViewAll = $currentUser && (method_exists($currentUser, 'isSuperAdmin') && $currentUser->isSuperAdmin() || (method_exists($currentUser, 'hasPermission') && $currentUser->hasPermission('attendance.regularization.view_all')));
             $canViewTeam = $currentUser && method_exists($currentUser, 'hasPermission') && $currentUser->hasPermission('attendance.regularization.view_team');
 
@@ -702,7 +778,7 @@ body {
                             </div>
                         @endforeach
                         <div>
-                            <a href="{{ url()->current() }}" class="att-btn att-btn-light w-100 justify-content-center" style="height: 44px !important; border-radius: 12px !important; font-size: 13px !important; font-weight: 800 !important; display: inline-flex !important; align-items: center !important; gap: 6px !important; border: 1px solid var(--orb-border) !important;">
+                            <a href="{{ url()->current() }}" class="att-btn att-btn-light w-100 justify-content-center" style="height: 36px !important; border-radius: 8px !important; font-size: 12px !important; font-weight: 800 !important; display: inline-flex !important; align-items: center !important; gap: 6px !important; border: 1px solid var(--orb-border) !important;">
                                 <i class="fas fa-undo"></i> Reset
                             </a>
                         </div>
@@ -713,22 +789,25 @@ body {
 
             <div class="att-table-wrap">
                 <div class="att-table-responsive">
-                    <table class="att-table table table-hover js-orb-datatable" id="regularizationDataTable">
+                    <table class="att-table table table-hover js-orb-datatable" id="regularizationDataTable" style="width:100% !important; min-width: 1350px;">
                         <thead>
                             <tr>
-                                <th style="width: 50px; min-width: 50px;">S.No.</th>
-                                <th style="width: 220px; min-width: 220px;">Employee</th>
-                                <th style="width: 90px; min-width: 90px;">Code</th>
-                                <th style="width: 95px; min-width: 95px;">Date</th>
-                                <th style="width: 130px; min-width: 130px;">Request Type</th>
-                                <th style="width: 90px; min-width: 90px;">Current In</th>
-                                <th style="width: 90px; min-width: 90px;">Current Out</th>
-                                <th style="width: 100px; min-width: 100px;">Requested In</th>
-                                <th style="width: 110px; min-width: 110px;">Requested Out</th>
-                                <th style="width: 160px; min-width: 160px;">Reason</th>
-                                <th style="width: 100px; min-width: 100px;">Status</th>
-                                <th style="width: 120px; min-width: 120px;">Submitted At</th>
-                                <th style="width: 80px; min-width: 80px;" class="text-right no-export">Action</th>
+                                <th rowspan="2" style="vertical-align: middle !important; width: 50px; padding: 4px 6px !important;">S.No.</th>
+                                <th rowspan="2" style="vertical-align: middle !important; width: 220px; padding: 4px 6px !important;">Employee</th>
+                                <th rowspan="2" style="vertical-align: middle !important; width: 90px; padding: 4px 6px !important;">Code</th>
+                                <th rowspan="2" style="vertical-align: middle !important; width: 95px; padding: 4px 6px !important;">Date</th>
+                                <th rowspan="2" style="vertical-align: middle !important; width: 140px; padding: 4px 6px !important;">Request Type</th>
+                                <th colspan="4" class="text-center no-sort" style="background: rgba(75, 0, 232, 0.08) !important; color: #4B00E8 !important; font-weight: 800; font-size: 11px; border-bottom: 1.5px solid var(--orb-primary); letter-spacing: 0.5px; padding: 3px 6px !important;">PUNCH TIME</th>
+                                <th rowspan="2" style="vertical-align: middle !important; width: 160px; padding: 4px 6px !important;">Reason</th>
+                                <th rowspan="2" style="vertical-align: middle !important; width: 100px; padding: 4px 6px !important;">Status</th>
+                                <th rowspan="2" style="vertical-align: middle !important; width: 120px; padding: 4px 6px !important;">Submitted At</th>
+                                <th rowspan="2" style="vertical-align: middle !important; width: 80px; padding: 4px 6px !important;" class="text-right no-export">Action</th>
+                            </tr>
+                            <tr>
+                                <th style="width: 95px; background: rgba(75, 0, 232, 0.03) !important; color: #4B00E8 !important; font-size: 10px; font-weight: 800; padding: 3px 6px !important;" class="text-center">Current In</th>
+                                <th style="width: 95px; background: rgba(75, 0, 232, 0.03) !important; color: #4B00E8 !important; font-size: 10px; font-weight: 800; padding: 3px 6px !important;" class="text-center">Current Out</th>
+                                <th style="width: 95px; background: rgba(75, 0, 232, 0.06) !important; color: #4B00E8 !important; font-size: 10px; font-weight: 800; padding: 3px 6px !important;" class="text-center">Req. In</th>
+                                <th style="width: 95px; background: rgba(75, 0, 232, 0.06) !important; color: #4B00E8 !important; font-size: 10px; font-weight: 800; padding: 3px 6px !important;" class="text-center">Req. Out</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -736,6 +815,10 @@ body {
                                 @php
                                     $photoUrl = resolveEmployeePassportPhoto($row->employee_id);
                                     $initials = resolveEmployeeInitials($row->employee_id);
+                                    $isOwnRow = $ownEmpId && ((int)$row->employee_id === (int)$ownEmpId);
+                                    $canApproveThisRow = $canApproveGlobal && !$isOwnRow;
+                                    $canRejectThisRow = $canRejectGlobal && !$isOwnRow;
+
                                     $emp = \App\Models\HRMS\Employee\EmployeeM::with(['department', 'designation', 'profile'])->find($row->employee_id);
                                     $deptName = $emp?->department?->name ?? 'N/A';
                                     $desigName = $emp?->designation?->name ?? 'N/A';
@@ -785,10 +868,10 @@ body {
                                             {{ $typeLabels[$row->request_type] ?? ucfirst(str_replace('_', ' ', $row->request_type)) }}
                                         </span>
                                     </td>
-                                    <td style="white-space: nowrap;"><span class="font-weight-bold">{{ $currentInText }}</span></td>
-                                    <td style="white-space: nowrap;"><span class="font-weight-bold">{{ $currentOutText }}</span></td>
-                                    <td style="white-space: nowrap;"><span class="text-primary font-weight-bold">{{ $requestedInText }}</span></td>
-                                    <td style="white-space: nowrap;"><span class="text-primary font-weight-bold">{{ $requestedOutText }}</span></td>
+                                    <td style="white-space: nowrap;" class="text-center"><span class="font-weight-bold">{{ $currentInText }}</span></td>
+                                    <td style="white-space: nowrap;" class="text-center"><span class="font-weight-bold">{{ $currentOutText }}</span></td>
+                                    <td style="white-space: nowrap;" class="text-center"><span class="text-primary font-weight-bold">{{ $requestedInText }}</span></td>
+                                    <td style="white-space: nowrap;" class="text-center"><span class="text-primary font-weight-bold">{{ $requestedOutText }}</span></td>
                                     <td style="max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                                         <span title="{{ $row->reason }}" data-toggle="tooltip" style="cursor: help;">
                                             {{ Str::limit(str_replace(['[Attendance Status Correction: Present]', '[Attendance Status Correction: Half Day]', '[Attendance Status Correction: Absent]', '[Attendance Status Correction: present]', '[Attendance Status Correction: half_day]', '[Attendance Status Correction: absent]'], '', $row->reason), 35) }}
@@ -820,12 +903,12 @@ body {
                                                 </button>
 
                                                 @if($row->status === 'pending')
-                                                    @if($canApprove)
+                                                    @if(!empty($canApproveThisRow))
                                                         <button type="button" class="dropdown-item" data-toggle="modal" data-target="#approveModal{{ $row->id }}">
                                                             <i class="fas fa-check mr-2 text-success"></i> Approve
                                                         </button>
                                                     @endif
-                                                    @if($canReject)
+                                                    @if(!empty($canRejectThisRow))
                                                         <button type="button" class="dropdown-item" data-toggle="modal" data-target="#rejectModal{{ $row->id }}">
                                                             <i class="fas fa-times mr-2 text-danger"></i> Reject
                                                         </button>
@@ -837,7 +920,7 @@ body {
                                                     @endif
                                                 @endif
 
-                                                @if(!empty($canDelete))
+                                                @if(!empty($canDelete) && $row->status === 'pending')
                                                     <form method="POST" action="{{ route($deleteRoute, $row->id) }}" onsubmit="return confirm('Delete this record?')">
                                                         @csrf
                                                         @method('DELETE')
@@ -877,18 +960,22 @@ body {
                     <form method="POST" action="{{ route($storeRoute) }}" class="js-regularization-form">
                         @csrf
                         <div class="modal-body">
-                            @if($canViewAll || $canViewTeam)
+                            @php
+                                $ownEmpId = auth()->user()->employee->id ?? '';
+                                $isSelfOnly = !empty($isEmployeeRole) || (empty($canViewAll) && empty($canViewTeam)) || (auth()->user()->role_id ?? null) == 7;
+                            @endphp
+                            @if(!$isSelfOnly)
                                 <div class="form-group">
                                     <label class="font-weight-bold text-dark">Employee <span class="text-danger">*</span></label>
                                     <select name="employee_id" class="form-control custom-select" required>
                                         <option value="">Select Employee</option>
-                                        @foreach($filters[0]['options'] ?? [] as $empId => $empName)
-                                            <option value="{{ $empId }}">{{ $empName }}</option>
+                                        @foreach($formFields[0]['options'] ?? [] as $empId => $empName)
+                                            <option value="{{ $empId }}" {{ (string)$empId === (string)$ownEmpId ? 'selected' : '' }}>{{ $empName }}</option>
                                         @endforeach
                                     </select>
                                 </div>
                             @else
-                                <input type="hidden" name="employee_id" value="{{ auth()->user()->employee->id ?? '' }}">
+                                <input type="hidden" name="employee_id" value="{{ $ownEmpId }}">
                             @endif
 
                             <!-- Dynamic Status Alert Box -->
@@ -1085,8 +1172,18 @@ body {
                                 @endif
                             </div>
                         </div>
-                        <div class="modal-footer" style="background: rgba(255,255,255,0.5);">
+                        <div class="modal-footer" style="background: rgba(255,255,255,0.5); display: flex; justify-content: space-between; align-items: center;">
                             <button type="button" class="btn btn-secondary font-weight-bold" style="border-radius: 10px;" data-dismiss="modal">Close</button>
+                            @if($row->status === 'pending' && !empty($canApproveThisRow))
+                                <div class="d-flex align-items-center" style="gap: 8px;">
+                                    <button type="button" class="btn btn-danger font-weight-bold shadow-sm" style="border-radius: 10px; padding: 6px 16px;" data-toggle="modal" data-target="#rejectModal{{ $row->id }}" data-dismiss="modal">
+                                        <i class="fas fa-times-circle mr-1"></i> Reject Request
+                                    </button>
+                                    <button type="button" class="btn btn-success font-weight-bold shadow-sm" style="border-radius: 10px; background: #10B981; border: 0; padding: 6px 16px;" data-toggle="modal" data-target="#approveModal{{ $row->id }}" data-dismiss="modal">
+                                        <i class="fas fa-check-circle mr-1"></i> Approve Request
+                                    </button>
+                                </div>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -1288,6 +1385,14 @@ document.addEventListener('DOMContentLoaded', function () {
             } else if (type === 'missed_punch_out') {
                 if (outGroup) outGroup.style.display = '';
                 if (outInput) outInput.setAttribute('required', 'required');
+            } else if (type === 'unlock_attendance') {
+                if (inGroup) inGroup.style.display = 'none';
+                if (outGroup) outGroup.style.display = 'none';
+                if (inInput) inInput.removeAttribute('required');
+                if (outInput) outInput.removeAttribute('required');
+                if (reasonTextarea) {
+                    reasonTextarea.placeholder = 'Please describe the reason for requesting attendance unlock...';
+                }
             } else if (type === 'regular_attendance' || type === 'wrong_punch_time') {
                 if (inGroup) inGroup.style.display = '';
                 if (outGroup) outGroup.style.display = '';
@@ -1393,14 +1498,23 @@ document.addEventListener('DOMContentLoaded', function () {
                     typeSelect.disabled = false;
                     if (submitBtn) submitBtn.disabled = false;
 
-                    // If exactly 1 option available, auto-select it
-                    if (options.length === 1) {
+                    // Auto-select Unlock Attendance if blocked, or default option
+                    if (data.default_option) {
+                        typeSelect.value = data.default_option;
+                    } else if (data.is_blocked || options.some(function(o) { return (o.value || o.id) === 'unlock_attendance'; })) {
+                        typeSelect.value = 'unlock_attendance';
+                    } else if (options.length === 1) {
                         typeSelect.value = options[0].value || options[0].id;
                     }
 
                     if (alertBox) {
-                        alertBox.className = 'alert alert-info py-2 px-3 mb-3 small font-weight-bold';
-                        alertBox.innerHTML = `<i class="fas fa-info-circle mr-1"></i> Attendance Status for ${dateVal}: <strong>${data.attendance_status || 'Absent'}</strong>`;
+                        if (data.is_blocked) {
+                            alertBox.className = 'alert alert-warning py-2 px-3 mb-3 small font-weight-bold';
+                            alertBox.innerHTML = `<i class="fas fa-user-lock mr-1 text-danger"></i> Attendance Status for ${dateVal}: <strong>Punch Blocked</strong>. 'Unlock Attendance' option has been auto-selected.`;
+                        } else {
+                            alertBox.className = 'alert alert-info py-2 px-3 mb-3 small font-weight-bold';
+                            alertBox.innerHTML = `<i class="fas fa-info-circle mr-1"></i> Attendance Status for ${dateVal}: <strong>${data.attendance_status || 'Absent'}</strong>`;
+                        }
                         alertBox.classList.remove('d-none');
                     }
                 } else {
@@ -1479,9 +1593,8 @@ document.addEventListener('DOMContentLoaded', function () {
             responsive: false,
             autoWidth: false,
             order: [],
-            scrollX: true,
-            scrollCollapse: true,
-            dom: "<'row mx-0 px-2 py-3 align-items-center'<'col-sm-12 col-md-6 px-0'l><'col-sm-12 col-md-6 px-0 text-right'B>>rt<'row align-items-center mt-3 px-3 pb-3'<'col-md-5'i><'col-md-7'p>>",
+            scrollX: false,
+            dom: "<'row mx-0 px-2 py-3 align-items-center'<'col-sm-12 col-md-6 px-0'l><'col-sm-12 col-md-6 px-0 text-right'B>><'table-responsive-wrap'rt><'row align-items-center mt-3 px-3 pb-3'<'col-md-5'i><'col-md-7'p>>",
             buttons: [
                 {
                     extend: 'csvHtml5',

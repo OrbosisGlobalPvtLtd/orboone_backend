@@ -1333,15 +1333,7 @@
                                         @endif
 
                                         @if(!$isMyAttendance)
-                                            @if($isBlocked)
-                                            <button type="button"
-                                                class="dropdown-item"
-                                                data-toggle="modal"
-                                                data-target="#unlockModal{{ $attendance->id }}">
-                                                <i class="fas fa-unlock text-success"></i>
-                                                Unlock
-                                            </button>
-                                            @endif
+                                            {{-- Direct unlock disabled: Unlock must be done via Regularization Request Approval --}}
 
                                             @if(($canManageAttendance ?? false) || (auth()->user() && method_exists(auth()->user(), 'hasRole') && auth()->user()->hasRole('super_admin')))
                                             <button type="button"

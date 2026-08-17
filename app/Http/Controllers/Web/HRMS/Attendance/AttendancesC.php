@@ -210,6 +210,30 @@ class AttendancesC extends Controller
             ->get();
         $this->normalizeAttendanceCollection($blockedAttendances);
 
+        foreach ($blockedAttendances as $blocked) {
+            $empId = $blocked->employee_id;
+            $attDate = $blocked->attendance_date ? Carbon::parse($blocked->attendance_date)->toDateString() : null;
+            $attId = is_numeric($blocked->id) ? $blocked->id : null;
+
+            $regRequest = null;
+            if ($empId && $attDate) {
+                $regRequest = DB::table('attendance_regularizations')
+                    ->where('employee_id', $empId)
+                    ->whereNull('deleted_at')
+                    ->where(function ($q) use ($attDate, $attId) {
+                        if ($attId) {
+                            $q->where('attendance_id', $attId);
+                        }
+                        $q->orWhereDate('requested_punch_in', $attDate)
+                          ->orWhereDate('requested_punch_out', $attDate)
+                          ->orWhereDate('created_at', $attDate);
+                    })
+                    ->latest('id')
+                    ->first();
+            }
+            $blocked->regularization_request = $regRequest;
+        }
+
         return view('hrms.attendance.index', compact(
             'attendances',
             'employees',
@@ -982,9 +1006,13 @@ class AttendancesC extends Controller
     // Helper Methods
     private function attendanceEmployees()
     {
+        $user = auth()->user();
+        $isEmployeeRole = ($user->role_id ?? null) == 7 
+            || ($user->system_role_id ?? null) == 7;
+
         $query = User::whereHas('employee')->with('employee')->orderBy('name');
-        if (! $this->canViewAll('attendance.records.view_all') && ! $this->canViewAll('attendance.monthly_report.view_all')) {
-            $ids = $this->userHasPermission('attendance.monthly_report.view_team') || $this->userHasPermission('attendance.regularization.view_team')
+        if ($isEmployeeRole || (! $this->canViewAll('attendance.records.view_all') && ! $this->canViewAll('attendance.monthly_report.view_all'))) {
+            $ids = ($this->userHasPermission('attendance.monthly_report.view_team') || $this->userHasPermission('attendance.regularization.view_team')) && ! $isEmployeeRole
                 ? $this->teamEmployeeIds(true)
                 : array_filter([$this->ownEmployeeId()]);
             $query->whereHas('employee', fn($employeeQuery) => $employeeQuery->whereIn('id', $ids));

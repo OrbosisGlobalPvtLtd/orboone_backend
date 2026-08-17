@@ -666,11 +666,7 @@
                                             <i class="fas fa-ellipsis-v"></i>
                                         </button>
                                         <div class="dropdown-menu dropdown-menu-right" style="border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid var(--orb-border); padding: 6px;">
-                                            @if($attendance->is_blocked)
-                                            <button type="button" class="dropdown-item d-flex align-items-center" data-toggle="modal" data-target="#unlockModal{{ $attendance->id }}" style="border-radius: 8px; font-weight: 600; padding: 8px 12px; font-size: 13px; gap: 8px;">
-                                                <i class="fas fa-unlock text-success"></i> Unlock
-                                            </button>
-                                            @endif
+                                            {{-- Direct unlock disabled: Unlock must be done via Regularization Request Approval --}}
 
                                             @if($canManageAttendance ?? false)
                                             <button type="button" class="dropdown-item d-flex align-items-center" data-toggle="modal" data-target="#editModal{{ $attendance->id }}" style="border-radius: 8px; font-weight: 600; padding: 8px 12px; font-size: 13px; gap: 8px;">

@@ -93,7 +93,7 @@
             overflow-y: auto;
             overflow-x: hidden;
             -webkit-overflow-scrolling: touch;
-            background: linear-gradient(135deg, #50a6f8 0%, #6d83f1 20%, #8c62ef 42%, #c74adc 68%, #eb4f86 85%, #f2a42d 100%);
+            background: linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%);
             position: relative;
             padding-bottom: 255px;
         }
@@ -744,7 +744,7 @@
         }
 
         .text-primary-grad {
-            background: linear-gradient(135deg, #6d28d9 0%, #db2777 100%);
+            background: linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
@@ -760,7 +760,7 @@
         .desk-indicator-line {
             width: 42px;
             height: 4px;
-            background: linear-gradient(90deg, #6d28d9 0%, #db2777 100%);
+            background: linear-gradient(90deg, var(--orb-primary) 0%, var(--orb-secondary) 100%);
             border-radius: 2px;
             margin-top: 15px;
         }
@@ -901,8 +901,8 @@
         }
 
         .login-card-wrapper .form-control:focus {
-            border-color: #6d28d9;
-            box-shadow: 0 0 0 3px rgba(109, 40, 217, 0.1);
+            border-color: var(--orb-primary);
+            box-shadow: 0 0 0 3px rgba(75, 0, 232, 0.1);
         }
 
         .login-card-wrapper .input-icon {
@@ -922,19 +922,19 @@
             height: 44px;
             border: none;
             border-radius: 8px;
-            background: linear-gradient(135deg, #6d28d9 0%, #db2777 100%);
+            background: linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%);
             color: #ffffff;
             font-size: 14px;
             font-weight: 700;
             cursor: pointer;
-            box-shadow: 0 4px 12px rgba(109, 40, 217, 0.2);
+            box-shadow: 0 4px 12px rgba(75, 0, 232, 0.2);
             transition: all 0.2s ease;
         }
 
         .btn-login-new:hover {
             opacity: 0.95;
             transform: translateY(-1px);
-            box-shadow: 0 6px 16px rgba(109, 40, 217, 0.3);
+            box-shadow: 0 6px 16px rgba(75, 0, 232, 0.3);
         }
 
         .separator-text {
@@ -967,10 +967,10 @@
         .btn-sso-login {
             width: 100%;
             height: 44px;
-            border: 1px solid #6d28d9;
+            border: 1px solid var(--orb-primary);
             border-radius: 8px;
             background: #ffffff;
-            color: #6d28d9;
+            color: var(--orb-primary);
             font-size: 14px;
             font-weight: 700;
             display: flex;
@@ -982,8 +982,8 @@
 
         .btn-sso-login:hover {
             background: #fdf4ff;
-            border-color: #db2777;
-            color: #db2777;
+            border-color: var(--orb-secondary);
+            color: var(--orb-secondary);
         }
 
         .signin-footer-new {
@@ -995,7 +995,7 @@
         }
 
         .signin-footer-new a {
-            color: #6d28d9;
+            color: var(--orb-primary);
             font-weight: 700;
             text-decoration: none;
         }
@@ -1005,13 +1005,13 @@
         }
 
         .login-card-wrapper .helper-link {
-            color: #6d28d9 !important;
+            color: var(--orb-primary) !important;
             font-size: 12px;
             font-weight: 600;
         }
 
         .login-card-wrapper .helper-link:hover {
-            color: #db2777 !important;
+            color: var(--orb-secondary) !important;
             text-decoration: underline;
         }
 
@@ -2618,8 +2618,8 @@
                                 <path d="M0.00,49.98 C150.00,150.00 349.20,-49.98 500.00,49.98 L500.00,150.00 L0.00,150.00 Z" style="stroke: none; fill: url(#wave-grad);"></path>
                                 <defs>
                                     <linearGradient id="wave-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                        <stop offset="0%" style="stop-color:#6d28d9;stop-opacity:1" />
-                                        <stop offset="100%" style="stop-color:#db2777;stop-opacity:1" />
+                                        <stop offset="0%" style="stop-color:<?php echo $branding['primary_color'] ?? '#4B00E8'; ?>;stop-opacity:1" />
+                                        <stop offset="100%" style="stop-color:<?php echo $branding['secondary_color'] ?? '#8600EE'; ?>;stop-opacity:1" />
                                     </linearGradient>
                                 </defs>
                             </svg>
@@ -2747,7 +2747,7 @@
 
                         <!-- Copyright Footer outside the card -->
                         <div class="desktop-copyright-footer">
-                            <i class="fa-solid fa-shield-halved" style="margin-right: 6px; color: #6d28d9;"></i>
+                            <i class="fa-solid fa-shield-halved" style="margin-right: 6px; color: var(--orb-primary);"></i>
                             <span>© {{ date('Y') }} {{ $company->company_name ?? $branding['company_name'] ?? 'OrboOne' }}. All rights reserved.</span>
                         </div>
                     </div>

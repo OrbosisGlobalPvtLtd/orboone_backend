@@ -35,26 +35,51 @@ class LeaveApprovalC extends Controller
         // Auto-expire past pending leaves
         app(\App\Services\HRMS\Leave\AutoExpireLeaveService::class)->expirePastPendingRequests();
 
-        $requests = LeaveRequestM::with(['employee.user', 'employee.employeeDetail', 'leaveType', 'dates'])
-            ->when($request->status, fn ($query) => $query->where('status', $request->status));
+        $statusFilter = $request->input('status', 'pending');
+        $now = \Carbon\Carbon::now('Asia/Kolkata');
+
+        $query = LeaveRequestM::with(['employee.user', 'employee.department', 'employee.designation', 'leaveType', 'dates']);
+
+        if (! empty($statusFilter) && $statusFilter !== 'all') {
+            $query->where('status', $statusFilter);
+        }
 
         if ($this->canViewAll('leave.approvals.view_all') || $this->userHasPermission('leave.approvals.view')) {
-            $requests->when($request->employee_id, fn ($query) => $query->where('employee_id', $request->employee_id));
+            $query->when($request->employee_id, fn ($q) => $q->where('employee_id', $request->employee_id));
         } else {
             $teamIds = $this->teamEmployeeIds(false);
-            abort_if(empty($teamIds), 403);
-            $requests->whereIn('employee_id', $teamIds);
-            if ($request->employee_id && in_array((int) $request->employee_id, $teamIds, true)) {
-                $requests->where('employee_id', $request->employee_id);
+            if (empty($teamIds)) {
+                $query->where('employee_id', 0); // No team members
+            } else {
+                $query->whereIn('employee_id', $teamIds);
+                if ($request->employee_id && in_array((int) $request->employee_id, $teamIds, true)) {
+                    $query->where('employee_id', $request->employee_id);
+                }
             }
         }
 
-        $requests = $requests
-            ->when($request->leave_type_id, fn ($query) => $query->where('leave_type_id', $request->leave_type_id))
-            ->when($request->from, fn ($query) => $query->whereDate('start_date', '>=', $request->from))
-            ->when($request->to, fn ($query) => $query->whereDate('end_date', '<=', $request->to))
-            ->latest()
-            ->paginate(25);
+        if ($request->filled('leave_type_id')) {
+            $query->where('leave_type_id', $request->leave_type_id);
+        }
+        if ($request->filled('from')) {
+            $query->whereDate('start_date', '>=', $request->from);
+        }
+        if ($request->filled('to')) {
+            $query->whereDate('end_date', '<=', $request->to);
+        }
+
+        $pendingCountCurrentMonth = LeaveRequestM::where('status', 'pending')
+            ->whereMonth('start_date', $now->month)
+            ->whereYear('start_date', $now->year)
+            ->count();
+
+        $totalPendingCount = LeaveRequestM::where('status', 'pending')->count();
+
+        $requests = $query
+            ->orderByRaw("CASE WHEN status = 'pending' THEN 1 ELSE 2 END")
+            ->latest('start_date')
+            ->paginate(25)
+            ->appends($request->query());
 
         $employees = $this->canViewAll('leave.approvals.view_all') || $this->userHasPermission('leave.approvals.view')
             ? $this->employeeOptions()
@@ -62,7 +87,7 @@ class LeaveApprovalC extends Controller
         $leaveTypes = LeaveTypeM::orderBy('name')->get();
         $accesses = $this->accesses();
 
-        return view('hrms.leave.approvals.index', compact('requests', 'employees', 'leaveTypes', 'accesses'))
+        return view('hrms.leave.approvals.index', compact('requests', 'employees', 'leaveTypes', 'accesses', 'statusFilter', 'pendingCountCurrentMonth', 'totalPendingCount'))
             ->with('active', 'leave_management');
     }
 

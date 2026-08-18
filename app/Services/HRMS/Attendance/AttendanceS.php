@@ -186,7 +186,12 @@ class AttendanceS
         $shift = $policy ?: $this->shiftFor($workMode);
         $window = $this->ruleResolver->calculatePunchWindowState($shift, $now);
         if ($window['is_before_early_login'] ?? $window['is_before_allowed_from']) {
-            return ['status' => 'error', 'message' => 'Too early to punch in. Punch-in allowed from ' . ($window['allowed_from'] ? $window['allowed_from']->format('h:i A') : 'allowed time') . '.'];
+            $allowedTimeStr = $window['allowed_from'] ? $window['allowed_from']->format('h:i A') : 'allowed time';
+            return [
+                'status' => 'error',
+                'code' => 'EARLY_PUNCH',
+                'message' => 'Attendance window is currently unavailable. Punch-in is allowed from ' . $allowedTimeStr . '.'
+            ];
         }
 
         $time = $now->format('H:i:s');

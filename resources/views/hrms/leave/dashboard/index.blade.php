@@ -1,806 +1,554 @@
-@extends('layouts.panel')
+@extends('layouts.panel', ['active' => 'leave_management'])
 
-@section('page_title', 'Leave Dashboard')
+@section('page_title', 'Leave Management Dashboard')
 
 @section('_head')
-@include('hrms.leave.shared.style')
-
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap4.min.css">
 <style>
-    :root {
-        --leave-primary: var(--orb-primary, #4B00E8);
-        --leave-secondary: var(--orb-secondary, #8600EE);
-        --leave-bg: var(--orb-bg, #F6F7FB);
-        --leave-border: var(--orb-border, #E7EAF3);
-        --leave-text: var(--orb-text, #101828);
-        --leave-muted: var(--orb-muted, #667085);
-        --leave-soft: var(--orb-soft, #F4F2FF);
-        --leave-shadow: 0 14px 35px rgba(16, 24, 40, .07);
-    }
-
-    .leave-dashboard-wrap {
-        padding-bottom: 24px;
-    }
-
-    .leave-hero {
-        position: relative;
-        overflow: hidden;
-        border-radius: 24px;
-        padding: 22px 24px;
-        background:
-            radial-gradient(circle at top right, rgba(255, 255, 255, .26), transparent 35%),
-            linear-gradient(135deg, var(--leave-primary), var(--leave-secondary));
-        color: #fff;
-        box-shadow: 0 18px 45px rgba(75, 0, 232, .22);
-        margin-bottom: 18px;
-    }
-
-    .leave-hero::after {
-        content: '';
-        position: absolute;
-        width: 210px;
-        height: 210px;
-        border-radius: 50%;
-        right: -90px;
-        bottom: -120px;
-        background: rgba(255, 255, 255, .14);
-    }
-
-    .leave-hero-content {
-        position: relative;
-        z-index: 2;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        flex-wrap: wrap;
-    }
-
-    .leave-hero-kicker {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 6px 12px;
-        border-radius: 999px;
-        background: rgba(255, 255, 255, .16);
-        color: rgba(255, 255, 255, .92);
-        font-size: 12px;
-        font-weight: 800;
-        margin-bottom: 10px;
-    }
-
-    .leave-hero-title {
-        font-size: 24px;
-        font-weight: 900;
-        margin: 0;
-        letter-spacing: -.03em;
-        color: #fff;
-    }
-
-    .leave-hero-subtitle {
-        margin: 6px 0 0;
-        color: rgba(255, 255, 255, .80);
-        font-size: 13px;
-        max-width: 720px;
-    }
-
-    .leave-hero-actions {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-wrap: wrap;
-    }
-
-    .leave-hero-btn {
-        border: 0;
-        border-radius: 14px;
-        background: rgba(255, 255, 255, .96);
-        color: var(--leave-primary);
-        font-size: 13px;
-        font-weight: 900;
-        padding: 10px 14px;
-        box-shadow: 0 10px 25px rgba(16, 24, 40, .12);
-        transition: all .2s ease;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .leave-hero-btn:hover {
-        transform: translateY(-1px);
-        color: var(--leave-primary);
-        text-decoration: none;
-        box-shadow: 0 14px 30px rgba(16, 24, 40, .16);
-    }
-
-    .leave-mini-card {
-        position: relative;
-        overflow: hidden;
-        min-height: 96px;
-        border-radius: 18px;
-        padding: 14px;
-        background: #fff;
-        border: 1px solid rgba(231, 234, 243, .9);
-        box-shadow: var(--leave-shadow);
-        transition: all .22s ease;
-        margin-bottom: 16px;
-    }
-
-    .leave-mini-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 18px 40px rgba(16, 24, 40, .10);
-    }
-
-    .leave-mini-card::after {
-        content: '';
-        position: absolute;
-        width: 72px;
-        height: 72px;
-        border-radius: 50%;
-        right: -26px;
-        bottom: -26px;
-        background: var(--card-soft);
-    }
-
-    .leave-mini-top {
-        position: relative;
-        z-index: 2;
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 10px;
-    }
-
-    .leave-mini-icon {
-        width: 36px;
-        height: 36px;
-        min-width: 36px;
-        border-radius: 13px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        color: #fff;
-        background: var(--card-gradient);
-        box-shadow: 0 10px 20px var(--card-shadow);
-        font-size: 14px;
-    }
-
-    .leave-mini-title {
-        margin: 0;
-        color: var(--leave-muted);
-        font-size: 11px;
-        font-weight: 900;
-        text-transform: uppercase;
-        letter-spacing: .04em;
-        line-height: 1.25;
-    }
-
-    .leave-mini-value {
-        position: relative;
-        z-index: 2;
-        margin-top: 12px;
-        color: var(--leave-text);
-        font-size: 26px;
-        font-weight: 950;
-        line-height: 1;
-        letter-spacing: -.04em;
-    }
-
-    .leave-mini-caption {
-        position: relative;
-        z-index: 2;
-        margin-top: 5px;
-        font-size: 11px;
-        font-weight: 700;
-        color: var(--leave-muted);
-    }
-
-    .card-primary {
-        --card-gradient: linear-gradient(135deg, var(--leave-primary), var(--leave-secondary));
-        --card-shadow: rgba(75, 0, 232, .25);
-        --card-soft: rgba(75, 0, 232, .08);
-    }
-
-    .card-warning {
-        --card-gradient: linear-gradient(135deg, #F79009, #DC6803);
-        --card-shadow: rgba(247, 144, 9, .25);
-        --card-soft: rgba(247, 144, 9, .10);
-    }
-
-    .card-success {
-        --card-gradient: linear-gradient(135deg, #12B76A, #039855);
-        --card-shadow: rgba(18, 183, 106, .22);
-        --card-soft: rgba(18, 183, 106, .10);
-    }
-
-    .card-danger {
-        --card-gradient: linear-gradient(135deg, #F04438, #D92D20);
-        --card-shadow: rgba(240, 68, 56, .22);
-        --card-soft: rgba(240, 68, 56, .10);
-    }
-
-    .card-info {
-        --card-gradient: linear-gradient(135deg, #0BA5EC, #1570EF);
-        --card-shadow: rgba(11, 165, 236, .22);
-        --card-soft: rgba(11, 165, 236, .10);
-    }
-
-    .card-dark {
-        --card-gradient: linear-gradient(135deg, #344054, #101828);
-        --card-shadow: rgba(16, 24, 40, .18);
-        --card-soft: rgba(16, 24, 40, .08);
-    }
-
-    .leave-section-card {
-        background: #fff;
-        border: 1px solid var(--leave-border);
-        border-radius: 24px;
-        box-shadow: var(--leave-shadow);
-        overflow: hidden;
-    }
-
-    .leave-section-head {
-        padding: 18px 20px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 14px;
-        flex-wrap: wrap;
-        border-bottom: 1px solid var(--leave-border);
-        background: linear-gradient(180deg, #fff, #FCFCFD);
-    }
-
-    .leave-section-title-wrap {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .leave-section-icon {
-        width: 42px;
-        height: 42px;
-        border-radius: 15px;
-        background: var(--leave-soft);
-        color: var(--leave-primary);
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 16px;
-    }
-
-    .leave-section-title {
-        margin: 0;
-        color: var(--leave-text);
-        font-size: 16px;
-        font-weight: 950;
-        letter-spacing: -.02em;
-    }
-
-    .leave-section-subtitle {
-        margin: 2px 0 0;
-        color: var(--leave-muted);
-        font-size: 12px;
-        font-weight: 600;
-    }
-
-    .leave-section-actions {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
-    }
-
-    .leave-light-btn {
-        border: 1px solid var(--leave-border);
-        background: #fff;
-        color: var(--leave-text);
-        border-radius: 12px;
-        padding: 8px 12px;
-        font-size: 12px;
-        font-weight: 850;
-        display: inline-flex;
-        align-items: center;
-        gap: 7px;
-        transition: all .2s ease;
-        text-decoration: none;
-    }
-
-    .leave-light-btn:hover {
-        background: var(--leave-soft);
-        color: var(--leave-primary);
-        text-decoration: none;
-        border-color: rgba(75, 0, 232, .18);
-    }
-
-    .leave-table-shell {
-        padding: 14px;
-    }
-
-    .leave-table-responsive {
-        width: 100%;
-        overflow-x: auto;
-        border-radius: 18px;
-        border: 1px solid var(--leave-border);
-        background: #fff;
-    }
-
-    table.leave-premium-table {
-        width: 100%;
-        margin: 0;
-        border-collapse: separate;
-        border-spacing: 0;
-        color: var(--leave-text);
-    }
-
-    .leave-premium-table thead th {
-        position: sticky;
-        top: 0;
-        z-index: 3;
-        background: #F9FAFB;
-        color: #475467;
-        font-size: 11px;
-        text-transform: uppercase;
-        letter-spacing: .04em;
-        font-weight: 950;
-        padding: 13px 14px;
-        border-bottom: 1px solid var(--leave-border);
-        white-space: nowrap;
-    }
-
-    .leave-premium-table tbody td {
-        padding: 13px 14px;
-        vertical-align: middle;
-        border-bottom: 1px solid #F2F4F7;
-        font-size: 13px;
-        white-space: nowrap;
-    }
-
-    .leave-premium-table tbody tr {
-        transition: all .15s ease;
-    }
-
-    .leave-premium-table tbody tr:hover {
-        background: #FAFAFF;
-    }
-
-    .leave-premium-table tbody tr:last-child td {
-        border-bottom: 0;
-    }
-
-    .leave-employee {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        min-width: 190px;
-    }
-
-    .leave-avatar {
-        width: 36px;
-        height: 36px;
-        border-radius: 14px;
-        background: linear-gradient(135deg, rgba(75, 0, 232, .12), rgba(134, 0, 238, .16));
-        color: var(--leave-primary);
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 950;
-        border: 1px solid rgba(75, 0, 232, .12);
-        overflow: hidden !important;
-    }
-
-    .leave-avatar img {
-        width: 100% !important;
-        height: 100% !important;
-        border-radius: inherit !important;
-        object-fit: cover !important;
-        display: block !important;
-    }
-
-    .leave-employee-name {
-        color: var(--leave-text);
-        font-size: 13px;
-        font-weight: 900;
-        line-height: 1.2;
-    }
-
-    .leave-employee-meta {
-        color: var(--leave-muted);
-        font-size: 11px;
-        font-weight: 700;
-        margin-top: 2px;
-    }
-
-    .leave-type-pill,
-    .leave-status-pill,
-    .leave-lwp-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        border-radius: 999px;
-        padding: 7px 10px;
-        font-size: 11px;
-        font-weight: 950;
-        white-space: nowrap;
-    }
-
-    .leave-type-pill {
-        color: var(--leave-primary);
-        background: var(--leave-soft);
-        border: 1px solid rgba(75, 0, 232, .12);
-    }
-
-    .leave-lwp-pill {
-        color: #B42318;
-        background: #FEF3F2;
-        border: 1px solid #FECDCA;
-    }
-
-    .leave-muted-pill {
-        color: #667085;
-        background: #F2F4F7;
-        border: 1px solid #EAECF0;
-    }
-
-    .status-approved {
-        color: #027A48;
-        background: #ECFDF3;
-        border: 1px solid #ABEFC6;
-    }
-
-    .status-pending {
-        color: #B54708;
-        background: #FFFAEB;
-        border: 1px solid #FEDF89;
-    }
-
-    .status-rejected {
-        color: #B42318;
-        background: #FEF3F2;
-        border: 1px solid #FECDCA;
-    }
-
-    .status-cancelled {
-        color: #475467;
-        background: #F2F4F7;
-        border: 1px solid #EAECF0;
-    }
-
-    .period-box {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        color: var(--leave-text);
-        font-weight: 800;
-    }
-
-    .period-box i {
-        color: var(--leave-muted);
-    }
-
-    .empty-leave-state {
-        padding: 34px 18px;
-        text-align: center;
-        color: var(--leave-muted);
-    }
-
-    .empty-leave-state i {
-        width: 52px;
-        height: 52px;
-        border-radius: 18px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: var(--leave-soft);
-        color: var(--leave-primary);
-        font-size: 20px;
-        margin-bottom: 10px;
-    }
-
-    .dataTables_wrapper {
-        padding: 0;
-    }
-
-    .dataTables_wrapper .dataTables_length,
-    .dataTables_wrapper .dataTables_filter {
-        padding: 10px 0;
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Hide default DataTables export button container inside table
-    | We use our own custom right-corner buttons above.
-    |--------------------------------------------------------------------------
-    */
-    .dataTables_wrapper .dt-buttons,
-    .dataTables_wrapper .dataTables_buttons {
-        display: none !important;
-    }
-
-    .dataTables_wrapper .dataTables_filter input,
-    .dataTables_wrapper .dataTables_length select {
-        border: 1px solid var(--leave-border);
-        border-radius: 12px;
-        padding: 7px 10px;
-        outline: none;
-        font-size: 12px;
-        color: var(--leave-text);
-        background: #fff;
-    }
-
-    @media (max-width: 767px) {
-        .leave-hero {
-            padding: 18px;
-            border-radius: 20px;
-        }
-
-        .leave-hero-title {
-            font-size: 20px;
-        }
-
-        .leave-mini-card {
-            min-height: 92px;
-            padding: 12px;
-            border-radius: 16px;
-        }
-
-        .leave-mini-value {
-            font-size: 23px;
-        }
-
-        .leave-section-head {
-            padding: 15px;
-        }
-
-        .leave-table-shell {
-            padding: 10px;
-        }
-
-        .leave-section-actions {
-            width: 100%;
-            justify-content: flex-start;
-        }
-    }
+:root {
+    --orb-primary: {{ $branding['primary_color'] ?? '#4B00E8' }};
+    --orb-secondary: {{ $branding['secondary_color'] ?? '#8600EE' }};
+    --orb-primary-hover: {{ $branding['primary_color'] ?? '#4B00E8' }};
+    --orb-bg: #F8FAFC;
+    --orb-border: #E2E8F0;
+    --orb-text: #0F172A;
+    --orb-muted: #64748B;
+    --orb-soft: rgba(75, 0, 232, 0.08);
+}
+
+body {
+    background: var(--orb-bg) !important;
+    overflow-x: hidden !important;
+}
+
+.ld-page {
+    padding: 24px 20px 48px;
+}
+
+.ld-container {
+    max-width: 1550px;
+    margin: 0 auto;
+}
+
+.ld-hero {
+    background: linear-gradient(135deg, {{ $branding['primary_color'] ?? '#4B00E8' }} 0%, {{ $branding['secondary_color'] ?? '#8600EE' }} 100%);
+    border-radius: 20px;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+    color: #fff;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.ld-hero h1 {
+    font-size: 26px;
+    font-weight: 900;
+    margin: 0;
+    color: #fff;
+    letter-spacing: -0.02em;
+}
+
+.ld-hero p {
+    margin: 6px 0 0;
+    font-size: 13.5px;
+    opacity: 0.92;
+}
+
+.ld-hero-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.ld-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.ld-stat-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 18px 20px;
+    border: 1px solid var(--orb-border);
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.03);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ld-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+}
+
+.ld-stat-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.ld-stat-card.pending .ld-stat-icon { background: #FFFBEB; color: #F59E0B; }
+.ld-stat-card.today .ld-stat-icon { background: #EEF2FF; color: var(--orb-primary); }
+.ld-stat-card.approved .ld-stat-icon { background: #ECFDF5; color: #10B981; }
+.ld-stat-card.lwp .ld-stat-icon { background: #FEF2F2; color: #EF4444; }
+.ld-stat-card.allocated .ld-stat-icon { background: #F1F5F9; color: #64748B; }
+
+.ld-stat-val {
+    font-size: 22px;
+    font-weight: 900;
+    color: var(--orb-text);
+    line-height: 1.1;
+}
+
+.ld-stat-lbl {
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--orb-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 3px;
+}
+
+.ld-card {
+    background: #fff;
+    border-radius: 18px;
+    border: 1px solid var(--orb-border);
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+    margin-bottom: 24px;
+    overflow: hidden;
+}
+
+.ld-card-header {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--orb-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #FAF9FF;
+}
+
+.ld-card-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--orb-text);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ld-card-body {
+    padding: 20px 24px;
+}
+
+.ld-table {
+    width: 100% !important;
+    margin: 0 !important;
+}
+
+.ld-table thead th {
+    background: #F8FAFC !important;
+    color: var(--orb-muted) !important;
+    font-size: 11px !important;
+    font-weight: 800 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 12px 14px !important;
+    border-bottom: 1px solid var(--orb-border) !important;
+}
+
+.ld-table td {
+    padding: 12px 14px !important;
+    vertical-align: middle !important;
+    font-size: 13px;
+    border-bottom: 1px solid #F1F5F9;
+}
+
+.orb-badge {
+    padding: 5px 10px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.orb-badge-success { background: #ECFDF5; color: #047857; }
+.orb-badge-warning { background: #FFFBEB; color: #B45309; }
+.orb-badge-danger { background: #FEF2F2; color: #B91C1C; }
+.orb-badge-secondary { background: #F1F5F9; color: #475569; }
+
+.holiday-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px;
+    border-radius: 12px;
+    background: #FAFAFA;
+    border: 1px solid var(--orb-border);
+    margin-bottom: 10px;
+}
+
+.holiday-item:last-child {
+    margin-bottom: 0;
+}
+
+.holiday-date-badge {
+    width: 44px;
+    height: 44px;
+    background: var(--orb-soft);
+    color: var(--orb-primary);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    flex-shrink: 0;
+}
+
+.holiday-date-badge .day { font-size: 14px; line-height: 1; }
+.holiday-date-badge .month { font-size: 9px; text-transform: uppercase; line-height: 1; margin-top: 2px; }
+
+.leave-type-pill {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: #F8FAFC;
+    border: 1px solid var(--orb-border);
+    margin-bottom: 8px;
+}
+
+/* RESPONSIVE BREAKPOINTS */
+@media (max-width: 1200px) {
+    .ld-stat-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 992px) {
+    .ld-hero { flex-direction: column; align-items: flex-start; }
+    .ld-hero-actions { width: 100%; justify-content: flex-start; }
+}
+@media (max-width: 768px) {
+    .ld-stat-grid { grid-template-columns: repeat(2, 1fr); }
+    .ld-page { padding: 16px 12px 32px; }
+    .ld-hero { padding: 20px; border-radius: 16px; }
+    .ld-hero h1 { font-size: 22px; }
+}
+@media (max-width: 576px) {
+    .ld-stat-grid { grid-template-columns: 1fr; }
+    .ld-hero-actions .btn { width: 100%; text-align: center; justify-content: center; }
+}
 </style>
 @endsection
 
 @section('_content')
-<div class="leave-page leave-dashboard-wrap">
-    <div class="leave-container">
+<div class="ld-page">
+    <div class="ld-container">
 
-        <div class="leave-hero">
-            <div class="leave-hero-content">
-                <div>
-                    <div class="leave-hero-kicker">
-                        <i class="fas fa-calendar-check"></i>
-                        HRMS Leave Management
-                    </div>
-                    <h3 class="leave-hero-title">Leave Dashboard</h3>
-                    <p class="leave-hero-subtitle">
-                        Operational overview of organization-wide leave volume, approvals, LWP impact and recent leave applications.
-                    </p>
+        <!-- Hero Banner with Dynamic Branding -->
+        <div class="ld-hero">
+            <div>
+                <div style="font-size: 11px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.9; margin-bottom: 6px;">
+                    <i class="fas fa-chart-pie mr-1"></i> HRMS &bull; LEAVE MANAGEMENT WORKBENCH
                 </div>
-
-                <div class="leave-hero-actions">
-                    <button type="button"
-                        class="leave-hero-btn"
-                        onclick="triggerLeaveExport('excel');">
-                        <i class="fas fa-file-excel"></i>
-                        Export Report
-                    </button>
-                </div>
+                <h1>Leave Management Dashboard</h1>
+                <p>Real-time overview of organization leave volume, pending approvals, employees on leave, and holidays.</p>
+            </div>
+            <div class="ld-hero-actions">
+                @if(!$isEmployeeRole)
+                <a href="{{ route('leave-approvals.index') }}" class="btn font-weight-bold shadow-sm" style="background: rgba(255, 255, 255, 0.2); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 12px; padding: 10px 22px; font-size: 13.5px; font-weight: 800; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);">
+                    <i class="fas fa-check-circle mr-1"></i> Approvals Workbench
+                </a>
+                @endif
             </div>
         </div>
 
         @include('hrms.leave.shared.flash')
 
-        @php
-        $colors = ['primary', 'warning', 'success', 'danger', 'info', 'dark'];
-        $icons = ['fa-chart-pie', 'fa-hourglass-half', 'fa-check-circle', 'fa-times-circle', 'fa-user-clock', 'fa-calendar-day'];
-        $captions = [
-        'total' => 'Overall requests',
-        'pending' => 'Waiting approval',
-        'approved' => 'Accepted requests',
-        'rejected' => 'Rejected/cancelled',
-        'lwp' => 'Leave without pay',
-        'today' => 'Today impact',
-        ];
-        $i = 0;
-        @endphp
-
-        <div class="row">
-            @foreach($stats as $label => $value)
-            @php
-            $color = $colors[$i % count($colors)];
-            $icon = $icons[$i % count($icons)];
-            $captionKey = strtolower($label);
-            $caption = $captions[$captionKey] ?? 'Live HRMS metric';
-            $i++;
-            @endphp
-
-            <div class="col-xl-3 col-lg-3 col-md-6 col-12">
-                <div class="leave-mini-card card-{{ $color }}">
-                    <div class="leave-mini-top">
-                        <div>
-                            <p class="leave-mini-title">{{ ucwords(str_replace('_', ' ', $label)) }}</p>
-                        </div>
-                        <div class="leave-mini-icon">
-                            <i class="fas {{ $icon }}"></i>
-                        </div>
-                    </div>
-
-                    <div class="leave-mini-value">{{ $value }}</div>
-                    <div class="leave-mini-caption">{{ $caption }}</div>
+        <!-- Stat Cards Grid -->
+        <div class="ld-stat-grid">
+            <div class="ld-stat-card pending">
+                <div class="ld-stat-icon"><i class="fas fa-clock"></i></div>
+                <div>
+                    <div class="ld-stat-val">{{ $stats['pending'] ?? 0 }}</div>
+                    <div class="ld-stat-lbl">Pending Approvals</div>
                 </div>
             </div>
-            @endforeach
+            <div class="ld-stat-card today">
+                <div class="ld-stat-icon"><i class="fas fa-calendar-day"></i></div>
+                <div>
+                    <div class="ld-stat-val">{{ $stats['on_leave_today'] ?? 0 }}</div>
+                    <div class="ld-stat-lbl">On Leave Today</div>
+                </div>
+            </div>
+            <div class="ld-stat-card approved">
+                <div class="ld-stat-icon"><i class="fas fa-check-circle"></i></div>
+                <div>
+                    <div class="ld-stat-val">{{ $stats['approved_this_month'] ?? 0 }}</div>
+                    <div class="ld-stat-lbl">Approved (This Month)</div>
+                </div>
+            </div>
+            <div class="ld-stat-card lwp">
+                <div class="ld-stat-icon"><i class="fas fa-file-invoice-dollar"></i></div>
+                <div>
+                    <div class="ld-stat-val">{{ $stats['lwp_this_month'] ?? 0 }}</div>
+                    <div class="ld-stat-lbl">LWP Days</div>
+                </div>
+            </div>
+            <div class="ld-stat-card allocated">
+                <div class="ld-stat-icon"><i class="fas fa-users"></i></div>
+                <div>
+                    <div class="ld-stat-val">{{ $stats['allocated_employees'] ?? 0 }}</div>
+                    <div class="ld-stat-lbl">Allocated Staff</div>
+                </div>
+            </div>
         </div>
 
-        <div class="leave-section-card mt-1">
-            <div class="leave-section-head">
-                <div class="leave-section-title-wrap">
-                    <div class="leave-section-icon">
-                        <i class="fas fa-history"></i>
+        <!-- Main Multi-Column Grid -->
+        <div class="row">
+            <!-- Left 8 Columns: Tables & Activity -->
+            <div class="col-xl-8 col-lg-8 col-12">
+
+                <!-- On Leave Today Panel (Only rendered if data exists) -->
+                @if(!empty($onLeaveTodayList) && count($onLeaveTodayList) > 0)
+                <div class="ld-card">
+                    <div class="ld-card-header">
+                        <h5 class="ld-card-title">
+                            <i class="fas fa-user-clock text-warning"></i> Employees On Leave Today
+                        </h5>
+                        <span class="badge badge-warning p-2 font-weight-bold" style="border-radius: 8px;">
+                            {{ count($onLeaveTodayList) }} On Leave
+                        </span>
                     </div>
-                    <div>
-                        <h5 class="leave-section-title">Pending Leave Applications</h5>
-                        <p class="leave-section-subtitle">
-                            Active pending requests awaiting manager/HR approval action.
-                        </p>
+                    <div class="ld-card-body">
+                        <div class="row">
+                            @foreach($onLeaveTodayList as $onLeave)
+                            @php
+                                $empName = optional(optional($onLeave->employee)->user)->name ?? optional($onLeave->employee)->display_name ?? 'Employee';
+                                $deptName = optional(optional($onLeave->employee)->department)->name ?? 'N/A';
+                                $photoUrl = resolveEmployeePassportPhoto($onLeave->employee_id);
+                                $initials = resolveEmployeeInitials($onLeave->employee_id);
+                            @endphp
+                            <div class="col-md-6 col-12 mb-3">
+                                <div class="p-3 rounded-lg border bg-white d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center">
+                                        @if($photoUrl)
+                                            <img src="{{ $photoUrl }}" class="rounded-circle mr-3" style="width:40px; height:40px; object-fit:cover;" alt="">
+                                        @else
+                                            <div class="rounded-circle mr-3 d-inline-flex align-items-center justify-content-center" style="width:40px; height:40px; background: var(--orb-soft); color: var(--orb-primary); font-weight: 900; font-size: 13px;">
+                                                {{ $initials }}
+                                            </div>
+                                        @endif
+                                        <div>
+                                            <div class="font-weight-bold text-dark">{{ $empName }}</div>
+                                            <div class="text-muted small">{{ $deptName }} &bull; <span class="text-primary font-weight-bold">{{ optional($onLeave->leaveType)->name }}</span></div>
+                                        </div>
+                                    </div>
+                                    <span class="badge badge-light border text-muted small font-weight-bold">
+                                        Until {{ \Carbon\Carbon::parse($onLeave->end_date)->format('d M') }}
+                                    </span>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
                     </div>
                 </div>
+                @endif
 
-                <div class="leave-section-actions">
-                    <button type="button"
-                        class="leave-light-btn"
-                        onclick="triggerLeaveExport('csv');">
-                        <i class="fas fa-file-csv"></i>
-                        CSV
-                    </button>
+                <!-- Recent Leave Applications Table -->
+                <div class="ld-card">
+                    <div class="ld-card-header">
+                        <h5 class="ld-card-title">
+                            <i class="fas fa-history text-primary"></i> Active Leave Applications
+                        </h5>
+                        <a href="{{ route('hrms.leave.history') }}" class="btn btn-sm btn-light border font-weight-bold" style="border-radius: 8px;">
+                            View Audit Log <i class="fas fa-arrow-right ml-1"></i>
+                        </a>
+                    </div>
+                    <div class="ld-card-body p-0">
+                        <div class="table-responsive">
+                            <table class="ld-table table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Employee</th>
+                                        <th>Leave Type</th>
+                                        <th>Period</th>
+                                        <th>Days</th>
+                                        <th>Status</th>
+                                        <th class="text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse($recentRequests as $req)
+                                    @php
+                                        $empName = optional(optional($req->employee)->user)->name ?? optional($req->employee)->display_name ?? 'Employee';
+                                        $deptName = optional(optional($req->employee)->department)->name ?? 'N/A';
+                                        $photoUrl = resolveEmployeePassportPhoto($req->employee_id);
+                                        $initials = resolveEmployeeInitials($req->employee_id);
+                                        $days = $req->total_days ?? $req->days ?? 1;
 
-                    <button type="button"
-                        class="leave-light-btn"
-                        onclick="triggerLeaveExport('excel');">
-                        <i class="fas fa-file-excel text-success"></i>
-                        Excel
-                    </button>
-
-                    <button type="button"
-                        class="leave-light-btn"
-                        onclick="triggerLeaveExport('pdf');">
-                        <i class="fas fa-file-pdf text-danger"></i>
-                        PDF
-                    </button>
-
-                    <button type="button"
-                        class="leave-light-btn"
-                        onclick="triggerLeaveExport('print');">
-                        <i class="fas fa-print"></i>
-                        Print
-                    </button>
+                                        $statusBadge = $req->status === 'approved'
+                                            ? 'orb-badge-success'
+                                            : ($req->status === 'pending'
+                                                ? 'orb-badge-warning'
+                                                : ($req->status === 'rejected'
+                                                    ? 'orb-badge-danger'
+                                                    : 'orb-badge-secondary'));
+                                    @endphp
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                @if($photoUrl)
+                                                    <img src="{{ $photoUrl }}" class="rounded-circle mr-2" style="width:32px; height:32px; object-fit:cover;" alt="">
+                                                @else
+                                                    <div class="rounded-circle mr-2 d-inline-flex align-items-center justify-content-center" style="width:32px; height:32px; background: var(--orb-soft); color: var(--orb-primary); font-weight: 900; font-size: 11px;">
+                                                        {{ $initials }}
+                                                    </div>
+                                                @endif
+                                                <div>
+                                                    <div class="font-weight-bold text-dark" style="line-height: 1.2;">{{ $empName }}</div>
+                                                    <div class="text-muted small" style="font-size: 11px;">{{ $deptName }}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="font-weight-bold text-primary">{{ optional($req->leaveType)->name ?? 'Paid Leave' }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="font-weight-bold">{{ \Carbon\Carbon::parse($req->start_date)->format('d M') }}</span>
+                                            <span class="text-muted small">&rarr;</span>
+                                            <span class="font-weight-bold">{{ \Carbon\Carbon::parse($req->end_date)->format('d M Y') }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-light border font-weight-bold px-2 py-1">{{ $days }} D</span>
+                                        </td>
+                                        <td>
+                                            <span class="orb-badge {{ $statusBadge }}">
+                                                {{ ucfirst($req->status) }}
+                                            </span>
+                                        </td>
+                                        <td class="text-right">
+                                            @if($req->status === 'pending' && !$isEmployeeRole)
+                                            <a href="{{ route('leave-approvals.index') }}" class="btn btn-sm btn-warning font-weight-bold" style="border-radius: 8px; font-size: 11px;">
+                                                <i class="fas fa-check mr-1"></i> Review
+                                            </a>
+                                            @else
+                                            <a href="{{ route('hrms.leave.history') }}" class="btn btn-sm btn-light border" style="border-radius: 8px; font-size: 11px;">
+                                                <i class="fas fa-eye text-primary"></i>
+                                            </a>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                    @empty
+                                    <tr>
+                                        <td colspan="6" class="text-center py-4 text-muted">
+                                            <i class="fas fa-inbox fa-2x mb-2 d-block opacity-50"></i>
+                                            No recent leave applications found.
+                                        </td>
+                                    </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="leave-table-shell">
-                <div class="leave-table-responsive">
-                    <table class="leave-premium-table js-datatable">
-                        <thead>
-                            <tr>
-                                <th>S.No.</th>
-                                <th>Employee</th>
-                                <th>Leave Type</th>
-                                <th>Period</th>
-                                <th>LWP Days</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
+            <!-- Right 4 Columns: Widgets & Quick Actions -->
+            <div class="col-xl-4 col-lg-4 col-12">
+                <!-- Leave Categories Widget -->
+                <div class="ld-card">
+                    <div class="ld-card-header">
+                        <h5 class="ld-card-title">
+                            <i class="fas fa-layer-group text-info"></i> Leave Categories
+                        </h5>
+                        @if(!$isEmployeeRole)
+                        <a href="{{ route('hrms.leave.types.index') }}" class="small font-weight-bold">Manage</a>
+                        @endif
+                    </div>
+                    <div class="ld-card-body">
+                        @forelse($leaveTypes as $lt)
+                        <div class="leave-type-pill">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-tag text-primary mr-2"></i>
+                                <span class="font-weight-bold text-dark">{{ $lt->name }}</span>
+                            </div>
+                            <span class="badge badge-light border font-weight-bold">
+                                {{ $lt->max_days_per_year ?? $lt->max_days ?? 'Flexible' }} Days/Yr
+                            </span>
+                        </div>
+                        @empty
+                        <div class="text-muted text-center py-2">No leave types configured.</div>
+                        @endforelse
+                    </div>
+                </div>
 
-                        <tbody>
-                            @forelse($recentRequests as $request)
-                            @php
-                            $employeeName = optional($request->employee)->display_name ?? optional(optional($request->employee)->user)->name ?? 'Unknown Employee';
-                            $employeeCode = optional($request->employee)->employee_code ?? optional($request->employee)->code ?? 'EMP';
-                            $leaveType = optional($request->leaveType)->name ?? 'Leave';
-                            $status = strtolower($request->status ?? 'pending');
+                <!-- Upcoming Holidays Widget -->
+                <div class="ld-card">
+                    <div class="ld-card-header">
+                        <h5 class="ld-card-title">
+                            <i class="fas fa-umbrella-beach text-danger"></i> Upcoming Holidays
+                        </h5>
+                        <a href="{{ route('hrms.holidays.index') }}" class="small font-weight-bold">View All</a>
+                    </div>
+                    <div class="ld-card-body">
+                        @forelse($upcomingHolidays as $hol)
+                        @php
+                            $holDate = \Carbon\Carbon::parse($hol->holiday_date);
+                        @endphp
+                        <div class="holiday-item">
+                            <div class="holiday-date-badge">
+                                <span class="day">{{ $holDate->format('d') }}</span>
+                                <span class="month">{{ $holDate->format('M') }}</span>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="font-weight-bold text-dark" style="line-height: 1.2;">{{ $hol->name }}</div>
+                                <div class="text-muted small">{{ $holDate->format('l, Y') }}</div>
+                            </div>
+                        </div>
+                        @empty
+                        <div class="text-muted text-center py-3">No upcoming holidays scheduled.</div>
+                        @endforelse
+                    </div>
+                </div>
 
-                            $badgeClass = 'status-pending';
-                            if (in_array($status, ['approved', 'accepted'])) {
-                            $badgeClass = 'status-approved';
-                            } elseif (in_array($status, ['rejected'])) {
-                            $badgeClass = 'status-rejected';
-                            } elseif (in_array($status, ['cancelled', 'canceled'])) {
-                            $badgeClass = 'status-cancelled';
-                            }
-
-                            $initial = resolveEmployeeInitials($request->employee);
-                            @endphp
-
-                            <tr>
-                                <td>
-                                    <span class="text-muted font-weight-bold">{{ $loop->iteration }}</span>
-                                </td>
-
-                                <td>
-                                    <div class="leave-employee">
-                                        @php
-                                            $passportPhotoUrl = resolveEmployeePassportPhoto($request->employee);
-                                            $employeeInitial = $initial;
-                                        @endphp
-                                        <span class="hrms-emp-avatar hrms-emp-avatar-sm mr-2">
-                                            @if($passportPhotoUrl)
-                                                <img
-                                                    src="{{ $passportPhotoUrl }}"
-                                                    alt="{{ $employeeName }}"
-                                                    class="hrms-emp-avatar-img"
-                                                    onerror="this.style.display='none'; this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.remove('is-hidden'); this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.add('is-visible');"
-                                                >
-                                                <span class="hrms-emp-avatar-fallback is-hidden">
-                                                    {{ $employeeInitial }}
-                                                </span>
-                                            @else
-                                                <span class="hrms-emp-avatar-fallback is-visible">
-                                                    {{ $employeeInitial }}
-                                                </span>
-                                            @endif
-                                        </span>
-                                        <div>
-                                            <div class="leave-employee-name">{{ $employeeName }}</div>
-                                            <div class="leave-employee-meta">{{ $employeeCode }}</div>
-                                        </div>
-                                    </div>
-                                </td>
-
-                                <td>
-                                    <span class="leave-type-pill">
-                                        <i class="fas fa-tag"></i>
-                                        {{ $leaveType }}
-                                    </span>
-                                </td>
-
-                                <td>
-                                    <span class="period-box">
-                                        <i class="fas fa-calendar-alt"></i>
-                                        <span>
-                                            {{ optional($request->start_date)->format('d M') }}
-                                            -
-                                            {{ optional($request->end_date)->format('d M Y') }}
-                                        </span>
-                                    </span>
-                                </td>
-
-                                <td>
-                                    @if((float) $request->lwp_days > 0)
-                                    <span class="leave-lwp-pill">
-                                        <i class="fas fa-exclamation-circle"></i>
-                                        {{ number_format((float) $request->lwp_days, 1) }} Days
-                                    </span>
-                                    @else
-                                    <span class="leave-muted-pill">
-                                        <i class="fas fa-minus"></i>
-                                        No LWP
-                                    </span>
-                                    @endif
-                                </td>
-
-                                <td>
-                                    <span class="leave-status-pill {{ $badgeClass }}">
-                                        <i class="fas fa-circle" style="font-size:6px;"></i>
-                                        {{ ucfirst($status) }}
-                                    </span>
-                                </td>
-                            </tr>
-                            @empty
-                            <tr>
-                                <td colspan="6">
-                                    <div class="empty-leave-state">
-                                        <i class="fas fa-calendar-times"></i>
-                                        <div style="font-weight:900;color:var(--leave-text);">No recent leave applications</div>
-                                        <div style="font-size:12px;margin-top:4px;">New requests will appear here once employees apply for leave.</div>
-                                    </div>
-                                </td>
-                            </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
+                <!-- Quick Navigation Shortcuts -->
+                <div class="ld-card">
+                    <div class="ld-card-header">
+                        <h5 class="ld-card-title">
+                            <i class="fas fa-compass text-secondary"></i> Quick Navigation
+                        </h5>
+                    </div>
+                    <div class="ld-card-body">
+                        <div class="d-grid gap-2" style="display: flex; flex-direction: column; gap: 8px;">
+                            <a href="{{ route('employees-leave-request.summary') }}" class="btn btn-light border text-left font-weight-bold d-flex align-items-center justify-content-between" style="border-radius: 10px; padding: 10px 14px;">
+                                <span><i class="fas fa-wallet text-secondary mr-2"></i> Leave Balance Tracker</span>
+                                <i class="fas fa-chevron-right text-muted small"></i>
+                            </a>
+                            <a href="{{ route('leave-allocations.index') }}" class="btn btn-light border text-left font-weight-bold d-flex align-items-center justify-content-between" style="border-radius: 10px; padding: 10px 14px;">
+                                <span><i class="fas fa-coins text-warning mr-2"></i> Leave Allocations</span>
+                                <i class="fas fa-chevron-right text-muted small"></i>
+                            </a>
+                            <a href="{{ route('hrms.leave.team_calendar.index') }}" class="btn btn-light border text-left font-weight-bold d-flex align-items-center justify-content-between" style="border-radius: 10px; padding: 10px 14px;">
+                                <span><i class="fas fa-calendar-alt text-primary mr-2"></i> Team Leave Calendar</span>
+                                <i class="fas fa-chevron-right text-muted small"></i>
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -810,26 +558,9 @@
 @endsection
 
 @section('_script')
-@include('hrms.leave.shared.datatable')
-
 <script>
-    function triggerLeaveExport(type) {
-        if ($.fn.DataTable.isDataTable('.js-datatable')) {
-            var table = $('.js-datatable').DataTable();
-
-            var buttonMap = {
-                csv: '.buttons-csv',
-                excel: '.buttons-excel',
-                pdf: '.buttons-pdf',
-                print: '.buttons-print'
-            };
-
-            if (buttonMap[type]) {
-                table.button(buttonMap[type]).trigger();
-            }
-        } else {
-            alert('No records available to export.');
-        }
-    }
+$(document).ready(function() {
+    $('[data-toggle="tooltip"]').tooltip();
+});
 </script>
 @endsection

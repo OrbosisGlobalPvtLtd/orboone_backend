@@ -5,6 +5,7 @@ use App\Http\Controllers\Web\HRMS\Leave\HolidayC;
 use App\Http\Controllers\Web\HRMS\Leave\LeaveAllocationC;
 use App\Http\Controllers\Web\HRMS\Leave\LeaveApprovalC;
 use App\Http\Controllers\Web\HRMS\Leave\LeaveBalanceC;
+use App\Http\Controllers\Web\HRMS\Leave\LeaveHistoryC;
 use App\Http\Controllers\Web\HRMS\Leave\LeaveDashboardC;
 use App\Http\Controllers\Web\HRMS\Leave\LeavePolicyC;
 use App\Http\Controllers\Web\HRMS\Leave\LeavePolicyOverrideC;
@@ -16,8 +17,9 @@ use App\Http\Controllers\Web\HRMS\Leave\TeamLeaveCalendarC;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'check.access'])->group(function () {
-    Route::get('/leave-dashboard', [LeaveDashboardC::class, 'index'])->middleware('permission:leave.dashboard.view')->name('hrms.leave.dashboard');
+    Route::get('/leave-dashboard', [LeaveDashboardC::class, 'index'])->name('hrms.leave.dashboard');
     Route::get('/leave-requests', [LeaveRequestC::class, 'index'])->middleware('permission:leave.my_requests.view')->name('leave-requests.index');
+    Route::get('/leave-history', [LeaveHistoryC::class, 'index'])->name('hrms.leave.history');
     Route::get('/leave-requests/create', [LeaveRequestC::class, 'create'])->middleware('permission:leave.my_requests.create')->name('leave-requests.create');
     Route::post('/leave-requests', [LeaveRequestC::class, 'store'])->middleware('permission:leave.my_requests.create')->name('leave-requests.store');
     Route::post('/leave-requests/preview', [LeaveRequestC::class, 'preview'])->middleware('permission:leave.my_requests.create')->name('leave-requests.preview');

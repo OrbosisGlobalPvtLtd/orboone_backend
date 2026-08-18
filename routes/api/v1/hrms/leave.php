@@ -25,6 +25,7 @@ Route::middleware('auth:sanctum')
 
         Route::post('/calculate', [LeaveApiC::class, 'calculate']);
         Route::post('/apply', [LeaveApiC::class, 'apply']);
+        Route::post('/update/{id}', [LeaveApiC::class, 'update']);
         Route::post('/cancel/{id}', [LeaveApiC::class, 'cancel']);
 
         /*

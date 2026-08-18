@@ -165,7 +165,7 @@
 
     .orb-summary-grid {
         display: grid;
-        grid-template-columns: repeat(6, minmax(0, 1fr));
+        grid-template-columns: repeat(5, minmax(0, 1fr));
         gap: 14px;
         margin-bottom: 18px;
     }
@@ -664,46 +664,42 @@
 
         <!-- Dynamic Rules Summary Cards -->
         @php
-        $defaultShift = $attendanceTimes->where('is_default', 1)->first() ?? $attendanceTimes->first();
+        $defaultShift = $attendanceTimes->where('code', 'general_shift')->first()
+            ?? $attendanceTimes->where('is_default', 1)->first()
+            ?? $attendanceTimes->first();
         $defaultPolicy = $attendancePolicies->first();
 
         $summaryCards = [
-        [
-        'label' => 'Punch Window',
-        'value' => $defaultShift ? \Carbon\Carbon::parse($defaultShift->punch_allowed_from)->format('h:i A') : '08:00 AM',
-        'icon' => 'fa-clock',
-        'color' => 'purple'
-        ],
-        [
-        'label' => 'Late Mark Rule',
-        'value' => $defaultShift ? \Carbon\Carbon::parse($defaultShift->late_after_time)->format('h:i A') : '09:15 AM',
-        'icon' => 'fa-exclamation-triangle',
-        'color' => 'warning'
-        ],
-        [
-        'label' => 'Block After',
-        'value' => $defaultPolicy ? \Carbon\Carbon::parse($defaultPolicy->block_after_time)->format('h:i A') : '10:00 AM',
-        'icon' => 'fa-ban',
-        'color' => 'danger'
-        ],
-        [
-        'label' => 'Half Day Minimum',
-        'value' => $defaultShift ? ($defaultShift->half_day_min_minutes . ' mins') : '240 mins',
-        'icon' => 'fa-adjust',
-        'color' => 'info'
-        ],
-        [
-        'label' => 'Required Work',
-        'value' => $defaultShift ? (number_format($defaultShift->required_work_minutes / 60, 1) . ' hours') : '8.0 hours',
-        'icon' => 'fa-business-time',
-        'color' => 'success'
-        ],
-        [
-        'label' => 'Missed Punch Policy',
-        'value' => $defaultPolicy ? ($defaultPolicy->allowed_missed_punches . ' Max') : '3 Max',
-        'icon' => 'fa-fingerprint',
-        'color' => 'purple'
-        ]
+            [
+                'label' => 'Punch Window',
+                'value' => $defaultShift && $defaultShift->punch_allowed_from ? \Carbon\Carbon::parse($defaultShift->punch_allowed_from)->format('h:i A') : '10:00 AM',
+                'icon' => 'fa-clock',
+                'color' => 'purple'
+            ],
+            [
+                'label' => 'Late Mark Rule',
+                'value' => $defaultShift && $defaultShift->late_after_time ? \Carbon\Carbon::parse($defaultShift->late_after_time)->format('h:i A') : '11:05 AM',
+                'icon' => 'fa-exclamation-triangle',
+                'color' => 'warning'
+            ],
+            [
+                'label' => 'Block After',
+                'value' => $defaultShift && $defaultShift->block_after_time ? \Carbon\Carbon::parse($defaultShift->block_after_time)->format('h:i A') : ($defaultPolicy && $defaultPolicy->block_after_time ? \Carbon\Carbon::parse($defaultPolicy->block_after_time)->format('h:i A') : '11:15 AM'),
+                'icon' => 'fa-ban',
+                'color' => 'danger'
+            ],
+            [
+                'label' => 'Half Day Minimum',
+                'value' => $defaultShift ? ($defaultShift->half_day_min_minutes . ' mins') : '270 mins',
+                'icon' => 'fa-adjust',
+                'color' => 'info'
+            ],
+            [
+                'label' => 'Required Work',
+                'value' => $defaultShift ? (number_format($defaultShift->required_work_minutes / 60, 1) . ' hours') : '8.0 hours',
+                'icon' => 'fa-business-time',
+                'color' => 'success'
+            ]
         ];
         @endphp
 

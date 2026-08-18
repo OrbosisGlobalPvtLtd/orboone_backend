@@ -23,7 +23,15 @@ class EnterprisePayrollApiC extends Controller
             return $this->apiResponse(false, 'Employee profile not found.', null, null, 404);
         }
 
-        $latestPayslip = $this->service->latestVisiblePayslip($employee->id);
+        $month = $request->get('month');
+        $year = $request->get('year');
+
+        if ($month && $year) {
+            $latestPayslip = $this->service->visiblePayslipByMonthYear($employee->id, (int) $month, (int) $year);
+        } else {
+            $latestPayslip = $this->service->latestVisiblePayslip($employee->id);
+        }
+
         $latestSalaryStructure = $this->service->latestSalaryStructure($employee->id);
         $recentReimbursements = EnterpriseReimbursementM::where('employee_id', $employee->id)
             ->orderByDesc('created_at')
@@ -32,9 +40,17 @@ class EnterprisePayrollApiC extends Controller
             ->map(fn ($item) => $this->service->reimbursementItem($item))
             ->values();
 
+        $fullOverview = $this->service->buildFullOverview($employee, $latestPayslip, $latestSalaryStructure);
+        $availableMonths = $this->service->availablePayslipMonths($employee->id);
+
         return $this->apiResponse(true, 'Payroll summary fetched successfully.', [
             'latest_payslip' => $latestPayslip ? $this->service->payslipListItem($latestPayslip) : (object) [],
             'salary_summary' => $this->service->salarySummary($latestPayslip?->payroll, $latestSalaryStructure),
+            'payroll_status' => $fullOverview['payroll_status'],
+            'financial_overview' => $fullOverview['financial_overview'],
+            'salary_breakdown' => $fullOverview['salary_breakdown'],
+            'recent_activity' => $fullOverview['recent_activity'],
+            'available_months' => $availableMonths,
             'payslip_count' => EnterprisePayslipM::where('employee_id', $employee->id)
                 ->where('is_visible_to_employee', true)
                 ->count(),

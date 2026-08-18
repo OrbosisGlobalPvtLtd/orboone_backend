@@ -47,6 +47,35 @@ class EnterprisePayrollApiS
             ->first();
     }
 
+    public function visiblePayslipByMonthYear(int $employeeId, int $month, int $year): ?EnterprisePayslipM
+    {
+        return EnterprisePayslipM::with(['payroll', 'employee.user', 'employee.department', 'employee.designation'])
+            ->where('employee_id', $employeeId)
+            ->where('is_visible_to_employee', true)
+            ->where('month', $month)
+            ->where('year', $year)
+            ->first();
+    }
+
+    public function availablePayslipMonths(int $employeeId): array
+    {
+        return EnterprisePayslipM::where('employee_id', $employeeId)
+            ->where('is_visible_to_employee', true)
+            ->orderByDesc('year')
+            ->orderByDesc('month')
+            ->get()
+            ->map(function ($ps) {
+                $monthName = Carbon::create((int) $ps->year, (int) $ps->month, 1)->format('F Y');
+                return [
+                    'month' => (int) $ps->month,
+                    'year' => (int) $ps->year,
+                    'label' => $monthName,
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
     public function latestSalaryStructure(int $employeeId): ?EnterpriseSalaryStructureM
     {
         return EnterpriseSalaryStructureM::where('employee_id', $employeeId)
@@ -129,6 +158,134 @@ class EnterprisePayrollApiS
             'annual_ctc' => $this->amount($structure?->annual_ctc ?? $payroll?->annual_ctc),
             'status' => $payroll?->status,
         ];
+    }
+
+    public function buildFullOverview(EmployeeM $employee, ?EnterprisePayslipM $latestPayslip, ?EnterpriseSalaryStructureM $structure): array
+    {
+        $payroll = $latestPayslip?->payroll;
+
+        // Current Month / Year
+        $month = (int) ($latestPayslip?->month ?? now()->month);
+        $year = (int) ($latestPayslip?->year ?? now()->year);
+        $currentDate = Carbon::create($year, $month, 1);
+        $monthName = $currentDate->format('F Y');
+
+        // Previous Month Payslip for Comparison
+        $prevMonthDate = (clone $currentDate)->subMonth();
+        $prevPayslip = EnterprisePayslipM::with('payroll')
+            ->where('employee_id', $employee->id)
+            ->where('is_visible_to_employee', true)
+            ->where('year', $prevMonthDate->year)
+            ->where('month', $prevMonthDate->month)
+            ->first();
+        $prevPayroll = $prevPayslip?->payroll;
+        $prevMonthShortName = $prevMonthDate->format('M Y');
+
+        // Amounts
+        $gross = $this->amount($payroll?->gross_salary);
+        $net = $this->amount($payroll?->net_salary);
+        $deductions = $this->amount($payroll?->total_deductions);
+        $ctc = $this->amount($structure?->monthly_ctc ?? $payroll?->monthly_ctc);
+
+        $prevGross = $this->amount($prevPayroll?->gross_salary);
+        $prevNet = $this->amount($prevPayroll?->net_salary);
+        $prevDeductions = $this->amount($prevPayroll?->total_deductions);
+
+        // Status & Pay Period
+        $statusRaw = strtolower((string) ($payroll?->status ?? 'processed'));
+        $statusText = ucfirst($statusRaw === 'paid' ? 'Credited' : ($statusRaw === 'draft' ? 'Pending' : 'Processed'));
+        $generatedAt = $latestPayslip->generated_at ?? $payroll?->generated_at ?? now();
+        $generatedDateFormatted = Carbon::parse($generatedAt)->format('d M Y');
+
+        $payPeriodStart = $currentDate->copy()->startOfMonth()->format('d M');
+        $payPeriodEnd = $currentDate->copy()->endOfMonth()->format('d M Y');
+
+        // Salary Breakdown Items
+        $earningsItems = $this->payrollItems($payroll, ['earning', 'earnings']);
+        $deductionsItems = $this->payrollItems($payroll, ['deduction', 'deductions']);
+
+        // Recent Activity
+        $activityList = [];
+        $recentPayslips = EnterprisePayslipM::where('employee_id', $employee->id)
+            ->where('is_visible_to_employee', true)
+            ->orderByDesc('year')
+            ->orderByDesc('month')
+            ->limit(3)
+            ->get();
+
+        foreach ($recentPayslips as $ps) {
+            $psMonthName = Carbon::create($ps->year, $ps->month, 1)->format('F Y');
+            $psDate = Carbon::parse($ps->generated_at ?? now())->format('d M Y');
+
+            $activityList[] = [
+                'id' => 'ps_' . $ps->id,
+                'title' => "{$psMonthName} Payslip Generated",
+                'subtitle' => "Payslip for {$psMonthName}",
+                'date' => $psDate,
+                'type' => 'payslip',
+                'route_id' => $ps->id,
+            ];
+
+            $activityList[] = [
+                'id' => 'sal_' . $ps->id,
+                'title' => "Salary Processed",
+                'subtitle' => "Salary for {$psMonthName} has been processed",
+                'date' => $psDate,
+                'type' => 'salary',
+                'route_id' => $ps->id,
+            ];
+        }
+
+        // Limit activity items to top 4
+        $activityList = array_slice($activityList, 0, 4);
+
+        return [
+            'payroll_status' => [
+                'status' => ucfirst($statusRaw),
+                'status_badge' => "{$statusText} on {$generatedDateFormatted}",
+                'pay_period' => "{$payPeriodStart} – {$payPeriodEnd}",
+                'payment_date' => $generatedDateFormatted,
+                'pay_mode' => 'Bank Transfer',
+            ],
+            'financial_overview' => [
+                'gross_salary' => $gross,
+                'gross_change_pct' => $this->calcPercentageChange($gross, $prevGross, $prevMonthShortName),
+                'net_salary' => $net,
+                'net_change_pct' => $this->calcPercentageChange($net, $prevNet, $prevMonthShortName),
+                'deductions' => $deductions,
+                'deductions_change_pct' => $this->calcPercentageChange($deductions, $prevDeductions, $prevMonthShortName),
+                'current_ctc' => $ctc,
+                'ctc_change_pct' => 'No Change',
+            ],
+            'salary_breakdown' => [
+                'earnings' => $earningsItems,
+                'gross_salary' => $gross,
+                'deductions' => $deductionsItems,
+                'total_deductions' => $deductions,
+                'net_salary' => $net,
+            ],
+            'recent_activity' => $activityList,
+        ];
+    }
+
+    private function calcPercentageChange(float $current, float $prev, string $prevMonthName): string
+    {
+        if ($current <= 0 || $prev <= 0) {
+            return 'No Change';
+        }
+
+        $diff = $current - $prev;
+        if (abs($diff) < 0.01) {
+            return 'No Change';
+        }
+
+        $pct = round(($diff / $prev) * 100, 1);
+        if ($pct == 0) {
+            return 'No Change';
+        }
+
+        $symbol = $pct > 0 ? '▲' : '▼';
+        return "{$symbol} " . abs($pct) . "% vs {$prevMonthName}";
     }
 
     public function reimbursementItem(EnterpriseReimbursementM $reimbursement): array

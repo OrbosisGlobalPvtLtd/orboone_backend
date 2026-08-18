@@ -188,6 +188,32 @@ class AttendancesC extends Controller
             'total_blocked' => $todayRecords->filter(fn($item) => $item->is_punch_blocked || $item->is_blocked || $item->attendance_status === 'punch_blocked')->count(),
         ];
 
+        // Unmarked attendance today (Active employees who haven't punched in today)
+        $user = auth()->user();
+        $isEmployeeRole = ($user->role_id ?? null) == 7 || ($user->system_role_id ?? null) == 7;
+        $activeEmployeesQuery = EmployeeM::with(['user', 'department', 'designation'])
+            ->where('employment_status', 'active');
+
+        if ($isEmployeeRole || (! $this->canViewAll('attendance.records.view_all') && ! $this->canViewAll('attendance.monthly_report.view_all'))) {
+            $ids = ($this->userHasPermission('attendance.monthly_report.view_team') || $this->userHasPermission('attendance.regularization.view_team')) && ! $isEmployeeRole
+                ? $this->teamEmployeeIds(true)
+                : array_filter([$this->ownEmployeeId()]);
+            $activeEmployeesQuery->whereIn('id', $ids);
+        }
+        $activeEmployeesList = $activeEmployeesQuery->orderBy('id')->get();
+
+        $punchedInEmployeeIds = $todayRecords->whereNotNull('punch_in_time')->pluck('employee_id')->filter()->unique()->toArray();
+        $todayRecordsByEmp = $todayRecords->keyBy('employee_id');
+
+        $unmarkedEmployees = $activeEmployeesList->reject(function ($emp) use ($punchedInEmployeeIds) {
+            return in_array($emp->id, $punchedInEmployeeIds, true);
+        })->map(function ($emp) use ($todayRecordsByEmp) {
+            $emp->today_attendance = $todayRecordsByEmp->get($emp->id);
+            return $emp;
+        })->values();
+
+        $stats['unmarked_today'] = $unmarkedEmployees->count();
+
         $attendances = $query->orderByDesc('attendance_date')
             ->orderByDesc('id')
             ->paginate(20)
@@ -241,6 +267,8 @@ class AttendancesC extends Controller
             'attendanceTimes',
             'stats',
             'blockedAttendances',
+            'unmarkedEmployees',
+            'today',
             'canManageAttendance',
             'canUnlockAttendance'
         ));

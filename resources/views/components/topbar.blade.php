@@ -76,12 +76,28 @@ $topbarNotifications = collect();
                     <i class="fas fa-bullhorn text-muted"></i>
                 </a>
 
-                {{-- NOTIFICATION DROPDOWN --}}
-                <div class="dropdown orb-notification-dropdown">
+                {{-- NOTIFICATION ICON (MOBILE: Direct link to notifications view page) --}}
+                <a href="{{ $notificationRoute }}" class="d-flex d-md-none align-items-center justify-content-center"
+                    style="width:40px;height:40px;border-radius:12px;border:1px solid #e5e7eb;background:#fff;position:relative;text-decoration:none;"
+                    onmouseover="this.style.background='#f9f9ff'"
+                    onmouseout="this.style.background='#fff'"
+                    title="Notifications">
+                    <i class="fas fa-bell text-muted"></i>
+
+                    @if($unreadCount > 0)
+                    <span style="position:absolute;top:2px;right:2px;background:#ec4e74;color:#fff;font-size:9px;font-weight:900;padding:2px 5px;border-radius:10px;line-height:1;">
+                        {{ $unreadCount > 99 ? '99+' : $unreadCount }}
+                    </span>
+                    @endif
+                </a>
+
+                {{-- NOTIFICATION DROPDOWN (DESKTOP) --}}
+                <div class="dropdown orb-notification-dropdown d-none d-md-block">
                     <button type="button"
                         data-toggle="dropdown"
                         aria-haspopup="true"
                         aria-expanded="false"
+                        onclick="if (window.innerWidth < 768) { window.location.href = '{{ $notificationRoute }}'; }"
                         style="width:40px;height:40px;border-radius:12px;border:1px solid #e5e7eb;background:#fff;position:relative;display:flex;align-items:center;justify-content:center;"
                         onmouseover="this.style.background='#f9f9ff'"
                         onmouseout="this.style.background='#fff'">

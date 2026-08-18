@@ -21,6 +21,7 @@ $renderedModalIds = [];
 
 $kpis = [
 ['label' => 'Present Today', 'value' => $stats['present_today'] ?? 0, 'icon' => 'fa-check-circle', 'tone' => 'success'],
+['label' => 'Not Marked Today', 'value' => $stats['unmarked_today'] ?? count($unmarkedEmployees ?? []), 'icon' => 'fa-user-slash', 'tone' => 'danger'],
 ['label' => 'Absent Today', 'value' => $stats['absent_today'] ?? 0, 'icon' => 'fa-user-times', 'tone' => 'danger'],
 ['label' => 'Late Employees', 'value' => $stats['late_employees'] ?? $stats['late_today'] ?? 0, 'icon' => 'fa-user-clock', 'tone' => 'warning'],
 ['label' => 'Early Logout', 'value' => $stats['early_logout'] ?? $stats['early_out_today'] ?? 0, 'icon' => 'fa-running', 'tone' => 'orange'],
@@ -775,12 +776,43 @@ $kpis = [
         font-weight: 750;
     }
 
-    .page-link {
-        border-radius: 10px !important;
-        margin: 0 2px;
-        border-color: var(--orb-border);
-        color: var(--orb-primary);
-        font-weight: 800;
+    .dataTables_wrapper .pagination {
+        margin-top: 6px !important;
+        margin-bottom: 0 !important;
+    }
+
+    .page-link,
+    .dataTables_wrapper .pagination .page-item .page-link {
+        padding: 5px 12px !important;
+        font-size: 12px !important;
+        font-weight: 800 !important;
+        border-radius: 8px !important;
+        margin: 0 2px !important;
+        border-color: var(--orb-border) !important;
+        color: var(--orb-text) !important;
+        background: #ffffff !important;
+        min-width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1 !important;
+    }
+
+    .page-item.active .page-link,
+    .dataTables_wrapper .pagination .page-item.active .page-link {
+        background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary)) !important;
+        border-color: transparent !important;
+        color: #ffffff !important;
+        box-shadow: 0 4px 10px rgba(75, 0, 232, .22) !important;
+    }
+
+    .page-item.disabled .page-link,
+    .dataTables_wrapper .pagination .page-item.disabled .page-link {
+        background: #F8FAFC !important;
+        color: #98A2B3 !important;
+        border-color: #EAECF0 !important;
+        opacity: 0.65;
     }
 
     @media(max-width:1280px) {
@@ -1027,6 +1059,135 @@ $kpis = [
             </div>
         </div>
         @endif
+
+        <!-- Employees Not Marked Attendance Today Table -->
+        <div class="orb-table-card att-unmarked-card mb-4" style="border-color: #FECACA; background: radial-gradient(circle at top right, rgba(239, 68, 68, .08), transparent 28%), #fff;">
+            <div class="orb-table-toolbar justify-content-between align-items-center flex-wrap gap-3" style="background: linear-gradient(135deg, #FEF2F2, #fff); padding: 16px 18px; border-bottom: 1px solid #FEE2E2;">
+                <div>
+                    <h5 class="att-section-title text-danger mb-1">
+                        <i class="fas fa-user-slash text-danger mr-2"></i> Employees Not Marked Attendance Today
+                    </h5>
+                    <div class="att-section-subtitle text-muted">
+                        List of active employees who have not punched in / marked attendance today ({{ \Carbon\Carbon::parse($today ?? now())->format('d M Y') }}).
+                    </div>
+                </div>
+                <div class="att-block-summary d-flex align-items-center gap-2">
+                    <span class="att-mini-stat" style="border-color: #FCA5A5; color: #991B1B; background: #FEF2F2;">
+                        <i class="fas fa-exclamation-circle mr-1"></i> Total Not Marked: {{ count($unmarkedEmployees ?? []) }}
+                    </span>
+                </div>
+            </div>
+            <div class="orb-table-wrapper att-table-wrap">
+                <div class="att-table-responsive">
+                    <table class="att-table table mb-0" id="unmarkedAttendanceTable" style="width:100% !important;">
+                        <thead>
+                            <tr>
+                                <th>Employee</th>
+                                <th>Department / Designation</th>
+                                <th>Email / Contact</th>
+                                <th class="text-center">Today's Status</th>
+                                <th class="no-export text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($unmarkedEmployees ?? [] as $emp)
+                            @php
+                                $todayAtt = $emp->today_attendance ?? null;
+                                $empUser = $emp->user;
+                                $empName = $empUser->name ?? $emp->display_name ?? 'Employee';
+                                $empCode = $emp->employee_code ?? 'N/A';
+                                $deptName = optional($emp->department)->name ?? 'N/A';
+                                $desigName = optional($emp->designation)->name ?? 'N/A';
+                                $email = $empUser->email ?? '-';
+                                $phone = $emp->phone ?? $emp->mobile_number ?? $emp->personal_phone ?? '-';
+                                
+                                $statusBadgeClass = 'badge-danger';
+                                $statusText = 'Not Marked (Pending Punch-In)';
+                                
+                                if ($todayAtt) {
+                                    if ($todayAtt->is_blocked || $todayAtt->is_punch_blocked || $todayAtt->attendance_status === 'punch_blocked') {
+                                        $statusBadgeClass = 'badge-blocked';
+                                        $statusText = 'Punch Blocked';
+                                    } elseif (in_array($todayAtt->attendance_status, ['absent', 'lwp'], true)) {
+                                        $statusBadgeClass = 'badge-danger';
+                                        $statusText = 'Marked Absent';
+                                    } elseif ($todayAtt->attendance_status === 'leave') {
+                                        $statusBadgeClass = 'badge-info';
+                                        $statusText = 'On Leave';
+                                    } elseif ($todayAtt->attendance_status === 'holiday') {
+                                        $statusBadgeClass = 'badge-secondary';
+                                        $statusText = 'Holiday';
+                                    } elseif ($todayAtt->attendance_status === 'week_off') {
+                                        $statusBadgeClass = 'badge-secondary';
+                                        $statusText = 'Week Off';
+                                    }
+                                }
+                            @endphp
+                            <tr>
+                                <td>
+                                    <div class="att-emp">
+                                        @php
+                                        $passportPhotoUrl = resolveEmployeePassportPhoto($emp);
+                                        $employeeInitial = resolveEmployeeInitials($emp);
+                                        @endphp
+                                        <span class="hrms-emp-avatar hrms-emp-avatar-sm mr-2">
+                                            @if($passportPhotoUrl)
+                                            <img
+                                                src="{{ $passportPhotoUrl }}"
+                                                alt="{{ $empName }}"
+                                                class="hrms-emp-avatar-img"
+                                                onerror="this.style.display='none'; this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.remove('is-hidden'); this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.add('is-visible');">
+                                            <span class="hrms-emp-avatar-fallback is-hidden">
+                                                {{ $employeeInitial }}
+                                            </span>
+                                            @else
+                                            <span class="hrms-emp-avatar-fallback is-visible">
+                                                {{ $employeeInitial }}
+                                            </span>
+                                            @endif
+                                        </span>
+                                        <div>
+                                            <div class="att-emp-name" title="{{ $empName }}">{{ $empName }}</div>
+                                            <div class="att-emp-code">{{ $empCode }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-weight-bold text-dark" style="font-size: 13px;">{{ $deptName }}</div>
+                                    <div class="text-muted" style="font-size: 11px; margin-top: 2px;">{{ $desigName }}</div>
+                                </td>
+                                <td>
+                                    <div class="att-small font-weight-bold text-dark">{{ $email }}</div>
+                                    @if($phone !== '-')
+                                    <div class="text-muted" style="font-size: 11px; margin-top: 2px;"><i class="fas fa-phone-alt mr-1"></i> {{ $phone }}</div>
+                                    @endif
+                                </td>
+                                <td class="text-center">
+                                    <span class="att-badge {{ $statusBadgeClass }} px-2.5 py-1" style="border-radius: 8px; font-size: 11px; font-weight: 800;">
+                                        {{ $statusText }}
+                                    </span>
+                                </td>
+                                <td class="text-right">
+                                    <a href="{{ route('attendances.daily', ['employee_id' => $emp->id]) }}" 
+                                       class="btn btn-sm btn-light border text-primary font-weight-bold shadow-sm" 
+                                       style="border-radius: 10px; font-size: 11px; padding: 6px 12px; display: inline-flex; align-items: center; gap: 5px;"
+                                       title="View Attendance Records">
+                                        <i class="fas fa-history"></i> Records
+                                    </a>
+                                </td>
+                            </tr>
+                            @empty
+                            <tr>
+                                <td colspan="5" class="text-center text-success py-4 font-weight-bold">
+                                    <i class="fas fa-check-circle mr-1"></i> Great news! All active employees have marked attendance for today.
+                                </td>
+                            </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
 
         <div class="orb-table-card">
             <div class="orb-table-toolbar justify-content-between align-items-end flex-wrap gap-3">
@@ -1336,6 +1497,63 @@ $kpis = [
             language: {
                 emptyTable: 'No punch-in blocked employees today.',
                 info: 'Showing _START_ to _END_ of _TOTAL_ blocked records',
+                paginate: {
+                    previous: 'Prev',
+                    next: 'Next'
+                }
+            }
+        });
+
+        $('#unmarkedAttendanceTable').DataTable({
+            pageLength: 10,
+            lengthMenu: [
+                [10, 25, 50, -1],
+                [10, 25, 50, 'All']
+            ],
+            ordering: true,
+            autoWidth: false,
+            searching: true,
+            paging: true,
+            info: true,
+            columnDefs: [
+                { targets: 0, width: "24%" },
+                { targets: 1, width: "22%" },
+                { targets: 2, width: "22%" },
+                { targets: 3, width: "18%", className: "text-center" },
+                { targets: 4, width: "14%", orderable: false, className: "text-right" }
+            ],
+            dom: "<'row align-items-center mb-3'<'col-md-6'l><'col-md-6 text-md-right'B>>" +
+                "<'row'<'col-md-12'tr>>" +
+                "<'row align-items-center mt-3'<'col-md-5'i><'col-md-7'p>>",
+            buttons: [{
+                    extend: 'csvHtml5',
+                    text: '<i class="fas fa-file-csv"></i> CSV',
+                    className: 'btn btn-light border',
+                    exportOptions: {
+                        columns: ':not(.no-export)'
+                    }
+                },
+                {
+                    extend: 'excelHtml5',
+                    text: '<i class="fas fa-file-excel"></i> Excel',
+                    className: 'btn btn-light border',
+                    exportOptions: {
+                        columns: ':not(.no-export)'
+                    }
+                },
+                {
+                    extend: 'print',
+                    text: '<i class="fas fa-print"></i> Print',
+                    className: 'btn btn-light border',
+                    title: 'Employees Not Marked Attendance Today',
+                    exportOptions: {
+                        columns: ':not(.no-export)'
+                    }
+                }
+            ],
+            language: {
+                emptyTable: 'All active employees have marked attendance today.',
+                info: 'Showing _START_ to _END_ of _TOTAL_ unmarked employees',
                 paginate: {
                     previous: 'Prev',
                     next: 'Next'

@@ -508,7 +508,7 @@
 </style>
 @endsection
 
-@section('page_title', 'Leave History')
+@section('page_title', 'Leave Approvals')
 
 @section('_content')
 <div class="leave-page-wrap">
@@ -516,11 +516,11 @@
     <div class="orb-page-header">
         <div class="orb-page-header-content">
             <div class="orb-page-kicker">
-                <i class="fas fa-history"></i> HRMS &bull; LEAVE HISTORY
+                <i class="fas fa-check-circle"></i> HRMS &bull; LEAVE APPROVAL WORKBENCH
             </div>
-            <h1 class="orb-page-title">Leave History</h1>
+            <h1 class="orb-page-title">Leave Approvals</h1>
             <p class="orb-page-subtitle">
-                Comprehensive log of all employee leave applications, approval statuses, and historical records.
+                Review and approve/reject pending leave applications submitted by employees for the current month.
             </p>
         </div>
     </div>
@@ -530,30 +530,24 @@
     <div class="orb-table-card">
         <div class="orb-table-toolbar justify-content-between align-items-end flex-wrap gap-3">
             <div class="leave-card-title-wrap">
-                <div class="leave-card-icon">
-                    <i class="fas fa-history"></i>
+                <div class="leave-card-icon" style="background: rgba(16, 185, 129, 0.1); color: #10B981;">
+                    <i class="fas fa-clock"></i>
                 </div>
                 <div>
-                    <h5 class="leave-card-title">Leave Request History</h5>
+                    <h5 class="leave-card-title">Pending Leave Requests</h5>
                     <div class="leave-card-subtitle">
-                        Review and manage employee leave request history with payroll and attendance impact.
+                        Action required: Approve or reject employee leave applications.
                     </div>
                 </div>
             </div>
 
-            <div class="orb-page-actions">
-                <button type="button" class="orb-btn-light py-2 px-3 h-auto" style="min-height: 38px !important; border-radius: 12px !important;" onclick="triggerLeaveExport('csv');">
-                    <i class="fas fa-file-csv"></i> CSV
-                </button>
-                <button type="button" class="orb-btn-light py-2 px-3 h-auto" style="min-height: 38px !important; border-radius: 12px !important;" onclick="triggerLeaveExport('excel');">
-                    <i class="fas fa-file-excel text-success"></i> Excel
-                </button>
-                <button type="button" class="orb-btn-light py-2 px-3 h-auto" style="min-height: 38px !important; border-radius: 12px !important;" onclick="triggerLeaveExport('pdf');">
-                    <i class="fas fa-file-pdf text-danger"></i> PDF
-                </button>
-                <button type="button" class="orb-btn-light py-2 px-3 h-auto" style="min-height: 38px !important; border-radius: 12px !important;" onclick="triggerLeaveExport('print');">
-                    <i class="fas fa-print"></i> Print
-                </button>
+            <div class="orb-page-actions d-flex align-items-center" style="gap: 10px;">
+                <span class="badge badge-warning p-2 font-weight-bold" style="font-size: 13px; border-radius: 10px;">
+                    <i class="fas fa-exclamation-circle mr-1"></i> Pending This Month: {{ $pendingCountCurrentMonth ?? 0 }}
+                </span>
+                <span class="badge badge-primary p-2 font-weight-bold" style="font-size: 13px; border-radius: 10px;">
+                    <i class="fas fa-layer-group mr-1"></i> Total Pending: {{ $totalPendingCount ?? 0 }}
+                </span>
             </div>
         </div>
 
@@ -564,12 +558,10 @@
                     <div>
                         <div class="leave-label">Approval Status</div>
                         <select name="status" class="leave-control">
-                            <option value="">All Status</option>
-                            @foreach(['pending','approved','rejected','expired','cancelled'] as $status)
-                            <option value="{{ $status }}" {{ request('status') === $status ? 'selected' : '' }}>
-                                {{ ucfirst($status) }}
-                            </option>
-                            @endforeach
+                            <option value="pending" {{ ($statusFilter ?? 'pending') === 'pending' ? 'selected' : '' }}>Pending (Action Required)</option>
+                            <option value="approved" {{ ($statusFilter ?? '') === 'approved' ? 'selected' : '' }}>Approved</option>
+                            <option value="rejected" {{ ($statusFilter ?? '') === 'rejected' ? 'selected' : '' }}>Rejected</option>
+                            <option value="all" {{ ($statusFilter ?? '') === 'all' ? 'selected' : '' }}>All Statuses</option>
                         </select>
                     </div>
 

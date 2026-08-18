@@ -500,55 +500,133 @@
     }
 
     @media (max-width: 768px) {
+        .notif-page {
+            padding: 14px 8px 30px;
+        }
         .notif-hero-card {
+            padding: 16px 18px;
+            border-radius: 20px;
+            gap: 14px;
             flex-direction: column;
             align-items: flex-start;
-            gap: 16px;
+        }
+        .notif-hero-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .notif-hero-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        .notif-hero-info h1 {
+            font-size: 20px;
+            margin-bottom: 2px;
+        }
+        .notif-hero-info p {
+            font-size: 12px;
         }
         .notif-hero-actions {
             width: 100%;
-            justify-content: flex-start;
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .btn-hero-action {
+            flex: 1;
+            padding: 8px 12px;
+            font-size: 12px;
+            border-radius: 12px;
+            justify-content: center;
+        }
+        .unread-badge {
+            width: 100%;
+            justify-content: center;
+            padding: 6px 12px;
+        }
+        .notif-list-card {
+            padding: 12px;
+            border-radius: 20px;
+        }
+        .notif-list {
+            gap: 10px;
         }
         .notif-item {
-            flex-direction: column;
-            gap: 14px;
+            padding: 14px;
+            border-radius: 16px;
+            gap: 12px;
+            flex-direction: row;
+            align-items: flex-start;
+        }
+        .notif-icon-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            font-size: 16px;
+        }
+        .notif-item-title {
+            font-size: 14px;
+            font-weight: 800;
+        }
+        .notif-item-msg {
+            font-size: 12.5px;
+            line-height: 1.45;
         }
         .notif-right {
-            flex-direction: row;
+            display: none !important;
+        }
+        .notif-mobile-meta {
+            display: flex !important;
             align-items: center;
-            justify-content: space-between;
-            width: 100%;
-            border-top: 1px solid var(--orb-border);
-            padding-top: 12px;
+            gap: 6px;
+        }
+        .notif-actions {
+            margin-top: 10px;
+            padding-top: 10px;
+            gap: 6px;
+        }
+        .btn-pill {
+            padding: 6px 12px;
+            font-size: 11px;
+            border-radius: 10px;
+            flex: 1;
+            justify-content: center;
         }
     }
 
     @media (max-width: 576px) {
         .notif-page {
-            padding: 16px 10px 30px;
+            padding: 12px 6px 25px;
+        }
+        .notif-hero-card {
+            padding: 14px;
         }
         .notif-hero-left {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 12px;
+            gap: 10px;
         }
         .notif-hero-icon {
-            width: 50px;
-            height: 50px;
-            font-size: 20px;
+            width: 40px;
+            height: 40px;
+            font-size: 16px;
         }
-        .notif-hero-actions {
-            flex-direction: column;
-            align-items: stretch;
-            width: 100%;
+        .notif-hero-info h1 {
+            font-size: 18px;
         }
-        .btn-hero-action {
-            justify-content: center;
-            width: 100%;
+        .notif-hero-info p {
+            font-size: 11.5px;
         }
-        .unread-badge {
-            justify-content: center;
-            width: 100%;
+        .notif-item {
+            padding: 12px;
+        }
+        .notif-actions {
+            flex-wrap: wrap;
+        }
+        .btn-pill {
+            min-width: 48%;
         }
     }
 </style>
@@ -638,6 +716,14 @@
                                 <h3 class="notif-item-title">
                                     {{ $notification->title ?? 'Notification' }}
                                 </h3>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="notif-mobile-meta d-none text-muted font-weight-bold" style="font-size: 11px;">
+                                        {{ $notification->created_at->diffForHumans(null, true) }}
+                                    </span>
+                                    @if(!$notification->is_read)
+                                        <span class="pulse-dot d-md-none" style="width:8px;height:8px;"></span>
+                                    @endif
+                                </div>
                             </div>
 
                             <p class="notif-item-msg">

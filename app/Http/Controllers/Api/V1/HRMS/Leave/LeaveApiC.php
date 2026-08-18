@@ -76,10 +76,7 @@ class LeaveApiC extends Controller
                 ->groupBy('status')
                 ->pluck('total', 'status');
 
-            $allocation = LeaveAllocationM::where('employee_id', $employee->id)
-                ->where('year', $year)
-                ->latest()
-                ->first();
+            $allocation = app(\App\Services\HRMS\Leave\LeaveAllocationService::class)->getOrGenerate($employee, $year);
 
             $paidAlloc = $allocation ? (float) $allocation->paid_allocated : 0.0;
             $paidUsed = $allocation ? (float) $allocation->paid_used : 0.0;
@@ -253,10 +250,20 @@ class LeaveApiC extends Controller
     public function balance()
     {
         $employee = $this->employee();
+        $year = Carbon::now('Asia/Kolkata')->year;
+        $allocation = app(\App\Services\HRMS\Leave\LeaveAllocationService::class)->getOrGenerate($employee, $year);
         $central = $this->balanceService->getCentralBalance($employee);
         $typeBalances = $this->balanceService->getTypeWiseBalances($employee);
+        $balances = $this->formatBalances($allocation);
 
         return $this->ok('Leave balance fetched successfully.', array_merge($central, [
+            'allocation' => $allocation,
+            'total_remaining' => (float) ($allocation->total_remaining ?? 0),
+            'paid_remaining' => (float) ($allocation->paid_remaining ?? 0),
+            'sick_remaining' => (float) ($allocation->sick_remaining ?? 0),
+            'comp_off_remaining' => (float) ($allocation->comp_off_remaining ?? 0),
+            'lwp_used' => (float) ($allocation->lwp_used ?? 0),
+            'balances' => $balances,
             'leave_types' => $typeBalances,
         ]));
     }
@@ -528,6 +535,52 @@ class LeaveApiC extends Controller
         $leaveRequest = $this->approvalService->cancel($leaveRequest, auth()->id(), $request->reason);
 
         return $this->ok('Leave request cancelled successfully.', $leaveRequest);
+    }
+
+    public function update(Request $request, $id)
+    {
+        $employee = $this->employee();
+        $leaveRequest = LeaveRequestM::where('employee_id', $employee->id)->findOrFail($id);
+
+        if (! str_contains(strtolower($leaveRequest->status), 'pending')) {
+            return $this->fail('Only pending leave requests can be edited.', 422);
+        }
+
+        $data = \App\Services\HRMS\Leave\LeaveValidationService::validate($request->all());
+
+        $leaveType = LeaveTypeM::findOrFail($data['leave_type_id']);
+        $attachmentPath = $request->hasFile('attachment') ? $this->storeAttachment($request) : $leaveRequest->attachment_path;
+
+        $calculation = $this->calculationService->calculate($employee, $leaveType, array_merge($data, ['attachment_path' => $attachmentPath]));
+
+        $leaveRequest = DB::transaction(function () use ($leaveRequest, $leaveType, $data, $attachmentPath, $calculation, $request) {
+            $leaveRequest->update([
+                'leave_type_id' => $leaveType->id,
+                'start_date' => $data['start_date'],
+                'end_date' => $data['end_date'],
+                'requested_days' => $calculation['requested_days'],
+                'deducted_days' => $calculation['deducted_days'],
+                'is_half_day' => $data['is_half_day'],
+                'half_day_type' => $data['half_day_type'],
+                'reason' => $data['reason'],
+                'attachment_path' => $attachmentPath,
+                'sandwich_applied' => $calculation['sandwich_applied'],
+                'paid_days' => $calculation['paid_days'],
+                'sick_days' => $calculation['sick_days'],
+                'comp_off_days' => $calculation['comp_off_days'],
+                'lwp_days' => $calculation['lwp_days'],
+                'emergency_leave' => $request->boolean('emergency_leave'),
+            ]);
+
+            $leaveRequest->dates()->delete();
+            foreach ($calculation['dates'] as $row) {
+                $leaveRequest->dates()->create(array_merge($row, ['employee_id' => $leaveRequest->employee_id]));
+            }
+
+            return $leaveRequest->fresh();
+        });
+
+        return $this->ok('Leave request updated successfully.', $this->formatLeaveRequest($leaveRequest, true));
     }
 
     private function employee(): EmployeeM

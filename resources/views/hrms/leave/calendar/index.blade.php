@@ -5,33 +5,35 @@
 @section('_head')
 <style>
     :root {
-        --orb-bg: #F6F7FB;
+        --orb-primary: {{ $branding['primary_color'] ?? '#4B00E8' }};
+        --orb-secondary: {{ $branding['secondary_color'] ?? '#8600EE' }};
+        --orb-bg: #F8FAFC;
         --orb-card: #FFFFFF;
-        --orb-border: #E7EAF3;
-        --orb-text: #101828;
-        --orb-muted: #667085;
-        --orb-soft: #F4F2FF;
-        --orb-shadow: 0 14px 35px rgba(16, 24, 40, .07);
+        --orb-border: #E2E8F0;
+        --orb-text: #0F172A;
+        --orb-muted: #64748B;
+        --orb-soft: rgba(75, 0, 232, 0.08);
+        --orb-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
     }
 
     .calendar-page {
         background: var(--orb-bg);
-        padding: 24px;
+        padding: 24px 20px 48px;
         min-height: calc(100vh - 90px);
         font-family: 'Inter', system-ui, -apple-system, sans-serif;
     }
 
     /* Hero Header */
     .cal-hero {
-        background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary));
-        border-radius: 26px;
-        padding: 32px;
+        background: linear-gradient(135deg, {{ $branding['primary_color'] ?? '#4B00E8' }} 0%, {{ $branding['secondary_color'] ?? '#8600EE' }} 100%);
+        border-radius: 20px;
+        padding: 28px 32px;
         color: #fff;
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 20px;
-        box-shadow: 0 10px 30px rgba(75, 0, 232, 0.15);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
         margin-bottom: 24px;
     }
 
@@ -48,44 +50,45 @@
     }
 
     .cal-title {
-        font-size: 28px;
+        font-size: 26px;
         font-weight: 900;
         margin: 0;
         line-height: 1.15;
     }
 
     .cal-subtitle {
-        font-size: 13px;
+        font-size: 13.5px;
         font-weight: 600;
-        margin: 8px 0 0;
-        opacity: 0.85;
+        margin: 6px 0 0;
+        opacity: 0.9;
     }
 
     .cal-hero-btn {
-        height: 40px;
+        height: 42px;
         border-radius: 12px;
-        padding: 0 20px;
+        padding: 0 22px;
         font-size: 13px;
         font-weight: 800;
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        border: 1px solid rgba(255,255,255,0.3);
+        border: 1px solid rgba(255,255,255,0.35);
         color: #fff !important;
-        background: rgba(255,255,255,0.18);
+        background: rgba(255,255,255,0.2);
+        backdrop-filter: blur(8px);
         cursor: pointer;
         transition: all 0.2s ease;
     }
 
     .cal-hero-btn:hover {
-        background: rgba(255, 255, 255, 0.25);
+        background: rgba(255, 255, 255, 0.3);
     }
 
     /* Metric Cards */
     .stat-card {
         background: #fff;
         border: 1px solid var(--orb-border);
-        border-radius: 18px;
+        border-radius: 16px;
         padding: 16px;
         box-shadow: var(--orb-shadow);
         transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -93,14 +96,14 @@
 
     .stat-card:hover {
         transform: translateY(-2px);
-        box-shadow: 0 16px 32px rgba(16, 24, 40, .09);
+        box-shadow: 0 12px 24px rgba(15, 23, 42, .07);
     }
 
     /* Filter panel */
     .cal-card {
         background: #fff;
         border: 1px solid var(--orb-border);
-        border-radius: 22px;
+        border-radius: 20px;
         box-shadow: var(--orb-shadow);
         overflow: hidden;
     }
@@ -108,24 +111,22 @@
     .cal-filters-wrapper {
         padding: 18px 24px;
         border-bottom: 1px solid var(--orb-border);
-        background: #fafafa;
+        background: #FAF9FF;
     }
 
     .form-select, .form-control {
-        height: 40px !important;
-        border-radius: 12px !important;
+        height: 38px !important;
+        border-radius: 10px !important;
         border: 1px solid var(--orb-border) !important;
         font-size: 13px !important;
         font-weight: 600 !important;
         color: var(--orb-text) !important;
-        background-color: #fff !important;
+        background-color: #FAFAFA !important;
     }
 
-    /* Calendar Design Layout */
     .cal-content-row {
         display: flex;
         gap: 24px;
-        margin-top: 24px;
     }
 
     .cal-main-col {
@@ -134,25 +135,25 @@
     }
 
     .cal-sidebar-col {
-        width: 340px;
+        width: 380px;
         flex-shrink: 0;
     }
 
+    /* Calendar Grid */
     .calendar-card {
         background: #fff;
         border: 1px solid var(--orb-border);
-        border-radius: 22px;
-        box-shadow: var(--orb-shadow);
+        border-radius: 16px;
         overflow: hidden;
     }
 
     .calendar-header {
-        padding: 16px 24px;
+        padding: 16px 20px;
         border-bottom: 1px solid var(--orb-border);
+        background: #FAF9FF;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        background: #fff;
     }
 
     .calendar-week-headers {
@@ -164,12 +165,12 @@
     }
 
     .week-day-header {
-        padding: 12px 6px;
+        padding: 10px 4px;
         font-size: 11px;
-        font-weight: 850;
+        font-weight: 800;
         text-transform: uppercase;
         color: var(--orb-muted);
-        letter-spacing: 0.5px;
+        letter-spacing: 0.05em;
     }
 
     .calendar-grid {
@@ -180,330 +181,176 @@
     }
 
     .calendar-cell {
-        min-height: 115px;
         background: #fff;
+        min-height: 115px;
+        max-height: 145px;
         padding: 8px;
-        transition: all 0.2s ease;
         position: relative;
         cursor: pointer;
-        display: flex;
-        flex-direction: column;
+        transition: background 0.15s ease;
+        overflow: hidden;
     }
 
     .calendar-cell:hover {
-        background: #F4F2FF;
+        background: #F8FAFC;
     }
 
     .calendar-cell.other-month {
-        background: #fbfbfb;
-    }
-
-    .calendar-cell.other-month .cell-date-num {
-        color: #ccd0d9;
+        background: #FAFAFA;
+        opacity: 0.6;
     }
 
     .calendar-cell.today {
-        background: rgba(75, 0, 232, 0.02) !important;
+        background: #EEF2FF;
     }
 
     .calendar-cell.today .cell-date-num {
         background: var(--orb-primary);
-        color: #fff !important;
+        color: #fff;
+        border-radius: 50%;
         width: 24px;
         height: 24px;
-        border-radius: 50%;
-        display: inline-flex;
+        display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: 800;
-        box-shadow: 0 2px 6px rgba(75, 0, 232, 0.3);
     }
 
     .calendar-cell.active-cell {
-        background: #F0EDFF !important;
-        box-shadow: inset 0 0 0 2px var(--orb-primary) !important;
+        box-shadow: inset 0 0 0 2px var(--orb-primary);
+        background: #F4F2FF;
     }
 
     .cell-date-num {
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 800;
         color: var(--orb-text);
-        margin-bottom: 8px;
+        margin-bottom: 6px;
     }
 
-    .cell-weekend {
-        background: #F9FAFB;
-    }
-
-    /* Mini Leave Chips inside cell */
     .leave-chips-list {
         display: flex;
-        flex-column: column;
         flex-direction: column;
         gap: 4px;
-        overflow-y: auto;
-        flex: 1;
     }
 
     .mini-leave-chip {
-        font-size: 10px;
-        font-weight: 800;
-        padding: 3px 6px;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 3px 8px;
         border-radius: 6px;
-        white-space: nowrap;
-        text-overflow: ellipsis;
-        overflow: hidden;
         display: flex;
         align-items: center;
-        gap: 4px;
-        transition: all 0.15s ease;
+        gap: 6px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        background: #ECFDF5;
+        color: #047857;
+        border: 1px solid #A7F3D0;
     }
 
     .mini-leave-chip.pending {
         background: #FFFBEB;
         color: #B45309;
-        border: 1px dashed #FCD34D;
-    }
-
-    .mini-leave-chip.approved {
-        background: #ECFDF3;
-        color: #047857;
-        border: 1px solid #D1FAE5;
+        border-color: #FDE68A;
     }
 
     .mini-leave-chip.rejected {
         background: #FEF2F2;
         color: #B91C1C;
-        border: 1px solid #FEE2E2;
-        text-decoration: line-through;
-    }
-
-    .mini-leave-chip.lwp-badge {
-        background: #FEF2F2 !important;
-        color: #DC2626 !important;
-        border: 1px solid #FECACA !important;
+        border-color: #FECACA;
     }
 
     .mini-leave-chip .dot {
-        width: 5px;
-        height: 5px;
+        width: 6px;
+        height: 6px;
         border-radius: 50%;
-        display: inline-block;
         background: currentColor;
+        flex-shrink: 0;
     }
 
-    /* Sidebar Detail Panel */
+    /* Side Panel */
     .detail-panel {
         background: #fff;
         border: 1px solid var(--orb-border);
-        border-radius: 22px;
-        box-shadow: var(--orb-shadow);
+        border-radius: 18px;
         overflow: hidden;
+        box-shadow: var(--orb-shadow);
         position: sticky;
-        top: 24px;
+        top: 100px;
     }
 
     .detail-header {
-        background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary));
-        color: #fff;
+        background: linear-gradient(135deg, {{ $branding['primary_color'] ?? '#4B00E8' }} 0%, {{ $branding['secondary_color'] ?? '#8600EE' }} 100%);
         padding: 20px 24px;
+        color: #fff;
     }
 
     .detail-date-title {
         font-size: 16px;
         font-weight: 900;
-        margin: 0;
+        margin: 0 0 4px;
+        color: #fff;
     }
 
     .detail-subtitle {
-        font-size: 11px;
+        font-size: 12px;
         opacity: 0.9;
-        font-weight: 700;
-        text-transform: uppercase;
-        margin-top: 4px;
-        letter-spacing: 0.5px;
+        font-weight: 600;
     }
 
     .detail-body {
-        padding: 24px;
-        max-height: 600px;
+        padding: 20px;
+        max-height: 520px;
         overflow-y: auto;
     }
 
     .panel-leave-card {
-        border: 1px solid var(--orb-border);
-        border-radius: 16px;
-        padding: 16px;
-        margin-bottom: 16px;
         background: #fff;
-        transition: box-shadow 0.2s ease;
+        border: 1px solid var(--orb-border);
+        border-radius: 14px;
+        padding: 16px;
+        margin-bottom: 14px;
+        box-shadow: 0 4px 12px rgba(15,23,42,0.03);
     }
 
-    .panel-leave-card:hover {
-        box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    .panel-leave-card:last-child {
+        margin-bottom: 0;
     }
 
     .panel-leave-card-title {
-        font-size: 13px;
-        font-weight: 850;
+        font-size: 14.5px;
+        font-weight: 900;
         color: var(--orb-text);
-        margin: 0 0 6px 0;
+        margin: 0 0 10px;
     }
 
     .panel-info-row {
-        display: flex;
-        justify-content: space-between;
-        font-size: 11px;
+        font-size: 12.5px;
         margin-bottom: 6px;
-    }
-
-    .panel-info-lbl {
-        color: var(--orb-muted);
-        font-weight: 750;
-        text-transform: uppercase;
-        font-size: 9px;
-        letter-spacing: 0.5px;
-    }
-
-    .panel-info-val {
-        color: var(--orb-text);
-        font-weight: 800;
-        text-align: right;
     }
 
     .panel-actions {
         display: flex;
         gap: 8px;
-        margin-top: 14px;
-        border-top: 1px solid var(--orb-border);
-        padding-top: 12px;
+        margin-top: 12px;
     }
 
     .panel-btn {
-        flex: 1;
-        height: 34px;
         border-radius: 8px;
-        font-size: 11px;
+        padding: 6px 12px;
+        font-size: 12px;
         font-weight: 800;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 4px;
-        cursor: pointer;
-        border: 0;
-        transition: all 0.2s ease;
+        border: none;
     }
 
-    .panel-btn-approve {
-        background: #10b981;
-        color: #fff;
-    }
+    .panel-btn-approve { background: #10B981; color: #fff; }
+    .panel-btn-reject { background: #EF4444; color: #fff; }
 
-    .panel-btn-approve:hover {
-        background: #059669;
-    }
-
-    .panel-btn-reject {
-        background: #ef4444;
-        color: #fff;
-    }
-
-    .panel-btn-reject:hover {
-        background: #dc2626;
-    }
-
-    /* List Table section */
-    .table-card {
-        background: #fff;
-        border: 1px solid var(--orb-border);
-        border-radius: 22px;
-        box-shadow: var(--orb-shadow);
-        overflow: hidden;
-        margin-top: 24px;
-    }
-
-    .table-card-header {
-        padding: 20px 24px;
-        border-bottom: 1px solid var(--orb-border);
-        display: flex;
-        align-items: center;
-        gap: 14px;
-    }
-
-    .table-card-title {
-        font-size: 15px;
-        font-weight: 850;
-        color: var(--orb-text);
-        margin: 0;
-    }
-
-    .table thead th {
-        background: #F8FAFC;
-        color: var(--orb-muted);
-        font-weight: 850;
-        text-transform: uppercase;
-        font-size: 11px;
-        letter-spacing: 0.6px;
-        padding: 14px 20px !important;
-        border-bottom: 1px solid var(--orb-border) !important;
-        border-top: 0 !important;
-    }
-
-    .table tbody td {
-        padding: 14px 20px !important;
-        vertical-align: middle;
-        border-bottom: 1px solid var(--orb-border) !important;
-        color: var(--orb-text);
-        font-size: 13px;
-        font-weight: 600;
-    }
-
-    .status-badge {
-        padding: 4px 10px;
-        border-radius: 8px;
-        font-size: 11px;
-        font-weight: 800;
-        text-transform: uppercase;
-        display: inline-block;
-    }
-
-    .status-approved { background: #ECFDF3; color: #047857; }
-    .status-pending { background: #FFFBEB; color: #B45309; }
-    .status-rejected { background: #FEF2F2; color: #B91C1C; }
-    .status-cancelled { background: #F3F4F6; color: #4B5563; }
-
-    @media (max-width: 992px) {
-        .cal-content-row {
-            flex-direction: column;
-        }
-
-        .cal-sidebar-col {
-            width: 100%;
-        }
-
-        .calendar-cell {
-            min-height: 80px;
-        }
-    }
-
-    @media (max-width: 600px) {
-        .calendar-week-headers {
-            font-size: 9px;
-        }
-
-        .calendar-cell {
-            min-height: 60px;
-            padding: 4px;
-        }
-
-        .cell-date-num {
-            font-size: 11px;
-        }
-
-        .mini-leave-chip {
-            padding: 1px 3px;
-            font-size: 8px;
-        }
+    @media (max-width: 1200px) {
+        .cal-content-row { flex-direction: column; }
+        .cal-sidebar-col { width: 100%; }
+        .detail-panel { position: static; }
     }
 </style>
 @endsection
@@ -511,14 +358,14 @@
 @section('_content')
 <div class="calendar-page">
 
-    <!-- Premium Purple Gradient Hero Header -->
+    <!-- Premium Header with Dynamic DB Branding -->
     <div class="cal-hero">
         <div>
             <div class="cal-kicker">
                 <i class="fas fa-calendar-week"></i> HRMS &bull; TEAM AVAILABILITY
             </div>
             <h1 class="cal-title">Team Leave Calendar</h1>
-            <p class="cal-subtitle">View team availability, approved leaves, pending leaves, and department-wise leave planning.</p>
+            <p class="cal-subtitle">View team availability, approved leaves, pending applications, and department-wise leave planning.</p>
         </div>
         <div>
             <a href="{{ route('leave-approvals.index') }}" class="cal-hero-btn">
@@ -527,18 +374,18 @@
         </div>
     </div>
 
-    @include('components.alerts')
+    @include('hrms.leave.shared.flash')
 
-    <!-- dynamic database summary cards -->
+    <!-- Dynamic DB Summary Stats Cards -->
     <div class="row g-3">
         <div class="col-12 col-md-4 col-lg">
             <div class="stat-card" style="border-bottom: 4px solid var(--orb-primary); height: 90px; display: flex; align-items: center; gap: 14px;">
-                <div style="width: 40px; height: 40px; border-radius: 10px; background: color-mix(in srgb, var(--orb-primary) 8%, transparent); color: var(--orb-primary); display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(75,0,232,0.08); color: var(--orb-primary); display: flex; align-items: center; justify-content: center; font-size: 16px;">
                     <i class="fas fa-plane-departure"></i>
                 </div>
                 <div>
                     <small style="text-transform: uppercase; font-size: 10px; font-weight: 800; color: var(--orb-muted); letter-spacing: 0.5px;">On Leave Today</small>
-                    <h4 style="margin: 2px 0 0; font-size: 20px; font-weight: 900; color: var(--orb-text);">{{ $stats['on_leave_today'] }}</h4>
+                    <h4 style="margin: 2px 0 0; font-size: 20px; font-weight: 900; color: var(--orb-text);">{{ $stats['on_leave_today'] ?? 0 }}</h4>
                 </div>
             </div>
         </div>
@@ -549,7 +396,7 @@
                 </div>
                 <div>
                     <small style="text-transform: uppercase; font-size: 10px; font-weight: 800; color: var(--orb-muted); letter-spacing: 0.5px;">Upcoming Leaves</small>
-                    <h4 style="margin: 2px 0 0; font-size: 20px; font-weight: 900; color: var(--orb-text);">{{ $stats['upcoming_leaves'] }}</h4>
+                    <h4 style="margin: 2px 0 0; font-size: 20px; font-weight: 900; color: var(--orb-text);">{{ $stats['upcoming_leaves'] ?? 0 }}</h4>
                 </div>
             </div>
         </div>
@@ -560,7 +407,7 @@
                 </div>
                 <div>
                     <small style="text-transform: uppercase; font-size: 10px; font-weight: 800; color: var(--orb-muted); letter-spacing: 0.5px;">Pending Requests</small>
-                    <h4 style="margin: 2px 0 0; font-size: 20px; font-weight: 900; color: var(--orb-text);">{{ $stats['pending_requests'] }}</h4>
+                    <h4 style="margin: 2px 0 0; font-size: 20px; font-weight: 900; color: var(--orb-text);">{{ $stats['pending_requests'] ?? 0 }}</h4>
                 </div>
             </div>
         </div>
@@ -571,7 +418,7 @@
                 </div>
                 <div>
                     <small style="text-transform: uppercase; font-size: 10px; font-weight: 800; color: var(--orb-muted); letter-spacing: 0.5px;">Approved Month</small>
-                    <h4 style="margin: 2px 0 0; font-size: 20px; font-weight: 900; color: var(--orb-text);">{{ $stats['approved_this_month'] }}</h4>
+                    <h4 style="margin: 2px 0 0; font-size: 20px; font-weight: 900; color: var(--orb-text);">{{ $stats['approved_this_month'] ?? 0 }}</h4>
                 </div>
             </div>
         </div>
@@ -582,7 +429,7 @@
                 </div>
                 <div>
                     <small style="text-transform: uppercase; font-size: 10px; font-weight: 800; color: var(--orb-muted); letter-spacing: 0.5px;">LWP Month</small>
-                    <h4 style="margin: 2px 0 0; font-size: 20px; font-weight: 900; color: var(--orb-text);">{{ $stats['lwp_this_month'] }}</h4>
+                    <h4 style="margin: 2px 0 0; font-size: 20px; font-weight: 900; color: var(--orb-text);">{{ $stats['lwp_this_month'] ?? 0 }}</h4>
                 </div>
             </div>
         </div>
@@ -654,12 +501,12 @@
             </div>
         </form>
 
-        <div class="cal-content-row p-4 pt-2">
+        <div class="cal-content-row p-4 pt-3">
             <!-- Left Main Calendar Grid -->
             <div class="cal-main-col">
                 <div class="calendar-card">
                     <div class="calendar-header">
-                        <div class="fw-black text-dark" style="font-size: 16px;">
+                        <div class="fw-black text-dark font-weight-bold" style="font-size: 16px;">
                             <i class="far fa-calendar-alt text-primary mr-1"></i>
                             {{ date('F Y', mktime(0, 0, 0, $selectedMonth, 1, $selectedYear)) }}
                         </div>
@@ -692,19 +539,28 @@
                                 <div class="cell-date-num">{{ $cellDate->day }}</div>
                                 
                                 <div class="leave-chips-list">
-                                    @foreach($leavesList as $leave)
+                                    @foreach(collect($leavesList)->take(3) as $leave)
                                         @php
+                                            $empName = optional(optional($leave->employee)->user)->name 
+                                                ?? optional($leave->employee)->display_name 
+                                                ?? optional($leave->employee)->employee_code 
+                                                ?? 'Employee';
                                             $isLwp = ($leave->lwp_days > 0) || str_contains(strtolower($leave->leaveType->name ?? ''), 'lwp');
                                             $isHalf = $leave->is_half_day;
                                         @endphp
-                                        <div class="mini-leave-chip {{ $leave->status }} {{ $isLwp ? 'lwp-badge' : '' }}" title="{{ $leave->employee->display_name }} ({{ $leave->leaveType->name }})">
+                                        <div class="mini-leave-chip {{ $leave->status }} {{ $isLwp ? 'lwp-badge' : '' }}" title="{{ $empName }} ({{ $leave->leaveType->name ?? 'Leave' }})">
                                             <span class="dot"></span>
-                                            <span class="text-truncate">{{ $leave->employee->display_name }}</span>
+                                            <span class="text-truncate">{{ $empName }}</span>
                                             @if($isHalf)
                                                 <small style="font-size: 8px; font-weight: 900; opacity: 0.85;">Half</small>
                                             @endif
                                         </div>
                                     @endforeach
+                                    @if(count($leavesList) > 3)
+                                        <div class="more-leaves-chip mt-1" style="font-size: 9.5px; font-weight: 800; color: var(--orb-primary); background: var(--orb-soft); padding: 2px 6px; border-radius: 6px; text-align: center;">
+                                            +{{ count($leavesList) - 3 }} More
+                                        </div>
+                                    @endif
                                 </div>
 
                                 <!-- Hidden Div containing side-panel card elements to instantly render via JavaScript -->
@@ -712,59 +568,70 @@
                                 <div id="leaves-data-{{ $dateStr }}" style="display: none;">
                                     @foreach($leavesList as $leave)
                                         @php
+                                            $empName = optional(optional($leave->employee)->user)->name 
+                                                ?? optional($leave->employee)->display_name 
+                                                ?? optional($leave->employee)->employee_code 
+                                                ?? 'Employee';
                                             $isLwp = ($leave->lwp_days > 0) || str_contains(strtolower($leave->leaveType->name ?? ''), 'lwp');
+                                            $daysCount = $leave->total_days ?? $leave->days ?? $leave->requested_days;
+                                            if (!$daysCount || $daysCount <= 0) {
+                                                $daysCount = ($leave->start_date && $leave->end_date ? \Carbon\Carbon::parse($leave->start_date)->diffInDays(\Carbon\Carbon::parse($leave->end_date)) + 1 : 1);
+                                            }
+                                            if ($leave->is_half_day) {
+                                                $daysCount = 0.5;
+                                            }
                                         @endphp
                                         <div class="panel-leave-card">
-                                            <h6 class="panel-leave-card-title">{{ $leave->employee->display_name }}</h6>
+                                            <h6 class="panel-leave-card-title">{{ $empName }}</h6>
                                             
-                                            <div class="panel-info-row">
-                                                <span class="panel-info-lbl">Code</span>
-                                                <span class="panel-info-val">{{ $leave->employee->employee_code }}</span>
+                                            <div class="panel-info-row d-flex justify-content-between">
+                                                <span class="panel-info-lbl text-muted">Code</span>
+                                                <span class="panel-info-val font-weight-bold">{{ $leave->employee->employee_code }}</span>
                                             </div>
-                                            <div class="panel-info-row">
-                                                <span class="panel-info-lbl">Department</span>
-                                                <span class="panel-info-val">{{ $leave->employee->department->name ?? 'General' }}</span>
+                                            <div class="panel-info-row d-flex justify-content-between">
+                                                <span class="panel-info-lbl text-muted">Department</span>
+                                                <span class="panel-info-val font-weight-bold">{{ optional($leave->employee->department)->name ?? 'General' }}</span>
                                             </div>
-                                            <div class="panel-info-row">
-                                                <span class="panel-info-lbl">Leave Type</span>
-                                                <span class="panel-info-val {{ $isLwp ? 'text-danger fw-bold' : '' }}">
-                                                    {{ $leave->leaveType->name }}
-                                                    {!! $isLwp ? '<small class="badge badge-danger p-0.5 ml-1" style="font-size:8px;">LWP</small>' : '' !!}
+                                            <div class="panel-info-row d-flex justify-content-between">
+                                                <span class="panel-info-lbl text-muted">Leave Type</span>
+                                                <span class="panel-info-val font-weight-bold {{ $isLwp ? 'text-danger' : 'text-primary' }}">
+                                                    {{ optional($leave->leaveType)->name ?? 'Paid Leave' }}
+                                                    {!! $isLwp ? '<small class="badge badge-danger ml-1" style="font-size:8px;">LWP</small>' : '' !!}
                                                 </span>
                                             </div>
-                                            <div class="panel-info-row">
-                                                <span class="panel-info-lbl">Period</span>
-                                                <span class="panel-info-val text-primary">{{ $leave->start_date->format('d M') }} - {{ $leave->end_date->format('d M Y') }}</span>
+                                            <div class="panel-info-row d-flex justify-content-between">
+                                                <span class="panel-info-lbl text-muted">Period</span>
+                                                <span class="panel-info-val font-weight-bold text-dark">{{ \Carbon\Carbon::parse($leave->start_date)->format('d M') }} &rarr; {{ \Carbon\Carbon::parse($leave->end_date)->format('d M Y') }}</span>
                                             </div>
-                                            <div class="panel-info-row">
-                                                <span class="panel-info-lbl">Duration</span>
-                                                <span class="panel-info-val">{{ floatval($leave->requested_days) }} Days {{ $leave->is_half_day ? '(Half Day)' : '' }}</span>
+                                            <div class="panel-info-row d-flex justify-content-between">
+                                                <span class="panel-info-lbl text-muted">Duration</span>
+                                                <span class="panel-info-val font-weight-bold text-dark">{{ $daysCount }} {{ Str::plural('Day', $daysCount) }} {{ $leave->is_half_day ? '(Half Day)' : '' }}</span>
                                             </div>
-                                            <div class="panel-info-row">
-                                                <span class="panel-info-lbl">Status</span>
-                                                <span class="panel-info-val text-uppercase {{ $leave->status === 'approved' ? 'text-success' : ($leave->status === 'pending' ? 'text-warning' : 'text-danger') }}">{{ $leave->status }}</span>
+                                            <div class="panel-info-row d-flex justify-content-between">
+                                                <span class="panel-info-lbl text-muted">Status</span>
+                                                <span class="panel-info-val font-weight-bold text-uppercase {{ $leave->status === 'approved' ? 'text-success' : ($leave->status === 'pending' ? 'text-warning' : 'text-danger') }}">{{ ucfirst($leave->status) }}</span>
                                             </div>
                                             
                                             @if($leave->reason)
-                                            <div class="panel-info-row flex-column text-left">
-                                                <span class="panel-info-lbl">Reason</span>
-                                                <div style="font-size: 11px; font-weight: 500; color: var(--orb-text); background: #f8fafc; padding: 6px; border-radius: 8px; margin-top: 4px; border: 1px solid var(--orb-border);">
+                                            <div class="panel-info-row flex-column text-left mt-2">
+                                                <span class="panel-info-lbl text-muted">Reason</span>
+                                                <div style="font-size: 12px; font-weight: 600; color: var(--orb-text); background: #f8fafc; padding: 8px; border-radius: 8px; margin-top: 4px; border: 1px solid var(--orb-border);">
                                                     {{ $leave->reason }}
                                                 </div>
                                             </div>
                                             @endif
 
                                             @if($leave->status === 'approved' && $leave->approver)
-                                            <div class="panel-info-row mt-2">
-                                                <span class="panel-info-lbl">Approved By</span>
-                                                <span class="panel-info-val text-muted" style="font-size: 10px;">{{ $leave->approver->name }}</span>
+                                            <div class="panel-info-row mt-2 d-flex justify-content-between">
+                                                <span class="panel-info-lbl text-muted">Approved By</span>
+                                                <span class="panel-info-val text-muted" style="font-size: 11px;">{{ $leave->approver->name }}</span>
                                             </div>
                                             @endif
 
                                             <!-- Approval Actions in detail panel (Authorized Admin/HR only) -->
                                             @if($leave->status === 'pending')
                                                 @if(auth()->user()->hasPermission('leave.approvals.approve') || auth()->user()->hasPermission('leave.approvals.reject'))
-                                                    <div class="panel-actions">
+                                                    <div class="panel-actions mt-3">
                                                         <form method="POST" action="{{ route('leave-approvals.approve', $leave->id) }}" style="flex: 1; margin: 0;">
                                                             @csrf
                                                             <input type="hidden" name="remark" value="Approved via Team Calendar">
@@ -811,112 +678,18 @@
         </div>
     </div>
 
-    <!-- Calendar Footer: Leave List Table -->
-    <div class="table-card">
-        <div class="table-card-header">
-            <div style="width: 36px; height: 36px; border-radius: 8px; background: var(--orb-soft); color: var(--orb-primary); display: flex; align-items: center; justify-content: center; font-size: 14px;">
-                <i class="fas fa-list-ul"></i>
-            </div>
-            <div>
-                <h5 class="table-card-title">Leave Records Summary List</h5>
-            </div>
-        </div>
-
-        <div class="table-responsive">
-            <table class="table table-hover w-100 nowrap">
-                <thead>
-                    <tr>
-                        <th style="padding-left: 24px;">Employee</th>
-                        <th>Department</th>
-                        <th>Leave Type</th>
-                        <th>Period</th>
-                        <th>Days</th>
-                        <th>Status</th>
-                        <th>Reason</th>
-                        @if(auth()->user()->hasPermission('leave.approvals.approve') || auth()->user()->hasPermission('leave.approvals.reject'))
-                        <th class="text-right" style="padding-right: 24px;">Actions</th>
-                        @endif
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($leaves as $item)
-                        @php
-                            $isLwp = ($item->lwp_days > 0) || str_contains(strtolower($item->leaveType->name ?? ''), 'lwp');
-                        @endphp
-                        <tr>
-                            <td style="padding-left: 24px;">
-                                <div class="fw-bold text-dark">{{ $item->employee->display_name }}</div>
-                                <small class="text-muted">{{ $item->employee->employee_code }}</small>
-                            </td>
-                            <td>{{ $item->employee->department->name ?? 'General' }}</td>
-                            <td>
-                                <span class="badge badge-light border font-weight-bold px-2 py-1 {{ $isLwp ? 'text-danger border-danger' : '' }}" style="font-size: 11px;">
-                                    {{ $item->leaveType->name }}
-                                </span>
-                            </td>
-                            <td>
-                                <div style="font-size: 12px; font-weight: 700;">
-                                    {{ $item->start_date->format('d M') }} - {{ $item->end_date->format('d M Y') }}
-                                </div>
-                            </td>
-                            <td>{{ floatval($item->requested_days) }} Days</td>
-                            <td>
-                                <span class="status-badge status-{{ $item->status }}">{{ $item->status }}</span>
-                            </td>
-                            <td>
-                                <small class="text-muted d-block text-truncate" style="max-width: 250px;">{{ $item->reason ?? '-' }}</small>
-                            </td>
-                            @if(auth()->user()->hasPermission('leave.approvals.approve') || auth()->user()->hasPermission('leave.approvals.reject'))
-                            <td class="text-right" style="padding-right: 24px;">
-                                @if($item->status === 'pending')
-                                    <div class="d-inline-flex gap-1" style="gap: 6px;">
-                                        <form method="POST" action="{{ route('leave-approvals.approve', $item->id) }}" style="margin: 0;">
-                                            @csrf
-                                            <input type="hidden" name="remark" value="Approved via list view">
-                                            <button type="submit" class="btn btn-sm btn-success rounded-lg font-weight-bold px-3" onclick="return confirm('Approve request?')" style="border-radius: 8px;">Approve</button>
-                                        </form>
-                                        <form method="POST" action="{{ route('leave-approvals.reject', $item->id) }}" style="margin: 0;">
-                                            @csrf
-                                            <input type="hidden" name="reason" value="Rejected via list view">
-                                            <button type="submit" class="btn btn-sm btn-danger rounded-lg font-weight-bold px-3" onclick="return confirm('Reject request?')" style="border-radius: 8px;">Reject</button>
-                                        </form>
-                                    </div>
-                                @else
-                                    <span class="text-muted font-weight-bold small">-</span>
-                                @endif
-                            </td>
-                            @endif
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="8" class="text-center py-5">
-                                <div class="text-muted">
-                                    <i class="fas fa-calendar-times fa-3x mb-3 text-light"></i>
-                                    <h5 class="font-weight-black">No team leave records found for this month</h5>
-                                    <p class="small text-muted mb-0">Try clearing filters or checking another month.</p>
-                                </div>
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-    </div>
-
 </div>
 @endsection
 
 @section('_script')
 <script>
     $(document).ready(function() {
-        // Automatically select today's cell, or the first cell of the current month
         const todayStr = '{{ today()->format('Y-m-d') }}';
         const initialCell = $(`.calendar-cell[data-date="${todayStr}"]`);
         
         if (initialCell.length > 0) {
             initialCell.click();
         } else {
-            // Click the first current month cell
             const firstCell = $('.calendar-cell').not('.other-month').first();
             if (firstCell.length > 0) {
                 firstCell.click();
@@ -934,7 +707,6 @@
         
         currentSelectedDate = dateStr;
         
-        // Update Side Panel Info
         $('#detail-panel-date').text(formattedDate);
         
         const leavesHtml = $(`#leaves-data-${dateStr}`).html();

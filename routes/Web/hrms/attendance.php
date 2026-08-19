@@ -25,6 +25,7 @@ Route::middleware(['auth', 'check.access', 'check.profile.complete'])
         Route::get('/daily', [AttendancesC::class, 'daily'])->middleware('permission:attendance.records.view_all|attendance.my.view')->name('daily');
         Route::get('/record', [AttendancesC::class, 'attendanceRecord'])->middleware('permission:attendance.records.view_all')->name('record');
         Route::get('/pending-approval', [AttendancesC::class, 'pendingApproval'])->middleware('permission:attendance.blocked.view')->name('pending-approval');
+        Route::get('/pending_approval', [AttendancesC::class, 'pendingApproval'])->middleware('permission:attendance.blocked.view');
         Route::get('/monthly-report', [AttendancesC::class, 'monthlyReport'])->middleware('permission:attendance.monthly_report.view_all|attendance.monthly_report.view_team|attendance.monthly_report.view_own|attendance.monthly_report.view')->name('monthly-report');
 
         Route::get('/print', [AttendancesC::class, 'print'])->middleware('permission:attendance.export')->name('print');

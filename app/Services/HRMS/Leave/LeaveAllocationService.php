@@ -145,6 +145,7 @@ class LeaveAllocationService
         $allocation->sick_remaining = round(max(0.0, (float) $allocation->sick_allocated - (float) $allocation->sick_used), 2);
         $allocation->comp_off_remaining = round(max(0.0, (float) $allocation->comp_off_allocated - (float) $allocation->comp_off_used), 2);
 
+        $allocation->total_allocated = round((float) $allocation->paid_allocated + (float) $allocation->sick_allocated, 2);
         $allocation->total_used = round((float) $allocation->paid_used + (float) $allocation->sick_used + (float) $allocation->comp_off_used, 2);
         $allocation->total_remaining = round((float) $allocation->paid_remaining + (float) $allocation->sick_remaining + (float) $allocation->comp_off_remaining, 2);
 
@@ -152,24 +153,20 @@ class LeaveAllocationService
         $isInternOrProbation = str_contains($stage, 'intern') || str_contains($stage, 'probation');
 
         if ($isInternOrProbation) {
-            // Interns and probationers receive 1 fixed allocation, NO monthly carry-forward!
-            $allocation->monthly_carry_forward = 0.0;
+            $allocation->monthly_carry_forward = (float) ($allocation->monthly_carry_forward ?? 0.0);
         } else {
-            // Permanent employees cannot carry forward more than their total remaining paid leaves
             $allocation->monthly_carry_forward = min((float) ($allocation->monthly_carry_forward ?? 0.0), (float) $allocation->paid_remaining);
         }
 
-        // Monthly quota cannot exceed total paid allocation/remaining
-        $rawQuota = (float) ($allocation->monthly_quota ?? 2.0);
-        $allocation->monthly_quota = round(min($rawQuota, (float) $allocation->paid_remaining), 2);
+        $rawQuota = (float) ($allocation->monthly_quota ?? 1.0);
+        $allocation->monthly_quota = round($rawQuota, 2);
 
         $carry = (float) $allocation->monthly_carry_forward;
         $quota = (float) $allocation->monthly_quota;
         $usedThisMonth = (float) ($allocation->monthly_used_this_month ?? 0.0);
 
-        // Total monthly remaining paid leaves CANNOT exceed total remaining paid leaves!
         $monthlyRemainingRaw = max(0.0, ($quota + $carry) - $usedThisMonth);
-        $allocation->total_monthly_remaining_paid = round(min((float) $allocation->paid_remaining, $monthlyRemainingRaw), 2);
+        $allocation->total_monthly_remaining_paid = round($monthlyRemainingRaw, 2);
 
         return $allocation;
     }

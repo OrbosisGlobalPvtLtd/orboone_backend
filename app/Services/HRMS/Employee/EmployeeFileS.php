@@ -104,6 +104,26 @@ class EmployeeFileS
         $fullPath = "{$path}/{$filename}";
 
         /* =========================
+           🧹 CLEANUP OLD RESUME
+        ========================= */
+
+        if ($type === 'resume') {
+            $existingProfileResume = \Illuminate\Support\Facades\DB::table('employee_profiles')
+                ->where('employee_id', $employeeId)
+                ->value('resume_file');
+
+            if ($existingProfileResume && Storage::disk('private')->exists($existingProfileResume)) {
+                Storage::disk('private')->delete($existingProfileResume);
+            }
+
+            if (Storage::disk('private')->exists($path)) {
+                foreach (Storage::disk('private')->files($path) as $oldResumeFile) {
+                    Storage::disk('private')->delete($oldResumeFile);
+                }
+            }
+        }
+
+        /* =========================
            📤 UPLOAD
         ========================= */
 

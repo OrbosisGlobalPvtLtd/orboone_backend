@@ -792,14 +792,24 @@
                         </div>
 
                         <div>
+                            <label>Month</label>
+                            <select name="month" id="monthFilterSelect" class="form-control js-auto-filter">
+                                <option value="">All / Custom Range</option>
+                                @foreach($filters['months'] ?? [] as $val => $lbl)
+                                <option value="{{ $val }}" {{ request('month') === $val ? 'selected' : '' }}>{{ $lbl }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div>
                             <label>Date From</label>
-                            <input type="date" name="from" value="{{ request('from') }}" class="form-control js-auto-filter">
+                            <input type="date" name="from" id="fromDateInput" value="{{ request('from') }}" class="form-control js-auto-filter">
                         </div>
 
                         <div>
                             <label>Date To</label>
                             <div class="d-flex gap-2">
-                                <input type="date" name="to" value="{{ request('to') }}" class="form-control js-auto-filter">
+                                <input type="date" name="to" id="toDateInput" value="{{ request('to') }}" class="form-control js-auto-filter">
                                 <a href="{{ url()->current() }}" class="btn btn-light border font-weight-bold ml-2" style="border-radius: 12px;" title="Reset Filters">
                                     <i class="fas fa-undo"></i>
                                 </a>
@@ -949,6 +959,26 @@
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        const monthSelect = document.getElementById('monthFilterSelect');
+        const fromInput = document.getElementById('fromDateInput');
+        const toInput = document.getElementById('toDateInput');
+
+        if (monthSelect) {
+            monthSelect.addEventListener('change', function() {
+                const val = this.value;
+                if (val) {
+                    const parts = val.split('-');
+                    const year = parseInt(parts[0], 10);
+                    const month = parseInt(parts[1], 10);
+                    const firstDay = `${year}-${String(month).padStart(2, '0')}-01`;
+                    const lastDayNum = new Date(year, month, 0).getDate();
+                    const lastDay = `${year}-${String(month).padStart(2, '0')}-${String(lastDayNum).padStart(2, '0')}`;
+                    if (fromInput) fromInput.value = firstDay;
+                    if (toInput) toInput.value = lastDay;
+                }
+            });
+        }
+
         // Auto submit filter on select change
         document.querySelectorAll('.js-auto-filter').forEach(function(input) {
             input.addEventListener('change', function() {

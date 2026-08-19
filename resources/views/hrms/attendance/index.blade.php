@@ -32,7 +32,7 @@ $kpis = [
 ['label' => 'Punch Blocked', 'value' => $stats['punch_blocked'] ?? $stats['punch_blocked_today'] ?? 0, 'icon' => 'fa-user-lock', 'tone' => 'blocked'],
 ['label' => 'Missed Punches', 'value' => $stats['missed_punches'] ?? $stats['missed_punch_today'] ?? 0, 'icon' => 'fa-exclamation-circle', 'tone' => 'warning'],
 ['label' => 'Currently Working', 'value' => $stats['currently_working'] ?? 0, 'icon' => 'fa-laptop-house', 'tone' => 'blue'],
-['label' => 'Completed Shift', 'value' => $stats['completed_shift'] ?? 0, 'icon' => 'fa-clipboard-check', 'tone' => 'success'],
+//['label' => 'Completed Shift', 'value' => $stats['completed_shift'] ?? 0, 'icon' => 'fa-clipboard-check', 'tone' => 'success'],
 ['label' => 'WFO Today', 'value' => $stats['wfo_today'] ?? 0, 'icon' => 'fa-building', 'tone' => 'indigo'],
 ['label' => 'WFH Today', 'value' => $stats['wfh_today'] ?? 0, 'icon' => 'fa-home', 'tone' => 'teal'],
 ];

@@ -499,6 +499,7 @@ class PermissionSeeder extends Seeder
             [208, 'hrms', 'employees_probation_internship', 'manage', 'employees.probation_internship.manage', 'Manage probation/internship'],
             [449, 'hrms', 'employees_shift_assign', 'manage', 'employee.shift.assign.manage', 'Manage Employee Shift Assignment'],
             [450, 'hrms', 'attendance_access_control', 'manage', 'attendance.access_control.manage', 'Manage Attendance Access Control'],
+            [451, 'hrms', 'leave_history', 'view', 'leave.history.view', 'View leave history'],
             [209, 'hrms', 'employees_exit', 'view', 'employees.exit.view', 'View exits'],
             [210, 'hrms', 'employees_exit', 'manage', 'employees.exit.manage', 'Manage exits'],
             [211, 'hrms', 'employees_organization', 'manage', 'employees.organization.manage', 'Manage organization'],

@@ -752,14 +752,20 @@
                                 <div class="leave-breakdown-box">
                                     <span class="leave-breakdown-item badge-paid">Paid Rem: <span>{{ number_format((float)$allocation->paid_remaining, 2) }}</span></span>
                                     <span class="leave-breakdown-item badge-sick">Sick Rem: <span>{{ number_format((float)$allocation->sick_remaining, 2) }}</span></span>
+                                    <span class="leave-breakdown-item badge-info" style="background:#F0F9FF; border-color:#B2DDFF; color:#026AA7;">Comp Rem: <span>{{ number_format((float)$allocation->comp_off_remaining, 2) }}</span></span>
                                 </div>
                             </td>
 
                             <td class="text-center">
                                 <div class="leave-breakdown-box" style="font-size:11px; line-height: 1.6;">
-                                    <div><span class="badge badge-primary px-2 py-1" style="border-radius:6px; font-weight:800; font-size:11px;">Monthly Rem Paid: {{ number_format((float)$allocation->total_monthly_remaining_paid, 2) }}</span></div>
-                                    <div class="mt-1"><span class="badge badge-info px-2 py-1" style="border-radius:6px; font-weight:800; font-size:11px;">Carry Forward: {{ number_format((float)$allocation->monthly_carry_forward, 2) }}</span></div>
-                                    <!-- <div class="text-muted mt-1" style="font-size:10px; font-weight:700;">Quota: <strong>{{ number_format((float)$allocation->monthly_quota, 2) }}</strong> / mo</div> -->
+                                    <div>
+                                        <span class="badge badge-success px-2 py-1" style="border-radius:6px; font-weight:900; font-size:11px; background:#12B76A; color:#fff;">
+                                            <i class="fas fa-coins mr-1"></i> Rem Paid: {{ number_format((float)$allocation->total_monthly_remaining_paid, 2) }}
+                                        </span>
+                                    </div>
+                                    <div class="mt-1" style="font-size:10px; font-weight:700; color:var(--leave-muted);">
+                                        Quota: <strong>{{ number_format((float)$allocation->monthly_quota, 2) }}</strong> | Carry: <strong>{{ number_format((float)$allocation->monthly_carry_forward, 2) }}</strong> | Used: <strong>{{ number_format((float)$allocation->monthly_used_this_month, 2) }}</strong>
+                                    </div>
                                 </div>
                             </td>
                             <td class="text-center">
@@ -927,19 +933,24 @@
                         <div class="col-12"><hr class="my-2"></div>
                         <div class="col-12"><h6 class="font-weight-bold text-primary mb-2"><i class="fas fa-cog mr-1"></i> Monthly & Carry Forward Settings</h6></div>
 
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-3 mb-3">
                             <label class="font-weight-bold text-dark">Monthly Quota</label>
-                            <input type="number" step="0.5" min="0" name="monthly_quota" class="leave-control w-100" value="{{ old('monthly_quota', $allocation->monthly_quota) }}">
+                            <input type="number" step="0.5" min="0" name="monthly_quota" id="monthly_quota_{{ $allocation->id }}" class="leave-control w-100 monthly-calc-input" data-id="{{ $allocation->id }}" value="{{ old('monthly_quota', $allocation->monthly_quota) }}">
                         </div>
 
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-3 mb-3">
                             <label class="font-weight-bold text-dark">Monthly Carry Forward</label>
-                            <input type="number" step="0.5" min="0" name="monthly_carry_forward" class="leave-control w-100" value="{{ old('monthly_carry_forward', $allocation->monthly_carry_forward) }}">
+                            <input type="number" step="0.5" min="0" name="monthly_carry_forward" id="monthly_carry_forward_{{ $allocation->id }}" class="leave-control w-100 monthly-calc-input" data-id="{{ $allocation->id }}" value="{{ old('monthly_carry_forward', $allocation->monthly_carry_forward) }}">
                         </div>
 
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-3 mb-3">
                             <label class="font-weight-bold text-dark">Used This Month</label>
-                            <input type="number" step="0.5" min="0" name="monthly_used_this_month" class="leave-control w-100" value="{{ old('monthly_used_this_month', $allocation->monthly_used_this_month) }}">
+                            <input type="number" step="0.5" min="0" name="monthly_used_this_month" id="monthly_used_this_month_{{ $allocation->id }}" class="leave-control w-100 monthly-calc-input" data-id="{{ $allocation->id }}" value="{{ old('monthly_used_this_month', $allocation->monthly_used_this_month) }}">
+                        </div>
+
+                        <div class="col-md-3 mb-3">
+                            <label class="font-weight-bold text-success" style="font-size:12px;"><i class="fas fa-calculator mr-1"></i> Total Monthly Rem Paid</label>
+                            <input type="number" step="0.5" min="0" name="total_monthly_remaining_paid" id="total_monthly_remaining_paid_{{ $allocation->id }}" class="leave-control w-100 font-weight-bold text-success" style="background:#F0FDF4; border:1px solid #86EFAC;" value="{{ old('total_monthly_remaining_paid', $allocation->total_monthly_remaining_paid) }}">
                         </div>
 
                         <div class="col-md-12 mb-3">
@@ -1285,6 +1296,16 @@
                 });
             });
         }
+    });
+
+        $(document).on('input change keyup', '.monthly-calc-input', function() {
+        var id = $(this).data('id');
+        var quota = parseFloat($('#monthly_quota_' + id).val()) || 0;
+        var carry = parseFloat($('#monthly_carry_forward_' + id).val()) || 0;
+        var used = parseFloat($('#monthly_used_this_month_' + id).val()) || 0;
+        
+        var totalRem = Math.max(0, (quota + carry) - used);
+        $('#total_monthly_remaining_paid_' + id).val(totalRem.toFixed(2));
     });
 
     function triggerLeaveExport(type) {

@@ -185,7 +185,7 @@ class AttendanceS
 
         $shift = $policy ?: $this->shiftFor($workMode);
         $window = $this->ruleResolver->calculatePunchWindowState($shift, $now);
-        if ($window['is_before_early_login'] ?? $window['is_before_allowed_from']) {
+        if ($enforceEmployeeRules && ($window['is_before_early_login'] ?? $window['is_before_allowed_from'])) {
             $allowedTimeStr = $window['allowed_from'] ? $window['allowed_from']->format('h:i A') : 'allowed time';
             return [
                 'status' => 'error',
@@ -196,7 +196,8 @@ class AttendanceS
 
         $time = $now->format('H:i:s');
         $blockAfter = $window['block_after'];
-        $isBlocked = $window['is_blocked']
+        $isBlocked = $enforceEmployeeRules
+            && $window['is_blocked']
             && ! $attendanceTypeId
             && ! $isUnlocked
             && ! $approvedLeave
@@ -2048,6 +2049,8 @@ class AttendanceS
                 'policy_action' => 'blocked',
                 'remarks' => $attendance->blocked_reason ?: ($attendance->block_reason ?: 'Punch blocked.'),
             ]);
+        } else {
+            $resolver->clearViolation($attendance, 'blocked_punch');
         }
 
         // 4. Missed Punch

@@ -136,6 +136,7 @@ class LeaveAllocationC extends Controller
             'monthly_quota' => 'nullable|numeric|min:0',
             'monthly_carry_forward' => 'nullable|numeric|min:0',
             'monthly_used_this_month' => 'nullable|numeric|min:0',
+            'total_monthly_remaining_paid' => 'nullable|numeric|min:0',
             'allocation_from_date' => 'nullable|date',
             'allocation_to_date' => 'nullable|date',
             'allocation_reason' => 'nullable|string|max:255',
@@ -149,7 +150,7 @@ class LeaveAllocationC extends Controller
         $allocation->sick_allocated = (float) $validated['sick_allocated'];
         $allocation->comp_off_allocated = (float) ($validated['comp_off_allocated'] ?? 0);
 
-        $allocation->total_allocated = round($allocation->paid_allocated + $allocation->sick_allocated + $allocation->comp_off_allocated, 2);
+        $allocation->total_allocated = round($allocation->paid_allocated + $allocation->sick_allocated, 2);
 
         $allocation->paid_used = (float) ($validated['paid_used'] ?? $allocation->paid_used ?? 0);
         $allocation->sick_used = (float) ($validated['sick_used'] ?? $allocation->sick_used ?? 0);
@@ -159,6 +160,9 @@ class LeaveAllocationC extends Controller
         $allocation->monthly_carry_forward = (float) ($validated['monthly_carry_forward'] ?? $allocation->monthly_carry_forward ?? 0);
         if (isset($validated['monthly_used_this_month'])) {
             $allocation->monthly_used_this_month = (float) $validated['monthly_used_this_month'];
+        }
+        if (isset($validated['total_monthly_remaining_paid'])) {
+            $allocation->total_monthly_remaining_paid = (float) $validated['total_monthly_remaining_paid'];
         }
 
         if (array_key_exists('allocation_from_date', $validated)) {

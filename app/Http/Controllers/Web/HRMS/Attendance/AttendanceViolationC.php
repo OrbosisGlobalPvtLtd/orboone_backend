@@ -96,11 +96,17 @@ class AttendanceViolationC extends Controller
         if ($request->filled('type')) {
             $query->where('attendance_violations.type', $request->input('type'));
         }
-        if ($request->filled('from')) {
-            $query->whereDate('attendance_violations.violation_date', '>=', $request->input('from'));
-        }
-        if ($request->filled('to')) {
-            $query->whereDate('attendance_violations.violation_date', '<=', $request->input('to'));
+        if ($request->filled('month')) {
+            $monthDate = Carbon::parse($request->input('month') . '-01');
+            $query->whereDate('attendance_violations.violation_date', '>=', $monthDate->copy()->startOfMonth()->toDateString())
+                  ->whereDate('attendance_violations.violation_date', '<=', $monthDate->copy()->endOfMonth()->toDateString());
+        } else {
+            if ($request->filled('from')) {
+                $query->whereDate('attendance_violations.violation_date', '>=', $request->input('from'));
+            }
+            if ($request->filled('to')) {
+                $query->whereDate('attendance_violations.violation_date', '<=', $request->input('to'));
+            }
         }
         if ($request->filled('penalty_status')) {
             $status = $request->input('penalty_status');
@@ -145,17 +151,13 @@ class AttendanceViolationC extends Controller
         // 4. Enrich Row Items with Read-Only Audit Metrics
         $paginatedRows->getCollection()->transform(function ($row) {
             $row->human_type = $this->violationService->resolveHumanViolationLabel($row->type, $row->policy_action);
-            $statusData = $this->violationService->resolvePenaltyStatus($row);
-            $row->penalty_status_label = $statusData['label'];
-            $row->penalty_badge_class = $statusData['badge'];
-
-            $dateStr = Carbon::parse($row->violation_date)->toDateString();
-            $row->active_counter = $this->violationService->getActiveCounterString($row->employee_id, $dateStr, $row->type);
             $row->formatted_date = Carbon::parse($row->violation_date)->format('d M Y');
             $row->attendance_status_label = ucfirst(str_replace('_', ' ', $row->current_attendance_status ?? 'N/A'));
 
             return $row;
         });
+
+        $this->violationService->enrichViolationsWithCycles($paginatedRows->getCollection());
 
         // 5. Dropdown Options for Filters
         $departments = Schema::hasTable('departments') ? (Schema::hasColumn('departments', 'deleted_at') ? DB::table('departments')->whereNull('deleted_at')->pluck('name', 'id')->toArray() : DB::table('departments')->pluck('name', 'id')->toArray()) : [];
@@ -173,6 +175,14 @@ class AttendanceViolationC extends Controller
             'regularized' => 'Regularized',
             'resolved' => 'Resolved',
         ];
+
+        // Month options (last 12 months)
+        $months = [];
+        $now = Carbon::now(AttendanceViolationService::TIMEZONE);
+        for ($i = 0; $i < 12; $i++) {
+            $m = (clone $now)->subMonths($i);
+            $months[$m->format('Y-m')] = $m->format('F Y');
+        }
 
         // Employee Options
         $empQuery = DB::table('employees_new')
@@ -197,6 +207,7 @@ class AttendanceViolationC extends Controller
                 'designations' => $designations,
                 'types' => $types,
                 'penalty_statuses' => $penaltyStatuses,
+                'months' => $months,
                 'employee_options' => $employeeOptions,
             ],
             'pageTitle' => 'Attendance Violations Audit Dashboard',
@@ -248,11 +259,17 @@ class AttendanceViolationC extends Controller
         if ($request->filled('type')) {
             $query->where('attendance_violations.type', $request->input('type'));
         }
-        if ($request->filled('from')) {
-            $query->whereDate('attendance_violations.violation_date', '>=', $request->input('from'));
-        }
-        if ($request->filled('to')) {
-            $query->whereDate('attendance_violations.violation_date', '<=', $request->input('to'));
+        if ($request->filled('month')) {
+            $monthDate = Carbon::parse($request->input('month') . '-01');
+            $query->whereDate('attendance_violations.violation_date', '>=', $monthDate->copy()->startOfMonth()->toDateString())
+                  ->whereDate('attendance_violations.violation_date', '<=', $monthDate->copy()->endOfMonth()->toDateString());
+        } else {
+            if ($request->filled('from')) {
+                $query->whereDate('attendance_violations.violation_date', '>=', $request->input('from'));
+            }
+            if ($request->filled('to')) {
+                $query->whereDate('attendance_violations.violation_date', '<=', $request->input('to'));
+            }
         }
 
         $empNameExpr = $this->getEmployeeNameSql();
@@ -283,6 +300,7 @@ class AttendanceViolationC extends Controller
         }
 
         $records = $query->select($selects)->latest('attendance_violations.id')->get();
+        $this->violationService->enrichViolationsWithCycles($records);
 
         $filename = 'attendance_violations_audit_' . Carbon::now()->format('Y_m_d_His') . '.csv';
 
@@ -302,6 +320,7 @@ class AttendanceViolationC extends Controller
                 'Violation Date',
                 'Violation Type',
                 'Minutes',
+                'Active Counter',
                 'Penalty Status',
                 'Attendance Status',
                 'Remarks',
@@ -309,7 +328,6 @@ class AttendanceViolationC extends Controller
             ]);
 
             foreach ($records as $index => $row) {
-                $statusData = $this->violationService->resolvePenaltyStatus($row);
                 $humanType = $this->violationService->resolveHumanViolationLabel($row->type, $row->policy_action);
 
                 fputcsv($file, [
@@ -321,7 +339,8 @@ class AttendanceViolationC extends Controller
                     Carbon::parse($row->violation_date)->format('d M Y'),
                     $humanType,
                     $row->minutes ?? 0,
-                    $statusData['label'],
+                    $row->active_counter ?? '-',
+                    $row->penalty_status_label ?? 'Active',
                     ucfirst(str_replace('_', ' ', $row->attendance_status ?? 'N/A')),
                     $row->remarks ?? '',
                     Carbon::parse($row->created_at)->format('d M Y h:i A'),

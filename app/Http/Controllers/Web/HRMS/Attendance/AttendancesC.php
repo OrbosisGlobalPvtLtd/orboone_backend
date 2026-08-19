@@ -433,48 +433,57 @@ class AttendancesC extends Controller
     {
         abort_unless($this->userHasPermission('attendance.blocked.view'), 403);
 
+        $today = Carbon::now($this->attendanceService->attendanceTimezone())->toDateString();
+
+        // Base query for attendance records that are PUNCH BLOCKED or UNLOCKED by HR
         $query = $this->scopeAttendanceQuery($this->baseQuery(), 'attendance.records.view_all', 'attendance.regularization.view_team')
-            ->where(function ($query) {
-                $query->where('is_blocked', true)
+            ->where(function ($q) {
+                // Blocked or Unlocked records (including past blocked punches auto-marked absent)
+                $q->where('is_blocked', true)
                     ->orWhere('is_punch_blocked', true)
                     ->orWhere('attendance_status', 'punch_blocked')
                     ->orWhere('attendance_status', 'unlocked')
                     ->orWhere('is_admin_unlocked', true)
                     ->orWhereNotNull('unlocked_at')
-                    ->orWhere('missed_punch', true);
+                    ->orWhereNotNull('unlock_type')
+                    ->orWhereNotNull('auto_block_reason')
+                    ->orWhereNotNull('block_reason')
+                    ->orWhereNotNull('blocked_reason');
             })
-            ->where(function ($q) use ($request) {
-                if ($request->flag === 'unlocked') {
-                    $q->where(function ($sq) {
-                        $sq->where('is_admin_unlocked', true)
-                            ->orWhereNotNull('unlocked_at')
-                            ->orWhere('attendance_status', 'unlocked');
-                    });
-                } elseif ($request->flag === 'blocked') {
-                    $q->where(function ($sq) {
-                        $sq->whereNull('is_admin_unlocked')
-                            ->orWhere('is_admin_unlocked', false)
-                            ->orWhere('is_admin_unlocked', 0);
-                    })->whereNull('unlocked_at');
-                }
-            })
-            ->when($request->flag === 'manual_punch_in', fn($q) => $q->where('unlock_type', 'manual_punch_in'));
+            ->whereNotIn('attendance_status', ['leave', 'holiday', 'week_off']);
+
+        // Filter by request flag if specified
+        if ($request->flag === 'unlocked') {
+            $query->where(function ($sq) {
+                $sq->where('is_admin_unlocked', true)
+                    ->orWhereNotNull('unlocked_at')
+                    ->orWhere('attendance_status', 'unlocked');
+            });
+        } elseif ($request->flag === 'blocked') {
+            $query->where(function ($sq) {
+                $sq->whereNull('is_admin_unlocked')
+                    ->orWhere('is_admin_unlocked', false)
+                    ->orWhere('is_admin_unlocked', 0);
+            })->whereNull('unlocked_at')->where('attendance_status', '<>', 'unlocked');
+        } elseif ($request->flag === 'today') {
+            $query->whereDate('attendance_date', $today);
+        }
 
         // Query blocked_punch violations from attendance_violations table
         $violationQuery = \App\Models\HRMS\Attendance\AttendanceViolationM::with(['employee.user', 'employee.department'])
             ->where('type', 'blocked_punch')
-            ->where(function ($q) use ($request) {
+            ->where(function ($sq) use ($request) {
                 if ($request->flag === 'unlocked') {
-                    $q->where('policy_action', 'resolved');
+                    $sq->where('policy_action', 'resolved');
                 } elseif ($request->flag === 'blocked') {
-                    $q->where(function ($sq) {
-                        $sq->whereNull('policy_action')
+                    $sq->where(function ($bq) {
+                        $bq->whereNull('policy_action')
                             ->orWhere('policy_action', '<>', 'resolved');
                     });
                 }
             });
 
-        // Apply same filters to violation query
+        // Apply employee/department/date filters to violation query
         if ($request->filled('search')) {
             $search = $request->search;
             $violationQuery->whereHas('employee', function ($eq) use ($search) {
@@ -502,8 +511,7 @@ class AttendancesC extends Controller
                 $violationQuery->whereDate('violation_date', '<=', $request->to_date);
             }
         } else {
-            $today = Carbon::now($this->attendanceService->attendanceTimezone())->toDateString();
-            if ($request->filter === 'today') {
+            if ($request->filter === 'today' || $request->flag === 'today') {
                 $violationQuery->whereDate('violation_date', $today);
             } elseif ($request->filter === 'yesterday') {
                 $violationQuery->whereDate('violation_date', Carbon::yesterday()->toDateString());
@@ -511,20 +519,20 @@ class AttendancesC extends Controller
         }
 
         $blockedViolations = $violationQuery->get();
-
         $presentType = AttendanceType::where('code', 'present')->first();
         $blockedType = AttendanceType::where('code', 'punch_blocked')->first();
 
         $virtualAttendances = $blockedViolations->map(function ($violation) use ($presentType, $blockedType) {
+            $isResolved = $violation->policy_action === 'resolved';
             $att = new Attendance();
             $att->id = 'violation_' . $violation->id;
             $att->employee_id = $violation->employee_id;
             $att->attendance_date = $violation->violation_date->toDateString();
-            $att->attendance_status = $violation->policy_action === 'resolved' ? 'unlocked' : 'punch_blocked';
-            $att->is_blocked = $violation->policy_action !== 'resolved';
-            $att->is_punch_blocked = $violation->policy_action !== 'resolved';
-            $att->is_admin_unlocked = $violation->policy_action === 'resolved';
-            $att->unlocked_at = $violation->policy_action === 'resolved' ? $violation->updated_at : null;
+            $att->attendance_status = $isResolved ? 'unlocked' : 'punch_blocked';
+            $att->is_blocked = ! $isResolved;
+            $att->is_punch_blocked = ! $isResolved;
+            $att->is_admin_unlocked = $isResolved;
+            $att->unlocked_at = $isResolved ? $violation->updated_at : null;
             $att->block_reason = $violation->remarks ?: 'Punch-in blocked after allowed time.';
             $att->auto_block_reason = $violation->remarks ?: 'Punch-in blocked after allowed time.';
             $att->blocked_reason = $violation->remarks ?: 'Punch-in blocked after allowed time.';
@@ -534,13 +542,35 @@ class AttendancesC extends Controller
                 $att->setRelation('user', $violation->employee->user);
             }
 
-            $att->setRelation('attendanceType', $violation->policy_action === 'resolved' ? $presentType : $blockedType);
+            $att->setRelation('attendanceType', $isResolved ? $presentType : $blockedType);
 
             return $att;
         });
 
-        // Now get the real ones
         $realAttendances = $this->applyFilters($query, $request)->get();
+
+        // Build set of existing real attendance IDs and (employee_id + date) keys for strict deduplication
+        $realAttendanceIds = $realAttendances->pluck('id')->filter()->toArray();
+        $realEmpDateKeys = $realAttendances->map(function ($a) {
+            $empId = $a->employee_id;
+            $date = $a->attendance_date ? Carbon::parse($a->attendance_date)->format('Y-m-d') : '';
+            return ($empId && $date) ? $empId . '_' . $date : null;
+        })->filter()->unique()->toArray();
+
+        // Reject virtual violation entries if the attendance record is already present in realAttendances or linked
+        $virtualAttendances = $virtualAttendances->reject(function ($vAtt) use ($realAttendanceIds, $realEmpDateKeys) {
+            $vDate = $vAtt->attendance_date ? Carbon::parse($vAtt->attendance_date)->format('Y-m-d') : '';
+            $key = $vAtt->employee_id . '_' . $vDate;
+            if (in_array($key, $realEmpDateKeys, true)) {
+                return true;
+            }
+            $violationId = (int) str_replace('violation_', '', (string) $vAtt->id);
+            $violation = \App\Models\HRMS\Attendance\AttendanceViolationM::find($violationId);
+            if ($violation && $violation->attendance_id && in_array((int) $violation->attendance_id, $realAttendanceIds, true)) {
+                return true;
+            }
+            return false;
+        });
 
         // Merge, sort latest on top (date desc, timestamp desc, id desc), and paginate manually
         $merged = $realAttendances->concat($virtualAttendances)
@@ -552,7 +582,12 @@ class AttendancesC extends Controller
             })->values();
 
         $currentPage = \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPage();
-        $perPage = 25;
+        $perPageReq = $request->input('per_page', '25');
+        if ($perPageReq === 'all' || $perPageReq === '-1') {
+            $perPage = max(1, $merged->count());
+        } else {
+            $perPage = (int) $perPageReq > 0 ? (int) $perPageReq : 25;
+        }
         $currentPageItems = $merged->slice(($currentPage - 1) * $perPage, $perPage)->values();
 
         $attendances = new \Illuminate\Pagination\LengthAwarePaginator(
@@ -571,31 +606,25 @@ class AttendancesC extends Controller
         $canManageAttendance = $this->canManageAttendance();
         $canUnlockAttendance = $this->canUnlockAttendance();
 
-        $approvalRecords = Attendance::with('attendanceType')->get();
-        $today = Carbon::now($this->attendanceService->attendanceTimezone())->toDateString();
-
-        // Count stats including violations
-        $totalBlockedViolations = \App\Models\HRMS\Attendance\AttendanceViolationM::where('type', 'blocked_punch')->count();
-        $pendingUnlockViolations = \App\Models\HRMS\Attendance\AttendanceViolationM::where('type', 'blocked_punch')
-            ->where(function ($q) {
-                $q->whereNull('policy_action')->orWhere('policy_action', '<>', 'resolved');
-            })
-            ->count();
-        $unlockedTodayViolations = \App\Models\HRMS\Attendance\AttendanceViolationM::where('type', 'blocked_punch')
-            ->where('policy_action', 'resolved')
-            ->whereDate('updated_at', $today)
-            ->count();
+        // Count stats for Blocked & Unlocked records
+        $totalBlocked = $merged->count();
+        $pendingUnlock = $merged->filter(fn($item) => ! ($item->is_admin_unlocked || $item->unlocked_at || ($item->attendance_status ?? '') === 'unlocked'))->count();
+        $unlockedTotal = $merged->filter(fn($item) => (bool) ($item->is_admin_unlocked || $item->unlocked_at || ($item->attendance_status ?? '') === 'unlocked'))->count();
+        $unlockedToday = $merged->filter(function ($item) use ($today) {
+            $isUnl = (bool) ($item->is_admin_unlocked || $item->unlocked_at || ($item->attendance_status ?? '') === 'unlocked');
+            if (! $isUnl) return false;
+            $unlDate = $item->unlocked_at ? Carbon::parse($item->unlocked_at)->toDateString() : ($item->updated_at ? Carbon::parse($item->updated_at)->toDateString() : null);
+            return $unlDate === $today;
+        })->count();
 
         $stats = [
-            'total_blocked' => $approvalRecords->filter(fn($item) => $item->is_punch_blocked || $item->is_blocked || $item->attendance_status === 'punch_blocked')->count() + $totalBlockedViolations,
-            'pending_unlock' => $approvalRecords->filter(fn($item) => ($item->is_blocked || $item->is_punch_blocked || $item->attendance_status === 'punch_blocked') && ! $item->is_admin_unlocked)->count() + $pendingUnlockViolations,
-            'pending_hr' => $approvalRecords->where('attendance_status', 'pending_hr')->count(),
-            'missed_punch' => $approvalRecords->where('missed_punch', true)->count(),
-            'manual_punch' => $approvalRecords->where('unlock_type', 'manual_punch_in')->count(),
-            'unlocked_today' => $approvalRecords->filter(fn($item) => $item->unlocked_at && Carbon::parse($item->unlocked_at)->toDateString() === $today)->count() + $unlockedTodayViolations,
+            'total_blocked' => $totalBlocked,
+            'pending_unlock' => $pendingUnlock,
+            'unlocked_total' => $unlockedTotal,
+            'unlocked_today' => $unlockedToday,
         ];
 
-        return view('hrms.attendance.pending-approval', compact('attendances', 'employees', 'attendanceTypes', 'stats', 'canManageAttendance', 'canUnlockAttendance'));
+        return view('hrms.attendance.pending-approval', compact('attendances', 'employees', 'attendanceTypes', 'stats', 'canManageAttendance', 'canUnlockAttendance', 'today'));
     }
 
     public function monthlyReport(Request $request)

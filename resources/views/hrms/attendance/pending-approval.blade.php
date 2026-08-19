@@ -507,6 +507,85 @@
         color: #fff;
     }
 
+    .att-action-view {
+        background: #EFF6FF;
+        color: #2563EB;
+        border: 1px solid #DBEAFE;
+    }
+
+    .att-action-view:hover {
+        background: #2563EB;
+        color: #fff;
+    }
+
+    /* Export Buttons & Toolbar Styling */
+    .att-table-toolbar {
+        background: #fff;
+    }
+
+    .dt-buttons {
+        display: inline-flex !important;
+        gap: 8px !important;
+        float: none !important;
+        width: auto !important;
+        margin: 0 !important;
+    }
+
+    .dt-buttons .btn {
+        border-radius: 10px !important;
+        padding: 7px 16px !important;
+        font-size: 12px !important;
+        font-weight: 800 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        box-shadow: none !important;
+        transition: all 0.2s ease !important;
+        flex: initial !important;
+        width: auto !important;
+        height: 36px !important;
+    }
+
+    .dt-buttons .buttons-csv {
+        background: #ECFDF5 !important;
+        color: #047857 !important;
+        border: 1px solid #A7F3D0 !important;
+    }
+    .dt-buttons .buttons-csv:hover {
+        background: #047857 !important;
+        color: #fff !important;
+    }
+
+    .dt-buttons .buttons-excel {
+        background: #F0FDF4 !important;
+        color: #15803D !important;
+        border: 1px solid #86EFAC !important;
+    }
+    .dt-buttons .buttons-excel:hover {
+        background: #15803D !important;
+        color: #fff !important;
+    }
+
+    .dt-buttons .buttons-pdf {
+        background: #FEF2F2 !important;
+        color: #B91C1C !important;
+        border: 1px solid #FCA5A5 !important;
+    }
+    .dt-buttons .buttons-pdf:hover {
+        background: #B91C1C !important;
+        color: #fff !important;
+    }
+
+    .dt-buttons .buttons-print {
+        background: #F8FAFC !important;
+        color: #334155 !important;
+        border: 1px solid #CBD5E1 !important;
+    }
+    .dt-buttons .buttons-print:hover {
+        background: #334155 !important;
+        color: #fff !important;
+    }
+
     .dataTables_wrapper {
         width: 100% !important;
         overflow: hidden !important;
@@ -801,80 +880,104 @@
                 </form>
             </div>
 
+            <div class="att-table-toolbar d-flex align-items-center justify-content-between flex-wrap px-3 py-3 border-bottom bg-white" style="gap: 12px;">
+                <div class="d-flex align-items-center" style="gap: 8px;">
+                    <span class="text-muted font-weight-bold" style="font-size: 12px;">Show</span>
+                    <select name="per_page" form="pendingFilterForm" class="form-control form-control-sm auto-filter" style="width: 85px; height: 36px; border-radius: 10px; font-weight: 700;">
+                        <option value="10" {{ request('per_page', '25') == '10' ? 'selected' : '' }}>10</option>
+                        <option value="25" {{ request('per_page', '25') == '25' ? 'selected' : '' }}>25</option>
+                        <option value="50" {{ request('per_page', '25') == '50' ? 'selected' : '' }}>50</option>
+                        <option value="100" {{ request('per_page', '25') == '100' ? 'selected' : '' }}>100</option>
+                        <option value="all" {{ request('per_page') == 'all' ? 'selected' : '' }}>All</option>
+                    </select>
+                    <span class="text-muted font-weight-bold" style="font-size: 12px;">entries</span>
+                </div>
+                <div id="tableButtonsContainer" class="d-flex align-items-center"></div>
+            </div>
+
             <div class="att-table-wrap">
                 <div class="att-table-responsive" style="overflow-x: auto;">
                     <table class="att-table table" id="pendingDataTable">
                         <thead>
                             <tr>
+                                <th style="width: 50px;" class="text-center">S.No.</th>
                                 <th style="width: 220px;">Employee</th>
-                                <th style="width: 120px;">Emp Code</th>
-                                <th style="width: 120px;">Date</th>
-                                <th style="width: 120px;">Status</th>
+                                <th style="width: 110px;">Emp Code</th>
+                                <th style="width: 110px;">Date</th>
+                                <th style="width: 140px;">Attendance Status</th>
+                                <th style="width: 140px;">Blocked Status</th>
                                 <th style="width: 200px;">Blocked Reason</th>
-                                <!-- <th style="width: 100px;">Punch In</th>
-                                <th style="width: 100px;">Punch Out</th> -->
-                                <!-- <th style="width: 150px;">Unlock Type</th>
-                                <th style="width: 150px;">Unlock Reason</th> -->
-                                <th style="width: 150px;" class="text-right no-export">Action</th>
+                                <th style="width: 130px;" class="text-right no-export">Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse($attendances as $attendance)
                             @php
-                             $isUnlocked = (bool) ($attendance->is_admin_unlocked || $attendance->unlocked_at || ($attendance->attendance_status ?? '') === 'unlocked');
-                             $typeCode = optional($attendance->attendanceType)->code ?? 'default';
-                             $rawStatus = strtolower($attendance->attendance_status ?? '');
-                             if (empty($rawStatus)) {
-                                 $rawStatus = $typeCode;
-                             }
+                            $isUnlocked = (bool) ($attendance->is_admin_unlocked || $attendance->unlocked_at || ($attendance->attendance_status ?? '') === 'unlocked');
+                            $attDateStr = $attendance->attendance_date ? \Carbon\Carbon::parse($attendance->attendance_date)->toDateString() : null;
+                            $todayStr = $today ?? \Carbon\Carbon::now('Asia/Kolkata')->toDateString();
+                            $isPastDate = $attDateStr && $attDateStr < $todayStr;
 
-                             if ($isUnlocked) {
-                                 $statusCode = 'unlocked';
-                                 $statusLabel = '🔓 UNLOCKED';
-                             } elseif ($rawStatus === 'absent' || $rawStatus === 'lwp') {
-                                 $statusCode = 'absent';
-                                 $statusLabel = '🔴 ABSENT';
-                             } else {
-                                 $statusMap = [
-                                     'present' => ['present', 'Present'],
-                                     'half_day' => ['half_day', 'Half Day'],
-                                     'absent' => ['absent', '🔴 ABSENT'],
-                                     'missed_punch' => ['missed_punch', 'Missed Punch'],
-                                     'leave' => ['leave', 'Leave'],
-                                     'holiday' => ['holiday', 'Holiday'],
-                                     'week_off' => ['week_off', 'Week Off'],
-                                     'punch_blocked' => ['punch_blocked', 'Punch Blocked'],
-                                     'lwp' => ['absent', '🔴 ABSENT'],
-                                 ];
-                                 $mapped = $statusMap[$rawStatus] ?? null;
-                                 if ($mapped) {
-                                     $statusCode = $mapped[0];
-                                     $statusLabel = $mapped[1];
-                                 } else {
-                                     $statusCode = $typeCode !== 'default' ? $typeCode : ($attendance->attendance_status ?: 'default');
-                                     $statusLabel = $statusCode === 'punch_blocked'
-                                     ? 'Punch Blocked'
-                                     : (optional($attendance->attendanceType)->name ?? ucwords(str_replace('_', ' ', $statusCode)));
-                                     if ($statusCode === 'lwp' || $statusCode === 'absent') {
-                                         $statusCode = 'absent';
-                                         $statusLabel = '🔴 ABSENT';
-                                     }
-                                 }
-                             }
-                             $attDate = $attendance->attendance_date ? \Carbon\Carbon::parse($attendance->attendance_date)->format('d M Y') : '-';
-                             
-                             $displayReason = $attendance->block_reason ?? $attendance->auto_block_reason ?? $attendance->blocked_reason;
-                             if (empty($displayReason)) {
-                                 if ($isUnlocked) {
-                                     $displayReason = 'Unlocked by HR';
-                                 } elseif ($statusCode === 'missed_punch' || $attendance->missed_punch) {
-                                     $displayReason = 'Missed Punch (Out Time Pending)';
-                                 } else {
-                                     $displayReason = 'Punch-in blocked after cutoff time';
-                                 }
-                             }
+                            $typeCode = optional($attendance->attendanceType)->code ?? 'default';
+                            $rawStatus = strtolower($attendance->attendance_status ?? '');
+                            if (empty($rawStatus) || $rawStatus === 'default') {
+                                $rawStatus = $typeCode;
+                            }
+
+                            // Determine actual daily Attendance Status (Present, Absent, Half Day, etc.)
+                            if (!$isUnlocked && $isPastDate) {
+                                // Past date unresolved blocked punches are marked ABSENT
+                                $statusCode = 'absent';
+                                $statusLabel = '🔴 ABSENT';
+                            } elseif (empty($rawStatus) || $rawStatus === 'unlocked' || $rawStatus === 'present' || ($isUnlocked && empty($attendance->attendance_status))) {
+                                $statusCode = 'present';
+                                $statusLabel = 'Present';
+                            } elseif ($rawStatus === 'absent' || $rawStatus === 'lwp') {
+                                $statusCode = 'absent';
+                                $statusLabel = '🔴 ABSENT';
+                            } elseif ($rawStatus === 'half_day') {
+                                $statusCode = 'half_day';
+                                $statusLabel = 'Half Day';
+                            } elseif ($rawStatus === 'missed_punch') {
+                                $statusCode = 'missed_punch';
+                                $statusLabel = 'Missed Punch';
+                            } elseif ($rawStatus === 'leave') {
+                                $statusCode = 'leave';
+                                $statusLabel = 'Leave';
+                            } elseif ($rawStatus === 'holiday') {
+                                $statusCode = 'holiday';
+                                $statusLabel = 'Holiday';
+                            } elseif ($rawStatus === 'week_off') {
+                                $statusCode = 'week_off';
+                                $statusLabel = 'Week Off';
+                            } elseif ($rawStatus === 'punch_blocked') {
+                                $statusCode = 'punch_blocked';
+                                $statusLabel = 'Punch Blocked';
+                            } else {
+                                $statusCode = $rawStatus;
+                                $statusLabel = optional($attendance->attendanceType)->name ?? ucwords(str_replace('_', ' ', $rawStatus));
+                            }
+                            $attDate = $attendance->attendance_date ? \Carbon\Carbon::parse($attendance->attendance_date)->format('d M Y') : '-';
+
+                            $displayReason = $attendance->block_reason ?? $attendance->auto_block_reason ?? $attendance->blocked_reason;
+                            if (empty($displayReason)) {
+                                if ($isUnlocked) {
+                                    $displayReason = 'Unlocked by HR';
+                                } elseif ($statusCode === 'missed_punch' || $attendance->missed_punch) {
+                                    $displayReason = 'Missed Punch (Out Time Pending)';
+                                } elseif ($statusCode === 'punch_blocked') {
+                                    $displayReason = 'Punch-in window has closed for today\'s shift.';
+                                } else {
+                                    $displayReason = 'Punch-in window has closed for today\'s shift.';
+                                }
+                            }
+
+                            $sNo = $attendances instanceof \Illuminate\Pagination\LengthAwarePaginator
+                                ? ($attendances->firstItem() ? $attendances->firstItem() + $loop->index : $loop->iteration)
+                                : $loop->iteration;
                             @endphp
                             <tr>
+                                <td class="text-center font-weight-bold text-muted">{{ $sNo }}</td>
                                 <td>
                                     <div class="att-emp">
                                         @php
@@ -914,10 +1017,15 @@
                                     <span class="att-badge badge-{{ $statusCode }}">
                                         {{ $statusLabel }}
                                     </span>
+                                </td>
+                                <td>
+                                    <span class="att-badge badge-{{ $isUnlocked ? 'unlocked' : 'punch_blocked' }}">
+                                        {{ $isUnlocked ? '🔓 UNLOCKED' : 'PUNCH BLOCKED' }}
+                                    </span>
                                     @if($isUnlocked && $attendance->unlocked_at)
-                                        <div class="small text-muted mt-1" style="font-size: 10px;">
-                                            <i class="fas fa-check-circle text-success"></i> Unlocked {{ \Carbon\Carbon::parse($attendance->unlocked_at)->format('d M h:i A') }}
-                                        </div>
+                                    <div class="small text-muted mt-1" style="font-size: 10px;">
+                                        <i class="fas fa-check-circle text-success"></i> Unlocked {{ \Carbon\Carbon::parse($attendance->unlocked_at)->format('d M h:i A') }}
+                                    </div>
                                     @endif
                                 </td>
                                 <td>
@@ -927,20 +1035,9 @@
                                 </td>
                                 <td class="text-right no-export">
                                     <div class="d-flex justify-content-end align-items-center" style="gap: 6px;">
-                                        @if($isUnlocked)
-                                        <span class="badge badge-success px-2 py-1" style="border-radius: 8px; font-weight: 700; font-size: 11px;">
-                                            <i class="fas fa-check-circle"></i> Unlocked by HR
-                                        </span>
-                                        @elseif(($canUnlockAttendance ?? false) && ($attendance->is_blocked || $attendance->is_punch_blocked || $statusCode === 'punch_blocked'))
-                                        <button type="button" class="att-action-btn att-action-approve" data-toggle="modal" data-target="#unlockModal{{ $attendance->id }}" title="Unlock/Approve">
-                                            <i class="fas fa-unlock"></i> Unlock
+                                        <button type="button" class="att-action-btn att-action-view" data-toggle="modal" data-target="#viewModal{{ $attendance->id }}" title="View Record Details">
+                                            <i class="fas fa-eye"></i> View Record
                                         </button>
-                                        @endif
-                                        @if($canManageAttendance ?? false)
-                                        <button type="button" class="att-action-btn att-action-edit" data-toggle="modal" data-target="#editModal{{ $attendance->id }}" title="Edit">
-                                            <i class="fas fa-edit"></i> Edit
-                                        </button>
-                                        @endif
                                     </div>
                                 </td>
                             </tr>
@@ -955,10 +1052,7 @@
             </div>
 
             @foreach($attendances as $attendance)
-            @if($canManageAttendance ?? false)
-            @include('hrms.attendance.partials.edit-modal', ['attendance' => $attendance])
-            @endif
-            @include('hrms.attendance.partials.unlock-modal', ['attendance' => $attendance])
+            @include('hrms.attendance.partials.view-modal', ['attendance' => $attendance])
             @endforeach
         </div>
 
@@ -992,11 +1086,32 @@
             });
         });
 
+        const exportFormatBody = function(data, row, column, node) {
+            let rawText = $(node).text().replace(/\s+/g, ' ').trim();
+            // Remove emoji icons (🔴, 🔓, etc.) so PDF doesn't render missing glyph square boxes
+            rawText = rawText.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|🔴|🔓/gu, '').trim();
+
+            if (column === 1) { // Employee column
+                let name = $(node).find('.att-emp-name').text().trim();
+                let dept = $(node).find('.att-dept').text().trim();
+                if (!name) {
+                    name = rawText.replace(/^[A-Z]\s+/, '');
+                }
+                return dept ? name + '\n' + dept : name;
+            } else if (column === 5) { // Blocked Status column
+                if (rawText.includes('UNLOCKED')) {
+                    return 'UNLOCKED';
+                }
+                return rawText;
+            }
+            return rawText;
+        };
+
         if ($.fn.DataTable.isDataTable('#pendingDataTable')) {
             $('#pendingDataTable').DataTable().destroy();
         }
 
-        $('#pendingDataTable').DataTable({
+        const table = $('#pendingDataTable').DataTable({
             destroy: true,
             ordering: false,
             responsive: false,
@@ -1006,42 +1121,160 @@
             paging: false,
             info: false,
             searching: false,
-            dom: "<'row align-items-center mb-3'<'col-md-12 text-md-right'B>>" +
-                "<'row'<'col-md-12'tr>>",
-            buttons: [{
+            dom: 'rt',
+            buttons: [
+                {
                     extend: 'csvHtml5',
                     text: '<i class="fas fa-file-csv"></i> CSV',
-                    className: 'btn btn-light border',
+                    className: 'btn btn-light border buttons-csv',
+                    title: '{{ branding_name() }} Pending Unlock & HR Approvals',
                     exportOptions: {
-                        columns: ':not(.no-export)'
+                        columns: ':not(.no-export)',
+                        format: { body: exportFormatBody }
                     }
                 },
                 {
                     extend: 'excelHtml5',
                     text: '<i class="fas fa-file-excel"></i> Excel',
-                    className: 'btn btn-light border',
+                    className: 'btn btn-light border buttons-excel',
+                    title: '{{ branding_name() }} Pending Unlock & HR Approvals',
                     exportOptions: {
-                        columns: ':not(.no-export)'
+                        columns: ':not(.no-export)',
+                        format: { body: exportFormatBody }
                     }
                 },
                 {
                     extend: 'pdfHtml5',
                     text: '<i class="fas fa-file-pdf"></i> PDF',
-                    className: 'btn btn-light border',
+                    className: 'btn btn-light border buttons-pdf',
                     orientation: 'landscape',
-                    pageSize: 'A3',
-                    title: '{{ branding_name() }} Pending Unlock & HR Approvals',
+                    pageSize: 'A4',
+                    title: '',
                     exportOptions: {
-                        columns: ':not(.no-export)'
+                        columns: ':not(.no-export)',
+                        format: { body: exportFormatBody }
+                    },
+                    customize: function(doc) {
+                        doc.pageMargins = [25, 35, 25, 35];
+                        doc.defaultStyle.fontSize = 8.5;
+                        doc.styles.tableHeader.fontSize = 9.5;
+                        doc.styles.tableHeader.bold = true;
+                        doc.styles.tableHeader.fillColor = '#1E293B';
+                        doc.styles.tableHeader.color = '#FFFFFF';
+                        doc.styles.tableHeader.alignment = 'left';
+
+                        doc.content.unshift({
+                            text: '{{ branding_name() }} - Pending Unlock & HR Approvals',
+                            fontSize: 15,
+                            bold: true,
+                            color: '#1E293B',
+                            alignment: 'center',
+                            margin: [0, 0, 0, 15]
+                        });
+
+                        let tableNode = doc.content.find(c => c.table);
+                        if (tableNode) {
+                            tableNode.table.widths = ['5%', '25%', '11%', '10%', '13%', '14%', '22%'];
+                            tableNode.layout = {
+                                hLineWidth: function(i, node) { return i === 0 || i === node.table.body.length ? 1.5 : 0.5; },
+                                vLineWidth: function() { return 0; },
+                                hLineColor: function() { return '#CBD5E1'; },
+                                paddingLeft: function() { return 6; },
+                                paddingRight: function() { return 6; },
+                                paddingTop: function() { return 6; },
+                                paddingBottom: function() { return 6; },
+                                fillColor: function(rowIndex) {
+                                    return (rowIndex === 0) ? '#1E293B' : (rowIndex % 2 === 0 ? '#F8FAFC' : null);
+                                }
+                            };
+
+                            for (let i = 1; i < tableNode.table.body.length; i++) {
+                                let row = tableNode.table.body[i];
+
+                                // 1. Center S.No.
+                                row[0].alignment = 'center';
+                                row[0].fontSize = 8.5;
+
+                                // 2. Format Employee Name + Department (Department on line 2 in smaller gray font)
+                                let empCellText = typeof row[1] === 'string' ? row[1] : (row[1].text || '');
+                                let lines = empCellText.split('\n');
+                                let empName = lines[0] ? lines[0].trim() : '';
+                                let empDept = lines[1] ? lines[1].trim() : '';
+
+                                if (empDept) {
+                                    row[1] = {
+                                        text: [
+                                            { text: empName + '\n', bold: true, fontSize: 8.5, color: '#0F172A' },
+                                            { text: empDept, fontSize: 7.5, color: '#64748B' }
+                                        ]
+                                    };
+                                } else {
+                                    row[1] = { text: empName, bold: true, fontSize: 8.5, color: '#0F172A' };
+                                }
+
+                                // 3. Format Attendance Status column with colors and strip emojis
+                                let attStatusText = typeof row[4] === 'string' ? row[4] : (row[4].text || '');
+                                attStatusText = attStatusText.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|🔴|🔓/gu, '').trim();
+
+                                let attColor = '#0F172A';
+                                if (attStatusText.includes('Present')) attColor = '#16A34A';
+                                else if (attStatusText.includes('ABSENT')) attColor = '#DC2626';
+                                else if (attStatusText.includes('Half Day')) attColor = '#D97706';
+                                else if (attStatusText.includes('Blocked')) attColor = '#DC2626';
+                                row[4] = { text: attStatusText, bold: true, fontSize: 8.5, color: attColor };
+
+                                // 4. Format Blocked Status column with colors and strip emojis
+                                let blockStatusText = typeof row[5] === 'string' ? row[5] : (row[5].text || '');
+                                blockStatusText = blockStatusText.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|🔴|🔓/gu, '').trim();
+
+                                let blockColor = blockStatusText.includes('UNLOCKED') ? '#16A34A' : '#DC2626';
+                                row[5] = { text: blockStatusText, bold: true, fontSize: 8.5, color: blockColor };
+                            }
+                        }
+
+                        doc['footer'] = function(currentPage, pageCount) {
+                            return {
+                                columns: [
+                                    { text: 'Generated: ' + new Date().toLocaleString(), alignment: 'left', fontSize: 8, color: '#64748B', margin: [25, 0] },
+                                    { text: 'Page ' + currentPage.toString() + ' of ' + pageCount, alignment: 'right', fontSize: 8, color: '#64748B', margin: [0, 0, 25, 0] }
+                                ]
+                            };
+                        };
                     }
                 },
                 {
                     extend: 'print',
                     text: '<i class="fas fa-print"></i> Print',
-                    className: 'btn btn-light border',
-                    title: '{{ branding_name() }} Pending Unlock & HR Approvals',
+                    className: 'btn btn-light border buttons-print',
+                    title: '',
                     exportOptions: {
-                        columns: ':not(.no-export)'
+                        columns: ':not(.no-export)',
+                        format: { body: exportFormatBody }
+                    },
+                    customize: function(win) {
+                        $(win.document.body).css('font-family', 'Inter, system-ui, -apple-system, sans-serif').css('padding', '20px');
+                        $(win.document.body).prepend(
+                            '<div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #1E293B; padding-bottom: 12px;">' +
+                                '<h2 style="margin: 0; color: #1E293B; font-weight: 800; font-size: 20px;">{{ branding_name() }}</h2>' +
+                                '<h4 style="margin: 4px 0 0; color: #475569; font-weight: 600; font-size: 14px;">Pending Unlock & HR Approvals Report</h4>' +
+                                '<p style="margin: 4px 0 0; color: #94A3B8; font-size: 11px;">Report Generated: ' + new Date().toLocaleString() + '</p>' +
+                            '</div>'
+                        );
+                        $(win.document.body).find('table')
+                            .addClass('compact')
+                            .css('font-size', '11px')
+                            .css('width', '100%')
+                            .css('border-collapse', 'collapse');
+                        $(win.document.body).find('table th')
+                            .css('background-color', '#1E293B')
+                            .css('color', '#ffffff')
+                            .css('padding', '8px 10px')
+                            .css('text-align', 'left');
+                        $(win.document.body).find('table td')
+                            .css('padding', '8px 10px')
+                            .css('border-bottom', '1px solid #E2E8F0');
+                        $(win.document.body).find('table td:first-child, table th:first-child')
+                            .css('text-align', 'center');
                     }
                 }
             ],
@@ -1049,6 +1282,11 @@
                 emptyTable: 'No pending approvals found.'
             }
         });
+
+        if ($('#tableButtonsContainer').length) {
+            $('#tableButtonsContainer').empty();
+            table.buttons().container().appendTo('#tableButtonsContainer');
+        }
 
         setTimeout(function() {
             $('#pendingDataTable').DataTable().columns.adjust();

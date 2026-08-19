@@ -82,70 +82,48 @@ class AttendanceViolationService
     /**
      * Compute row-level employee active cycle counter string (e.g. "2 / 3" or "1 / 3").
      */
+    /**
+     * Compute row-level employee active cycle counter string (e.g. "1 / 3", "2 / 3", "3 / 3").
+     */
     public function getActiveCounterString(int $employeeId, string $date, string $violationType): string
     {
-        $employee = Employee::find($employeeId);
-        if (! $employee) {
-            return '0 / 3';
+        $rawType = strtolower((string) $violationType);
+        $canonicalType = match ($rawType) {
+            'late_login', 'late_mark', 'early_out', 'early_logout' => 'discipline',
+            'missed_punch' => 'missed_punch',
+            'blocked_punch' => 'blocked_punch',
+            default => $rawType,
+        };
+
+        if ($canonicalType === 'blocked_punch') {
+            return '-';
         }
 
-        $policy = $this->ruleResolver->getPolicyForEmployee($employee, $date);
         $asOfDate = Carbon::parse($date, self::TIMEZONE);
 
-        if (in_array($violationType, ['late_login', 'early_logout'], true)) {
-            $limit = $policy ? (int) ($policy->combined_violation_limit ?? 3) : 3;
+        $query = DB::table('attendance_violations')
+            ->where('employee_id', $employeeId)
+            ->whereYear('violation_date', $asOfDate->year)
+            ->whereMonth('violation_date', $asOfDate->month)
+            ->whereDate('violation_date', '<=', $date);
 
-            $query = DB::table('attendance_violations')
-                ->where('employee_id', $employeeId)
-                ->whereYear('violation_date', $asOfDate->year)
-                ->whereMonth('violation_date', $asOfDate->month)
-                ->whereIn('type', ['late_login', 'early_logout']);
-
-            if (Schema::hasColumn('attendance_violations', 'deleted_at')) {
-                $query->whereNull('deleted_at');
-            }
-
-            if (Schema::hasColumn('attendance_violations', 'is_consumed')) {
-                $query->where(function ($q) {
-                    $q->where('is_consumed', false)->orWhereNull('is_consumed');
-                });
-            }
-            if (Schema::hasColumn('attendance_violations', 'policy_action')) {
-                $query->where(function ($q) {
-                    $q->whereNull('policy_action')->orWhere('policy_action', '!=', 'resolved');
-                });
-            }
-
-            $count = $query->count();
-            return "{$count} / {$limit}";
-        } else {
-            $allowed = $policy ? (int) ($policy->allowed_missed_punches ?? 2) : 2;
-            $limit = $allowed + 1;
-
-            $query = DB::table('attendance_violations')
-                ->where('employee_id', $employeeId)
-                ->whereYear('violation_date', $asOfDate->year)
-                ->whereMonth('violation_date', $asOfDate->month)
-                ->where('type', 'missed_punch');
-
-            if (Schema::hasColumn('attendance_violations', 'deleted_at')) {
-                $query->whereNull('deleted_at');
-            }
-
-            if (Schema::hasColumn('attendance_violations', 'is_consumed')) {
-                $query->where(function ($q) {
-                    $q->where('is_consumed', false)->orWhereNull('is_consumed');
-                });
-            }
-            if (Schema::hasColumn('attendance_violations', 'policy_action')) {
-                $query->where(function ($q) {
-                    $q->whereNull('policy_action')->orWhere('policy_action', '!=', 'resolved');
-                });
-            }
-
-            $count = $query->count();
-            return "{$count} / {$limit}";
+        if (Schema::hasColumn('attendance_violations', 'deleted_at')) {
+            $query->whereNull('deleted_at');
         }
+
+        if ($canonicalType === 'discipline') {
+            $query->whereIn('type', ['late_login', 'late_mark', 'early_logout', 'early_out']);
+        } else {
+            $query->where('type', $canonicalType);
+        }
+
+        $count = $query->count();
+        if ($count === 0) {
+            return '1 / 3';
+        }
+
+        $pos = (($count - 1) % 3) + 1;
+        return "{$pos} / 3";
     }
 
     /**
@@ -169,8 +147,9 @@ class AttendanceViolationService
 
     /**
      * Resolve Penalty Status label and CSS badge.
+     * Penalty conversions (Converted to Half Day / LWP) are associated ONLY with the 3/3 occurrence.
      */
-    public function resolvePenaltyStatus(object $violation, ?object $attendance = null): array
+    public function resolvePenaltyStatus(object $violation, ?object $attendance = null, bool $isThirdOccurrence = false): array
     {
         $source = $attendance?->attendance_source ?? '';
         $isRegularized = $source === 'regularization' || (isset($violation->status) && $violation->status === 'regularized');
@@ -183,20 +162,31 @@ class AttendanceViolationService
             ];
         }
 
-        if (! empty($violation->converted_to_lwp) || (isset($violation->policy_action) && $violation->policy_action === 'lwp')) {
+        if (isset($violation->policy_action) && $violation->policy_action === 'resolved') {
             return [
-                'label' => 'Converted to LWP',
-                'badge' => 'orb-badge-darkred',
-                'bg_color' => '#991B1B',
+                'label' => 'Resolved',
+                'badge' => 'orb-badge-success',
+                'bg_color' => '#10B981',
             ];
         }
 
-        if (! empty($violation->converted_to_half_day) || (isset($violation->policy_action) && $violation->policy_action === 'half_day')) {
-            return [
-                'label' => 'Converted to Half Day',
-                'badge' => 'orb-badge-warning',
-                'bg_color' => '#F59E0B',
-            ];
+        // Show penalty results (Converted to Half Day / LWP) ONLY on the 3rd occurrence (3/3)
+        if ($isThirdOccurrence) {
+            if (! empty($violation->converted_to_lwp) || (isset($violation->policy_action) && $violation->policy_action === 'lwp')) {
+                return [
+                    'label' => 'Converted to LWP',
+                    'badge' => 'orb-badge-darkred',
+                    'bg_color' => '#991B1B',
+                ];
+            }
+
+            if (! empty($violation->converted_to_half_day) || (isset($violation->policy_action) && $violation->policy_action === 'half_day')) {
+                return [
+                    'label' => 'Converted to Half Day',
+                    'badge' => 'orb-badge-warning',
+                    'bg_color' => '#F59E0B',
+                ];
+            }
         }
 
         if (! empty($violation->is_consumed)) {
@@ -207,19 +197,105 @@ class AttendanceViolationService
             ];
         }
 
-        if (isset($violation->policy_action) && $violation->policy_action === 'resolved') {
-            return [
-                'label' => 'Resolved',
-                'badge' => 'orb-badge-success',
-                'bg_color' => '#10B981',
-            ];
-        }
-
         return [
             'label' => 'Active',
             'badge' => 'orb-badge-primary',
             'bg_color' => '#3B82F6',
         ];
+    }
+
+    /**
+     * Compute chronological violation cycle positions and penalty statuses for a list/collection of violations.
+     * Scoped month-wise so counts reset at the beginning of each calendar month.
+     * Late Login and Early Logout share a combined 3-strike discipline cycle.
+     */
+    public function enrichViolationsWithCycles(iterable $violations): void
+    {
+        $employeeIds = collect($violations)->pluck('employee_id')->unique()->filter()->values();
+
+        if ($employeeIds->isEmpty()) {
+            return;
+        }
+
+        $query = DB::table('attendance_violations')
+            ->whereIn('employee_id', $employeeIds);
+
+        if (Schema::hasColumn('attendance_violations', 'deleted_at')) {
+            $query->whereNull('deleted_at');
+        }
+
+        $allEmpViolations = $query->orderBy('employee_id', 'asc')
+            ->orderBy('violation_date', 'asc')
+            ->orderBy('id', 'asc')
+            ->get();
+
+        $metaMap = [];
+        $grouped = $allEmpViolations->groupBy('employee_id');
+
+        foreach ($grouped as $empId => $empViolations) {
+            // Group by year and month so counters reset cleanly every month!
+            $byMonth = $empViolations->groupBy(function ($v) {
+                return Carbon::parse($v->violation_date)->format('Y-m');
+            });
+
+            foreach ($byMonth as $yearMonth => $monthViolations) {
+                $counters = [
+                    'discipline' => 0, // Combined Late Login + Early Logout
+                    'missed_punch' => 0,
+                ];
+
+                foreach ($monthViolations as $v) {
+                    $rawType = strtolower((string) ($v->type ?? ''));
+                    $canonicalType = match ($rawType) {
+                        'late_login', 'late_mark', 'early_out', 'early_logout' => 'discipline',
+                        'missed_punch' => 'missed_punch',
+                        'blocked_punch' => 'blocked_punch',
+                        default => $rawType,
+                    };
+
+                    if ($canonicalType === 'blocked_punch' || ! isset($counters[$canonicalType])) {
+                        $metaMap[$v->id] = [
+                            'active_counter' => '-',
+                            'is_third_occurrence' => false,
+                            'cycle_position' => 0,
+                        ];
+                        continue;
+                    }
+
+                    $counters[$canonicalType]++;
+                    $seq = $counters[$canonicalType];
+                    $pos = (($seq - 1) % 3) + 1; // Sequence: 1, 2, 3, 1, 2, 3...
+                    $isThird = ($pos === 3);
+
+                    $metaMap[$v->id] = [
+                        'active_counter' => "{$pos} / 3",
+                        'is_third_occurrence' => $isThird,
+                        'cycle_position' => $pos,
+                    ];
+                }
+            }
+        }
+
+        foreach ($violations as $row) {
+            $vId = $row->id ?? null;
+            $meta = $vId ? ($metaMap[$vId] ?? null) : null;
+
+            if (! $meta) {
+                $meta = [
+                    'active_counter' => '-',
+                    'is_third_occurrence' => false,
+                    'cycle_position' => 0,
+                ];
+            }
+
+            $row->active_counter = $meta['active_counter'];
+            $row->is_third_occurrence = $meta['is_third_occurrence'];
+            $row->cycle_position = $meta['cycle_position'];
+
+            $statusData = $this->resolvePenaltyStatus($row, null, $meta['is_third_occurrence']);
+            $row->penalty_status_label = $statusData['label'];
+            $row->penalty_badge_class = $statusData['badge'];
+        }
     }
 
     /**

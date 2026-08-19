@@ -2,41 +2,75 @@
 
 namespace App\Services\HRMS\Storage;
 
+use App\Models\HRMS\Employee\EmployeeM;
+
 class HrmsStoragePathS
 {
-    public function employeeBase(int $employeeId): string
+    protected static array $codeCache = [];
+
+    /**
+     * Resolve the employee code (e.g. "OG-EMP-004") from an ID, string, or Employee model.
+     */
+    public function employeeCode(int|string|EmployeeM $employee): string
     {
-        return "hrms/employees/{$employeeId}";
+        if ($employee instanceof EmployeeM) {
+            $code = trim((string) ($employee->employee_code ?? ''));
+            return $code !== '' ? strtoupper($code) : "EMP-{$employee->id}";
+        }
+
+        if (is_numeric($employee)) {
+            $id = (int) $employee;
+            if (isset(self::$codeCache[$id])) {
+                return self::$codeCache[$id];
+            }
+            $code = \Illuminate\Support\Facades\DB::table('employees_new')
+                ->where('id', $id)
+                ->value('employee_code');
+
+            $result = (!empty($code) && trim((string) $code) !== '') ? strtoupper(trim((string) $code)) : "EMP-{$id}";
+            self::$codeCache[$id] = $result;
+            return $result;
+        }
+
+        $str = trim((string) $employee);
+        return $str !== '' ? strtoupper($str) : 'EMP-UNKNOWN';
     }
 
-    public function employeeProfile(int $employeeId, string $type): string
+    public function employeeBase(int|string|EmployeeM $employee): string
     {
-        return $this->employeeBase($employeeId) . '/profile/' . $this->sanitize($type, ['avatar']);
+        $code = $this->employeeCode($employee);
+        return "hrms/employees/{$code}";
     }
 
-    public function employeeOnboarding(int $employeeId, string $type): string
+    public function employeeProfile(int|string|EmployeeM $employee, string $type = 'avatar'): string
     {
-        return $this->employeeBase($employeeId) . '/onboarding/' . $this->sanitize($type, ['resume', 'nda']);
+        return $this->employeeBase($employee) . '/profile';
     }
 
-    public function employeeIdentity(int $employeeId, string $type): string
+    public function employeeOnboarding(int|string|EmployeeM $employee, string $type): string
     {
-        return $this->employeeBase($employeeId) . '/identity/' . $this->sanitize($type, ['aadhaar', 'pan', 'passport', 'driving-license']);
+        $san = $this->sanitize($type, ['resume', 'nda']);
+        return $this->employeeBase($employee) . '/' . ($san === 'resume' ? 'resume' : 'onboarding/' . $san);
     }
 
-    public function employeeBanking(int $employeeId, string $type): string
+    public function employeeIdentity(int|string|EmployeeM $employee, string $type): string
     {
-        return $this->employeeBase($employeeId) . '/banking/' . $this->sanitize($type, ['bank-proof']);
+        return $this->employeeBase($employee) . '/identity/' . $this->sanitize($type, ['aadhaar', 'pan', 'passport', 'driving-license']);
     }
 
-    public function employeeEducation(int $employeeId, string $type): string
+    public function employeeBanking(int|string|EmployeeM $employee, string $type): string
     {
-        return $this->employeeBase($employeeId) . '/education/' . $this->sanitize($type, ['documents']);
+        return $this->employeeBase($employee) . '/banking/' . $this->sanitize($type, ['bank-proof']);
     }
 
-    public function employeeExperience(int $employeeId, string $type): string
+    public function employeeEducation(int|string|EmployeeM $employee, string $type): string
     {
-        return $this->employeeBase($employeeId) . '/experience/' . $this->sanitize($type, [
+        return $this->employeeBase($employee) . '/education/' . $this->sanitize($type, ['documents']);
+    }
+
+    public function employeeExperience(int|string|EmployeeM $employee, string $type): string
+    {
+        return $this->employeeBase($employee) . '/experience/' . $this->sanitize($type, [
             'offer-letter',
             'experience-letter',
             'relieving-letter',
@@ -44,9 +78,9 @@ class HrmsStoragePathS
         ]);
     }
 
-    public function employeeHrDocument(int $employeeId, string $type): string
+    public function employeeHrDocument(int|string|EmployeeM $employee, string $type): string
     {
-        return $this->employeeBase($employeeId) . '/hr-documents/' . $this->sanitize($type, [
+        return $this->employeeBase($employee) . '/hr-documents/' . $this->sanitize($type, [
             'appointment-letters',
             'confirmation-letters',
             'salary-revisions',
@@ -57,24 +91,25 @@ class HrmsStoragePathS
         ]);
     }
 
-    public function employeeAttendance(int $employeeId, string $type): string
+    public function employeeAttendance(int|string|EmployeeM $employee, string $type): string
     {
-        return $this->employeeBase($employeeId) . '/leave/' . $this->sanitize($type, ['attachments']);
+        return $this->employeeBase($employee) . '/leave/' . $this->sanitize($type, ['attachments']);
     }
 
-    public function employeeLeave(int $employeeId, string $type): string
+    public function employeeLeave(int|string|EmployeeM $employee, string $type): string
     {
-        return $this->employeeBase($employeeId) . '/leave/' . $this->sanitize($type, ['attachments', 'medical-certificates']);
+        return $this->employeeBase($employee) . '/leave/' . $this->sanitize($type, ['attachments', 'medical-certificates']);
     }
 
-    public function employeePayroll(int $employeeId, string $type): string
+    public function employeePayroll(int|string|EmployeeM $employee, string $type): string
     {
-        return $this->employeeBase($employeeId) . '/payroll/' . $this->sanitize($type, ['payslips', 'reimbursements']);
+        $san = $this->sanitize($type, ['payslips', 'reimbursements']);
+        return $this->employeeBase($employee) . '/' . ($san === 'payslips' ? 'payslips' : 'payroll/' . $san);
     }
 
-    public function employeeAsset(int $employeeId, string $type): string
+    public function employeeAsset(int|string|EmployeeM $employee, string $type): string
     {
-        return $this->employeeBase($employeeId) . '/hr-documents/' . $this->sanitize($type, ['appointment-letters']);
+        return $this->employeeBase($employee) . '/hr-documents/' . $this->sanitize($type, ['appointment-letters']);
     }
 
     public function announcement(int $year, int $month, string $type): string
@@ -122,37 +157,37 @@ class HrmsStoragePathS
         return 'hrms/temp/' . $this->sanitize($type, ['exports', 'previews']);
     }
 
-    public function mapEmployeeDocumentType(int $employeeId, ?string $type): string
+    public function mapEmployeeDocumentType(int|string|EmployeeM $employee, ?string $type): string
     {
         $normalized = $this->sanitize($type ?: 'other');
         $map = [
-            'resume' => $this->employeeOnboarding($employeeId, 'resume'),
-            'nda' => $this->employeeOnboarding($employeeId, 'nda'),
-            'offer-letter' => $this->employeeExperience($employeeId, 'offer-letter'),
-            'aadhaar' => $this->employeeIdentity($employeeId, 'aadhaar'),
-            'pan' => $this->employeeIdentity($employeeId, 'pan'),
-            'passport' => $this->employeeIdentity($employeeId, 'passport'),
-            'driving-license' => $this->employeeIdentity($employeeId, 'driving-license'),
-            'bank-proof' => $this->employeeBanking($employeeId, 'bank-proof'),
-            'education' => $this->employeeEducation($employeeId, 'documents'),
-            'education-document' => $this->employeeEducation($employeeId, 'documents'),
-            'medical-certificate' => $this->employeeLeave($employeeId, 'medical-certificates'),
-            'leave-attachment' => $this->employeeLeave($employeeId, 'attachments'),
-            'reimbursement' => $this->employeePayroll($employeeId, 'reimbursements'),
-            'payslip' => $this->employeePayroll($employeeId, 'payslips'),
-            'appointment-letter' => $this->employeeHrDocument($employeeId, 'appointment-letters'),
-            'experience-letter' => $this->employeeExperience($employeeId, 'experience-letter'),
-            'relieving-letter' => $this->employeeExperience($employeeId, 'relieving-letter'),
-            'salary-slips' => $this->employeeExperience($employeeId, 'salary-slips'),
-            'confirmation-letter' => $this->employeeHrDocument($employeeId, 'confirmation-letters'),
-            'salary-revision' => $this->employeeHrDocument($employeeId, 'salary-revisions'),
-            'warning-letter' => $this->employeeHrDocument($employeeId, 'warning-letters'),
-            'internship-certificate' => $this->employeeHrDocument($employeeId, 'internship-certificates'),
-            'experience-certificate' => $this->employeeHrDocument($employeeId, 'experience-certificates'),
-            'relieving-certificate' => $this->employeeHrDocument($employeeId, 'relieving-letters'),
+            'resume' => $this->employeeOnboarding($employee, 'resume'),
+            'nda' => $this->employeeOnboarding($employee, 'nda'),
+            'offer-letter' => $this->employeeExperience($employee, 'offer-letter'),
+            'aadhaar' => $this->employeeIdentity($employee, 'aadhaar'),
+            'pan' => $this->employeeIdentity($employee, 'pan'),
+            'passport' => $this->employeeIdentity($employee, 'passport'),
+            'driving-license' => $this->employeeIdentity($employee, 'driving-license'),
+            'bank-proof' => $this->employeeBanking($employee, 'bank-proof'),
+            'education' => $this->employeeEducation($employee, 'documents'),
+            'education-document' => $this->employeeEducation($employee, 'documents'),
+            'medical-certificate' => $this->employeeLeave($employee, 'medical-certificates'),
+            'leave-attachment' => $this->employeeLeave($employee, 'attachments'),
+            'reimbursement' => $this->employeePayroll($employee, 'reimbursements'),
+            'payslip' => $this->employeePayroll($employee, 'payslips'),
+            'appointment-letter' => $this->employeeHrDocument($employee, 'appointment-letters'),
+            'experience-letter' => $this->employeeExperience($employee, 'experience-letter'),
+            'relieving-letter' => $this->employeeExperience($employee, 'relieving-letter'),
+            'salary-slips' => $this->employeeExperience($employee, 'salary-slips'),
+            'confirmation-letter' => $this->employeeHrDocument($employee, 'confirmation-letters'),
+            'salary-revision' => $this->employeeHrDocument($employee, 'salary-revisions'),
+            'warning-letter' => $this->employeeHrDocument($employee, 'warning-letters'),
+            'internship-certificate' => $this->employeeHrDocument($employee, 'internship-certificates'),
+            'experience-certificate' => $this->employeeHrDocument($employee, 'experience-certificates'),
+            'relieving-certificate' => $this->employeeHrDocument($employee, 'relieving-letters'),
         ];
 
-        return $map[$normalized] ?? $this->employeeEducation($employeeId, 'documents');
+        return $map[$normalized] ?? $this->employeeEducation($employee, 'documents');
     }
 
     public function normalizeDocType(?string $value): string
@@ -176,3 +211,4 @@ class HrmsStoragePathS
         return $value;
     }
 }
+

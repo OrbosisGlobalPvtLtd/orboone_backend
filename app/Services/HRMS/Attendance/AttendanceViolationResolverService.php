@@ -117,9 +117,9 @@ class AttendanceViolationResolverService
         if (! $violation->is_consumed && $violation->status !== 'converted') {
             $violation->update([
                 'status' => 'resolved',
+                'policy_action' => 'resolved',
                 'resolved_at' => now(),
             ]);
-            $violation->delete();
 
             if ($attendance->employee_id && $attendance->attendance_date) {
                 $this->evaluateViolationsAndApplyPenalties($attendance->employee, (string) $attendance->attendance_date);

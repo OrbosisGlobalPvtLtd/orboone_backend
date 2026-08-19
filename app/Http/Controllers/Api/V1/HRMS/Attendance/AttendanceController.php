@@ -8,6 +8,8 @@ use App\Services\HRMS\Attendance\AttendanceMobileService;
 use App\Services\HRMS\Attendance\AttendanceS;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class AttendanceController extends Controller
 {
@@ -324,6 +326,59 @@ class AttendanceController extends Controller
     {
         $code = fn($item) => strtolower((string) optional($item->attendanceType)->code);
 
+        $user = auth()->user();
+        $employee = $user ? \App\Models\HRMS\Employee\EmployeeM::where('user_id', $user->id)->first() : null;
+        $violationCycle = '0 / 3';
+        $missedPunchCycle = '0 / 2';
+        if ($employee && Schema::hasTable('attendance_violations')) {
+            $year = Carbon::now()->year;
+            $month = Carbon::now()->month;
+
+            $qDisc = DB::table('attendance_violations')
+                ->where('employee_id', $employee->id)
+                ->whereIn('type', ['late_login', 'late_mark', 'early_logout', 'early_out'])
+                ->whereYear('violation_date', $year)
+                ->whereMonth('violation_date', $month)
+                ->where(function ($query) {
+                    $query->whereNull('status')->orWhere('status', 'pending');
+                });
+            if (Schema::hasColumn('attendance_violations', 'is_consumed')) {
+                $qDisc->where(function ($query) {
+                    $query->whereNull('is_consumed')->orWhere('is_consumed', false);
+                });
+            }
+            if (Schema::hasColumn('attendance_violations', 'deleted_at')) {
+                $qDisc->whereNull('deleted_at');
+            }
+            $countDisc = $qDisc->count();
+            if ($countDisc > 0) {
+                $posDisc = (($countDisc - 1) % 3) + 1;
+                $violationCycle = "{$posDisc} / 3";
+            }
+
+            $qMissed = DB::table('attendance_violations')
+                ->where('employee_id', $employee->id)
+                ->whereIn('type', ['missed_punch'])
+                ->whereYear('violation_date', $year)
+                ->whereMonth('violation_date', $month)
+                ->where(function ($query) {
+                    $query->whereNull('status')->orWhere('status', 'pending');
+                });
+            if (Schema::hasColumn('attendance_violations', 'is_consumed')) {
+                $qMissed->where(function ($query) {
+                    $query->whereNull('is_consumed')->orWhere('is_consumed', false);
+                });
+            }
+            if (Schema::hasColumn('attendance_violations', 'deleted_at')) {
+                $qMissed->whereNull('deleted_at');
+            }
+            $countMissed = $qMissed->count();
+            if ($countMissed > 0) {
+                $posMissed = (($countMissed - 1) % 2) + 1;
+                $missedPunchCycle = "{$posMissed} / 2";
+            }
+        }
+
         return [
             'present' => $records->filter(fn($item) => $code($item) === 'present')->count(),
             'absent' => $records->filter(fn($item) => $code($item) === 'absent' || $code($item) === 'lwp' || $item->is_lwp)->count(),
@@ -338,7 +393,12 @@ class AttendanceController extends Controller
             'lwp' => 0,
             'missed_punch' => $records->where('missed_punch', true)->count(),
             'total_work_minutes' => (int) $records->sum('total_work_minutes'),
-            'total_work_hours' => round(((int) $records->sum('total_work_minutes')) / 60, 2),
+            'total_work_hours' => $violationCycle,
+            'hours_this_month' => $violationCycle,
+            'violation_cycle' => $violationCycle,
+            'violations_count' => $violationCycle,
+            'discipline_cycle' => $violationCycle,
+            'missed_punch_cycle' => $missedPunchCycle,
         ];
     }
 

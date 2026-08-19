@@ -298,6 +298,57 @@ class MobileDashboardController extends Controller
 
         $exitStatusCard = $this->getExitStatusCard((int) $employee->id);
 
+        $violationCycle = '0 / 3';
+        $missedPunchCycle = '0 / 2';
+        if ($employee && Schema::hasTable('attendance_violations')) {
+            $year = Carbon::now()->year;
+            $month = Carbon::now()->month;
+
+            $qDisc = DB::table('attendance_violations')
+                ->where('employee_id', $employee->id)
+                ->whereIn('type', ['late_login', 'late_mark', 'early_logout', 'early_out'])
+                ->whereYear('violation_date', $year)
+                ->whereMonth('violation_date', $month)
+                ->where(function ($query) {
+                    $query->whereNull('status')->orWhere('status', 'pending');
+                });
+            if (Schema::hasColumn('attendance_violations', 'is_consumed')) {
+                $qDisc->where(function ($query) {
+                    $query->whereNull('is_consumed')->orWhere('is_consumed', false);
+                });
+            }
+            if (Schema::hasColumn('attendance_violations', 'deleted_at')) {
+                $qDisc->whereNull('deleted_at');
+            }
+            $countDisc = $qDisc->count();
+            if ($countDisc > 0) {
+                $posDisc = (($countDisc - 1) % 3) + 1;
+                $violationCycle = "{$posDisc} / 3";
+            }
+
+            $qMissed = DB::table('attendance_violations')
+                ->where('employee_id', $employee->id)
+                ->whereIn('type', ['missed_punch'])
+                ->whereYear('violation_date', $year)
+                ->whereMonth('violation_date', $month)
+                ->where(function ($query) {
+                    $query->whereNull('status')->orWhere('status', 'pending');
+                });
+            if (Schema::hasColumn('attendance_violations', 'is_consumed')) {
+                $qMissed->where(function ($query) {
+                    $query->whereNull('is_consumed')->orWhere('is_consumed', false);
+                });
+            }
+            if (Schema::hasColumn('attendance_violations', 'deleted_at')) {
+                $qMissed->whereNull('deleted_at');
+            }
+            $countMissed = $qMissed->count();
+            if ($countMissed > 0) {
+                $posMissed = (($countMissed - 1) % 2) + 1;
+                $missedPunchCycle = "{$posMissed} / 2";
+            }
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Dashboard bootstrap data fetched successfully.',
@@ -316,6 +367,12 @@ class MobileDashboardController extends Controller
                 'exit_status' => $exitStatusCard,
                 'latest_announcements' => $latestAnnouncements,
                 'unread_notification_count' => $unreadNotificationCount,
+                'violation_cycle' => $violationCycle,
+                'discipline_cycle' => $violationCycle,
+                'missed_punch_cycle' => $missedPunchCycle,
+                'violations' => $violationCycle,
+                'hours_this_month' => $violationCycle,
+                'total_work_hours' => $violationCycle,
             ]
         ]);
     }

@@ -117,6 +117,165 @@ class SidebarMenuResolverS
             'is_active' => 1
         ]);
 
+        $menus->push((object)[
+            'id' => 9901,
+            'name' => 'Projects Directory',
+            'route' => 'projects.index',
+            'icon' => 'fas fa-project-diagram',
+            'module_key' => 'projects.directory',
+            'parent_id' => 320,
+            'sort_order' => 1,
+            'is_active' => 1
+        ]);
+
+        $menus->push((object)[
+            'id' => 9902,
+            'name' => 'My Projects',
+            'route' => 'projects.my',
+            'icon' => 'fas fa-tasks',
+            'module_key' => 'employee.projects',
+            'parent_id' => 320,
+            'sort_order' => 3,
+            'is_active' => 1
+        ]);
+
+        $menus->push((object)[
+            'id' => 9903,
+            'name' => 'Project Tasks',
+            'route' => 'projects.tasks.index',
+            'icon' => 'fas fa-list-check',
+            'module_key' => 'projects.tasks',
+            'parent_id' => 320,
+            'sort_order' => 4,
+            'is_active' => 1
+        ]);
+
+        $menus->push((object)[
+            'id' => 9904,
+            'name' => 'Team Attendance',
+            'route' => 'projects.team.attendance',
+            'icon' => 'fas fa-user-check',
+            'module_key' => 'projects.team_attendance',
+            'parent_id' => 320,
+            'sort_order' => 5,
+            'is_active' => 1
+        ]);
+
+        $menus->push((object)[
+            'id' => 9905,
+            'name' => 'Team Work Reports',
+            'route' => 'projects.team.work_reports',
+            'icon' => 'fas fa-file-alt',
+            'module_key' => 'projects.team_work_reports',
+            'parent_id' => 320,
+            'sort_order' => 6,
+            'is_active' => 1
+        ]);
+
+        $menus->push((object)[
+            'id' => 9906,
+            'name' => 'Team Leave Calendar',
+            'route' => 'projects.team.leave',
+            'icon' => 'fas fa-calendar-alt',
+            'module_key' => 'projects.team_leave',
+            'name' => 'Work Report Templates',
+            'route' => 'projects.templates.index',
+            'icon' => 'fas fa-sliders-h',
+            'module_key' => 'projects.templates',
+            'parent_id' => 320,
+            'sort_order' => 7,
+            'is_active' => 1
+        ]);
+
+        // Dynamic Technical Supervision Parent Menu & Submenus inside Project Management (parent_id: 320)
+        $menus->push((object)[
+            'id' => 9950,
+            'name' => 'Technical Supervision',
+            'route' => '#',
+            'icon' => 'fas fa-laptop-code',
+            'module_key' => 'technical_lead',
+            'parent_id' => 320,
+            'sort_order' => 5,
+            'is_active' => 1
+        ]);
+
+        $menus->push((object)[
+            'id' => 9951,
+            'name' => 'Dashboard',
+            'route' => 'technical_lead.dashboard',
+            'icon' => 'fas fa-tachometer-alt',
+            'module_key' => 'technical_lead.dashboard',
+            'parent_id' => 9950,
+            'sort_order' => 1,
+            'is_active' => 1
+        ]);
+
+        $menus->push((object)[
+            'id' => 9957,
+            'name' => 'Supervisors',
+            'route' => 'technical_lead.supervisors',
+            'icon' => 'fas fa-user-shield',
+            'module_key' => 'technical_lead.supervisors',
+            'parent_id' => 9950,
+            'sort_order' => 2,
+            'is_active' => 1
+        ]);
+
+        $menus->push((object)[
+            'id' => 9952,
+            'name' => 'Developer Assignments',
+            'route' => 'technical_lead.developers',
+            'icon' => 'fas fa-users-cog',
+            'module_key' => 'technical_lead.developers',
+            'parent_id' => 9950,
+            'sort_order' => 3,
+            'is_active' => 1
+        ]);
+
+        $menus->push((object)[
+            'id' => 9953,
+            'name' => 'Attendance',
+            'route' => 'technical_lead.attendance',
+            'icon' => 'fas fa-calendar-check',
+            'module_key' => 'technical_lead.attendance',
+            'parent_id' => 9950,
+            'sort_order' => 3,
+            'is_active' => 1
+        ]);
+
+        $menus->push((object)[
+            'id' => 9954,
+            'name' => 'Leave',
+            'route' => 'technical_lead.leave',
+            'icon' => 'fas fa-plane-departure',
+            'module_key' => 'technical_lead.leave',
+            'parent_id' => 9950,
+            'sort_order' => 4,
+            'is_active' => 1
+        ]);
+
+        $menus->push((object)[
+            'id' => 9955,
+            'name' => 'Work Reports',
+            'route' => 'technical_lead.work_reports',
+            'icon' => 'fas fa-file-signature',
+            'module_key' => 'technical_lead.work_reports',
+            'parent_id' => 9950,
+            'sort_order' => 5,
+            'is_active' => 1
+        ]);
+
+        $menus->push((object)[
+            'id' => 9956,
+            'name' => 'Projects',
+            'route' => 'technical_lead.projects',
+            'icon' => 'fas fa-project-diagram',
+            'module_key' => 'technical_lead.projects',
+            'parent_id' => 9950,
+            'sort_order' => 6,
+            'is_active' => 1
+        ]);
+
         return $menus;
     }
 
@@ -158,10 +317,18 @@ class SidebarMenuResolverS
             ->map(fn ($id) => (int) $id)
             ->all();
 
-        // Always allow Project Management container, Tasks menu, and My Tasks menu for everyone
+        // Always allow Project Management container, Tasks menu, My Tasks, and Technical Supervision menus
         $allowedIds[] = 320;
         $allowedIds[] = 322;
         $allowedIds[] = 9999;
+        $allowedIds[] = 9950;
+        $allowedIds[] = 9951;
+        $allowedIds[] = 9952;
+        $allowedIds[] = 9953;
+        $allowedIds[] = 9954;
+        $allowedIds[] = 9955;
+        $allowedIds[] = 9956;
+        $allowedIds[] = 9957;
 
         // Dynamically allow Today's Attendance menu if Web Attendance is enabled in Access Control for the employee
         $emp = DB::table('employees_new')->where('user_id', $user->id)->first(['allow_web_attendance']);
@@ -250,7 +417,7 @@ class SidebarMenuResolverS
 
         foreach ($menus as $menu) {
             $route = (string) ($menu->route ?? '');
-            if ($route === '' || $this->resolveRouteName($route) !== null) {
+            if ($route === '' || $route === '#' || $this->resolveRouteName($route) !== null) {
                 $validIds[] = (int) $menu->id;
             }
         }
@@ -430,6 +597,13 @@ class SidebarMenuResolverS
             'hrms.leave.balances.index' => ['leave.balance.view_all', 'leave.balance.view_team', 'leave.balance.view_own', 'leave.balance.view', 'leave_self.view_balance'],
             'employees-leave-request.summary' => ['leave.balance.view_all', 'leave.balance.view_team', 'leave.balance.view_own', 'leave.balance.view', 'leave_self.view_balance'],
             'hrms.holidays.index' => ['leave.holidays.manage', 'leave.team_calendar.view'],
+            'projects.index' => ['projects.view_all', 'projects.my_projects.view', 'projects.delivery_head.view', 'projects.team_lead.view'],
+            'projects.my' => ['projects.my_projects.view'],
+            'projects.tasks.index' => ['projects.tasks.view', 'projects.view_all'],
+            'projects.team.attendance' => ['projects.team_attendance.view', 'attendance.records.view_all', 'projects.team_lead.view', 'projects.delivery_head.view'],
+            'projects.team.work_reports' => ['projects.team_work_reports.view', 'attendance.work_reports.view_all', 'projects.team_lead.view', 'projects.delivery_head.view'],
+            'projects.team.leave' => ['projects.team_leave.view', 'leave.approvals.view_all', 'projects.team_lead.view', 'projects.delivery_head.view'],
+            'projects.templates.index' => ['projects.work_report.templates.manage', 'projects.manage'],
         ];
     }
 

@@ -859,7 +859,7 @@
 
                         <div class="col-md-6 mb-3">
                             <label class="font-weight-bold text-dark">Employment Stage</label>
-                            <select name="employment_stage" class="leave-control w-100" required>
+                            <select name="employment_stage" class="leave-control w-100 alloc-calc-trigger" required>
                                 <option value="permanent" {{ strtolower($allocation->employment_stage) === 'permanent' ? 'selected' : '' }}>Permanent</option>
                                 <option value="probation" {{ strtolower($allocation->employment_stage) === 'probation' ? 'selected' : '' }}>Probation</option>
                                 <option value="internship" {{ strtolower($allocation->employment_stage) === 'internship' ? 'selected' : '' }}>Internship</option>
@@ -868,10 +868,16 @@
 
                         <div class="col-md-12 mb-3">
                             <label class="font-weight-bold text-dark">Leave Policy</label>
-                            <select name="policy_id" class="leave-control w-100">
-                                <option value="">-- Select Leave Policy --</option>
+                            <select name="policy_id" class="leave-control w-100 alloc-calc-trigger">
+                                <option value="" data-total="25" data-paid="18" data-sick="7" data-probation="1" data-internship="1">-- Select Leave Policy --</option>
                                 @foreach($policies as $p)
-                                    <option value="{{ $p->id }}" {{ $allocation->policy_id == $p->id ? 'selected' : '' }}>
+                                    <option value="{{ $p->id }}"
+                                        data-total="{{ $p->annual_total_leaves }}"
+                                        data-paid="{{ $p->annual_paid_leaves }}"
+                                        data-sick="{{ $p->annual_sick_leaves }}"
+                                        data-probation="{{ $p->probation_leave_limit }}"
+                                        data-internship="{{ $p->internship_leave_limit }}"
+                                        {{ $allocation->policy_id == $p->id ? 'selected' : '' }}>
                                         {{ $p->policy_name }} (Total: {{ $p->annual_total_leaves }}, Paid: {{ $p->annual_paid_leaves }}, Sick: {{ $p->annual_sick_leaves }})
                                     </option>
                                 @endforeach
@@ -881,12 +887,12 @@
                         <!-- Dates -->
                         <div class="col-md-6 mb-3">
                             <label class="font-weight-bold text-dark">Allocation From Date</label>
-                            <input type="date" name="allocation_from_date" class="leave-control w-100" value="{{ $allocation->allocation_from_date ? \Carbon\Carbon::parse($allocation->allocation_from_date)->format('Y-m-d') : '' }}">
+                            <input type="date" name="allocation_from_date" class="leave-control w-100 alloc-calc-trigger" value="{{ $allocation->allocation_from_date ? \Carbon\Carbon::parse($allocation->allocation_from_date)->format('Y-m-d') : '' }}">
                         </div>
 
                         <div class="col-md-6 mb-3">
                             <label class="font-weight-bold text-dark">Allocation To Date</label>
-                            <input type="date" name="allocation_to_date" class="leave-control w-100" value="{{ $allocation->allocation_to_date ? \Carbon\Carbon::parse($allocation->allocation_to_date)->format('Y-m-d') : '' }}">
+                            <input type="date" name="allocation_to_date" class="leave-control w-100 alloc-calc-trigger" value="{{ $allocation->allocation_to_date ? \Carbon\Carbon::parse($allocation->allocation_to_date)->format('Y-m-d') : '' }}">
                         </div>
 
                         <div class="col-12"><hr class="my-2"></div>
@@ -1298,7 +1304,7 @@
         }
     });
 
-        $(document).on('input change keyup', '.monthly-calc-input', function() {
+    $(document).on('input change keyup', '.monthly-calc-input', function() {
         var id = $(this).data('id');
         var quota = parseFloat($('#monthly_quota_' + id).val()) || 0;
         var carry = parseFloat($('#monthly_carry_forward_' + id).val()) || 0;
@@ -1306,6 +1312,97 @@
         
         var totalRem = Math.max(0, (quota + carry) - used);
         $('#total_monthly_remaining_paid_' + id).val(totalRem.toFixed(2));
+    });
+
+    function calculateEditAllocationModal(modal) {
+        var $modal = $(modal);
+        var stage = $modal.find('[name="employment_stage"]').val() || 'permanent';
+        var $policySelect = $modal.find('[name="policy_id"]');
+        var $selectedOption = $policySelect.find('option:selected');
+
+        var annualTotal = parseFloat($selectedOption.data('total')) || 25;
+        var annualPaid = parseFloat($selectedOption.data('paid')) || 18;
+        var annualSick = parseFloat($selectedOption.data('sick')) || 7;
+        var probationLimit = parseFloat($selectedOption.data('probation')) || 1;
+        var internshipLimit = parseFloat($selectedOption.data('internship')) || 1;
+
+        var fromDateVal = $modal.find('[name="allocation_from_date"]').val();
+        var toDateVal = $modal.find('[name="allocation_to_date"]').val();
+
+        var paidAllocated = 0;
+        var sickAllocated = 0;
+
+        if (stage.toLowerCase() === 'probation') {
+            paidAllocated = probationLimit;
+            sickAllocated = 0;
+        } else if (stage.toLowerCase() === 'internship') {
+            paidAllocated = internshipLimit;
+            sickAllocated = 0;
+        } else {
+            if (fromDateVal && toDateVal) {
+                var fDate = new Date(fromDateVal);
+                var tDate = new Date(toDateVal);
+                if (!isNaN(fDate.getTime()) && !isNaN(tDate.getTime()) && fDate <= tDate) {
+                    var monthsCount = (tDate.getFullYear() - fDate.getFullYear()) * 12 + (tDate.getMonth() - fDate.getMonth()) + 1;
+                    monthsCount = Math.max(1, Math.min(12, monthsCount));
+                    var prorationMap = {
+                        12: 25, 11: 23, 10: 21, 9: 19, 8: 17, 7: 15,
+                        6: 13, 5: 10, 4: 8, 3: 6, 2: 4, 1: 2
+                    };
+                    var baseTotal = prorationMap[monthsCount] || 25;
+                    var total = (annualTotal === 25) ? baseTotal : Math.round((baseTotal / 25.0) * annualTotal * 100) / 100;
+                    var paidRatio = annualPaid / Math.max(1, annualTotal);
+                    paidAllocated = Math.round(total * paidRatio);
+                    sickAllocated = Math.max(0, total - paidAllocated);
+                }
+            } else if (fromDateVal) {
+                var fDate = new Date(fromDateVal);
+                if (!isNaN(fDate.getTime())) {
+                    var startMonth = fDate.getMonth() + 1;
+                    var prorationByMonth = {
+                        1: 25, 2: 23, 3: 21, 4: 19, 5: 17, 6: 15,
+                        7: 13, 8: 10, 9: 8, 10: 6, 11: 4, 12: 2
+                    };
+                    var baseTotal = prorationByMonth[startMonth] || 25;
+                    var total = (annualTotal === 25) ? baseTotal : Math.round((baseTotal / 25.0) * annualTotal * 100) / 100;
+                    var paidRatio = annualPaid / Math.max(1, annualTotal);
+                    paidAllocated = Math.round(total * paidRatio);
+                    sickAllocated = Math.max(0, total - paidAllocated);
+                }
+            }
+        }
+
+        $modal.find('[name="paid_allocated"]').val(paidAllocated.toFixed(2));
+        $modal.find('[name="sick_allocated"]').val(sickAllocated.toFixed(2));
+
+        var policyId = $policySelect.val();
+        if (fromDateVal) {
+            $.ajax({
+                url: "{{ route('leave-allocations.calculate-quota') }}",
+                type: "GET",
+                data: {
+                    policy_id: policyId,
+                    employment_stage: stage,
+                    allocation_from_date: fromDateVal,
+                    allocation_to_date: toDateVal
+                },
+                success: function(res) {
+                    if (res && res.paid_allocated !== undefined) {
+                        $modal.find('[name="paid_allocated"]').val(parseFloat(res.paid_allocated).toFixed(2));
+                        $modal.find('[name="sick_allocated"]').val(parseFloat(res.sick_allocated).toFixed(2));
+                    }
+                }
+            });
+        }
+    }
+
+    $(document).on('change input', '.alloc-calc-trigger', function() {
+        var modal = $(this).closest('.modal');
+        calculateEditAllocationModal(modal);
+    });
+
+    $(document).on('show.bs.modal', '.orb-type-modal', function() {
+        calculateEditAllocationModal(this);
     });
 
     function triggerLeaveExport(type) {

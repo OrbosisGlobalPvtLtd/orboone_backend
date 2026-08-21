@@ -171,8 +171,14 @@ class LeaveAllocationService
         return $allocation;
     }
 
-    private function allocationAmounts(LeavePolicyM $policy, string $stage, ?Carbon $fromDate, Carbon $toDate): array
+    public function calculateAllocationAmounts(?LeavePolicyM $policy, string $stage, ?Carbon $fromDate, ?Carbon $toDate = null): array
     {
+        if (! $policy) {
+            return [0.0, 0.0, 0.0];
+        }
+
+        $stage = strtolower($stage);
+
         if ($stage === 'probation') {
             $limit = (float) $policy->probation_leave_limit;
             return [$limit, $limit, 0.0];
@@ -183,17 +189,36 @@ class LeaveAllocationService
             return [$limit, $limit, 0.0];
         }
 
-        if (! $fromDate || $fromDate->gt($toDate)) {
+        if (! $fromDate || ($toDate && $fromDate->gt($toDate))) {
             return [0.0, 0.0, 0.0];
         }
 
-        $month = (int) $fromDate->month;
-        $total = (float) (self::PERMANENT_PRORATION_BY_MONTH[$month] ?? 0);
-        $paidRatio = (float) $policy->annual_paid_leaves / max(1.0, (float) $policy->annual_total_leaves);
+        if ($toDate) {
+            $monthsCount = ($toDate->year - $fromDate->year) * 12 + ($toDate->month - $fromDate->month) + 1;
+            $monthsCount = max(1, min(12, $monthsCount));
+            $monthsToTotalMap = [
+                12 => 25, 11 => 23, 10 => 21, 9 => 19, 8 => 17, 7 => 15,
+                6 => 13, 5 => 10, 4 => 8, 3 => 6, 2 => 4, 1 => 2,
+            ];
+            $baseTotal = (float) ($monthsToTotalMap[$monthsCount] ?? 25);
+        } else {
+            $month = (int) $fromDate->month;
+            $baseTotal = (float) (self::PERMANENT_PRORATION_BY_MONTH[$month] ?? 0);
+        }
+
+        $annualTotal = (float) $policy->annual_total_leaves;
+        $total = ($annualTotal == 25) ? $baseTotal : round(($baseTotal / 25.0) * $annualTotal, 2);
+
+        $paidRatio = (float) $policy->annual_paid_leaves / max(1.0, $annualTotal);
         $paid = (float) round($total * $paidRatio);
-        $sick = (float) max(0, $total - $paid);
+        $sick = (float) max(0.0, $total - $paid);
 
         return [$total, $paid, $sick];
+    }
+
+    private function allocationAmounts(LeavePolicyM $policy, string $stage, ?Carbon $fromDate, Carbon $toDate): array
+    {
+        return $this->calculateAllocationAmounts($policy, $stage, $fromDate, $toDate);
     }
 
     private function allocationStartDate(EmployeeM $employee, string $stage, int $year, ?Carbon $effectiveDate = null): ?Carbon

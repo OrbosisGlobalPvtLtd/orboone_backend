@@ -37,6 +37,7 @@ Route::middleware(['auth', 'check.access'])->group(function () {
     Route::put('/leave-allocations/{id}', [LeaveAllocationC::class, 'update'])->middleware('permission:leave.allocation.manage')->name('leave-allocations.update');
     Route::delete('/leave-allocations/{id}', [LeaveAllocationC::class, 'destroy'])->middleware('permission:leave.allocation.manage')->name('leave-allocations.destroy');
     Route::get('/leave-allocations/balance', [LeaveAllocationC::class, 'getBalance'])->name('leave-allocations.balance');
+    Route::get('/leave-allocations/calculate-quota', [LeaveAllocationC::class, 'calculateQuota'])->name('leave-allocations.calculate-quota');
 
     Route::get('/leave-types', [LeaveTypeC::class, 'index'])->middleware('permission:leave.types.manage')->name('hrms.leave.types.index');
     Route::post('/leave-types', [LeaveTypeC::class, 'store'])->middleware('permission:leave.types.manage')->name('hrms.leave.types.store');

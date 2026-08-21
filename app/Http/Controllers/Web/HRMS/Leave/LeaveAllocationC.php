@@ -207,10 +207,31 @@ class LeaveAllocationC extends Controller
         return response()->json([
             'total_allocated' => $allocation->total_allocated,
             'total_remaining' => $allocation->total_remaining,
-            'paid_remaining' => $allocation->paid_remaining,
-            'sick_remaining' => $allocation->sick_remaining,
+            'paid_allocated' => $allocation->paid_allocated,
+            'sick_allocated' => $allocation->sick_allocated,
             'comp_off_remaining' => $allocation->comp_off_remaining,
             'lwp_used' => $allocation->lwp_used,
+        ]);
+    }
+
+    public function calculateQuota(Request $request)
+    {
+        $policyId = $request->get('policy_id');
+        $stage = (string) $request->get('employment_stage', 'permanent');
+        $fromDateStr = $request->get('allocation_from_date');
+        $toDateStr = $request->get('allocation_to_date');
+
+        $policy = $policyId ? LeavePolicyM::find($policyId) : LeavePolicyM::where('is_active', 1)->first();
+
+        $fromDate = $fromDateStr ? Carbon::parse($fromDateStr) : null;
+        $toDate = $toDateStr ? Carbon::parse($toDateStr) : null;
+
+        [$total, $paid, $sick] = $this->allocationService->calculateAllocationAmounts($policy, $stage, $fromDate, $toDate);
+
+        return response()->json([
+            'total_allocated' => round($total, 2),
+            'paid_allocated' => round($paid, 2),
+            'sick_allocated' => round($sick, 2),
         ]);
     }
 }

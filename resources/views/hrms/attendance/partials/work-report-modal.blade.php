@@ -228,53 +228,87 @@
             document.getElementById('modal-report-title').innerText = log.title || 'Work Report Submitted';
             document.getElementById('modal-report-desc').innerText = log.description || 'No summary description provided.';
 
-            // Requirements / Tasks Checklist
+            // Requirements / Tasks Checklist / Projects
             const tasksList = document.getElementById('modal-tasks-list');
             tasksList.innerHTML = '';
 
-            // Normalize requirements/tasks
-            const items = log.requirements || log.tasks || [];
-            if (Array.isArray(items) && items.length > 0) {
-                items.forEach(item => {
-                    let taskText = '';
-                    let isCompleted = true;
+            if (log.projects && Array.isArray(log.projects) && log.projects.length > 0) {
+                log.projects.forEach(proj => {
+                    const projBlock = document.createElement('div');
+                    projBlock.className = 'mb-3 p-2.5 rounded-lg border bg-white shadow-xs';
+                    projBlock.style.borderRadius = '12px';
 
-                    if (typeof item === 'string') {
-                        taskText = item;
-                        isCompleted = true;
-                    } else if (typeof item === 'object' && item !== null) {
-                        taskText = item.text || item.task || item.title || item.description || 'Task';
-                        if (item.done !== undefined) {
-                            isCompleted = (item.done === true || item.done === 'true');
-                        } else {
-                            const tStatus = (item.status || 'completed').toLowerCase();
-                            isCompleted = (tStatus === 'completed' || tStatus === 'done' || tStatus === 'success');
-                        }
+                    let projTasksHtml = '';
+                    if (proj.tasks && Array.isArray(proj.tasks)) {
+                        proj.tasks.forEach(task => {
+                            const isDone = (task.is_completed === true || task.is_completed === 1 || task.is_completed === '1');
+                            const taskName = task.task_name || task.task || task.title || 'Task';
+                            projTasksHtml += `
+                                <div class="d-flex justify-content-between align-items-center mb-1.5 p-2 rounded" style="border-radius: 8px; background: ${isDone ? '#F0FDF4' : '#F8FAFC'}; border: ${isDone ? '1px solid #BBF7D0' : '1.5px solid #E2E8F0'};">
+                                    <div style="font-size: 12.5px; font-weight: 700; color: ${isDone ? '#166534' : '#334155'};">
+                                        ${isDone ? '☑' : '☐'} ${taskName}
+                                    </div>
+                                    <span style="font-size: 9px; font-weight: 800; padding: 2px 8px; border-radius: 50px; ${isDone ? 'background: #DCFCE7; color: #166534;' : 'background: #FEF3C7; color: #D97706;'}">
+                                        ${isDone ? 'COMPLETED' : 'PENDING'}
+                                    </span>
+                                </div>
+                            `;
+                        });
                     }
 
-                    const row = document.createElement('div');
-                    row.style.background = isCompleted ? '#F0FDF4' : '#F9FAFB';
-                    row.style.border = isCompleted ? '1px solid #BBF7D0' : '1px solid #E5E7EB';
-                    row.style.borderRadius = '10px';
-                    row.style.padding = '8px 12px';
-                    row.className = 'd-flex justify-content-between align-items-center gap-3';
-
-                    row.innerHTML = `
-                        <div style="font-size: 12.5px; font-weight: 700; color: ${isCompleted ? '#166534' : '#475467'};">
-                            ${isCompleted ? '☑' : '☐'} ${taskText}
+                    projBlock.innerHTML = `
+                        <div class="d-flex align-items-center mb-2 pb-1 border-bottom">
+                            <strong style="font-size: 13px; color: #1e1b4b;"><i class="fas fa-folder text-primary mr-1"></i> ${proj.project_name || 'Project'}</strong>
                         </div>
-                        <span style="font-size: 8.5px; font-weight: 800; padding: 2px 6px; border-radius: 50px; ${isCompleted ? 'background: #DCFCE7; color: #166534;' : 'background: #F3F4F6; color: #6B7280;'}">
-                            ${isCompleted ? 'COMPLETED' : 'PENDING'}
-                        </span>
+                        ${projTasksHtml}
                     `;
-                    tasksList.appendChild(row);
+                    tasksList.appendChild(projBlock);
                 });
             } else {
-                tasksList.innerHTML = `
-                    <div class="text-center py-2.5 border rounded-lg bg-white text-muted" style="border-radius: 10px; font-style: italic; font-size: 11.5px;">
-                        <i class="fas fa-info-circle mr-1"></i> No checklist items.
-                    </div>
-                `;
+                // Normalize requirements/tasks for legacy reports
+                const items = log.requirements || log.tasks || [];
+                if (Array.isArray(items) && items.length > 0) {
+                    items.forEach(item => {
+                        let taskText = '';
+                        let isCompleted = true;
+
+                        if (typeof item === 'string') {
+                            taskText = item;
+                            isCompleted = true;
+                        } else if (typeof item === 'object' && item !== null) {
+                            taskText = item.text || item.task || item.title || item.description || 'Task';
+                            if (item.done !== undefined) {
+                                isCompleted = (item.done === true || item.done === 'true');
+                            } else {
+                                const tStatus = (item.status || 'completed').toLowerCase();
+                                isCompleted = (tStatus === 'completed' || tStatus === 'done' || tStatus === 'success');
+                            }
+                        }
+
+                        const row = document.createElement('div');
+                        row.style.background = isCompleted ? '#F0FDF4' : '#F9FAFB';
+                        row.style.border = isCompleted ? '1px solid #BBF7D0' : '1px solid #E5E7EB';
+                        row.style.borderRadius = '10px';
+                        row.style.padding = '8px 12px';
+                        row.className = 'd-flex justify-content-between align-items-center gap-3 mb-1.5';
+
+                        row.innerHTML = `
+                            <div style="font-size: 12.5px; font-weight: 700; color: ${isCompleted ? '#166534' : '#475467'};">
+                                ${isCompleted ? '☑' : '☐'} ${taskText}
+                            </div>
+                            <span style="font-size: 8.5px; font-weight: 800; padding: 2px 6px; border-radius: 50px; ${isCompleted ? 'background: #DCFCE7; color: #166534;' : 'background: #F3F4F6; color: #6B7280;'}">
+                                ${isCompleted ? 'COMPLETED' : 'PENDING'}
+                            </span>
+                        `;
+                        tasksList.appendChild(row);
+                    });
+                } else {
+                    tasksList.innerHTML = `
+                        <div class="text-center py-2.5 border rounded-lg bg-white text-muted" style="border-radius: 10px; font-style: italic; font-size: 11.5px;">
+                            <i class="fas fa-info-circle mr-1"></i> No checklist items.
+                        </div>
+                    `;
+                }
             }
 
             // Test Verification Status

@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Route;
 $menus = isset($menus) ? $menus : collect();
 $active = isset($active) ? $active : '';
 
-$parentMenus = $menus[null] ?? collect();
+$parentMenus = $menus->get('') ?? $menus->get(null) ?? $menus->get(0) ?? $menus[null] ?? collect();
 
 $isMenuActive = function($item) use ($active) {
     $activeViewVar = $active ?? '';
@@ -30,6 +30,12 @@ $isMenuActive = function($item) use ($active) {
     
     // Check via active layout variable
     if (!empty($activeViewVar)) {
+        if (str_starts_with($activeViewVar, 'reporting_') || str_starts_with($activeViewVar, 'team_')) {
+            $cleanActive = str_replace(['reporting_', 'team_'], 'reporting.', $activeViewVar);
+            if (($item->route ?? '') === $cleanActive) {
+                return true;
+            }
+        }
         if ($activeViewVar === 'document_generation' && ($item->module_key === 'document_generation' || $item->route === 'hrms.document-generation.dashboard')) {
             return true;
         }
@@ -108,7 +114,7 @@ $resolveRouteName = function (?string $routeName): ?string {
         <nav class="menu" id="sidebarMenu">
             @forelse($parentMenus as $menu)
             @php
-            $children = $menus[$menu->id] ?? collect();
+            $children = $menus->get($menu->id) ?? $menus->get((string)$menu->id) ?? $menus[$menu->id] ?? collect();
             $hasChildren = $children->count() > 0;
             $isParentMenu = $hasChildren || empty($menu->route);
 
@@ -194,50 +200,64 @@ $resolveRouteName = function (?string $routeName): ?string {
 </aside>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+(function() {
+    function initSidebarAccordion() {
+        if (window.__sidebarAccordionBound) return;
+        window.__sidebarAccordionBound = true;
+
+        document.addEventListener('click', function(event) {
+            var toggle = event.target.closest('[data-sidebar-parent]');
+            if (!toggle) return;
+
+            event.preventDefault();
+
+            var group = toggle.closest('.sidebar-group');
+            if (!group) return;
+
+            var targetSelector = toggle.getAttribute('data-target');
+            var target = targetSelector ? document.querySelector(targetSelector) : group.querySelector('.sidebar-submenu');
+
+            var isOpen = group.classList.contains('open');
+
+            document.querySelectorAll('.sidebar-group.open').forEach(function(otherGroup) {
+                if (otherGroup !== group) {
+                    otherGroup.classList.remove('open');
+                    var otherToggle = otherGroup.querySelector('[data-sidebar-parent]');
+                    if (otherToggle) {
+                        otherToggle.classList.add('collapsed');
+                        otherToggle.setAttribute('aria-expanded', 'false');
+                    }
+                    var otherSubmenu = otherGroup.querySelector('.sidebar-submenu');
+                    if (otherSubmenu) {
+                        otherSubmenu.classList.remove('show');
+                    }
+                }
+            });
+
+            if (isOpen) {
+                group.classList.remove('open');
+                toggle.classList.add('collapsed');
+                toggle.setAttribute('aria-expanded', 'false');
+                if (target) target.classList.remove('show');
+            } else {
+                group.classList.add('open');
+                toggle.classList.remove('collapsed');
+                toggle.setAttribute('aria-expanded', 'true');
+                if (target) target.classList.add('show');
+            }
+        });
+
         document.querySelectorAll('[data-sidebar-empty-link]').forEach(function(link) {
             link.addEventListener('click', function(event) {
                 event.preventDefault();
             });
         });
+    }
 
-        document.querySelectorAll('[data-sidebar-parent]').forEach(function(toggle) {
-            toggle.addEventListener('click', function(event) {
-                event.preventDefault();
-
-                var targetSelector = toggle.getAttribute('data-target');
-                var target = targetSelector ? document.querySelector(targetSelector) : null;
-                var group = toggle.closest('.sidebar-group');
-
-                if (!target || !group) {
-                    return;
-                }
-
-                var isOpen = target.classList.contains('show');
-
-                document.querySelectorAll('#sidebarMenu .sidebar-submenu.show').forEach(function(submenu) {
-                    if (submenu !== target) {
-                        submenu.classList.remove('show');
-
-                        var submenuGroup = submenu.closest('.sidebar-group');
-                        var submenuToggle = submenuGroup ? submenuGroup.querySelector('[data-sidebar-parent]') : null;
-
-                        if (submenuGroup) {
-                            submenuGroup.classList.remove('open');
-                        }
-
-                        if (submenuToggle) {
-                            submenuToggle.classList.add('collapsed');
-                            submenuToggle.setAttribute('aria-expanded', 'false');
-                        }
-                    }
-                });
-
-                target.classList.toggle('show', !isOpen);
-                group.classList.toggle('open', !isOpen);
-                toggle.classList.toggle('collapsed', isOpen);
-                toggle.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
-            });
-        });
-    });
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initSidebarAccordion);
+    } else {
+        initSidebarAccordion();
+    }
+})();
 </script>

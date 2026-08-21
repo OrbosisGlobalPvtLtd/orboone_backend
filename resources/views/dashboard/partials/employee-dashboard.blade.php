@@ -449,150 +449,238 @@ $existingWorkMode = strtolower($todayRecord->work_mode ?? 'wfo');
                 {{-- Modal Body --}}
                 <div class="modal-body p-4" style="max-height: 72vh; overflow-y: auto;">
 
-                    {{-- 1. Task / Module Name --}}
+                    @php
+                        $assignedProjects = collect();
+                        $scopeS = app(\App\Services\HRMS\ProjectManagement\ProjectAccessScopeS::class);
+                        $empId = $scopeS->getOwnEmployeeId();
+                        if ($empId) {
+                            $projIds = $scopeS->getAccessibleProjectIds();
+                            $assignedProjects = \Illuminate\Support\Facades\DB::table('projects')
+                                ->whereIn('id', $projIds)
+                                ->select('id', 'name')
+                                ->orderBy('name')
+                                ->get();
+                        }
+                    @endphp
+
+                    <style>
+                        /* Custom Task Checkbox Styling: Yellow border for pending (unticked), Green background & checkmark for done (ticked) */
+                        .task-checkbox-custom {
+                            width: 20px;
+                            height: 20px;
+                            cursor: pointer;
+                            border-radius: 6px;
+                            border: 2px solid #eab308 !important; /* Yellow border for pending */
+                            background-color: #fffbeb !important; /* Light yellow tint */
+                            appearance: none;
+                            -webkit-appearance: none;
+                            outline: none;
+                            display: inline-flex;
+                            align-items: center;
+                            justify-content: center;
+                            transition: all 0.2s ease-in-out;
+                            margin-right: 8px;
+                            position: relative;
+                            vertical-align: middle;
+                            flex-shrink: 0;
+                        }
+                        .task-checkbox-custom:hover {
+                            border-color: #d97706 !important;
+                            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+                        }
+                        .task-checkbox-custom:checked {
+                            border-color: #16a34a !important; /* Green border for done */
+                            background-color: #16a34a !important; /* Green background */
+                            box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);
+                        }
+                        .task-checkbox-custom:checked::after {
+                            content: '✓';
+                            color: #ffffff;
+                            font-size: 13px;
+                            font-weight: 900;
+                            line-height: 1;
+                        }
+                    </style>
+
+                    {{-- Today's Work Section --}}
                     <div class="orb-card-section mb-3 p-3 bg-white border shadow-xs" style="border-radius: 18px; border: 1px solid #e2e8f0;">
-                        <div class="d-flex align-items-center mb-2">
-                            <div class="mr-3 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; background: #f3e8ff; border-radius: 10px; color: #7c3aed; font-weight: 800;">
-                                <i class="fas fa-terminal"></i>
-                            </div>
-                            <div>
-                                <label class="font-weight-bold text-dark mb-0 d-block" style="font-size: 14px;">Task / Module Name <span class="text-danger">*</span></label>
-                                <span class="text-muted small">Specify the active project, task or module name</span>
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="mr-3 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; background: #f3e8ff; border-radius: 10px; color: #7c3aed; font-weight: 800;">
+                                    <i class="fas fa-tasks"></i>
+                                </div>
+                                <div>
+                                    <label class="font-weight-bold text-dark mb-0 d-block" style="font-size: 15px;">Today's Work <span class="text-danger">*</span></label>
+                                    <span class="text-muted small">Project-based daily work items & tasks</span>
+                                </div>
                             </div>
                         </div>
-                        <input type="text" name="task_name" class="form-control font-weight-medium" required placeholder="Example: Attendance Punch Out Flow" style="border-radius: 12px; border: 1.5px solid #cbd5e1; font-size: 14px; padding: 10px 14px;">
-                    </div>
 
-                    {{-- 2. Today Work Description --}}
-                    <div class="orb-card-section mb-3 p-3 bg-white border shadow-xs" style="border-radius: 18px; border: 1px solid #e2e8f0;">
-                        <div class="d-flex align-items-center mb-2">
-                            <div class="mr-3 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; background: #f3e8ff; border-radius: 10px; color: #7c3aed; font-weight: 800;">
-                                <i class="fas fa-file-alt"></i>
-                            </div>
-                            <div>
-                                <label class="font-weight-bold text-dark mb-0 d-block" style="font-size: 14px;">Today Work Description <span class="text-danger">*</span></label>
-                                <span class="text-muted small">Describe the main updates and accomplishments</span>
+                        <div id="projectBlocksContainer">
+                            <!-- Project Block 0 -->
+                            <div class="project-block-card p-3 mb-3 border rounded-lg bg-light" id="projectBlock_0" data-block-idx="0">
+                                <div class="d-flex align-items-center justify-content-between pb-2 mb-2 border-bottom">
+                                    <span class="font-weight-bold text-primary small project-block-header-title">
+                                        <i class="fas fa-folder mr-1"></i> Project 1
+                                    </span>
+                                    <button type="button" class="btn btn-sm btn-outline-danger py-1 px-2 remove-project-btn" onclick="removeProjectBlock(this)" style="border-radius: 6px; font-size: 13px; display: none;" title="Remove Project">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </div>
+                                
+                                <div class="form-group mb-2">
+                                    <label class="small font-weight-bold text-dark mb-1">Project <span class="text-danger">*</span></label>
+                                    <div class="d-flex align-items-center">
+                                        <select name="projects[0][project_id]" class="form-control form-control-sm project-select" onchange="toggleCustomProjectInput(0)" required style="border-radius: 8px; border: 1.5px solid #cbd5e1; font-weight: 600; flex: 1;">
+                                            <option value="">-- Select Project --</option>
+                                            @foreach($assignedProjects as $p)
+                                                <option value="{{ $p->id }}">{{ $p->name }}</option>
+                                            @endforeach
+                                            <option value="custom">Custom</option>
+                                        </select>
+                                        <input type="text" name="projects[0][custom_project_name]" id="customProjectInput_0" class="form-control form-control-sm ml-2 custom-project-input" placeholder="Enter project or module name..." style="display: none; border-radius: 8px; border: 1.5px solid #cbd5e1; flex: 1;">
+                                    </div>
+                                </div>
+
+                                <!-- Tasks Container for Project Block 0 -->
+                                <div class="tasks-container mt-2" id="tasksContainer_0">
+                                    <div class="d-flex align-items-center justify-content-between mb-1">
+                                        <div class="d-flex align-items-center flex-wrap">
+                                            <label class="small font-weight-bold text-dark mb-0 mr-1">Tasks / Work Items <span class="text-danger">*</span></label>
+                                            <span class="badge badge-light border text-dark ml-2 d-inline-flex align-items-center" style="font-size: 10.5px; padding: 2px 6px; border-radius: 6px; background-color: #f8fafc;">
+                                                <span style="display:inline-flex; align-items:center; justify-content:center; width:13px; height:13px; background:#16a34a; color:#fff; border-radius:3px; font-size:9px; font-weight:900; margin-right:4px;">✓</span> Completed
+                                            </span>
+                                            <span class="badge badge-light border text-dark ml-1 d-inline-flex align-items-center" style="font-size: 10.5px; padding: 2px 6px; border-radius: 6px; background-color: #f8fafc;">
+                                                <span style="display:inline-flex; align-items:center; justify-content:center; width:13px; height:13px; border:1.5px solid #eab308; background:#fffbeb; border-radius:3px; margin-right:4px;"></span> Pending
+                                            </span>
+                                        </div>
+                                        <button type="button" class="btn btn-xs btn-link p-0 font-weight-bold" onclick="toggleQuickTaskBox(0)" style="color: #7c3aed; font-size: 11.5px; text-decoration: none;">
+                                            <i class="fas fa-edit mr-1"></i> Quick Add Tasks
+                                        </button>
+                                    </div>
+
+                                    <!-- Quick Multi-line Task Entry Box -->
+                                    <div id="quickTaskBox_0" class="mb-2 p-2 border rounded bg-white shadow-xs" style="display: none; border-radius: 10px;">
+                                        <div class="small font-weight-bold text-dark mb-1">
+                                            <i class="fas fa-paste text-primary mr-1"></i> Enter one task per line...
+                                        </div>
+                                        <textarea id="quickTaskText_0" class="form-control form-control-sm mb-2" rows="3" placeholder="Attendance Module - Early Logout Fix&#10;Leave Approval UI&#10;Payroll Testing" style="border-radius: 8px; font-size: 12px; border: 1.5px solid #cbd5e1;"></textarea>
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <button type="button" class="btn btn-xs font-weight-bold text-white py-1 px-3" onclick="processQuickTasks(0)" style="border-radius: 6px; font-size: 11px; background: #7c3aed; border: none;">
+                                                <i class="fas fa-plus-circle mr-1"></i> Add Tasks
+                                            </button>
+                                            <button type="button" class="btn btn-xs btn-light font-weight-bold py-1 px-2 border" onclick="toggleQuickTaskBox(0)" style="border-radius: 6px; font-size: 11px; color: #64748b;">
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Task Rows List -->
+                                    <div id="taskRowsList_0">
+                                        <div class="d-flex align-items-center mb-2 task-row" id="taskRow_0_0">
+                                            <input type="hidden" name="projects[0][tasks][0][is_completed]" value="0">
+                                            <input type="checkbox" name="projects[0][tasks][0][is_completed]" value="1" class="task-checkbox-custom task-checkbox" id="taskCheck_0_0" onchange="syncSelectAllCheckbox(0)" title="Unticked = Pending, Ticked = Completed">
+                                            <input type="text" name="projects[0][tasks][0][task_name]" class="form-control form-control-sm task-name-input" placeholder="Task description..." required style="border-radius: 8px; border: 1.5px solid #cbd5e1;">
+                                            <button type="button" class="btn btn-link text-danger ml-2 p-0 remove-task-btn" onclick="removeTaskRow(this)" style="font-size: 18px; text-decoration: none; display: none;" title="Remove Task">&times;</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="align-items-center justify-content-between mt-2 pt-1 border-top" id="tasksFooterRow_0" style="display: flex;">
+                                        <div class="d-flex align-items-center">
+                                            <input type="checkbox" id="selectAllCheck_0" onchange="toggleSelectAllTasks(0, this.checked)" style="width: 17px; height: 17px; cursor: pointer; accent-color: #7c3aed; margin-right: 6px;" title="Mark All Completed">
+                                            <label for="selectAllCheck_0" class="small font-weight-bold text-dark mb-0 cursor-pointer" style="font-size: 12px; user-select: none;" id="selectAllLabel_0">Mark All Completed</label>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-light border font-weight-bold add-task-btn" id="addTaskBtn_0" onclick="addTaskRow(0)" style="border-radius: 8px; color: #7c3aed;">
+                                            <i class="fas fa-plus mr-1"></i> Add Task
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <textarea name="today_work_description" class="form-control font-weight-medium" rows="3" required placeholder="Write what you worked on today..." style="border-radius: 12px; border: 1.5px solid #cbd5e1; font-size: 14px; padding: 10px 14px;"></textarea>
+
+                        <button type="button" class="btn btn-sm btn-outline-primary font-weight-bold mt-1" onclick="addProjectBlock()" style="border-radius: 10px;">
+                            <i class="fas fa-folder-plus mr-1"></i> Add Project
+                        </button>
                     </div>
 
-                    {{-- 3. Current Status --}}
+                    {{-- Single Overall Today's Work Status (After all projects, before blockers) --}}
                     <div class="orb-card-section mb-3 p-3 bg-white border shadow-xs" style="border-radius: 18px; border: 1px solid #e2e8f0;">
                         <div class="d-flex align-items-center mb-2">
                             <div class="mr-3 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; background: #f3e8ff; border-radius: 10px; color: #7c3aed; font-weight: 800;">
                                 <i class="fas fa-sync-alt"></i>
                             </div>
                             <div>
-                                <label class="font-weight-bold text-dark mb-0 d-block" style="font-size: 14px;">Current Status <span class="text-danger">*</span></label>
-                                <span class="text-muted small">Select the current progress state</span>
+                                <label class="font-weight-bold text-dark mb-0 d-block" style="font-size: 14px;">Today's Work Status <span class="text-danger">*</span></label>
+                                <span class="text-muted small">Overall status of the employee's work performed today</span>
                             </div>
                         </div>
-                        <input type="hidden" name="current_status" id="web_current_status" value="Progress">
-                        <div class="row no-gutters mt-2" id="statusPillGroup">
+                        <input type="hidden" name="today_work_status" id="web_today_work_status" value="in_progress">
+                        <div class="row no-gutters mt-2" id="todayStatusPillGroup">
                             <div class="col-3 pr-1">
-                                <button type="button" class="btn btn-block py-2 px-2 status-pill-btn active" data-status="Progress" onclick="selectStatusPill('Progress')" style="border-radius: 12px; font-weight: 800; font-size: 13px; border: 2px solid #3b82f6; background: #eff6ff; color: #2563eb;">
-                                    <i class="far fa-clock mr-1"></i> Progress
+                                <button type="button" class="btn btn-block py-2 px-2 today-status-pill-btn active" data-status="in_progress" onclick="selectTodayStatusPill('in_progress')" style="border-radius: 12px; font-weight: 800; font-size: 13px; border: 2px solid #3b82f6; background: #eff6ff; color: #2563eb;">
+                                    <i class="far fa-clock mr-1"></i> In Progress
                                 </button>
                             </div>
                             <div class="col-3 px-1">
-                                <button type="button" class="btn btn-block py-2 px-2 status-pill-btn" data-status="Testing" onclick="selectStatusPill('Testing')" style="border-radius: 12px; font-weight: 700; font-size: 13px; border: 1.5px solid #e2e8f0; background: #fff; color: #475569;">
+                                <button type="button" class="btn btn-block py-2 px-2 today-status-pill-btn" data-status="testing" onclick="selectTodayStatusPill('testing')" style="border-radius: 12px; font-weight: 700; font-size: 13px; border: 1.5px solid #e2e8f0; background: #fff; color: #475569;">
                                     <i class="fas fa-flask mr-1"></i> Testing
                                 </button>
                             </div>
                             <div class="col-3 px-1">
-                                <button type="button" class="btn btn-block py-2 px-2 status-pill-btn" data-status="Done" onclick="selectStatusPill('Done')" style="border-radius: 12px; font-weight: 700; font-size: 13px; border: 1.5px solid #e2e8f0; background: #fff; color: #475569;">
-                                    <i class="far fa-check-circle mr-1"></i> Done
+                                <button type="button" class="btn btn-block py-2 px-2 today-status-pill-btn" data-status="completed" onclick="selectTodayStatusPill('completed')" style="border-radius: 12px; font-weight: 700; font-size: 13px; border: 1.5px solid #e2e8f0; background: #fff; color: #475569;">
+                                    <i class="far fa-check-circle mr-1"></i> Completed
                                 </button>
                             </div>
                             <div class="col-3 pl-1">
-                                <button type="button" class="btn btn-block py-2 px-2 status-pill-btn" data-status="Blocked" onclick="selectStatusPill('Blocked')" style="border-radius: 12px; font-weight: 700; font-size: 13px; border: 1.5px solid #e2e8f0; background: #fff; color: #475569;">
+                                <button type="button" class="btn btn-block py-2 px-2 today-status-pill-btn" data-status="blocked" onclick="selectTodayStatusPill('blocked')" style="border-radius: 12px; font-weight: 700; font-size: 13px; border: 1.5px solid #e2e8f0; background: #fff; color: #475569;">
                                     <i class="fas fa-ban mr-1"></i> Blocked
                                 </button>
                             </div>
                         </div>
                     </div>
 
-                    {{-- 4. Requirement Checklist --}}
+                    {{-- Issues / Blockers --}}
                     <div class="orb-card-section mb-3 p-3 bg-white border shadow-xs" style="border-radius: 18px; border: 1px solid #e2e8f0;">
-                        <div class="d-flex align-items-center justify-content-between mb-2">
+                        <div class="d-flex align-items-center justify-content-between cursor-pointer" onclick="toggleCollapsibleSection('issuesBlockersBox', 'issuesToggleIcon')" style="user-select: none;">
                             <div class="d-flex align-items-center">
                                 <div class="mr-3 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; background: #f3e8ff; border-radius: 10px; color: #7c3aed; font-weight: 800;">
-                                    <i class="fas fa-tasks"></i>
+                                    <i class="fas fa-bug"></i>
                                 </div>
                                 <div>
-                                    <label class="font-weight-bold text-dark mb-0 d-block" style="font-size: 14px;">Requirement Checklist <span class="text-danger">*</span></label>
-                                    <span class="text-muted small">Track individual tasks and project requirements</span>
+                                    <label class="font-weight-bold text-dark mb-0 d-block cursor-pointer" style="font-size: 14px;">Issues / Blockers <span class="badge badge-light border text-muted ml-1" style="font-size: 10px; font-weight: 600;">Optional</span></label>
+                                    <span class="text-muted small">Describe any issue, blocker or dependency...</span>
                                 </div>
                             </div>
-                            <span class="badge px-3 py-2 font-weight-bold" id="reqCompletedCounter" style="border-radius: 20px; background: #f3e8ff; color: #7c3aed; font-size: 12px;">Completed 0 / 1</span>
+                            <div class="d-flex align-items-center">
+                                <span class="badge badge-light border text-primary mr-2" id="issuesBadgeText" style="font-size: 11px; padding: 4px 8px; border-radius: 6px; display: none;">Added</span>
+                                <i class="fas fa-chevron-down text-muted" id="issuesToggleIcon" style="transition: transform 0.2s; font-size: 14px;"></i>
+                            </div>
                         </div>
+                        <div id="issuesBlockersBox" class="mt-2 pt-2 border-top" style="display: none;">
+                            <textarea name="issues_blockers" id="issues_blockers_input" class="form-control" rows="2" placeholder="Describe any issue, blocker or dependency..." style="border-radius: 12px; border: 1.5px solid #cbd5e1; font-size: 13px; padding: 10px 14px;" oninput="updateCollapsibleBadge('issues_blockers_input', 'issuesBadgeText')"></textarea>
+                        </div>
+                    </div>
 
-                        <div id="requirementListContainer" class="mt-2">
-                            <div class="d-flex align-items-center mb-2 req-item-row" id="reqRow_0">
-                                <div class="custom-control custom-checkbox mr-2">
-                                    <input type="checkbox" class="custom-control-input req-checkbox" id="reqCheck_0" onchange="updateReqCounter()">
-                                    <label class="custom-control-label" for="reqCheck_0"></label>
+                    {{-- Additional Notes --}}
+                    <div class="orb-card-section mb-3 p-3 bg-white border shadow-xs" style="border-radius: 18px; border: 1px solid #e2e8f0;">
+                        <div class="d-flex align-items-center justify-content-between cursor-pointer" onclick="toggleCollapsibleSection('additionalNotesBox', 'notesToggleIcon')" style="user-select: none;">
+                            <div class="d-flex align-items-center">
+                                <div class="mr-3 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; background: #f3e8ff; border-radius: 10px; color: #7c3aed; font-weight: 800;">
+                                    <i class="fas fa-comment-alt"></i>
                                 </div>
-                                <input type="text" name="requirements[]" class="form-control req-text-input" placeholder="Requirement / completed point..." style="border-radius: 10px; border: 1.5px solid #cbd5e1; font-size: 13px;" oninput="updateReqCounter()">
-                                <button type="button" class="btn btn-link text-danger ml-2 p-0" onclick="removeReqRow(0)" style="font-size: 18px; text-decoration: none;">&times;</button>
+                                <div>
+                                    <label class="font-weight-bold text-dark mb-0 d-block cursor-pointer" style="font-size: 14px;">Additional Notes <span class="badge badge-light border text-muted ml-1" style="font-size: 10px; font-weight: 600;">Optional</span></label>
+                                    <span class="text-muted small">Add any additional notes...</span>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <span class="badge badge-light border text-primary mr-2" id="notesBadgeText" style="font-size: 11px; padding: 4px 8px; border-radius: 6px; display: none;">Added</span>
+                                <i class="fas fa-chevron-down text-muted" id="notesToggleIcon" style="transition: transform 0.2s; font-size: 14px;"></i>
                             </div>
                         </div>
-
-                        <button type="button" class="btn btn-link font-weight-bold p-0 mt-1 d-inline-flex align-items-center" onclick="addRequirementRow()" style="color: #7c3aed; font-size: 13px; text-decoration: none;">
-                            <i class="fas fa-plus mr-1"></i> Add Requirement
-                        </button>
-                    </div>
-
-                    {{-- 5. Test Status (Optional - Multi-select Checkboxes) --}}
-                    <div class="orb-card-section mb-3 p-3 bg-white border shadow-xs" style="border-radius: 18px; border: 1px solid #e2e8f0;">
-                        <div class="d-flex align-items-center mb-2">
-                            <div class="mr-3 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; background: #f3e8ff; border-radius: 10px; color: #7c3aed; font-weight: 800;">
-                                <i class="fas fa-clipboard-check"></i>
-                            </div>
-                            <div>
-                                <label class="font-weight-bold text-dark mb-0 d-block" style="font-size: 14px;">Test Status</label>
-                                <span class="text-muted small">Verify if changes are tested and/or completed (Select all that apply)</span>
-                            </div>
+                        <div id="additionalNotesBox" class="mt-2 pt-2 border-top" style="display: none;">
+                            <textarea name="remarks" id="remarks_input" class="form-control" rows="2" placeholder="Add any additional notes..." style="border-radius: 12px; border: 1.5px solid #cbd5e1; font-size: 13px; padding: 10px 14px;" oninput="updateCollapsibleBadge('remarks_input', 'notesBadgeText')"></textarea>
                         </div>
-                        <div class="d-flex align-items-center mt-2">
-                            <div class="custom-control custom-checkbox mr-4">
-                                <input type="checkbox" id="testStatusTested" name="test_status[]" value="Tested" class="custom-control-input">
-                                <label class="custom-control-label font-weight-bold text-dark" for="testStatusTested" style="font-size: 13px; cursor: pointer;">Tested</label>
-                            </div>
-                            <div class="custom-control custom-checkbox">
-                                <input type="checkbox" id="testStatusCompleted" name="test_status[]" value="Completed" class="custom-control-input">
-                                <label class="custom-control-label font-weight-bold text-dark" for="testStatusCompleted" style="font-size: 13px; cursor: pointer;">Completed</label>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- 6. Issues / Blockers --}}
-                    <div class="orb-card-section mb-3 p-3 bg-white border shadow-xs" style="border-radius: 18px; border: 1px solid #e2e8f0;">
-                        <div class="d-flex align-items-center mb-2">
-                            <div class="mr-3 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; background: #f3e8ff; border-radius: 10px; color: #7c3aed; font-weight: 800;">
-                                <i class="fas fa-bug"></i>
-                            </div>
-                            <div>
-                                <label class="font-weight-bold text-dark mb-0 d-block" style="font-size: 14px;">Issues / Blockers</label>
-                                <span class="text-muted small">Optional: list system bugs or blockers (one per line)</span>
-                            </div>
-                        </div>
-                        <textarea name="issues_blockers" class="form-control" rows="2" placeholder="Optional: Write issues one per line..." style="border-radius: 12px; border: 1.5px solid #cbd5e1; font-size: 13px; padding: 10px 14px;"></textarea>
-                    </div>
-
-                    {{-- 7. Additional Notes --}}
-                    <div class="orb-card-section mb-3 p-3 bg-white border shadow-xs" style="border-radius: 18px; border: 1px solid #e2e8f0;">
-                        <div class="d-flex align-items-center mb-2">
-                            <div class="mr-3 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; background: #f3e8ff; border-radius: 10px; color: #7c3aed; font-weight: 800;">
-                                <i class="fas fa-comment-alt"></i>
-                            </div>
-                            <div>
-                                <label class="font-weight-bold text-dark mb-0 d-block" style="font-size: 14px;">Additional Notes</label>
-                                <span class="text-muted small">Optional: add any comments or remarks</span>
-                            </div>
-                        </div>
-                        <textarea name="remarks" class="form-control" rows="2" placeholder="Optional notes..." style="border-radius: 12px; border: 1.5px solid #cbd5e1; font-size: 13px; padding: 10px 14px;"></textarea>
                     </div>
 
                     <div class="p-3 mb-1 border" id="locationStatusOut" style="border-radius: 14px; background: #f8fafc !important; border: 1px solid #e2e8f0 !important; font-size: 13px; font-weight: 600;">
@@ -618,42 +706,42 @@ $existingWorkMode = strtolower($todayRecord->work_mode ?? 'wfo');
 </div>
 
 <script>
-    let reqCount = 1;
+    let projectBlockIdx = 1;
+    let taskIdxCounter = { 0: 1 };
 
-    const statusThemes = {
-        'Progress': {
-            bg: '#eff6ff',
-            color: '#2563eb',
-            border: '2px solid #3b82f6'
-        },
-        'Testing': {
-            bg: '#f3e8ff',
-            color: '#7c3aed',
-            border: '2px solid #8b5cf6'
-        },
-        'Done': {
-            bg: '#dcfce7',
-            color: '#15803d',
-            border: '2px solid #22c55e'
-        },
-        'Blocked': {
-            bg: '#fee2e2',
-            color: '#b91c1c',
-            border: '2px solid #ef4444'
+    function toggleCollapsibleSection(boxId, iconId) {
+        const box = document.getElementById(boxId);
+        const icon = document.getElementById(iconId);
+        if (!box) return;
+
+        const isHidden = box.style.display === 'none';
+        if (isHidden) {
+            box.style.display = 'block';
+            if (icon) icon.className = 'fas fa-chevron-up text-primary';
+        } else {
+            box.style.display = 'none';
+            if (icon) icon.className = 'fas fa-chevron-down text-muted';
         }
-    };
+    }
 
-    function selectStatusPill(status) {
-        const hiddenInput = document.getElementById('web_current_status');
+    function updateCollapsibleBadge(inputId, badgeId) {
+        const input = document.getElementById(inputId);
+        const badge = document.getElementById(badgeId);
+        if (!input || !badge) return;
+        if (input.value.trim().length > 0) {
+            badge.style.display = 'inline-block';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+
+    function selectTodayStatusPill(status) {
+        const hiddenInput = document.getElementById('web_today_work_status');
         if (hiddenInput) hiddenInput.value = status;
-        document.querySelectorAll('.status-pill-btn').forEach(btn => {
+        document.querySelectorAll('.today-status-pill-btn').forEach(btn => {
             const s = btn.getAttribute('data-status');
             if (s === status) {
-                const theme = statusThemes[s] || {
-                    bg: '#f3e8ff',
-                    color: '#7c3aed',
-                    border: '2px solid #7c3aed'
-                };
+                const theme = todayStatusThemes[s] || { bg: '#f3e8ff', color: '#7c3aed', border: '2px solid #7c3aed' };
                 btn.style.background = theme.bg;
                 btn.style.color = theme.color;
                 btn.style.border = theme.border;
@@ -669,47 +757,329 @@ $existingWorkMode = strtolower($todayRecord->work_mode ?? 'wfo');
         });
     }
 
-    function updateReqCounter() {
-        const rows = document.querySelectorAll('.req-item-row');
-        let completed = 0;
-        rows.forEach(row => {
-            const chk = row.querySelector('.req-checkbox');
-            const text = row.querySelector('.req-text-input');
-            if (chk && chk.checked && text && text.value.trim() !== '') {
-                completed++;
+    function toggleSelectAllTasks(projIdx, isChecked) {
+        const container = document.getElementById(`taskRowsList_${projIdx}`);
+        if (!container) return;
+
+        const checkboxes = container.querySelectorAll('.task-checkbox');
+        checkboxes.forEach(cb => {
+            cb.checked = isChecked;
+        });
+
+        const label = document.getElementById(`selectAllLabel_${projIdx}`);
+        if (label) {
+            label.textContent = isChecked ? 'Mark All Pending' : 'Mark All Completed';
+        }
+    }
+
+    function syncSelectAllCheckbox(projIdx) {
+        const container = document.getElementById(`taskRowsList_${projIdx}`);
+        const selectAllCb = document.getElementById(`selectAllCheck_${projIdx}`);
+        const label = document.getElementById(`selectAllLabel_${projIdx}`);
+        if (!container || !selectAllCb) return;
+
+        const checkboxes = container.querySelectorAll('.task-checkbox');
+        if (checkboxes.length === 0) return;
+
+        let allChecked = true;
+        checkboxes.forEach(cb => {
+            if (!cb.checked) allChecked = false;
+        });
+        selectAllCb.checked = allChecked;
+        if (label) {
+            label.textContent = allChecked ? 'Mark All Pending' : 'Mark All Completed';
+        }
+    }
+
+    function toggleQuickTaskBox(projIdx) {
+        const box = document.getElementById(`quickTaskBox_${projIdx}`);
+        const rowsList = document.getElementById(`taskRowsList_${projIdx}`);
+        const footerRow = document.getElementById(`tasksFooterRow_${projIdx}`);
+        const textarea = document.getElementById(`quickTaskText_${projIdx}`);
+        if (!box) return;
+
+        const isHidden = box.style.display === 'none';
+
+        if (isHidden) {
+            if (rowsList && textarea) {
+                const currentTasks = [];
+                rowsList.querySelectorAll('.task-name-input').forEach(input => {
+                    const val = input.value.trim();
+                    if (val) currentTasks.push(val);
+                });
+                textarea.value = currentTasks.join('\n');
+            }
+
+            box.style.display = 'block';
+            if (rowsList) rowsList.style.setProperty('display', 'none', 'important');
+            if (footerRow) footerRow.style.setProperty('display', 'none', 'important');
+        } else {
+            box.style.display = 'none';
+            if (rowsList) rowsList.style.display = 'block';
+            if (footerRow) footerRow.style.setProperty('display', 'flex', 'important');
+        }
+    }
+
+    function processQuickTasks(projIdx) {
+        const textarea = document.getElementById(`quickTaskText_${projIdx}`);
+        if (!textarea) return;
+
+        const rawText = textarea.value;
+        const container = document.getElementById(`taskRowsList_${projIdx}`);
+        if (!container) return;
+
+        const existingStatusMap = {};
+        container.querySelectorAll('.task-row').forEach(row => {
+            const input = row.querySelector('.task-name-input');
+            const check = row.querySelector('.task-checkbox');
+            if (input && check) {
+                const val = input.value.trim().toLowerCase();
+                if (val) {
+                    existingStatusMap[val] = check.checked;
+                }
             }
         });
-        const counterEl = document.getElementById('reqCompletedCounter');
-        if (counterEl) {
-            counterEl.innerText = `Completed ${completed} / ${rows.length}`;
+
+        // Filter out empty lines and prompt/instructional text
+        const lines = rawText.split('\n')
+            .map(l => l.trim())
+            .filter(l => {
+                if (l.length === 0) return false;
+                const lower = l.toLowerCase();
+                if (lower.includes('enter one task per line') || 
+                    lower.includes('paste multiple tasks') || 
+                    lower.includes('quick add tasks') || 
+                    lower.includes('quick paste box')) {
+                    return false;
+                }
+                return true;
+            });
+
+        if (lines.length === 0) {
+            container.innerHTML = `
+                <div class="d-flex align-items-center mb-2 task-row" id="taskRow_${projIdx}_0">
+                    <input type="hidden" name="projects[${projIdx}][tasks][0][is_completed]" value="0">
+                    <input type="checkbox" name="projects[${projIdx}][tasks][0][is_completed]" value="1" class="task-checkbox-custom task-checkbox" id="taskCheck_${projIdx}_0" onchange="syncSelectAllCheckbox(${projIdx})" title="Unticked = Pending, Ticked = Completed">
+                    <input type="text" name="projects[${projIdx}][tasks][0][task_name]" class="form-control form-control-sm task-name-input" placeholder="Task description..." required style="border-radius: 8px; border: 1.5px solid #cbd5e1;">
+                    <button type="button" class="btn btn-link text-danger ml-2 p-0 remove-task-btn" onclick="removeTaskRow(this)" style="font-size: 18px; text-decoration: none; display: none;" title="Remove Task">&times;</button>
+                </div>
+            `;
+            taskIdxCounter[projIdx] = 1;
+        } else {
+            let rowsHtml = '';
+            const uniqueLines = [];
+            const seen = new Set();
+
+            lines.forEach(line => {
+                const lower = line.toLowerCase();
+                if (!seen.has(lower)) {
+                    seen.add(lower);
+                    uniqueLines.push(line);
+                }
+            });
+
+            uniqueLines.forEach((line, tIdx) => {
+                const isCompleted = existingStatusMap[line.toLowerCase()] === true;
+                const checkedAttr = isCompleted ? 'checked' : '';
+                const valEscaped = line.replace(/"/g, '&quot;');
+
+                rowsHtml += `
+                    <div class="d-flex align-items-center mb-2 task-row" id="taskRow_${projIdx}_${tIdx}">
+                        <input type="hidden" name="projects[${projIdx}][tasks][${tIdx}][is_completed]" value="0">
+                        <input type="checkbox" name="projects[${projIdx}][tasks][${tIdx}][is_completed]" value="1" class="task-checkbox-custom task-checkbox" id="taskCheck_${projIdx}_${tIdx}" onchange="syncSelectAllCheckbox(${projIdx})" title="Unticked = Pending, Ticked = Completed" ${checkedAttr}>
+                        <input type="text" name="projects[${projIdx}][tasks][${tIdx}][task_name]" class="form-control form-control-sm task-name-input" value="${valEscaped}" required style="border-radius: 8px; border: 1.5px solid #cbd5e1;">
+                        <button type="button" class="btn btn-link text-danger ml-2 p-0 remove-task-btn" onclick="removeTaskRow(this)" style="font-size: 18px; text-decoration: none;" title="Remove Task">&times;</button>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = rowsHtml;
+            taskIdxCounter[projIdx] = uniqueLines.length;
+        }
+
+        updateTaskRemoveButtonsInContainer(container);
+        syncSelectAllCheckbox(projIdx);
+
+        const box = document.getElementById(`quickTaskBox_${projIdx}`);
+        const footerRow = document.getElementById(`tasksFooterRow_${projIdx}`);
+        if (box) box.style.display = 'none';
+        if (container) container.style.display = 'block';
+        if (footerRow) footerRow.style.setProperty('display', 'flex', 'important');
+    }
+
+    function toggleCustomProjectInput(projIdx) {
+        const selectEl = document.querySelector(`select[name="projects[${projIdx}][project_id]"]`);
+        const customInput = document.getElementById(`customProjectInput_${projIdx}`);
+        if (!selectEl || !customInput) return;
+
+        if (selectEl.value === 'custom') {
+            customInput.style.display = 'block';
+            customInput.required = true;
+        } else {
+            customInput.style.display = 'none';
+            customInput.required = false;
+            customInput.value = '';
         }
     }
 
-    function addRequirementRow() {
-        const container = document.getElementById('requirementListContainer');
+    function addTaskRow(projIdx) {
+        const container = document.getElementById(`taskRowsList_${projIdx}`);
         if (!container) return;
-        const rowId = reqCount++;
-        const div = document.createElement('div');
-        div.className = 'd-flex align-items-center mb-2 req-item-row';
-        div.id = `reqRow_${rowId}`;
-        div.innerHTML = `
-        <div class="custom-control custom-checkbox mr-2">
-            <input type="checkbox" class="custom-control-input req-checkbox" id="reqCheck_${rowId}" onchange="updateReqCounter()">
-            <label class="custom-control-label" for="reqCheck_${rowId}"></label>
-        </div>
-        <input type="text" name="requirements[]" class="form-control req-text-input" placeholder="Requirement / completed point..." style="border-radius: 10px; border: 1.5px solid #cbd5e1; font-size: 13px;" oninput="updateReqCounter()">
-        <button type="button" class="btn btn-link text-danger ml-2 p-0" onclick="removeReqRow(${rowId})" style="font-size: 18px; text-decoration: none;">&times;</button>
-    `;
-        container.appendChild(div);
-        updateReqCounter();
+
+        if (!taskIdxCounter[projIdx]) {
+            taskIdxCounter[projIdx] = 1;
+        }
+        const tIdx = taskIdxCounter[projIdx]++;
+
+        const taskDiv = document.createElement('div');
+        taskDiv.className = 'd-flex align-items-center mb-2 task-row';
+        taskDiv.id = `taskRow_${projIdx}_${tIdx}`;
+        taskDiv.innerHTML = `
+            <input type="hidden" name="projects[${projIdx}][tasks][${tIdx}][is_completed]" value="0">
+            <input type="checkbox" name="projects[${projIdx}][tasks][${tIdx}][is_completed]" value="1" class="task-checkbox-custom task-checkbox" id="taskCheck_${projIdx}_${tIdx}" onchange="syncSelectAllCheckbox(${projIdx})" title="Unticked = Pending, Ticked = Completed">
+            <input type="text" name="projects[${projIdx}][tasks][${tIdx}][task_name]" class="form-control form-control-sm task-name-input" placeholder="Task description..." required style="border-radius: 8px; border: 1.5px solid #cbd5e1;">
+            <button type="button" class="btn btn-link text-danger ml-2 p-0 remove-task-btn" onclick="removeTaskRow(this)" style="font-size: 18px; text-decoration: none;" title="Remove Task">&times;</button>
+        `;
+        container.appendChild(taskDiv);
+        updateTaskRemoveButtonsInContainer(container);
+        syncSelectAllCheckbox(projIdx);
     }
 
-    function removeReqRow(id) {
-        const row = document.getElementById(`reqRow_${id}`);
+    function removeTaskRow(btnEl) {
+        const row = btnEl.closest ? btnEl.closest('.task-row') : null;
         if (row) {
+            const container = row.closest('.tasks-container') || row.parentElement;
+            const block = row.closest('.project-block-card');
+            const projIdx = block ? block.getAttribute('data-block-idx') : 0;
             row.remove();
-            updateReqCounter();
+            if (container) {
+                updateTaskRemoveButtonsInContainer(container);
+            }
+            syncSelectAllCheckbox(projIdx);
         }
+    }
+
+    function updateTaskRemoveButtonsInContainer(container) {
+        const rows = container.querySelectorAll('.task-row');
+        rows.forEach((row) => {
+            const btn = row.querySelector('.remove-task-btn');
+            if (btn) {
+                btn.style.display = rows.length > 1 ? 'inline-block' : 'none';
+            }
+        });
+    }
+
+    function addProjectBlock() {
+        const container = document.getElementById('projectBlocksContainer');
+        if (!container) return;
+
+        const pIdx = projectBlockIdx++;
+        taskIdxCounter[pIdx] = 1;
+
+        const firstSelect = document.querySelector('select.project-select');
+        const optionsHtml = firstSelect ? firstSelect.innerHTML : '<option value="">-- Select Project --</option><option value="custom">Custom</option>';
+
+        const pDiv = document.createElement('div');
+        pDiv.className = 'project-block-card p-3 mb-3 border rounded-lg bg-light';
+        pDiv.id = `projectBlock_${pIdx}`;
+        pDiv.setAttribute('data-block-idx', pIdx);
+
+        pDiv.innerHTML = `
+            <div class="d-flex align-items-center justify-content-between pb-2 mb-2 border-bottom">
+                <span class="font-weight-bold text-primary small project-block-header-title">
+                    <i class="fas fa-folder mr-1"></i> Project ${pIdx + 1}
+                </span>
+                <button type="button" class="btn btn-sm btn-outline-danger py-1 px-2 remove-project-btn" onclick="removeProjectBlock(this)" style="border-radius: 6px; font-size: 13px;" title="Remove Project">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            </div>
+
+            <div class="form-group mb-2">
+                <label class="small font-weight-bold text-dark mb-1">Project <span class="text-danger">*</span></label>
+                <div class="d-flex align-items-center">
+                    <select name="projects[${pIdx}][project_id]" class="form-control form-control-sm project-select" onchange="toggleCustomProjectInput(${pIdx})" required style="border-radius: 8px; border: 1.5px solid #cbd5e1; font-weight: 600; flex: 1;">
+                        ${optionsHtml}
+                    </select>
+                    <input type="text" name="projects[${pIdx}][custom_project_name]" id="customProjectInput_${pIdx}" class="form-control form-control-sm ml-2 custom-project-input" placeholder="Enter project or module name..." style="display: none; border-radius: 8px; border: 1.5px solid #cbd5e1; flex: 1;">
+                </div>
+            </div>
+
+            <div class="tasks-container mt-2" id="tasksContainer_${pIdx}">
+                <div class="d-flex align-items-center justify-content-between mb-1">
+                    <div class="d-flex align-items-center flex-wrap">
+                        <label class="small font-weight-bold text-dark mb-0 mr-1">Tasks / Work Items <span class="text-danger">*</span></label>
+                        <span class="badge badge-light border text-dark ml-2 d-inline-flex align-items-center" style="font-size: 10.5px; padding: 2px 6px; border-radius: 6px; background-color: #f8fafc;">
+                            <span style="display:inline-flex; align-items:center; justify-content:center; width:13px; height:13px; background:#16a34a; color:#fff; border-radius:3px; font-size:9px; font-weight:900; margin-right:4px;">✓</span> Completed
+                        </span>
+                        <span class="badge badge-light border text-dark ml-1 d-inline-flex align-items-center" style="font-size: 10.5px; padding: 2px 6px; border-radius: 6px; background-color: #f8fafc;">
+                            <span style="display:inline-flex; align-items:center; justify-content:center; width:13px; height:13px; border:1.5px solid #eab308; background:#fffbeb; border-radius:3px; margin-right:4px;"></span> Pending
+                        </span>
+                    </div>
+                    <button type="button" class="btn btn-xs btn-link p-0 font-weight-bold" onclick="toggleQuickTaskBox(${pIdx})" style="color: #7c3aed; font-size: 11.5px; text-decoration: none;">
+                        <i class="fas fa-edit mr-1"></i> Quick Add Tasks
+                    </button>
+                </div>
+
+                <div id="quickTaskBox_${pIdx}" class="mb-2 p-2 border rounded bg-white shadow-xs" style="display: none; border-radius: 10px;">
+                    <div class="small font-weight-bold text-dark mb-1">
+                        <i class="fas fa-paste text-primary mr-1"></i> Enter one task per line...
+                    </div>
+                    <textarea id="quickTaskText_${pIdx}" class="form-control form-control-sm mb-2" rows="3" placeholder="Attendance Module - Early Logout Fix&#10;Leave Approval UI&#10;Payroll Testing" style="border-radius: 8px; font-size: 12px; border: 1.5px solid #cbd5e1;"></textarea>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <button type="button" class="btn btn-xs font-weight-bold text-white py-1 px-3" onclick="processQuickTasks(${pIdx})" style="border-radius: 6px; font-size: 11px; background: #7c3aed; border: none;">
+                            <i class="fas fa-plus-circle mr-1"></i> Add Tasks
+                        </button>
+                        <button type="button" class="btn btn-xs btn-light font-weight-bold py-1 px-2 border" onclick="toggleQuickTaskBox(${pIdx})" style="border-radius: 6px; font-size: 11px; color: #64748b;">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+
+                <div id="taskRowsList_${pIdx}">
+                    <div class="d-flex align-items-center mb-2 task-row" id="taskRow_${pIdx}_0">
+                        <input type="hidden" name="projects[${pIdx}][tasks][0][is_completed]" value="0">
+                        <input type="checkbox" name="projects[${pIdx}][tasks][0][is_completed]" value="1" class="task-checkbox-custom task-checkbox" id="taskCheck_${pIdx}_0" onchange="syncSelectAllCheckbox(${pIdx})" title="Unticked = Pending, Ticked = Completed">
+                        <input type="text" name="projects[${pIdx}][tasks][0][task_name]" class="form-control form-control-sm task-name-input" placeholder="Task description..." required style="border-radius: 8px; border: 1.5px solid #cbd5e1;">
+                        <button type="button" class="btn btn-link text-danger ml-2 p-0 remove-task-btn" onclick="removeTaskRow(this)" style="font-size: 18px; text-decoration: none; display: none;" title="Remove Task">&times;</button>
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-center justify-content-between mt-2 pt-1 border-top" id="tasksFooterRow_${pIdx}">
+                    <div class="d-flex align-items-center">
+                        <input type="checkbox" id="selectAllCheck_${pIdx}" onchange="toggleSelectAllTasks(${pIdx}, this.checked)" style="width: 17px; height: 17px; cursor: pointer; accent-color: #7c3aed; margin-right: 6px;" title="Mark All Completed">
+                        <label for="selectAllCheck_${pIdx}" class="small font-weight-bold text-dark mb-0 cursor-pointer" style="font-size: 12px; user-select: none;" id="selectAllLabel_${pIdx}">Mark All Completed</label>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-light border font-weight-bold add-task-btn" id="addTaskBtn_${pIdx}" onclick="addTaskRow(${pIdx})" style="border-radius: 8px; color: #7c3aed;">
+                        <i class="fas fa-plus mr-1"></i> Add Task
+                    </button>
+                </div>
+            </div>
+        `;
+
+        container.appendChild(pDiv);
+        updateProjectRemoveButtons();
+    }
+
+    function removeProjectBlock(btnEl) {
+        const block = (btnEl && btnEl.closest) ? btnEl.closest('.project-block-card') : document.getElementById(`projectBlock_${btnEl}`);
+        if (block) {
+            block.remove();
+            updateProjectRemoveButtons();
+        }
+    }
+
+    function updateProjectRemoveButtons() {
+        const blocks = document.querySelectorAll('.project-block-card');
+        blocks.forEach((block, idx) => {
+            const btn = block.querySelector('.remove-project-btn');
+            if (btn) {
+                btn.style.display = blocks.length > 1 ? 'inline-block' : 'none';
+            }
+            const titleEl = block.querySelector('.project-block-header-title');
+            if (titleEl) {
+                titleEl.innerHTML = `<i class="fas fa-folder mr-1"></i> Project ${idx + 1}`;
+            }
+        });
     }
 
     function detectBrowserOS() {

@@ -11,6 +11,7 @@ use App\Services\HRMS\ProjectManagement\ProjectManagementS;
 use App\Services\HRMS\ProjectManagement\ProjectAccessScopeS;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ProjectC extends Controller
 {
@@ -25,15 +26,16 @@ class ProjectC extends Controller
 
     public function index(Request $request)
     {
+        $accessibleProjectIds = $this->accessScope->getAccessibleProjectIds();
+
         abort_unless(
             $this->userHasPermission('projects.view_all')
             || $this->userHasPermission('projects.my_projects.view')
             || $this->userHasPermission('projects.delivery_head.view')
-            || $this->userHasPermission('projects.team_lead.view'),
+            || $this->userHasPermission('projects.team_lead.view')
+            || !empty($accessibleProjectIds),
             403
         );
-
-        $accessibleProjectIds = $this->accessScope->getAccessibleProjectIds();
 
         $query = ProjectM::with(['deliveryHead.user', 'activeTeams.teamLead.user', 'activeAssignments']);
 
@@ -132,15 +134,17 @@ class ProjectC extends Controller
         $technicalSupervisors = DB::table('technical_lead_assignments')
             ->join('employees_new as tl', 'tl.id', '=', 'technical_lead_assignments.technical_lead_employee_id')
             ->join('employees_new as dev', 'dev.id', '=', 'technical_lead_assignments.employee_id')
+            ->leftJoin('users as tlu', 'tlu.id', '=', 'tl.user_id')
+            ->leftJoin('users as devu', 'devu.id', '=', 'dev.user_id')
             ->leftJoin('designations', 'designations.id', '=', 'tl.designation_id')
             ->whereIn('technical_lead_assignments.employee_id', $assignedEmployeeIds)
             ->where('technical_lead_assignments.is_active', 1)
             ->select(
                 'tl.id as tl_id',
-                'tl.display_name as tl_name',
+                DB::raw('COALESCE(tlu.name, tl.employee_code) as tl_name'),
                 'tl.employee_code as tl_code',
                 'designations.name as designation_name',
-                'dev.display_name as dev_name'
+                DB::raw('COALESCE(devu.name, dev.employee_code) as dev_name')
             )
             ->get()
             ->groupBy('tl_id');

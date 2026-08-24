@@ -4,6 +4,14 @@ use Illuminate\Support\Facades\Route;
 $menus = isset($menus) ? $menus : collect();
 $active = isset($active) ? $active : '';
 
+$isPermanentWfhUser = false;
+if (auth()->check()) {
+    $empWfhCheck = \Illuminate\Support\Facades\DB::table('employees_new')->where('user_id', auth()->id())->first(['work_mode']);
+    if ($empWfhCheck && in_array(strtolower((string)($empWfhCheck->work_mode ?? 'wfo')), ['wfh', 'permanent_wfh', 'permanent wfh'], true)) {
+        $isPermanentWfhUser = true;
+    }
+}
+
 $parentMenus = $menus->get('') ?? $menus->get(null) ?? $menus->get(0) ?? $menus[null] ?? collect();
 
 $isMenuActive = function($item) use ($active) {
@@ -114,6 +122,12 @@ $resolveRouteName = function (?string $routeName): ?string {
         <nav class="menu" id="sidebarMenu">
             @forelse($parentMenus as $menu)
             @php
+            $rMenu = strtolower((string)($menu->route ?? ''));
+            $nMenu = strtolower((string)($menu->name ?? ''));
+            if ($isPermanentWfhUser && (in_array($rMenu, ['hrms.attendance.my-wfh.index', 'attendances.my-wfh', 'attendance.my-wfh'], true) || str_contains($nMenu, 'my wfh'))) {
+                continue;
+            }
+
             $children = $menus->get($menu->id) ?? $menus->get((string)$menu->id) ?? $menus[$menu->id] ?? collect();
             $hasChildren = $children->count() > 0;
             $isParentMenu = $hasChildren || empty($menu->route);
@@ -152,6 +166,12 @@ $resolveRouteName = function (?string $routeName): ?string {
                     data-parent="#sidebarMenu">
                     @forelse($children as $child)
                     @php
+                    $rChild = strtolower((string)($child->route ?? ''));
+                    $nChild = strtolower((string)($child->name ?? ''));
+                    if ($isPermanentWfhUser && (in_array($rChild, ['hrms.attendance.my-wfh.index', 'attendances.my-wfh', 'attendance.my-wfh'], true) || str_contains($nChild, 'my wfh'))) {
+                        continue;
+                    }
+
                     $resolvedChildRoute = $resolveRouteName($child->route);
                     $childHasRoute = ! empty($resolvedChildRoute);
                     $childActive = $isMenuActive($child);

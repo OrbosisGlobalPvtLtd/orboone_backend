@@ -243,12 +243,15 @@
 
                 <div class="ep-form-group">
                     <label>Reason Category</label>
-                    <select name="reason_category" class="form-control" required>
-                        <option value="normal">Normal</option>
-                        <option value="personal_reason">Personal Reason</option>
-                        <option value="internet_issue">Internet Issue</option>
-                        <option value="electricity_issue">Electricity Issue</option>
-                        <option value="other">Other</option>
+                    <select name="reason_category" class="form-control" required style="border-radius: 10px;">
+                        <option value="" disabled selected>-- Select WFH Reason Category --</option>
+                        <option value="personal_reason">Personal / Family Work</option>
+                        <option value="health_medical">Health & Medical Care</option>
+                        <option value="commute_disruption">Commute & Transport Disruption</option>
+                        <option value="home_maintenance">Home Maintenance & Delivery</option>
+                        <option value="severe_weather">Severe Weather / Local Disruption</option>
+                        <option value="focused_work">Deep Focused Project Work</option>
+                        <option value="other">Other Valid Reason</option>
                     </select>
                 </div>
                 <div class="ep-form-group">

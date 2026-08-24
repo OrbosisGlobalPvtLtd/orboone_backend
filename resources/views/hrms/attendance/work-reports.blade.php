@@ -538,6 +538,7 @@
                 <table class="report-table table mb-0" id="workReportsTable">
                     <thead>
                         <tr>
+                            <th class="text-center" style="width: 50px;">S.No.</th>
                             @if($isAdminOrManager)
                             <th>Employee</th>
                             @endif
@@ -575,43 +576,86 @@
                             }
                             
                             $title = 'Work Report Submitted';
-                            $description = $log->work_summary;
+                            $description = null;
                             $status = 'Completed';
+                            $projectsList = [];
                             $requirementsList = [];
                             $testStatus = ['tested' => false, 'completed' => false];
                             $issues = [];
                             $notes = null;
 
                             if (is_array($tasks)) {
-                                if (array_keys($tasks) !== range(0, count($tasks) - 1)) {
-                                    $title = $tasks['title'] ?? ($tasks['task_title'] ?? 'Work Report Submitted');
-                                    $description = $tasks['description'] ?? $log->work_summary;
-                                    $status = $tasks['status'] ?? 'Completed';
-                                    $requirementsList = $tasks['requirements'] ?? ($tasks['tasks'] ?? []);
-                                    
-                                    // Extract test status
-                                    if (isset($tasks['test_status']) && is_array($tasks['test_status'])) {
-                                        $testStatus = [
-                                            'tested' => $tasks['test_status']['tested'] ?? false,
-                                            'completed' => $tasks['test_status']['completed'] ?? false
-                                        ];
-                                    } else {
-                                        $testedVal = $tasks['tested'] ?? false;
-                                        $testStatus = [
-                                            'tested' => ($testedVal === true || $testedVal === 'yes' || $testedVal === 'tested' || $testedVal === 'Completed'),
-                                            'completed' => ($testedVal === true || $testedVal === 'yes' || $testedVal === 'tested' || $testedVal === 'Completed')
-                                        ];
+                                if (isset($tasks['projects']) && is_array($tasks['projects'])) {
+                                    $projectsList = $tasks['projects'];
+                                    foreach ($projectsList as $p) {
+                                        $pName = $p['project_name'] ?? $p['name'] ?? 'Project';
+                                        if (isset($p['tasks']) && is_array($p['tasks'])) {
+                                            foreach ($p['tasks'] as $t) {
+                                                $tName = $t['task_name'] ?? $t['description'] ?? $t['task'] ?? $t['title'] ?? 'Task';
+                                                $tDone = (isset($t['is_completed']) ? ($t['is_completed'] == 1 || $t['is_completed'] === true || $t['is_completed'] === 'true') : (isset($t['completed']) ? ($t['completed'] == 1 || $t['completed'] === true || $t['completed'] === 'true') : true));
+                                                $requirementsList[] = [
+                                                    'text' => $tName,
+                                                    'done' => $tDone,
+                                                    'project' => $pName
+                                                ];
+                                            }
+                                        }
                                     }
-                                    
-                                    $issues = $tasks['issues'] ?? [];
-                                    $notes = $tasks['notes'] ?? null;
-                                } else {
-                                    $requirementsList = $tasks;
                                 }
-                            }
-                            
-                            if (!is_array($issues)) {
-                                $issues = $issues ? [$issues] : [];
+
+                                if (empty($requirementsList)) {
+                                    $reqItems = $tasks['requirements'] ?? ($tasks['tasks'] ?? []);
+                                    if (is_array($reqItems)) {
+                                        $requirementsList = $reqItems;
+                                    }
+                                }
+
+                                $status = $tasks['today_work_status'] ?? ($tasks['current_status'] ?? ($tasks['status'] ?? 'Completed'));
+
+                                if (!empty($projectsList) && !empty($projectsList[0]['project_name'])) {
+                                    $title = $projectsList[0]['project_name'];
+                                } elseif (!empty($tasks['task_name'])) {
+                                    $title = $tasks['task_name'];
+                                } elseif (!empty($tasks['title'])) {
+                                    $title = $tasks['title'];
+                                }
+
+                                $rawDesc = $tasks['description'] ?? ($tasks['today_work_description'] ?? null);
+                                if ($rawDesc && !str_contains($rawDesc, '☑') && !str_contains($rawDesc, '☐')) {
+                                    $description = $rawDesc;
+                                } else {
+                                    if ($status) {
+                                        $description = "Today's Work Status: " . ucfirst($status);
+                                    } else {
+                                        $description = "Work report submitted with project tasks.";
+                                    }
+                                }
+
+                                if (isset($tasks['test_status']) && is_array($tasks['test_status'])) {
+                                    $testStatus = [
+                                        'tested' => $tasks['test_status']['tested'] ?? false,
+                                        'completed' => $tasks['test_status']['completed'] ?? false,
+                                    ];
+                                } else {
+                                    $stLower = strtolower($status);
+                                    $isTested = in_array($stLower, ['testing', 'done', 'completed', 'tested', 'yes'], true);
+                                    $isCompleted = in_array($stLower, ['done', 'completed', 'yes'], true);
+                                    $testStatus = [
+                                        'tested' => $isTested,
+                                        'completed' => $isCompleted,
+                                    ];
+                                }
+
+                                $rawIssues = $tasks['issues_blockers'] ?? ($tasks['issues'] ?? []);
+                                if (is_array($rawIssues)) {
+                                    $issues = $rawIssues;
+                                } elseif (is_string($rawIssues) && trim($rawIssues) !== '' && strtolower(trim($rawIssues)) !== 'no issues' && strtolower(trim($rawIssues)) !== 'none') {
+                                    $issues = [$rawIssues];
+                                }
+
+                                $notes = $tasks['additional_notes'] ?? ($tasks['remarks'] ?? ($tasks['notes'] ?? null));
+                            } else {
+                                $description = $log->work_summary ?? 'No summary provided.';
                             }
                             
                             $tasksCount = is_array($requirementsList) ? count($requirementsList) : 0;
@@ -635,6 +679,7 @@
                                 'status' => $status,
                                 'work_mode' => strtoupper(optional($log->attendance)->work_mode ?? 'WFO'),
                                 'submitted_time' => $log->created_at ? $log->created_at->format('h:i A') : '-',
+                                'projects' => $projectsList,
                                 'requirements' => $requirementsList,
                                 'test_status' => $testStatus,
                                 'issues' => $issues,
@@ -685,6 +730,9 @@
                             }
                         @endphp
                         <tr>
+                            <td class="text-center font-weight-bold text-muted align-middle" style="font-size: 12.5px;" data-export="{{ $loop->iteration }}">
+                                {{ $loop->iteration }}
+                            </td>
                             @if($isAdminOrManager)
                             <td data-export="{{ $employeeName }} ({{ $employeeCode }})">
                                 <div class="att-emp">

@@ -92,36 +92,17 @@
                     </div>
 
                     <!-- SECTION 3: TEST STATUS & ISSUES -->
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <div class="card border-0 h-100 shadow-sm" style="border-radius: 16px; background: #fff;">
-                                <div class="card-body p-3">
-                                    <div class="d-flex align-items-center gap-2 mb-2.5">
-                                        <span style="width: 24px; height: 24px; border-radius: 6px; background: #F4F2FF; color: var(--orb-primary); display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">
-                                            <i class="fas fa-vial"></i>
-                                        </span>
-                                        <span style="font-size: 9.5px; font-weight: 800; color: var(--orb-primary); letter-spacing: 0.08em; text-transform: uppercase;">Test Verification</span>
-                                    </div>
-                                    <div id="modal-test-status-area">
-                                        <!-- Dynamic badge -->
-                                    </div>
-                                </div>
+                    <!-- SECTION 3: ISSUES & BLOCKERS -->
+                    <div class="card border-0 mb-3 shadow-sm" style="border-radius: 16px; background: #fff;">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center gap-2 mb-2.5">
+                                <span style="width: 24px; height: 24px; border-radius: 6px; background: #F4F2FF; color: var(--orb-primary); display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                </span>
+                                <span style="font-size: 9.5px; font-weight: 800; color: var(--orb-primary); letter-spacing: 0.08em; text-transform: uppercase;">Issues & Blockers</span>
                             </div>
-                        </div>
-
-                        <div class="col-md-6 mb-3">
-                            <div class="card border-0 h-100 shadow-sm" style="border-radius: 16px; background: #fff;">
-                                <div class="card-body p-3">
-                                    <div class="d-flex align-items-center gap-2 mb-2.5">
-                                        <span style="width: 24px; height: 24px; border-radius: 6px; background: #F4F2FF; color: var(--orb-primary); display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">
-                                            <i class="fas fa-exclamation-circle"></i>
-                                        </span>
-                                        <span style="font-size: 9.5px; font-weight: 800; color: var(--orb-primary); letter-spacing: 0.08em; text-transform: uppercase;">Issues & Blockers</span>
-                                    </div>
-                                    <div id="modal-issues-area">
-                                        <!-- Dynamic card -->
-                                    </div>
-                                </div>
+                            <div id="modal-issues-area">
+                                <!-- Dynamic card -->
                             </div>
                         </div>
                     </div>
@@ -226,7 +207,16 @@
 
             // Title & Description
             document.getElementById('modal-report-title').innerText = log.title || 'Work Report Submitted';
-            document.getElementById('modal-report-desc').innerText = log.description || 'No summary description provided.';
+            let descText = log.description || '';
+            if (descText.includes('☑') || descText.includes('☐')) {
+                const lines = descText.split('\n');
+                const cleanLines = lines.filter(l => !l.includes('☑') && !l.includes('☐') && !l.trim().startsWith('Project:'));
+                descText = cleanLines.join(' ').trim();
+                if (!descText) {
+                    descText = log.status ? ("Today's Work Status: " + log.status) : "Work report submitted with project tasks.";
+                }
+            }
+            document.getElementById('modal-report-desc').innerText = descText || 'No summary description provided.';
 
             // Requirements / Tasks Checklist / Projects
             const tasksList = document.getElementById('modal-tasks-list');
@@ -241,8 +231,8 @@
                     let projTasksHtml = '';
                     if (proj.tasks && Array.isArray(proj.tasks)) {
                         proj.tasks.forEach(task => {
-                            const isDone = (task.is_completed === true || task.is_completed === 1 || task.is_completed === '1');
-                            const taskName = task.task_name || task.task || task.title || 'Task';
+                            const isDone = (task.is_completed === true || task.is_completed === 1 || task.is_completed === '1' || task.completed === true || task.completed === 1 || task.completed === '1');
+                            const taskName = task.task_name || task.task || task.description || task.title || 'Task';
                             projTasksHtml += `
                                 <div class="d-flex justify-content-between align-items-center mb-1.5 p-2 rounded" style="border-radius: 8px; background: ${isDone ? '#F0FDF4' : '#F8FAFC'}; border: ${isDone ? '1px solid #BBF7D0' : '1.5px solid #E2E8F0'};">
                                     <div style="font-size: 12.5px; font-weight: 700; color: ${isDone ? '#166534' : '#334155'};">
@@ -260,7 +250,7 @@
                         <div class="d-flex align-items-center mb-2 pb-1 border-bottom">
                             <strong style="font-size: 13px; color: #1e1b4b;"><i class="fas fa-folder text-primary mr-1"></i> ${proj.project_name || 'Project'}</strong>
                         </div>
-                        ${projTasksHtml}
+                        ${projTasksHtml || '<div class="text-muted small italic p-2">No tasks listed under this project</div>'}
                     `;
                     tasksList.appendChild(projBlock);
                 });
@@ -311,37 +301,11 @@
                 }
             }
 
-            // Test Verification Status
+            // Test Verification Status (removed per user directive)
             const testArea = document.getElementById('modal-test-status-area');
-            let tested = false;
-            let completed = false;
-
-            if (log.test_status && typeof log.test_status === 'object') {
-                tested = log.test_status.tested === true || log.test_status.tested === 'true';
-                completed = log.test_status.completed === true || log.test_status.completed === 'true';
-            } else if (log.tested !== undefined) {
-                tested = log.tested === true || log.tested === 'tested' || log.tested === 'Completed';
-                completed = log.tested === true || log.tested === 'tested' || log.tested === 'Completed';
+            if (testArea) {
+                testArea.innerHTML = '';
             }
-
-            const testedBg = tested ? '#E0F2FE' : '#FEF2F2';
-            const testedColor = tested ? '#0369A1' : '#B91C1C';
-            const testedText = tested ? 'Tested ✅' : 'Untested ❌';
-
-            const completedBg = completed ? '#DCFCE7' : '#FEF2F2';
-            const completedColor = completed ? '#15803D' : '#B91C1C';
-            const completedText = completed ? 'Completed ✅' : 'Incomplete ❌';
-
-            testArea.innerHTML = `
-                <div class="d-flex flex-column gap-1.5">
-                    <div style="background: ${testedBg}; color: ${testedColor}; border-radius: 10px; padding: 8px; font-size: 11.5px; font-weight: 800; text-align: center; border: 1px dashed ${testedColor};">
-                        <i class="fas fa-vial mr-2"></i> ${testedText}
-                    </div>
-                    <div style="background: ${completedBg}; color: ${completedColor}; border-radius: 10px; padding: 8px; font-size: 11.5px; font-weight: 800; text-align: center; border: 1px dashed ${completedColor};">
-                        <i class="fas fa-check-circle mr-2"></i> ${completedText}
-                    </div>
-                </div>
-            `;
 
             // Issues & Blockers (Array / String / Null safety)
             const issuesArea = document.getElementById('modal-issues-area');

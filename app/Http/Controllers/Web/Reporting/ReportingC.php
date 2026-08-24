@@ -290,8 +290,9 @@ class ReportingC extends Controller
         });
 
         $supervisors = EmployeeM::with(['user', 'designation', 'department'])->active()->orderBy('id')->get();
+        $isAdminOrHR = $this->scopeS->isSuperAdminOrGlobal();
 
-        return view('hrms.reporting.assignments', compact('assignments', 'employees', 'supervisors', 'selectedSupervisor'));
+        return view('hrms.reporting.assignments', compact('assignments', 'employees', 'supervisors', 'selectedSupervisor', 'isAdminOrHR'));
     }
 
     /**
@@ -299,6 +300,10 @@ class ReportingC extends Controller
      */
     public function assignSupervisor(Request $request)
     {
+        if (!$this->scopeS->isSuperAdminOrGlobal()) {
+            abort(403, 'Unauthorized. Only HR Admin / Super Admin can assign reporting managers.');
+        }
+
         $request->validate([
             'supervisor_employee_id' => 'required|exists:employees_new,id',
             'employee_ids' => 'required|array|min:1',
@@ -332,6 +337,10 @@ class ReportingC extends Controller
      */
     public function relieveEmployee(Request $request, $id)
     {
+        if (!$this->scopeS->isSuperAdminOrGlobal()) {
+            abort(403, 'Unauthorized. Only HR Admin / Super Admin can relieve reporting assignments.');
+        }
+
         $this->scopeS->relieveEmployee((int)$id);
         return redirect()->back()->with('success', 'Employee successfully relieved from supervisor.');
     }
@@ -584,7 +593,10 @@ class ReportingC extends Controller
         $query = DB::table('attendance_work_logs')
             ->join('employees_new as e', 'e.id', '=', 'attendance_work_logs.employee_id')
             ->leftJoin('users as eu', 'eu.id', '=', 'e.user_id')
-            ->leftJoin('projects as p', 'p.id', '=', 'attendance_work_logs.project_id');
+            ->leftJoin('projects as p', 'p.id', '=', 'attendance_work_logs.project_id')
+            ->leftJoin('departments as d', 'd.id', '=', 'e.department_id')
+            ->leftJoin('designations as des', 'des.id', '=', 'e.designation_id')
+            ->leftJoin('attendances as att', 'att.id', '=', 'attendance_work_logs.attendance_id');
 
         $query = $this->scopeS->scopeWorkReports($query, $supervisorEmpId);
 
@@ -600,7 +612,17 @@ class ReportingC extends Controller
             $query->where('attendance_work_logs.project_id', $request->project_id);
         }
 
-        $workReports = $query->select('attendance_work_logs.*', DB::raw('COALESCE(eu.name, e.employee_code) as display_name'), 'e.employee_code', 'p.name as project_name')
+        $workReports = $query->select(
+            'attendance_work_logs.*',
+            DB::raw('COALESCE(eu.name, e.employee_code) as display_name'),
+            'e.employee_code',
+            'p.name as project_name',
+            'd.name as department_name',
+            'des.name as designation_name',
+            'att.attendance_status',
+            'att.is_lwp',
+            'att.work_mode'
+        )
             ->orderByDesc('attendance_work_logs.work_date')
             ->orderByDesc('attendance_work_logs.id')
             ->paginate(20)

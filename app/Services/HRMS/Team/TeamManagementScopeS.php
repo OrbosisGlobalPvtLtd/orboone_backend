@@ -164,7 +164,12 @@ class TeamManagementScopeS
         }
 
         $teamIds = $this->getTeamEmployeeIds($empId);
-        return $query->whereIn('employee_id', $teamIds);
+        $column = 'employee_id';
+        $from = is_string($query->from ?? null) ? $query->from : '';
+        if ($from === 'attendance_work_logs' || str_contains($from, 'attendance_work_logs')) {
+            $column = 'attendance_work_logs.employee_id';
+        }
+        return $query->whereIn($column, $teamIds);
     }
 
     /**

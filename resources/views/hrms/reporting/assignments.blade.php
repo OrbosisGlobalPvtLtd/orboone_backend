@@ -64,6 +64,7 @@
                     <p class="mb-0 opacity-90 small">Manage reporting relationships between Reporting Managers and employees across all enterprise departments.</p>
                 @endif
             </div>
+            @if(!empty($isAdminOrHR))
             <div>
                 <button type="button" class="btn btn-light font-weight-bold px-4 py-2" data-toggle="modal" data-target="#assignModal" style="border-radius: 12px; color: var(--orb-primary);">
                     <i class="fas fa-user-plus mr-2"></i>
@@ -74,6 +75,7 @@
                     @endif
                 </button>
             </div>
+            @endif
         </div>
 
         @if(session('success'))
@@ -112,7 +114,9 @@
                             <th class="py-3">Reporting Manager</th>
                             <th class="py-3 text-center">Status</th>
                             <th class="py-3 text-center">Assigned Since</th>
+                            @if(!empty($isAdminOrHR))
                             <th class="py-3 px-4 text-right">Actions</th>
+                            @endif
                         </tr>
                     </thead>
                     <tbody>
@@ -135,6 +139,7 @@
                             <td class="py-3 align-middle text-center">
                                 <small class="text-muted font-weight-bold">{{ \Carbon\Carbon::parse($assign->start_date ?? $assign->created_at)->format('d M Y') }}</small>
                             </td>
+                            @if(!empty($isAdminOrHR))
                             <td class="py-3 px-4 align-middle text-right">
                                 <form method="POST" action="{{ route('reporting.assignments.relieve', $assign->id) }}" class="d-inline" onsubmit="return confirm('Are you sure you want to relieve or transfer this reporting assignment?');">
                                     @csrf
@@ -143,6 +148,7 @@
                                     </button>
                                 </form>
                             </td>
+                            @endif
                         </tr>
                         @empty
                         <tr>

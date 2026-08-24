@@ -78,9 +78,32 @@ class SidebarMenuResolverS
         $filtered = $this->filterByWebAttendancePermission($filtered, $user, $isSuperAdmin);
         $filtered = $this->filterRetiredLegacyPayrollMenus($filtered);
         $filtered = $this->filterReportingManagementVisibility($filtered, $user, $isSuperAdmin);
+        $filtered = $this->filterByPermanentWfhVisibility($filtered, $user);
         $filtered = $this->filterByRouteValidity($filtered);
 
         return $filtered;
+    }
+
+    private function filterByPermanentWfhVisibility(Collection $menus, Authenticatable $user): Collection
+    {
+        $emp = DB::table('employees_new')->where('user_id', $user->id)->first(['id', 'work_mode']);
+        if (!$emp) {
+            return $menus;
+        }
+
+        $workMode = strtolower((string)($emp->work_mode ?? 'wfo'));
+        $isPermanentWfh = in_array($workMode, ['wfh', 'permanent_wfh', 'permanent wfh'], true);
+
+        if (!$isPermanentWfh) {
+            return $menus;
+        }
+
+        return $menus->reject(function ($menu) {
+            $r = strtolower((string)($menu->route ?? ''));
+            $n = strtolower((string)($menu->name ?? ''));
+            return in_array($r, ['hrms.attendance.my-wfh.index', 'attendances.my-wfh', 'attendance.my-wfh'], true)
+                || str_contains($n, 'my wfh');
+        });
     }
 
     private function filterReportingManagementVisibility(Collection $menus, Authenticatable $user, bool $isSuperAdmin): Collection
@@ -143,7 +166,7 @@ class SidebarMenuResolverS
             }
 
             // 2. Team Management container (370) and operational submenus (371..377):
-            // Show ONLY if employee has active team members
+            // Show ONLY if employee is an active Reporting Manager (has team members assigned under them)
             if (($id === 370 || $parentId === 370 || in_array($id, [371, 372, 373, 374, 375, 376, 377], true)) && !$isTeamManager) {
                 return true;
             }

@@ -482,132 +482,148 @@
                         $json = [];
                     }
 
-                    $taskName = $json['task_name'] ?? null;
-                    $workDesc = $json['today_work_description'] ?? ($workSummaryLog->work_summary ?? null);
-                    $currStatus = $json['current_status'] ?? null;
-                    $testStatus = $json['test_status'] ?? null;
-                    $reqs = $json['requirements'] ?? [];
-                    $issues = $json['issues_blockers'] ?? null;
-                    $completedTasks = $json['completed_tasks'] ?? null;
-                    $pendingTasks = $json['pending_tasks'] ?? null;
-                    $tomorrowPlan = $json['tomorrow_plan'] ?? null;
-                    $remarks = $json['remarks'] ?? null;
+                    $taskName = $json['task_name'] ?? ($json['title'] ?? null);
+                    $rawSummary = $workSummaryLog->work_summary ?? null;
+                    $workDesc = $json['today_work_description'] ?? null;
+                    $repStatus = $json['today_work_status'] ?? ($json['current_status'] ?? ($json['status'] ?? null));
+                    
+                    // Structured projects & tasks extraction
+                    $structuredProjects = [];
+                    if (isset($json['projects']) && is_array($json['projects'])) {
+                        foreach ($json['projects'] as $p) {
+                            $pName = $p['project_name'] ?? $p['name'] ?? 'Project';
+                            $pTasks = [];
+                            if (isset($p['tasks']) && is_array($p['tasks'])) {
+                                foreach ($p['tasks'] as $t) {
+                                    $tName = $t['task_name'] ?? $t['description'] ?? $t['task'] ?? $t['title'] ?? 'Task';
+                                    $tDone = (isset($t['is_completed']) ? ($t['is_completed'] == 1 || $t['is_completed'] === true || $t['is_completed'] === 'true') : (isset($t['completed']) ? ($t['completed'] == 1 || $t['completed'] === true || $t['completed'] === 'true') : true));
+                                    $pTasks[] = ['text' => $tName, 'done' => $tDone];
+                                }
+                            }
+                            $structuredProjects[] = ['name' => $pName, 'tasks' => $pTasks];
+                        }
+                    }
+
+                    // Fallback parser if structured projects array is empty but rawSummary contains text
+                    if (empty($structuredProjects) && !empty($rawSummary)) {
+                        $lines = explode("\n", $rawSummary);
+                        $currPName = null;
+                        $currPTasks = [];
+                        foreach ($lines as $line) {
+                            $trimmed = trim($line);
+                            if (!$trimmed) continue;
+                            if (str_starts_with($trimmed, 'Project:')) {
+                                if ($currPName !== null && !empty($currPTasks)) {
+                                    $structuredProjects[] = ['name' => $currPName, 'tasks' => $currPTasks];
+                                    $currPTasks = [];
+                                }
+                                $currPName = trim(substr($trimmed, 8));
+                            } elseif (str_starts_with($trimmed, '☑') || str_starts_with($trimmed, '✓') || str_starts_with($trimmed, '[x]')) {
+                                $tText = trim(mb_substr($trimmed, 1));
+                                if (str_starts_with($tText, '[x]')) $tText = trim(substr($tText, 3));
+                                $currPTasks[] = ['text' => $tText, 'done' => true];
+                            } elseif (str_starts_with($trimmed, '☐') || str_starts_with($trimmed, '○') || str_starts_with($trimmed, '[ ]')) {
+                                $tText = trim(mb_substr($trimmed, 1));
+                                if (str_starts_with($tText, '[ ]')) $tText = trim(substr($tText, 3));
+                                $currPTasks[] = ['text' => $tText, 'done' => false];
+                            } elseif (str_starts_with($trimmed, "Today's Work Status:")) {
+                                if (!$repStatus) {
+                                    $repStatus = trim(substr($trimmed, 19));
+                                }
+                            }
+                        }
+                        if ($currPName !== null && !empty($currPTasks)) {
+                            $structuredProjects[] = ['name' => $currPName, 'tasks' => $currPTasks];
+                        }
+                    }
+
+                    $rawIssues = $json['issues_blockers'] ?? ($json['issues'] ?? null);
+                    $issuesText = null;
+                    if (is_array($rawIssues)) {
+                        $issuesText = implode(', ', array_filter($rawIssues));
+                    } elseif (is_string($rawIssues) && trim($rawIssues) !== '' && strtolower(trim($rawIssues)) !== 'no issues' && strtolower(trim($rawIssues)) !== 'none') {
+                        $issuesText = trim($rawIssues);
+                    }
+
+                    $stLower = strtolower(trim((string)$repStatus));
+                    $statusBadgeStyle = match(true) {
+                        in_array($stLower, ['completed', 'done', 'success']) => 'background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC;',
+                        in_array($stLower, ['testing', 'tested']) => 'background: #E0F2FE; color: #0369A1; border: 1px solid #7DD3FC;',
+                        in_array($stLower, ['in-progress', 'in_progress', 'progress', 'pending']) => 'background: #FEF3C7; color: #B45309; border: 1px solid #FCD34D;',
+                        in_array($stLower, ['blocked', 'failed']) => 'background: #FEE2E2; color: #B91C1C; border: 1px solid #FCA5A5;',
+                        default => 'background: #F1F5F9; color: #475569; border: 1px solid #CBD5E1;'
+                    };
+                    $statusLabel = $repStatus ? ucwords(str_replace('_', ' ', $repStatus)) : 'Submitted';
                 @endphp
 
-                <div class="mt-4 p-4 bg-white rounded-20 border shadow-xs" style="border-radius: 20px; border: 1px solid #e2e8f0;">
-                    <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-3">
+                <div class="mt-4 p-4 bg-white border shadow-sm" style="border-radius: 20px;">
+                    <div class="d-flex align-items-center justify-content-between mb-4 border-bottom pb-3">
                         <div class="d-flex align-items-center">
-                            <div class="mr-3 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px; background: #f3e8ff; border-radius: 14px; color: #7c3aed; font-size: 18px;">
-                                <i class="fas fa-clipboard-check"></i>
+                            <div class="mr-3 d-flex align-items-center justify-content-center" style="width: 44px; height: 44px; background: #EEF2FF; border-radius: 14px; color: #4F46E5; font-size: 20px;">
+                                <i class="fas fa-file-invoice"></i>
                             </div>
                             <div>
-                                <h6 class="font-weight-bold text-dark mb-0" style="font-size: 16px;">Daily Work Report Submission</h6>
-                                <span class="text-muted small">Submitted at Punch Out</span>
+                                <h5 class="font-weight-bold text-dark mb-0" style="font-size: 17px;">Daily Work Report Submission</h5>
+                                <span class="text-muted small"><i class="fas fa-clock mr-1"></i> Submitted at Punch Out &bull; {{ $workSummaryLog->created_at ? $workSummaryLog->created_at->format('h:i A') : 'Recorded' }}</span>
                             </div>
                         </div>
                         <div class="d-flex align-items-center gap-2">
-                            @if ($currStatus)
-                                @php
-                                    $statusBadgeStyle = match($currStatus) {
-                                        'Progress' => 'background: #eff6ff; color: #2563eb; border: 1.5px solid #3b82f6;',
-                                        'Testing'  => 'background: #f3e8ff; color: #7c3aed; border: 1.5px solid #8b5cf6;',
-                                        'Done'     => 'background: #dcfce7; color: #15803d; border: 1.5px solid #22c55e;',
-                                        'Blocked'  => 'background: #fee2e2; color: #b91c1c; border: 1.5px solid #ef4444;',
-                                        default    => 'background: #f1f5f9; color: #475569; border: 1.5px solid #cbd5e1;'
-                                    };
-                                @endphp
-                                <span class="badge px-3 py-2 font-weight-bold mr-2" style="border-radius: 20px; font-size: 12px; {{ $statusBadgeStyle }}">
-                                    Status: {{ $currStatus }}
-                                </span>
-                            @endif
-
-                            @if ($testStatus)
-                                <span class="badge px-3 py-2 font-weight-bold" style="border-radius: 20px; font-size: 12px; background: #e0f2fe; color: #0369a1; border: 1.5px solid #38bdf8;">
-                                    Test: {{ $testStatus }}
-                                </span>
-                            @endif
+                            <span class="badge px-3 py-2 font-weight-bold text-uppercase" style="border-radius: 20px; font-size: 11px; letter-spacing: 0.04em; {{ $statusBadgeStyle }}">
+                                Status: {{ $statusLabel }}
+                            </span>
                         </div>
                     </div>
 
-                    <div class="row">
-                        @if ($taskName)
-                            <div class="col-md-12 mb-3">
-                                <div class="small text-muted font-weight-bold text-uppercase mb-1"><i class="fas fa-terminal text-purple mr-1" style="color:#7c3aed;"></i> Task / Module Name</div>
-                                <div class="p-3 bg-light rounded-lg font-weight-bold text-dark border" style="border-radius: 12px; font-size: 14px;">
-                                    {{ $taskName }}
+                    @if(!empty($structuredProjects))
+                        <div class="row">
+                            @foreach($structuredProjects as $proj)
+                                <div class="col-md-6 mb-3">
+                                    <div class="p-3 bg-light rounded-lg border h-100" style="border-radius: 14px; border: 1px solid #E2E8F0;">
+                                        <div class="d-flex align-items-center mb-2 pb-2 border-bottom">
+                                            <i class="fas fa-folder text-primary mr-2" style="font-size: 15px;"></i>
+                                            <strong class="text-dark font-weight-bold" style="font-size: 14px;">{{ $proj['name'] }}</strong>
+                                            <span class="badge badge-primary badge-pill ml-auto px-2 py-0.5" style="font-size: 10px;">{{ count($proj['tasks']) }} Tasks</span>
+                                        </div>
+                                        <ul class="list-unstyled mb-0">
+                                            @foreach($proj['tasks'] as $t)
+                                                <li class="py-1.5 d-flex align-items-start" style="font-size: 13px;">
+                                                    @if($t['done'])
+                                                        <i class="fas fa-check-circle text-success mr-2 mt-1" style="font-size: 14px;"></i>
+                                                        <span class="text-dark font-weight-medium">{{ $t['text'] }}</span>
+                                                    @else
+                                                        <i class="far fa-circle text-warning mr-2 mt-1" style="font-size: 14px;"></i>
+                                                        <span class="text-muted">{{ $t['text'] }}</span>
+                                                    @endif
+                                                </li>
+                                            @endforeach
+                                        </ul>
+                                    </div>
                                 </div>
+                            @endforeach
+                        </div>
+                    @elseif($workDesc)
+                        <div class="mb-3">
+                            <div class="small text-muted font-weight-bold text-uppercase mb-1"><i class="fas fa-align-left text-primary mr-1"></i> Today Work Summary</div>
+                            <div class="p-3 bg-light rounded-lg text-dark border" style="border-radius: 12px; font-size: 13.5px; white-space: pre-line; line-height: 1.6;">
+                                {{ $workDesc }}
                             </div>
-                        @endif
+                        </div>
+                    @elseif($rawSummary)
+                        <div class="mb-3">
+                            <div class="small text-muted font-weight-bold text-uppercase mb-1"><i class="fas fa-align-left text-primary mr-1"></i> Today Work Summary</div>
+                            <div class="p-3 bg-light rounded-lg text-dark border" style="border-radius: 12px; font-size: 13.5px; white-space: pre-line; line-height: 1.6;">
+                                {{ $rawSummary }}
+                            </div>
+                        </div>
+                    @endif
 
-                        @if ($workDesc)
-                            <div class="col-md-12 mb-3">
-                                <div class="small text-muted font-weight-bold text-uppercase mb-1"><i class="fas fa-align-left text-primary mr-1"></i> Today Work Description</div>
-                                <div class="p-3 bg-light rounded-lg text-dark border" style="border-radius: 12px; font-size: 14px; white-space: pre-line; line-height: 1.6;">
-                                    {{ $workDesc }}
-                                </div>
-                            </div>
-                        @endif
-
-                        @if (!empty($reqs) && is_array($reqs))
-                            <div class="col-md-12 mb-3">
-                                <div class="small text-muted font-weight-bold text-uppercase mb-1"><i class="fas fa-tasks text-success mr-1"></i> Requirement Checklist</div>
-                                <div class="p-3 bg-light rounded-lg border" style="border-radius: 12px;">
-                                    <ul class="list-unstyled mb-0">
-                                        @foreach ($reqs as $reqItem)
-                                            <li class="py-1 d-flex align-items-center">
-                                                <i class="fas fa-check-circle text-success mr-2"></i>
-                                                <span class="font-weight-medium text-dark" style="font-size: 14px;">{{ $reqItem }}</span>
-                                            </li>
-                                        @endforeach
-                                    </ul>
-                                </div>
-                            </div>
-                        @endif
-
-                        @if ($issues)
-                            <div class="col-md-6 mb-3">
-                                <div class="small text-muted font-weight-bold text-uppercase mb-1"><i class="fas fa-bug text-danger mr-1"></i> Issues / Blockers</div>
-                                <div class="p-3 rounded-lg text-danger border" style="border-radius: 12px; font-size: 13px; background: #fef2f2; border-color: #fca5a5 !important;">
-                                    {{ $issues }}
-                                </div>
-                            </div>
-                        @endif
-
-                        @if ($completedTasks)
-                            <div class="col-md-6 mb-3">
-                                <div class="small text-muted font-weight-bold text-uppercase mb-1">Completed Tasks</div>
-                                <div class="p-3 bg-light rounded-lg text-dark border" style="border-radius: 12px; font-size: 13px;">
-                                    {{ $completedTasks }}
-                                </div>
-                            </div>
-                        @endif
-
-                        @if ($pendingTasks)
-                            <div class="col-md-6 mb-3">
-                                <div class="small text-muted font-weight-bold text-uppercase mb-1">Pending Tasks</div>
-                                <div class="p-3 bg-light rounded-lg text-dark border" style="border-radius: 12px; font-size: 13px;">
-                                    {{ $pendingTasks }}
-                                </div>
-                            </div>
-                        @endif
-
-                        @if ($tomorrowPlan)
-                            <div class="col-md-6 mb-3">
-                                <div class="small text-muted font-weight-bold text-uppercase mb-1">Tomorrow Plan</div>
-                                <div class="p-3 bg-light rounded-lg text-dark border" style="border-radius: 12px; font-size: 13px;">
-                                    {{ $tomorrowPlan }}
-                                </div>
-                            </div>
-                        @endif
-
-                        @if ($remarks)
-                            <div class="col-md-6 mb-3">
-                                <div class="small text-muted font-weight-bold text-uppercase mb-1">Remarks / Additional Notes</div>
-                                <div class="p-3 bg-light rounded-lg text-dark border" style="border-radius: 12px; font-size: 13px;">
-                                    {{ $remarks }}
-                                </div>
-                            </div>
-                        @endif
+                    @if($issuesText)
+                        <div class="mt-2 p-3 rounded-lg border" style="border-radius: 12px; background: #FEF2F2; border-color: #FCA5A5 !important; color: #991B1B;">
+                            <strong class="d-block mb-1" style="font-size: 13px;"><i class="fas fa-bug text-danger mr-1.5"></i> Issues & Blockers:</strong>
+                            <span style="font-size: 13px;">{{ $issuesText }}</span>
+                        </div>
+                    @endif
+                </div>
                     </div>
                 </div>
             @endif

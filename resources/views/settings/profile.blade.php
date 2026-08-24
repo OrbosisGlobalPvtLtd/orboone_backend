@@ -425,9 +425,9 @@
                 <!-- Interactive Avatar Container -->
                 <div class="avatar-container" onclick="@if(!$isLocked) document.getElementById('avatar_file_input').click() @endif">
                     @if($avatarUrl)
-                        <img src="{{ $avatarUrl }}" alt="{{ $profile->name }}" class="profile-avatar-img">
+                        <img src="{{ $avatarUrl }}" alt="" class="profile-avatar-img" onerror="this.style.display='none'; this.nextElementSibling ? this.nextElementSibling.style.display='flex' : null;">
                     @else
-                        {{ $initials ?: 'U' }}
+                        <span>{{ $initials ?: 'U' }}</span>
                     @endif
                     @if(!$isLocked)
                         <div class="avatar-overlay">

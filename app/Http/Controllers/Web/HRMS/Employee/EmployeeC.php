@@ -590,6 +590,14 @@ class EmployeeC extends Controller
 
             $employeeId = DB::table($this->employeeTable)->insertGetId($employeeInsertData);
 
+            if ($request->filled('reporting_manager_employee_id')) {
+                app(\App\Services\HRMS\Reporting\ReportingScopeS::class)->assignSupervisor([
+                    'supervisor_employee_id' => (int)$request->reporting_manager_employee_id,
+                    'employee_id' => (int)$employeeId,
+                    'start_date' => $lifecyclePayload['joining_date'] ?: now()->toDateString(),
+                ]);
+            }
+
             if ($policyId) {
                 DB::table('employee_policy_assignments')->insert([
                     'employee_id' => $employeeId,
@@ -924,6 +932,8 @@ class EmployeeC extends Controller
             'probation_months' => ['nullable', 'integer', 'min:1'],
             'probation_start_date' => ['nullable', 'date'],
             'probation_end_date' => ['nullable', 'date'],
+            'confirmation_date' => ['nullable', 'date'],
+            'permanent_at' => ['nullable', 'date'],
 
             'punch_allowed_from' => ['required_if:work_schedule_type,flexible_part_time', 'nullable'],
             'shift_start_time' => ['required_if:work_schedule_type,flexible_part_time', 'nullable'],
@@ -1030,19 +1040,27 @@ class EmployeeC extends Controller
                 'work_schedule_type' => $dbScheduleType,
                 'attendance_policy_rule_id' => $newPolicyId,
                 'employment_status' => $request->employment_status,
-                'joining_date' => $lifecyclePayload['joining_date'],
-                'relieving_date' => $lifecyclePayload['relieving_date'],
-                'probation_start_date' => $lifecyclePayload['probation_start_date'],
-                'probation_end_date' => $lifecyclePayload['probation_end_date'],
-                'probation_status' => $lifecyclePayload['probation_status'],
-                'internship_start_date' => $lifecyclePayload['internship_start_date'],
-                'internship_end_date' => $lifecyclePayload['internship_end_date'],
-                'is_paid_intern' => $lifecyclePayload['is_paid_intern'],
-                'actual_salary' => $lifecyclePayload['actual_salary'],
+                'joining_date' => $request->filled('joining_date') ? $request->joining_date : ($lifecyclePayload['joining_date'] ?: $employeeData->joining_date),
+                'relieving_date' => $request->filled('relieving_date') ? $request->relieving_date : ($lifecyclePayload['relieving_date'] ?: $employeeData->relieving_date),
+                'probation_start_date' => $request->filled('probation_start_date') ? $request->probation_start_date : ($lifecyclePayload['probation_start_date'] ?: $employeeData->probation_start_date),
+                'probation_end_date' => $request->filled('probation_end_date') ? $request->probation_end_date : ($lifecyclePayload['probation_end_date'] ?: $employeeData->probation_end_date),
+                'probation_status' => $request->filled('probation_status') ? $request->probation_status : ($lifecyclePayload['probation_status'] ?: $employeeData->probation_status),
+                'internship_start_date' => $request->filled('internship_start_date') ? $request->internship_start_date : ($lifecyclePayload['internship_start_date'] ?: $employeeData->internship_start_date),
+                'internship_end_date' => $request->filled('internship_end_date') ? $request->internship_end_date : ($lifecyclePayload['internship_end_date'] ?: $employeeData->internship_end_date),
+                'is_paid_intern' => $request->has('is_paid_intern') && $request->is_paid_intern !== null ? $request->is_paid_intern : ($lifecyclePayload['is_paid_intern'] ?? $employeeData->is_paid_intern),
+                'actual_salary' => $request->filled('actual_salary') ? $request->actual_salary : ($lifecyclePayload['actual_salary'] ?: $employeeData->actual_salary),
                 'is_active' => $request->employment_status === 'active' ? 1 : 0,
                 'updated_by' => auth()->id(),
                 'updated_at' => now(),
             ];
+
+            if ($request->filled('probation_months')) {
+                $employeeUpdateData['probation_months'] = (int) $request->probation_months;
+            }
+
+            if ($request->filled('confirmation_date')) {
+                $employeeUpdateData['confirmation_date'] = $request->confirmation_date;
+            }
 
             if (Schema::hasColumn($this->employeeTable, 'internship_status')) {
                 $employeeUpdateData['internship_status'] = $lifecyclePayload['employee_stage'] === 'internship'
@@ -1056,21 +1074,46 @@ class EmployeeC extends Controller
                     : ((int)($employeeData->is_permanent ?? 0));
             }
 
-            if (
-                Schema::hasColumn($this->employeeTable, 'permanent_at')
-                && $lifecyclePayload['employee_stage'] === 'permanent'
-                && empty($employeeData->permanent_at)
-            ) {
-                $employeeUpdateData['permanent_at'] = now()->toDateString();
+            if (Schema::hasColumn($this->employeeTable, 'permanent_at')) {
+                $permDate = $request->filled('confirmation_date')
+                    ? $request->confirmation_date
+                    : ($request->filled('permanent_at')
+                        ? $request->permanent_at
+                        : ($employeeData->permanent_at ?? ($lifecyclePayload['employee_stage'] === 'permanent' ? now()->toDateString() : null)));
+                if ($permDate) {
+                    $employeeUpdateData['permanent_at'] = $permDate;
+                }
             }
 
             if ($request->has('reporting_manager_employee_id')) {
-                $employeeUpdateData['reporting_manager_employee_id'] = $request->filled('reporting_manager_employee_id')
-                    ? $request->reporting_manager_employee_id
-                    : null;
+                $newManagerId = $request->filled('reporting_manager_employee_id') ? (int)$request->reporting_manager_employee_id : null;
+                $oldManagerId = DB::table($this->employeeTable)->where('id', $employee)->value('reporting_manager_employee_id');
+
+                $employeeUpdateData['reporting_manager_employee_id'] = $newManagerId;
+
+                if ($newManagerId && $newManagerId !== (int)$oldManagerId) {
+                    app(\App\Services\HRMS\Reporting\ReportingScopeS::class)->assignSupervisor([
+                        'supervisor_employee_id' => $newManagerId,
+                        'employee_id' => (int)$employee,
+                        'start_date' => now()->toDateString(),
+                    ]);
+                } elseif (!$newManagerId && $oldManagerId) {
+                    app(\App\Services\HRMS\Reporting\ReportingScopeS::class)->relieveEmployeeByEmpId((int)$employee);
+                }
             }
 
             DB::table($this->employeeTable)->where('id', $employee)->update($employeeUpdateData);
+
+            // Regenerate / sync leave allocation after employee profile update
+            $empModel = \App\Models\HRMS\Employee\EmployeeM::find($employee);
+            if ($empModel) {
+                app(\App\Services\HRMS\Leave\LeaveAllocationService::class)->generateForEmployee(
+                    $empModel,
+                    (int) now()->year,
+                    auth()->id(),
+                    $empModel->employee_stage
+                );
+            }
 
             if (($oldPolicyId !== $newPolicyId || !DB::table('employee_policy_assignments')->where('employee_id', $employee)->where('policy_type', 'attendance')->where('is_active', 1)->exists()) && $newPolicyId) {
                 $today = Carbon::now('Asia/Kolkata')->toDateString();
@@ -1292,18 +1335,20 @@ class EmployeeC extends Controller
 
             $profileData = [
                 'employee_id' => $employee,
-                'date_of_birth' => $request->date_of_birth,
-                'gender' => $request->gender,
-                'address' => $request->address,
-                'highest_qualification' => $request->highest_qualification,
-                'cgpa_percentage' => $request->cgpa_percentage,
-                'total_experience' => $request->total_experience,
-                'emergency_contact_number' => $request->emergency_contact_number,
-                'bank_account_no' => $request->bank_account_no,
-                'bank_account_type' => $request->bank_account_type,
-                'bank_holder_name' => $request->bank_holder_name,
-                'ifsc_code' => $request->ifsc_code ? strtoupper($request->ifsc_code) : null,
-                'bank_branch' => $request->bank_branch,
+                'date_of_birth' => $request->filled('date_of_birth') ? $request->date_of_birth : ($oldProfile->date_of_birth ?? null),
+                'gender' => $request->filled('gender') ? $request->gender : ($oldProfile->gender ?? null),
+                'address' => $request->filled('address') ? $request->address : ($oldProfile->address ?? null),
+                'highest_qualification' => $request->filled('highest_qualification') ? $request->highest_qualification : ($oldProfile->highest_qualification ?? null),
+                'cgpa_percentage' => $request->filled('cgpa_percentage') ? $request->cgpa_percentage : ($oldProfile->cgpa_percentage ?? null),
+                'total_experience' => $request->filled('total_experience') ? $request->total_experience : ($oldProfile->total_experience ?? null),
+                'emergency_contact_number' => $request->filled('emergency_contact_number') ? $request->emergency_contact_number : ($oldProfile->emergency_contact_number ?? null),
+                'bank_account_no' => $request->filled('bank_account_no') ? $request->bank_account_no : ($oldProfile->bank_account_no ?? null),
+                'bank_account_type' => $request->filled('bank_account_type') ? $request->bank_account_type : ($oldProfile->bank_account_type ?? null),
+                'bank_holder_name' => $request->filled('bank_holder_name') ? $request->bank_holder_name : ($oldProfile->bank_holder_name ?? null),
+                'ifsc_code' => $request->filled('ifsc_code') ? strtoupper($request->ifsc_code) : ($oldProfile->ifsc_code ?? null),
+                'bank_branch' => $request->filled('bank_branch') ? $request->bank_branch : ($oldProfile->bank_branch ?? null),
+                'profile_image' => $oldProfile->profile_image ?? null,
+                'resume_file' => $oldProfile->resume_file ?? null,
 
                 // Preserve existing approval state on admin manage update.
                 'profile_status' => $oldStatus,
@@ -2877,38 +2922,49 @@ class EmployeeC extends Controller
                 ]);
             }
 
-            DB::table($this->profileTable)->updateOrInsert(
-                ['employee_id' => $employee],
-                [
-                    'date_of_birth' => $request->date_of_birth,
-                    'gender' => $request->gender,
-                    'address' => $request->address,
-                    'highest_qualification' => $request->highest_qualification,
-                    'cgpa_percentage' => $request->cgpa_percentage,
-                    'experience_type' => $request->experience_type,
-                    'total_experience' => $request->experience_type === 'fresher' ? '0' : $request->total_experience,
-                    'bank_account_no' => $request->bank_account_no,
-                    'bank_account_type' => $request->bank_account_type,
-                    'bank_holder_name' => $request->bank_holder_name,
-                    'ifsc_code' => $request->ifsc_code ? strtoupper($request->ifsc_code) : null,
-                    'bank_branch' => $request->bank_branch,
-                    'updated_at' => now(),
-                ]
-            );
+            $oldProfile = DB::table($this->profileTable)->where('employee_id', $employee)->first();
+
+            $updatePayload = [
+                'updated_at' => now(),
+            ];
+
+            $fieldsToSync = [
+                'date_of_birth', 'gender', 'address', 'highest_qualification',
+                'cgpa_percentage', 'experience_type', 'total_experience',
+                'bank_account_no', 'bank_account_type', 'bank_holder_name',
+                'ifsc_code', 'bank_branch'
+            ];
+
+            foreach ($fieldsToSync as $field) {
+                if ($request->has($field) && $request->input($field) !== null) {
+                    $val = $request->input($field);
+                    if ($field === 'ifsc_code' && is_string($val)) {
+                        $val = strtoupper($val);
+                    }
+                    $updatePayload[$field] = $val;
+                }
+            }
+
+            if ($request->experience_type === 'fresher') {
+                $updatePayload['total_experience'] = '0';
+            }
 
             if ($request->hasFile('resume_file')) {
                 $fileService = app(EmployeeFileS::class);
-                $resumePath = $fileService->upload(
+                $updatePayload['resume_file'] = $fileService->upload(
                     $request->file('resume_file'),
                     $employeeData->id,
                     $employeeData->employee_code ?? 'EMP-' . $employeeData->id,
                     'resume'
                 );
+            }
 
-                DB::table($this->profileTable)->where('employee_id', $employee)->update([
-                    'resume_file' => $resumePath,
-                    'updated_at' => now(),
-                ]);
+            if ($oldProfile) {
+                DB::table($this->profileTable)->where('employee_id', $employee)->update($updatePayload);
+            } else {
+                $updatePayload['employee_id'] = $employee;
+                $updatePayload['created_at'] = now();
+                DB::table($this->profileTable)->insert($updatePayload);
             }
 
             DB::commit();

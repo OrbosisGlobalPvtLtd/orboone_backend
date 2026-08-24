@@ -152,21 +152,21 @@ class LeaveAllocationService
         $stage = strtolower((string) ($allocation->employment_stage ?? ''));
         $isInternOrProbation = str_contains($stage, 'intern') || str_contains($stage, 'probation');
 
-        if ($isInternOrProbation) {
-            $allocation->monthly_carry_forward = (float) ($allocation->monthly_carry_forward ?? 0.0);
+        $rawQuota = (float) ($allocation->monthly_quota ?? 2.0);
+        if ($isInternOrProbation || (float) $allocation->paid_allocated < $rawQuota) {
+            $allocation->monthly_quota = round(min($rawQuota, (float) $allocation->paid_allocated), 2);
         } else {
-            $allocation->monthly_carry_forward = min((float) ($allocation->monthly_carry_forward ?? 0.0), (float) $allocation->paid_remaining);
+            $allocation->monthly_quota = round($rawQuota, 2);
         }
 
-        $rawQuota = (float) ($allocation->monthly_quota ?? 1.0);
-        $allocation->monthly_quota = round($rawQuota, 2);
+        $allocation->monthly_carry_forward = round(max(0.0, min((float) ($allocation->monthly_carry_forward ?? 0.0), (float) $allocation->paid_remaining)), 2);
 
         $carry = (float) $allocation->monthly_carry_forward;
         $quota = (float) $allocation->monthly_quota;
         $usedThisMonth = (float) ($allocation->monthly_used_this_month ?? 0.0);
 
         $monthlyRemainingRaw = max(0.0, ($quota + $carry) - $usedThisMonth);
-        $allocation->total_monthly_remaining_paid = round($monthlyRemainingRaw, 2);
+        $allocation->total_monthly_remaining_paid = round(min($monthlyRemainingRaw, (float) $allocation->paid_remaining), 2);
 
         return $allocation;
     }
@@ -224,14 +224,22 @@ class LeaveAllocationService
     private function allocationStartDate(EmployeeM $employee, string $stage, int $year, ?Carbon $effectiveDate = null): ?Carbon
     {
         if ($stage === 'permanent') {
-            $date = $employee->confirmation_date
+            $date = $effectiveDate?->toDateString()
+                ?: $employee->confirmation_date
+                ?: $employee->confirmation_effective_date
+                ?: $employee->permanent_at
                 ?: (property_exists($employee, 'permanent_effective_date') ? $employee->permanent_effective_date : null)
-                ?: ($effectiveDate?->toDateString())
+                ?: ($employee->probation_end_date ? Carbon::parse($employee->probation_end_date, 'Asia/Kolkata')->addDay()->toDateString() : null)
+                ?: ($employee->joining_date && (int) ($employee->probation_months ?? 0) > 0 ? Carbon::parse($employee->joining_date, 'Asia/Kolkata')->addMonthsNoOverflow((int) $employee->probation_months)->toDateString() : null)
                 ?: $employee->joining_date;
         } elseif ($stage === 'internship') {
-            $date = $employee->internship_start_date ?: $employee->joining_date;
+            $date = $effectiveDate?->toDateString()
+                ?: $employee->internship_start_date
+                ?: $employee->joining_date;
         } else {
-            $date = $employee->probation_start_date ?: $employee->joining_date;
+            $date = $effectiveDate?->toDateString()
+                ?: $employee->probation_start_date
+                ?: $employee->joining_date;
         }
 
         if (! $date) {

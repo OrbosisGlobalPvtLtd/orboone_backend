@@ -23,9 +23,10 @@ class EmployeeLifecycleService
     ): array {
         $employmentType = (string) ($input['employment_type'] ?? '');
         $employeeStage = $this->resolveEmployeeStage($employmentType, $existingEmployeeStage, $preserveExistingStage);
-        $joiningDate = ! empty($input['joining_date'])
-            ? Carbon::parse($input['joining_date'])
+        $joiningDateStr = ! empty($input['joining_date'])
+            ? (string) $input['joining_date']
             : null;
+        $joiningDate = $joiningDateStr ? Carbon::parse($joiningDateStr) : null;
 
         $isInternshipStage = $employeeStage === 'internship';
 
@@ -34,31 +35,39 @@ class EmployeeLifecycleService
             $salary = 0;
         }
 
-        $probationStart = null;
-        $probationEnd = null;
-        $probationStatus = 'pending';
+        $probationStart = Arr::get($input, 'probation_start_date');
+        $probationEnd = Arr::get($input, 'probation_end_date');
+        $probationStatus = Arr::get($input, 'probation_status') ?: ($existingProbationStatus ?: 'pending');
 
-        if ($employeeStage === 'probation' && $joiningDate) {
-            $probationStart = $joiningDate->copy()->format('Y-m-d');
-            $probationMonths = isset($input['probation_months']) ? (int)$input['probation_months'] : 3;
+        if ($joiningDate && !$isInternshipStage) {
+            if (!$probationStart) {
+                $probationStart = $joiningDate->copy()->format('Y-m-d');
+            }
+            $probationMonths = isset($input['probation_months']) && is_numeric($input['probation_months']) ? (int)$input['probation_months'] : 3;
             if ($probationMonths < 1) {
                 $probationMonths = 3;
             }
-            $probationEnd = $joiningDate->copy()->addMonthsNoOverflow($probationMonths)->subDay()->format('Y-m-d');
-            if (Carbon::now()->greaterThan(Carbon::parse($probationEnd))) {
-                $employeeStage = 'permanent';
-                $probationStatus = 'completed';
+            if (!$probationEnd) {
+                $probationEnd = Carbon::parse($probationStart)->copy()->addMonthsNoOverflow($probationMonths)->subDay()->format('Y-m-d');
+            }
+            if ($employeeStage === 'probation') {
+                if (Carbon::now()->greaterThan(Carbon::parse($probationEnd))) {
+                    $employeeStage = 'permanent';
+                    $probationStatus = 'completed';
+                } else {
+                    $probationStatus = in_array($existingProbationStatus, ['completed', 'confirmed'], true)
+                        ? $existingProbationStatus
+                        : 'ongoing';
+                }
             } else {
-                $probationStatus = in_array($existingProbationStatus, ['completed', 'confirmed'], true)
-                    ? $existingProbationStatus
-                    : 'ongoing';
+                $probationStatus = 'completed';
             }
         } elseif ($employeeStage === 'permanent') {
             $probationStatus = 'completed';
         }
 
-        $internshipStart = $isInternshipStage ? Arr::get($input, 'internship_start_date') : null;
-        $internshipEnd = $isInternshipStage ? Arr::get($input, 'internship_end_date') : null;
+        $internshipStart = Arr::get($input, 'internship_start_date');
+        $internshipEnd = Arr::get($input, 'internship_end_date');
 
         if ($isInternshipStage && $internshipStart && !$internshipEnd) {
             $duration = isset($input['internship_duration_months']) && is_numeric($input['internship_duration_months'])
@@ -71,7 +80,7 @@ class EmployeeLifecycleService
         return [
             'employee_stage' => $employeeStage,
             'work_schedule_type' => Arr::get($input, 'work_schedule_type'),
-            'joining_date' => $isInternshipStage ? null : Arr::get($input, 'joining_date'),
+            'joining_date' => $joiningDateStr,
             'relieving_date' => Arr::get($input, 'relieving_date'),
             'probation_start_date' => $probationStart,
             'probation_end_date' => $probationEnd,
@@ -106,6 +115,7 @@ class EmployeeLifecycleService
         };
     }
 
+    
     public function isAdminActor($actor): bool
     {
         if (! $actor) {

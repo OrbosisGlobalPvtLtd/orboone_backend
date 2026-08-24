@@ -53,8 +53,21 @@ $topbarNotifications = collect();
                 </button>
 
                 <div style="min-width:0;">
+                    @php
+                        $titleOverrides = [
+                            'reporting_supervisors' => 'Reporting Managers',
+                            'reporting_managers' => 'Reporting Managers',
+                            'reporting_my_employees' => 'My Reporting Employees',
+                            'reporting_work_reports' => 'Daily Work Reports',
+                            'reporting_projects' => 'Projects & Tasks',
+                            'reporting_attendance' => 'Reporting Employee Attendance',
+                            'reporting_leave' => 'Reporting Employee Leave',
+                            'reporting_dashboard' => 'Reporting Manager Dashboard',
+                        ];
+                        $displayActiveTitle = $titleOverrides[$active ?? ''] ?? ucwords(str_replace(['_', '-'], ' ', $active ?? 'dashboard'));
+                    @endphp
                     <h5 class="mb-0 fw-bold text-dark" style="line-height:1.2;">
-                        {{ ucwords(str_replace(['_', '-'], ' ', $active ?? 'dashboard')) }}
+                        {{ $displayActiveTitle }}
                     </h5>
                     <small class="text-muted d-block" style="font-size:12px;">
                         {{ $branding['company_name'] ?? config('app.name', 'OrboOne HRMS') }}

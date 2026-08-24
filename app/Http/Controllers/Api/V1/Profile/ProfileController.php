@@ -500,12 +500,15 @@ class ProfileController extends Controller
                         continue;
                     }
 
-                    $profileData[$field] = $request->input($field);
+                    $val = $request->input($field);
+                    if ($val !== null && trim((string) $val) !== '') {
+                        $profileData[$field] = $val;
+                    }
                 }
             }
 
-            if ($request->has('ifsc_code')) {
-                $profileData['ifsc_code'] = strtoupper((string) $request->ifsc_code);
+            if ($request->has('ifsc_code') && $request->input('ifsc_code') !== null && trim((string) $request->input('ifsc_code')) !== '') {
+                $profileData['ifsc_code'] = strtoupper((string) $request->input('ifsc_code'));
             }
 
             $fileService = app(EmployeeFileS::class);

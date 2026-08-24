@@ -31,11 +31,11 @@ return new class extends Migration
             );
         }
 
-        // Insert or update "Today's Attendance" menu (ID: 350)
+        // Insert or update "Today's Attendance" menu (ID: 349)
         DB::table('menus')->updateOrInsert(
             ['route' => 'attendances.today'],
             [
-                'id' => 350,
+                'id' => 349,
                 'name' => "Today's Attendance",
                 'route' => 'attendances.today',
                 'icon' => 'fas fa-fingerprint',

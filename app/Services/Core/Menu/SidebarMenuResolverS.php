@@ -77,9 +77,114 @@ class SidebarMenuResolverS
         $filtered = $this->filterByEmployeeOnlyVisibility($filtered, $isEmployeeContext);
         $filtered = $this->filterByWebAttendancePermission($filtered, $user, $isSuperAdmin);
         $filtered = $this->filterRetiredLegacyPayrollMenus($filtered);
+        $filtered = $this->filterReportingManagementVisibility($filtered, $user, $isSuperAdmin);
+        $filtered = $this->filterByPermanentWfhVisibility($filtered, $user);
         $filtered = $this->filterByRouteValidity($filtered);
 
         return $filtered;
+    }
+
+    private function filterByPermanentWfhVisibility(Collection $menus, Authenticatable $user): Collection
+    {
+        $emp = DB::table('employees_new')->where('user_id', $user->id)->first(['id', 'work_mode']);
+        if (!$emp) {
+            return $menus;
+        }
+
+        $workMode = strtolower((string)($emp->work_mode ?? 'wfo'));
+        $isPermanentWfh = in_array($workMode, ['wfh', 'permanent_wfh', 'permanent wfh'], true);
+
+        if (!$isPermanentWfh) {
+            return $menus;
+        }
+
+        return $menus->reject(function ($menu) {
+            $r = strtolower((string)($menu->route ?? ''));
+            $n = strtolower((string)($menu->name ?? ''));
+            return in_array($r, ['hrms.attendance.my-wfh.index', 'attendances.my-wfh', 'attendance.my-wfh'], true)
+                || str_contains($n, 'my wfh');
+        });
+    }
+
+    private function filterReportingManagementVisibility(Collection $menus, Authenticatable $user, bool $isSuperAdmin): Collection
+    {
+        $empId = null;
+        $userEmp = DB::table('employees_new')->where('user_id', $user->id)->first(['id']);
+        if ($userEmp) {
+            $empId = (int)$userEmp->id;
+        }
+
+        $isTeamManager = false;
+        $isProjectManager = false;
+
+        if ($empId) {
+            $teamScope = app(\App\Services\HRMS\Team\TeamManagementScopeS::class);
+            $teamIds = $teamScope->getTeamEmployeeIds($empId);
+            $isTeamManager = !empty($teamIds);
+
+            $isTeamLead = DB::table('project_teams')->where('team_lead_employee_id', $empId)->where('is_active', 1)->exists();
+            $isDeliveryHead = DB::table('projects')->where('delivery_head_employee_id', $empId)->exists();
+            $isProjectLead = DB::table('project_assignments')
+                ->where('employee_id', $empId)
+                ->where('is_active', 1)
+                ->where(function($q) {
+                    $q->whereIn(DB::raw('LOWER(project_role)'), [
+                        'team_lead', 'team lead',
+                        'project_lead', 'project lead',
+                        'project_manager', 'project manager',
+                        'lead', 'manager',
+                        'delivery_head', 'delivery head'
+                    ]);
+                })->exists();
+
+            $isProjectManager = $isTeamLead || $isDeliveryHead || $isProjectLead;
+        }
+
+        if ($isSuperAdmin || (method_exists($user, 'hasPermission') && ($user->hasPermission('projects.view_all') || $user->hasPermission('projects.manage')))) {
+            $isProjectManager = true;
+        }
+
+        $hasAdminAccess = $isSuperAdmin || (method_exists($user, 'hasRole') && $user->hasRole(['admin', 'hr_admin', 'manager'])) || (method_exists($user, 'hasPermission') && $user->hasPermission('reporting.structure.manage'));
+
+        return $menus->map(function ($m) use ($isProjectManager) {
+            $id = (int)($m->id ?? 0);
+
+            // Remap Projects menu (321) to real projects.index route instead of generic coming-soon module.project-mgmt route
+            if (($id === 321 || ($m->route ?? '') === 'module.project-mgmt') && $isProjectManager) {
+                $m = clone $m;
+                $m->route = 'projects.index';
+            }
+
+            return $m;
+        })->reject(function ($m) use ($isTeamManager, $isProjectManager, $hasAdminAccess) {
+            $id = (int)($m->id ?? 0);
+            $parentId = (int)($m->parent_id ?? 0);
+
+            // 1. Legacy operational submenus under 350 are deprecated
+            if (in_array($id, [351, 355, 356, 357, 358, 359], true)) {
+                return true;
+            }
+
+            // 2. Team Management container (370) and operational submenus (371..377):
+            // Show ONLY if employee is an active Reporting Manager (has team members assigned under them)
+            if (($id === 370 || $parentId === 370 || in_array($id, [371, 372, 373, 374, 375, 376, 377], true)) && !$isTeamManager) {
+                return true;
+            }
+
+            // 3. Project Management lead/management menus (321, 9901, 9903):
+            // If user is NOT a project manager/lead, reject project management lead menus
+            if (in_array($id, [321, 9901, 9903], true) && !$isProjectManager) {
+                return true;
+            }
+
+            // 4. Reporting Management container (350) and configuration submenus (352, 353, 354, 360):
+            // Show ONLY if user has Admin access
+            if (($id === 350 || $parentId === 350) && !$hasAdminAccess) {
+                return true;
+            }
+
+            return false;
+        })->values();
     }
 
     public function clearCache(int $userId): void
@@ -114,6 +219,39 @@ class SidebarMenuResolverS
             'module_key' => 'employee.tasks',
             'parent_id' => 320,
             'sort_order' => 2,
+            'is_active' => 1
+        ]);
+
+        $menus->push((object)[
+            'id' => 9901,
+            'name' => 'Projects Directory',
+            'route' => 'projects.index',
+            'icon' => 'fas fa-project-diagram',
+            'module_key' => 'projects.directory',
+            'parent_id' => 320,
+            'sort_order' => 1,
+            'is_active' => 1
+        ]);
+
+        $menus->push((object)[
+            'id' => 9902,
+            'name' => 'My Projects',
+            'route' => 'projects.my',
+            'icon' => 'fas fa-tasks',
+            'module_key' => 'employee.projects',
+            'parent_id' => 320,
+            'sort_order' => 3,
+            'is_active' => 1
+        ]);
+
+        $menus->push((object)[
+            'id' => 9903,
+            'name' => 'Project Tasks',
+            'route' => 'projects.tasks.index',
+            'icon' => 'fas fa-list-check',
+            'module_key' => 'projects.tasks',
+            'parent_id' => 320,
+            'sort_order' => 4,
             'is_active' => 1
         ]);
 
@@ -158,10 +296,28 @@ class SidebarMenuResolverS
             ->map(fn ($id) => (int) $id)
             ->all();
 
-        // Always allow Project Management container, Tasks menu, and My Tasks menu for everyone
+        // Always allow Project Management container, Projects menu, Tasks menu, My Tasks, Projects Directory, etc.
         $allowedIds[] = 320;
+        $allowedIds[] = 321;
         $allowedIds[] = 322;
         $allowedIds[] = 9999;
+        $allowedIds[] = 9901;
+        $allowedIds[] = 9902;
+        $allowedIds[] = 9903;
+        $allowedIds[] = 9950;
+        $allowedIds[] = 9951;
+        $allowedIds[] = 9952;
+        $allowedIds[] = 9953;
+        $allowedIds[] = 9954;
+        $allowedIds[] = 9955;
+        $allowedIds[] = 9956;
+        $allowedIds[] = 9957;
+        $allowedIds[] = 9958;
+
+        // Always allow Reporting Management (350..360) and Team Management (370..377) containers to pass role filtering
+        for ($i = 350; $i <= 377; $i++) {
+            $allowedIds[] = $i;
+        }
 
         // Dynamically allow Today's Attendance menu if Web Attendance is enabled in Access Control for the employee
         $emp = DB::table('employees_new')->where('user_id', $user->id)->first(['allow_web_attendance']);
@@ -216,9 +372,12 @@ class SidebarMenuResolverS
                 return false;
             }
 
-            // Exclude Admin Tasks menu for employee context
-            if ($isEmployeeContext && $menu->id == 322) {
-                return false;
+            // Always allow Reporting Management (350) and its submenus (351..360) in employee context
+            $id = (int)($menu->id ?? 0);
+            $parentId = (int)($menu->parent_id ?? 0);
+            $route = strtolower(trim((string) ($menu->route ?? '')));
+            if ($id === 350 || $parentId === 350 || $id === 370 || $parentId === 370 || str_starts_with($route, 'reporting.') || str_starts_with($route, 'team.')) {
+                return true;
             }
 
             $isEmployeeOnly = $this->isEmployeeOnlyMenu($menu);
@@ -250,7 +409,7 @@ class SidebarMenuResolverS
 
         foreach ($menus as $menu) {
             $route = (string) ($menu->route ?? '');
-            if ($route === '' || $this->resolveRouteName($route) !== null) {
+            if ($route === '' || $route === '#' || $this->resolveRouteName($route) !== null) {
                 $validIds[] = (int) $menu->id;
             }
         }
@@ -430,6 +589,13 @@ class SidebarMenuResolverS
             'hrms.leave.balances.index' => ['leave.balance.view_all', 'leave.balance.view_team', 'leave.balance.view_own', 'leave.balance.view', 'leave_self.view_balance'],
             'employees-leave-request.summary' => ['leave.balance.view_all', 'leave.balance.view_team', 'leave.balance.view_own', 'leave.balance.view', 'leave_self.view_balance'],
             'hrms.holidays.index' => ['leave.holidays.manage', 'leave.team_calendar.view'],
+            'projects.index' => ['projects.view_all', 'projects.my_projects.view', 'projects.delivery_head.view', 'projects.team_lead.view'],
+            'projects.my' => ['projects.my_projects.view'],
+            'projects.tasks.index' => ['projects.tasks.view', 'projects.view_all'],
+            'projects.team.attendance' => ['projects.team_attendance.view', 'attendance.records.view_all', 'projects.team_lead.view', 'projects.delivery_head.view'],
+            'projects.team.work_reports' => ['projects.team_work_reports.view', 'attendance.work_reports.view_all', 'projects.team_lead.view', 'projects.delivery_head.view'],
+            'projects.team.leave' => ['projects.team_leave.view', 'leave.approvals.view_all', 'projects.team_lead.view', 'projects.delivery_head.view'],
+            'projects.templates.index' => ['projects.work_report.templates.manage', 'projects.manage'],
         ];
     }
 

@@ -64,20 +64,130 @@ class AttendanceController extends Controller
 
     public function clockOut(Request $request)
     {
+        if (! $request->filled('task_summary') && empty($request->projects)) {
+            return $this->apiResponse(false, 'The task summary field is required.', null, 422, [
+                'task_summary' => ['The task summary field is required.'],
+            ]);
+        }
+
+        if ($request->filled('task_summary') && strlen((string) $request->task_summary) < 5 && empty($request->projects)) {
+            return $this->apiResponse(false, 'The task summary must be at least 5 characters.', null, 422, [
+                'task_summary' => ['The task summary must be at least 5 characters.'],
+            ]);
+        }
+
         $request->validate([
-            'task_summary' => ['required', 'string', 'min:5', 'max:10000'],
+            'task_summary' => ['nullable', 'string', 'max:10000'],
             'task_summary_json' => ['nullable', 'array'],
-            'task_details' => ['nullable', 'string', 'min:5', 'max:5000'],
+            'projects' => ['nullable', 'array'],
+            'projects.*.project_id' => ['nullable'],
+            'projects.*.custom_project_name' => ['nullable', 'string'],
+            'projects.*.tasks' => ['nullable', 'array'],
+            'today_work_status' => ['nullable', 'string'],
+            'issues_blockers' => ['nullable', 'string'],
+            'remarks' => ['nullable', 'string'],
             'note' => ['nullable', 'string', 'max:1000'],
             'latitude' => ['nullable', 'numeric'],
             'longitude' => ['nullable', 'numeric'],
             'address' => ['nullable', 'string', 'max:2000'],
         ]);
 
+        $scopeS = app(\App\Services\HRMS\ProjectManagement\ProjectAccessScopeS::class);
+        $accessibleProjectIds = $scopeS->getAccessibleProjectIds();
+
+        $rawProjects = $request->projects ?? ($request->task_summary_json['projects'] ?? []);
+        $todayWorkStatus = strtolower($request->today_work_status ?? $request->task_summary_json['today_work_status'] ?? $request->current_status ?? 'in_progress');
+        $issuesBlockers = $request->issues_blockers ?? ($request->task_summary_json['issues_blockers'] ?? null);
+        $remarks = $request->remarks ?? $request->note ?? ($request->task_summary_json['remarks'] ?? $request->task_summary_json['additional_notes'] ?? null);
+
+        $projectsPayload = [];
+        $summaryTextLines = [];
+
+        if (is_array($rawProjects) && count($rawProjects) > 0) {
+            foreach ($rawProjects as $pIdx => $pBlock) {
+                $projIdInput = $pBlock['project_id'] ?? null;
+                $projId = is_numeric($projIdInput) ? (int) $projIdInput : null;
+                $isCustom = $projIdInput === 'custom' || ! empty($pBlock['is_custom']);
+                $customName = $isCustom ? trim($pBlock['custom_project_name'] ?? '') : null;
+
+                if ($projId && ! in_array($projId, $accessibleProjectIds, true) && ! $scopeS->isSuperAdminOrGlobal()) {
+                    return $this->apiResponse(false, "You are not authorized to submit daily work reports for selected project ID: {$projId}.", null, 422, [
+                        'projects' => ["Unauthorized project selection: {$projId}"],
+                    ]);
+                }
+
+                $projObj = $projId ? DB::table('projects')->where('id', $projId)->first() : null;
+                $projectName = $projObj ? $projObj->name : ($customName ?: 'Custom / Other Work');
+
+                $tasksPayload = [];
+                $taskLines = [];
+
+                if (isset($pBlock['tasks']) && is_array($pBlock['tasks'])) {
+                    foreach ($pBlock['tasks'] as $tItem) {
+                        $tName = trim($tItem['task_name'] ?? $tItem['description'] ?? '');
+                        if (empty($tName)) {
+                            continue;
+                        }
+
+                        $isCompleted = ! empty($tItem['is_completed']) || ! empty($tItem['completed']);
+                        $isCompleted = ($isCompleted == 1 || $isCompleted === '1' || $isCompleted === true || $isCompleted === 'true');
+
+                        $tasksPayload[] = [
+                            'description' => $tName,
+                            'task_name' => $tName,
+                            'completed' => $isCompleted,
+                            'is_completed' => $isCompleted,
+                        ];
+
+                        $icon = $isCompleted ? '☑' : '☐';
+                        $taskLines[] = "  {$icon} {$tName}";
+                    }
+                }
+
+                if (! empty($tasksPayload)) {
+                    $projectsPayload[] = [
+                        'project_id' => $projId,
+                        'project_name' => $projectName,
+                        'is_custom' => $isCustom,
+                        'custom_project_name' => $customName,
+                        'tasks' => $tasksPayload,
+                    ];
+
+                    $summaryTextLines[] = "Project: {$projectName}\n" . implode("\n", $taskLines);
+                }
+            }
+        }
+
+        if (! empty($projectsPayload)) {
+            $taskSummaryText = implode("\n\n", $summaryTextLines);
+            $taskSummaryText .= "\n\nToday's Work Status: " . ucfirst(str_replace('_', ' ', $todayWorkStatus));
+
+            if (! empty($issuesBlockers)) {
+                $taskSummaryText .= "\n\nIssues / Blockers:\n" . trim($issuesBlockers);
+            }
+            if (! empty($remarks)) {
+                $taskSummaryText .= "\n\nAdditional Notes:\n" . trim($remarks);
+            }
+
+            $taskSummaryJson = [
+                'projects' => $projectsPayload,
+                'today_work_status' => $todayWorkStatus,
+                'current_status' => $todayWorkStatus,
+                'issues_blockers' => $issuesBlockers,
+                'remarks' => $remarks,
+                'additional_notes' => $remarks,
+                'task_name' => $projectsPayload[0]['project_name'] ?? 'Daily Work',
+                'today_work_description' => $taskSummaryText,
+            ];
+        } else {
+            $taskSummaryText = $request->task_summary ?? 'Daily Work Update Completed';
+            $taskSummaryJson = $request->task_summary_json;
+        }
+
         $result = $this->mobileService->punchOut(
             auth()->id(),
-            $request->task_summary,
-            $request->note,
+            $taskSummaryText,
+            $remarks,
             [
                 'latitude' => $request->latitude,
                 'longitude' => $request->longitude,
@@ -85,7 +195,7 @@ class AttendanceController extends Controller
                 'ip' => $request->ip(),
                 'device' => $request->userAgent(),
             ],
-            $request->task_summary_json
+            $taskSummaryJson
         );
 
         return $this->apiResponse(

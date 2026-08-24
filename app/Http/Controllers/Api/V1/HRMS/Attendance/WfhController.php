@@ -108,7 +108,7 @@ class WfhController extends Controller
             'to_date' => 'nullable|date',
             'date_from' => 'nullable|date',
             'date_to' => 'nullable|date',
-            'reason_category' => 'required|in:normal,personal_reason,manager_assigned,internet_issue,electricity_issue,other',
+            'reason_category' => 'required|string|max:100',
             'reason' => 'nullable|string',
             'remarks' => 'nullable|string',
         ]);

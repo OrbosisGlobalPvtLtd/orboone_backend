@@ -13,7 +13,7 @@ class ProfilesController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('auth');
+        $this->middleware('auth')->except(['profileImage']);
     }
 
     public function index()
@@ -251,12 +251,10 @@ class ProfilesController extends Controller
                         $profileData['profile_status'] = 'approved';
                         $profileData['is_profile_completed'] = 1;
                         $profileData['created_at'] = now();
+                        DB::table('employee_profiles')->insert($profileData);
+                    } else {
+                        DB::table('employee_profiles')->where('employee_id', $employee->id)->update($profileData);
                     }
-
-                    DB::table('employee_profiles')->updateOrInsert(
-                        ['employee_id' => $employee->id],
-                        $profileData
-                    );
                 }
             });
         } catch (\Exception $e) {
@@ -308,45 +306,75 @@ class ProfilesController extends Controller
     {
         $user = auth()->user();
         
-        $employee = DB::table('employees_new')->where('id', $employeeId)->first();
+        $employeeIdNum = is_object($employeeId) && isset($employeeId->id) ? (int)$employeeId->id : (int)$employeeId;
+
+        $employee = DB::table('employees_new')->where('id', $employeeIdNum)->first();
         if (!$employee) {
-            abort(404, 'Employee not found');
+            $employee = DB::table('employees_new')->where('user_id', $employeeIdNum)->first();
+        }
+        if (!$employee) {
+            return $this->serveDefaultAvatar();
         }
 
-        $hasPermission = false;
-        
-        if ($employee->user_id == $user->id) {
-            $hasPermission = true;
-        } else {
-            $userRole = DB::table('roles')
-                ->join('user_roles', 'roles.id', '=', 'user_roles.role_id')
-                ->where('user_roles.user_id', $user->id)
-                ->whereIn('roles.slug', ['super_admin', 'admin', 'hr_admin', 'finance_admin', 'operations_admin'])
-                ->exists();
-            if ($userRole) {
+        if ($user) {
+            $hasPermission = false;
+            if ($employee->user_id == $user->id || $employee->id == $user->id) {
                 $hasPermission = true;
+            } else {
+                $userRole = DB::table('roles')
+                    ->join('user_roles', 'roles.id', '=', 'user_roles.role_id')
+                    ->where('user_roles.user_id', $user->id)
+                    ->whereIn('roles.slug', ['super_admin', 'admin', 'hr_admin', 'finance_admin', 'operations_admin'])
+                    ->exists();
+                if ($userRole) {
+                    $hasPermission = true;
+                }
+            }
+
+            if (!$hasPermission) {
+                return $this->serveDefaultAvatar();
             }
         }
 
-        if (!$hasPermission) {
-            abort(403, 'Unauthorized access to profile image.');
+        $profile = DB::table('employee_profiles')->where('employee_id', $employee->id)->first();
+        
+        $path = $profile ? trim((string)$profile->profile_image) : null;
+        $filePath = null;
+
+        if ($path) {
+            if (\Illuminate\Support\Facades\Storage::disk('private')->exists($path)) {
+                $filePath = \Illuminate\Support\Facades\Storage::disk('private')->path($path);
+            } elseif (\Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
+                $filePath = \Illuminate\Support\Facades\Storage::disk('public')->path($path);
+            } elseif (\Illuminate\Support\Facades\Storage::disk('local')->exists($path)) {
+                $filePath = \Illuminate\Support\Facades\Storage::disk('local')->path($path);
+            } elseif (file_exists(public_path($path))) {
+                $filePath = public_path($path);
+            } elseif (file_exists(storage_path('app/' . $path))) {
+                $filePath = storage_path('app/' . $path);
+            } elseif (file_exists(storage_path('app/public/' . $path))) {
+                $filePath = storage_path('app/public/' . $path);
+            } elseif (file_exists(storage_path('app/private/' . $path))) {
+                $filePath = storage_path('app/private/' . $path);
+            }
         }
 
-        $profile = DB::table('employee_profiles')->where('employee_id', $employeeId)->first();
-        
-        $path = $profile ? $profile->profile_image : null;
-
-        if ($path && \Illuminate\Support\Facades\Storage::disk('private')->exists($path)) {
-            $filePath = \Illuminate\Support\Facades\Storage::disk('private')->path($path);
+        if ($filePath && file_exists($filePath)) {
             $mime = mime_content_type($filePath) ?: 'image/jpeg';
             
             if (strpos($mime, 'image/') === 0) {
                 return response()->file($filePath, [
                     'Content-Type' => $mime,
+                    'Cache-Control' => 'no-cache, private',
                 ]);
             }
         }
 
+        return $this->serveDefaultAvatar();
+    }
+
+    private function serveDefaultAvatar()
+    {
         $defaultAvatarPath = public_path('assets/images/default-avatar.png');
         if (!file_exists($defaultAvatarPath)) {
             $defaultAvatarPath = public_path('images/avatar.png');

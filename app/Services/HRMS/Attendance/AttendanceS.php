@@ -410,12 +410,18 @@ class AttendanceS
             'punch_out_note' => $note,
         ])->save();
 
+        $primaryProjectId = null;
+        if (is_array($taskSummaryJson) && !empty($taskSummaryJson['projects'][0]['project_id']) && is_numeric($taskSummaryJson['projects'][0]['project_id'])) {
+            $primaryProjectId = (int) $taskSummaryJson['projects'][0]['project_id'];
+        }
+
         AttendanceWorkLogM::updateOrCreate(
             ['attendance_id' => $attendance->id],
             [
                 'employee_id' => $employee->id,
                 'user_id' => $userId,
                 'work_date' => $today,
+                'project_id' => $primaryProjectId,
                 'work_summary' => $taskSummary,
                 'work_summary_json' => $taskSummaryJson,
                 'latitude' => $meta['latitude'] ?? null,

@@ -1392,15 +1392,17 @@ class AttendancesC extends Controller
         $request->validate([
             'task_summary' => 'nullable|string|max:10000',
             'task_name' => 'nullable|string|max:255',
+            'task_summary' => 'nullable|string|max:5000',
+            'task_name' => 'nullable|string|max:255',
             'today_work_description' => 'nullable|string|max:5000',
             'current_status' => 'nullable|string|max:50',
-            'test_status' => 'nullable',
-            'completed_tasks' => 'nullable|string|max:5000',
-            'pending_tasks' => 'nullable|string|max:5000',
-            'tomorrow_plan' => 'nullable|string|max:5000',
             'issues_blockers' => 'nullable|string|max:5000',
-            'requirements' => 'nullable|array',
             'remarks' => 'nullable|string|max:1000',
+            'projects' => 'nullable|array',
+            'projects.*.project_id' => 'nullable',
+            'projects.*.custom_project_name' => 'required_if:projects.*.project_id,custom',
+            'projects.*.project_status' => 'nullable|string',
+            'projects.*.tasks' => 'nullable|array',
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
             'address' => 'nullable|string|max:2000',
@@ -1409,32 +1411,107 @@ class AttendancesC extends Controller
             'gps_status' => 'nullable|string|max:255',
         ]);
 
-        $taskSummaryText = $request->task_summary;
-        if (empty($taskSummaryText)) {
-            $taskSummaryText = trim(($request->task_name ? '[' . $request->task_name . '] ' : '') . ($request->today_work_description ?? 'Daily Work Update Completed'));
+        $scopeS = app(\App\Services\HRMS\ProjectManagement\ProjectAccessScopeS::class);
+        $accessibleProjectIds = $scopeS->getAccessibleProjectIds();
+
+        $rawProjects = $request->projects ?? [];
+        $todayWorkStatus = strtolower($request->today_work_status ?? $request->current_status ?? 'in_progress');
+        $projectsPayload = [];
+        $summaryTextLines = [];
+
+        if (is_array($rawProjects) && count($rawProjects) > 0) {
+            foreach ($rawProjects as $pIdx => $pBlock) {
+                $projIdInput = $pBlock['project_id'] ?? null;
+                $projId = is_numeric($projIdInput) ? (int)$projIdInput : null;
+                $isCustom = $projIdInput === 'custom' || !empty($pBlock['is_custom']);
+                $customName = $isCustom ? trim($pBlock['custom_project_name'] ?? '') : null;
+
+                if ($projId && !in_array($projId, $accessibleProjectIds, true) && !$scopeS->isSuperAdminOrGlobal()) {
+                    return back()->with('error', "You are not authorized to submit daily work reports for selected project ID: {$projId}.");
+                }
+
+                $projObj = $projId ? DB::table('projects')->where('id', $projId)->first() : null;
+                $projectName = $projObj ? $projObj->name : ($customName ?: 'Custom / Other Work');
+
+                $tasksPayload = [];
+                $taskLines = [];
+
+                if (isset($pBlock['tasks']) && is_array($pBlock['tasks'])) {
+                    foreach ($pBlock['tasks'] as $tItem) {
+                        $tName = trim($tItem['task_name'] ?? $tItem['description'] ?? '');
+                        if (empty($tName)) continue;
+
+                        $isCompleted = !empty($tItem['is_completed']) || !empty($tItem['completed']);
+                        $isCompleted = ($isCompleted == 1 || $isCompleted === '1' || $isCompleted === true || $isCompleted === 'true');
+
+                        $tasksPayload[] = [
+                            'description' => $tName,
+                            'task_name' => $tName,
+                            'completed' => $isCompleted,
+                            'is_completed' => $isCompleted,
+                        ];
+
+                        $icon = $isCompleted ? '☑' : '☐';
+                        $taskLines[] = "  {$icon} {$tName}";
+                    }
+                }
+
+                if (!empty($tasksPayload)) {
+                    $projectsPayload[] = [
+                        'project_id' => $projId,
+                        'project_name' => $projectName,
+                        'is_custom' => $isCustom,
+                        'custom_project_name' => $customName,
+                        'tasks' => $tasksPayload,
+                    ];
+
+                    $summaryTextLines[] = "Project: {$projectName}\n" . implode("\n", $taskLines);
+                }
+            }
         }
 
-        // Filter out empty requirements
-        $reqs = array_values(array_filter((array) ($request->requirements ?? []), function ($item) {
-            return !empty(trim((string) $item));
-        }));
+        // Fallback for legacy single task_name / today_work_description form
+        if (empty($projectsPayload)) {
+            $taskName = trim($request->task_name ?? '');
+            $workDesc = trim($request->today_work_description ?? 'Daily Work Update Completed');
 
-        $testStatusVal = $request->test_status;
-        if (is_array($testStatusVal)) {
-            $testStatusVal = implode(', ', array_filter($testStatusVal));
+            $summaryTextLines[] = ($taskName ? "[{$taskName}] " : '') . $workDesc;
+
+            $projectsPayload[] = [
+                'project_id' => null,
+                'project_name' => $taskName ?: 'General Work',
+                'is_custom' => true,
+                'custom_project_name' => $taskName,
+                'tasks' => [
+                    [
+                        'description' => $workDesc,
+                        'task_name' => $workDesc,
+                        'completed' => strtolower($todayWorkStatus) === 'done',
+                        'is_completed' => strtolower($todayWorkStatus) === 'done',
+                    ],
+                ],
+            ];
+        }
+
+        $taskSummaryText = implode("\n\n", $summaryTextLines);
+        $taskSummaryText .= "\n\nToday's Work Status: " . ucfirst(str_replace('_', ' ', $todayWorkStatus));
+
+        if (!empty($request->issues_blockers)) {
+            $taskSummaryText .= "\n\nIssues / Blockers:\n" . trim($request->issues_blockers);
+        }
+        if (!empty($request->remarks)) {
+            $taskSummaryText .= "\n\nAdditional Notes:\n" . trim($request->remarks);
         }
 
         $taskSummaryJson = [
-            'task_name' => $request->task_name,
-            'today_work_description' => $request->today_work_description,
-            'current_status' => $request->current_status ?? 'Progress',
-            'test_status' => $testStatusVal,
-            'requirements' => $reqs,
-            'completed_tasks' => $request->completed_tasks,
-            'pending_tasks' => $request->pending_tasks,
-            'tomorrow_plan' => $request->tomorrow_plan,
+            'projects' => $projectsPayload,
+            'today_work_status' => $todayWorkStatus,
+            'current_status' => $todayWorkStatus,
             'issues_blockers' => $request->issues_blockers,
             'remarks' => $request->remarks,
+            'additional_notes' => $request->remarks,
+            'task_name' => $projectsPayload[0]['project_name'] ?? 'Daily Work',
+            'today_work_description' => $taskSummaryText,
         ];
 
         $meta = [

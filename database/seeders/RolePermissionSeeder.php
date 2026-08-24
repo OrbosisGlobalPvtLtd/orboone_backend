@@ -257,7 +257,7 @@ class RolePermissionSeeder extends Seeder
                 'settings.profile.view','settings.profile.update','settings.policy_change_logs.view','settings.employee_policy_assignments.view','settings.employee_policy_assignments.manage','settings.notification_retention.manage',
                 'mobile_app_versions.view','mobile_app_versions.manage','mobile_app_versions.upload','mobile_app_versions.delete',
                 'employee_documents.view','company_documents.manage','documents_self.view','documents_self.upload','employee.view',
-                'enterprise_payroll.policy.view',
+                'enterprise_payroll.dashboard.view','enterprise_salary_structure.view','enterprise_salary_structure.manage','enterprise_payroll_run.view','enterprise_payroll_run.generate','enterprise_payroll_run.approve','enterprise_payroll_run.lock','enterprise_payroll_run.reopen','enterprise_payslip.view','enterprise_payslip.generate','enterprise_payslip.download','enterprise_bonus_incentive.view','enterprise_bonus_incentive.manage','enterprise_reimbursement.view','enterprise_reimbursement.manage','enterprise_fnf.view','enterprise_fnf.manage','enterprise_payroll_reports.view','enterprise_payroll.my_reimbursements.view','enterprise_payroll.my_reimbursements.create','enterprise_payroll.policy.view','enterprise_payroll.policy.update',
                 'document_generation.view','document_generation.template_create','document_generation.template_edit','document_generation.generate','document_generation.preview','document_generation.download','document_generation.email','document_generation.review','document_generation.delete',
             ],
             'manager' => [

@@ -1212,17 +1212,48 @@
                                         $requirementsList = [];
                                         
                                         if (is_array($tasks)) {
-                                            if (array_keys($tasks) !== range(0, count($tasks) - 1)) {
-                                                $title = $tasks['title'] ?? ($tasks['task_title'] ?? 'Work Report Submitted');
-                                                $status = $tasks['status'] ?? 'Completed';
-                                                $requirementsList = $tasks['requirements'] ?? ($tasks['tasks'] ?? []);
-                                            } else {
-                                                $requirementsList = $tasks;
+                                            if (isset($tasks['projects']) && is_array($tasks['projects'])) {
+                                                foreach ($tasks['projects'] as $p) {
+                                                    $pName = $p['project_name'] ?? $p['name'] ?? 'Project';
+                                                    if (!empty($pName) && $title === 'Work Report Submitted') {
+                                                        $title = $pName;
+                                                    }
+                                                    if (isset($p['tasks']) && is_array($p['tasks'])) {
+                                                        foreach ($p['tasks'] as $t) {
+                                                            $tName = $t['task_name'] ?? $t['description'] ?? $t['task'] ?? $t['title'] ?? 'Task';
+                                                            $tDone = (isset($t['is_completed']) ? ($t['is_completed'] == 1 || $t['is_completed'] === true || $t['is_completed'] === 'true') : (isset($t['completed']) ? ($t['completed'] == 1 || $t['completed'] === true || $t['completed'] === 'true') : true));
+                                                            $requirementsList[] = [
+                                                                'text' => $tName,
+                                                                'done' => $tDone,
+                                                                'project' => $pName
+                                                            ];
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            if (empty($requirementsList)) {
+                                                $reqItems = $tasks['requirements'] ?? ($tasks['tasks'] ?? []);
+                                                if (is_array($reqItems)) {
+                                                    $requirementsList = $reqItems;
+                                                }
+                                            }
+                                            if (isset($tasks['today_work_status']) && !empty($tasks['today_work_status'])) {
+                                                $status = ucfirst($tasks['today_work_status']);
+                                            } elseif (isset($tasks['current_status']) && !empty($tasks['current_status'])) {
+                                                $status = ucfirst($tasks['current_status']);
+                                            } elseif (isset($tasks['status']) && !empty($tasks['status'])) {
+                                                $status = ucfirst($tasks['status']);
+                                            }
+                                            if ($title === 'Work Report Submitted' && !empty($tasks['task_name'])) {
+                                                $title = $tasks['task_name'];
+                                            } elseif ($title === 'Work Report Submitted' && !empty($tasks['title'])) {
+                                                $title = $tasks['title'];
                                             }
                                         }
                                         $taskCount = is_array($requirementsList) ? count($requirementsList) : 0;
                                         $tasksLabel = $taskCount . ' ' . \Illuminate\Support\Str::plural('Task', $taskCount);
-                                        $statusClass = strtolower($status) === 'completed' ? 'badge-present' : 'badge-half_day';
+                                        $stLower = strtolower($status);
+                                        $statusClass = ($stLower === 'completed' || $stLower === 'done') ? 'badge-present' : ($stLower === 'testing' ? 'badge-info' : 'badge-half_day');
                                     @endphp
                                     <div class="d-flex flex-column gap-1" style="max-width: 200px;">
                                         <div style="font-size: 12px; font-weight: 700; color: #1D2939; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ $title }}">
@@ -1257,43 +1288,86 @@
                                                 }
                                                 
                                                 $repTitle = 'Work Report Submitted';
-                                                $repDesc = $firstLog->work_summary;
+                                                $repDesc = null;
                                                 $repStatus = 'Completed';
+                                                $projectsList = [];
                                                 $requirementsList = [];
                                                 $testStatus = ['tested' => false, 'completed' => false];
                                                 $issues = [];
                                                 $notes = null;
 
                                                 if (is_array($tasks)) {
-                                                    if (array_keys($tasks) !== range(0, count($tasks) - 1)) {
-                                                        $repTitle = $tasks['title'] ?? ($tasks['task_title'] ?? 'Work Report Submitted');
-                                                        $repDesc = $tasks['description'] ?? $firstLog->work_summary;
-                                                        $repStatus = $tasks['status'] ?? 'Completed';
-                                                        $requirementsList = $tasks['requirements'] ?? ($tasks['tasks'] ?? []);
-                                                        
-                                                        // Extract test status
-                                                        if (isset($tasks['test_status']) && is_array($tasks['test_status'])) {
-                                                            $testStatus = [
-                                                                'tested' => $tasks['test_status']['tested'] ?? false,
-                                                                'completed' => $tasks['test_status']['completed'] ?? false
-                                                            ];
-                                                        } else {
-                                                            $testedVal = $tasks['tested'] ?? false;
-                                                            $testStatus = [
-                                                                'tested' => ($testedVal === true || $testedVal === 'yes' || $testedVal === 'tested' || $testedVal === 'Completed'),
-                                                                'completed' => ($testedVal === true || $testedVal === 'yes' || $testedVal === 'tested' || $testedVal === 'Completed')
-                                                            ];
+                                                    if (isset($tasks['projects']) && is_array($tasks['projects'])) {
+                                                        $projectsList = $tasks['projects'];
+                                                        foreach ($projectsList as $p) {
+                                                            $pName = $p['project_name'] ?? $p['name'] ?? 'Project';
+                                                            if (isset($p['tasks']) && is_array($p['tasks'])) {
+                                                                foreach ($p['tasks'] as $t) {
+                                                                    $tName = $t['task_name'] ?? $t['description'] ?? $t['task'] ?? $t['title'] ?? 'Task';
+                                                                    $tDone = (isset($t['is_completed']) ? ($t['is_completed'] == 1 || $t['is_completed'] === true || $t['is_completed'] === 'true') : (isset($t['completed']) ? ($t['completed'] == 1 || $t['completed'] === true || $t['completed'] === 'true') : true));
+                                                                    $requirementsList[] = [
+                                                                        'text' => $tName,
+                                                                        'done' => $tDone,
+                                                                        'project' => $pName
+                                                                    ];
+                                                                }
+                                                            }
                                                         }
-                                                        
-                                                        $issues = $tasks['issues'] ?? [];
-                                                        $notes = $tasks['notes'] ?? null;
-                                                    } else {
-                                                        $requirementsList = $tasks;
                                                     }
-                                                }
 
-                                                if (!is_array($issues)) {
-                                                    $issues = $issues ? [$issues] : [];
+                                                    if (empty($requirementsList)) {
+                                                        $reqItems = $tasks['requirements'] ?? ($tasks['tasks'] ?? []);
+                                                        if (is_array($reqItems)) {
+                                                            $requirementsList = $reqItems;
+                                                        }
+                                                    }
+
+                                                    $repStatus = $tasks['today_work_status'] ?? ($tasks['current_status'] ?? ($tasks['status'] ?? 'Completed'));
+
+                                                    if (!empty($projectsList) && !empty($projectsList[0]['project_name'])) {
+                                                        $repTitle = $projectsList[0]['project_name'];
+                                                    } elseif (!empty($tasks['task_name'])) {
+                                                        $repTitle = $tasks['task_name'];
+                                                    } elseif (!empty($tasks['title'])) {
+                                                        $repTitle = $tasks['title'];
+                                                    }
+
+                                                    $rawDesc = $tasks['description'] ?? ($tasks['today_work_description'] ?? null);
+                                                    if ($rawDesc && !str_contains($rawDesc, '☑') && !str_contains($rawDesc, '☐')) {
+                                                        $repDesc = $rawDesc;
+                                                    } else {
+                                                        if ($repStatus) {
+                                                            $repDesc = "Today's Work Status: " . ucfirst($repStatus);
+                                                        } else {
+                                                            $repDesc = "Work report submitted with project tasks.";
+                                                        }
+                                                    }
+
+                                                    if (isset($tasks['test_status']) && is_array($tasks['test_status'])) {
+                                                        $testStatus = [
+                                                            'tested' => $tasks['test_status']['tested'] ?? false,
+                                                            'completed' => $tasks['test_status']['completed'] ?? false,
+                                                        ];
+                                                    } else {
+                                                        $stLower = strtolower($repStatus);
+                                                        $isTested = in_array($stLower, ['testing', 'done', 'completed', 'tested', 'yes'], true);
+                                                        $isCompleted = in_array($stLower, ['done', 'completed', 'yes'], true);
+                                                        $testStatus = [
+                                                            'tested' => $isTested,
+                                                            'completed' => $isCompleted,
+                                                        ];
+                                                    }
+
+                                                    $rawIssues = $tasks['issues_blockers'] ?? ($tasks['issues'] ?? []);
+                                                    if (is_array($rawIssues)) {
+                                                        $issues = $rawIssues;
+                                                    } elseif (is_string($rawIssues) && trim($rawIssues) !== '' && strtolower(trim($rawIssues)) !== 'no issues' && strtolower(trim($rawIssues)) !== 'none') {
+                                                        $issues = [$rawIssues];
+                                                    }
+
+                                                    $notes = $tasks['additional_notes'] ?? ($tasks['remarks'] ?? ($tasks['notes'] ?? null));
+                                                } else {
+                                                    $repDesc = $firstLog->work_summary ?? 'No summary provided.';
                                                 }
 
                                                 $logPayload = [
@@ -1312,6 +1386,7 @@
                                                     'status' => $repStatus,
                                                     'work_mode' => strtoupper($attendance->work_mode ?? 'WFO'),
                                                     'submitted_time' => $firstLog->created_at ? $firstLog->created_at->format('h:i A') : '-',
+                                                    'projects' => $projectsList,
                                                     'requirements' => $requirementsList,
                                                     'test_status' => $testStatus,
                                                     'issues' => $issues,

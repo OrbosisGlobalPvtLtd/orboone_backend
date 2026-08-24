@@ -63,7 +63,6 @@ Route::middleware(['auth', 'check.access'])->group(function () {
     Route::put('/profile', [ProfilesController::class, 'update'])->name('profile.update');
     Route::post('/profile/submit', [ProfilesController::class, 'submitForVerification'])->name('profile.submit');
     Route::put('/profile/password', [ProfilesController::class, 'updatePassword'])->name('profile.password.update');
-    Route::get('/hrms/employee/profile-image/{employee}', [ProfilesController::class, 'profileImage'])->name('employee.profile-image');
 
     Route::get('/settings/policy-change-logs', [PolicyChangeLogC::class, 'index'])->name('hrms.policy_change_logs.index');
     Route::get('/settings/employee-policy-assignments', [EmployeePolicyAssignmentC::class, 'index'])
@@ -105,4 +104,6 @@ Route::middleware(['auth', 'web.admin.access'])->group(function () {
         ->middleware('permission:hrms_exit_policy.update|hrms_exit_policy.manage')
         ->name('settings.hrms_exit_policies.update');
 });
+
+Route::get('/hrms/employee/profile-image/{employee}', [ProfilesController::class, 'profileImage'])->name('employee.profile-image');
 Route::get('/hrms/branding/file/{type}/{filename}', [\App\Http\Controllers\Core\BrandingFileController::class, 'serve'])->name('hrms.branding.file');

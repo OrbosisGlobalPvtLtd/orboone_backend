@@ -26,7 +26,8 @@ class MenuSeeder extends Seeder
             ['id' => 19, 'name' => 'Shift Assignment', 'route' => 'employee.shift-assignment.index', 'icon' => 'fas fa-business-time', 'module_key' => 'employees', 'parent_id' => 10, 'sort_order' => 9],
 
             ['id' => 20, 'name' => 'Attendance & Time Tracking', 'route' => null, 'icon' => 'fas fa-calendar-check', 'module_key' => 'attendance', 'parent_id' => null, 'sort_order' => 20],
-            ['id' => 21, 'name' => 'Attendance Dashboard', 'route' => 'attendances.index', 'icon' => 'fas fa-chart-line', 'module_key' => 'attendance', 'parent_id' => 20, 'sort_order' => 1],
+            ['id' => 349, 'name' => "Today's Attendance", 'route' => 'attendances.today', 'icon' => 'fas fa-fingerprint', 'module_key' => 'employee.attendance', 'parent_id' => 20, 'sort_order' => 1],
+            ['id' => 21, 'name' => 'Attendance Dashboard', 'route' => 'attendances.index', 'icon' => 'fas fa-chart-line', 'module_key' => 'attendance', 'parent_id' => 20, 'sort_order' => 2],
             ['id' => 22, 'name' => 'Attendance Records', 'route' => 'attendances.record', 'icon' => 'fas fa-fingerprint', 'module_key' => 'attendance', 'parent_id' => 20, 'sort_order' => 2],
             ['id' => 145, 'name' => 'My Attendance', 'route' => 'hrms.attendance.my', 'icon' => 'fas fa-user-clock', 'module_key' => 'my.attendance', 'parent_id' => 20, 'sort_order' => 3],
             ['id' => 23, 'name' => 'Blocked / HR Approval', 'route' => 'attendances.pending-approval', 'icon' => 'fas fa-user-lock', 'module_key' => 'attendance', 'parent_id' => 20, 'sort_order' => 4],
@@ -107,7 +108,7 @@ class MenuSeeder extends Seeder
             ['id' => 320, 'name' => 'Project Management', 'route' => null, 'icon' => 'fas fa-project-diagram', 'module_key' => 'project_management', 'parent_id' => null, 'sort_order' => 65],
             ['id' => 321, 'name' => 'Projects', 'route' => 'module.project-mgmt', 'icon' => 'fas fa-folder-open', 'module_key' => 'project_management', 'parent_id' => 320, 'sort_order' => 1],
             ['id' => 322, 'name' => 'Tasks', 'route' => 'project_management.tasks.index', 'icon' => 'fas fa-tasks', 'module_key' => 'project_management', 'parent_id' => 320, 'sort_order' => 2],
-            ['id' => 323, 'name' => 'Team Work Logs', 'route' => 'attendances.daily', 'icon' => 'fas fa-clipboard-list', 'module_key' => 'project_management', 'parent_id' => 320, 'sort_order' => 3],
+            ['id' => 323, 'name' => 'Team Work Logs', 'route' => 'reporting.work_reports', 'icon' => 'fas fa-clipboard-list', 'module_key' => 'project_management', 'parent_id' => 320, 'sort_order' => 3],
             ['id' => 330, 'name' => 'Assets', 'route' => 'hrms.assets.index', 'icon' => 'fas fa-laptop', 'module_key' => 'assets', 'parent_id' => null, 'sort_order' => 66],
         ];
 

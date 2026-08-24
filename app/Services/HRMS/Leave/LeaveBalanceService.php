@@ -39,11 +39,15 @@ class LeaveBalanceService
         $isInternOrProbation = $this->isInternOrProbation($employee);
 
         $monthlyQuota = (float) ($allocation->monthly_quota ?? $quota['monthly_limit'] ?? 2.0);
+        if ($isInternOrProbation || (float) $allocation->paid_allocated < $monthlyQuota) {
+            $monthlyQuota = min($monthlyQuota, (float) $allocation->paid_allocated);
+        }
 
-        // Internship & Probation employees receive 1 fixed tenure allocation and MUST NOT carry forward monthly quota
-        $monthlyCarry = $isInternOrProbation ? 0.0 : (float) ($allocation->monthly_carry_forward ?? $quota['carry_forward_available'] ?? 0.0);
+        $monthlyCarry = (float) ($allocation->monthly_carry_forward ?? $quota['carry_forward_available'] ?? 0.0);
+        $monthlyCarry = min($monthlyCarry, (float) $allocation->paid_remaining);
+
         $monthlyUsed = (float) ($allocation->monthly_used_this_month ?? $quota['current_month_used'] ?? 0.0);
-        $totalMonthlyRemaining = max(0.0, $monthlyQuota + $monthlyCarry - $monthlyUsed);
+        $totalMonthlyRemaining = min(max(0.0, $monthlyQuota + $monthlyCarry - $monthlyUsed), (float) $allocation->paid_remaining);
 
         $totalPaid = (float) ($allocation->paid_remaining ?? $totalMonthlyRemaining);
         $totalSick = (float) ($allocation->sick_remaining ?? 0.0);

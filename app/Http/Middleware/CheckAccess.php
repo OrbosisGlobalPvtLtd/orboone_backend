@@ -62,10 +62,9 @@ class CheckAccess
             $routeName = 'documents.compliance.index';
         }
 
-        if ($routeName === 'enterprise-payroll.payslips.download' || $routeName === 'enterprise-payroll.payslips.view' || $routeName === 'enterprise-payroll.payslips.preview') {
-            if ($user->hasPermission('enterprise_payslip.download') || $user->hasPermission('enterprise_payslip.view') || $user->hasPermission('enterprise_payroll.my_payslips.view') || $user->hasPermission('enterprise_payslip.generate')) {
-                return $next($request);
-            }
+        // Always allow enterprise payroll routes to rely on route-level permission middleware
+        if (strpos($routeName, 'enterprise-payroll.') === 0) {
+            return $next($request);
         }
 
         $parts     = explode('.', $routeName);

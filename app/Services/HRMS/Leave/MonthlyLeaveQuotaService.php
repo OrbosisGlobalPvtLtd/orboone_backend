@@ -31,12 +31,18 @@ class MonthlyLeaveQuotaService
         $allocation = $this->allocationService->getOrGenerate($employee, $year, $userId);
 
         $monthlyLimit = (float) ($policy->monthly_leave_limit ?? 2.0);
+        $stageStr = strtolower((string) ($employee->employee_stage ?: $employee->employment_type ?: $allocation->employment_stage ?: ''));
+        $isInternOrProbation = str_contains($stageStr, 'intern') || str_contains($stageStr, 'probation');
+        if ($isInternOrProbation || (float) $allocation->paid_allocated < $monthlyLimit) {
+            $monthlyLimit = min($monthlyLimit, (float) $allocation->paid_allocated);
+        }
         $allocation->monthly_quota = $monthlyLimit;
 
         if ($allocation->last_month_processed === null) {
             $allocation->last_month_processed = $targetMonthStr;
             $allocation->monthly_used_this_month = (float) ($allocation->monthly_used_this_month ?? 0.0);
             $allocation->monthly_carry_forward = (float) ($allocation->monthly_carry_forward ?? 0.0);
+            $this->allocationService->recalculateAllocationFields($allocation);
             $allocation->save();
         } elseif ($allocation->last_month_processed !== $targetMonthStr) {
             $lastProcessedDate = Carbon::createFromFormat('Y-m', $allocation->last_month_processed, 'Asia/Kolkata')->startOfMonth();
@@ -47,10 +53,8 @@ class MonthlyLeaveQuotaService
                     $oldUsed = (float) ($allocation->monthly_used_this_month ?? 0.0);
 
                     $unusedQuota = max(0.0, round(($monthlyLimit + $oldCarry) - $oldUsed, 2));
-                    $stageStr = strtolower((string) ($employee->employee_stage ?: $employee->employment_type ?: ''));
-                    $isInternOrProbation = str_contains($stageStr, 'intern') || str_contains($stageStr, 'probation');
-                    $allowCarry = $isInternOrProbation ? false : (bool) ($policy->allow_monthly_carry_forward ?? $policy->carry_forward_enabled ?? true);
-                    $newCarryForward = $allowCarry ? $unusedQuota : 0.0;
+                    $allowCarry = (bool) ($policy->allow_monthly_carry_forward ?? $policy->carry_forward_enabled ?? true);
+                    $newCarryForward = $allowCarry ? min($unusedQuota, (float) $allocation->paid_remaining) : 0.0;
 
                     $allocation->monthly_carry_forward = $newCarryForward;
                     $allocation->monthly_used_this_month = 0.0;

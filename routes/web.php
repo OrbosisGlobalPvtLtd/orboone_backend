@@ -19,4 +19,5 @@ require __DIR__ . '/Web/crm/crm.php';
 require __DIR__ . '/Web/access_control.php';
 require __DIR__ . '/Web/project_management/project_management.php';
 require __DIR__ . '/Web/project_management/task.php';
+require __DIR__ . '/Web/reporting/reporting.php';
 

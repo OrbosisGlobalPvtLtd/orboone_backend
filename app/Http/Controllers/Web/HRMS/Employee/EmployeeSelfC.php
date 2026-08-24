@@ -117,7 +117,7 @@ class EmployeeSelfC extends Controller
                 $profile = EmployeeProfileM::create(['employee_id' => $employee->id]);
             }
             
-            $profileData = $request->except(['_token', 'profile_image', 'resume_file']);
+            $profileData = array_filter($request->except(['_token', 'profile_image', 'resume_file']), fn($val) => $val !== null);
             
             if ($request->experience_type === 'fresher') {
                 $profileData['total_experience'] = '0';

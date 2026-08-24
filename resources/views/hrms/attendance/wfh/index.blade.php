@@ -125,7 +125,7 @@
                     <label>Reason Category</label>
                     <select name="reason_category" class="form-control js-auto-filter">
                         <option value="">All Reason</option>
-                        @foreach(['normal','personal_reason','manager_assigned','company_assigned','internet_issue','electricity_issue','other'] as $r)
+                        @foreach(['personal_reason','health_medical','commute_disruption','home_maintenance','severe_weather','focused_work','company_assigned','other'] as $r)
                         <option value="{{ $r }}" @selected(request('reason_category') === $r)>{{ ucwords(str_replace('_', ' ', $r)) }}</option>
                         @endforeach
                     </select>

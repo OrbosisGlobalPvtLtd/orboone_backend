@@ -338,16 +338,19 @@
         color: #344054;
         opacity: 1;
         pointer-events: none;
+        border-color: var(--orb-border);
     }
 
-    body.edit-mode .em-control {
+    /* Highlight ONLY inputs inside the container that is currently being edited */
+    .em-card.is-editing .em-control:not([readonly]):not(:disabled) {
+        border-color: rgba(75, 0, 232, 0.5) !important;
         background: #F9FAFB;
     }
 
-    body.edit-mode .em-control:not([readonly]):not(:disabled):focus {
+    .em-card.is-editing .em-control:not([readonly]):not(:disabled):focus {
         outline: none;
-        border-color: rgba(75, 0, 232, .45);
-        box-shadow: 0 0 0 4px rgba(75, 0, 232, .08);
+        border-color: rgba(75, 0, 232, 0.85) !important;
+        box-shadow: 0 0 0 4px rgba(75, 0, 232, 0.12);
         background: #fff;
     }
 
@@ -1599,7 +1602,7 @@ $canSeeSalary = $user->hasRole('super_admin')
 
                                 <div class="em-field">
                                     <label>Permanent Date</label>
-                                    <input type="date" class="em-control" value="{{ $employeeData->permanent_at ?? '' }}" readonly>
+                                    <input type="date" name="confirmation_date" class="em-control editable" value="{{ old('confirmation_date', $employeeData->confirmation_date ?? $employeeData->permanent_at ?? '') }}" readonly>
                                 </div>
                             </div>
                         </div>
@@ -2461,6 +2464,9 @@ $canSeeSalary = $user->hasRole('super_admin')
                             if (oldHeader && newHeader) {
                                 oldHeader.innerHTML = newHeader.innerHTML;
                             }
+
+                            document.body.classList.remove('edit-mode');
+                            document.querySelectorAll('.em-card').forEach(c => c.classList.remove('is-editing'));
 
                             rebindAllListeners();
 

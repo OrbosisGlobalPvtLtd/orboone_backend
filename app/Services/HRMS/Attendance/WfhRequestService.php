@@ -231,6 +231,49 @@ class WfhRequestService
         return $record;
     }
 
+    public function update(WfhRequestM $requestRecord, array $payload): WfhRequestM
+    {
+        if (strtolower((string) $requestRecord->status) !== 'pending') {
+            throw ValidationException::withMessages([
+                'wfh' => 'Only pending WFH requests can be edited.',
+            ]);
+        }
+
+        $fromDateStr = $payload['from_date'] ?? $payload['date_from'] ?? $payload['request_date'] ?? $requestRecord->from_date;
+        $toDateStr = $payload['to_date'] ?? $payload['date_to'] ?? $fromDateStr;
+
+        $employee = EmployeeM::find($requestRecord->employee_id);
+        $stats = $employee
+            ? $this->validateRange($employee, (string) $fromDateStr, (string) $toDateStr)
+            : [
+                'total_days' => 1,
+                'working_days' => 1,
+                'weekoff_days' => 0,
+                'holiday_days' => 0,
+                'actual_wfh_days' => 1,
+            ];
+
+        $from = Carbon::parse($fromDateStr, AttendanceRuleResolverService::TIMEZONE)->startOfDay();
+        $to = Carbon::parse($toDateStr, AttendanceRuleResolverService::TIMEZONE)->startOfDay();
+
+        $requestRecord->update([
+            'request_date' => $from->toDateString(),
+            'from_date' => $from->toDateString(),
+            'to_date' => $to->toDateString(),
+            'total_days' => $stats['total_days'],
+            'working_days' => $stats['working_days'],
+            'weekoff_days' => $stats['weekoff_days'],
+            'holiday_days' => $stats['holiday_days'],
+            'actual_wfh_days' => $stats['actual_wfh_days'],
+            'reason_category' => $payload['reason_category'] ?? $requestRecord->reason_category,
+            'reason' => $payload['reason'] ?? $requestRecord->reason,
+            'remarks' => $payload['remarks'] ?? $requestRecord->remarks,
+            'updated_at' => now(),
+        ]);
+
+        return $requestRecord->fresh();
+    }
+
     public function assignCompanyWfh(array $payload, int $actorId, string $source): array
     {
         $policy = $this->policy();

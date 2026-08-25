@@ -454,19 +454,12 @@
                                                 <i class="fas fa-eye text-primary"></i>
                                             </button>
 
-                                            @if($request->status === 'pending')
+                                             @if($request->status === 'pending')
                                                 <button type="button" class="btn btn-sm btn-outline-warning shadow-sm js-edit-request" data-row='@json($request)' title="Edit Request" style="width:34px; height:34px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; padding:0;">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
 
                                                 <form method="POST" action="{{ route('leave-requests.cancel', $request->id) }}" style="display:inline;" onsubmit="return confirm('Are you sure you want to cancel this leave request?');">
-                                                    @csrf
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger shadow-sm" title="Cancel Request" style="width:34px; height:34px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; padding:0;">
-                                                        <i class="fas fa-times"></i>
-                                                    </button>
-                                                </form>
-                                            @elseif($request->status === 'approved')
-                                                <form method="POST" action="{{ route('leave-requests.cancel', $request->id) }}" style="display:inline;" onsubmit="return confirm('Are you sure you want to cancel this approved leave request?');">
                                                     @csrf
                                                     <button type="submit" class="btn btn-sm btn-outline-danger shadow-sm" title="Cancel Request" style="width:34px; height:34px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; padding:0;">
                                                         <i class="fas fa-times"></i>
@@ -639,15 +632,26 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        if (window.jQuery && $.fn.DataTable) {
+            $.fn.dataTable.ext.errMode = 'none';
+        }
+
         if (window.jQuery && $.fn.DataTable && $('#employeeLeavesTable').length) {
+            $.fn.dataTable.ext.errMode = 'none';
+
             var hasButtons = typeof $.fn.dataTable.Buttons !== 'undefined';
             var domLayout = hasButtons 
                 ? '<"leave-dt-toolbar"<"leave-dt-left"l><"leave-dt-right"B>>rt<"ep-table-footer"ip>'
                 : '<"leave-dt-toolbar"<"leave-dt-left"l>>rt<"ep-table-footer"ip>';
 
+            if ($.fn.DataTable.isDataTable('#employeeLeavesTable')) {
+                $('#employeeLeavesTable').DataTable().destroy();
+            }
+
             $('.js-custom-leaves-table').DataTable({
                 pageLength: 25,
                 responsive: false,
+                destroy: true,
                 language: {
                     emptyTable: 'No records found',
                     zeroRecords: 'No matching records found'

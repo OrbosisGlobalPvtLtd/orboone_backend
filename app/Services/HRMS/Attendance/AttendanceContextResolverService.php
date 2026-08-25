@@ -141,6 +141,9 @@ class AttendanceContextResolverService
             'can_use_mobile_attendance' => $employee->canUseMobileAttendance(),
         ];
 
+        $hasPendingReg = $this->ruleResolver->hasPendingRegularizationForDate($employee, $now, $attendance);
+        $hasApprovedReg = $this->ruleResolver->hasApprovedRegularizationForDate($employee, $now, $attendance);
+
         $flagsPayload = [
             'is_blocked' => (bool) $mobileState['is_blocked'],
             'is_punch_blocked' => (bool) $mobileState['is_punch_blocked'],
@@ -153,6 +156,9 @@ class AttendanceContextResolverService
             'is_on_leave' => (bool) ($dayContext['is_on_leave'] ?? false),
             'is_leave' => (bool) ($dayContext['is_on_leave'] ?? false),
             'is_half_day_leave' => (bool) ($dayContext['is_half_day_leave'] ?? false),
+            'has_pending_regularization' => $hasPendingReg,
+            'has_approved_regularization' => $hasApprovedReg,
+            'regularization_status' => $hasPendingReg ? 'pending' : ($hasApprovedReg ? 'approved' : null),
         ];
 
         $messages = [];
@@ -175,6 +181,9 @@ class AttendanceContextResolverService
                 'is_late' => (bool) ($attendance->is_late ?? false),
                 'is_half_day' => (bool) ($attendance->is_half_day ?? false),
                 'is_lwp' => (bool) ($attendance->is_lwp ?? false),
+                'is_admin_unlocked' => (bool) ($attendance->is_admin_unlocked ?? false) || $hasApprovedReg,
+                'is_blocked' => $hasApprovedReg ? false : (bool) ($attendance->is_blocked ?? false),
+                'is_punch_blocked' => $hasApprovedReg ? false : (bool) ($attendance->is_punch_blocked ?? false),
             ] : null,
             'window' => [
                 'state' => $windowStateCode,
@@ -200,6 +209,9 @@ class AttendanceContextResolverService
             'next_action' => $mobileState['next_action'],
             'primary_message' => $mobileState['primary_message'],
             'blocked_message' => $mobileState['blocked_message'],
+            'has_pending_regularization' => $hasPendingReg,
+            'has_approved_regularization' => $hasApprovedReg,
+            'regularization_status' => $hasPendingReg ? 'pending' : ($hasApprovedReg ? 'approved' : null),
             'messages' => $messages,
             'server_time' => $now->format('Y-m-d H:i:s'),
             'timezone' => self::TIMEZONE,

@@ -1012,6 +1012,8 @@
                 ? '<"leave-dt-toolbar"<"leave-dt-left"l><"leave-dt-right"B>>rt<"leave-table-footer"ip>'
                 : '<"leave-dt-toolbar"<"leave-dt-left"l>>rt<"leave-table-footer"ip>';
 
+            $.fn.dataTable.ext.errMode = 'none';
+
             if (!hasButtons) {
                 console.warn('DataTables Buttons extension not loaded');
             }

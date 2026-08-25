@@ -170,7 +170,11 @@ class AttendanceS
             ->whereDate('violation_date', $today)
             ->first();
 
-        $isUnlocked = $blockedViolation && $blockedViolation->policy_action === 'resolved';
+        $hasApprovedReg = $this->ruleResolver->hasApprovedRegularizationForDate($employee, $today, $existing);
+        $isUnlocked = ($blockedViolation && $blockedViolation->policy_action === 'resolved')
+            || $hasApprovedReg
+            || (bool) optional($existing)->is_admin_unlocked
+            || strtolower((string) optional($existing)->attendance_source) === 'regularization';
 
         if ($existing && ($existing->is_blocked || $existing->is_punch_blocked || $existing->attendance_status === 'punch_blocked') && ! $existing->is_admin_unlocked && ! $isUnlocked) {
             if (! $blockedViolation) {

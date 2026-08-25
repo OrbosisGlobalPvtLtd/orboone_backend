@@ -78,6 +78,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/hrms/wfh/calculate-days', [WfhController::class, 'calculateDays']);
         Route::get('/hrms/wfh/history', [WfhController::class, 'history']);
         Route::post('/hrms/wfh/apply', [WfhController::class, 'apply']);
+        Route::post('/hrms/wfh/{id}/update', [WfhController::class, 'update']);
         Route::post('/hrms/wfh/{id}/cancel', [WfhController::class, 'cancel']);
     });
 

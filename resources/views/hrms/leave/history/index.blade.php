@@ -548,6 +548,10 @@ body {
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
 <script>
 $(document).ready(function() {
+    if (window.jQuery && $.fn.DataTable) {
+        $.fn.dataTable.ext.errMode = 'none';
+    }
+
     $('[data-toggle="tooltip"]').tooltip();
 
     $('.js-auto-filter').on('change', function() {

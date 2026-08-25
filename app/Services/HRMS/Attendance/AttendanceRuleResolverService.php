@@ -316,6 +316,90 @@ class AttendanceRuleResolverService
         ];
     }
 
+    public function hasPendingRegularizationForDate(Employee $employee, Carbon|string|null $dateTime = null, ?Attendance $attendance = null): bool
+    {
+        if (! Schema::hasTable('attendance_regularizations')) {
+            return false;
+        }
+
+        $dateStr = $this->date($dateTime)->toDateString();
+        $attendanceId = $attendance?->id;
+
+        $query = DB::table('attendance_regularizations')
+            ->where('employee_id', $employee->id)
+            ->where('status', 'pending');
+
+        if (Schema::hasColumn('attendance_regularizations', 'deleted_at')) {
+            $query->whereNull('deleted_at');
+        }
+
+        $query->where(function ($q) use ($attendanceId, $dateStr) {
+            $hasCondition = false;
+            if ($attendanceId) {
+                $q->where('attendance_id', $attendanceId);
+                $hasCondition = true;
+            }
+            if (Schema::hasColumn('attendance_regularizations', 'attendance_date')) {
+                $method = $hasCondition ? 'orWhereDate' : 'whereDate';
+                $q->$method('attendance_date', $dateStr);
+                $hasCondition = true;
+            }
+            if (Schema::hasColumn('attendance_regularizations', 'requested_punch_in')) {
+                $method = $hasCondition ? 'orWhereDate' : 'whereDate';
+                $q->$method('requested_punch_in', $dateStr);
+                $hasCondition = true;
+            }
+            if (Schema::hasColumn('attendance_regularizations', 'requested_punch_out')) {
+                $method = $hasCondition ? 'orWhereDate' : 'whereDate';
+                $q->$method('requested_punch_out', $dateStr);
+            }
+        });
+
+        return $query->exists();
+    }
+
+    public function hasApprovedRegularizationForDate(Employee $employee, Carbon|string|null $dateTime = null, ?Attendance $attendance = null): bool
+    {
+        if (! Schema::hasTable('attendance_regularizations')) {
+            return false;
+        }
+
+        $dateStr = $this->date($dateTime)->toDateString();
+        $attendanceId = $attendance?->id;
+
+        $query = DB::table('attendance_regularizations')
+            ->where('employee_id', $employee->id)
+            ->where('status', 'approved');
+
+        if (Schema::hasColumn('attendance_regularizations', 'deleted_at')) {
+            $query->whereNull('deleted_at');
+        }
+
+        $query->where(function ($q) use ($attendanceId, $dateStr) {
+            $hasCondition = false;
+            if ($attendanceId) {
+                $q->where('attendance_id', $attendanceId);
+                $hasCondition = true;
+            }
+            if (Schema::hasColumn('attendance_regularizations', 'attendance_date')) {
+                $method = $hasCondition ? 'orWhereDate' : 'whereDate';
+                $q->$method('attendance_date', $dateStr);
+                $hasCondition = true;
+            }
+            if (Schema::hasColumn('attendance_regularizations', 'requested_punch_in')) {
+                $method = $hasCondition ? 'orWhereDate' : 'whereDate';
+                $q->$method('requested_punch_in', $dateStr);
+                $hasCondition = true;
+            }
+            if (Schema::hasColumn('attendance_regularizations', 'requested_punch_out')) {
+                $method = $hasCondition ? 'orWhereDate' : 'whereDate';
+                $q->$method('requested_punch_out', $dateStr);
+            }
+        });
+
+        return $query->exists();
+    }
+
     public function resolveMobileState(Employee $employee, Carbon|string|null $dateTime = null, ?Attendance $attendance = null): array
     {
         $now = $this->date($dateTime);
@@ -325,6 +409,8 @@ class AttendanceRuleResolverService
         $policy = $this->getPolicyForEmployee($employee, $now);
         $dayContext = $this->getDayContext($employee, $now);
         $window = $this->calculatePunchWindowState($policy, $now);
+        $hasPendingReg = $this->hasPendingRegularizationForDate($employee, $now, $attendance);
+        $hasApprovedReg = $this->hasApprovedRegularizationForDate($employee, $now, $attendance);
 
         if (! $attendance) {
             $attendance = Attendance::with(['attendanceType', 'attendanceTime', 'workLogs'])
@@ -348,10 +434,12 @@ class AttendanceRuleResolverService
             ->first();
 
         $isUnlocked = (bool) ($attendance?->is_admin_unlocked ?? false)
+            || $hasApprovedReg
             || ($blockedViolation && $blockedViolation->policy_action === 'resolved')
-            || $statusCode === 'unlocked';
+            || $statusCode === 'unlocked'
+            || strtolower((string) ($attendance?->attendance_source ?? '')) === 'regularization';
 
-        $isBlockedViolation = $blockedViolation && $blockedViolation->policy_action !== 'resolved';
+        $isBlockedViolation = $blockedViolation && $blockedViolation->policy_action !== 'resolved' && ! $isUnlocked;
 
         $leaveData = $this->getApprovedLeaveOnDate($employee, $now);
         $isFullLeave = $leaveData && ! $leaveData['is_half_day'];
@@ -370,7 +458,7 @@ class AttendanceRuleResolverService
         $isAbsent = ($rawStatus === 'absent' || in_array($typeCode, ['absent'], true) || $isLwp) && (! $isUnlocked || $hasPunchOut || ! $hasPunchIn);
         $isPresent = $hasPunchIn && ! $isHalfDay && ! $isMissedPunch && ! $isLwp && ! $isAbsent;
 
-        $isBlockedDb = (bool) (
+        $isBlockedDb = ! $isUnlocked && (bool) (
             $attendance?->is_blocked
             || $attendance?->is_punch_blocked
             || $typeCode === 'punch_blocked'
@@ -637,6 +725,16 @@ class AttendanceRuleResolverService
             $attendance->setRelation('attendanceType', $mockType);
         }
 
+        $hasPendingReg = $this->hasPendingRegularizationForDate($employee, $now, $attendance);
+        if ($hasPendingReg) {
+            $dayContext['has_pending_regularization'] = true;
+            $dayContext['regularization_status'] = 'pending';
+            if ($showBlockedCard || $isBlocked || $isPunchBlocked) {
+                $blockedMessage = 'Your regularization request for today has been submitted and is currently pending HR approval.';
+                $primaryMessage = 'Your regularization request is pending HR approval.';
+            }
+        }
+
         return [
             'server_time' => $now->format('Y-m-d H:i:s'),
             'timezone' => self::TIMEZONE,
@@ -646,6 +744,8 @@ class AttendanceRuleResolverService
             'break_minutes' => $breakMinutes,
             'day_context' => $dayContext,
             'attendance' => $attendance,
+            'has_pending_regularization' => $hasPendingReg,
+            'regularization_status' => $hasPendingReg ? 'pending' : null,
             'ui' => [
                 'attendance_state' => $attendanceState,
                 'can_punch_in' => $canPunchIn,
@@ -659,6 +759,8 @@ class AttendanceRuleResolverService
                 'show_late_mark' => $attendance ? (bool) ($attendance->is_late ?? false) : $window['is_late'],
                 'show_late_warning' => $window['is_warning'],
                 'show_blocked_card' => $showBlockedCard,
+                'has_pending_regularization' => $hasPendingReg,
+                'regularization_status' => $hasPendingReg ? 'pending' : null,
                 'primary_message' => $primaryMessage,
                 'warning_message' => $window['is_warning'] ? 'Late punch-in. Warning: punch will be blocked after ' . $this->displayTime($policy?->block_after_time) . '.' : null,
                 'blocked_message' => $blockedMessage,

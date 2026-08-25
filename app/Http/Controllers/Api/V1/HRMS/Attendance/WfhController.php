@@ -127,6 +127,43 @@ class WfhController extends Controller
         }
     }
 
+    public function update(int $id, Request $request)
+    {
+        $employee = $this->employee();
+        if (! $employee) {
+            return $this->err('Employee profile not found.', 404);
+        }
+
+        $row = WfhRequestM::query()->where('employee_id', $employee->id)->find($id);
+        if (! $row) {
+            return $this->err('WFH request not found.', 404);
+        }
+
+        $payload = $request->validate([
+            'request_date' => 'nullable|date',
+            'from_date' => 'nullable|date',
+            'to_date' => 'nullable|date',
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date',
+            'reason_category' => 'nullable|string|max:100',
+            'reason' => 'nullable|string',
+            'remarks' => 'nullable|string',
+        ]);
+
+        try {
+            $updated = $this->service->update($row, $payload);
+            return $this->ok('WFH request updated successfully.', $updated);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'status' => false,
+                'success' => false,
+                'message' => collect($e->errors())->flatten()->first() ?: $e->getMessage(),
+                'errors' => $e->errors(),
+                'data' => null,
+            ], 422);
+        }
+    }
+
     public function cancel(int $id)
     {
         $employee = $this->employee();

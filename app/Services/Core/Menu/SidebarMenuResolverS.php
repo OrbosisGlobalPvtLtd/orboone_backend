@@ -161,7 +161,7 @@ class SidebarMenuResolverS
             $parentId = (int)($m->parent_id ?? 0);
 
             // 1. Legacy operational submenus under 350 are deprecated
-            if (in_array($id, [351, 355, 356, 357, 358, 359], true)) {
+            if (in_array($id, [355, 356, 357, 358, 359], true)) {
                 return true;
             }
 
@@ -384,6 +384,30 @@ class SidebarMenuResolverS
 
             if ($isEmployeeContext) {
                 $route = strtolower(trim((string) ($menu->route ?? '')));
+
+                // Exclude admin-only attendance & HR management routes from Employee Self Service panel
+                $adminOnlyRoutes = [
+                    'hrms.attendance.holiday_work.index',
+                    'attendances.index',
+                    'attendances.record',
+                    'attendances.pending-approval',
+                    'attendances.monthly-report',
+                    'hrms.attendance.monthly_summary.index',
+                    'hrms.attendance.work-reports',
+                    'hrms.attendance.violations.index',
+                    'attendance.policies.index',
+                    'attendance.rules.index',
+                    'attendances.access-control',
+                    'attendance.types.index',
+                    'hrms.attendance.policy_overrides.index',
+                    'attendances.export-pdf',
+                    'hrms.attendance.wfh.index',
+                ];
+
+                if (in_array($route, $adminOnlyRoutes, true)) {
+                    return false;
+                }
+
                 if (in_array($route, [
                     'hrms.leave.dashboard',
                     'hrms.leave.history',

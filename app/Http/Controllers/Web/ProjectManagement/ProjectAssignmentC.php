@@ -22,7 +22,7 @@ class ProjectAssignmentC extends Controller
 
     public function assign(Request $request, $projectId)
     {
-        abort_unless($this->accessScope->canAccessProject((int) $projectId), 403);
+        abort_unless($this->accessScope->canManageProject((int) $projectId), 403);
 
         $validated = $request->validate([
             'employee_ids' => 'nullable|array',
@@ -58,7 +58,7 @@ class ProjectAssignmentC extends Controller
     public function relieve($id)
     {
         $assignment = ProjectAssignmentM::findOrFail($id);
-        abort_unless($this->accessScope->canAccessProject((int) $assignment->project_id), 403);
+        abort_unless($this->accessScope->canManageProject((int) $assignment->project_id), 403);
 
         $this->projectService->relieveEmployee((int) $id);
 

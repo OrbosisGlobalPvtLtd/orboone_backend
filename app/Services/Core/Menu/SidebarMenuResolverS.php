@@ -54,7 +54,12 @@ class SidebarMenuResolverS
                 $adminMenus = $this->resolveForContext($menus, $user, $roleIds, $isSuperAdmin, false);
             }
 
-            $merged = $employeeMenus->concat($adminMenus)->unique('id');
+            $merged = $employeeMenus->concat($adminMenus)
+                ->reject(function ($m) {
+                    // Filter out legacy standalone top-level Projects menu (ID 91) when Project Management container exists
+                    return (int) ($m->id ?? 0) === 91;
+                })
+                ->unique('id');
             $merged = $this->repairParentVisibility($merged);
             $merged = $this->deduplicateMenus($merged);
             $merged = $this->removeEmptyParents($merged);
@@ -137,10 +142,10 @@ class SidebarMenuResolverS
                     ]);
                 })->exists();
 
-            $isProjectManager = $isTeamLead || $isDeliveryHead || $isProjectLead;
+            $isProjectManager = $isTeamLead || $isDeliveryHead || $isProjectLead || $isTeamManager;
         }
 
-        if ($isSuperAdmin || (method_exists($user, 'hasPermission') && ($user->hasPermission('projects.view_all') || $user->hasPermission('projects.manage')))) {
+        if ($isSuperAdmin || (method_exists($user, 'hasRole') && $user->hasRole(['admin', 'project_admin'])) || (method_exists($user, 'hasPermission') && ($user->hasPermission('projects.view_all') || $user->hasPermission('projects.manage')))) {
             $isProjectManager = true;
         }
 
@@ -171,9 +176,9 @@ class SidebarMenuResolverS
                 return true;
             }
 
-            // 3. Project Management lead/management menus (321, 9901, 9903):
+            // 3. Project Management lead/management menus (321, 322, 9901, 9903):
             // If user is NOT a project manager/lead, reject project management lead menus
-            if (in_array($id, [321, 9901, 9903], true) && !$isProjectManager) {
+            if (in_array($id, [321, 322, 9901, 9903], true) && !$isProjectManager) {
                 return true;
             }
 
@@ -319,13 +324,12 @@ class SidebarMenuResolverS
             $allowedIds[] = $i;
         }
 
-        // Dynamically allow Today's Attendance menu if Web Attendance is enabled in Access Control for the employee
-        $emp = DB::table('employees_new')->where('user_id', $user->id)->first(['allow_web_attendance']);
-        if ($emp && (bool) ($emp->allow_web_attendance ?? false)) {
-            $todayMenu = $menus->firstWhere('route', 'attendances.today');
-            if ($todayMenu) {
-                $allowedIds[] = (int) $todayMenu->id;
-            }
+        // Always allow Today's Attendance menu (349 / attendances.today)
+        $todayMenu = $menus->firstWhere('route', 'attendances.today');
+        if ($todayMenu) {
+            $allowedIds[] = (int) $todayMenu->id;
+        } else {
+            $allowedIds[] = 349;
         }
 
         if (empty($allowedIds)) {
@@ -346,6 +350,10 @@ class SidebarMenuResolverS
         return $menus->filter(function ($menu) use ($user, $menuPermissionMap) {
             $route = (string) ($menu->route ?? '');
             if ($route === '' || ! isset($menuPermissionMap[$route])) {
+                return true;
+            }
+
+            if ($route === 'projects.my' || $route === 'projects.tasks.index') {
                 return true;
             }
 
@@ -385,8 +393,18 @@ class SidebarMenuResolverS
             if ($isEmployeeContext) {
                 $route = strtolower(trim((string) ($menu->route ?? '')));
 
+                if (in_array($id, [321, 9901], true)) {
+                    return false;
+                }
+
+                if ($id === 9903 || $route === 'projects.tasks.index') {
+                    return true;
+                }
+
                 // Exclude admin-only attendance & HR management routes from Employee Self Service panel
                 $adminOnlyRoutes = [
+                    'projects.index',
+                    'module.project-mgmt',
                     'hrms.attendance.holiday_work.index',
                     'attendances.index',
                     'attendances.record',
@@ -483,7 +501,12 @@ class SidebarMenuResolverS
         $seenRoutes = [];
         $deduped = collect();
 
-        foreach ($menus as $menu) {
+        // Sort so that child menus (parent_id > 0) are evaluated before standalone top-level duplicate routes
+        $sortedForDedup = $menus->sortByDesc(function ($m) {
+            return !empty($m->parent_id) ? 1 : 0;
+        });
+
+        foreach ($sortedForDedup as $menu) {
             $id = (int) ($menu->id ?? 0);
             if ($id > 0 && isset($seenIds[$id])) {
                 continue;
@@ -559,21 +582,7 @@ class SidebarMenuResolverS
 
     private function filterByWebAttendancePermission(Collection $menus, Authenticatable $user, bool $isSuperAdmin): Collection
     {
-        if ($isSuperAdmin) {
-            return $menus;
-        }
-
-        $emp = DB::table('employees_new')->where('user_id', $user->id)->first(['allow_web_attendance']);
-        $canWebPunch = $emp ? (bool) ($emp->allow_web_attendance ?? false) : false;
-
-        if ($canWebPunch) {
-            return $menus;
-        }
-
-        return $menus->filter(function ($menu) {
-            $route = (string) ($menu->route ?? '');
-            return $route !== 'attendances.today';
-        })->values();
+        return $menus;
     }
 
     private function menuPermissionMap(): array

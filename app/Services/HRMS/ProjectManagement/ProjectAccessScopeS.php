@@ -102,7 +102,20 @@ class ProjectAccessScopeS
         $assignedProjectIds = $this->getEmployeeProjectIds($empId);
         $dhProjectIds = $this->getDeliveryHeadProjectIds($empId);
 
-        return array_values(array_unique(array_merge($assignedProjectIds, $dhProjectIds)));
+        $reportingProjectIds = [];
+        $teamScope = app(\App\Services\HRMS\Team\TeamManagementScopeS::class);
+        $supervisedEmpIds = $teamScope->getTeamEmployeeIds($empId);
+
+        if (!empty($supervisedEmpIds)) {
+            $reportingProjectIds = DB::table('project_assignments')
+                ->whereIn('employee_id', $supervisedEmpIds)
+                ->where('is_active', 1)
+                ->pluck('project_id')
+                ->map(fn($id) => (int) $id)
+                ->all();
+        }
+
+        return array_values(array_unique(array_merge($assignedProjectIds, $dhProjectIds, $reportingProjectIds)));
     }
 
     /**
@@ -114,6 +127,71 @@ class ProjectAccessScopeS
 
         $accessibleIds = $this->getAccessibleProjectIds();
         return in_array($projectId, $accessibleIds, true);
+    }
+
+    /**
+     * Check if logged in user can manage (assign members, create teams, relieve members) on a project.
+     */
+    public function canManageProject(int $projectId): bool
+    {
+        $user = Auth::user();
+        if (!$user) return false;
+
+        // 1. Super Admin, Admin, HR Admin, Project Admin
+        if ($this->isSuperAdminOrGlobal()
+            || (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin', 'project_admin']))
+            || in_array(($user->system_role_id ?? 0), [1, 2, 3, 5], true)) {
+            return true;
+        }
+
+        $empId = $this->getOwnEmployeeId();
+        if (!$empId) return false;
+
+        // 2. Delivery Head of this project
+        $isDeliveryHead = DB::table('projects')
+            ->where('id', $projectId)
+            ->where('delivery_head_employee_id', $empId)
+            ->exists();
+        if ($isDeliveryHead) return true;
+
+        // 3. Team Lead of any team in this project
+        $isTeamLead = DB::table('project_teams')
+            ->where('project_id', $projectId)
+            ->where('team_lead_employee_id', $empId)
+            ->where('is_active', 1)
+            ->exists();
+        if ($isTeamLead) return true;
+
+        // 4. Assigned as Lead/Manager in project assignments for this project
+        $isProjectLeadRole = DB::table('project_assignments')
+            ->where('project_id', $projectId)
+            ->where('employee_id', $empId)
+            ->where('is_active', 1)
+            ->where(function($q) {
+                $q->whereIn(DB::raw('LOWER(project_role)'), [
+                    'team_lead', 'team lead',
+                    'project_lead', 'project lead',
+                    'project_manager', 'project manager',
+                    'lead', 'manager',
+                    'delivery_head', 'delivery head'
+                ]);
+            })
+            ->exists();
+        if ($isProjectLeadRole) return true;
+
+        // 5. Reporting Manager of any member assigned to this project
+        $teamScope = app(\App\Services\HRMS\Team\TeamManagementScopeS::class);
+        $supervisedEmpIds = $teamScope->getTeamEmployeeIds($empId);
+        if (!empty($supervisedEmpIds)) {
+            $isSupervisorOfMember = DB::table('project_assignments')
+                ->where('project_id', $projectId)
+                ->whereIn('employee_id', $supervisedEmpIds)
+                ->where('is_active', 1)
+                ->exists();
+            if ($isSupervisorOfMember) return true;
+        }
+
+        return false;
     }
 
     /**

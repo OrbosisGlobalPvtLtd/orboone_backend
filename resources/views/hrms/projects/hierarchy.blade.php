@@ -263,13 +263,16 @@
             <!-- Vertical Stem Line -->
             <div class="org-stem-line"></div>
 
-            <!-- Level 2 & 3: Teams & Members -->
+            <!-- Level 2 & 3: Teams & Members (Sub-Teams + Direct Project Members) -->
+            @php
+                $totalCols = count($hierarchy['teams']) + (count($hierarchy['direct_members']) > 0 ? 1 : 0);
+            @endphp
             <div class="org-branch-container">
-                @if(count($hierarchy['teams']) > 1)
+                @if($totalCols > 1)
                 <div class="org-branch-bar"></div>
                 @endif
 
-                @forelse($hierarchy['teams'] as $team)
+                @foreach($hierarchy['teams'] as $team)
                 <div class="org-team-col">
                     <div class="org-team-stem"></div>
                     <div class="org-team-card">
@@ -308,13 +311,90 @@
                         </div>
                     </div>
                 </div>
-                @empty
-                <div class="text-center py-4 w-100">
-                    <div class="alert alert-light border text-muted px-4 py-3" style="border-radius: 16px;">
-                        <i class="fas fa-info-circle mr-2 text-info"></i> No sub-teams created for this project yet. All members belong directly to project level governance.
+                @endforeach
+
+                <!-- Direct Project Governance & Assigned Members Card -->
+                @if(!empty($hierarchy['direct_members']) && count($hierarchy['direct_members']) > 0)
+                @php
+                    $directLeads = collect($hierarchy['direct_members'])->filter(function($m) {
+                        $role = strtolower(trim((string)($m['role'] ?? '')));
+                        return in_array($role, ['team_lead', 'team lead', 'project_lead', 'project lead', 'lead', 'manager'], true);
+                    });
+                    $directNonLeads = collect($hierarchy['direct_members'])->reject(function($m) {
+                        $role = strtolower(trim((string)($m['role'] ?? '')));
+                        return in_array($role, ['team_lead', 'team lead', 'project_lead', 'project lead', 'lead', 'manager'], true);
+                    });
+                @endphp
+                <div class="org-team-col">
+                    <div class="org-team-stem"></div>
+                    <div class="org-team-card">
+                        <div class="org-team-header">
+                            <h5 class="org-team-title"><i class="fas fa-project-diagram mr-2 text-primary"></i> Direct Project Team</h5>
+                            <span class="badge badge-light border font-weight-bold px-3 py-1" style="border-radius: 8px;">{{ count($hierarchy['direct_members']) }} Members</span>
+                        </div>
+
+                        <!-- Team Lead Box for Direct Project Team -->
+                        @if($directLeads->count() > 0)
+                            @foreach($directLeads as $lead)
+                            <div class="org-lead-box">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="org-lead-badge"><i class="fas fa-user-shield mr-1"></i> Team Lead</span>
+                                    <span class="small font-weight-bold text-muted">{{ $lead['code'] ?? 'N/A' }}</span>
+                                </div>
+                                <div class="font-weight-bold text-dark h6 mb-1">
+                                    <i class="fas fa-user-tie text-primary mr-1.5"></i> {{ $lead['name'] }}
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top border-light">
+                                    <small class="text-muted"><i class="fas fa-briefcase mr-1"></i> {{ $lead['designation'] ?? 'N/A' }}</small>
+                                    <span class="badge badge-indigo text-white px-2 py-0.5" style="font-size: 10px; border-radius: 6px;">{{ str_replace('_', ' ', strtoupper($lead['role'] ?? 'TEAM LEAD')) }}</span>
+                                </div>
+                            </div>
+                            @endforeach
+                        @else
+                            <div class="org-lead-box">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="org-lead-badge">Team Lead</span>
+                                    <span class="small font-weight-bold text-muted">N/A</span>
+                                </div>
+                                <div class="font-weight-bold text-muted h6 mb-0">
+                                    <i class="fas fa-user-slash text-muted mr-1"></i> Direct Project Members
+                                </div>
+                            </div>
+                        @endif
+
+                        <!-- Reporting Members Tree -->
+                        <div class="org-members-tree">
+                            <div class="small font-weight-bold text-muted mb-2 text-uppercase" style="letter-spacing: 0.04em;"><i class="fas fa-user-friends mr-1"></i> Reporting Team Members</div>
+                            @forelse($directNonLeads as $member)
+                            <div class="org-member-row">
+                                <div class="org-member-card">
+                                    <div>
+                                        <div class="font-weight-bold text-dark small">
+                                            <i class="fas fa-user text-muted mr-1.5"></i>{{ $member['name'] }}
+                                            @if(!empty($member['role']) && strtolower($member['role']) !== 'team_member')
+                                                <span class="badge badge-light border text-secondary px-2 py-0.5 ml-1" style="font-size: 10px; border-radius: 6px;">{{ str_replace('_', ' ', strtoupper($member['role'])) }}</span>
+                                            @endif
+                                        </div>
+                                        <div class="small text-muted" style="font-size: 11px;">{{ $member['code'] }}</div>
+                                    </div>
+                                    <span class="badge badge-white border text-secondary small font-weight-normal px-2 py-1">{{ $member['designation'] ?? 'N/A' }}</span>
+                                </div>
+                            </div>
+                            @empty
+                            <div class="text-muted small py-2 font-italic">No additional team members assigned under this lead.</div>
+                            @endforelse
+                        </div>
                     </div>
                 </div>
-                @endforelse
+                @endif
+
+                @if($totalCols === 0)
+                <div class="text-center py-4 w-100">
+                    <div class="alert alert-light border text-muted px-4 py-3" style="border-radius: 16px;">
+                        <i class="fas fa-info-circle mr-2 text-info"></i> No team members or sub-teams assigned to this project yet.
+                    </div>
+                </div>
+                @endif
             </div>
         </div>
     </div>

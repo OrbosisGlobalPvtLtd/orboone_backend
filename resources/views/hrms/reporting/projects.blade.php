@@ -104,9 +104,12 @@
                         </div>
                     </div>
 
-                    <div class="border-top pt-3 mt-3 d-flex justify-content-between align-items-center">
-                        <span class="small font-weight-bold text-muted">Delivery Head: {{ $prj->delivery_head_name ?? 'N/A' }}</span>
-                        <a href="{{ route('projects.show', $prj->id) }}" class="btn btn-sm btn-outline-primary font-weight-bold px-3" style="border-radius: 8px;">View Project Dashboard</a>
+                    <div class="border-top pt-3 mt-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <span class="small font-weight-bold text-muted"><i class="fas fa-user-tie text-muted mr-1"></i> Delivery Head: {{ $prj->delivery_head_name ?? 'N/A' }}</span>
+                        <div class="d-flex align-items-center gap-2">
+                            <a href="{{ route('projects.show', $prj->id) }}" class="btn btn-sm btn-outline-primary font-weight-bold px-3 mr-1" style="border-radius: 8px;"><i class="fas fa-chart-line mr-1"></i> View Dashboard</a>
+                            <a href="{{ route('projects.hierarchy', $prj->id) }}" class="btn btn-sm btn-outline-info font-weight-bold px-3" style="border-radius: 8px;"><i class="fas fa-sitemap mr-1"></i> Hierarchy Tree</a>
+                        </div>
                     </div>
                 </div>
             </div>

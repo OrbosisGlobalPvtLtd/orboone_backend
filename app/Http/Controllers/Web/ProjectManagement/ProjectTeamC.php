@@ -22,7 +22,7 @@ class ProjectTeamC extends Controller
 
     public function store(Request $request, $projectId)
     {
-        abort_unless($this->accessScope->canAccessProject((int) $projectId), 403);
+        abort_unless($this->accessScope->canManageProject((int) $projectId), 403);
 
         $validated = $request->validate([
             'team_name' => 'required|string|max:100',
@@ -43,7 +43,7 @@ class ProjectTeamC extends Controller
     public function update(Request $request, $id)
     {
         $team = ProjectTeamM::findOrFail($id);
-        abort_unless($this->accessScope->canAccessProject((int) $team->project_id), 403);
+        abort_unless($this->accessScope->canManageProject((int) $team->project_id), 403);
 
         $validated = $request->validate([
             'team_name' => 'required|string|max:100',

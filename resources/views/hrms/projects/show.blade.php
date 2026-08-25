@@ -213,12 +213,14 @@
                 <a href="{{ route('projects.hierarchy', $project->id) }}" class="prj-hero-btn">
                     <i class="fas fa-sitemap mr-2"></i> Hierarchy Tree
                 </a>
+                @if($canManageProject ?? false)
                 <button type="button" class="prj-hero-btn" data-toggle="modal" data-target="#assignMemberModal">
                     <i class="fas fa-user-plus mr-2"></i> Assign Member
                 </button>
                 <button type="button" class="prj-hero-btn" data-toggle="modal" data-target="#createTeamModal">
                     <i class="fas fa-users-cog mr-2"></i> Create Team
                 </button>
+                @endif
             </div>
         </div>
 
@@ -324,7 +326,9 @@
                                     <th class="py-3">Sub-Team</th>
                                     <th class="py-3">HR Designation</th>
                                     <th class="py-3">Assigned Date</th>
+                                    @if($canManageProject ?? false)
                                     <th class="py-3 px-4 text-right">Action</th>
+                                    @endif
                                 </tr>
                             </thead>
                             <tbody>
@@ -342,12 +346,14 @@
                                     <td class="py-3"><span class="font-weight-bold text-secondary small">{{ optional($assign->team)->team_name ?? 'Direct Member' }}</span></td>
                                     <td class="py-3"><span class="small text-muted">{{ optional(optional($assign->employee)->designation)->name ?? 'N/A' }}</span></td>
                                     <td class="py-3"><span class="small text-muted">{{ $assign->assigned_at ? $assign->assigned_at->format('d M Y') : 'N/A' }}</span></td>
+                                    @if($canManageProject ?? false)
                                     <td class="py-3 px-4 text-right">
                                         <form action="{{ route('projects.relieve', $assign->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Relieve employee from this project?');">
                                             @csrf
                                             <button type="submit" class="btn btn-sm btn-outline-danger px-3 font-weight-bold" style="border-radius: 8px;"><i class="fas fa-user-minus mr-1"></i> Relieve</button>
                                         </form>
                                     </td>
+                                    @endif
                                 </tr>
                                 @empty
                                 <tr>

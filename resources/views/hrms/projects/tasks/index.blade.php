@@ -81,7 +81,7 @@
                     <label class="small font-weight-bold text-muted">Project</label>
                     <select name="project_id" class="form-control select2">
                         <option value="">-- All Projects --</option>
-                        @foreach(\App\Models\HRMS\ProjectManagement\ProjectM::all() as $prj)
+                        @foreach(($projects ?? \App\Models\HRMS\ProjectManagement\ProjectM::all()) as $prj)
                             <option value="{{ $prj->id }}" {{ request('project_id') == $prj->id ? 'selected' : '' }}>{{ $prj->name }} ({{ $prj->project_code }})</option>
                         @endforeach
                     </select>
@@ -239,7 +239,7 @@
                             <label class="font-weight-bold">Project <span class="text-danger">*</span></label>
                             <select name="project_id" class="form-control select2" required>
                                 <option value="">-- Select Project --</option>
-                                @foreach(\App\Models\HRMS\ProjectManagement\ProjectM::where('status', 'active')->get() as $prj)
+                                @foreach(($projects ?? \App\Models\HRMS\ProjectManagement\ProjectM::where('status', 'active')->get()) as $prj)
                                     <option value="{{ $prj->id }}">{{ $prj->name }} ({{ $prj->project_code }})</option>
                                 @endforeach
                             </select>

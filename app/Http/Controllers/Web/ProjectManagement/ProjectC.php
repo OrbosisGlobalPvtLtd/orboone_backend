@@ -149,7 +149,9 @@ class ProjectC extends Controller
             ->get()
             ->groupBy('tl_id');
 
-        return view('hrms.projects.show', compact('project', 'hierarchy', 'employees', 'taskStats', 'technicalSupervisors'));
+        $canManageProject = $this->accessScope->canManageProject((int) $id);
+
+        return view('hrms.projects.show', compact('project', 'hierarchy', 'employees', 'taskStats', 'technicalSupervisors', 'canManageProject'));
     }
 
     public function update(Request $request, $id)
@@ -190,9 +192,15 @@ class ProjectC extends Controller
         abort_if(!$employeeId, 403);
 
         $projectIds = $this->accessScope->getEmployeeProjectIds($employeeId);
-        $projects = ProjectM::with(['deliveryHead.user', 'teams.teamLead.user'])
-            ->whereIn('id', $projectIds)
-            ->get();
+        $projects = ProjectM::with([
+            'deliveryHead.user',
+            'teams.teamLead.user',
+            'teams.members.user',
+            'activeAssignments.employee.user',
+            'activeAssignments.employee.designation'
+        ])
+        ->whereIn('id', $projectIds)
+        ->get();
 
         return view('hrms.projects.my-projects', compact('projects'));
     }

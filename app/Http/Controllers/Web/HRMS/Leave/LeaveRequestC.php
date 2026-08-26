@@ -67,6 +67,10 @@ class LeaveRequestC extends Controller
         $employee = EmployeeM::where('user_id', Auth::id())->first();
         abort_if(! $employee, 403, 'No employee profile linked to your account.');
 
+        if (! $this->isEligibleForLeaveRequest($employee)) {
+            return back()->with('error', 'Leave applications are currently restricted to Engineering/Development and QA/Testing team members.');
+        }
+
         $year = Carbon::now('Asia/Kolkata')->year;
         $allocation = resolve(\App\Services\HRMS\Leave\LeaveAllocationService::class)->getOrGenerate($employee, $year, auth()->id());
 
@@ -86,11 +90,18 @@ class LeaveRequestC extends Controller
                 ? EmployeeM::findOrFail($request->employee_id)
                 : EmployeeM::where('user_id', Auth::id())->firstOrFail();
 
+            if (! $this->isEligibleForLeaveRequest($employee)) {
+                return back()->with('error', 'Leave applications are currently restricted to Engineering/Development and QA/Testing team members.')->withInput();
+            }
+
             $leaveType = LeaveTypeM::findOrFail($request->leave_type_id);
             $attachmentPath = $this->storeAttachment($request);
             $sanitized = \App\Services\HRMS\Leave\LeaveValidationService::sanitizePayload($request->validated());
             $payload = array_merge($sanitized, ['attachment_path' => $attachmentPath]);
             $calculation = $this->calculationService->calculate($employee, $leaveType, $payload);
+
+            $hasReportingManager = ! empty($employee->reporting_manager_employee_id);
+            $approvalLevel = $hasReportingManager ? 'pending_manager' : 'pending_hr';
 
             $leaveRequest = LeaveRequestM::create([
                 'employee_id' => $employee->id,
@@ -106,6 +117,7 @@ class LeaveRequestC extends Controller
                 'reason' => $request->reason,
                 'attachment_path' => $attachmentPath,
                 'status' => 'pending',
+                'approval_level' => $approvalLevel,
                 'sandwich_applied' => $calculation['sandwich_applied'],
                 'paid_days' => $calculation['paid_days'],
                 'sick_days' => $calculation['sick_days'],
@@ -341,6 +353,28 @@ class LeaveRequestC extends Controller
         }
 
         return $extension === 'pdf' ? 'pdf' : 'document';
+    }
+
+    private function isEligibleForLeaveRequest(EmployeeM $employee): bool
+    {
+        $user = auth()->user();
+        if ($this->canViewAll('leave.approvals.view_all') || ($user->role_id ?? null) == 1 || ($user->system_role_id ?? null) == 1) {
+            return true;
+        }
+
+        $employee->loadMissing(['department', 'designation']);
+        $deptName = strtolower($employee->department?->name ?? '');
+        $desigName = strtolower($employee->designation?->name ?? '');
+        $roleName = strtolower($user->role?->name ?? '');
+
+        $keywords = ['dev', 'engineering', 'qa', 'testing', 'software', 'tech', 'developer', 'qa engineer', 'ui/ux', 'intern'];
+        foreach ($keywords as $kw) {
+            if (str_contains($deptName, $kw) || str_contains($desigName, $kw) || str_contains($roleName, $kw)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function accesses()

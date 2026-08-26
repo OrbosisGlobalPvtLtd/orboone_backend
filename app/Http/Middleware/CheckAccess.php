@@ -48,6 +48,11 @@ class CheckAccess
             return $next($request);
         }
 
+        // Always allow leave approval action routes to rely on controller-level RBAC & team scope authorization
+        if (strpos($routeName, 'leave-approvals.') === 0) {
+            return $next($request);
+        }
+
 
         // Map sub-routes/actions to their primary menu route
         if (strpos($routeName, 'attendance.policy_rules.') === 0 || strpos($routeName, 'attendance.rules.') === 0) {

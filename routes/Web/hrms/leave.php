@@ -26,9 +26,9 @@ Route::middleware(['auth', 'check.access'])->group(function () {
     Route::put('/leave-requests/{id}', [LeaveRequestC::class, 'update'])->middleware('permission:leave.my_requests.create')->name('leave-requests.update');
     Route::post('/leave-requests/{id}/cancel', [LeaveRequestC::class, 'cancel'])->middleware('permission:leave.my_requests.cancel')->name('leave-requests.cancel');
 
-    Route::get('/leave-approvals', [LeaveApprovalC::class, 'index'])->middleware('permission:leave.approvals.view_all|leave.approvals.view_team|leave.approvals.view')->name('leave-approvals.index');
-    Route::post('/leave-approvals/{id}/approve', [LeaveApprovalC::class, 'approve'])->middleware('permission:leave.approvals.approve')->name('leave-approvals.approve');
-    Route::post('/leave-approvals/{id}/reject', [LeaveApprovalC::class, 'reject'])->middleware('permission:leave.approvals.reject')->name('leave-approvals.reject');
+    Route::get('/leave-approvals', [LeaveApprovalC::class, 'index'])->name('leave-approvals.index');
+    Route::post('/leave-approvals/{id}/approve', [LeaveApprovalC::class, 'approve'])->name('leave-approvals.approve');
+    Route::post('/leave-approvals/{id}/reject', [LeaveApprovalC::class, 'reject'])->name('leave-approvals.reject');
 
     Route::get('/leave-balances', [LeaveBalanceC::class, 'index'])->middleware('permission:leave.balance.view_all|leave.balance.view_team|leave.balance.view_own|leave.balance.view')->name('hrms.leave.balances.index');
     Route::get('/leave-allocations', [LeaveAllocationC::class, 'index'])->middleware('permission:leave.allocation.view_all|leave.allocation.view_own|leave.allocation.view|leave.allocation.manage')->name('leave-allocations.index');

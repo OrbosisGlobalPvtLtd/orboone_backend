@@ -98,6 +98,23 @@ class AttendanceS
             return ['status' => 'error', 'message' => 'You are not eligible to mark attendance yet.'];
         }
 
+        $existing = Attendance::with('attendanceType')
+            ->where('employee_id', $employee->id)
+            ->whereDate('attendance_date', $today)
+            ->first();
+
+        $blockedViolation = DB::table('attendance_violations')
+            ->where('employee_id', $employee->id)
+            ->where('type', 'blocked_punch')
+            ->whereDate('violation_date', $today)
+            ->first();
+
+        $hasApprovedReg = $this->ruleResolver->hasApprovedRegularizationForDate($employee, $today, $existing);
+        $isUnlocked = ($blockedViolation && $blockedViolation->policy_action === 'resolved')
+            || $hasApprovedReg
+            || (bool) optional($existing)->is_admin_unlocked
+            || strtolower((string) optional($existing)->attendance_source) === 'regularization';
+
         $employeeWorkMode = strtolower((string) ($employee->work_mode ?? 'wfo'));
         $requestedWorkMode = strtolower($workMode ?: 'wfo');
         if (! in_array($requestedWorkMode, ['wfo', 'wfh'], true)) {
@@ -105,8 +122,8 @@ class AttendanceS
         }
 
         if ($requestedWorkMode === 'wfo') {
-            // Any employee selecting WFO must pass Office Geofence Validation
-            if ($enforceEmployeeRules) {
+            // Any employee selecting WFO must pass Office Geofence Validation (unless unlocked by HR regularization)
+            if ($enforceEmployeeRules && ! $isUnlocked) {
                 $locationValidation = $this->validateWfoOfficeLocation($meta);
                 if (($locationValidation['status'] ?? null) === 'error') {
                     return $locationValidation;
@@ -115,7 +132,7 @@ class AttendanceS
             $workMode = 'wfo';
         } else {
             // Requested WFH
-            if ($employeeWorkMode !== 'wfh') {
+            if ($employeeWorkMode !== 'wfh' && ! $isUnlocked) {
                 // Permanent WFO employee selecting WFH requires approved WFH request for today
                 $approvedWfh = $this->wfhRequestService?->approvedForDate((int) $employee->id, $today);
                 if (! $approvedWfh || $approvedWfh->status !== 'approved') {
@@ -132,21 +149,14 @@ class AttendanceS
 
         $policy = $this->ruleResolver->getPolicyForEmployee($employee, $now);
         $dayContext = $this->ruleResolver->getDayContext($employee, $now);
-//  if (! $dayContext['is_working_day'] && ! $isFirstHalfLeave && ! $isSecondHalfLeave) {
-//             return ['status' => 'error', 'message' => 'Attendance punch is not allowed for leave, holiday, or week off.'];
         $hasApprovedHolidayWork = \App\Models\HRMS\Attendance\HolidayWorkRequestM::where('employee_id', $employee->id)
             ->whereDate('worked_date', $today)
             ->where('status', 'approved')
             ->exists();
 
-        if (! $dayContext['is_working_day'] && ! $isFirstHalfLeave && ! $isSecondHalfLeave && ! $hasApprovedHolidayWork) {
+        if (! $dayContext['is_working_day'] && ! $isFirstHalfLeave && ! $isSecondHalfLeave && ! $hasApprovedHolidayWork && ! $isUnlocked) {
             return ['status' => 'error', 'message' => 'Attendance punch is not allowed for leave, holiday, or week off without an approved Work Request.'];
         }
-
-        $existing = Attendance::with('attendanceType')
-            ->where('employee_id', $employee->id)
-            ->whereDate('attendance_date', $today)
-            ->first();
 
         if ($existing && $existing->punch_in_time) {
             return ['status' => 'error', 'message' => 'Punch in already recorded for today.'];
@@ -160,21 +170,9 @@ class AttendanceS
 
         $isFullLeave = $existingTypeCode === 'leave' && ! $isHalfDayContext;
 
-        if ($existing && (in_array($existingTypeCode, ['absent', 'week_off', 'holiday'], true) || $isFullLeave)) {
+        if ($existing && (in_array($existingTypeCode, ['absent', 'week_off', 'holiday'], true) || $isFullLeave) && ! $isUnlocked) {
             return ['status' => 'error', 'message' => 'Attendance is already marked for today.'];
         }
-
-        $blockedViolation = DB::table('attendance_violations')
-            ->where('employee_id', $employee->id)
-            ->where('type', 'blocked_punch')
-            ->whereDate('violation_date', $today)
-            ->first();
-
-        $hasApprovedReg = $this->ruleResolver->hasApprovedRegularizationForDate($employee, $today, $existing);
-        $isUnlocked = ($blockedViolation && $blockedViolation->policy_action === 'resolved')
-            || $hasApprovedReg
-            || (bool) optional($existing)->is_admin_unlocked
-            || strtolower((string) optional($existing)->attendance_source) === 'regularization';
 
         if ($existing && ($existing->is_blocked || $existing->is_punch_blocked || $existing->attendance_status === 'punch_blocked') && ! $existing->is_admin_unlocked && ! $isUnlocked) {
             if (! $blockedViolation) {
@@ -258,8 +256,11 @@ class AttendanceS
         $attendanceStatusForPunchIn = 'present';
         if ($isHalfDayPunch || $isFirstHalfLeave || $isSecondHalfLeave) {
             $attendanceStatusForPunchIn = 'half_day';
-        } elseif ($existing && ! in_array($existing->attendance_status, ['pending_hr', 'punch_blocked', 'unlocked'], true)) {
+        } elseif ($existing && ! empty($existing->attendance_status) && ! in_array($existing->attendance_status, ['pending_hr', 'punch_blocked', 'unlocked'], true)) {
             $attendanceStatusForPunchIn = $existing->attendance_status;
+        }
+        if (empty($attendanceStatusForPunchIn)) {
+            $attendanceStatusForPunchIn = 'present';
         }
 
         $attendanceTypeForPunchIn = $attendanceTypeId;

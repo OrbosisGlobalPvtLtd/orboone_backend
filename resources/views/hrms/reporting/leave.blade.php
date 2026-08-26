@@ -21,10 +21,11 @@
 }
 
 .rep-container {
-    max-width: 1550px;
+    max-width: 1600px;
     margin: 0 auto;
 }
 
+/* Signature Hero Header Banner */
 .rep-hero {
     background: linear-gradient(135deg, {{ $branding['primary_color'] ?? '#4B00E8' }} 0%, {{ $branding['secondary_color'] ?? '#FF5252' }} 100%);
     border-radius: 20px;
@@ -32,36 +33,79 @@
     margin-bottom: 24px;
     color: #ffffff;
     box-shadow: 0 14px 34px rgba(75, 0, 232, 0.18);
-}
-
-.rep-metric-card {
-    background: var(--orb-card);
-    border: 1px solid var(--orb-border);
-    border-radius: 16px;
-    padding: 20px;
-    box-shadow: var(--orb-shadow);
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
     gap: 16px;
-    height: 100%;
+}
+
+.rep-hero h3 {
+    font-size: 22px;
+    font-weight: 800;
+    margin: 0 0 4px 0;
+    color: #ffffff;
+}
+
+.rep-hero p {
+    font-size: 13px;
+    opacity: 0.92;
+    margin: 0;
+}
+
+/* 5 Rich Metric Summary Cards Grid */
+.team-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
+}
+
+.team-stat-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 16px;
+    padding: 16px 18px;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+    display: flex;
+    align-items: center;
+    gap: 14px;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.rep-metric-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 14px 35px rgba(15, 23, 42, 0.12);
+.team-stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
 }
 
-.rep-metric-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 14px;
+.team-stat-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 20px;
+    font-size: 18px;
+    flex-shrink: 0;
 }
 
+.team-stat-val {
+    font-size: 22px;
+    font-weight: 800;
+    color: #0F172A;
+    line-height: 1.1;
+}
+
+.team-stat-label {
+    font-size: 10.5px;
+    font-weight: 800;
+    color: #64748B;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 2px;
+}
+
+/* Main Table Container Card */
 .rep-card {
     background: var(--orb-card);
     border: 1px solid var(--orb-border);
@@ -71,57 +115,160 @@
     overflow: hidden;
 }
 
-/* Toolbar & Length Dropdown CSS */
-.orb-table-toolbar {
-    background: #FAFAFA;
-    border-bottom: 1px solid #E2E8F0;
+.filter-control-sm {
+    height: 36px;
+    border-radius: 9px;
+    font-size: 12.5px;
+    border: 1px solid #CBD5E1;
+    background: #FFFFFF;
+    padding: 4px 10px;
+    outline: none;
 }
 
-.dataTables_length,
-.dataTables_length label {
-    display: flex !important;
-    align-items: center !important;
-    gap: 6px !important;
-    white-space: nowrap !important;
-    margin: 0 !important;
-    font-weight: 600 !important;
-    font-size: 13px !important;
-    color: #475467 !important;
-}
-
-.dataTables_length select {
-    width: 72px !important;
-    height: 34px !important;
-    padding: 4px 10px !important;
-    border-radius: 8px !important;
-    border: 1px solid #CBD5E1 !important;
-    outline: none !important;
-}
-
-/* Export button CSS */
-.orb-export-btn {
-    height: 34px !important;
-    padding: 0 12px !important;
-    border-radius: 10px !important;
-    background: #fff !important;
-    border: 1px solid #E7EAF3 !important;
-    font-size: 12px !important;
+/* Sticky Table Header */
+.table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #F8FAFC !important;
+    color: #475569 !important;
+    font-size: 11px !important;
     font-weight: 800 !important;
-    margin-left: 6px !important;
-    transition: all 0.2s ease !important;
-    color: #475467 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.35px !important;
+    border-bottom: 2px solid #E2E8F0 !important;
+    white-space: nowrap !important;
+    padding: 11px 14px !important;
 }
 
-.orb-export-btn:hover {
-    background: #F1F5F9 !important;
-    color: var(--orb-primary) !important;
-    border-color: rgba(75, 0, 232, 0.2) !important;
-    transform: translateY(-1px) !important;
+.table tbody td {
+    padding: 11px 14px !important;
+    border-bottom: 1px solid #F1F5F8 !important;
+    vertical-align: middle !important;
+    font-size: 12.5px !important;
 }
 
-.dt-buttons {
-    display: inline-flex !important;
-    align-items: center !important;
+.table tbody tr:hover {
+    background: #F8FAFC !important;
+}
+
+/* 3-Dot Action Button */
+.btn-action-dots {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #F1F5F9;
+    color: #475569;
+    border: 1px solid #CBD5E1;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-action-dots:hover,
+.btn-action-dots:focus {
+    background: #EEF2FF;
+    color: var(--orb-primary);
+    border-color: #C7D2FE;
+}
+
+.dropdown-menu-action {
+    min-width: 180px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12);
+    border: 1px solid #E2E8F0;
+    padding: 6px;
+}
+
+.dropdown-menu-action .dropdown-item {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 7px 12px;
+    border-radius: 8px;
+    color: #334155;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dropdown-menu-action .dropdown-item:hover {
+    background: #EEF2FF;
+    color: var(--orb-primary);
+}
+
+/* Timeline Stepper CSS */
+.approval-timeline {
+    position: relative;
+    padding-left: 24px;
+    margin-top: 10px;
+}
+
+.approval-timeline::before {
+    content: '';
+    position: absolute;
+    top: 6px;
+    left: 8px;
+    bottom: 6px;
+    width: 2px;
+    background: #E2E8F0;
+}
+
+.timeline-step {
+    position: relative;
+    margin-bottom: 16px;
+}
+
+.timeline-step:last-child {
+    margin-bottom: 0;
+}
+
+.timeline-step-icon {
+    position: absolute;
+    left: -24px;
+    top: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+}
+
+.timeline-step-icon.done {
+    background: #10B981;
+    color: #FFFFFF;
+}
+
+.timeline-step-icon.pending {
+    background: #F59E0B;
+    color: #FFFFFF;
+}
+
+.timeline-step-icon.rejected {
+    background: #EF4444;
+    color: #FFFFFF;
+}
+
+.timeline-step-icon.waiting {
+    background: #CBD5E1;
+    color: #64748B;
+}
+
+.timeline-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #0F172A;
+    margin-bottom: 2px;
+}
+
+.timeline-sub {
+    font-size: 11.5px;
+    color: #64748B;
+    font-weight: 500;
 }
 </style>
 @endsection
@@ -129,137 +276,176 @@
 @section('_content')
 <div class="rep-page">
     <div class="rep-container">
-        <!-- Hero Header -->
+        <!-- Hero Header Banner -->
         <div class="rep-hero">
             <div>
-                <h3 class="text-white font-weight-bold mb-1" style="font-size: 22px;"><i class="fas fa-plane-departure mr-2"></i>Team Leave Management</h3>
-                <p class="mb-0 opacity-90 small">Track team leave requests, approvals, balances, and availability in real-time.</p>
+                <h3 class="text-white font-weight-bold mb-1"><i class="fas fa-plane-departure mr-2"></i>Leave Approvals Workbench</h3>
+                <p class="mb-0 opacity-90 small">Monitor leave requests, manage stage approvals (Manager → HR), and track team availability.</p>
             </div>
         </div>
 
-        <!-- Metric KPI Cards -->
-        <div class="row mb-4">
-            <div class="col-12 col-sm-6 col-lg-3 mb-3 mb-lg-0">
-                <div class="rep-metric-card">
-                    <div class="rep-metric-icon" style="background: rgba(75, 0, 232, 0.08); color: #4B00E8;">
-                        <i class="fas fa-users"></i>
-                    </div>
-                    <div>
-                        <div class="text-muted small font-weight-bold text-uppercase" style="font-size: 10px; letter-spacing: 0.05em;">Total Team</div>
-                        <div class="h4 font-weight-extrabold mb-0 text-dark" style="font-size: 24px;">{{ $totalTeamCount }}</div>
-                    </div>
+        <!-- 5 Rich Metric Summary Cards Grid -->
+        <div class="team-stats-grid">
+            <!-- Total Pending -->
+            <div class="team-stat-card">
+                <div class="team-stat-icon" style="background: #EEF2FF; color: #4F46E5; border: 1px solid #C7D2FE;">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div>
+                    <div class="team-stat-label">Total Pending</div>
+                    <div class="team-stat-val">{{ $totalPendingCount ?? 0 }}</div>
                 </div>
             </div>
-            <div class="col-12 col-sm-6 col-lg-3 mb-3 mb-lg-0">
-                <div class="rep-metric-card">
-                    <div class="rep-metric-icon" style="background: rgba(245, 158, 11, 0.1); color: #D97706;">
-                        <i class="fas fa-umbrella-beach"></i>
-                    </div>
-                    <div>
-                        <div class="text-muted small font-weight-bold text-uppercase" style="font-size: 10px; letter-spacing: 0.05em;">On Leave Today</div>
-                        <div class="h4 font-weight-extrabold mb-0 text-dark" style="font-size: 24px;">{{ $onLeaveTodayCount }}</div>
-                    </div>
+
+            <!-- Manager Pending -->
+            <div class="team-stat-card">
+                <div class="team-stat-icon" style="background: #FFFBEB; color: #D97706; border: 1px solid #FDE68A;">
+                    <i class="fas fa-user-clock"></i>
+                </div>
+                <div>
+                    <div class="team-stat-label">Pending Manager</div>
+                    <div class="team-stat-val">{{ $managerPendingCount ?? 0 }}</div>
                 </div>
             </div>
-            <div class="col-12 col-sm-6 col-lg-3 mb-3 mb-sm-0">
-                <div class="rep-metric-card">
-                    <div class="rep-metric-icon" style="background: rgba(16, 185, 129, 0.1); color: #10B981;">
-                        <i class="fas fa-check-circle"></i>
-                    </div>
-                    <div>
-                        <div class="text-muted small font-weight-bold text-uppercase" style="font-size: 10px; letter-spacing: 0.05em;">Approved Requests</div>
-                        <div class="h4 font-weight-extrabold mb-0 text-dark" style="font-size: 24px;">{{ $approvedLeaveCount }}</div>
-                    </div>
+
+            <!-- HR Pending -->
+            <div class="team-stat-card">
+                <div class="team-stat-icon" style="background: #F0F9FF; color: #0284C7; border: 1px solid #BAE6FD;">
+                    <i class="fas fa-hourglass-half"></i>
+                </div>
+                <div>
+                    <div class="team-stat-label">Pending HR</div>
+                    <div class="team-stat-val">{{ $hrPendingCount ?? 0 }}</div>
                 </div>
             </div>
-            <div class="col-12 col-sm-6 col-lg-3">
-                <div class="rep-metric-card">
-                    <div class="rep-metric-icon" style="background: rgba(239, 68, 68, 0.1); color: #EF4444;">
-                        <i class="fas fa-hourglass-half"></i>
-                    </div>
-                    <div>
-                        <div class="text-muted small font-weight-bold text-uppercase" style="font-size: 10px; letter-spacing: 0.05em;">Pending Approvals</div>
-                        <div class="h4 font-weight-extrabold mb-0 text-dark" style="font-size: 24px;">{{ $pendingLeaveCount }}</div>
-                    </div>
+
+            <!-- Approved Requests -->
+            <div class="team-stat-card">
+                <div class="team-stat-icon" style="background: #ECFDF5; color: #047857; border: 1px solid #A7F3D0;">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div>
+                    <div class="team-stat-label">Approved</div>
+                    <div class="team-stat-val">{{ $approvedLeaveCount ?? 0 }}</div>
+                </div>
+            </div>
+
+            <!-- Rejected Requests -->
+            <div class="team-stat-card">
+                <div class="team-stat-icon" style="background: #FEF2F2; color: #DC2626; border: 1px solid #FCA5A5;">
+                    <i class="fas fa-times-circle"></i>
+                </div>
+                <div>
+                    <div class="team-stat-label">Rejected</div>
+                    <div class="team-stat-val">{{ $rejectedLeaveCount ?? 0 }}</div>
                 </div>
             </div>
         </div>
 
         <!-- Today's Team Leave Status Alert -->
-        <div class="rep-card p-4 mb-4">
-            <h6 class="font-weight-bold text-dark mb-3" style="font-size: 14px;"><i class="fas fa-calendar-day text-primary mr-2"></i>Today's Team Leave Status ({{ \Carbon\Carbon::parse(date('Y-m-d'))->format('d M Y') }})</h6>
-            <div class="d-flex flex-wrap gap-2" style="gap: 8px;">
-                @forelse($todayLeaves as $tl)
-                    <span class="badge px-3 py-2 font-weight-bold" style="border-radius: 12px; background-color: #FEF3C7; color: #B45309; border: 1px solid #FCD34D; font-size: 12.5px; display: inline-flex; align-items: center;">
-                        <i class="fas fa-user-clock mr-2 text-warning"></i> {{ $tl->display_name }} &bull; {{ $tl->leave_type_name ?? 'Leave' }}
-                    </span>
-                @empty
-                    <div class="p-2.5 px-3 bg-light border rounded-lg text-muted small font-weight-bold d-inline-flex align-items-center" style="border-radius: 10px; font-size: 12.5px;">
-                        <i class="fas fa-check-circle text-success mr-2" style="font-size: 14px;"></i> No team members are on leave today. All active members are available.
-                    </div>
-                @endforelse
+        @if(!empty($todayLeaves))
+            <div class="rep-card p-4 mb-4">
+                <h6 class="font-weight-bold text-dark mb-3" style="font-size: 14px;"><i class="fas fa-calendar-day text-primary mr-2"></i>Today's Team Leave Status ({{ \Carbon\Carbon::parse(date('Y-m-d'))->format('d M Y') }})</h6>
+                <div class="d-flex flex-wrap gap-2" style="gap: 8px;">
+                    @forelse($todayLeaves as $tl)
+                        <span class="badge px-3 py-2 font-weight-bold" style="border-radius: 12px; background-color: #FEF3C7; color: #B45309; border: 1px solid #FCD34D; font-size: 12.5px; display: inline-flex; align-items: center;">
+                            <i class="fas fa-user-clock mr-2 text-warning"></i> {{ $tl->display_name }} &bull; {{ $tl->leave_type_name ?? 'Leave' }}
+                        </span>
+                    @empty
+                        <div class="p-2.5 px-3 bg-light border rounded-lg text-muted small font-weight-bold d-inline-flex align-items-center" style="border-radius: 10px; font-size: 12.5px;">
+                            <i class="fas fa-check-circle text-success mr-2" style="font-size: 14px;"></i> No team members are on leave today. All active members are available.
+                        </div>
+                    @endforelse
+                </div>
             </div>
-        </div>
+        @endif
 
-        <!-- Leave Requests Table Card -->
+        <!-- Main Table Container Card -->
         <div class="rep-card">
-            <!-- Card Header Title (Compact height) -->
-            <div class="d-flex align-items-center justify-content-between border-bottom bg-white flex-wrap" style="padding: 12px 20px;">
+            <!-- Card Header Title -->
+            <div class="d-flex align-items-center justify-content-between border-bottom bg-white flex-wrap" style="padding: 14px 20px;">
                 <div class="d-flex align-items-center" style="gap: 10px;">
                     <span style="width: 34px; height: 34px; border-radius: 9px; background: #EEF2FF; color: #4F46E5; display: inline-flex; align-items: center; justify-content: center; font-size: 15px;">
                         <i class="fas fa-calendar-alt"></i>
                     </span>
                     <div>
-                        <h5 class="font-weight-bold mb-0 text-dark" style="font-size: 15px;">Team Leave Applications</h5>
+                        <h5 class="font-weight-bold mb-0 text-dark" style="font-size: 15px;">Leave Approval Workbench</h5>
                     </div>
                 </div>
             </div>
 
-            <!-- Embedded Attached Filters inside Card (Live auto-filter without Apply button! Reset button on the right) -->
-            <div class="p-3 bg-light border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
-                <div class="form-inline flex-wrap gap-2" style="gap: 12px;">
-                    <select id="filter-team-member" class="form-control" style="border-radius: 10px; font-size: 13px; height: 38px; min-width: 220px;">
-                        <option value="">-- All Team Members --</option>
-                        @foreach($teamEmployees as $emp)
-                            <option value="{{ $emp->display_name }}" {{ request('employee_id') == $emp->id ? 'selected' : '' }}>
-                                {{ $emp->display_name }} ({{ $emp->employee_code }})
-                            </option>
-                        @endforeach
-                    </select>
+            <!-- Instant Auto-Submit Filter Toolbar Bar (Without Filter Button) -->
+            <div class="p-3 border-bottom bg-white">
+                <form method="GET" action="{{ route('reporting.leave') }}" class="d-flex flex-wrap align-items-center justify-content-between" style="gap: 10px;">
+                    <div class="d-flex align-items-center flex-wrap" style="gap: 8px; flex: 1;">
+                        <!-- Status / Stage Filter -->
+                        <select name="status" class="filter-control-sm" style="min-width: 170px; height: 36px; border-radius: 8px;" onchange="this.form.submit()">
+                            <option value="" {{ request('status') == '' ? 'selected' : '' }}>⏳ Pending Requests (Default)</option>
+                            <option value="pending_manager" {{ request('status') == 'pending_manager' ? 'selected' : '' }}>🟠 Pending Manager</option>
+                            <option value="pending_hr" {{ request('status') == 'pending_hr' ? 'selected' : '' }}>🔵 Pending HR</option>
+                            <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>🟢 Approved</option>
+                            <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>🔴 Rejected</option>
+                            <option value="all" {{ request('status') == 'all' ? 'selected' : '' }}>All Requests</option>
+                        </select>
 
-                    <select id="filter-leave-status" class="form-control" style="border-radius: 10px; font-size: 13px; height: 38px; min-width: 180px;">
-                        <option value="">-- All Statuses --</option>
-                        <option value="APPROVED" {{ strtolower(request('status')) == 'approved' ? 'selected' : '' }}>Approved</option>
-                        <option value="PENDING" {{ strtolower(request('status')) == 'pending' ? 'selected' : '' }}>Pending</option>
-                        <option value="REJECTED" {{ strtolower(request('status')) == 'rejected' ? 'selected' : '' }}>Rejected</option>
-                    </select>
+                        <!-- Employee Filter -->
+                        <select name="employee_id" class="filter-control-sm" style="min-width: 160px; height: 36px; border-radius: 8px;" onchange="this.form.submit()">
+                            <option value="">All Employees</option>
+                            @foreach($employees as $emp)
+                                <option value="{{ $emp->id }}" {{ request('employee_id') == $emp->id ? 'selected' : '' }}>
+                                    {{ $emp->display_name }} ({{ $emp->employee_code }})
+                                </option>
+                            @endforeach
+                        </select>
 
-                    <input type="text" id="filter-search-keyword" class="form-control" placeholder="Search employee, leave type..." style="border-radius: 10px; font-size: 13px; height: 38px; min-width: 240px;">
-                </div>
+                        <!-- Reporting Manager Filter -->
+                        @if(!empty($reportingManagers) && count($reportingManagers) > 0)
+                            <select name="reporting_manager_id" class="filter-control-sm" style="min-width: 160px; height: 36px; border-radius: 8px;" onchange="this.form.submit()">
+                                <option value="">All Managers</option>
+                                @foreach($reportingManagers as $rm)
+                                    <option value="{{ $rm->id }}" {{ request('reporting_manager_id') == $rm->id ? 'selected' : '' }}>
+                                        {{ $rm->display_name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        @endif
 
-                <!-- Reset Button on the right side of the filter bar -->
-                <button type="button" class="btn btn-light border font-weight-bold" id="btn-reset-team-leave-filters" style="border-radius: 10px; font-size: 13px; color: #475467; height: 38px; display: inline-flex; align-items: center; gap: 6px;">
-                    <i class="fas fa-undo text-muted" style="font-size: 11px;"></i> Reset Filters
-                </button>
-            </div>
+                        <!-- Leave Type Filter -->
+                        <select name="leave_type_id" class="filter-control-sm" style="min-width: 140px; height: 36px; border-radius: 8px;" onchange="this.form.submit()">
+                            <option value="">Leave Type</option>
+                            @foreach($leaveTypes as $lt)
+                                <option value="{{ $lt->id }}" {{ request('leave_type_id') == $lt->id ? 'selected' : '' }}>
+                                    {{ $lt->name }}
+                                </option>
+                            @endforeach
+                        </select>
 
-            <!-- Toolbar for Entries & Export Buttons -->
-            <div class="orb-table-toolbar d-flex align-items-center justify-content-between p-3 border-bottom">
-                <div class="toolbar-left"></div>
-                <div class="toolbar-right d-flex align-items-center"></div>
+                        <!-- Search Input -->
+                        <input type="text" name="search" value="{{ request('search') }}" class="filter-control-sm" style="min-width: 170px; height: 36px; border-radius: 8px;" placeholder="Search employee..." onchange="this.form.submit()">
+                    </div>
+
+                    <div class="d-flex align-items-center" style="gap: 8px;">
+                        <a href="{{ route('reporting.leave') }}" class="btn btn-sm btn-outline-secondary font-weight-bold" style="height: 36px; border-radius: 8px; padding: 0 14px; display: inline-flex; align-items: center; gap: 6px;">
+                            <i class="fas fa-undo" style="font-size: 11px;"></i> Reset
+                        </a>
+                    </div>
+                </form>
             </div>
 
             <div class="table-responsive">
-                <table class="table table-hover mb-0" id="teamLeaveTable">
-                    <thead class="bg-light">
+                <table class="table table-hover mb-0">
+                    <thead>
                         <tr>
-                            <th class="py-3 px-3 text-center" style="width: 55px;">S.No.</th>
-                            <th class="py-3 px-4">Employee Name</th>
-                            <th class="py-3">Department & Designation</th>
+                            <th class="py-3 px-3 text-center" style="width: 45px;">S.No.</th>
+                            <th class="py-3 px-4">Employee</th>
+                            <th class="py-3">Reporting Manager</th>
                             <th class="py-3">Leave Type</th>
-                            <th class="py-3 text-center">Dates</th>
-                            <th class="py-3 text-center">Duration</th>
-                            <th class="py-3 text-center">Status</th>
+                            <th class="py-3 text-center">Leave Period</th>
+                            <th class="py-3 text-center">Days</th>
+                            <th class="py-3 text-center">Manager Approval</th>
+                            <th class="py-3 text-center">HR Approval</th>
+                            <th class="py-3 text-center">Overall Status</th>
+                            <th class="py-3 text-center" style="width: 60px;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -275,101 +461,641 @@
                                     default => 'background: #EEF2FF; color: #3730A3; border: 1px solid #C7D2FE;'
                                 };
 
-                                $stLower = strtolower(trim($lr->status ?? 'approved'));
-                                $stBadgeStyle = match(true) {
-                                    $stLower === 'approved' => 'background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC;',
-                                    $stLower === 'pending' => 'background: #FEF3C7; color: #B45309; border: 1px solid #FCD34D;',
-                                    $stLower === 'rejected' || $stLower === 'cancelled' => 'background: #FEE2E2; color: #B91C1C; border: 1px solid #FCA5A5;',
-                                    default => 'background: #F1F5F9; color: #475569; border: 1px solid #CBD5E1;'
-                                };
-                                $stIcon = match(true) {
-                                    $stLower === 'approved' => 'fas fa-check-circle',
-                                    $stLower === 'pending' => 'fas fa-hourglass-half',
-                                    default => 'fas fa-times-circle'
-                                };
-
+                                $stLower = strtolower(trim($lr->status ?? 'pending'));
                                 $startDateFormatted = \Carbon\Carbon::parse($lr->start_date)->format('d M Y');
                                 $endDateFormatted = \Carbon\Carbon::parse($lr->end_date)->format('d M Y');
                                 $isSingleDay = ($lr->start_date === $lr->end_date);
-                                $datesExportText = $isSingleDay ? $startDateFormatted : ($startDateFormatted . ' to ' . $endDateFormatted);
 
-                                $daysVal = (float)($lr->days ?? 1);
+                                $daysVal = (float)($lr->requested_days ?? $lr->deducted_days ?? 1);
                                 $daysText = ($daysVal == floor($daysVal) ? number_format($daysVal, 0) : number_format($daysVal, 1)) . ' ' . \Illuminate\Support\Str::plural('Day', $daysVal);
-                                $empExportText = ($lr->display_name ?? 'Employee') . ' (' . ($lr->employee_code ?? 'N/A') . ')';
+
+                                $managerEmpId = $lr->current_reporting_manager_id ?? $lr->reporting_manager_employee_id;
+                                $hasManager = !empty($managerEmpId);
+
+                                $user = auth()->user();
+                                $userEmpId = \App\Models\HRMS\Employee\EmployeeM::where('user_id', $user->id)->value('id');
+                                $isAssignedManager = (!empty($managerEmpId) && (int)$managerEmpId === (int)$userEmpId);
+                                $isSuperAdminUser = method_exists($user, 'isSuperAdmin') ? $user->isSuperAdmin() : (in_array((int)($user->system_role_id ?? $user->role_id ?? 0), [1, 2], true));
+
+                                $mgrApproved = !empty($lr->manager_approved_by) || !empty($lr->manager_approved_at) || ($lr->approval_level === 'manager_approved');
+                                $mgrRejected = ($stLower === 'rejected' && empty($lr->manager_approved_by));
+                                $hrApproved = ($stLower === 'approved');
+                                $hrRejected = ($stLower === 'rejected' && !empty($lr->manager_approved_by));
                             @endphp
                         <tr>
-                            <!-- S.No. -->
-                            <td class="py-3 px-3 align-middle text-center font-weight-bold text-muted" style="font-size: 12.5px;" data-export="{{ $loop->iteration }}">
-                                {{ $loop->iteration }}
+                            <!-- 1. S.No. -->
+                            <td class="py-3 px-3 align-middle text-center font-weight-bold text-muted" style="font-size: 12px;">
+                                {{ $loop->iteration + ($leaveRequests->currentPage() - 1) * $leaveRequests->perPage() }}
                             </td>
 
-                            <!-- Employee Name -->
-                            <td class="py-3 px-4 align-middle" data-export="{{ $empExportText }}">
+                            <!-- 2. Employee -->
+                            <td class="py-3 px-4 align-middle">
                                 <div>
-                                    <strong class="text-dark font-weight-bold d-block" style="line-height: 1.25; font-size: 13.5px;">{{ $lr->display_name }}</strong>
-                                    <small class="text-muted" style="font-size: 11px; font-weight: 600;">{{ $lr->employee_code }}</small>
+                                    <strong class="text-dark font-weight-bold d-block" style="line-height: 1.25; font-size: 13px;">{{ $lr->display_name }}</strong>
+                                    <small class="text-muted font-weight-bold" style="font-size: 10.5px;">{{ $lr->employee_code }}</small>
                                 </div>
                             </td>
 
-                            <!-- Department & Designation -->
-                            <td class="py-3 align-middle" data-export="{{ $lr->department_name ?? 'General' }} - {{ $lr->designation_name ?? 'Staff' }}">
-                                <div>
-                                    <span class="font-weight-bold text-dark d-block" style="font-size: 12.5px; line-height: 1.2;">
-                                        <i class="fas fa-building text-muted mr-1" style="font-size: 11px;"></i> {{ $lr->department_name ?? 'General' }}
-                                    </span>
-                                    <small class="text-muted" style="font-size: 11px; font-weight: 600;">{{ $lr->designation_name ?? 'Staff Member' }}</small>
-                                </div>
+                            <!-- 3. Reporting Manager -->
+                            <td class="py-3 align-middle">
+                                @if($hasManager && !empty($lr->reporting_manager_name))
+                                    <div>
+                                        <strong class="text-dark font-weight-bold d-block" style="line-height: 1.25; font-size: 12.5px;">{{ $lr->reporting_manager_name }}</strong>
+                                        <small class="text-muted d-block" style="font-size: 10.5px; font-weight: 600;">Reporting Manager</small>
+                                    </div>
+                                @else
+                                    <span class="text-muted font-weight-bold small" style="font-size: 11px;">— Not Assigned</span>
+                                @endif
                             </td>
 
-                            <!-- Leave Type -->
-                            <td class="py-3 align-middle" data-export="{{ $ltName }}">
-                                <span class="badge font-weight-bold px-2.5 py-1" style="border-radius: 8px; font-size: 11.5px; {{ $ltStyle }}">
-                                    <i class="fas fa-umbrella-beach mr-1" style="font-size: 10.5px;"></i> {{ $ltName }}
+                            <!-- 4. Leave Type -->
+                            <td class="py-3 align-middle">
+                                <span class="badge font-weight-bold px-2.5 py-1" style="border-radius: 6px; font-size: 11px; {{ $ltStyle }}">
+                                    {{ $ltName }}
                                 </span>
                             </td>
 
-                            <!-- Dates -->
-                            <td class="py-3 align-middle text-center" data-export="{{ $datesExportText }}">
-                                <div class="d-inline-flex align-items-center bg-light px-2.5 py-1" style="border-radius: 8px; border: 1px solid #E2E8F0; font-size: 12px; font-weight: 600; color: #1E293B;">
-                                    <i class="far fa-calendar-alt text-primary" style="font-size: 11px; margin-right: 6px;"></i>
+                            <!-- 5. Leave Period -->
+                            <td class="py-3 align-middle text-center">
+                                <div class="d-inline-flex align-items-center bg-light px-2.5 py-1" style="border-radius: 7px; border: 1px solid #E2E8F0; font-size: 11.5px; font-weight: 600; color: #1E293B;">
                                     @if($isSingleDay)
                                         <span>{{ $startDateFormatted }}</span>
                                     @else
                                         <span>{{ $startDateFormatted }}</span>
-                                        <i class="fas fa-arrow-right text-muted" style="font-size: 9.5px; margin: 0 6px;"></i>
+                                        <i class="fas fa-arrow-right text-muted" style="font-size: 9px; margin: 0 5px;"></i>
                                         <span>{{ $endDateFormatted }}</span>
                                     @endif
                                 </div>
                             </td>
 
-                            <!-- Duration -->
-                            <td class="py-3 align-middle text-center" data-export="{{ $daysText }}">
-                                <span class="badge badge-light border font-weight-bold px-2.5 py-1.5 text-dark" style="border-radius: 8px; font-size: 11.5px;">
-                                    <i class="fas fa-clock text-warning mr-1"></i> {{ $daysText }}
+                            <!-- 6. Days -->
+                            <td class="py-3 align-middle text-center">
+                                <span class="badge badge-light border font-weight-bold px-2.5 py-1 text-dark" style="border-radius: 6px; font-size: 11px;">
+                                    {{ $daysText }}
                                 </span>
                             </td>
 
-                            <!-- Status -->
-                            <td class="py-3 align-middle text-center" data-export="{{ strtoupper($lr->status ?? 'Approved') }}">
-                                <span class="badge font-weight-bold text-uppercase px-3 py-1" style="border-radius: 8px; font-size: 10.5px; letter-spacing: 0.04em; {{ $stBadgeStyle }}">
-                                    <i class="{{ $stIcon }} mr-1"></i> {{ ucfirst($stLower) }}
-                                </span>
+                            <!-- 7. Manager Approval -->
+                            <td class="py-3 align-middle text-center">
+                                @if($hrApproved)
+                                    @if($hasManager && $mgrApproved)
+                                        <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 10.5px; background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC;">
+                                            ✓ Approved
+                                        </span>
+                                        @if(!empty($lr->manager_approver_name))
+                                            <small class="text-muted d-block" style="font-size: 9.5px; font-weight: 600;">by {{ $lr->manager_approver_name }}</small>
+                                        @endif
+                                    @else
+                                        <span class="badge border font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 10.5px; background: #F8FAFC; color: #64748B;">⚪ NOT REQUIRED</span>
+                                    @endif
+                                @elseif($mgrApproved)
+                                    <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 10.5px; background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC;">
+                                        ✓ Approved
+                                    </span>
+                                    @if(!empty($lr->manager_approver_name))
+                                        <small class="text-muted d-block" style="font-size: 9.5px; font-weight: 600;">by {{ $lr->manager_approver_name }}</small>
+                                    @endif
+                                @elseif($mgrRejected)
+                                    <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 10.5px; background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5;">
+                                        ✕ Rejected
+                                    </span>
+                                @else
+                                    @if($hasManager)
+                                        <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 10.5px; background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D;">
+                                            🟠 PENDING
+                                        </span>
+                                    @else
+                                        <span class="badge border font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 10.5px; background: #F8FAFC; color: #64748B;">⚪ NOT REQUIRED</span>
+                                    @endif
+                                @endif
                             </td>
-                        </tr>
+
+                            <!-- 8. HR Approval -->
+                            <td class="py-3 align-middle text-center">
+                                @if($hrApproved)
+                                    <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 10.5px; background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC;">
+                                        ✓ Approved
+                                    </span>
+                                    @if(!empty($lr->hr_approver_name))
+                                        <small class="text-muted d-block" style="font-size: 9.5px; font-weight: 600;">by {{ $lr->hr_approver_name }}</small>
+                                    @endif
+                                @elseif($hrRejected)
+                                    <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 10.5px; background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5;">
+                                        ✕ Rejected
+                                    </span>
+                                @elseif($stLower === 'pending')
+                                    @if($hasManager && !$mgrApproved)
+                                        <span class="text-muted small" style="font-size: 11px;">— Waiting for Manager</span>
+                                    @else
+                                        <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 10.5px; background: #EEF2FF; color: #3730A3; border: 1px solid #C7D2FE;">
+                                            🔵 PENDING HR
+                                        </span>
+                                    @endif
+                                @else
+                                    <span class="text-muted" style="font-size: 11px;">—</span>
+                                @endif
+                            </td>
+
+                            <!-- 9. Overall Status -->
+                            <td class="py-3 align-middle text-center">
+                                @if($stLower === 'approved')
+                                    <span class="badge font-weight-bold px-2.5 py-1" style="border-radius: 7px; font-size: 10.5px; background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC;">
+                                        🟢 APPROVED
+                                    </span>
+                                @elseif($stLower === 'rejected' || $stLower === 'cancelled')
+                                    <span class="badge font-weight-bold px-2.5 py-1" style="border-radius: 7px; font-size: 10.5px; background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5;">
+                                        🔴 REJECTED
+                                    </span>
+                                @elseif($stLower === 'pending')
+                                    @if($hasManager && !$mgrApproved)
+                                        <span class="badge font-weight-bold px-2.5 py-1" style="border-radius: 7px; font-size: 10.5px; background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D;">
+                                            🟠 PENDING MANAGER
+                                        </span>
+                                    @else
+                                        <span class="badge font-weight-bold px-2.5 py-1" style="border-radius: 7px; font-size: 10.5px; background: #EEF2FF; color: #3730A3; border: 1px solid #C7D2FE;">
+                                            🔵 PENDING HR
+                                        </span>
+                                    @endif
+                                @else
+                                    <span class="badge font-weight-bold px-2.5 py-1" style="border-radius: 7px; font-size: 10.5px; background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D;">
+                                        🟠 PENDING
+                                    </span>
+                                @endif
+                            </td>
+
+                            <!-- 10. Actions Three-Dot Column (⋮) -->
+                            <td class="py-3 align-middle text-center">
+                                <div class="dropdown">
+                                    <button class="btn-action-dots" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="Actions">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <div class="dropdown-menu dropdown-menu-right dropdown-menu-action">
+                                        <a class="dropdown-item" href="#" data-toggle="modal" data-target="#viewModal{{ $lr->id }}">
+                                            <i class="fas fa-eye text-primary"></i> View Details & Timeline
+                                        </a>
+
+                                        @if($stLower === 'pending' && Route::has('leave-approvals.approve'))
+                                            @if($isAssignedManager)
+                                                @if(!$mgrApproved)
+                                                    <form method="POST" action="{{ route('leave-approvals.approve', $lr->id) }}" class="d-inline">
+                                                        @csrf
+                                                        <button type="submit" class="dropdown-item text-success border-0 bg-transparent font-weight-bold" onclick="return confirm('Approve leave request at Manager stage?')">
+                                                            <i class="fas fa-check-circle text-success"></i> Approve Request
+                                                        </button>
+                                                    </form>
+                                                    <a class="dropdown-item text-danger" href="#" data-toggle="modal" data-target="#rejectModal{{ $lr->id }}">
+                                                        <i class="fas fa-times-circle text-danger"></i> Reject Request
+                                                    </a>
+                                                @else
+                                                    <span class="dropdown-item text-muted disabled" style="cursor: not-allowed; opacity: 0.8;">
+                                                        <i class="fas fa-check text-success"></i> Approved by You (Sent to HR)
+                                                    </span>
+                                                @endif
+                                            @elseif($isSuperAdminUser)
+                                                <!-- Super Admin Override Actions -->
+                                                <form method="POST" action="{{ route('leave-approvals.approve', $lr->id) }}" class="d-inline">
+                                                    @csrf
+                                                    <button type="submit" class="dropdown-item text-success border-0 bg-transparent font-weight-bold" onclick="return confirm('Super Admin Override: Approve leave request?')">
+                                                        <i class="fas fa-crown text-warning"></i> Super Admin Approve
+                                                    </button>
+                                                </form>
+                                                <a class="dropdown-item text-danger" href="#" data-toggle="modal" data-target="#rejectModal{{ $lr->id }}">
+                                                    <i class="fas fa-times-circle text-danger"></i> Reject Request
+                                                </a>
+                                            @else
+                                                @if($hasManager && !$mgrApproved)
+                                                    <span class="dropdown-item text-muted disabled" style="cursor: not-allowed; opacity: 0.8;">
+                                                        <i class="fas fa-clock text-warning"></i> Waiting for Reporting Manager
+                                                    </span>
+                                                @else
+                                                    <span class="dropdown-item text-muted disabled" style="cursor: not-allowed; opacity: 0.8;">
+                                                        <i class="fas fa-hourglass-half text-primary"></i> Pending HR Final Approval
+                                                    </span>
+                                                @endif
+                                            @endif
+                                        @endif
+                                    </div>
+                                </div>
+                                    <!-- VIEW TIMELINE & DETAILS MODAL -->
+                        <div class="modal fade" id="viewModal{{ $lr->id }}" tabindex="-1" role="dialog" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered" role="document" style="max-width: 800px; width: 94%;">
+                                <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden; max-height: 82vh; display: flex; flex-direction: column; background: #FFFFFF;">
+                                    
+                                    <!-- Dynamic DB Branded Header (Primary to Secondary Color Gradient) -->
+                                    <div class="modal-header text-white px-4 py-3 align-items-center justify-content-between" style="background: linear-gradient(135deg, {{ $branding['primary_color'] ?? '#4B00E8' }} 0%, {{ $branding['secondary_color'] ?? '#FF5252' }} 100%); height: 58px; flex-shrink: 0; border-radius: 16px 16px 0 0;">
+                                        <div class="d-flex align-items-center" style="gap: 10px;">
+                                            <div style="width: 34px; height: 34px; border-radius: 8px; background: rgba(255, 255, 255, 0.2); backdrop-filter: blur(4px); border: 1px solid rgba(255, 255, 255, 0.3); color: #FFF; display: flex; align-items: center; justify-content: center; font-size: 15px; box-shadow: 0 2px 6px rgba(0,0,0,0.12);">
+                                                <i class="fas fa-calendar-check text-white"></i>
+                                            </div>
+                                            <div>
+                                                <h5 class="modal-title font-weight-bold text-white mb-0" style="font-size: 15px; letter-spacing: 0.2px;">
+                                                    Leave Request Details
+                                                </h5>
+                                                <div class="text-white-50" style="font-size: 10.5px; font-weight: 500; opacity: 0.92;">
+                                                    Request ID: #LR-{{ str_pad($lr->id, 4, '0', STR_PAD_LEFT) }} &bull; Submitted {{ \Carbon\Carbon::parse($lr->created_at)->format('d M Y') }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button type="button" class="close text-white opacity-10 border-0" style="width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,0.18); display: flex; align-items: center; justify-content: center; font-size: 18px; outline: none; line-height: 1;" data-dismiss="modal">
+                                            <span>&times;</span>
+                                        </button>
+                                    </div>
+
+                                    <!-- Scrollable Modal Body -->
+                                    <div class="modal-body px-4 py-3" style="overflow-y: auto; flex: 1; background: #F8FAFC;">
+                                        
+                                        <!-- Symmetrical 3-Column x 2-Row Information Grid -->
+                                        <div class="mb-3" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                                            
+                                            <!-- Employee Card with Dynamic DB Gradient Avatar -->
+                                            <div class="px-3 py-2.5 rounded-lg border bg-white d-flex align-items-center" style="border-radius: 10px; border-color: #E2E8F0 !important; box-shadow: 0 1px 3px rgba(15,23,42,0.03); gap: 10px; min-height: 58px;">
+                                                <div style="width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, {{ $branding['primary_color'] ?? '#4B00E8' }} 0%, {{ $branding['secondary_color'] ?? '#FF5252' }} 100%); color: #FFF; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13.5px; flex-shrink: 0; box-shadow: 0 2px 6px rgba(75,0,232,0.25);">
+                                                    {{ strtoupper(substr($lr->display_name ?? 'E', 0, 1)) }}
+                                                </div>
+                                                <div class="overflow-hidden">
+                                                    <div class="text-muted font-weight-bold uppercase" style="font-size: 9px; letter-spacing: 0.5px; color: #64748B;">EMPLOYEE</div>
+                                                    <div class="font-weight-bold text-dark text-truncate" style="font-size: 13px; line-height: 1.2;">{{ $lr->display_name }}</div>
+                                                    <div class="text-muted font-weight-bold" style="font-size: 10px;">{{ $lr->employee_code }}</div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Department & Designation -->
+                                            <div class="px-3 py-2.5 rounded-lg border bg-white d-flex align-items-center" style="border-radius: 10px; border-color: #E2E8F0 !important; box-shadow: 0 1px 3px rgba(15,23,42,0.03); gap: 10px; min-height: 58px;">
+                                                <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(75, 0, 232, 0.08); color: {{ $branding['primary_color'] ?? '#4B00E8' }}; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;">
+                                                    <i class="fas fa-building"></i>
+                                                </div>
+                                                <div class="overflow-hidden">
+                                                    <div class="text-muted font-weight-bold uppercase" style="font-size: 9px; letter-spacing: 0.5px; color: #64748B;">DEPARTMENT & DESIGNATION</div>
+                                                    <div class="font-weight-bold text-dark text-truncate" style="font-size: 12.5px; line-height: 1.2;">{{ $lr->department_name ?? 'General' }}</div>
+                                                    <div class="text-muted font-weight-bold text-truncate" style="font-size: 10.5px;">{{ $lr->designation_name ?? 'Employee' }}</div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Leave Type -->
+                                            <div class="px-3 py-2.5 rounded-lg border bg-white d-flex align-items-center" style="border-radius: 10px; border-color: #E2E8F0 !important; box-shadow: 0 1px 3px rgba(15,23,42,0.03); gap: 10px; min-height: 58px;">
+                                                <div style="width: 36px; height: 36px; border-radius: 8px; background: #F3E8FF; color: #9333EA; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;">
+                                                    <i class="fas fa-tag"></i>
+                                                </div>
+                                                <div class="overflow-hidden">
+                                                    <div class="text-muted font-weight-bold uppercase" style="font-size: 9px; letter-spacing: 0.5px; color: #64748B;">LEAVE TYPE</div>
+                                                    <div class="mt-0.5">
+                                                        <span class="badge font-weight-bold px-2.5 py-0.5" style="border-radius: 6px; font-size: 10.5px; {{ $ltStyle }}">
+                                                            {{ $ltName }}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Leave Period -->
+                                            <div class="px-3 py-2.5 rounded-lg border bg-white d-flex align-items-center" style="border-radius: 10px; border-color: #E2E8F0 !important; box-shadow: 0 1px 3px rgba(15,23,42,0.03); gap: 10px; min-height: 58px;">
+                                                <div style="width: 36px; height: 36px; border-radius: 8px; background: #FEF2F2; color: #EF4444; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;">
+                                                    <i class="far fa-calendar-alt"></i>
+                                                </div>
+                                                <div class="overflow-hidden">
+                                                    <div class="text-muted font-weight-bold uppercase" style="font-size: 9px; letter-spacing: 0.5px; color: #64748B;">LEAVE PERIOD</div>
+                                                    <div class="font-weight-bold text-dark mt-0.5" style="font-size: 12px; line-height: 1.2;">
+                                                        @if($isSingleDay)
+                                                            {{ $startDateFormatted }}
+                                                        @else
+                                                            {{ $startDateFormatted }} — {{ $endDateFormatted }}
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Duration -->
+                                            <div class="px-3 py-2.5 rounded-lg border bg-white d-flex align-items-center" style="border-radius: 10px; border-color: #E2E8F0 !important; box-shadow: 0 1px 3px rgba(15,23,42,0.03); gap: 10px; min-height: 58px;">
+                                                <div style="width: 36px; height: 36px; border-radius: 8px; background: #ECFDF5; color: #10B981; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;">
+                                                    <i class="far fa-clock"></i>
+                                                </div>
+                                                <div class="overflow-hidden">
+                                                    <div class="text-muted font-weight-bold uppercase" style="font-size: 9px; letter-spacing: 0.5px; color: #64748B;">DURATION</div>
+                                                    <div class="font-weight-bold text-success mt-0.5" style="font-size: 12.5px; line-height: 1.2;">
+                                                        {{ $daysText }}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Reporting Manager -->
+                                            <div class="px-3 py-2.5 rounded-lg border bg-white d-flex align-items-center" style="border-radius: 10px; border-color: #E2E8F0 !important; box-shadow: 0 1px 3px rgba(15,23,42,0.03); gap: 10px; min-height: 58px;">
+                                                <div style="width: 36px; height: 36px; border-radius: 8px; background: #FFFBEB; color: #D97706; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;">
+                                                    <i class="fas fa-user-tie"></i>
+                                                </div>
+                                                <div class="overflow-hidden">
+                                                    <div class="text-muted font-weight-bold uppercase" style="font-size: 9px; letter-spacing: 0.5px; color: #64748B;">REPORTING MANAGER</div>
+                                                    <div class="font-weight-bold text-dark mt-0.5 text-truncate" style="font-size: 12px; line-height: 1.2;">
+                                                        {{ $lr->reporting_manager_name ?? '— Not Assigned' }}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                        </div>
+
+                                        <!-- Sleek Approval Pipeline Stage Tracker -->
+                                        <div class="mb-3 px-3.5 py-2.5 rounded-lg border bg-white d-flex align-items-center justify-content-between flex-wrap" style="border-radius: 10px; border-color: #E2E8F0 !important; box-shadow: 0 1px 3px rgba(15,23,42,0.03); gap: 12px;">
+                                            
+                                            <!-- Pipeline Stages -->
+                                            <div class="d-flex align-items-center flex-wrap" style="gap: 8px;">
+                                                <div class="d-flex align-items-center" style="gap: 5px;">
+                                                    <i class="fas fa-layer-group text-muted" style="font-size: 11px;"></i>
+                                                    <span class="text-muted font-weight-bold uppercase" style="font-size: 9.5px; letter-spacing: 0.5px; color: #64748B;">STAGES:</span>
+                                                </div>
+
+                                                <!-- Manager Stage -->
+                                                <div class="d-flex align-items-center px-2.5 py-1 rounded" style="background: #F8FAFC; border: 1px solid #E2E8F0; gap: 6px;">
+                                                    <span class="text-dark font-weight-bold" style="font-size: 11px;">1. Manager:</span>
+                                                    @if($hrApproved)
+                                                        @if($hasManager && $mgrApproved)
+                                                            <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 9.5px; background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC;">🟢 Approved</span>
+                                                        @else
+                                                            <span class="badge border font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 9.5px; background: #F8FAFC; color: #64748B;">⚪ Not Required</span>
+                                                        @endif
+                                                    @elseif($mgrApproved)
+                                                        <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 9.5px; background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC;">🟢 Approved</span>
+                                                    @elseif($mgrRejected)
+                                                        <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 9.5px; background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5;">🔴 Rejected</span>
+                                                    @else
+                                                        @if($hasManager)
+                                                            <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 9.5px; background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D;">🟠 Pending</span>
+                                                        @else
+                                                            <span class="badge border font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 9.5px; background: #F8FAFC; color: #64748B;">⚪ Not Required</span>
+                                                        @endif
+                                                    @endif
+                                                </div>
+
+                                                <i class="fas fa-arrow-right text-muted opacity-50" style="font-size: 10px;"></i>
+
+                                                <!-- HR Stage -->
+                                                <div class="d-flex align-items-center px-2.5 py-1 rounded" style="background: #F8FAFC; border: 1px solid #E2E8F0; gap: 6px;">
+                                                    <span class="text-dark font-weight-bold" style="font-size: 11px;">2. HR Final:</span>
+                                                    @if($hrApproved)
+                                                        <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 9.5px; background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC;">🟢 Approved</span>
+                                                    @elseif($hrRejected)
+                                                        <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 9.5px; background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5;">🔴 Rejected</span>
+                                                    @elseif($stLower === 'pending')
+                                                        @if($hasManager && !$mgrApproved)
+                                                            <span class="badge border font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 9.5px; background: #F8FAFC; color: #64748B;">⚪ Waiting</span>
+                                                        @else
+                                                            <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 9.5px; background: #EEF2FF; color: {{ $branding['primary_color'] ?? '#4B00E8' }}; border: 1px solid #C7D2FE;">🔵 Action Required</span>
+                                                        @endif
+                                                    @else
+                                                        <span class="badge border font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 9.5px; background: #F8FAFC; color: #64748B;">⚪ Waiting</span>
+                                                    @endif
+                                                </div>
+                                            </div>
+
+                                            <!-- Overall Status Badge -->
+                                            <div class="d-flex align-items-center" style="gap: 6px;">
+                                                <span class="text-muted font-weight-bold uppercase" style="font-size: 9.5px; letter-spacing: 0.5px;">OVERALL:</span>
+                                                @if($stLower === 'approved')
+                                                    <span class="badge badge-pill font-weight-bold px-3 py-1" style="font-size: 10px; background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC; letter-spacing: 0.3px;">🟢 APPROVED</span>
+                                                @elseif($stLower === 'rejected' || $stLower === 'cancelled')
+                                                    <span class="badge badge-pill font-weight-bold px-3 py-1" style="font-size: 10px; background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5; letter-spacing: 0.3px;">🔴 REJECTED</span>
+                                                @elseif($stLower === 'pending')
+                                                    @if($hasManager && !$mgrApproved)
+                                                        <span class="badge badge-pill font-weight-bold px-3 py-1" style="font-size: 10px; background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D; letter-spacing: 0.3px;">🟠 PENDING MANAGER</span>
+                                                    @else
+                                                        <span class="badge badge-pill font-weight-bold px-3 py-1" style="font-size: 10px; background: #EEF2FF; color: {{ $branding['primary_color'] ?? '#4B00E8' }}; border: 1px solid #C7D2FE; letter-spacing: 0.3px;">🔵 PENDING HR</span>
+                                                    @endif
+                                                @else
+                                                    <span class="badge badge-pill font-weight-bold px-3 py-1" style="font-size: 10px; background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D; letter-spacing: 0.3px;">🟠 PENDING</span>
+                                                @endif
+                                            </div>
+                                        </div>
+
+                                        <!-- Reason for Leave Callout with DB Primary Color Accent -->
+                                        @if(!empty($lr->reason))
+                                            <div class="mb-3 p-3 rounded-lg border bg-white" style="border-left: 4px solid {{ $branding['primary_color'] ?? '#4B00E8' }} !important; border-radius: 10px; border-color: #E2E8F0 !important; box-shadow: 0 1px 3px rgba(15,23,42,0.03);">
+                                                <div class="d-flex align-items-center mb-1" style="gap: 6px;">
+                                                    <i class="fas fa-quote-left opacity-60" style="font-size: 11px; color: {{ $branding['primary_color'] ?? '#4B00E8' }};"></i>
+                                                    <span class="text-muted font-weight-bold uppercase" style="font-size: 9.5px; letter-spacing: 0.4px;">REASON FOR LEAVE</span>
+                                                </div>
+                                                <div class="font-italic text-dark px-1" style="font-size: 12.5px; line-height: 1.45; color: #1E293B;">
+                                                    "{{ $lr->reason }}"
+                                                </div>
+                                            </div>
+                                        @endif
+
+                                        <!-- Approval Workflow Timeline with Clean Card Highlights -->
+                                        <div class="mb-1 p-3 rounded-lg border bg-white" style="border-radius: 10px; border-color: #E2E8F0 !important; box-shadow: 0 1px 3px rgba(15,23,42,0.03);">
+                                            <div class="d-flex align-items-center mb-2.5" style="gap: 6px;">
+                                                <i class="fas fa-stream" style="font-size: 11px; color: {{ $branding['primary_color'] ?? '#4B00E8' }};"></i>
+                                                <span class="text-muted font-weight-bold uppercase" style="font-size: 10px; letter-spacing: 0.5px;">APPROVAL WORKFLOW TIMELINE</span>
+                                            </div>
+                                            
+                                            <div class="approval-timeline" style="position: relative; padding-left: 24px;">
+                                                <!-- Connecting vertical line -->
+                                                <div style="position: absolute; top: 12px; bottom: 12px; left: 10px; width: 2px; background: #E2E8F0;"></div>
+
+                                                <!-- Step 1: Submission -->
+                                                <div class="timeline-step" style="position: relative; margin-bottom: 12px;">
+                                                    <div style="position: absolute; left: -24px; top: 2px; width: 20px; height: 20px; border-radius: 50%; background: #10B981; color: #FFF; display: flex; align-items: center; justify-content: center; font-size: 9.5px; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);">
+                                                        <i class="fas fa-check"></i>
+                                                    </div>
+                                                    <div class="p-2.5 rounded-lg bg-white" style="border: 1px solid #E2E8F0; border-left: 3px solid #10B981; border-radius: 8px;">
+                                                        <div class="d-flex align-items-center justify-content-between">
+                                                            <strong class="text-dark font-weight-bold" style="font-size: 12.5px;">Leave Request Submitted</strong>
+                                                            <span class="badge badge-light border text-success font-weight-bold" style="font-size: 9.5px;">✓ Completed</span>
+                                                        </div>
+                                                        <div class="text-muted mt-0.5" style="font-size: 10.5px;">Submitted by <strong>{{ $lr->display_name }}</strong> &bull; {{ \Carbon\Carbon::parse($lr->created_at)->format('d M Y, h:i A') }}</div>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Step 2: Manager Approval -->
+                                                <div class="timeline-step" style="position: relative; margin-bottom: 12px;">
+                                                    @if(!$hasManager)
+                                                        <div style="position: absolute; left: -24px; top: 2px; width: 20px; height: 20px; border-radius: 50%; background: #94A3B8; color: #FFF; display: flex; align-items: center; justify-content: center; font-size: 9.5px;">
+                                                            <i class="fas fa-minus"></i>
+                                                        </div>
+                                                        <div class="p-2.5 rounded-lg bg-white" style="border: 1px solid #E2E8F0; border-left: 3px solid #94A3B8; border-radius: 8px;">
+                                                            <div class="d-flex align-items-center justify-content-between">
+                                                                <strong class="text-muted font-weight-bold" style="font-size: 12.5px;">— Manager Approval Not Required</strong>
+                                                                <span class="badge badge-light border text-muted font-weight-bold" style="font-size: 9.5px;">Bypassed</span>
+                                                            </div>
+                                                            <div class="text-muted mt-0.5" style="font-size: 10.5px;">No Reporting Manager assigned to employee</div>
+                                                        </div>
+                                                    @elseif($mgrApproved)
+                                                        <div style="position: absolute; left: -24px; top: 2px; width: 20px; height: 20px; border-radius: 50%; background: #10B981; color: #FFF; display: flex; align-items: center; justify-content: center; font-size: 9.5px; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);">
+                                                            <i class="fas fa-check"></i>
+                                                        </div>
+                                                        <div class="p-2.5 rounded-lg bg-white" style="border: 1px solid #E2E8F0; border-left: 3px solid #10B981; border-radius: 8px;">
+                                                            <div class="d-flex align-items-center justify-content-between">
+                                                                <strong class="text-dark font-weight-bold" style="font-size: 12.5px;">✓ Manager Approved</strong>
+                                                                <span class="badge badge-light border text-success font-weight-bold" style="font-size: 9.5px;">✓ Approved</span>
+                                                            </div>
+                                                            <div class="text-muted mt-0.5" style="font-size: 10.5px;">Approved by <strong>{{ $lr->manager_approver_name ?? 'Reporting Manager' }}</strong> @if(!empty($lr->manager_approved_at)) &bull; {{ \Carbon\Carbon::parse($lr->manager_approved_at)->format('d M Y, h:i A') }} @endif</div>
+                                                            @if(!empty($lr->manager_note))
+                                                                <div class="text-muted small mt-1 italic" style="font-size: 10px; background: #F8FAFC; padding: 4px 8px; border-radius: 4px; border: 1px solid #E2E8F0;">Note: "{{ $lr->manager_note }}"</div>
+                                                            @endif
+                                                        </div>
+                                                    @elseif($mgrRejected)
+                                                        <div style="position: absolute; left: -24px; top: 2px; width: 20px; height: 20px; border-radius: 50%; background: #EF4444; color: #FFF; display: flex; align-items: center; justify-content: center; font-size: 9.5px; box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);">
+                                                            <i class="fas fa-times"></i>
+                                                        </div>
+                                                        <div class="p-2.5 rounded-lg bg-white" style="border: 1px solid #FCA5A5; border-left: 3px solid #EF4444; border-radius: 8px;">
+                                                            <div class="d-flex align-items-center justify-content-between">
+                                                                <strong class="text-danger font-weight-bold" style="font-size: 12.5px;">✕ Manager Rejected</strong>
+                                                                <span class="badge font-weight-bold" style="background: #FEE2E2; color: #991B1B; font-size: 9.5px;">Rejected</span>
+                                                            </div>
+                                                            <div class="text-danger mt-0.5" style="font-size: 10.5px;">Reason: {{ $lr->rejection_reason ?? 'Rejected by Manager' }}</div>
+                                                        </div>
+                                                    @else
+                                                        <div style="position: absolute; left: -24px; top: 2px; width: 20px; height: 20px; border-radius: 50%; background: #F59E0B; color: #FFF; display: flex; align-items: center; justify-content: center; font-size: 9.5px; box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);">
+                                                            <i class="fas fa-hourglass-half"></i>
+                                                        </div>
+                                                        <div class="p-2.5 rounded-lg bg-white" style="border: 1px solid #E2E8F0; border-left: 3px solid #F59E0B; border-radius: 8px;">
+                                                            <div class="d-flex align-items-center justify-content-between">
+                                                                <strong class="text-dark font-weight-bold" style="font-size: 12.5px;">⏳ Manager Approval Pending</strong>
+                                                                <span class="badge font-weight-bold" style="background: #FEF3C7; color: #92400E; font-size: 9.5px;">Pending Manager</span>
+                                                            </div>
+                                                            <div class="text-muted mt-0.5" style="font-size: 10.5px;">Pending Reporting Manager review</div>
+                                                        </div>
+                                                    @endif
+                                                </div>
+
+                                                <!-- Step 3: HR Approval -->
+                                                <div class="timeline-step" style="position: relative;">
+                                                    @if($hrApproved)
+                                                        <div style="position: absolute; left: -24px; top: 2px; width: 20px; height: 20px; border-radius: 50%; background: #10B981; color: #FFF; display: flex; align-items: center; justify-content: center; font-size: 9.5px; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);">
+                                                            <i class="fas fa-check-double"></i>
+                                                        </div>
+                                                        <div class="p-2.5 rounded-lg bg-white" style="border: 1px solid #E2E8F0; border-left: 3px solid #10B981; border-radius: 8px;">
+                                                            <div class="d-flex align-items-center justify-content-between">
+                                                                <strong class="text-dark font-weight-bold" style="font-size: 12.5px;">✓ HR Final Approved</strong>
+                                                                <span class="badge badge-light border text-success font-weight-bold" style="font-size: 9.5px;">✓ Finalized</span>
+                                                            </div>
+                                                            <div class="text-muted mt-0.5" style="font-size: 10.5px;">Approved by <strong>{{ $lr->hr_approver_name ?? 'HR Admin' }}</strong> @if(!empty($lr->hr_approved_at)) &bull; {{ \Carbon\Carbon::parse($lr->hr_approved_at)->format('d M Y, h:i A') }} @endif</div>
+                                                            @if(!empty($lr->hr_note))
+                                                                <div class="text-muted small mt-1 italic" style="font-size: 10px; background: #F8FAFC; padding: 4px 8px; border-radius: 4px; border: 1px solid #E2E8F0;">Note: "{{ $lr->hr_note }}"</div>
+                                                            @endif
+                                                        </div>
+                                                    @elseif($hrRejected)
+                                                        <div style="position: absolute; left: -24px; top: 2px; width: 20px; height: 20px; border-radius: 50%; background: #EF4444; color: #FFF; display: flex; align-items: center; justify-content: center; font-size: 9.5px; box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);">
+                                                            <i class="fas fa-times"></i>
+                                                        </div>
+                                                        <div class="p-2.5 rounded-lg bg-white" style="border: 1px solid #FCA5A5; border-left: 3px solid #EF4444; border-radius: 8px;">
+                                                            <div class="d-flex align-items-center justify-content-between">
+                                                                <strong class="text-danger font-weight-bold" style="font-size: 12.5px;">✕ HR Rejected</strong>
+                                                                <span class="badge font-weight-bold" style="background: #FEE2E2; color: #991B1B; font-size: 9.5px;">Rejected</span>
+                                                            </div>
+                                                            <div class="text-danger mt-0.5" style="font-size: 10.5px;">Reason: {{ $lr->rejection_reason ?? 'Rejected by HR' }}</div>
+                                                        </div>
+                                                    @elseif($mgrApproved || !$hasManager)
+                                                        <div style="position: absolute; left: -24px; top: 2px; width: 20px; height: 20px; border-radius: 50%; background: {{ $branding['primary_color'] ?? '#4B00E8' }}; color: #FFF; display: flex; align-items: center; justify-content: center; font-size: 9.5px; box-shadow: 0 0 0 3px rgba(75, 0, 232, 0.25);">
+                                                            <i class="fas fa-hourglass-half"></i>
+                                                        </div>
+                                                        <div class="p-2.5 rounded-lg bg-white" style="border: 1px solid #E2E8F0; border-left: 3px solid {{ $branding['primary_color'] ?? '#4B00E8' }}; border-radius: 8px;">
+                                                            <div class="d-flex align-items-center justify-content-between">
+                                                                <strong class="font-weight-bold" style="font-size: 12.5px; color: {{ $branding['primary_color'] ?? '#4B00E8' }};">🔵 HR Approval Pending</strong>
+                                                                <span class="badge font-weight-bold" style="background: #EEF2FF; color: {{ $branding['primary_color'] ?? '#4B00E8' }}; border: 1px solid #C7D2FE; font-size: 9.5px;">Action Required</span>
+                                                            </div>
+                                                            <div class="text-muted mt-0.5" style="font-size: 10.5px;">Pending HR approval</div>
+                                                        </div>
+                                                    @else
+                                                        <div style="position: absolute; left: -24px; top: 2px; width: 20px; height: 20px; border-radius: 50%; background: #F1F5F9; color: #94A3B8; border: 1px solid #CBD5E1; display: flex; align-items: center; justify-content: center; font-size: 9.5px;">
+                                                            <i class="far fa-circle"></i>
+                                                        </div>
+                                                        <div class="p-2.5 rounded-lg bg-white" style="border: 1px solid #E2E8F0; border-left: 3px solid #CBD5E1; border-radius: 8px;">
+                                                            <div class="d-flex align-items-center justify-content-between">
+                                                                <strong class="text-muted font-weight-bold" style="font-size: 12.5px;">○ HR Approval</strong>
+                                                                <span class="badge badge-light border text-muted font-weight-bold" style="font-size: 9.5px;">Awaiting Manager</span>
+                                                            </div>
+                                                            <div class="text-muted mt-0.5" style="font-size: 10.5px;">Waiting for Manager approval</div>
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div>
+
+                                    <!-- Fixed Footer with Sleek Action Buttons -->
+                                    <div class="modal-footer border-top bg-white px-4 py-2.5 align-items-center justify-content-between" style="height: 58px; flex-shrink: 0; border-radius: 0 0 16px 16px;">
+                                        <button type="button" class="btn btn-sm btn-light font-weight-bold px-3.5" style="border-radius: 8px; height: 38px; border: 1px solid #CBD5E1; color: #475569; font-size: 12.5px;" data-dismiss="modal">
+                                            Close
+                                        </button>
+
+                                        <div class="d-flex align-items-center" style="gap: 8px;">
+                                            @if($stLower === 'pending' && Route::has('leave-approvals.approve'))
+                                                @if($isAssignedManager)
+                                                    @if(!$mgrApproved)
+                                                        <button type="button" class="btn btn-sm font-weight-bold px-3.5" style="border-radius: 8px; height: 38px; background: #FEF2F2; color: #DC2626; border: 1px solid #FCA5A5; font-size: 12.5px;" data-toggle="modal" data-target="#rejectModal{{ $lr->id }}" data-dismiss="modal">
+                                                            <i class="fas fa-times mr-1"></i> Reject Request
+                                                        </button>
+                                                        <form method="POST" action="{{ route('leave-approvals.approve', $lr->id) }}" class="d-inline">
+                                                            @csrf
+                                                            <button type="submit" class="btn btn-sm text-white font-weight-bold px-3.5" style="border-radius: 8px; height: 38px; background: linear-gradient(135deg, {{ $branding['primary_color'] ?? '#4B00E8' }} 0%, {{ $branding['secondary_color'] ?? '#FF5252' }} 100%); border: none; box-shadow: 0 4px 14px rgba(75, 0, 232, 0.3); font-size: 12.5px;" onclick="return confirm('Approve leave request at Manager stage for {{ addslashes($lr->display_name) }}?')">
+                                                                <i class="fas fa-check mr-1"></i> Approve Request
+                                                            </button>
+                                                        </form>
+                                                    @endif
+                                                @elseif($isSuperAdminUser)
+                                                    <!-- Super Admin Actions -->
+                                                    <button type="button" class="btn btn-sm font-weight-bold px-3.5" style="border-radius: 8px; height: 38px; background: #FEF2F2; color: #DC2626; border: 1px solid #FCA5A5; font-size: 12.5px;" data-toggle="modal" data-target="#rejectModal{{ $lr->id }}" data-dismiss="modal">
+                                                        <i class="fas fa-times mr-1"></i> Reject Request
+                                                    </button>
+                                                    <form method="POST" action="{{ route('leave-approvals.approve', $lr->id) }}" class="d-inline">
+                                                        @csrf
+                                                        <button type="submit" class="btn btn-sm text-white font-weight-bold px-3.5" style="border-radius: 8px; height: 38px; background: linear-gradient(135deg, {{ $branding['primary_color'] ?? '#4B00E8' }} 0%, {{ $branding['secondary_color'] ?? '#FF5252' }} 100%); border: none; box-shadow: 0 4px 14px rgba(75, 0, 232, 0.3); font-size: 12.5px;" onclick="return confirm('Super Admin Override: Approve leave request for {{ addslashes($lr->display_name) }}?')">
+                                                            <i class="fas fa-crown mr-1 text-warning"></i> Super Admin Approve
+                                                        </button>
+                                                    </form>
+                                                @endif
+                                            @endif
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>                  </div>
+
+                                </div>
+                            </div>
+                        </div>                      </div>
+                        </div>
+
+                        <!-- REJECT MODAL -->
+                        @if(Route::has('leave-approvals.reject'))
+                        <div class="modal fade" id="rejectModal{{ $lr->id }}" tabindex="-1" role="dialog" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered" role="document" style="max-width: 460px;">
+                                <div class="modal-content border-0 shadow-lg" style="border-radius: 18px; overflow: hidden;">
+                                    <form method="POST" action="{{ route('leave-approvals.reject', $lr->id) }}">
+                                        @csrf
+                                        <div class="modal-header bg-danger text-white p-3">
+                                            <h5 class="modal-title font-weight-bold text-white mb-0" style="font-size: 15px;">
+                                                <i class="fas fa-times-circle mr-2"></i> Reject Leave Request
+                                            </h5>
+                                            <button type="button" class="close text-white opacity-10" data-dismiss="modal"><span>&times;</span></button>
+                                        </div>
+                                        <div class="modal-body p-4">
+                                            <p class="small text-muted font-weight-bold mb-2">Rejecting request for <strong>{{ $lr->display_name }}</strong> ({{ $startDateFormatted }}@if(!$isSingleDay) to {{ $endDateFormatted }}@endif):</p>
+                                            <div class="form-group mb-0">
+                                                <label class="font-weight-bold text-dark small">Rejection Reason <span class="text-danger">*</span></label>
+                                                <textarea name="reason" class="form-control" rows="3" required placeholder="Please provide reason for rejection..." style="border-radius: 10px; font-size: 13px;"></textarea>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer bg-light p-3 border-top">
+                                            <button type="button" class="btn btn-light border font-weight-bold" style="border-radius: 9px;" data-dismiss="modal">Cancel</button>
+                                            <button type="submit" class="btn btn-danger font-weight-bold px-4" style="border-radius: 9px;">Reject Request</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        @endif
+
                         @empty
                         <tr>
-                            <td colspan="7" class="text-center text-muted py-5">
+                            <td colspan="10" class="text-center text-muted py-5">
                                 <i class="fas fa-calendar-minus fa-3x mb-3 text-muted"></i>
-                                <h5 class="font-weight-bold text-dark">No Leave Requests Found</h5>
+                                <h5 class="font-weight-bold text-dark">No Team Leave Applications Found</h5>
+                                <p class="small mb-0">No leave requests match the selected filters.</p>
                             </td>
                         </tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
-
-            <!-- Footer for Pagination & Info (Populated by DataTables) -->
-            <div class="orb-table-footer p-3 bg-light border-top d-flex align-items-center justify-content-between"></div>
 
             @if($leaveRequests->hasPages())
                 <div class="p-3 bg-light border-top">
@@ -379,306 +1105,4 @@
         </div>
     </div>
 </div>
-@endsection
-
-@section('_script')
-<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap4.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap4.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
-
-<script>
-    $(function() {
-        $.fn.dataTable.ext.errMode = 'none';
-
-        if ($('#teamLeaveTable tbody tr td[colspan]').length > 0) {
-            $('#teamLeaveTable tbody').empty();
-        }
-
-        if ($.fn.DataTable.isDataTable('#teamLeaveTable')) {
-            $('#teamLeaveTable').DataTable().destroy();
-        }
-
-        const exportOptionsDefault = {
-            format: {
-                body: function ( data, row, column, node ) {
-                    if (node && node.hasAttribute('data-export')) {
-                        return node.getAttribute('data-export');
-                    }
-                    if (typeof data === 'string') {
-                        var temp = document.createElement("div");
-                        temp.innerHTML = data;
-                        return (temp.textContent || temp.innerText || "").trim();
-                    }
-                    return data;
-                }
-            }
-        };
-
-        var table = $('#teamLeaveTable').DataTable({
-            pageLength: 25,
-            ordering: false,
-            searching: true, 
-            paging: true,
-            info: true,
-            responsive: false,
-            autoWidth: false,
-            dom: "t<'d-none'ip>",
-            language: {
-                emptyTable: '<div class="text-center text-muted py-5"><i class="fas fa-calendar-minus fa-3x mb-3 text-muted"></i><h5 class="font-weight-bold text-dark">No Leave Requests Found</h5></div>',
-                zeroRecords: '<div class="text-center text-muted py-4"><i class="fas fa-search fa-2x mb-2 text-muted"></i><h6 class="font-weight-bold text-dark mb-0">No matching leave requests found</h6></div>'
-            },
-            buttons: [
-                {
-                    extend: 'csvHtml5',
-                    text: '<i class="fas fa-file-csv text-info"></i> CSV',
-                    className: 'orb-export-btn',
-                    exportOptions: exportOptionsDefault
-                },
-                {
-                    extend: 'excelHtml5',
-                    text: '<i class="fas fa-file-excel text-success"></i> Excel',
-                    className: 'orb-export-btn',
-                    exportOptions: exportOptionsDefault
-                },
-                {
-                    extend: 'pdfHtml5',
-                    text: '<i class="fas fa-file-pdf text-danger"></i> PDF',
-                    className: 'orb-export-btn',
-                    orientation: 'landscape',
-                    pageSize: 'A4',
-                    title: 'OrboOne HRMS - Team Management Leave Summary',
-                    exportOptions: exportOptionsDefault,
-                    customize: function (doc) {
-                        doc.pageOrientation = 'landscape';
-                        doc.pageSize = 'A4';
-                        doc.pageMargins = [20, 45, 20, 35];
-
-                        doc['header'] = function(currentPage, pageCount) {
-                            return {
-                                margin: [20, 15, 20, 0],
-                                columns: [
-                                    {
-                                        text: 'ORBOONE HRMS — TEAM LEAVE SUMMARY',
-                                        fontSize: 9,
-                                        bold: true,
-                                        color: '#4B00E8'
-                                    },
-                                    {
-                                        text: 'Page ' + currentPage.toString() + ' of ' + pageCount,
-                                        alignment: 'right',
-                                        fontSize: 9,
-                                        color: '#64748B'
-                                    }
-                                ]
-                            };
-                        };
-
-                        var objLayout = {};
-                        objLayout['hLineWidth'] = function(i) { return 0.5; };
-                        objLayout['vLineWidth'] = function(i) { return 0; };
-                        objLayout['hLineColor'] = function(i) { return '#CBD5E1'; };
-                        objLayout['paddingLeft'] = function(i) { return 8; };
-                        objLayout['paddingRight'] = function(i) { return 8; };
-                        objLayout['paddingTop'] = function(i) { return 6; };
-                        objLayout['paddingBottom'] = function(i) { return 6; };
-                        doc.content[1].layout = objLayout;
-
-                        var headerRow = doc.content[1].table.body[0];
-                        for (var i = 0; i < headerRow.length; i++) {
-                            headerRow[i].fillColor = '#1E293B';
-                            headerRow[i].color = '#FFFFFF';
-                            headerRow[i].fontSize = 9.5;
-                            headerRow[i].bold = true;
-                        }
-
-                        doc.content[1].table.widths = ['6%', '22%', '20%', '16%', '20%', '8%', '8%'];
-                    }
-                },
-                {
-                    extend: 'print',
-                    text: '<i class="fas fa-print text-primary"></i> Print',
-                    className: 'orb-export-btn',
-                    title: '',
-                    exportOptions: exportOptionsDefault,
-                    customize: function (win) {
-                        var body = $(win.document.body);
-
-                        $(win.document.head).append(`
-                            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-                            <style>
-                                @media print {
-                                    @page {
-                                        size: A4 landscape;
-                                        margin: 10mm 12mm;
-                                    }
-                                }
-                                body {
-                                    font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
-                                    color: #0F172A !important;
-                                    background: #FFFFFF !important;
-                                    padding: 15px !important;
-                                    margin: 0 !important;
-                                }
-                                .print-hero {
-                                    background: linear-gradient(135deg, #4B00E8 0%, #FF5252 100%) !important;
-                                    border-radius: 12px !important;
-                                    padding: 16px 22px !important;
-                                    color: #FFFFFF !important;
-                                    margin-bottom: 20px !important;
-                                    display: flex !important;
-                                    align-items: center !important;
-                                    justify-content: space-between !important;
-                                    -webkit-print-color-adjust: exact !important;
-                                    print-color-adjust: exact !important;
-                                }
-                                .print-hero h2 {
-                                    margin: 0 !important;
-                                    font-size: 20px !important;
-                                    font-weight: 800 !important;
-                                    color: #FFFFFF !important;
-                                }
-                                .print-hero p {
-                                    margin: 2px 0 0 0 !important;
-                                    font-size: 12px !important;
-                                    opacity: 0.92 !important;
-                                    color: #FFFFFF !important;
-                                }
-                                table.dataTable {
-                                    width: 100% !important;
-                                    border-collapse: separate !important;
-                                    border-spacing: 0 !important;
-                                    border-radius: 10px !important;
-                                    overflow: hidden !important;
-                                    border: 1px solid #CBD5E1 !important;
-                                    margin-top: 10px !important;
-                                }
-                                table.dataTable thead th {
-                                    background: #1E293B !important;
-                                    color: #FFFFFF !important;
-                                    font-size: 11px !important;
-                                    font-weight: 800 !important;
-                                    text-transform: uppercase !important;
-                                    padding: 10px 14px !important;
-                                    border: none !important;
-                                    -webkit-print-color-adjust: exact !important;
-                                    print-color-adjust: exact !important;
-                                }
-                                table.dataTable tbody td {
-                                    padding: 10px 14px !important;
-                                    border-bottom: 1px solid #E2E8F0 !important;
-                                    font-size: 11.5px !important;
-                                }
-                                table.dataTable tbody tr:nth-child(even) {
-                                    background: #F8FAFC !important;
-                                    -webkit-print-color-adjust: exact !important;
-                                    print-color-adjust: exact !important;
-                                }
-                            </style>
-                        `);
-
-                        body.find('h1').remove();
-
-                        var printDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-                        body.prepend(`
-                            <div class="print-hero">
-                                <div>
-                                    <h2>OrboOne HRMS</h2>
-                                    <p>Team Management — Leave Applications & Status Summary</p>
-                                </div>
-                                <div style="background: rgba(255, 255, 255, 0.22); padding: 6px 14px; border-radius: 8px; font-size: 11px; font-weight: 700;">
-                                    Date: ${printDate}
-                                </div>
-                            </div>
-                        `);
-                    }
-                }
-            ],
-            language: {
-                emptyTable: 'No leave requests found.',
-                zeroRecords: 'No matching leave requests found.',
-                lengthMenu: 'Show _MENU_ entries',
-                info: 'Showing _START_ to _END_ of _TOTAL_ leave requests',
-                paginate: {
-                    previous: 'Prev',
-                    next: 'Next'
-                }
-            }
-        });
-
-        // Inject the entries dropdown on the left, and print/export buttons on the right
-        $('.orb-table-toolbar .toolbar-left').html(`
-            <div class="dataTables_length">
-                <label>Show 
-                    <select class="form-control" id="custom-length-select">
-                        <option value="10">10</option>
-                        <option value="25" selected>25</option>
-                        <option value="50">50</option>
-                        <option value="100">100</option>
-                        <option value="-1">All</option>
-                    </select> entries
-                </label>
-            </div>
-        `);
-        
-        $('.orb-table-toolbar .toolbar-right').append(table.buttons().container());
-
-        $('#custom-length-select').on('change', function() {
-            table.page.len($(this).val()).draw();
-        });
-
-        // Auto-filter listeners (No Apply button needed! Works live on change)
-        function applyInstantFilters() {
-            var empVal = $('#filter-team-member').val();
-            var statusVal = $('#filter-leave-status').val();
-            var searchVal = $('#filter-search-keyword').val();
-
-            if (empVal) {
-                table.column(1).search(empVal ? '^' + $.fn.dataTable.util.escapeRegex(empVal) : '', true, false);
-            } else {
-                table.column(1).search('');
-            }
-
-            if (statusVal) {
-                table.column(6).search(statusVal ? '^' + $.fn.dataTable.util.escapeRegex(statusVal) : '', true, false);
-            } else {
-                table.column(6).search('');
-            }
-
-            if (searchVal) {
-                table.search(searchVal);
-            } else {
-                table.search('');
-            }
-
-            table.draw();
-        }
-
-        $('#filter-team-member, #filter-leave-status').on('change', function() {
-            applyInstantFilters();
-        });
-
-        $('#filter-search-keyword').on('keyup change clear', function() {
-            applyInstantFilters();
-        });
-
-        // Reset Filters Button Handler
-        $('#btn-reset-team-leave-filters').on('click', function() {
-            $('#filter-team-member').val('');
-            $('#filter-leave-status').val('');
-            $('#filter-search-keyword').val('');
-            table.search('').columns().search('').draw();
-        });
-
-        // Trigger initial filter if present
-        if ($('#filter-team-member').val() || $('#filter-leave-status').val()) {
-            applyInstantFilters();
-        }
-    });
-</script>
 @endsection

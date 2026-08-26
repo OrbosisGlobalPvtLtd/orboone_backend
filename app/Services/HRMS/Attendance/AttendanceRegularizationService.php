@@ -191,12 +191,16 @@ class AttendanceRegularizationService
             $attendance?->is_blocked 
             || $attendance?->is_punch_blocked 
             || ($attendance?->attendance_status ?? '') === 'punch_blocked'
+            || ($attendance?->attendance_status ?? '') === 'blocked'
+            || ($employee->is_punch_blocked ?? false)
+            || ($employee->is_blocked ?? false)
         ) && !($attendance?->is_admin_unlocked ?? false);
 
         if (! $isBlocked && $carbonDate->isToday()) {
             try {
-                $evalResult = $this->ruleResolver->evaluatePunchInRules($employee->user_id, Carbon::now(self::TIMEZONE));
-                if (($evalResult['can_punch'] ?? true) === false && str_contains(strtolower($evalResult['message'] ?? ''), 'closed')) {
+                $stateResolver = app(\App\Services\HRMS\Attendance\AttendanceStateResolverService::class);
+                $state = $stateResolver->resolveState($employee);
+                if (!empty($state['punch_windows']['is_blocked']) || !empty($state['ui']['is_blocked']) || !empty($state['ui']['is_punch_blocked']) || ($state['window_state'] ?? '') === 'blocked') {
                     $isBlocked = true;
                 }
             } catch (\Throwable $e) {
@@ -216,7 +220,7 @@ class AttendanceRegularizationService
             $availableOptions[] = [
                 'id' => 'unlock_attendance',
                 'value' => 'unlock_attendance',
-                'label' => 'Unlock Attendance',
+                'label' => 'Unlock Attendance / Punch Blocked',
                 'description' => 'Request HR/Admin to unlock attendance punch for blocked shift.',
                 'is_auto_selected' => true,
             ];
@@ -233,6 +237,24 @@ class AttendanceRegularizationService
                 'value' => 'regular_attendance',
                 'label' => 'Regular Attendance',
                 'description' => 'Create full attendance record for absent day.',
+            ];
+            $availableOptions[] = [
+                'id' => 'unlock_attendance',
+                'value' => 'unlock_attendance',
+                'label' => 'Unlock Attendance / Punch Blocked',
+                'description' => 'Request HR/Admin to unlock attendance punch for blocked shift.',
+            ];
+            $availableOptions[] = [
+                'id' => 'missed_punch_in',
+                'value' => 'missed_punch_in',
+                'label' => 'Missed Punch In',
+                'description' => 'Add missing Punch In time.',
+            ];
+            $availableOptions[] = [
+                'id' => 'missed_punch_out',
+                'value' => 'missed_punch_out',
+                'label' => 'Missed Punch Out',
+                'description' => 'Add missing Punch Out time.',
             ];
             $statusLabel = 'Absent';
         } elseif ($hasIn && ! $hasOut) {

@@ -9,6 +9,7 @@ use App\Services\HRMS\Reporting\ReportingScopeS;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class ReportingC extends Controller
 {
@@ -31,19 +32,20 @@ class ReportingC extends Controller
 
         // Core Counts
         $employeesCount = count($supervisedEmpIds);
-        if ($isGlobal) {
-            $employeesCount = DB::table('reporting_assignments')->where('is_active', 1)->distinct('employee_id')->count('employee_id')
-                + DB::table('technical_lead_assignments')->where('is_active', 1)->distinct('employee_id')->count('employee_id');
+        if ($isGlobal && empty($supervisedEmpIds)) {
+            $employeesCount = EmployeeM::active()->count();
         }
 
         $supervisorsCount = DB::table('reporting_assignments')->where('is_active', 1)->distinct('supervisor_employee_id')->count('supervisor_employee_id')
-            + DB::table('technical_lead_assignments')->where('is_active', 1)->distinct('technical_lead_employee_id')->count('technical_lead_employee_id');
+            + DB::table('technical_lead_assignments')->where('is_active', 1)->distinct('employee_id')->count('employee_id');
 
-        $projectsCount = DB::table('project_assignments')
-            ->whereIn('employee_id', $supervisedEmpIds)
-            ->where('is_active', 1)
-            ->distinct('project_id')
-            ->count('project_id');
+        $projectsQuery = DB::table('projects');
+        if (Schema::hasColumn('projects', 'is_active')) {
+            $projectsQuery->where('is_active', 1);
+        } elseif (Schema::hasColumn('projects', 'status')) {
+            $projectsQuery->where('status', 'active');
+        }
+        $projectsCount = $projectsQuery->count();
 
         // Today's Attendance stats
         $today = date('Y-m-d');
@@ -51,9 +53,9 @@ class ReportingC extends Controller
         $attendanceQuery = $this->scopeS->scopeAttendanceQuery($attendanceQuery, $supervisorEmpId);
         $todayAttendances = $attendanceQuery->get();
 
-        $presentCount = $todayAttendances->whereIn('status', ['present', 'late', 'half_day'])->count();
-        $wfhCount = $todayAttendances->where('work_type', 'wfh')->count();
-        $absentCount = $todayAttendances->where('status', 'absent')->count();
+        $presentCount = $todayAttendances->whereIn('attendance_status', ['present', 'late', 'half_day'])->count();
+        $wfhCount = $todayAttendances->where('work_mode', 'wfh')->count();
+        $absentCount = $todayAttendances->where('attendance_status', 'absent')->count();
 
         // Today's Leave stats
         $leaveQuery = DB::table('leave_requests')
@@ -68,22 +70,75 @@ class ReportingC extends Controller
         $workReportsQuery = $this->scopeS->scopeWorkReports($workReportsQuery, $supervisorEmpId);
         $workReportsSubmittedToday = $workReportsQuery->count();
 
-        // Supervised Tasks
-        $tasksQuery = DB::table('project_tasks');
-        $tasksQuery = $this->scopeS->scopeTasks($tasksQuery, $supervisorEmpId);
-        $tasks = $tasksQuery->get();
+        // Combined Tasks Aggregation (project_tasks + taskmanagement + attendance_work_logs)
+        $ptTasks = DB::table('project_tasks');
+        $ptTasks = $this->scopeS->scopeTasks($ptTasks, $supervisorEmpId)->get();
+
+        $teamUserIds = DB::table('employees_new')->whereIn('id', $supervisedEmpIds)->pluck('user_id')->filter()->toArray();
+        if (Auth::user()) {
+            $teamUserIds[] = Auth::user()->id;
+        }
+        $tmTasks = DB::table('taskmanagement')->whereIn('user_id', array_unique($teamUserIds))->get();
+
+        $workLogsQuery = DB::table('attendance_work_logs');
+        $workLogsQuery = $this->scopeS->scopeWorkReports($workLogsQuery, $supervisorEmpId)->get();
+
+        $totalTasks = 0;
+        $completedTasks = 0;
+        $inProgressTasks = 0;
+        $todoTasks = 0;
+        $blockedTasks = 0;
+
+        foreach ($ptTasks as $t) {
+            $totalTasks++;
+            $st = strtolower($t->status ?? 'todo');
+            if (in_array($st, ['completed', 'done'])) $completedTasks++;
+            elseif (in_array($st, ['in_progress', 'doing', 'testing'])) $inProgressTasks++;
+            elseif (in_array($st, ['blocked', 'hold'])) $blockedTasks++;
+            else $todoTasks++;
+        }
+
+        foreach ($tmTasks as $t) {
+            $totalTasks++;
+            $st = strtolower($t->status ?? 'pending');
+            if (in_array($st, ['completed', 'done'])) $completedTasks++;
+            elseif (in_array($st, ['in_progress', 'doing', 'testing'])) $inProgressTasks++;
+            elseif (in_array($st, ['blocked', 'hold'])) $blockedTasks++;
+            else $todoTasks++;
+        }
+
+        foreach ($workLogsQuery as $wl) {
+            if (!empty($wl->work_summary_json)) {
+                $data = json_decode($wl->work_summary_json, true);
+                if (isset($data['projects']) && is_array($data['projects'])) {
+                    foreach ($data['projects'] as $p) {
+                        if (isset($p['tasks']) && is_array($p['tasks'])) {
+                            foreach ($p['tasks'] as $t) {
+                                $totalTasks++;
+                                $isComp = !empty($t['completed']) || !empty($t['is_completed']);
+                                if ($isComp) {
+                                    $completedTasks++;
+                                } else {
+                                    $inProgressTasks++;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         $taskStats = [
-            'total' => $tasks->count(),
-            'completed' => $tasks->where('status', 'completed')->count(),
-            'in_progress' => $tasks->where('status', 'in_progress')->count(),
-            'todo' => $tasks->where('status', 'todo')->count(),
-            'blocked' => $tasks->where('status', 'blocked')->count(),
+            'total' => $totalTasks,
+            'completed' => $completedTasks,
+            'in_progress' => $inProgressTasks,
+            'todo' => $todoTasks,
+            'blocked' => $blockedTasks,
         ];
 
         // Developer daily status list
-        $recentDevelopersList = EmployeeM::with(['user', 'designation'])
-            ->whereIn('id', array_slice($supervisedEmpIds, 0, 20))
+        $recentDevelopersList = EmployeeM::with(['user', 'designation', 'department'])
+            ->whereIn('id', array_slice($supervisedEmpIds, 0, 50))
             ->get();
 
         $recentDevelopers = [];
@@ -93,6 +148,7 @@ class ReportingC extends Controller
                 ->where('employee_id', $emp->id)
                 ->whereDate('start_date', '<=', $today)
                 ->whereDate('end_date', '>=', $today)
+                ->where('status', 'approved')
                 ->first();
 
             $wlog = DB::table('attendance_work_logs')
@@ -108,9 +164,37 @@ class ReportingC extends Controller
                 ->select('projects.name as project_name', 'project_teams.team_name as team_name')
                 ->get();
 
-            $empTasks = $tasks->where('assigned_employee_id', $emp->id);
-            $totalEmpTasks = $empTasks->count();
-            $completedEmpTasks = $empTasks->where('status', 'completed')->count();
+            $empTotTasks = 0;
+            $empCompTasks = 0;
+
+            $empPt = $ptTasks->where('assigned_employee_id', $emp->id);
+            $empTotTasks += $empPt->count();
+            $empCompTasks += $empPt->whereIn('status', ['completed', 'done'])->count();
+
+            if ($emp->user_id) {
+                $empTm = $tmTasks->where('user_id', $emp->user_id);
+                $empTotTasks += $empTm->count();
+                $empCompTasks += $empTm->whereIn('status', ['completed', 'done'])->count();
+            }
+
+            $empWlogs = $workLogsQuery->where('employee_id', $emp->id);
+            foreach ($empWlogs as $wl) {
+                if (!empty($wl->work_summary_json)) {
+                    $data = json_decode($wl->work_summary_json, true);
+                    if (isset($data['projects']) && is_array($data['projects'])) {
+                        foreach ($data['projects'] as $p) {
+                            if (isset($p['tasks']) && is_array($p['tasks'])) {
+                                foreach ($p['tasks'] as $t) {
+                                    $empTotTasks++;
+                                    if (!empty($t['completed']) || !empty($t['is_completed'])) {
+                                        $empCompTasks++;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
             $recentDevelopers[] = [
                 'employee' => $emp,
@@ -118,8 +202,8 @@ class ReportingC extends Controller
                 'leave' => $lve,
                 'work_log' => $wlog,
                 'projects' => $prjs,
-                'total_tasks' => $totalEmpTasks,
-                'completed_tasks' => $completedEmpTasks,
+                'total_tasks' => $empTotTasks,
+                'completed_tasks' => $empCompTasks,
             ];
         }
 
@@ -353,13 +437,6 @@ class ReportingC extends Controller
         $supervisorEmpId = $this->scopeS->getOwnEmployeeId();
         $supervisedEmpIds = $this->scopeS->getActiveSupervisedEmployeeIds($supervisorEmpId);
 
-        $employees = EmployeeM::with(['user', 'designation', 'department', 'reportingManager.user'])
-            ->active()
-            ->whereIn('id', $supervisedEmpIds)
-            ->paginate(20);
-
-        $today = date('Y-m-d');
-
         $directReportingEmpIds = DB::table('employees_new')
             ->where('reporting_manager_employee_id', $supervisorEmpId)
             ->pluck('id')
@@ -373,7 +450,69 @@ class ReportingC extends Controller
 
         $allReportingEmpIds = array_unique(array_merge($directReportingEmpIds, $reportingAssignEmpIds));
 
-        $employees->getCollection()->transform(function ($emp) use ($today, $allReportingEmpIds) {
+        // Fetch all supervised employees for metrics & summary stats
+        $allSupervised = EmployeeM::with(['user', 'designation', 'department', 'reportingManager.user'])
+            ->active()
+            ->whereIn('id', $supervisedEmpIds)
+            ->get();
+
+        $projectAssignCounts = DB::table('project_assignments')
+            ->whereIn('employee_id', $supervisedEmpIds)
+            ->where('is_active', 1)
+            ->pluck('employee_id')
+            ->toArray();
+
+        $projectEmpIdCounts = array_count_values($projectAssignCounts);
+
+        // Calculate dynamic summary stats across supervised team
+        $summaryStats = [
+            'total' => $allSupervised->count(),
+            'reporting_team' => 0,
+            'project_team' => 0,
+            'both' => 0,
+            'paid' => 0,
+            'unpaid' => 0,
+            'interns' => 0,
+        ];
+
+        foreach ($allSupervised as $emp) {
+            $isReporting = in_array((int)$emp->id, $allReportingEmpIds, true);
+            $hasProject = isset($projectEmpIdCounts[$emp->id]) && $projectEmpIdCounts[$emp->id] > 0;
+
+            if ($isReporting && $hasProject) {
+                $summaryStats['both']++;
+                $summaryStats['reporting_team']++;
+                $summaryStats['project_team']++;
+            } elseif ($isReporting) {
+                $summaryStats['reporting_team']++;
+            } elseif ($hasProject) {
+                $summaryStats['project_team']++;
+            }
+
+            $stageRaw = strtolower($emp->employee_stage ?? '');
+            $typeRaw = strtolower($emp->employment_type ?? '');
+            $isIntern = ($stageRaw === 'internship' || $typeRaw === 'intern');
+            $isPaidIntern = $emp->is_paid_intern ?? null;
+
+            if ($isIntern) {
+                $summaryStats['interns']++;
+                if ($isPaidIntern === 1 || $isPaidIntern === true) {
+                    $summaryStats['paid']++;
+                } else {
+                    $summaryStats['unpaid']++;
+                }
+            } else {
+                $summaryStats['paid']++;
+            }
+        }
+
+        // Paginated employees query
+        $employees = EmployeeM::with(['user', 'designation', 'department', 'reportingManager.user'])
+            ->active()
+            ->whereIn('id', $supervisedEmpIds)
+            ->paginate(50);
+
+        $employees->getCollection()->transform(function ($emp) use ($allReportingEmpIds) {
             // Projects, Teams & Roles
             $emp->project_assignments_list = DB::table('project_assignments')
                 ->join('projects', 'projects.id', '=', 'project_assignments.project_id')
@@ -398,46 +537,43 @@ class ReportingC extends Controller
                 $emp->team_source = 'Project Team';
             }
 
-            // Attendance today
-            $emp->attendance_today = DB::table('attendances')
-                ->where('employee_id', $emp->id)
-                ->whereDate('attendance_date', $today)
-                ->first();
-
-            // Leave today
-            $emp->leave_today = DB::table('leave_requests')
-                ->where('employee_id', $emp->id)
-                ->whereDate('start_date', '<=', $today)
-                ->whereDate('end_date', '>=', $today)
-                ->where('status', 'approved')
-                ->first();
-
-            // Work report today
-            $emp->work_report_today = DB::table('attendance_work_logs')
-                ->where('employee_id', $emp->id)
-                ->whereDate('work_date', $today)
-                ->first();
-
-            // Tasks progress
-            $emp->active_task = DB::table('project_tasks')
-                ->where('assigned_employee_id', $emp->id)
-                ->whereIn('status', ['in_progress', 'todo', 'blocked'])
-                ->orderByDesc('id')
-                ->first();
-
-            $emp->completed_tasks_count = DB::table('project_tasks')
-                ->where('assigned_employee_id', $emp->id)
-                ->where('status', 'completed')
-                ->count();
-
-            $emp->total_tasks_count = DB::table('project_tasks')
-                ->where('assigned_employee_id', $emp->id)
-                ->count();
+            // Internship Period formatting
+            $startDate = $emp->internship_start_date ?? null;
+            $endDate = $emp->internship_extended_to ?? $emp->internship_end_date ?? null;
+            if ($startDate && $endDate) {
+                $emp->internship_period = \Carbon\Carbon::parse($startDate)->format('d M Y') . ' – ' . \Carbon\Carbon::parse($endDate)->format('d M Y');
+            } elseif ($startDate) {
+                $emp->internship_period = 'From ' . \Carbon\Carbon::parse($startDate)->format('d M Y');
+            } else {
+                $emp->internship_period = '—';
+            }
 
             return $emp;
         });
 
-        return view('hrms.reporting.my_employees', compact('employees'));
+        // Dropdown lists for advanced filters
+        $departments = DB::table('departments')->where('is_active', 1)->orderBy('name')->get();
+        $designations = DB::table('designations')->where('is_active', 1)->orderBy('name')->get();
+        
+        $projectsQuery = DB::table('projects');
+        if (\Illuminate\Support\Facades\Schema::hasColumn('projects', 'status')) {
+            $projectsQuery->where('status', 'active');
+        } elseif (\Illuminate\Support\Facades\Schema::hasColumn('projects', 'is_active')) {
+            $projectsQuery->where('is_active', 1);
+        }
+        $projects = $projectsQuery->orderBy('name')->get();
+        
+        $managerIds = $allSupervised->pluck('reporting_manager_employee_id')->filter()->unique()->toArray();
+        $reportingManagers = EmployeeM::with('user')->whereIn('id', $managerIds)->get();
+
+        return view('hrms.reporting.my_employees', compact(
+            'employees',
+            'summaryStats',
+            'departments',
+            'designations',
+            'projects',
+            'reportingManagers'
+        ));
     }
 
     /**
@@ -515,7 +651,11 @@ class ReportingC extends Controller
             ->leftJoin('users as eu', 'eu.id', '=', 'e.user_id')
             ->leftJoin('designations as d', 'd.id', '=', 'e.designation_id')
             ->leftJoin('departments as dept', 'dept.id', '=', 'e.department_id')
-            ->leftJoin('leave_types as lt', 'lt.id', '=', 'leave_requests.leave_type_id');
+            ->leftJoin('leave_types as lt', 'lt.id', '=', 'leave_requests.leave_type_id')
+            ->leftJoin('users as mu', 'mu.id', '=', 'leave_requests.manager_approved_by')
+            ->leftJoin('users as hru', 'hru.id', '=', 'leave_requests.hr_approved_by')
+            ->leftJoin('employees_new as rm', 'rm.id', '=', 'e.reporting_manager_employee_id')
+            ->leftJoin('users as rmu', 'rmu.id', '=', 'rm.user_id');
 
         $query = $this->scopeS->scopeLeaveQuery($query, $supervisorEmpId);
 
@@ -523,8 +663,35 @@ class ReportingC extends Controller
             $query->where('leave_requests.employee_id', $request->employee_id);
         }
 
+        if ($request->filled('reporting_manager_id')) {
+            $query->where('e.reporting_manager_employee_id', $request->reporting_manager_id);
+        }
+
         if ($request->filled('status')) {
-            $query->where('leave_requests.status', strtolower($request->status));
+            $st = strtolower($request->status);
+            if ($st === 'pending_manager') {
+                $query->where('leave_requests.status', 'pending')
+                    ->whereNotNull('e.reporting_manager_employee_id')
+                    ->whereNull('leave_requests.manager_approved_at');
+            } elseif ($st === 'pending_hr') {
+                $query->where('leave_requests.status', 'pending')
+                    ->where(function ($q) {
+                        $q->whereNull('e.reporting_manager_employee_id')
+                            ->orWhereNotNull('leave_requests.manager_approved_at')
+                            ->orWhere('leave_requests.approval_level', 'manager_approved');
+                    });
+            } elseif ($st === 'all') {
+                // Show all statuses (pending, approved, rejected)
+            } else {
+                $query->where('leave_requests.status', $st);
+            }
+        } else {
+            // Default to PENDING leaves only so approved/rejected leaves are hidden by default
+            $query->where('leave_requests.status', 'pending');
+        }
+
+        if ($request->filled('leave_type_id')) {
+            $query->where('leave_requests.leave_type_id', $request->leave_type_id);
         }
 
         if ($request->filled('start_date')) {
@@ -535,13 +702,25 @@ class ReportingC extends Controller
             $query->whereDate('leave_requests.end_date', '<=', $request->end_date);
         }
 
+        if ($request->filled('search')) {
+            $search = '%' . trim($request->search) . '%';
+            $query->where(function ($q) use ($search) {
+                $q->where('eu.name', 'like', $search)
+                    ->orWhere('e.employee_code', 'like', $search);
+            });
+        }
+
         $leaveRequests = $query->select(
             'leave_requests.*',
+            'e.reporting_manager_employee_id as current_reporting_manager_id',
             DB::raw('COALESCE(eu.name, e.employee_code) as display_name'),
             'e.employee_code',
             'd.name as designation_name',
             'dept.name as department_name',
-            'lt.name as leave_type_name'
+            'lt.name as leave_type_name',
+            'mu.name as manager_approver_name',
+            'hru.name as hr_approver_name',
+            'rmu.name as reporting_manager_name'
         )
             ->orderByDesc('leave_requests.id')
             ->paginate(20)
@@ -563,22 +742,63 @@ class ReportingC extends Controller
         $totalTeamCount = count($supervisedEmpIds);
         $onLeaveTodayCount = count($todayLeaves);
 
-        $baseCountQuery = DB::table('leave_requests');
+        $baseCountQuery = DB::table('leave_requests')
+            ->join('employees_new as e', 'e.id', '=', 'leave_requests.employee_id');
         $baseCountQuery = $this->scopeS->scopeLeaveQuery($baseCountQuery, $supervisorEmpId);
 
-        $approvedLeaveCount = (clone $baseCountQuery)->where('status', 'approved')->count();
-        $pendingLeaveCount = (clone $baseCountQuery)->where('status', 'pending')->count();
+        $totalPendingCount = (clone $baseCountQuery)->where('leave_requests.status', 'pending')->count();
+        $managerPendingCount = (clone $baseCountQuery)
+            ->where('leave_requests.status', 'pending')
+            ->whereNotNull('e.reporting_manager_employee_id')
+            ->whereNull('leave_requests.manager_approved_at')
+            ->count();
+        $hrPendingCount = (clone $baseCountQuery)
+            ->where('leave_requests.status', 'pending')
+            ->where(function ($q) {
+                $q->whereNull('e.reporting_manager_employee_id')
+                    ->orWhereNotNull('leave_requests.manager_approved_at')
+                    ->orWhere('leave_requests.approval_level', 'manager_approved');
+            })
+            ->count();
+        $approvedLeaveCount = (clone $baseCountQuery)->where('leave_requests.status', 'approved')->count();
+        $rejectedLeaveCount = (clone $baseCountQuery)->where('leave_requests.status', 'rejected')->count();
 
-        $teamEmployees = EmployeeM::with(['user'])->active()->whereIn('id', $supervisedEmpIds)->get();
+        $user = auth()->user();
+        $roleId = (int)($user->system_role_id ?? $user->role_id ?? 0);
+        $roleName = strtolower($user->role->name ?? '');
+
+        $isSuperAdmin = method_exists($user, 'isSuperAdmin') ? $user->isSuperAdmin() : in_array($roleId, [1, 2], true);
+        $isHrOrAdmin = $isSuperAdmin || in_array($roleId, [1, 2, 3, 5], true) || in_array($roleName, ['admin', 'super_admin', 'hr_admin', 'hr admin', 'manager', 'hr'], true) || ($user->can('leave.approvals.view_all') || $user->can('leave.approvals.view'));
+
+        if ($isHrOrAdmin || $isSuperAdmin) {
+            $employees = EmployeeM::with(['user'])->active()->get();
+        } else {
+            $employees = EmployeeM::with(['user'])->active()->whereIn('id', $supervisedEmpIds)->get();
+        }
+        $teamEmployees = $employees;
+
+        $leaveTypes = \App\Models\HRMS\Leave\LeaveTypeM::orderBy('name')->get();
+        $reportingManagers = EmployeeM::whereIn('id', function ($q) {
+            $q->select('reporting_manager_employee_id')->from('employees_new')->whereNotNull('reporting_manager_employee_id');
+        })->with(['user'])->get();
 
         return view('hrms.reporting.leave', compact(
             'leaveRequests',
             'todayLeaves',
             'totalTeamCount',
             'onLeaveTodayCount',
+            'totalPendingCount',
+            'managerPendingCount',
+            'hrPendingCount',
             'approvedLeaveCount',
-            'pendingLeaveCount',
-            'teamEmployees'
+            'rejectedLeaveCount',
+            'teamEmployees',
+            'employees',
+            'leaveTypes',
+            'reportingManagers',
+            'supervisorEmpId',
+            'isHrOrAdmin',
+            'isSuperAdmin'
         ));
     }
 

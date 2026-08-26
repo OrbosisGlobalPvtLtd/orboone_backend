@@ -22,6 +22,36 @@ class LeaveApprovalService
     ) {
     }
 
+    public function approveManagerStage(LeaveRequestM $leaveRequest, int $managerUserId, ?string $note = null): LeaveRequestM
+    {
+        return DB::transaction(function () use ($leaveRequest, $managerUserId, $note) {
+            $leaveRequest = LeaveRequestM::with(['employee', 'leaveType'])->lockForUpdate()->findOrFail($leaveRequest->id);
+
+            if ($leaveRequest->status === 'approved' || $leaveRequest->approval_level === 'manager_approved' || ! empty($leaveRequest->manager_approved_at)) {
+                return $leaveRequest;
+            }
+
+            if ($leaveRequest->status !== 'pending') {
+                throw ValidationException::withMessages(['status' => 'Only pending leave requests can be approved by Manager.']);
+            }
+
+            if (empty($leaveRequest->reporting_manager_employee_id)) {
+                throw ValidationException::withMessages(['reporting_manager' => 'This employee has no Reporting Manager assigned. HR approval is required directly.']);
+            }
+
+            $leaveRequest->forceFill([
+                'approval_level' => 'manager_approved',
+                'manager_approved_by' => $managerUserId,
+                'manager_approved_at' => Carbon::now('Asia/Kolkata'),
+                'manager_note' => $note,
+            ])->save();
+
+            $this->notifyLeaveDecision($leaveRequest->fresh(['employee.user', 'leaveType', 'dates']), 'leave_manager_approved');
+
+            return $leaveRequest->fresh(['employee', 'leaveType', 'dates']);
+        });
+    }
+
     public function approve(LeaveRequestM $leaveRequest, int $approvedByUserId, ?string $note = null): LeaveRequestM
     {
         return DB::transaction(function () use ($leaveRequest, $approvedByUserId, $note) {
@@ -31,8 +61,8 @@ class LeaveApprovalService
                 return $leaveRequest;
             }
 
-            if (! in_array($leaveRequest->status, ['pending', 'rejected'], true)) {
-                throw ValidationException::withMessages(['status' => 'Only pending or rejected leave can be approved.']);
+            if (! in_array($leaveRequest->status, ['pending', 'manager_approved', 'rejected'], true)) {
+                throw ValidationException::withMessages(['status' => 'Only pending, manager approved, or rejected leave can be approved by HR.']);
             }
 
             $calculation = $this->calculationService->calculate($leaveRequest->employee, $leaveRequest->leaveType, [
@@ -72,6 +102,10 @@ class LeaveApprovalService
                 $this->compOffService->consume($leaveRequest->employee, (float) $calculation['comp_off_days'], $leaveRequest->id);
             }
 
+            $hasManager = ! empty($leaveRequest->reporting_manager_employee_id);
+            $managerApprovedBy = $leaveRequest->manager_approved_by;
+            $managerApprovedAt = $leaveRequest->manager_approved_at;
+
             $leaveRequest->forceFill([
                 'requested_days' => $calculation['requested_days'],
                 'deducted_days' => $calculation['deducted_days'],
@@ -80,7 +114,10 @@ class LeaveApprovalService
                 'comp_off_days' => $calculation['comp_off_days'],
                 'lwp_days' => $calculation['lwp_days'],
                 'sandwich_applied' => $calculation['sandwich_applied'],
+                'approval_level' => 'hr_approved',
                 'status' => 'approved',
+                'manager_approved_by' => $managerApprovedBy,
+                'manager_approved_at' => $managerApprovedAt,
                 'approved_by_user_id' => $approvedByUserId,
                 'approved_at' => Carbon::now('Asia/Kolkata'),
                 'hr_approved_by' => $approvedByUserId,
@@ -107,8 +144,13 @@ class LeaveApprovalService
                 $this->reverseApprovedLeave($leaveRequest, $rejectedByUserId, 'leave_rejected_reversal');
             }
 
+            $hasManager = ! empty($leaveRequest->reporting_manager_employee_id);
+            $managerApproved = ! empty($leaveRequest->manager_approved_at) || $leaveRequest->approval_level === 'manager_approved';
+            $level = ($hasManager && ! $managerApproved) ? 'manager_rejected' : 'hr_rejected';
+
             $leaveRequest->forceFill([
                 'status' => 'rejected',
+                'approval_level' => $level,
                 'approved_by_user_id' => $rejectedByUserId,
                 'approved_at' => Carbon::now('Asia/Kolkata'),
                 'rejection_reason' => $reason,

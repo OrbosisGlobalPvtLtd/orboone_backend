@@ -433,9 +433,25 @@
                                     $attStyle = 'background: #FEF3C7; color: #B45309; border: 1px solid #FCD34D;';
                                     $attIcon = 'fas fa-umbrella-beach';
                                 } elseif ($att) {
-                                    $attText = strtoupper($att->work_type ?? 'Present');
-                                    $attStyle = 'background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC;';
-                                    $attIcon = 'fas fa-check-circle';
+                                    $st = strtolower($att->attendance_status ?? 'present');
+                                    $wm = strtoupper($att->work_mode ?? '');
+                                    if ($wm === 'WFH') {
+                                        $attText = $st === 'half_day' ? 'WFH (HALF DAY)' : 'WFH';
+                                        $attStyle = 'background: #E0F2FE; color: #0369A1; border: 1px solid #7DD3FC;';
+                                        $attIcon = 'fas fa-laptop-house';
+                                    } elseif ($st === 'half_day') {
+                                        $attText = 'HALF DAY';
+                                        $attStyle = 'background: #FEF3C7; color: #B45309; border: 1px solid #FCD34D;';
+                                        $attIcon = 'fas fa-adjust';
+                                    } elseif ($st === 'late') {
+                                        $attText = 'LATE';
+                                        $attStyle = 'background: #FFEDD5; color: #C2410C; border: 1px solid #FDBA74;';
+                                        $attIcon = 'fas fa-clock';
+                                    } else {
+                                        $attText = 'PRESENT';
+                                        $attStyle = 'background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC;';
+                                        $attIcon = 'fas fa-check-circle';
+                                    }
                                 }
 
                                 $leaveText = $lve ? 'On Leave' : 'No Leave';

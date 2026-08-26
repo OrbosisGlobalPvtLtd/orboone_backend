@@ -394,6 +394,12 @@
 
 <script>
     $(function() {
+        $.fn.dataTable.ext.errMode = 'none';
+
+        if ($('#teamLeaveTable tbody tr td[colspan]').length > 0) {
+            $('#teamLeaveTable tbody').empty();
+        }
+
         if ($.fn.DataTable.isDataTable('#teamLeaveTable')) {
             $('#teamLeaveTable').DataTable().destroy();
         }
@@ -423,6 +429,10 @@
             responsive: false,
             autoWidth: false,
             dom: "t<'d-none'ip>",
+            language: {
+                emptyTable: '<div class="text-center text-muted py-5"><i class="fas fa-calendar-minus fa-3x mb-3 text-muted"></i><h5 class="font-weight-bold text-dark">No Leave Requests Found</h5></div>',
+                zeroRecords: '<div class="text-center text-muted py-4"><i class="fas fa-search fa-2x mb-2 text-muted"></i><h6 class="font-weight-bold text-dark mb-0">No matching leave requests found</h6></div>'
+            },
             buttons: [
                 {
                     extend: 'csvHtml5',

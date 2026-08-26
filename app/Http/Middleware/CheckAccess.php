@@ -26,7 +26,7 @@ class CheckAccess
             }
         }
 
-        if (method_exists($user, 'hasRole') && $user->hasRole('super_admin')) {
+        if ((method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) || (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin'])) || in_array(($user->system_role_id ?? $user->role_id ?? 0), [1, 2], true)) {
             return $next($request);
         }
 

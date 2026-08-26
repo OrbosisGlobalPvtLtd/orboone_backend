@@ -33,6 +33,7 @@ class ProjectC extends Controller
             || $this->userHasPermission('projects.my_projects.view')
             || $this->userHasPermission('projects.delivery_head.view')
             || $this->userHasPermission('projects.team_lead.view')
+            || $this->accessScope->isProjectManagerOrLead()
             || !empty($accessibleProjectIds),
             403
         );
@@ -65,7 +66,12 @@ class ProjectC extends Controller
 
     public function store(Request $request)
     {
-        abort_unless($this->userHasPermission('projects.create') || $this->canViewAll('projects.manage'), 403);
+        abort_unless(
+            $this->userHasPermission('projects.create') 
+            || $this->canViewAll('projects.manage') 
+            || $this->accessScope->isProjectManagerOrLead(), 
+            403
+        );
 
         $validated = $request->validate([
             'project_code' => 'nullable|string|max:50',

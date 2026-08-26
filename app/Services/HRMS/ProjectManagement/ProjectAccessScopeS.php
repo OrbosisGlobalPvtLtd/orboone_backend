@@ -35,6 +35,52 @@ class ProjectAccessScopeS
     }
 
     /**
+     * Check if logged in user is a Project Lead / Team Lead / Delivery Head / Team Manager / Admin.
+     */
+    public function isProjectManagerOrLead(): bool
+    {
+        $user = Auth::user();
+        if (!$user) return false;
+
+        if ($this->isSuperAdminOrGlobal()
+            || (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin', 'project_admin', 'operations_admin', 'custom_admin', 'manager']))
+            || in_array(($user->system_role_id ?? $user->role_id ?? 0), [1, 2, 3, 5], true)
+            || (method_exists($user, 'hasPermission') && ($user->hasPermission('projects.view_all') || $user->hasPermission('projects.manage') || $user->hasPermission('projects.create')))) {
+            return true;
+        }
+
+        $empId = $this->getOwnEmployeeId();
+        if (!$empId) return false;
+
+        $teamScope = app(\App\Services\HRMS\Team\TeamManagementScopeS::class);
+        $supervisedEmpIds = $teamScope->getTeamEmployeeIds($empId);
+        if (!empty($supervisedEmpIds)) return true;
+
+        $isDeliveryHead = DB::table('projects')->where('delivery_head_employee_id', $empId)->exists();
+        if ($isDeliveryHead) return true;
+
+        $isTeamLead = DB::table('project_teams')->where('team_lead_employee_id', $empId)->where('is_active', 1)->exists();
+        if ($isTeamLead) return true;
+
+        $isProjectLeadRole = DB::table('project_assignments')
+            ->where('employee_id', $empId)
+            ->where('is_active', 1)
+            ->where(function($q) {
+                $q->whereIn(DB::raw('LOWER(project_role)'), [
+                    'team_lead', 'team lead',
+                    'project_lead', 'project lead',
+                    'project_manager', 'project manager',
+                    'lead', 'manager',
+                    'delivery_head', 'delivery head'
+                ]);
+            })
+            ->exists();
+        if ($isProjectLeadRole) return true;
+
+        return false;
+    }
+
+    /**
      * Get active assigned project IDs for an employee.
      */
     public function getEmployeeProjectIds(?int $employeeId = null): array

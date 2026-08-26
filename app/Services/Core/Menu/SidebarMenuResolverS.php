@@ -79,10 +79,11 @@ class SidebarMenuResolverS
     {
         $filtered = $this->filterByRoleMenuAccess($menus, $user, $roleIds, $isSuperAdmin);
         $filtered = $this->filterByPermission($filtered, $user, $isSuperAdmin);
-        $filtered = $this->filterByEmployeeOnlyVisibility($filtered, $isEmployeeContext);
+        $filtered = $this->filterReportingManagementVisibility($filtered, $user, $roleIds, $isSuperAdmin);
+        $isProjectManager = $this->checkIsProjectManager($user, $roleIds, $isSuperAdmin);
+        $filtered = $this->filterByEmployeeOnlyVisibility($filtered, $isEmployeeContext, $isProjectManager);
         $filtered = $this->filterByWebAttendancePermission($filtered, $user, $isSuperAdmin);
         $filtered = $this->filterRetiredLegacyPayrollMenus($filtered);
-        $filtered = $this->filterReportingManagementVisibility($filtered, $user, $isSuperAdmin);
         $filtered = $this->filterByPermanentWfhVisibility($filtered, $user);
         $filtered = $this->filterByRouteValidity($filtered);
 
@@ -111,7 +112,7 @@ class SidebarMenuResolverS
         });
     }
 
-    private function filterReportingManagementVisibility(Collection $menus, Authenticatable $user, bool $isSuperAdmin): Collection
+    private function filterReportingManagementVisibility(Collection $menus, Authenticatable $user, array $roleIds, bool $isSuperAdmin): Collection
     {
         $empId = null;
         $userEmp = DB::table('employees_new')->where('user_id', $user->id)->first(['id']);
@@ -120,35 +121,13 @@ class SidebarMenuResolverS
         }
 
         $isTeamManager = false;
-        $isProjectManager = false;
-
         if ($empId) {
             $teamScope = app(\App\Services\HRMS\Team\TeamManagementScopeS::class);
             $teamIds = $teamScope->getTeamEmployeeIds($empId);
             $isTeamManager = !empty($teamIds);
-
-            $isTeamLead = DB::table('project_teams')->where('team_lead_employee_id', $empId)->where('is_active', 1)->exists();
-            $isDeliveryHead = DB::table('projects')->where('delivery_head_employee_id', $empId)->exists();
-            $isProjectLead = DB::table('project_assignments')
-                ->where('employee_id', $empId)
-                ->where('is_active', 1)
-                ->where(function($q) {
-                    $q->whereIn(DB::raw('LOWER(project_role)'), [
-                        'team_lead', 'team lead',
-                        'project_lead', 'project lead',
-                        'project_manager', 'project manager',
-                        'lead', 'manager',
-                        'delivery_head', 'delivery head'
-                    ]);
-                })->exists();
-
-            $isProjectManager = $isTeamLead || $isDeliveryHead || $isProjectLead || $isTeamManager;
         }
 
-        if ($isSuperAdmin || (method_exists($user, 'hasRole') && $user->hasRole(['admin', 'project_admin'])) || (method_exists($user, 'hasPermission') && ($user->hasPermission('projects.view_all') || $user->hasPermission('projects.manage')))) {
-            $isProjectManager = true;
-        }
-
+        $isProjectManager = $this->checkIsProjectManager($user, $roleIds, $isSuperAdmin);
         $hasAdminAccess = $isSuperAdmin || (method_exists($user, 'hasRole') && $user->hasRole(['admin', 'hr_admin', 'manager'])) || (method_exists($user, 'hasPermission') && $user->hasPermission('reporting.structure.manage'));
 
         return $menus->map(function ($m) use ($isProjectManager) {
@@ -353,7 +332,7 @@ class SidebarMenuResolverS
                 return true;
             }
 
-            if ($route === 'projects.my' || $route === 'projects.tasks.index') {
+            if ($route === 'projects.my' || $route === 'projects.tasks.index' || $route === 'projects.index') {
                 return true;
             }
 
@@ -367,9 +346,58 @@ class SidebarMenuResolverS
         })->values();
     }
 
-    private function filterByEmployeeOnlyVisibility(Collection $menus, bool $isEmployeeContext): Collection
+    private function checkIsProjectManager(Authenticatable $user, array $roleIds, bool $isSuperAdmin): bool
     {
-        return $menus->filter(function ($menu) use ($isEmployeeContext) {
+        $empId = null;
+        $userEmp = DB::table('employees_new')->where('user_id', $user->id)->first(['id']);
+        if ($userEmp) {
+            $empId = (int)$userEmp->id;
+        }
+
+        $isTeamManager = false;
+        $isProjectManager = false;
+
+        if ($empId) {
+            $teamScope = app(\App\Services\HRMS\Team\TeamManagementScopeS::class);
+            $teamIds = $teamScope->getTeamEmployeeIds($empId);
+            $isTeamManager = !empty($teamIds);
+
+            $isTeamLead = DB::table('project_teams')->where('team_lead_employee_id', $empId)->where('is_active', 1)->exists();
+            $isDeliveryHead = DB::table('projects')->where('delivery_head_employee_id', $empId)->exists();
+            $isProjectLead = DB::table('project_assignments')
+                ->where('employee_id', $empId)
+                ->where('is_active', 1)
+                ->where(function($q) {
+                    $q->whereIn(DB::raw('LOWER(project_role)'), [
+                        'team_lead', 'team lead',
+                        'project_lead', 'project lead',
+                        'project_manager', 'project manager',
+                        'lead', 'manager',
+                        'delivery_head', 'delivery head'
+                    ]);
+                })->exists();
+
+            $isProjectManager = $isTeamLead || $isDeliveryHead || $isProjectLead || $isTeamManager;
+        }
+
+        $hasRoleMenuAccess = false;
+        if (!empty($roleIds) && Schema::hasTable('role_menu_access')) {
+            $hasRoleMenuAccess = DB::table('role_menu_access')
+                ->whereIn('role_id', $roleIds)
+                ->whereIn('menu_id', [320, 321, 322, 9901, 9903])
+                ->exists();
+        }
+
+        if ($isSuperAdmin || $hasRoleMenuAccess || (method_exists($user, 'hasRole') && $user->hasRole(['admin', 'hr_admin', 'project_admin', 'operations_admin', 'custom_admin'])) || in_array(($user->system_role_id ?? $user->role_id ?? 0), [1, 2, 3, 5], true) || (method_exists($user, 'hasPermission') && ($user->hasPermission('projects.view_all') || $user->hasPermission('projects.manage')))) {
+            $isProjectManager = true;
+        }
+
+        return $isProjectManager;
+    }
+
+    private function filterByEmployeeOnlyVisibility(Collection $menus, bool $isEmployeeContext, bool $isProjectManager = false): Collection
+    {
+        return $menus->filter(function ($menu) use ($isEmployeeContext, $isProjectManager) {
             // Dashboard is always visible to everyone
             if ($menu->id === 1 || ($menu->route ?? '') === 'dashboard') {
                 return true;
@@ -394,7 +422,7 @@ class SidebarMenuResolverS
                 $route = strtolower(trim((string) ($menu->route ?? '')));
 
                 if (in_array($id, [321, 9901], true)) {
-                    return false;
+                    return $isProjectManager;
                 }
 
                 if ($id === 9903 || $route === 'projects.tasks.index') {
@@ -501,9 +529,15 @@ class SidebarMenuResolverS
         $seenRoutes = [];
         $deduped = collect();
 
-        // Sort so that child menus (parent_id > 0) are evaluated before standalone top-level duplicate routes
-        $sortedForDedup = $menus->sortByDesc(function ($m) {
-            return !empty($m->parent_id) ? 1 : 0;
+        // Sort so that child menus (parent_id > 0) are evaluated before standalone top-level duplicate routes,
+        // and lower IDs (e.g. DB menu ID 321) are evaluated before dynamic menu IDs (e.g. 9901)
+        $sortedForDedup = $menus->sort(function ($a, $b) {
+            $aParent = !empty($a->parent_id) ? 1 : 0;
+            $bParent = !empty($b->parent_id) ? 1 : 0;
+            if ($aParent !== $bParent) {
+                return $bParent <=> $aParent;
+            }
+            return ((int)($a->id ?? 0)) <=> ((int)($b->id ?? 0));
         });
 
         foreach ($sortedForDedup as $menu) {

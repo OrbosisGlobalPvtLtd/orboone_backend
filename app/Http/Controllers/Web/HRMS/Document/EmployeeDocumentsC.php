@@ -51,7 +51,15 @@ class EmployeeDocumentsC extends Controller
         }
 
         if ($request->filled('profile_status')) {
-            $query->whereHas('profile', fn($q) => $q->where('profile_status', $request->profile_status));
+            $profileStatus = $request->profile_status;
+            if ($profileStatus === 'pending') {
+                $query->where(function ($q) {
+                    $q->whereDoesntHave('profile')
+                        ->orWhereHas('profile', fn($p) => $p->where('profile_status', 'pending'));
+                });
+            } else {
+                $query->whereHas('profile', fn($q) => $q->where('profile_status', $profileStatus));
+            }
         }
 
         $allEmployees = $query->latest()->get();
@@ -226,7 +234,12 @@ class EmployeeDocumentsC extends Controller
 
         // Paginate filtered results
         $currentPage = \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPage();
-        $perPage = 20;
+        $perPageInput = $request->get('per_page', 10);
+        if ($perPageInput === 'all' || (int)$perPageInput === -1) {
+            $perPage = max(1, $filtered->count());
+        } else {
+            $perPage = max(1, (int)$perPageInput);
+        }
         $currentPageItems = $filtered->slice(($currentPage - 1) * $perPage, $perPage)->values();
         $employees = new \Illuminate\Pagination\LengthAwarePaginator(
             $currentPageItems,

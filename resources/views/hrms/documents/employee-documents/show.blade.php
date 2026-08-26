@@ -446,21 +446,12 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
                                 @endif
 
                                 @if($doc->verification_status != 'rejected')
-                                <form action="{{ route('documents.employee.reject', $doc->id) }}"
-                                    method="POST"
-                                    style="display:inline;"
-                                    class="dm-normal-action js-reject-form">
-                                    @csrf
-
-                                    <input type="hidden"
-                                        name="rejection_reason"
-                                        value="Rejected by admin.">
-
-                                    <button type="button"
-                                        class="dm-action-btn-pill dm-action-btn-danger js-reject-btn">
-                                        <i class="fas fa-times"></i> Reject
-                                    </button>
-                                </form>
+                                <button type="button"
+                                    class="dm-action-btn-pill dm-action-btn-danger dm-normal-action js-open-reject-modal"
+                                    data-action="{{ route('documents.employee.reject', $doc->id) }}"
+                                    data-doc-name="{{ $type->name }}">
+                                    <i class="fas fa-times"></i> Reject
+                                </button>
                                 @endif
 
                                 <button type="button"
@@ -479,6 +470,42 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
                     @endforeach
                 </tbody>
             </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for Rejection Reason -->
+<div class="modal fade" id="rejectDocModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+        <div class="modal-content" style="border: none; border-radius: 24px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.18);">
+            <form id="rejectDocForm" action="" method="POST" style="width: 100%;">
+                @csrf
+                <div class="dm-modal-header" style="background: linear-gradient(135deg, #d946ef 0%, #ec4899 50%, #f43f5e 100%); padding: 24px 28px; color: #fff; position: relative;">
+                    <h5 class="modal-title" style="color: #fff !important; font-weight: 800; font-size: 18px; display: flex; align-items: center; gap: 8px; margin: 0;">
+                        <i class="fas fa-times-circle"></i> Reject Document
+                    </h5>
+                    <p id="rejectModalSubtitle" style="color: rgba(255,255,255,0.92) !important; margin: 6px 0 0 0; font-size: 13px; font-weight: 500; line-height: 1.45;">
+                        Specify the reason for rejecting document so the employee can upload a corrected version.
+                    </p>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="position: absolute; top: 20px; right: 24px; opacity: 0.9; text-shadow: none; font-size: 24px; border: none; background: none;">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="dm-modal-body" style="padding: 24px 28px;">
+                    <div class="form-group mb-0">
+                        <label style="font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; display: block; margin-bottom: 8px;">
+                            REASON FOR REJECTION <span class="text-danger">*</span>
+                        </label>
+                        <textarea name="rejection_reason" id="rejection_reason_input" class="form-control" required rows="4" style="border-radius: 14px; border: 1.5px solid #e2e8f0; padding: 12px 14px; font-size: 13px; font-weight: 500; outline: none;" placeholder="Explain what is missing or incorrect..."></textarea>
+                    </div>
+                </div>
+                <div class="dm-modal-footer" style="padding: 16px 28px 24px 28px; background: #fff; display: flex; align-items: center; justify-content: flex-end; gap: 10px; border-top: none;">
+                    <button type="button" class="btn font-weight-bold" style="height: 40px; border-radius: 50px; padding: 0 22px; font-size: 12px; background: #f1f5f9; color: #475569; border: none;" data-dismiss="modal">Cancel</button>
+                    <button type="submit" id="rejectConfirmBtn" class="btn text-white font-weight-bold" style="height: 40px; border-radius: 50px; padding: 0 24px; font-size: 12px; background: linear-gradient(135deg, #f43f5e, #e11d48); border: none; box-shadow: 0 4px 14px rgba(244, 63, 94, 0.35);">
+                        <i class="fas fa-check mr-1"></i> Confirm Reject
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -556,24 +583,33 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
             fileInput.click();
         });
     });
-</script>
-<script>
-    document.querySelectorAll('.js-reject-btn').forEach(function(btn) {
+
+    document.querySelectorAll('.js-open-reject-modal').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
 
-            const isConfirmed = confirm('Are you sure you want to reject this document?');
+            const actionUrl = this.dataset.action;
+            const docName = this.dataset.docName || 'Document';
 
-            if (!isConfirmed) {
-                return false;
-            }
+            const form = document.getElementById('rejectDocForm');
+            form.action = actionUrl;
 
-            this.disabled = true;
-            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Rejecting...';
+            const subtitle = document.getElementById('rejectModalSubtitle');
+            subtitle.textContent = `Specify the reason for rejecting "${docName}" so the employee can upload a corrected version.`;
 
-            this.closest('form').submit();
+            document.getElementById('rejection_reason_input').value = '';
+
+            $('#rejectDocModal').modal('show');
         });
+    });
+
+    document.getElementById('rejectDocForm')?.addEventListener('submit', function() {
+        const btn = document.getElementById('rejectConfirmBtn');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Rejecting...';
+        }
     });
 </script>
 @endsection

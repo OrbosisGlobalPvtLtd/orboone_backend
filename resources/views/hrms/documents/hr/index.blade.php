@@ -615,10 +615,8 @@
             <div id="employeeExportButtons"></div>
         </div>
 
-        <!-- Table Listing -->
-        <!-- Table Listing -->
         <div class="dm-table-wrap table-responsive" style="border-bottom: 1px solid var(--dm-border);">
-            <table id="employeeDocTable" class="table dm-table mb-0" style="min-width: 1000px;">
+            <table id="employeeDocTable" class="table dm-table mb-0" style="min-width: 1400px;">
                 <thead>
                     <tr>
                         <th style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--dm-muted); letter-spacing: 0.5px; white-space: nowrap; padding: 12px 24px;">Employee</th>
@@ -631,7 +629,7 @@
                         <th style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--dm-muted); letter-spacing: 0.5px; white-space: nowrap; padding: 12px 16px;">Profile Status</th>
                         <!-- <th style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--dm-muted); letter-spacing: 0.5px; white-space: nowrap; padding: 12px 16px;">Last Updated</th> -->
                         <th class="text-center" style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--dm-muted); letter-spacing: 0.5px; white-space: nowrap; padding: 12px 16px;">Verify All</th>
-                        <th class="text-right" style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--dm-muted); letter-spacing: 0.5px; white-space: nowrap; padding: 12px 24px; width: 180px;">Actions</th>
+                        <th class="text-center" style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--dm-muted); letter-spacing: 0.5px; white-space: nowrap; padding: 12px 16px; width: 230px; min-width: 230px;">Actions</th>
                     </tr>
                 </thead>
 
@@ -709,20 +707,15 @@
                             @endif
                         </td>
 
-                        <td style="padding: 12px 24px; vertical-align: middle;">
-                            <div class="d-flex align-items-center justify-content-end gap-2">
-                                @if($employee->doc_status !== 'verified')
-                                <button type="button" onclick="alert('Please view details to reject specific documents.')" class="btn btn-sm shadow-sm" style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); color: #f59e0b; font-size: 11px; font-weight: 800; border-radius: 6px; padding: 4px 10px; white-space: nowrap;">
-                                    <i class="fas fa-times mr-1"></i> Reject
-                                </button>
-                                @endif
+                        <td style="padding: 12px 16px; vertical-align: middle; width: 230px; min-width: 230px;" class="text-center">
+                            <div class="d-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;">
                                 <a href="{{ route('documents.hr.show', $employee->user_id) }}"
-                                    class="btn btn-sm shadow-sm" style="background: #fff; border: 1px solid var(--dm-border); color: var(--dm-primary); font-size: 11px; font-weight: 800; border-radius: 6px; padding: 4px 10px; white-space: nowrap;">
-                                    View Details
+                                    class="btn btn-sm shadow-sm" style="background: var(--dm-soft, #F4F2FF); border: 1px solid rgba(75, 0, 232, 0.15); color: var(--dm-primary, #4B00E8); font-size: 11px; font-weight: 700; border-radius: 50px; padding: 0 12px; height: 32px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;">
+                                    <i class="fas fa-folder-open"></i> View Documents
                                 </a>
                                 <a href="{{ route('hrms.employees.profile.view', $employee->id) }}"
-                                    class="btn btn-sm shadow-sm" style="background: rgba(75, 0, 232, 0.05); border: 1px solid rgba(75, 0, 232, 0.1); color: var(--dm-primary); font-size: 11px; font-weight: 800; border-radius: 6px; padding: 4px 10px; white-space: nowrap;">
-                                    <i class="fas fa-user mr-1"></i> View Profile
+                                    class="btn btn-sm shadow-sm" style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569; font-size: 11px; font-weight: 700; border-radius: 50px; padding: 0 12px; height: 32px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;">
+                                    <i class="fas fa-external-link-alt"></i> View Profile
                                 </a>
                             </div>
                         </td>

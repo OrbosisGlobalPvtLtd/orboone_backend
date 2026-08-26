@@ -167,6 +167,7 @@
     }
 
     /* DataTable toolbar styles */
+    /* DataTable toolbar & Export Buttons styles */
     .dm-table-toolbar-row {
         background: #FAFBFC !important;
         border-bottom: 1px solid var(--orb-border) !important;
@@ -176,6 +177,117 @@
         background: #FAFBFC !important;
         border-top: 1px solid var(--orb-border) !important;
     }
+
+    #employeeExportButtons .dt-buttons {
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+    }
+
+    #employeeExportButtons .dt-button,
+    #employeeExportButtons .btn {
+        border-radius: 8px !important;
+        font-weight: 700 !important;
+        font-size: 11px !important;
+        padding: 6px 14px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 5px !important;
+        box-shadow: none !important;
+        border: 1px solid transparent !important;
+        text-transform: none !important;
+        transition: all 0.2s ease !important;
+    }
+
+    #employeeExportButtons .buttons-excel {
+        background-color: #10B981 !important;
+        border-color: #10B981 !important;
+        color: #FFFFFF !important;
+    }
+
+    #employeeExportButtons .buttons-csv {
+        background-color: #0EA5E9 !important;
+        border-color: #0EA5E9 !important;
+        color: #FFFFFF !important;
+    }
+
+    #employeeExportButtons .buttons-print {
+        background-color: #64748B !important;
+        border-color: #64748B !important;
+        color: #FFFFFF !important;
+    }
+
+    #employeeExportButtons .buttons-pdf {
+        background-color: #EF4444 !important;
+        border-color: #EF4444 !important;
+        color: #FFFFFF !important;
+    }
+
+    #employeeExportButtons .btn:hover {
+        opacity: 0.9 !important;
+        color: #FFFFFF !important;
+    }
+
+    /* Table Responsive Wrapper & Specific Column Width Rules */
+    .compliance-table-wrapper, .dm-compliance-table-wrap {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        padding: 0 !important;
+    }
+
+    #employeeDocDirectoryTable {
+        width: 100% !important;
+        min-width: 1750px !important;
+        table-layout: fixed !important;
+        border-collapse: separate !important;
+        border-spacing: 0 !important;
+        margin-bottom: 0 !important;
+    }
+
+    #employeeDocDirectoryTable thead th {
+        background: #F8FAFC !important;
+        color: var(--orb-muted, #667085) !important;
+        font-size: 11px !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.3px !important;
+        padding: 12px 10px !important;
+        border-top: none !important;
+        border-bottom: 1px solid var(--orb-border, #E7EAF3) !important;
+        vertical-align: middle !important;
+        white-space: normal !important;
+        line-height: 1.25 !important;
+    }
+
+    #employeeDocDirectoryTable tbody td {
+        padding: 12px 10px !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        color: var(--orb-text, #101828) !important;
+        border-bottom: 1px solid var(--orb-border, #E7EAF3) !important;
+        vertical-align: middle !important;
+        min-height: 60px !important;
+    }
+
+    #employeeDocDirectoryTable tbody tr:hover td {
+        background-color: #F8FAFC !important;
+    }
+
+    /* Column Specific Widths & Alignments */
+    .col-sno { width: 55px !important; min-width: 55px !important; text-align: center !important; }
+    .col-emp { width: 240px !important; min-width: 240px !important; text-align: left !important; }
+    .col-code { width: 130px !important; min-width: 130px !important; text-align: left !important; }
+    .col-dept { width: 170px !important; min-width: 170px !important; text-align: left !important; }
+    .col-stage { width: 110px !important; min-width: 110px !important; text-align: center !important; }
+    .col-prof-status { width: 140px !important; min-width: 140px !important; text-align: center !important; }
+    .col-num { width: 75px !important; min-width: 75px !important; text-align: center !important; }
+    .col-comp-pct { width: 110px !important; min-width: 110px !important; text-align: center !important; }
+    .col-comp-status { width: 160px !important; min-width: 160px !important; text-align: center !important; }
+    .col-last-ver { width: 140px !important; min-width: 140px !important; text-align: center !important; }
+    .col-action { width: 230px !important; min-width: 230px !important; text-align: center !important; }
 </style>
 @endsection
 
@@ -524,31 +636,42 @@
 
 
     <!-- ==========================================
-         SECTION 6 — FILTER BAR (ABOVE CARDS)
+         SECTION 7 — COMPLIANCE LEDGER TABLE WITH ATTACHED FILTERS
          ========================================== -->
-    <h5 class="font-weight-black text-dark mb-3" style="font-size: 15px; letter-spacing: -0.01em;">
-        <i class="fas fa-filter text-primary mr-1"></i> Filter Directory & Profiles
-    </h5>
-    <form method="GET" action="{{ route('documents.compliance.index') }}" id="complianceFilterForm">
-        <!-- Hidden input to maintain risk cohort filter -->
-        <input type="hidden" name="risk_type" id="filterRiskType" value="{{ request('risk_type') }}">
+    <div class="card border-0 shadow-sm rounded-lg mb-5 bg-white overflow-hidden">
+        <!-- Card Header: Title -->
+        <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-circle bg-light text-primary d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-size: 16px;">
+                    <i class="fas fa-list-alt"></i>
+                </div>
+                <div>
+                    <h5 class="mb-0 font-weight-black text-dark" style="font-size: 15px;">Compliance Ledger</h5>
+                    <p class="text-muted mb-0 font-weight-medium" style="font-size: 11px; opacity: 0.8;">Detailed compliance directory, status tracking & document exporting system.</p>
+                </div>
+            </div>
+        </div>
 
-        <div class="card border-0 shadow-sm rounded-lg mb-4 bg-white">
-            <div class="card-body p-3">
+        <!-- Integrated Filter Bar (Attached directly to Table Card) -->
+        <div class="p-3 border-bottom" style="background-color: #FAFBFC;">
+            <form method="GET" action="{{ route('documents.compliance.index') }}" id="complianceFilterForm">
+                <!-- Hidden input to maintain risk cohort filter -->
+                <input type="hidden" name="risk_type" id="filterRiskType" value="{{ request('risk_type') }}">
+
                 <div class="row align-items-end">
                     <div class="col-lg-3 col-md-6 mb-2 mb-lg-0">
                         <label class="font-weight-bold text-muted mb-1" style="font-size: 11px;">Search Employee</label>
                         <div class="input-group">
                             <div class="input-group-prepend">
-                                <span class="input-group-text bg-light border-right-0" style="border-radius: 6px 0 0 6px;"><i class="fas fa-search text-muted"></i></span>
+                                <span class="input-group-text bg-white border-right-0" style="border-radius: 6px 0 0 6px;"><i class="fas fa-search text-muted"></i></span>
                             </div>
-                            <input type="text" name="employee" id="filterSearch" value="{{ request('employee', request('search')) }}" class="form-control bg-light border-left-0" style="font-size: 13px; height: 38px; border-radius: 0 6px 6px 0;" placeholder="Search name, code, email...">
+                            <input type="text" name="employee" id="filterSearch" value="{{ request('employee', request('search')) }}" class="form-control bg-white border-left-0" style="font-size: 13px; height: 38px; border-radius: 0 6px 6px 0;" placeholder="Search name, code, email...">
                         </div>
                     </div>
 
                     <div class="col-lg-2 col-md-6 mb-2 mb-lg-0">
                         <label class="font-weight-bold text-muted mb-1" style="font-size: 11px;">Department</label>
-                        <select name="department_id" id="filterDepartment" class="form-control bg-light" style="font-size: 13px; height: 38px; border-radius: 6px;">
+                        <select name="department_id" id="filterDepartment" class="form-control bg-white" style="font-size: 13px; height: 38px; border-radius: 6px;">
                             <option value="">All Departments</option>
                             @foreach($departments as $dept)
                             <option value="{{ $dept->id }}" {{ (string) request('department_id') === (string) $dept->id ? 'selected' : '' }}>{{ $dept->name }}</option>
@@ -558,7 +681,7 @@
 
                     <div class="col-lg-2 col-md-4 mb-2 mb-lg-0">
                         <label class="font-weight-bold text-muted mb-1" style="font-size: 11px;">Stage</label>
-                        <select name="employee_stage" id="filterEmployeeStage" class="form-control bg-light" style="font-size: 13px; height: 38px; border-radius: 6px;">
+                        <select name="employee_stage" id="filterEmployeeStage" class="form-control bg-white" style="font-size: 13px; height: 38px; border-radius: 6px;">
                             <option value="">All Stages</option>
                             <option value="internship" {{ request('employee_stage') == 'internship' ? 'selected' : '' }}>Internship</option>
                             <option value="probation" {{ request('employee_stage') == 'probation' ? 'selected' : '' }}>Probation</option>
@@ -569,7 +692,7 @@
 
                     <div class="col-lg-2 col-md-4 mb-2 mb-lg-0">
                         <label class="font-weight-bold text-muted mb-1" style="font-size: 11px;">Profile Status</label>
-                        <select name="profile_status" id="filterProfileStatus" class="form-control bg-light" style="font-size: 13px; height: 38px; border-radius: 6px;">
+                        <select name="profile_status" id="filterProfileStatus" class="form-control bg-white" style="font-size: 13px; height: 38px; border-radius: 6px;">
                             <option value="">All Profiles</option>
                             <option value="pending" {{ request('profile_status') == 'pending' ? 'selected' : '' }}>Pending</option>
                             <option value="submitted" {{ request('profile_status') == 'submitted' ? 'selected' : '' }}>Submitted</option>
@@ -580,7 +703,7 @@
 
                     <div class="col-lg-2 col-md-4 mb-2 mb-lg-0">
                         <label class="font-weight-bold text-muted mb-1" style="font-size: 11px;">Compliance Status</label>
-                        <select name="compliance_status" id="filterStatus" class="form-control bg-light" style="font-size: 13px; height: 38px; border-radius: 6px;">
+                        <select name="compliance_status" id="filterStatus" class="form-control bg-white" style="font-size: 13px; height: 38px; border-radius: 6px;">
                             <option value="">All Statuses</option>
                             <option value="compliant" {{ request('compliance_status') == 'compliant' ? 'selected' : '' }}>Fully Compliant</option>
                             <option value="non_compliant" {{ request('compliance_status') == 'non_compliant' ? 'selected' : '' }}>Non-Compliant</option>
@@ -597,93 +720,69 @@
                         </a>
                     </div>
                 </div>
-            </div>
-        </div>
-    </form>
-
-
-    <!-- Pagination -->
-    @if($employees->hasPages())
-    <div class="d-flex justify-content-center mt-2 mb-4">
-        {{ $employees->links() }}
-    </div>
-    @endif
-
-
-    <!-- ==========================================
-         SECTION 7 — OPTIONAL LEDGER TABLE
-         ========================================== -->
-    <div class="card border-0 shadow-sm rounded-lg mb-5 bg-white overflow-hidden">
-        <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center" id="ledgerHeader" style="cursor: pointer;" data-toggle="collapse" data-target="#ledgerCollapse" aria-expanded="false" aria-controls="ledgerCollapse">
-            <div class="d-flex align-items-center gap-3">
-                <div class="rounded-circle bg-light text-primary d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-size: 16px;">
-                    <i class="fas fa-list-alt"></i>
-                </div>
-                <div>
-                    <h5 class="mb-0 font-weight-black text-dark" style="font-size: 15px;">Compliance Ledger</h5>
-                    <p class="text-muted mb-0 font-weight-medium" style="font-size: 11px; opacity: 0.8;">Collapsible detailed grid layout and document exporting system.</p>
-                </div>
-            </div>
-            <div class="d-flex align-items-center gap-3">
-                <!-- Target div where DT exports will append -->
-                <div id="complianceExportButtonsTarget" class="d-inline-flex gap-2"></div>
-                <button class="btn btn-sm btn-light rounded-circle" type="button" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-chevron-down transition-all" id="ledgerChevron"></i>
-                </button>
-            </div>
+            </form>
         </div>
 
-        <div id="ledgerCollapse" class="collapse" aria-labelledby="ledgerHeader">
-            <div class="card-body p-0 border-top">
-                <!-- DataTable Toolbar -->
-                <div class="dm-table-toolbar-row px-4 py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
-                    <div id="employeeLengthBox"></div>
-                    <div id="employeeExportButtons"></div>
+        <div class="card-body p-0">
+            <!-- DataTable Toolbar -->
+            <div class="dm-table-toolbar-row px-4 py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="text-muted font-weight-bold" style="font-size: 12px;">Show</span>
+                    <select name="per_page" id="filterPerPage" form="complianceFilterForm" class="form-control form-control-sm bg-light" style="width: 80px; font-size: 12px; height: 32px; border-radius: 6px;">
+                        <option value="10" {{ (string)request('per_page', 10) === '10' ? 'selected' : '' }}>10</option>
+                        <option value="25" {{ (string)request('per_page') === '25' ? 'selected' : '' }}>25</option>
+                        <option value="50" {{ (string)request('per_page') === '50' ? 'selected' : '' }}>50</option>
+                        <option value="100" {{ (string)request('per_page') === '100' ? 'selected' : '' }}>100</option>
+                        <option value="all" {{ request('per_page') === 'all' ? 'selected' : '' }}>All</option>
+                    </select>
+                    <span class="text-muted font-weight-bold" style="font-size: 12px;">entries</span>
                 </div>
+                <div id="employeeExportButtons"></div>
+            </div>
 
-                <!-- 16-Column Table Listing -->
-                <div class="dm-table-wrap px-4 pb-4">
+                <!-- 17-Column Table Listing -->
+                <div class="dm-compliance-table-wrap">
                     <table id="employeeDocDirectoryTable" class="table dm-table table-hover">
                         <thead>
                             <tr>
-                                <th>Employee</th>
-                                <th>Code</th>
-                                <th>Department</th>
-                                <th>Stage</th>
-                                <th>Profile Status</th>
-                                <th>Required</th>
-                                <th>Uploaded</th>
-                                <th>Verified</th>
-                                <th>Missing</th>
-                                <th>Pending</th>
-                                <th>Rejected</th>
-                                <th>Expired</th>
-                                <th>Compliance %</th>
-                                <th>Compliance Status</th>
-                                <th>Last Verified</th>
-                                <th class="text-center">Action</th>
+                                <th class="col-sno text-center">S.No.</th>
+                                <th class="col-emp text-left">Employee</th>
+                                <th class="col-code text-left">Code</th>
+                                <th class="col-dept text-left">Department</th>
+                                <th class="col-stage text-center">Stage</th>
+                                <th class="col-prof-status text-center">Profile Status</th>
+                                <th class="col-num text-center">Required</th>
+                                <th class="col-num text-center">Uploaded</th>
+                                <th class="col-num text-center">Verified</th>
+                                <th class="col-num text-center">Missing</th>
+                                <th class="col-num text-center">Pending</th>
+                                <th class="col-num text-center">Rejected</th>
+                                <th class="col-num text-center">Expired</th>
+                                <th class="col-comp-pct text-center">Compliance %</th>
+                                <th class="col-comp-status text-center">Compliance Status</th>
+                                <th class="col-last-ver text-center">Last Verified</th>
+                                <th class="col-action text-center">Action</th>
                             </tr>
                         </thead>
 
                         <tbody>
                             @forelse($employees as $emp)
                             <tr>
-                                <td>
-                                    <div class="d-flex align-items-center gap-3">
-                                        <div class="dm-avatar-wrapper rounded-circle font-weight-black d-flex align-items-center justify-content-center text-primary bg-light" style="width: 32px; height: 32px; font-size: 12px; min-width: 32px;">
-                                            {{ strtoupper(substr($emp->name ?? 'E', 0, 1)) }}
-                                        </div>
-                                        <div>
-                                            <div style="font-weight: 800; color: var(--orb-text); font-size: 13px;">{{ $emp->name }}</div>
-                                            <div style="font-size: 10px; color: var(--orb-muted); font-weight: 700;">{{ $emp->email }}</div>
-                                        </div>
+                                <td class="col-sno text-center" style="font-weight: 700; font-size: 12px; color: var(--orb-muted);">
+                                    {{ ($employees->currentPage() - 1) * $employees->perPage() + $loop->iteration }}
+                                </td>
+
+                                <td class="col-emp text-left">
+                                    <div style="min-width: 0; overflow: hidden;">
+                                        <div style="font-weight: 800; color: var(--orb-text); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ $emp->name }}">{{ $emp->name }}</div>
+                                        <div style="font-size: 10px; color: var(--orb-muted); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ $emp->email }}">{{ $emp->email }}</div>
                                     </div>
                                 </td>
 
-                                <td>{{ $emp->code ?? '-' }}</td>
-                                <td>{{ $emp->department_name ?: '-' }}</td>
-                                <td><span style="font-weight: 700; text-transform: uppercase; font-size: 9px; color: var(--orb-muted);">{{ $emp->stage ?: '-' }}</span></td>
-                                <td>
+                                <td class="col-code text-left" style="font-weight: 700; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ $emp->code ?? '-' }}</td>
+                                <td class="col-dept text-left" style="white-space: normal; line-height: 1.25; word-wrap: break-word; font-size: 12px;" title="{{ $emp->department_name ?: '-' }}">{{ $emp->department_name ?: '-' }}</td>
+                                <td class="col-stage text-center"><span style="font-weight: 700; text-transform: uppercase; font-size: 9px; color: var(--orb-muted);">{{ $emp->stage ?: '-' }}</span></td>
+                                <td class="col-prof-status text-center">
                                     @php
                                     $profileBadgeClass = match($emp->profile_status) {
                                     'approved' => 'dm-badge-success',
@@ -692,64 +791,68 @@
                                     default => 'dm-badge-secondary',
                                     };
                                     @endphp
-                                    <span class="dm-badge {{ $profileBadgeClass }}">{{ ucfirst($emp->profile_status ?? 'pending') }}</span>
+                                    <span class="dm-badge {{ $profileBadgeClass }}" style="padding: 4px 10px; font-size: 10px; font-weight: 800; border-radius: 50px;">{{ ucfirst($emp->profile_status ?? 'pending') }}</span>
                                 </td>
 
-                                <td>{{ $emp->total_required_docs }}</td>
-                                <td>{{ $emp->uploaded_docs }}</td>
-                                <td>{{ $emp->verified_docs }}</td>
-                                <td>{{ $emp->missing_docs }}</td>
-                                <td>{{ $emp->pending_docs }}</td>
-                                <td>{{ $emp->rejected_docs }}</td>
-                                <td>{{ $emp->expired_docs }}</td>
-                                <td>
-                                    <div class="d-flex align-items-center gap-2">
+                                <td class="col-num text-center" style="font-weight: 700; font-size: 13px;">{{ $emp->total_required_docs }}</td>
+                                <td class="col-num text-center" style="font-weight: 700; font-size: 13px;">{{ $emp->uploaded_docs }}</td>
+                                <td class="col-num text-center" style="font-weight: 700; font-size: 13px;">{{ $emp->verified_docs }}</td>
+                                <td class="col-num text-center" style="font-weight: 700; font-size: 13px;">{{ $emp->missing_docs }}</td>
+                                <td class="col-num text-center" style="font-weight: 700; font-size: 13px;">{{ $emp->pending_docs }}</td>
+                                <td class="col-num text-center" style="font-weight: 700; font-size: 13px;">{{ $emp->rejected_docs }}</td>
+                                <td class="col-num text-center" style="font-weight: 700; font-size: 13px;">{{ $emp->expired_docs }}</td>
+                                <td class="col-comp-pct text-center">
+                                    <div class="d-inline-flex align-items-center justify-content-center gap-1">
                                         <span style="font-weight: 800; font-size: 11px; color: var(--orb-text);">{{ $emp->compliance_percentage }}%</span>
-                                        <div class="progress" style="width: 50px; height: 5px; border-radius: 99px;">
+                                        <div class="progress" style="width: 35px; height: 5px; border-radius: 99px; flex-shrink: 0;">
                                             <div class="progress-bar {{ $emp->compliance_percentage === 100 ? 'bg-success' : 'bg-warning' }}" style="width: {{ $emp->compliance_percentage }}%;"></div>
                                         </div>
                                     </div>
                                 </td>
 
-                                <td>
+                                <td class="col-comp-status text-center">
                                     @if($emp->compliance_status === 'compliant')
-                                    <span class="dm-badge dm-badge-success"><i class="fas fa-check-circle mr-1"></i> Fully Compliant</span>
+                                    <span class="dm-badge dm-badge-success" style="padding: 4px 10px; font-size: 9px; white-space: nowrap;"><i class="fas fa-check-circle mr-1"></i> Fully Compliant</span>
                                     @elseif($emp->compliance_status === 'rejected')
-                                    <span class="dm-badge dm-badge-danger"><i class="fas fa-times-circle mr-1"></i> Rejected Docs</span>
+                                    <span class="dm-badge dm-badge-danger" style="padding: 4px 10px; font-size: 9px; white-space: nowrap;"><i class="fas fa-times-circle mr-1"></i> Rejected Docs</span>
                                     @elseif($emp->compliance_status === 'missing')
-                                    <span class="dm-badge dm-badge-warning"><i class="fas fa-exclamation-circle mr-1"></i> Missing Docs</span>
+                                    <span class="dm-badge dm-badge-warning" style="padding: 4px 10px; font-size: 9px; white-space: nowrap;"><i class="fas fa-exclamation-circle mr-1"></i> Missing Docs</span>
                                     @elseif($emp->compliance_status === 'expired')
-                                    <span class="dm-badge dm-badge-warning text-white" style="background: var(--color-warning);"><i class="fas fa-calendar-times mr-1"></i> Expired Docs</span>
+                                    <span class="dm-badge dm-badge-warning text-white" style="padding: 4px 10px; font-size: 9px; white-space: nowrap; background: var(--color-warning);"><i class="fas fa-calendar-times mr-1"></i> Expired Docs</span>
                                     @else
-                                    <span class="dm-badge dm-badge-purple"><i class="fas fa-clock mr-1"></i> Pending Verification</span>
+                                    <span class="dm-badge dm-badge-purple" style="padding: 4px 10px; font-size: 9px; white-space: nowrap;"><i class="fas fa-clock mr-1"></i> Pending Verification</span>
                                     @endif
                                 </td>
-                                <td>{{ $emp->last_verified_at ? \Carbon\Carbon::parse($emp->last_verified_at)->format('d M Y h:i A') : '-' }}</td>
+                                <td class="col-last-ver text-center" style="font-size: 11px; color: var(--orb-muted); white-space: nowrap;">{{ $emp->last_verified_at ? \Carbon\Carbon::parse($emp->last_verified_at)->format('d M Y h:i A') : '-' }}</td>
 
-                                <td class="text-center">
-                                    <div class="d-flex justify-content-center gap-2">
-                                        <a href="{{ route('documents.employee.show', $emp->id) }}" class="dm-action-btn-pill dm-action-btn-primary" style="white-space: nowrap;">
-                                            <i class="fas fa-folder-open mr-1"></i> View Documents
+                                <td class="col-action text-center">
+                                    <div class="d-flex align-items-center justify-content-center gap-1" style="white-space: nowrap;">
+                                        <a href="{{ route('documents.employee.show', $emp->id) }}" class="dm-action-btn-pill dm-action-btn-primary" style="height: 32px; padding: 0 10px; font-size: 11px; font-weight: 700; border-radius: 50px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;">
+                                            <i class="fas fa-folder-open"></i> View Documents
                                         </a>
-                                        <a href="{{ route('hrms.employees.edit', $emp->id) }}" target="_blank" class="dm-action-btn-pill dm-action-btn-light" style="white-space: nowrap;">
-                                            <i class="fas fa-external-link-alt mr-1"></i> Open Profile
+                                        <a href="{{ route('hrms.employees.profile.view', $emp->id) }}" target="_blank" class="dm-action-btn-pill dm-action-btn-light" style="height: 32px; padding: 0 10px; font-size: 11px; font-weight: 700; border-radius: 50px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;">
+                                            <i class="fas fa-external-link-alt"></i> Open Profile
                                         </a>
                                     </div>
                                 </td>
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="16" class="text-center text-muted py-4" style="font-weight: 700; color: var(--orb-muted);">No compliance records found.</td>
+                                <td colspan="17" class="text-center text-muted py-4" style="font-weight: 700; color: var(--orb-muted);">No compliance records found.</td>
                             </tr>
                             @endforelse
                         </tbody>
                     </table>
                 </div>
 
-                <!-- DataTable Footer -->
+                <!-- Footer with Info & Pagination -->
                 <div class="dm-table-footer-row px-4 py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
-                    <div id="employeeInfoBox"></div>
-                    <div id="employeePaginationBox"></div>
+                    <div class="text-muted font-weight-medium" style="font-size: 12px;">
+                        Showing {{ $employees->firstItem() ?? 0 }} to {{ $employees->lastItem() ?? 0 }} of {{ $employees->total() }} entries
+                    </div>
+                    <div>
+                        {{ $employees->links() }}
+                    </div>
                 </div>
             </div>
         </div>
@@ -782,30 +885,31 @@
             $('#ledgerChevron').removeClass('fa-rotate-180');
         });
 
-        function cleanExportText(data) {
-            return $('<div>').html(data).text().replace(/\s+/g, ' ').trim();
+        function cleanExportText(data, row, column, node) {
+            if (!data) return '';
+            let $temp = $('<div>').html(data);
+            $temp.find('.progress, .progress-bar, script, style').remove();
+            let text = $temp.text().replace(/\s+/g, ' ').trim();
+            return text;
         }
 
         let table = $('#employeeDocDirectoryTable').DataTable({
-            pageLength: 10,
-            lengthMenu: [
-                [10, 25, 50, 100, -1],
-                [10, 25, 50, 100, 'All']
-            ],
-            order: [
-                [0, 'asc']
-            ],
-            dom: "<'d-none'lB><'row'<'col-12'tr>><'d-none'i p>",
+            paging: false,
+            info: false,
+            searching: false,
+            autoWidth: false,
+            order: [],
+            dom: "<'d-none'B><'row'<'col-12'tr>>",
             buttons: [{
                     extend: 'excelHtml5',
                     text: '<i class="fas fa-file-excel mr-1"></i> Excel',
                     title: 'Employee Compliance Overview',
-                    className: 'btn btn-sm',
+                    className: 'btn btn-sm buttons-excel font-weight-bold',
                     exportOptions: {
-                        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+                        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
                         format: {
-                            body: function(data) {
-                                return cleanExportText(data);
+                            body: function(data, row, column, node) {
+                                return cleanExportText(data, row, column, node);
                             }
                         }
                     }
@@ -814,12 +918,12 @@
                     extend: 'csvHtml5',
                     text: '<i class="fas fa-file-csv mr-1"></i> CSV',
                     title: 'Employee Compliance Overview',
-                    className: 'btn btn-sm',
+                    className: 'btn btn-sm buttons-csv font-weight-bold',
                     exportOptions: {
-                        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+                        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
                         format: {
-                            body: function(data) {
-                                return cleanExportText(data);
+                            body: function(data, row, column, node) {
+                                return cleanExportText(data, row, column, node);
                             }
                         }
                     }
@@ -828,38 +932,131 @@
                     extend: 'print',
                     text: '<i class="fas fa-print mr-1"></i> Print',
                     title: 'Employee Compliance Overview',
-                    className: 'btn btn-sm',
+                    className: 'btn btn-sm buttons-print font-weight-bold',
+                    autoPrint: true,
                     exportOptions: {
-                        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+                        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
                         format: {
-                            body: function(data) {
-                                return cleanExportText(data);
+                            body: function(data, row, column, node) {
+                                return cleanExportText(data, row, column, node);
                             }
                         }
+                    },
+                    customize: function (win) {
+                        var style = document.createElement('style');
+                        style.type = 'text/css';
+                        style.innerHTML = '@page { size: landscape; margin: 10mm; } body { font-family: Arial, sans-serif; }';
+                        win.document.head.appendChild(style);
+
+                        $(win.document.body).css({
+                            'padding': '15px',
+                            'background': '#fff',
+                            'color': '#0f172a'
+                        });
+
+                        $(win.document.body).find('h1').css({
+                            'font-size': '16px',
+                            'font-weight': 'bold',
+                            'text-align': 'center',
+                            'margin-bottom': '15px',
+                            'color': '#0f172a'
+                        });
+
+                        var $table = $(win.document.body).find('table');
+                        $table.addClass('compact').css({
+                            'font-size': '8pt',
+                            'width': '100%',
+                            'border-collapse': 'collapse',
+                            'margin': '0 auto'
+                        });
+
+                        $table.find('th').css({
+                            'background-color': '#1e293b',
+                            'color': '#ffffff',
+                            'font-size': '8pt',
+                            'font-weight': 'bold',
+                            'text-transform': 'uppercase',
+                            'padding': '6px 4px',
+                            'border': '1px solid #0f172a',
+                            'text-align': 'center'
+                        });
+
+                        $table.find('th:nth-child(2), th:nth-child(3), th:nth-child(4)').css({
+                            'text-align': 'left'
+                        });
+
+                        $table.find('td').css({
+                            'padding': '5px 4px',
+                            'border': '1px solid #cbd5e1',
+                            'font-size': '8pt',
+                            'text-align': 'center'
+                        });
+
+                        $table.find('td:nth-child(2), td:nth-child(3), td:nth-child(4)').css({
+                            'text-align': 'left'
+                        });
                     }
                 },
                 {
                     extend: 'pdfHtml5',
                     text: '<i class="fas fa-file-pdf mr-1"></i> PDF',
                     title: 'Employee Compliance Overview',
-                    className: 'btn btn-sm',
+                    className: 'btn btn-sm buttons-pdf font-weight-bold',
                     orientation: 'landscape',
                     pageSize: 'A4',
                     exportOptions: {
-                        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+                        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
                         format: {
-                            body: function(data) {
-                                return cleanExportText(data);
+                            body: function(data, row, column, node) {
+                                return cleanExportText(data, row, column, node);
                             }
+                        }
+                    },
+                    customize: function (doc) {
+                        doc.pageMargins = [15, 15, 15, 15];
+                        doc.defaultStyle.fontSize = 7;
+                        doc.styles.tableHeader.fontSize = 8;
+                        doc.styles.tableHeader.bold = true;
+                        doc.styles.tableHeader.fillColor = '#1e293b';
+                        doc.styles.tableHeader.color = '#ffffff';
+                        doc.styles.tableHeader.alignment = 'center';
+
+                        if (doc.content && doc.content[1] && doc.content[1].table) {
+                            doc.content[1].table.widths = [
+                                '3%',  // S.No
+                                '15%', // Employee
+                                '8%',  // Code
+                                '10%', // Department
+                                '6%',  // Stage
+                                '7%',  // Profile Status
+                                '4%',  // Required
+                                '4%',  // Uploaded
+                                '4%',  // Verified
+                                '4%',  // Missing
+                                '4%',  // Pending
+                                '4%',  // Rejected
+                                '4%',  // Expired
+                                '5%',  // Comp %
+                                '9%',  // Comp Status
+                                '9%'   // Last Verified
+                            ];
+
+                            var objLayout = {};
+                            objLayout['hLineWidth'] = function(i) { return 0.5; };
+                            objLayout['vLineWidth'] = function(i) { return 0.5; };
+                            objLayout['hLineColor'] = function(i) { return '#cbd5e1'; };
+                            objLayout['vLineColor'] = function(i) { return '#cbd5e1'; };
+                            objLayout['paddingLeft'] = function(i) { return 3; };
+                            objLayout['paddingRight'] = function(i) { return 3; };
+                            objLayout['paddingTop'] = function(i) { return 3; };
+                            objLayout['paddingBottom'] = function(i) { return 3; };
+                            doc.content[1].layout = objLayout;
                         }
                     }
                 }
             ],
             initComplete: function() {
-                $('.dataTables_length').appendTo('#employeeLengthBox');
-                $('.dt-buttons').appendTo('#complianceExportButtonsTarget');
-                $('.dataTables_info').appendTo('#employeeInfoBox');
-                $('.dataTables_paginate').appendTo('#employeePaginationBox');
+                $('.dt-buttons').appendTo('#employeeExportButtons');
             }
         });
 
@@ -872,7 +1069,7 @@
             }, 500);
         });
 
-        $('#filterStatus, #filterDepartment, #filterProfileStatus, #filterEmployeeStage').on('change', function() {
+        $('#filterStatus, #filterDepartment, #filterProfileStatus, #filterEmployeeStage, #filterPerPage').on('change', function() {
             $('#complianceFilterForm').submit();
         });
     });

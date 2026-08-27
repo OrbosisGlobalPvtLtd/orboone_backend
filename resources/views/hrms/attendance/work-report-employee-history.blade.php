@@ -166,11 +166,11 @@
             </div>
 
             <div class="action-toolbar-pill">
-                <a href="{{ route('work-reports.employee-history.print', ['employee' => $employee->id, 'from_date' => request('from_date'), 'to_date' => request('to_date')]) }}" 
+                <a href="{{ route('hrms.attendance.work-reports.employee-history.print', ['employee' => $employee->id, 'from_date' => request('from_date'), 'to_date' => request('to_date')]) }}" 
                    target="_blank" class="btn-pill-action">
                     <i class="fas fa-print"></i> Print Report
                 </a>
-                <a href="{{ route('work-reports') }}" class="btn-pill-action">
+                <a href="{{ route('hrms.attendance.work-reports') }}" class="btn-pill-action">
                     <i class="fas fa-arrow-left"></i> All Work Reports
                 </a>
             </div>
@@ -207,7 +207,7 @@
         <div class="card orb-table-card">
             <!-- Filter Row -->
             <div class="p-4 bg-light border-bottom">
-                <form method="GET" action="{{ route('work-reports.employee-history', $employee->id) }}" class="row align-items-end">
+                <form method="GET" action="{{ route('hrms.attendance.work-reports.employee-history', $employee->id) }}" class="row align-items-end">
                     <div class="col-md-3 mb-2 mb-md-0">
                         <label class="font-weight-bold text-muted small text-uppercase mb-1">From Date</label>
                         <input type="date" name="from_date" class="form-control rounded-10" value="{{ request('from_date') }}">
@@ -224,7 +224,7 @@
                         <button type="submit" class="btn btn-primary rounded-10 font-weight-bold px-3 mr-2" style="background: var(--orb-primary); border: none;">
                             <i class="fas fa-search mr-1"></i> Search
                         </button>
-                        <a href="{{ route('work-reports.employee-history', $employee->id) }}" class="btn btn-outline-secondary rounded-10 font-weight-bold px-3">
+                        <a href="{{ route('hrms.attendance.work-reports.employee-history', $employee->id) }}" class="btn btn-outline-secondary rounded-10 font-weight-bold px-3">
                             <i class="fas fa-undo mr-1"></i> Reset
                         </a>
                     </div>

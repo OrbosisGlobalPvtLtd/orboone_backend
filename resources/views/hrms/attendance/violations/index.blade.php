@@ -743,7 +743,7 @@
                     <div class="att-filter-grid">
                         <div>
                             <label>Employee</label>
-                            <select name="employee_id" class="form-control js-auto-filter">
+                            <select name="employee_id" class="form-control select2-searchable">
                                 <option value="">All Employees</option>
                                 @foreach($filters['employee_options'] ?? [] as $id => $name)
                                 <option value="{{ $id }}" {{ (string) request('employee_id') === (string) $id ? 'selected' : '' }}>{{ $name }}</option>
@@ -753,7 +753,7 @@
 
                         <div>
                             <label>Department</label>
-                            <select name="department_id" class="form-control js-auto-filter">
+                            <select name="department_id" class="form-control select2-searchable">
                                 <option value="">All Departments</option>
                                 @foreach($filters['departments'] ?? [] as $id => $name)
                                 <option value="{{ $id }}" {{ (string) request('department_id') === (string) $id ? 'selected' : '' }}>{{ $name }}</option>
@@ -763,7 +763,7 @@
 
                         <div>
                             <label>Designation</label>
-                            <select name="designation_id" class="form-control js-auto-filter">
+                            <select name="designation_id" class="form-control select2-searchable">
                                 <option value="">All Designations</option>
                                 @foreach($filters['designations'] ?? [] as $id => $name)
                                 <option value="{{ $id }}" {{ (string) request('designation_id') === (string) $id ? 'selected' : '' }}>{{ $name }}</option>
@@ -773,7 +773,7 @@
 
                         <div>
                             <label>Violation Type</label>
-                            <select name="type" class="form-control js-auto-filter">
+                            <select name="type" class="form-control">
                                 <option value="">All Types</option>
                                 @foreach($filters['types'] ?? [] as $val => $lbl)
                                 <option value="{{ $val }}" {{ request('type') === $val ? 'selected' : '' }}>{{ $lbl }}</option>
@@ -783,7 +783,7 @@
 
                         <div>
                             <label>Penalty Status</label>
-                            <select name="penalty_status" class="form-control js-auto-filter">
+                            <select name="penalty_status" class="form-control">
                                 <option value="">All Statuses</option>
                                 @foreach($filters['penalty_statuses'] ?? [] as $val => $lbl)
                                 <option value="{{ $val }}" {{ request('penalty_status') === $val ? 'selected' : '' }}>{{ $lbl }}</option>
@@ -793,7 +793,7 @@
 
                         <div>
                             <label>Month</label>
-                            <select name="month" id="monthFilterSelect" class="form-control js-auto-filter">
+                            <select name="month" id="monthFilterSelect" class="form-control">
                                 <option value="">All / Custom Range</option>
                                 @foreach($filters['months'] ?? [] as $val => $lbl)
                                 <option value="{{ $val }}" {{ request('month') === $val ? 'selected' : '' }}>{{ $lbl }}</option>
@@ -803,14 +803,21 @@
 
                         <div>
                             <label>Date From</label>
-                            <input type="date" name="from" id="fromDateInput" value="{{ request('from') }}" class="form-control js-auto-filter">
+                            <input type="date" name="from" id="fromDateInput" value="{{ request('from') }}" class="form-control">
                         </div>
 
                         <div>
                             <label>Date To</label>
-                            <div class="d-flex gap-2">
-                                <input type="date" name="to" id="toDateInput" value="{{ request('to') }}" class="form-control js-auto-filter">
-                                <a href="{{ url()->current() }}" class="btn btn-light border font-weight-bold ml-2" style="border-radius: 12px;" title="Reset Filters">
+                            <input type="date" name="to" id="toDateInput" value="{{ request('to') }}" class="form-control">
+                        </div>
+
+                        <div>
+                            <label>&nbsp;</label>
+                            <div class="d-flex align-items-center" style="gap: 8px;">
+                                <button type="submit" class="btn text-white font-weight-bold shadow-sm" style="height: 42px; border-radius: 12px; background: var(--orb-primary); border: none; padding: 0 20px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; flex: 1;">
+                                    <i class="fas fa-search"></i> Search
+                                </button>
+                                <a href="{{ url()->current() }}" class="btn btn-light border text-secondary font-weight-bold" style="height: 42px; width: 42px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Reset Filters">
                                     <i class="fas fa-undo"></i>
                                 </a>
                             </div>
@@ -962,14 +969,15 @@
         const monthSelect = document.getElementById('monthFilterSelect');
         const fromInput = document.getElementById('fromDateInput');
         const toInput = document.getElementById('toDateInput');
-
+        // Month select auto range filler
         if (monthSelect) {
             monthSelect.addEventListener('change', function() {
                 const val = this.value;
-                if (val) {
-                    const parts = val.split('-');
-                    const year = parseInt(parts[0], 10);
-                    const month = parseInt(parts[1], 10);
+                if (!val) return;
+                const parts = val.split('-');
+                if (parts.length === 2) {
+                    const year = parseInt(parts[0]);
+                    const month = parseInt(parts[1]);
                     const firstDay = `${year}-${String(month).padStart(2, '0')}-01`;
                     const lastDayNum = new Date(year, month, 0).getDate();
                     const lastDay = `${year}-${String(month).padStart(2, '0')}-${String(lastDayNum).padStart(2, '0')}`;
@@ -978,13 +986,6 @@
                 }
             });
         }
-
-        // Auto submit filter on select change
-        document.querySelectorAll('.js-auto-filter').forEach(function(input) {
-            input.addEventListener('change', function() {
-                document.getElementById('filterForm').submit();
-            });
-        });
 
         // DataTable initialization
         if (window.jQuery && $.fn.DataTable) {

@@ -861,8 +861,8 @@
 <style>
     /* Select2 OrboOne Theme Custom Overrides */
     .select2-container--default .select2-selection--single {
-        height: 44px !important;
-        border-radius: 9px !important;
+        height: 42px !important;
+        border-radius: 12px !important;
         border: 1px solid var(--orb-border, #E7EAF3) !important;
         background-color: #FFFFFF !important;
         display: flex !important;
@@ -873,10 +873,10 @@
         color: #101828 !important;
         font-weight: 600 !important;
         font-size: 13px !important;
-        line-height: 42px !important;
+        line-height: 40px !important;
     }
     .select2-container--default .select2-selection--single .select2-selection__arrow {
-        height: 42px !important;
+        height: 40px !important;
         right: 8px !important;
     }
     .select2-dropdown {

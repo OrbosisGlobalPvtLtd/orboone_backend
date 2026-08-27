@@ -615,7 +615,7 @@
                     </div>
 
                     <div>
-                        <a href="{{ route('work-reports.employee-history', $sum['employee_id']) }}" target="_blank" class="btn btn-primary btn-block rounded-12 font-weight-bold py-2 shadow-sm">
+                        <a href="{{ route('hrms.attendance.work-reports.employee-history', $sum['employee_id']) }}" target="_blank" class="btn btn-primary btn-block rounded-12 font-weight-bold py-2 shadow-sm">
                             <i class="fas fa-history mr-2"></i> View Daily History ({{ $sum['total_reports'] }})
                         </a>
                     </div>

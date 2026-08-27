@@ -352,7 +352,7 @@
                     <div class="orb-filter-item">
                         <label>{{ $filter['label'] }}</label>
                         @if(($filter['type'] ?? 'text') === 'select')
-                        <select name="{{ $filter['name'] }}" class="form-control">
+                        <select name="{{ $filter['name'] }}" class="form-control js-auto-filter">
                             <option value="">{{ $filter['placeholder'] ?? 'All' }}</option>
                             @foreach($filter['options'] as $value => $label)
                             <option value="{{ $value }}" {{ (string) request($filter['name']) === (string) $value ? 'selected' : '' }}>
@@ -361,15 +361,10 @@
                             @endforeach
                         </select>
                         @else
-                        <input type="{{ $filter['type'] ?? 'text' }}" name="{{ $filter['name'] }}" value="{{ request($filter['name']) }}" class="form-control" placeholder="{{ $filter['placeholder'] ?? '' }}">
+                        <input type="{{ $filter['type'] ?? 'text' }}" name="{{ $filter['name'] }}" value="{{ request($filter['name']) }}" class="form-control js-auto-filter" placeholder="{{ $filter['placeholder'] ?? '' }}">
                         @endif
                     </div>
                     @endforeach
-                    <div class="orb-filter-item d-flex align-items-end" style="gap: 8px;">
-                        <button type="submit" class="btn text-white font-weight-bold shadow-sm w-100" style="height: 42px; border-radius: 12px; background: var(--orb-primary); border: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px;">
-                            <i class="fas fa-search"></i> Search
-                        </button>
-                    </div>
                 </form>
             </div>
             @endif

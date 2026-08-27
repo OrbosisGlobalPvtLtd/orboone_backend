@@ -98,10 +98,10 @@
         </div>
 
         <div class="ep-card-filters">
-            <form method="GET" action="{{ route('hrms.attendance.wfh.my') }}" class="row align-items-end ep-form">
+            <form method="GET" class="row align-items-end ep-form">
                 <div class="col-md-3 mb-2 mb-md-0">
                     <label>Status</label>
-                    <select name="status" class="form-control">
+                    <select name="status" class="form-control js-auto-filter">
                         <option value="">All Status</option>
                         @foreach(['pending','manager_approved','hr_approved','approved','rejected','cancelled'] as $s)
                         <option value="{{ $s }}" @selected(request('status') === $s)>{{ ucwords(str_replace('_', ' ', $s)) }}</option>
@@ -110,7 +110,7 @@
                 </div>
                 <div class="col-md-3 mb-2 mb-md-0">
                     <label>Reason Category</label>
-                    <select name="reason_category" class="form-control">
+                    <select name="reason_category" class="form-control js-auto-filter">
                         <option value="">All Reason</option>
                         @foreach(['normal','personal_reason','internet_issue','electricity_issue','other'] as $r)
                         <option value="{{ $r }}" @selected(request('reason_category') === $r)>{{ ucwords(str_replace('_', ' ', $r)) }}</option>
@@ -119,17 +119,11 @@
                 </div>
                 <div class="col-md-3 mb-2 mb-md-0">
                     <label>Date From</label>
-                    <input type="date" name="from" value="{{ request('from') }}" class="form-control">
+                    <input type="date" name="from" value="{{ request('from') }}" class="form-control js-auto-filter">
                 </div>
                 <div class="col-md-3 mb-2 mb-md-0">
                     <label>Date To</label>
-                    <input type="date" name="to" value="{{ request('to') }}" class="form-control">
-                </div>
-                <div class="col-md-12 mt-3 d-flex justify-content-end gap-2">
-                    <button type="submit" class="btn btn-primary font-weight-bold px-4 rounded-10 mr-2" style="background: var(--orb-primary); border: none; height: 40px;">
-                        <i class="fas fa-search mr-1"></i> Search
-                    </button>
-                    <a href="{{ route('hrms.attendance.wfh.my') }}" class="ep-btn ep-btn-light"><i class="fas fa-sync-alt"></i> Reset</a>
+                    <input type="date" name="to" value="{{ request('to') }}" class="form-control js-auto-filter">
                 </div>
             </form>
         </div>
@@ -346,6 +340,13 @@
                 document.getElementById('d_rej_at').textContent = fmt(row.rejected_at);
                 document.getElementById('d_rej_reason').textContent = fmt(row.rejection_reason);
                 $('#wfhDetailsModal').modal('show');
+            });
+        });
+
+        document.querySelectorAll('.js-auto-filter').forEach(function(el) {
+            el.addEventListener('change', function() {
+                var form = this.closest('form');
+                if (form) form.submit();
             });
         });
 

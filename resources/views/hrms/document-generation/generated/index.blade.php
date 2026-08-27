@@ -830,7 +830,7 @@
                     <h3 class="att-section-title">
                         <i class="fas fa-file-invoice"></i> Generated Documents List
                     </h3>
-                    <p class="att-section-sub">Filters are attached with this table. Select criteria and click Search.</p>
+                    <p class="att-section-sub">Filters are attached with this table and auto-apply on change/search.</p>
                 </div>
                 <div class="att-head-badges d-flex align-items-center" style="gap: 8px;">
                     <a href="{{ route('hrms.document-generation.generated.index') }}" class="btn btn-light d-flex align-items-center justify-content-center gap-2" style="height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 12.5px; font-weight: 600; color: #475569; padding: 0 14px; margin-right: 6px;">
@@ -856,7 +856,7 @@
                         <!-- Employee Filter -->
                         <div class="att-filter-group">
                             <label>Employee</label>
-                            <select name="employee_id" id="filterEmployee" class="form-select select2-searchable">
+                            <select name="employee_id" id="filterEmployee" class="form-select">
                                 <option value="">All Employees</option>
                                 @foreach($employees as $emp)
                                 <option value="{{ $emp->id }}" {{ request('employee_id') == $emp->id ? 'selected' : '' }}>
@@ -906,16 +906,6 @@
                                 <span class="text-muted small">to</span>
                                 <input type="date" name="end_date" id="filterEndDate" class="form-control" value="{{ request('end_date') }}" style="padding: 0 8px; font-size:12px;">
                             </div>
-                        </div>
-
-                        <!-- Actions -->
-                        <div class="att-filter-group d-flex align-items-end" style="gap: 8px;">
-                            <button type="submit" class="btn text-white font-weight-bold shadow-sm" style="height: 38px; border-radius: 8px; background: var(--orb-primary); border: none; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; flex: 1;">
-                                <i class="fas fa-search"></i> Search
-                            </button>
-                            <a href="{{ route('hrms.document-generation.generated.index') }}" class="btn btn-light border text-secondary font-weight-bold" style="height: 38px; width: 38px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Reset Filters">
-                                <i class="fas fa-undo"></i>
-                            </a>
                         </div>
                     </div>
                 </form>
@@ -1326,7 +1316,25 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
+        const filterForm = document.getElementById('filterForm');
         const searchInput = document.getElementById('filterSearch');
+        const selects = filterForm.querySelectorAll('select, input[type="date"]');
+
+        // Submit form automatically on change of any select or date input
+        selects.forEach(elem => {
+            elem.addEventListener('change', function() {
+                filterForm.submit();
+            });
+        });
+
+        // Keyup debounce for search input to prevent immediate trigger on every keypress
+        let debounceTimer;
+        searchInput.addEventListener('keyup', function() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                filterForm.submit();
+            }, 600);
+        });
 
         // If search value exists, restore cursor focus at the end of the text input
         if (searchInput.value) {

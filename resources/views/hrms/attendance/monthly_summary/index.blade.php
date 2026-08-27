@@ -551,7 +551,7 @@
                         <!-- Employee Filter -->
                         <div>
                             <label>Employee</label>
-                            <select name="employee_id" class="form-control select2-searchable">
+                            <select name="employee_id" class="form-control js-auto-filter">
                                 <option value="">All Employees</option>
                                 @foreach($employees as $emp)
                                 <option value="{{ $emp->id }}" {{ request('employee_id') == $emp->id ? 'selected' : '' }}>
@@ -564,7 +564,7 @@
                         <!-- Month Filter -->
                         <div>
                             <label>Month</label>
-                            <select name="month" class="form-control">
+                            <select name="month" class="form-control js-auto-filter">
                                 <option value="">All Months</option>
                                 @foreach(range(1, 12) as $m)
                                 <option value="{{ $m }}" {{ request('month', now()->month) == $m ? 'selected' : '' }}>
@@ -577,31 +577,18 @@
                         <!-- Year Filter -->
                         <div>
                             <label>Year</label>
-                            <input type="number" name="year" class="form-control" 
+                            <input type="number" name="year" class="form-control js-auto-filter" 
                                    value="{{ request('year', now()->year) }}" placeholder="Enter Year">
                         </div>
 
                         <!-- Locked Filter -->
                         <div>
                             <label>Locked Status</label>
-                            <select name="locked" class="form-control">
+                            <select name="locked" class="form-control js-auto-filter">
                                 <option value="">All Statuses</option>
                                 <option value="1" {{ request('locked') === '1' ? 'selected' : '' }}>Locked</option>
                                 <option value="0" {{ request('locked') === '0' ? 'selected' : '' }}>Unlocked</option>
                             </select>
-                        </div>
-
-                        <!-- Actions -->
-                        <div>
-                            <label>&nbsp;</label>
-                            <div class="d-flex align-items-center" style="gap: 8px;">
-                                <button type="submit" class="btn text-white font-weight-bold shadow-sm" style="height: 42px; border-radius: 12px; background: var(--orb-primary); border: none; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; flex: 1;">
-                                    <i class="fas fa-search"></i> Search
-                                </button>
-                                <a href="{{ route('hrms.attendance.monthly_summary.index') }}" class="btn btn-light border text-secondary font-weight-bold" style="height: 42px; width: 42px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Reset Filters">
-                                    <i class="fas fa-undo"></i>
-                                </a>
-                            </div>
                         </div>
 
                     </div>
@@ -781,6 +768,18 @@
 
 <script>
 $(document).ready(function () {
+    // Auto submit form on filter changes
+    $('.js-auto-filter').on('change keyup', function (e) {
+        if (e.type === 'keyup') {
+            clearTimeout(this.interval);
+            this.interval = setTimeout(function () {
+                $('#filterForm').submit();
+            }, 600);
+        } else {
+            $('#filterForm').submit();
+        }
+    });
+
     // Premium DataTable styling
     if ($.fn.DataTable) {
         $('#summaryDataTable').DataTable({

@@ -64,11 +64,7 @@ class HrmsFileResolverS
         }
 
         $absolute = $resolved['absolute'];
-        $ext = strtolower(pathinfo($absolute, PATHINFO_EXTENSION));
         $mime = mime_content_type($absolute) ?: 'application/octet-stream';
-        if ($ext === 'pdf') {
-            $mime = 'application/pdf';
-        }
 
         return response()->file($absolute, [
             'Content-Type' => $mime,

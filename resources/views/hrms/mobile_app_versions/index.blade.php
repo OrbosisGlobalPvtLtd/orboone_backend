@@ -282,11 +282,11 @@
                 <div class="mobile-filter-grid">
                     <div class="mobile-filter-group">
                         <label>Search Version / Code</label>
-                        <input type="text" id="filterVersionVal" class="mobile-filter-control" placeholder="e.g. 1.0.0" onkeyup="if(event.keyCode === 13) applyApkFilters()">
+                        <input type="text" id="filterVersionVal" class="mobile-filter-control" placeholder="e.g. 1.0.0" onkeyup="applyApkFilters()">
                     </div>
                     <div class="mobile-filter-group">
                         <label>Platform</label>
-                        <select id="filterPlatform" class="mobile-filter-control select2-searchable">
+                        <select id="filterPlatform" class="mobile-filter-control" onchange="applyApkFilters()">
                             <option value="">All Platforms</option>
                             <option value="ANDROID">Android</option>
                             <option value="IOS">iOS</option>
@@ -294,7 +294,7 @@
                     </div>
                     <div class="mobile-filter-group">
                         <label>Force Update</label>
-                        <select id="filterForce" class="mobile-filter-control">
+                        <select id="filterForce" class="mobile-filter-control" onchange="applyApkFilters()">
                             <option value="">All Rules</option>
                             <option value="Yes">Force Update</option>
                             <option value="No">Optional Update</option>
@@ -302,18 +302,15 @@
                     </div>
                     <div class="mobile-filter-group">
                         <label>Active State</label>
-                        <select id="filterActive" class="mobile-filter-control">
+                        <select id="filterActive" class="mobile-filter-control" onchange="applyApkFilters()">
                             <option value="">All States</option>
                             <option value="Active">Active Only</option>
                             <option value="Inactive">Inactive Only</option>
                         </select>
                     </div>
-                    <div class="mobile-filter-group d-flex align-items-end" style="gap: 8px;">
-                        <button type="button" class="btn text-white font-weight-bold shadow-sm" style="height: 42px; border-radius: 12px; background: var(--orb-primary); border: none; padding: 0 16px; display: inline-flex; align-items: center; gap: 6px; font-size: 13px;" onclick="applyApkFilters()">
-                            <i class="fas fa-search"></i> Search
-                        </button>
+                    <div class="mobile-filter-group">
                         <button type="button" class="mobile-filter-reset" onclick="resetApkFilters()">
-                            <i class="fas fa-undo"></i> Reset
+                            <i class="fas fa-undo"></i> Reset Filters
                         </button>
                     </div>
                 </div>

@@ -18,10 +18,6 @@
         </a>
     </li>
 
-    <li class="nav-item">
-        <a href="{{ route('access_control.module_permissions.index') }}" class="nav-link">
-            <i class="fa-solid fa-layer-group mr-2"></i> Module Permissions
-        </a>
-    </li>
+     
 
 </ul>

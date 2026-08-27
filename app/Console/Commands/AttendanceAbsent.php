@@ -44,16 +44,8 @@ class AttendanceAbsent extends Command
     {
         $employees = Employee::where('is_active' , 1)->get();
         $attendances = Attendance::whereBetween('created_at', [Carbon::today('Asia/Jakarta'), Carbon::tomorrow('Asia/Jakarta')])->get();
-        $attendanceTime = AttendanceTime::whereName('OTHER')->first() ?: AttendanceTime::first();
-        $attendanceType = AttendanceType::where('name', 'ABSENT')->orWhere('code', 'absent')->first();
-
-        if (!$attendanceType) {
-            $this->error('Absent attendance type not found.');
-            return self::FAILURE;
-        }
-
-        $attendanceTimeId = $attendanceTime ? $attendanceTime->id : null;
-        $attendanceTypeId = $attendanceType->id;
+        $attendanceTimeId = AttendanceTime::whereName('OTHER')->first()->id;
+        $attendanceTypeId = AttendanceType::where('name', ["ABSENT"])->first()->id;
 
         $eligibilityService = app(\App\Services\HRMS\Employee\EmployeeEligibilityS::class);
 

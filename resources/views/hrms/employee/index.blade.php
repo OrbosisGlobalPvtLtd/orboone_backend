@@ -840,7 +840,7 @@
 
                     <div class="eo-field">
                         <label>Department</label>
-                        <select id="filterDepartment" class="eo-control select2-searchable" style="height: 38px !important;">
+                        <select id="filterDepartment" class="eo-control" style="height: 38px !important;">
                             <option value="">All Departments</option>
                             @foreach ($departments ?? [] as $dept)
                             <option value="{{ $dept->id }}">{{ $dept->name ?? '-' }}</option>
@@ -879,13 +879,6 @@
                             <option value="notice">Notice</option>
                             <option value="inactive">Inactive</option>
                         </select>
-                    </div>
-
-                    <div class="eo-field d-flex align-items-end">
-                        <label>&nbsp;</label>
-                        <button type="button" id="btnEmpFilterSubmit" class="btn text-white font-weight-bold shadow-sm w-100" style="height: 38px; border-radius: 12px; background: var(--orb-primary); border: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px;">
-                            <i class="fas fa-search"></i> Search
-                        </button>
                     </div>
                 </div>
             </div>
@@ -1129,23 +1122,24 @@
             }
         });
 
-        $('#btnEmpFilterSubmit').on('click', function(e) {
-            e.preventDefault();
-            let value = $('#filterSearch').val();
-            table.search(value);
-            table.ajax.reload();
+        let searchTimer = null;
+
+        $('#filterSearch').on('keyup', function() {
+            clearTimeout(searchTimer);
+            let value = this.value;
+
+            searchTimer = setTimeout(function() {
+                table.search(value).draw();
+            }, 300);
         });
 
-        $('#filterSearch').on('keypress', function(e) {
-            if (e.which === 13) {
-                e.preventDefault();
-                $('#btnEmpFilterSubmit').click();
-            }
+        $('#filterDepartment, #filterWorkMode, #filterEmploymentType, #filterStatus').on('change', function() {
+            table.ajax.reload();
         });
 
         $('#resetFilter').on('click', function() {
             $('#filterSearch').val('');
-            $('#filterDepartment').val('').trigger('change');
+            $('#filterDepartment').val('');
             $('#filterWorkMode').val('');
             $('#filterEmploymentType').val('');
             $('#filterStatus').val('');

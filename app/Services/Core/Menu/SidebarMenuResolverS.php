@@ -189,7 +189,7 @@ class SidebarMenuResolverS
 
         $base = DB::table('menus')
             ->where('is_active', 1)
-            ->select('id', 'name', 'route', 'icon', 'module_key', 'permission_key', 'parent_id', 'sort_order', 'is_active')
+            ->select('id', 'name', 'route', 'icon', 'module_key', 'parent_id', 'sort_order', 'is_active')
             ->get();
 
         $menus = collect($base);
@@ -201,7 +201,6 @@ class SidebarMenuResolverS
             'route' => 'project_management.tasks.my',
             'icon' => 'fas fa-user-check',
             'module_key' => 'employee.tasks',
-            'permission_key' => 'tasks.view',
             'parent_id' => 320,
             'sort_order' => 2,
             'is_active' => 1
@@ -213,7 +212,6 @@ class SidebarMenuResolverS
             'route' => 'projects.index',
             'icon' => 'fas fa-project-diagram',
             'module_key' => 'projects.directory',
-            'permission_key' => 'projects.view_all',
             'parent_id' => 320,
             'sort_order' => 1,
             'is_active' => 1
@@ -225,7 +223,6 @@ class SidebarMenuResolverS
             'route' => 'projects.my',
             'icon' => 'fas fa-tasks',
             'module_key' => 'employee.projects',
-            'permission_key' => 'projects.my_projects.view',
             'parent_id' => 320,
             'sort_order' => 3,
             'is_active' => 1
@@ -237,7 +234,6 @@ class SidebarMenuResolverS
             'route' => 'projects.tasks.index',
             'icon' => 'fas fa-list-check',
             'module_key' => 'projects.tasks',
-            'permission_key' => 'projects.tasks.view',
             'parent_id' => 320,
             'sort_order' => 4,
             'is_active' => 1
@@ -292,6 +288,15 @@ class SidebarMenuResolverS
         $allowedIds[] = 9901;
         $allowedIds[] = 9902;
         $allowedIds[] = 9903;
+        $allowedIds[] = 9950;
+        $allowedIds[] = 9951;
+        $allowedIds[] = 9952;
+        $allowedIds[] = 9953;
+        $allowedIds[] = 9954;
+        $allowedIds[] = 9955;
+        $allowedIds[] = 9956;
+        $allowedIds[] = 9957;
+        $allowedIds[] = 9958;
 
         // Always allow Reporting Management (350..360) and Team Management (370..377) containers to pass role filtering
         for ($i = 350; $i <= 377; $i++) {
@@ -322,11 +327,6 @@ class SidebarMenuResolverS
         $menuPermissionMap = $this->menuPermissionMap();
 
         return $menus->filter(function ($menu) use ($user, $menuPermissionMap) {
-            $permKey = (string) ($menu->permission_key ?? '');
-            if ($permKey !== '') {
-                return $user->hasPermission($permKey);
-            }
-
             $route = (string) ($menu->route ?? '');
             if ($route === '' || ! isset($menuPermissionMap[$route])) {
                 return true;

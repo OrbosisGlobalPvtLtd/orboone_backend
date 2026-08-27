@@ -76,16 +76,9 @@ Route::middleware(['auth', 'module:hrms'])
                 $employeeId = (int)$matches[1];
             }
 
-            // 4. Fallback 2: Parse employee_id or employee_code from directory structure: "hrms/employees/CODE_OR_ID/file"
-            if (!$employeeId && preg_match('/hrms[\\/]employees[\\/]([A-Za-z0-9\-]+)/', $path, $matches)) {
-                $codeOrId = $matches[1];
-                if (is_numeric($codeOrId)) {
-                    $employeeId = (int)$codeOrId;
-                } else {
-                    $employeeId = DB::table('employees_new')
-                        ->where(DB::raw('UPPER(TRIM(employee_code))'), strtoupper(trim($codeOrId)))
-                        ->value('id');
-                }
+            // 4. Fallback 2: Parse employee_id from directory structure: "hrms/employees/ID/file"
+            if (!$employeeId && preg_match('/hrms[\\/]employees[\\/](\d+)/', $path, $matches)) {
+                $employeeId = (int)$matches[1];
             }
 
             if (!$employeeId) {
@@ -149,11 +142,7 @@ Route::middleware(['auth', 'module:hrms'])
                 abort(404, 'File not found.');
             }
 
-            $ext = strtolower(pathinfo($resolved['absolute'], PATHINFO_EXTENSION));
             $mime = mime_content_type($resolved['absolute']) ?: 'application/octet-stream';
-            if ($ext === 'pdf') {
-                $mime = 'application/pdf';
-            }
 
             return response()->file($resolved['absolute'], [
                 'Content-Type' => $mime,

@@ -837,69 +837,6 @@
             closeSidebar();
         }
     });
-
-    // Global Select2 Searchable Dropdown Initializer
-    function initSearchableSelects(context) {
-        if (typeof $.fn.select2 === 'undefined') return;
-        const $target = context ? $(context).find('select.select2-searchable, select.js-searchable, select.auto-filter, select.js-auto-filter') : $('select.select2-searchable, select.js-searchable, select.auto-filter, select.js-auto-filter');
-        $target.each(function() {
-            if ($(this).hasClass('select2-hidden-accessible')) return;
-            $(this).select2({
-                placeholder: $(this).attr('placeholder') || 'Search or select employee...',
-                allowClear: true,
-                width: '100%'
-            });
-        });
-    }
-
-    $(document).ready(function() {
-        initSearchableSelects();
-    });
 </script>
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<style>
-    /* Select2 OrboOne Theme Custom Overrides */
-    .select2-container--default .select2-selection--single {
-        height: 42px !important;
-        border-radius: 12px !important;
-        border: 1px solid var(--orb-border, #E7EAF3) !important;
-        background-color: #FFFFFF !important;
-        display: flex !important;
-        align-items: center !important;
-        padding-left: 6px !important;
-    }
-    .select2-container--default .select2-selection--single .select2-selection__rendered {
-        color: #101828 !important;
-        font-weight: 600 !important;
-        font-size: 13px !important;
-        line-height: 40px !important;
-    }
-    .select2-container--default .select2-selection--single .select2-selection__arrow {
-        height: 40px !important;
-        right: 8px !important;
-    }
-    .select2-dropdown {
-        border-radius: 12px !important;
-        border: 1px solid var(--orb-border, #E7EAF3) !important;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.08) !important;
-        overflow: hidden !important;
-        z-index: 1065 !important;
-    }
-    .select2-search--dropdown {
-        padding: 8px !important;
-    }
-    .select2-search--dropdown .select2-search__field {
-        border-radius: 8px !important;
-        border: 1px solid #CBD5E1 !important;
-        padding: 6px 10px !important;
-        font-size: 13px !important;
-        outline: none !important;
-    }
-    .select2-container--default .select2-results__option--highlighted[aria-selected] {
-        background-color: var(--orb-primary, #4B00E8) !important;
-        color: #FFFFFF !important;
-    }
-</style>
 @yield('_script')
 @endsection

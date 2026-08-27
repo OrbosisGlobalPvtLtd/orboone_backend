@@ -6,30 +6,8 @@ use App\Http\Controllers\Web\AccessControl\PermissionC;
 use App\Http\Controllers\Web\AccessControl\AdminUserC;
 use App\Http\Controllers\Web\AccessControl\RolePermissionC;
 use App\Http\Controllers\Web\AccessControl\RoleMenuC;
-use App\Http\Controllers\Web\AccessControl\RbacPolicyMatrixC;
-use App\Http\Controllers\Web\AccessControl\ModulePermissionC;
 
 Route::middleware(['auth', 'web.admin.access'])->group(function () {
-    Route::get('/module-permissions', [ModulePermissionC::class, 'index'])
-        ->middleware('permission:roles.manage|access.roles.manage')
-        ->name('access_control.module_permissions.index');
-    Route::post('/module-permissions/role/{role}', [ModulePermissionC::class, 'updateRole'])
-        ->middleware('permission:roles.manage|access.roles.manage')
-        ->name('access_control.module_permissions.update_role');
-    Route::post('/module-permissions/user/{user}', [ModulePermissionC::class, 'updateUser'])
-        ->middleware('permission:roles.manage|access.roles.manage')
-        ->name('access_control.module_permissions.update_user');
-    Route::post('/module-permissions/profile/{department}', [ModulePermissionC::class, 'updateProfile'])
-        ->middleware('permission:roles.manage|access.roles.manage')
-        ->name('access_control.module_permissions.update_profile');
-
-    Route::get('/policy-matrix', [RbacPolicyMatrixC::class, 'index'])
-        ->middleware('permission:roles.manage|access.roles.manage')
-        ->name('access_control.policy_matrix.index');
-    Route::post('/policy-matrix/{role}', [RbacPolicyMatrixC::class, 'update'])
-        ->middleware('permission:roles.manage|access.roles.manage')
-        ->name('access_control.policy_matrix.update');
-
     Route::get('/roles', [RoleC::class, 'index'])
         ->middleware('permission:roles.manage|access.roles.manage')
         ->name('roles.index');

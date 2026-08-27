@@ -249,7 +249,7 @@
                 </div>
                 <div class="col-md-3 mb-3 mb-md-0">
                     <label class="font-weight-bold text-muted small">Department</label>
-                    <select name="department_id" class="form-control select2-searchable" style="border-radius: 12px; height: 42px;">
+                    <select name="department_id" class="form-control" style="border-radius: 12px; height: 42px;" onchange="this.form.submit()">
                         <option value="">All Departments</option>
                         @foreach ($departments as $id => $name)
                             <option value="{{ $id }}" {{ request('department_id') == $id ? 'selected' : '' }}>{{ $name }}</option>
@@ -258,7 +258,7 @@
                 </div>
                 <div class="col-md-2 mb-3 mb-md-0">
                     <label class="font-weight-bold text-muted small">Web Attendance</label>
-                    <select name="web_attendance" class="form-control" style="border-radius: 12px; height: 42px;">
+                    <select name="web_attendance" class="form-control" style="border-radius: 12px; height: 42px;" onchange="this.form.submit()">
                         <option value="">All</option>
                         <option value="1" {{ request('web_attendance') === '1' ? 'selected' : '' }}>Allowed</option>
                         <option value="0" {{ request('web_attendance') === '0' ? 'selected' : '' }}>Disabled</option>
@@ -266,18 +266,15 @@
                 </div>
                 <div class="col-md-2 mb-3 mb-md-0">
                     <label class="font-weight-bold text-muted small">Mobile Attendance</label>
-                    <select name="mobile_attendance" class="form-control" style="border-radius: 12px; height: 42px;">
+                    <select name="mobile_attendance" class="form-control" style="border-radius: 12px; height: 42px;" onchange="this.form.submit()">
                         <option value="">All</option>
                         <option value="1" {{ request('mobile_attendance') === '1' ? 'selected' : '' }}>Allowed</option>
                         <option value="0" {{ request('mobile_attendance') === '0' ? 'selected' : '' }}>Disabled</option>
                     </select>
                 </div>
-                <div class="col-md-2 d-flex gap-2">
-                    <button type="submit" class="btn text-white font-weight-bold mr-2" style="border-radius: 12px; height: 42px; background: var(--orb-primary); border: none; flex: 1;" title="Search Filters">
-                        <i class="fas fa-search"></i> Search
-                    </button>
-                    <a href="{{ route('attendances.access-control') }}" class="btn btn-outline-secondary font-weight-bold d-flex align-items-center justify-content-center" style="border-radius: 12px; height: 42px; width: 42px; flex-shrink: 0;" title="Reset All Filters">
-                        <i class="fas fa-undo"></i>
+                <div class="col-md-2">
+                    <a href="{{ route('attendances.access-control') }}" class="btn btn-outline-secondary btn-block font-weight-bold d-flex align-items-center justify-content-center" style="border-radius: 12px; height: 42px;" title="Reset All Filters">
+                        <i class="fas fa-undo mr-2"></i> Reset Filter
                     </a>
                 </div>
             </form>

@@ -103,7 +103,6 @@ class MenuSeeder extends Seeder
             ['id' => 150, 'name' => 'Notification Retention', 'route' => 'settings.notification_retention.index', 'icon' => 'fas fa-bell-slash', 'module_key' => 'settings', 'parent_id' => 80, 'sort_order' => 6],
             ['id' => 151, 'name' => 'Mobile App Updates', 'route' => 'hrms.mobile-app-versions.index', 'icon' => 'fas fa-mobile-alt', 'module_key' => 'settings', 'parent_id' => 80, 'sort_order' => 7],
             ['id' => 162, 'name' => 'Exit Policy', 'route' => 'settings.hrms_exit_policies.index', 'icon' => 'fas fa-user-clock', 'module_key' => 'settings', 'parent_id' => 80, 'sort_order' => 8],
-            ['id' => 165, 'name' => 'Laravel Log Viewer', 'route' => 'log-viewer.index', 'icon' => 'fas fa-terminal', 'module_key' => 'settings', 'parent_id' => 80, 'sort_order' => 9],
 
             ['id' => 90, 'name' => 'CRM', 'route' => 'module.crm', 'icon' => 'fas fa-handshake', 'module_key' => 'crm', 'parent_id' => null, 'sort_order' => 90],
             ['id' => 320, 'name' => 'Project Management', 'route' => null, 'icon' => 'fas fa-project-diagram', 'module_key' => 'project_management', 'parent_id' => null, 'sort_order' => 65],

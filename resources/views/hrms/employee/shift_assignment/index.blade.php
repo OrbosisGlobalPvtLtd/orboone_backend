@@ -262,7 +262,7 @@
 
                         <div>
                             <label>Employee</label>
-                            <select name="employee_id" class="form-control select2-searchable">
+                            <select name="employee_id" class="form-control" onchange="this.form.submit()">
                                 <option value="">All Staff</option>
                                 @foreach($allEmployeesList as $empOption)
                                     <option value="{{ $empOption->id }}" {{ request('employee_id') == $empOption->id ? 'selected' : '' }}>
@@ -274,7 +274,7 @@
 
                         <div>
                             <label>Department</label>
-                            <select name="department_id" class="form-control">
+                            <select name="department_id" class="form-control" onchange="this.form.submit()">
                                 <option value="">All Departments</option>
                                 @foreach($departments as $dept)
                                     <option value="{{ $dept->id }}" {{ request('department_id') == $dept->id ? 'selected' : '' }}>{{ $dept->name }}</option>
@@ -284,14 +284,7 @@
 
                         <div>
                             <label>Search Keyword</label>
-                            <input type="text" name="search" class="form-control" placeholder="Search code or name..." value="{{ request('search') }}">
-                        </div>
-
-                        <div>
-                            <label>&nbsp;</label>
-                            <button type="submit" class="btn btn-primary btn-block rounded-12 font-weight-bold" style="height: 44px; background: var(--orb-primary); border: none;">
-                                <i class="fas fa-search mr-1"></i> Search
-                            </button>
+                            <input type="text" name="search" class="form-control" placeholder="Search code or name..." value="{{ request('search') }}" onchange="this.form.submit()">
                         </div>
 
                     </div>

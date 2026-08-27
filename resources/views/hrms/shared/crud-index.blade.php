@@ -937,7 +937,7 @@
                         @if(($filter['type'] ?? 'text') === 'select')
 
                         <select name="{{ $filter['name'] }}"
-                            class="form-control {{ ($filter['name'] ?? '') === 'employee_id' ? 'select2-searchable' : '' }}">
+                            class="form-control js-auto-filter">
 
                             <option value="">
                                 {{ $filter['placeholder'] ?? 'All' }}
@@ -956,7 +956,7 @@
                         <input type="{{ $filter['type'] ?? 'text' }}"
                             name="{{ $filter['name'] }}"
                             value="{{ request($filter['name']) }}"
-                            class="form-control"
+                            class="form-control js-auto-filter"
                             placeholder="{{ $filter['placeholder'] ?? '' }}">
 
                         @endif
@@ -964,12 +964,6 @@
                     </div>
 
                     @endforeach
-
-                    <div class="orb-filter-item d-flex align-items-end" style="gap: 8px;">
-                        <button type="submit" class="btn text-white font-weight-bold shadow-sm w-100" style="height: 42px; border-radius: 12px; background: var(--orb-primary); border: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px;">
-                            <i class="fas fa-search"></i> Search
-                        </button>
-                    </div>
                 </form>
             </div>
             @endif
@@ -1192,6 +1186,30 @@
 <script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap4.min.js"></script>
 
 <script>
+    document.querySelectorAll('.js-auto-filter').forEach(function(input) {
+
+        input.addEventListener('change', function() {
+            document.getElementById('filterForm').submit();
+        });
+
+        if (input.tagName === 'INPUT') {
+
+            let timeout = null;
+
+            input.addEventListener('keyup', function() {
+
+                clearTimeout(timeout);
+
+                timeout = setTimeout(function() {
+                    document.getElementById('filterForm').submit();
+                }, 500);
+
+            });
+
+        }
+
+    });
+
     if (window.jQuery && $.fn.DataTable) {
 
         $('.js-orb-datatable').each(function() {

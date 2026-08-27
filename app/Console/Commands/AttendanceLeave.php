@@ -43,16 +43,8 @@ class AttendanceLeave extends Command
     public function handle()
     {
         $employeeLeaveRequests = EmployeeLeaveRequest::where('status', 'APPROVED')->latest()->get();
-        $attendanceTime = AttendanceTime::whereName('OTHER')->first() ?: AttendanceTime::first();
-        $attendanceType = AttendanceType::where('name', 'ON_LEAVE_DAYS')->orWhere('code', 'leave')->first();
-
-        if (!$attendanceType) {
-            $this->error('Leave attendance type not found.');
-            return self::FAILURE;
-        }
-
-        $attendanceTimeId = $attendanceTime ? $attendanceTime->id : null;
-        $attendanceTypeId = $attendanceType->id;
+        $attendanceTimeId = AttendanceTime::whereName('OTHER')->first()->id;
+        $attendanceTypeId = AttendanceType::where('name', ["ON_LEAVE_DAYS"])->first()->id;
         
         foreach( $employeeLeaveRequests as $leaveReq ) {
             $from = Carbon::parse($leaveReq->from);
@@ -60,12 +52,11 @@ class AttendanceLeave extends Command
 
             if(Carbon::now()->between($from, $to)) {
                 Attendance::create([
-                    'employee_id' => $leaveReq->employee_id,
+                    'employee_id' => $leaveReq->id,
                     'attendance_time_id' => $attendanceTimeId,
                     'attendance_type_id' => $attendanceTypeId
                 ]);
             }
         }
-        return self::SUCCESS;
     }
 }

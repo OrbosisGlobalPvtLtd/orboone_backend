@@ -50,26 +50,23 @@
                 <div class="ac-filter-row">
                     <div class="ac-filter-col">
                         <label class="ac-filter-label">Search Name</label>
-                        <input type="text" id="filterPermName" class="ac-filter-control" placeholder="Search action name..." onkeyup="if(event.keyCode === 13) applyPermissionFilters()">
+                        <input type="text" id="filterPermName" class="ac-filter-control" placeholder="Search action name..." onkeyup="applyPermissionFilters()">
                     </div>
                     <div class="ac-filter-col">
                         <label class="ac-filter-label">Module Filter</label>
-                        <select id="filterPermModule" class="ac-filter-control select2-searchable">
+                        <select id="filterPermModule" class="ac-filter-control" onchange="applyPermissionFilters()">
                             <option value="">All Modules</option>
                         </select>
                     </div>
                     <div class="ac-filter-col">
                         <label class="ac-filter-label">Submodule</label>
-                        <input type="text" id="filterPermSubmodule" class="ac-filter-control" placeholder="Search submodule..." onkeyup="if(event.keyCode === 13) applyPermissionFilters()">
+                        <input type="text" id="filterPermSubmodule" class="ac-filter-control" placeholder="Search submodule..." onkeyup="applyPermissionFilters()">
                     </div>
                     <div class="ac-filter-col">
                         <label class="ac-filter-label">Permission Key</label>
-                        <input type="text" id="filterPermKey" class="ac-filter-control" placeholder="Search slug key..." onkeyup="if(event.keyCode === 13) applyPermissionFilters()">
+                        <input type="text" id="filterPermKey" class="ac-filter-control" placeholder="Search slug key..." onkeyup="applyPermissionFilters()">
                     </div>
-                    <div style="flex: 0 0 auto; display: flex; align-items: flex-end; gap: 8px;">
-                        <button type="button" class="ac-btn text-white font-weight-bold" style="height: 38px; border-radius: 9px; background: var(--orb-primary, #4B00E8); border: none; font-weight: 850; display: inline-flex; align-items: center; gap: 6px; font-size: 12px;" onclick="applyPermissionFilters()">
-                            <i class="fas fa-search"></i> Search
-                        </button>
+                    <div style="flex: 0 0 auto; display: flex; align-items: flex-end;">
                         <button type="button" class="ac-btn" style="height: 38px; border-radius: 9px; background: #F1F5F9; border-color: #E2E8F0; color: #475569; font-weight: 850; display: inline-flex; align-items: center; gap: 6px; font-size: 12px;" onclick="resetPermissionFilters()">
                             <i class="fas fa-undo"></i> Reset
                         </button>

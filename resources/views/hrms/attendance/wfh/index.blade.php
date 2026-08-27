@@ -93,10 +93,10 @@
         </div>
 
         <div class="ep-card-filters">
-            <form method="GET" action="{{ route('hrms.attendance.wfh.index') }}" class="row align-items-end ep-form">
+            <form method="GET" class="row align-items-end ep-form">
                 <div class="col-md-2 mb-2 mb-md-0">
                     <label>Employee</label>
-                    <select name="employee_id" class="form-control select2-searchable">
+                    <select name="employee_id" class="form-control js-auto-filter">
                         <option value="">All Employees</option>
                         @foreach($employees as $emp)
                         <option value="{{ $emp->id }}" @selected(request('employee_id') == $emp->id)>{{ $emp->display_name }}</option>
@@ -105,7 +105,7 @@
                 </div>
                 <div class="col-md-2 mb-2 mb-md-0">
                     <label>Status</label>
-                    <select name="status" class="form-control">
+                    <select name="status" class="form-control js-auto-filter">
                         <option value="">All Status</option>
                         @foreach(['pending','manager_approved','hr_approved','approved','rejected','cancelled'] as $s)
                         <option value="{{ $s }}" @selected(request('status') === $s)>{{ ucwords(str_replace('_', ' ', $s)) }}</option>
@@ -114,7 +114,7 @@
                 </div>
                 <div class="col-md-2 mb-2 mb-md-0">
                     <label>Request Type</label>
-                    <select name="request_type" class="form-control">
+                    <select name="request_type" class="form-control js-auto-filter">
                         <option value="">All Type</option>
                         @foreach(['working_day_wfh','holiday_wfh','weekoff_wfh','company_assigned_wfh'] as $t)
                         <option value="{{ $t }}" @selected(request('request_type') === $t)>{{ ucwords(str_replace('_', ' ', $t)) }}</option>
@@ -123,7 +123,7 @@
                 </div>
                 <div class="col-md-2 mb-2 mb-md-0">
                     <label>Reason Category</label>
-                    <select name="reason_category" class="form-control">
+                    <select name="reason_category" class="form-control js-auto-filter">
                         <option value="">All Reason</option>
                         @foreach(['personal_reason','health_medical','commute_disruption','home_maintenance','severe_weather','focused_work','company_assigned','other'] as $r)
                         <option value="{{ $r }}" @selected(request('reason_category') === $r)>{{ ucwords(str_replace('_', ' ', $r)) }}</option>
@@ -132,16 +132,13 @@
                 </div>
                 <div class="col-md-2 mb-2 mb-md-0">
                     <label>Date From</label>
-                    <input type="date" name="from" value="{{ request('from') }}" class="form-control">
+                    <input type="date" name="from" value="{{ request('from') }}" class="form-control js-auto-filter">
                 </div>
                 <div class="col-md-2 mb-2 mb-md-0">
                     <label>Date To</label>
-                    <input type="date" name="to" value="{{ request('to') }}" class="form-control">
+                    <input type="date" name="to" value="{{ request('to') }}" class="form-control js-auto-filter">
                 </div>
-                <div class="col-md-12 mt-3 d-flex justify-content-end gap-2">
-                    <button type="submit" class="btn btn-primary font-weight-bold px-4 rounded-10 mr-2" style="background: var(--orb-primary); border: none; height: 40px;">
-                        <i class="fas fa-search mr-1"></i> Search
-                    </button>
+                <div class="col-md-12 mt-2 d-flex justify-content-end gap-2">
                     <a href="{{ route('hrms.attendance.wfh.index') }}" class="ep-btn ep-btn-light"><i class="fas fa-sync-alt"></i> Reset</a>
                 </div>
             </form>
@@ -601,6 +598,13 @@
         document.querySelectorAll('.js-open-assign').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 $('#assignWfhModal').modal('show');
+            });
+        });
+
+        document.querySelectorAll('.js-auto-filter').forEach(function(el) {
+            el.addEventListener('change', function() {
+                var form = this.closest('form');
+                if (form) form.submit();
             });
         });
 

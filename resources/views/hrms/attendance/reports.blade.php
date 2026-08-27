@@ -503,7 +503,7 @@
                             <label>Search</label>
                             <input type="text"
                                 name="search"
-                                class="form-control"
+                                class="form-control filter-auto-submit"
                                 placeholder="Employee Name / Code"
                                 value="{{ request('search') }}">
                         </div>
@@ -512,7 +512,7 @@
                             <label>Employee</label>
 
                             <select name="employee_id"
-                                class="form-control select2-searchable">
+                                class="form-control filter-auto-submit">
 
                                 <option value="">All Employees</option>
 
@@ -534,7 +534,7 @@
                             <label>Status</label>
 
                             <select name="attendance_type_id"
-                                class="form-control">
+                                class="form-control filter-auto-submit">
 
                                 <option value="">All Status</option>
 
@@ -556,7 +556,7 @@
                             <label>Shift</label>
 
                             <select name="attendance_time_id"
-                                class="form-control">
+                                class="form-control filter-auto-submit">
 
                                 <option value="">All Shifts</option>
 
@@ -578,7 +578,7 @@
                             <label>Work Mode</label>
 
                             <select name="work_mode"
-                                class="form-control">
+                                class="form-control filter-auto-submit">
 
                                 <option value="">All</option>
 
@@ -599,7 +599,7 @@
                             <label>Flags</label>
 
                             <select name="flag"
-                                class="form-control">
+                                class="form-control filter-auto-submit">
 
                                 <option value="">All Records</option>
 
@@ -631,7 +631,7 @@
 
                             <input type="date"
                                 name="from_date"
-                                class="form-control"
+                                class="form-control filter-auto-submit"
                                 value="{{ request('from_date') }}">
                         </div>
 
@@ -640,7 +640,7 @@
 
                             <input type="date"
                                 name="to_date"
-                                class="form-control"
+                                class="form-control filter-auto-submit"
                                 value="{{ request('to_date') }}">
                         </div>
 
@@ -649,17 +649,18 @@
 
                             <input type="date"
                                 name="date"
-                                class="form-control"
+                                class="form-control filter-auto-submit"
                                 value="{{ request('date') }}">
                         </div>
 
-                        <div class="att-filter-group d-flex align-items-end" style="gap: 8px;">
-                            <button type="submit" class="btn text-white font-weight-bold shadow-sm" style="height: 42px; border-radius: 12px; background: var(--orb-primary); border: none; flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
-                                <i class="fas fa-search"></i> Search
-                            </button>
-                            <a href="{{ route('attendances.daily') }}" class="att-btn att-btn-light" style="height: 42px; width: 42px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Reset Filters">
+                        <div class="att-filter-group d-flex align-items-end">
+
+                            <a href="{{ route('attendances.daily') }}"
+                                class="att-btn att-btn-light w-100">
                                 <i class="fas fa-undo"></i>
+                                Reset
                             </a>
+
                         </div>
 
                     </div>
@@ -950,6 +951,20 @@
                 }
 
             ]
+
+        });
+
+        // AUTO FILTER SUBMIT
+
+        let filterTimer;
+
+        $('.filter-auto-submit').on('change keyup', function() {
+
+            clearTimeout(filterTimer);
+
+            filterTimer = setTimeout(function() {
+                $('form').submit();
+            }, 500);
 
         });
 

@@ -65,15 +65,6 @@ class LeaveAllocationService
             $currentSystemYear = (int) Carbon::now('Asia/Kolkata')->year;
             $isPastYear = $year < $currentSystemYear;
 
-            $monthlyUsed = $allocation->exists ? (float) ($allocation->monthly_used_this_month ?? 0.0) : 0.0;
-            $monthlyCarry = $allocation->exists ? (float) ($allocation->monthly_carry_forward ?? 0.0) : 0.0;
-            $lastMonthProcessed = $allocation->exists ? ($allocation->last_month_processed ?? sprintf('%04d-%02d', $year, 1)) : sprintf('%04d-%02d', $year, 1);
-
-            $paidUsed = $allocation->exists ? (float) ($allocation->paid_used ?? 0.0) : 0.0;
-            $sickUsed = $allocation->exists ? (float) ($allocation->sick_used ?? 0.0) : 0.0;
-            $compOffUsed = $allocation->exists ? (float) ($allocation->comp_off_used ?? 0.0) : 0.0;
-            $lwpUsed = $allocation->exists ? (float) ($allocation->lwp_used ?? 0.0) : 0.0;
-
             $allocation->fill([
                 'policy_id' => $policy->id,
                 'confirmation_date' => $employee->confirmation_date,
@@ -82,14 +73,10 @@ class LeaveAllocationService
                 'total_allocated' => $total,
                 'paid_allocated' => $paid,
                 'sick_allocated' => $sick,
-                'paid_used' => $paidUsed,
-                'sick_used' => $sickUsed,
-                'comp_off_used' => $compOffUsed,
-                'lwp_used' => $lwpUsed,
                 'comp_off_allocated' => (float) ($allocation->comp_off_allocated ?? 0),
-                'monthly_used_this_month' => $monthlyUsed,
-                'monthly_carry_forward' => $monthlyCarry,
-                'last_month_processed' => $lastMonthProcessed,
+                'monthly_used_this_month' => 0.0,
+                'monthly_carry_forward' => 0.0,
+                'last_month_processed' => sprintf('%04d-%02d', $year, 1),
                 'allocation_reason' => "Annual Allocation for {$year}",
                 'is_locked' => $isPastYear,
                 'created_by_user_id' => $userId,

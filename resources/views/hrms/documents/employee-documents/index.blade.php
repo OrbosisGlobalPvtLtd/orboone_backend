@@ -714,12 +714,9 @@
                         </select>
                     </div>
 
-                    <div class="col-lg-2 col-md-12 text-lg-right text-left mt-2 mt-lg-0 d-flex align-items-center" style="gap: 6px;">
-                        <button type="submit" class="btn text-white font-weight-bold shadow-sm" style="font-size: 12px; height: 38px; border-radius: 6px; background: var(--orb-primary); border: none; flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 4px;">
-                            <i class="fas fa-search"></i> Search
-                        </button>
-                        <a href="{{ route('documents.compliance.index') }}" class="btn btn-dark font-weight-bold d-flex align-items-center justify-content-center transition-all" style="font-size: 12px; height: 38px; width: 38px; border-radius: 6px; flex-shrink: 0;" title="Reset Filters">
-                            <i class="fas fa-undo"></i>
+                    <div class="col-lg-1 col-md-12 text-lg-right text-left mt-2 mt-lg-0">
+                        <a href="{{ route('documents.compliance.index') }}" class="btn btn-dark btn-block font-weight-bold d-flex align-items-center justify-content-center transition-all" style="font-size: 12px; height: 38px; border-radius: 6px; white-space: nowrap;">
+                            <i class="fas fa-undo mr-1"></i> Reset
                         </a>
                     </div>
                 </div>
@@ -1061,6 +1058,19 @@
             initComplete: function() {
                 $('.dt-buttons').appendTo('#employeeExportButtons');
             }
+        });
+
+        let searchTimer = null;
+
+        $('#filterSearch').on('keyup', function() {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(function() {
+                $('#complianceFilterForm').submit();
+            }, 500);
+        });
+
+        $('#filterStatus, #filterDepartment, #filterProfileStatus, #filterEmployeeStage, #filterPerPage').on('change', function() {
+            $('#complianceFilterForm').submit();
         });
     });
 </script>

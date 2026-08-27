@@ -10,6 +10,8 @@ class EmployeeLeaveRequestM extends Model
 {
     use HasFactory;
 
+    protected $table = 'employee_leave_requests';
+
     protected $guarded = [];
 
     public function employee(){

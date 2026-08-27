@@ -12,10 +12,14 @@
   <div class="row">
     <div class="col-12 mb-3">
       <div class="bg-light text-dark card p-3 overflow-auto">
-        <div class="d-flex justify-content-between">
-          <a href="{{ route('logs.print') }}" class="btn btn-outline-dark mb-3 w-25" target="_blank">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <a href="{{ route('logs.print') }}" class="btn btn-outline-dark" target="_blank">
             <i class="fas fa-print mr-1"></i>
-              <span> Print</span>
+              <span> Print Audit Logs</span>
+          </a>
+          <a href="{{ route('log-viewer.index') }}" class="btn btn-primary">
+            <i class="fas fa-terminal mr-1"></i>
+              <span> Open Laravel Log Viewer</span>
           </a>
         </div>
 

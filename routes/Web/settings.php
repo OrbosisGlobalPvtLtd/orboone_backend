@@ -3,6 +3,7 @@
 use App\Http\Controllers\Web\HRMS\Announcement\AnnouncementsC;
 use App\Http\Controllers\Web\Settings\CompanySettingsController;
 use App\Http\Controllers\Web\Settings\LogsController;
+use App\Http\Controllers\Web\Settings\LaravelLogViewerController;
 use App\Http\Controllers\Web\Settings\ProfilesController;
 use App\Http\Controllers\Web\Settings\PolicyChangeLogC;
 use App\Http\Controllers\Web\Settings\EmployeePolicyAssignmentC;
@@ -36,11 +37,17 @@ Route::middleware(['auth', 'check.access'])->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | Logs
+    | Logs & System Log Viewer
     |--------------------------------------------------------------------------
     */
     Route::get('/logs', [LogsController::class, 'index'])->name('logs');
     Route::get('/logs/print', [LogsController::class, 'print'])->name('logs.print');
+
+    Route::get('/log-viewer', [LaravelLogViewerController::class, 'index'])->name('log-viewer.index');
+    Route::get('/log-viewer/download', [LaravelLogViewerController::class, 'download'])->name('log-viewer.download');
+    Route::post('/log-viewer/clear', [LaravelLogViewerController::class, 'clear'])->name('log-viewer.clear');
+    Route::post('/log-viewer/delete', [LaravelLogViewerController::class, 'delete'])->name('log-viewer.delete');
+    Route::get('/settings/laravel-log-viewer', [LaravelLogViewerController::class, 'index'])->name('settings.laravel-log-viewer.index');
 
     /*
     |--------------------------------------------------------------------------

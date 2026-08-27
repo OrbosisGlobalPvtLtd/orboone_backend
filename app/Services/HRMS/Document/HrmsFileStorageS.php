@@ -63,13 +63,19 @@ class HrmsFileStorageS
     public function storeEmployeeDocument(EmployeeM $employee, DocumentTypeM|string $type, UploadedFile $file): array
     {
         $ext = strtolower($file->getClientOriginalExtension());
-        $mime = $file->getMimeType();
+        $mime = strtolower((string)$file->getMimeType());
         
         $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'doc', 'docx'];
         $allowedMimes = [
             'application/pdf',
+            'application/x-pdf',
+            'application/acrobat',
+            'applications/vnd.pdf',
+            'text/pdf',
             'image/jpeg',
+            'image/pjpeg',
             'image/png',
+            'image/x-png',
             'image/webp',
             'application/msword',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
@@ -147,13 +153,19 @@ class HrmsFileStorageS
     public function archiveOrReplaceEmployeeDocument(EmployeeM $employee, DocumentTypeM|string $type, UploadedFile $file): array
     {
         $ext = strtolower($file->getClientOriginalExtension());
-        $mime = $file->getMimeType();
+        $mime = strtolower((string)$file->getMimeType());
         
         $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'doc', 'docx'];
         $allowedMimes = [
             'application/pdf',
+            'application/x-pdf',
+            'application/acrobat',
+            'applications/vnd.pdf',
+            'text/pdf',
             'image/jpeg',
+            'image/pjpeg',
             'image/png',
+            'image/x-png',
             'image/webp',
             'application/msword',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document'

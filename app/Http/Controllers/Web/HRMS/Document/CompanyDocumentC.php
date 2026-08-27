@@ -44,8 +44,9 @@ class CompanyDocumentC extends Controller
     public function destroy($id)
     {
         $doc = CompanyDocumentModal::findOrFail($id);
-        // Optionally delete file from storage if you want:
-        // \Illuminate\Support\Facades\Storage::disk('public')->delete($doc->file_path);
+        if ($doc->file_path && \Illuminate\Support\Facades\Storage::disk('private')->exists($doc->file_path)) {
+            \Illuminate\Support\Facades\Storage::disk('private')->delete($doc->file_path);
+        }
         $doc->delete();
         return back()->with('success', 'Policy removed successfully.');
     }

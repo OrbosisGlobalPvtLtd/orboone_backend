@@ -19,7 +19,7 @@ class MarkHolidays extends Command
     {
         $dateStr = $this->argument('date') ?: Carbon::now($attendanceService->attendanceTimezone())->toDateString();
         
-        $isHoliday = Holiday::whereDate('date', $dateStr)->where('is_active', true)->exists();
+        $isHoliday = Holiday::whereDate('holiday_date', $dateStr)->where('is_active', true)->exists();
         
         if (!$isHoliday) {
             $this->info("{$dateStr} is not a holiday. Skipping.");

@@ -24,8 +24,15 @@ class ProcessLateMarks extends Command
             $shift = $attendance->attendanceTime ?: AttendanceTime::where('is_default', true)->first();
             if (!$shift) continue;
 
-            $punchIn = Carbon::parse($date . ' ' . $attendance->punch_in_time, $attendanceService->attendanceTimezone());
-            $lateTime = Carbon::parse($date . ' ' . $shift->late_after_time, $attendanceService->attendanceTimezone());
+            $punchInStr = str_contains($attendance->punch_in_time, '-') 
+                ? $attendance->punch_in_time 
+                : ($date . ' ' . $attendance->punch_in_time);
+            $punchIn = Carbon::parse($punchInStr, $attendanceService->attendanceTimezone());
+
+            $lateTimeStr = str_contains($shift->late_after_time, '-') 
+                ? $shift->late_after_time 
+                : ($date . ' ' . $shift->late_after_time);
+            $lateTime = Carbon::parse($lateTimeStr, $attendanceService->attendanceTimezone());
 
             $isLate = $punchIn->gt($lateTime);
             if ($attendance->is_late !== $isLate) {

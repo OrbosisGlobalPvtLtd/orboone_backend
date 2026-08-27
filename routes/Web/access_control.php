@@ -6,8 +6,16 @@ use App\Http\Controllers\Web\AccessControl\PermissionC;
 use App\Http\Controllers\Web\AccessControl\AdminUserC;
 use App\Http\Controllers\Web\AccessControl\RolePermissionC;
 use App\Http\Controllers\Web\AccessControl\RoleMenuC;
+use App\Http\Controllers\Web\AccessControl\RbacPolicyMatrixC;
 
 Route::middleware(['auth', 'web.admin.access'])->group(function () {
+    Route::get('/policy-matrix', [RbacPolicyMatrixC::class, 'index'])
+        ->middleware('permission:roles.manage|access.roles.manage')
+        ->name('access_control.policy_matrix.index');
+    Route::post('/policy-matrix/{role}', [RbacPolicyMatrixC::class, 'update'])
+        ->middleware('permission:roles.manage|access.roles.manage')
+        ->name('access_control.policy_matrix.update');
+
     Route::get('/roles', [RoleC::class, 'index'])
         ->middleware('permission:roles.manage|access.roles.manage')
         ->name('roles.index');

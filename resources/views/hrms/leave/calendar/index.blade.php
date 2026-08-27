@@ -442,7 +442,7 @@
                 <div class="row align-items-end g-2">
                     <div class="col-12 col-md-2">
                         <label style="font-size: 10px; font-weight: 850; color: var(--orb-muted); text-transform: uppercase; margin-bottom: 6px; display: block; letter-spacing: 0.5px;">Department</label>
-                        <select name="department_id" class="form-select" onchange="this.form.submit()">
+                        <select name="department_id" class="form-select">
                             <option value="">All Departments</option>
                             @foreach($departments as $dept)
                                 <option value="{{ $dept->id }}" {{ request('department_id') == $dept->id ? 'selected' : '' }}>{{ $dept->name }}</option>
@@ -451,7 +451,7 @@
                     </div>
                     <div class="col-12 col-md-2">
                         <label style="font-size: 10px; font-weight: 850; color: var(--orb-muted); text-transform: uppercase; margin-bottom: 6px; display: block; letter-spacing: 0.5px;">Employee</label>
-                        <select name="employee_id" class="form-select" onchange="this.form.submit()">
+                        <select name="employee_id" class="form-select select2-searchable">
                             <option value="">All Employees</option>
                             @foreach($employees as $emp)
                                 <option value="{{ $emp->id }}" {{ request('employee_id') == $emp->id ? 'selected' : '' }}>{{ $emp->display_name }} ({{ $emp->employee_code }})</option>
@@ -460,7 +460,7 @@
                     </div>
                     <div class="col-12 col-md-2">
                         <label style="font-size: 10px; font-weight: 850; color: var(--orb-muted); text-transform: uppercase; margin-bottom: 6px; display: block; letter-spacing: 0.5px;">Leave Type</label>
-                        <select name="leave_type_id" class="form-select" onchange="this.form.submit()">
+                        <select name="leave_type_id" class="form-select">
                             <option value="">All Types</option>
                             @foreach($leaveTypes as $type)
                                 <option value="{{ $type->id }}" {{ request('leave_type_id') == $type->id ? 'selected' : '' }}>{{ $type->name }}</option>
@@ -469,7 +469,7 @@
                     </div>
                     <div class="col-12 col-md-2">
                         <label style="font-size: 10px; font-weight: 850; color: var(--orb-muted); text-transform: uppercase; margin-bottom: 6px; display: block; letter-spacing: 0.5px;">Status</label>
-                        <select name="status" class="form-select" onchange="this.form.submit()">
+                        <select name="status" class="form-select">
                             <option value="" {{ request('status') === null || request('status') === '' ? 'selected' : '' }}>All Statuses (Active)</option>
                             <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Pending</option>
                             <option value="approved" {{ request('status') === 'approved' ? 'selected' : '' }}>Approved</option>
@@ -480,19 +480,22 @@
                     <div class="col-12 col-md-2">
                         <label style="font-size: 10px; font-weight: 850; color: var(--orb-muted); text-transform: uppercase; margin-bottom: 6px; display: block; letter-spacing: 0.5px;">Month &amp; Year</label>
                         <div class="d-flex gap-1">
-                            <select name="month" class="form-select" onchange="this.form.submit()">
+                            <select name="month" class="form-select">
                                 @for($m = 1; $m <= 12; $m++)
                                     <option value="{{ $m }}" {{ $selectedMonth == $m ? 'selected' : '' }}>{{ date('F', mktime(0, 0, 0, $m, 1)) }}</option>
                                 @endfor
                             </select>
-                            <select name="year" class="form-select" onchange="this.form.submit()">
+                            <select name="year" class="form-select">
                                 @for($y = today()->year - 2; $y <= today()->year + 2; $y++)
                                     <option value="{{ $y }}" {{ $selectedYear == $y ? 'selected' : '' }}>{{ $y }}</option>
                                 @endfor
                             </select>
                         </div>
                     </div>
-                    <div class="col-12 col-md-2">
+                    <div class="col-12 col-md-2 d-flex gap-2">
+                        <button type="submit" class="btn text-white w-100" style="height: 40px; border-radius: 12px; background: var(--orb-primary); font-weight: 800; font-size: 13px; border: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                            <i class="fas fa-search"></i> Search
+                        </button>
                         <a href="{{ route('hrms.leave.team_calendar.index') }}" class="btn btn-light w-100" style="height: 40px; border-radius: 12px; border: 1px solid var(--orb-border); background: #fff; color: var(--orb-primary); font-weight: 800; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
                             <i class="fas fa-undo"></i> Reset
                         </a>

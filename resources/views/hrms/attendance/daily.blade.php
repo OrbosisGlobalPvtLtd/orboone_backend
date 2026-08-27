@@ -473,6 +473,13 @@
                             </select>
                         </div>
 
+                        <div>
+                            <label>&nbsp;</label>
+                            <button type="submit" id="btnDailyFilterSubmit" class="btn btn-primary btn-block rounded-12 font-weight-bold" style="height: 44px; background: var(--orb-primary); border: none;">
+                                <i class="fas fa-search mr-1"></i> Search
+                            </button>
+                        </div>
+
                     </div>
                 </form>
             </div>
@@ -792,64 +799,40 @@
         $('.orb-table-footer .footer-left').append($('.dataTables_info'));
         $('.orb-table-footer .footer-right').append($('.dataTables_paginate'));
 
-        // Auto-apply filters
-        $('select[name="employee_id"]').on('change', function() {
-            var val = $(this).val();
-            if (!val) {
-                table.column(0).search('').draw();
+        // Apply filters on Search button submit
+        function applyDailyFilters() {
+            var empVal = $('select[name="employee_id"]').val();
+            if (!empVal) {
+                table.column(0).search('');
             } else {
-                var text = $(this).find('option:selected').text().trim();
-                table.column(0).search(text).draw();
+                var text = $('select[name="employee_id"]').find('option:selected').text().trim();
+                table.column(0).search(text);
             }
-        });
 
-        // From Date / To Date search logic
-        $.fn.dataTable.ext.search.push(
-            function(settings, data, dataIndex) {
-                if (settings.nTable.id !== 'attendanceRecordsTable') return true;
-                
-                var min = $('input[name="from_date"]').val();
-                var max = $('input[name="to_date"]').val();
-                var dateStr = data[1];
-                
-                if (!dateStr || dateStr === '-') return true;
-                
-                var date = parseDate(dateStr);
-                if (!date || isNaN(date.getTime())) return true;
-                
-                if (min) {
-                    var minDate = new Date(min);
-                    minDate.setHours(0,0,0,0);
-                    if (date < minDate) return false;
-                }
-                if (max) {
-                    var maxDate = new Date(max);
-                    maxDate.setHours(23,59,59,999);
-                    if (date > maxDate) return false;
-                }
-                return true;
+            var typeVal = $('select[name="attendance_type_id"]').val();
+            if (!typeVal) {
+                table.column(9).search('');
+            } else {
+                var typeText = $('select[name="attendance_type_id"]').find('option:selected').text().trim();
+                table.column(9).search(typeText);
             }
-        );
 
-        $('input[name="from_date"], input[name="to_date"]').on('change', function() {
+            var modeVal = $('select[name="work_mode"]').val();
+            table.column(2).search(modeVal ? modeVal : '');
+
+            var flagVal = $('select[name="flag"]').val();
+            if (!flagVal) {
+                table.column(10).search('');
+            } else {
+                table.column(10).search(flagVal);
+            }
+
             table.draw();
-        });
+        }
 
-        // Status filter
-        $('select[name="attendance_type_id"]').on('change', function() {
-            var val = $(this).val();
-            if (!val) {
-                table.column(9).search('').draw();
-            } else {
-                var text = $(this).find('option:selected').text().trim();
-                table.column(9).search(text).draw();
-            }
-        });
-
-        // Work Mode filter
-        $('select[name="work_mode"]').on('change', function() {
-            var val = $(this).val();
-            table.column(2).search(val ? val : '').draw();
+        $('#attendanceFilterForm').on('submit', function(e) {
+            e.preventDefault();
+            applyDailyFilters();
         });
 
         // Flags filter

@@ -934,7 +934,7 @@
 
                         <div class="orb-filter-item">
                             <label>Department</label>
-                            <select name="department_id" class="form-control auto-filter">
+                            <select name="department_id" class="form-control select2-searchable">
                                 <option value="">All Departments</option>
                                 @foreach($departments as $department)
                                     <option value="{{ $department->id }}" {{ request('department_id') == $department->id ? 'selected' : '' }}>
@@ -944,6 +944,12 @@
                             </select>
                         </div>
                         @endif
+
+                        <div class="orb-filter-item align-self-end">
+                            <button type="submit" class="btn btn-primary font-weight-bold px-4 rounded-10" style="height: 42px; background: var(--orb-primary); border: none;">
+                                <i class="fas fa-search mr-1"></i> Search
+                            </button>
+                        </div>
 
                     </form>
                 </div>
@@ -1070,14 +1076,6 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const form = document.getElementById('monthlyAttendanceFilterForm');
-
-        document.querySelectorAll('.auto-filter').forEach(function(item) {
-            item.addEventListener('change', function() {
-                if (form) {
-                    form.submit();
-                }
-            });
-        });
 
         if (window.jQuery && $.fn.DataTable) {
             if ($.fn.DataTable.isDataTable('#monthlyAttendanceDataTable')) {

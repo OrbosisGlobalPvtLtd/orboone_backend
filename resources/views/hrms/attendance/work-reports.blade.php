@@ -547,6 +547,13 @@
                             <label>Search Keyword</label>
                             <input type="text" name="search" id="filterSearch" class="form-control" placeholder="Search tasks or summary...">
                         </div>
+
+                        <div>
+                            <label>&nbsp;</label>
+                            <button type="submit" id="btnFilterSubmit" class="btn btn-primary btn-block rounded-12 font-weight-bold" style="height: 44px; background: var(--orb-primary); border: none;">
+                                <i class="fas fa-search mr-1"></i> Search
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -973,8 +980,13 @@
             $('#cardsCountLabel').text(`Showing ${visibleCount} Employees`);
         }
 
-        $('#filterEmployee, #filterSearch, #filterFromDate, #filterToDate').on('input change', function() {
+        $('#reportFilterForm').on('submit', function(e) {
+            e.preventDefault();
             filterEmployeeCards();
+            if (typeof table !== 'undefined') {
+                const searchVal = $('#filterSearch').val();
+                table.search(searchVal).draw();
+            }
         });
     });
 </script>

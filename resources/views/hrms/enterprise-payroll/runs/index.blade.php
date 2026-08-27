@@ -65,7 +65,7 @@
             <form method="GET" action="{{ route('enterprise-payroll.runs.index') }}" class="row align-items-end ep-form" id="filterForm">
                 <div class="col-md-3 mb-2 mb-md-0">
                     <label>Month</label>
-                    <select name="month" class="form-control" onchange="this.form.submit()">
+                    <select name="month" class="form-control">
                         <option value="">All Months</option>
                         @for($i=1; $i<=12; $i++)
                             <option value="{{ $i }}" {{ request('month') == $i ? 'selected' : '' }}>{{ \Carbon\Carbon::create()->month($i)->format('F') }}</option>
@@ -74,11 +74,11 @@
                 </div>
                 <div class="col-md-3 mb-2 mb-md-0">
                     <label>Year</label>
-                    <input type="number" name="year" class="form-control" value="{{ request('year') }}" onkeyup="if(event.keyCode === 13) this.form.submit()" placeholder="Year">
+                    <input type="number" name="year" class="form-control" value="{{ request('year') }}" placeholder="Year">
                 </div>
                 <div class="col-md-3 mb-2 mb-md-0">
                     <label>Status</label>
-                    <select name="status" class="form-control" onchange="this.form.submit()">
+                    <select name="status" class="form-control">
                         <option value="">All Status</option>
                         <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
                         <option value="processed" {{ request('status') == 'processed' ? 'selected' : '' }}>Processed</option>
@@ -86,7 +86,10 @@
                         <option value="locked" {{ request('status') == 'locked' ? 'selected' : '' }}>Locked</option>
                     </select>
                 </div>
-                <div class="col-md-3 text-right">
+                <div class="col-md-3 text-right d-flex gap-2">
+                    <button type="submit" class="btn btn-primary font-weight-bold px-3 w-100 mr-2" style="background: var(--orb-primary); border: none; height: 42px; border-radius: 10px;">
+                        <i class="fas fa-search mr-1"></i> Search
+                    </button>
                     <a href="{{ route('enterprise-payroll.runs.index') }}" class="ep-btn ep-btn-light w-100"><i class="fas fa-sync-alt"></i> Reset</a>
                 </div>
             </form>

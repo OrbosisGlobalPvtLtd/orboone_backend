@@ -41,7 +41,7 @@
             <form method="GET" action="{{ route('enterprise-payroll.salary-structures.index') }}" class="row align-items-end ep-form" id="filterForm">
                 <div class="col-md-4 mb-2 mb-md-0">
                     <label>Employee</label>
-                    <select name="employee_id" class="form-control" onchange="this.form.submit()">
+                    <select name="employee_id" class="form-control select2-searchable">
                         <option value="">All Employees</option>
                         @foreach($employees as $employee)
                             <option value="{{ $employee->id }}" {{ request('employee_id') == $employee->id ? 'selected' : '' }}>{{ $employee->display_name }}</option>
@@ -50,7 +50,7 @@
                 </div>
                 <div class="col-md-3 mb-2 mb-md-0">
                     <label>Stage</label>
-                    <select name="stage" class="form-control" onchange="this.form.submit()">
+                    <select name="stage" class="form-control">
                         <option value="">All Stages</option>
                         <option value="probation" {{ request('stage') == 'probation' ? 'selected' : '' }}>Probation</option>
                         <option value="permanent" {{ request('stage') == 'permanent' ? 'selected' : '' }}>Permanent</option>
@@ -59,13 +59,16 @@
                 </div>
                 <div class="col-md-3 mb-2 mb-md-0">
                     <label>Status</label>
-                    <select name="status" class="form-control" onchange="this.form.submit()">
+                    <select name="status" class="form-control">
                         <option value="">All Status</option>
                         <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Active</option>
                         <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
                     </select>
                 </div>
-                <div class="col-md-2 text-right">
+                <div class="col-md-2 text-right d-flex gap-2">
+                    <button type="submit" class="btn btn-primary font-weight-bold px-2 w-100 mr-1" style="background: var(--orb-primary); border: none; height: 42px; border-radius: 10px;">
+                        <i class="fas fa-search"></i> Search
+                    </button>
                     <a href="{{ route('enterprise-payroll.salary-structures.index') }}" class="ep-btn ep-btn-light w-100"><i class="fas fa-sync-alt"></i> Reset</a>
                 </div>
             </form>

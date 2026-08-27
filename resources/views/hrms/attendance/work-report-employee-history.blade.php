@@ -210,17 +210,20 @@
                 <form method="GET" action="{{ route('work-reports.employee-history', $employee->id) }}" class="row align-items-end">
                     <div class="col-md-3 mb-2 mb-md-0">
                         <label class="font-weight-bold text-muted small text-uppercase mb-1">From Date</label>
-                        <input type="date" name="from_date" class="form-control rounded-10" value="{{ request('from_date') }}" onchange="this.form.submit()">
+                        <input type="date" name="from_date" class="form-control rounded-10" value="{{ request('from_date') }}">
                     </div>
                     <div class="col-md-3 mb-2 mb-md-0">
                         <label class="font-weight-bold text-muted small text-uppercase mb-1">To Date</label>
-                        <input type="date" name="to_date" class="form-control rounded-10" value="{{ request('to_date') }}" onchange="this.form.submit()">
+                        <input type="date" name="to_date" class="form-control rounded-10" value="{{ request('to_date') }}">
                     </div>
-                    <div class="col-md-4 mb-2 mb-md-0">
+                    <div class="col-md-3 mb-2 mb-md-0">
                         <label class="font-weight-bold text-muted small text-uppercase mb-1">Search Keyword</label>
                         <input type="text" id="dtSearchInput" class="form-control rounded-10" placeholder="Search tasks or summary...">
                     </div>
-                    <div class="col-md-2 text-md-right">
+                    <div class="col-md-3 text-md-right d-flex align-items-end justify-content-end">
+                        <button type="submit" class="btn btn-primary rounded-10 font-weight-bold px-3 mr-2" style="background: var(--orb-primary); border: none;">
+                            <i class="fas fa-search mr-1"></i> Search
+                        </button>
                         <a href="{{ route('work-reports.employee-history', $employee->id) }}" class="btn btn-outline-secondary rounded-10 font-weight-bold px-3">
                             <i class="fas fa-undo mr-1"></i> Reset
                         </a>

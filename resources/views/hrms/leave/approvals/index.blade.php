@@ -356,12 +356,12 @@
                 </div>
             </div>
 
-            <!-- Instant Auto-Submit Filter Toolbar Bar (Without Filter Button) -->
+            <!-- Filter Toolbar Bar -->
             <div class="p-3 border-bottom bg-white">
                 <form method="GET" action="{{ route('leave-approvals.index') }}" class="d-flex flex-wrap align-items-center justify-content-between" style="gap: 10px;">
                     <div class="d-flex align-items-center flex-wrap" style="gap: 8px; flex: 1;">
                         <!-- Status / Stage Filter -->
-                        <select name="status" class="filter-control-sm" style="min-width: 170px; height: 36px; border-radius: 8px;" onchange="this.form.submit()">
+                        <select name="status" class="filter-control-sm" style="min-width: 170px; height: 36px; border-radius: 8px;">
                             <option value="" {{ request('status') == '' ? 'selected' : '' }}>⏳ Pending Requests (Default)</option>
                             <option value="pending_manager" {{ request('status') == 'pending_manager' ? 'selected' : '' }}>🟠 Pending Manager</option>
                             <option value="pending_hr" {{ request('status') == 'pending_hr' ? 'selected' : '' }}>🔵 Pending HR</option>
@@ -371,7 +371,7 @@
                         </select>
 
                         <!-- Employee Filter -->
-                        <select name="employee_id" class="filter-control-sm" style="min-width: 160px; height: 36px; border-radius: 8px;" onchange="this.form.submit()">
+                        <select name="employee_id" class="filter-control-sm select2-searchable" style="min-width: 160px; height: 36px; border-radius: 8px;">
                             <option value="">All Employees</option>
                             @foreach($employees as $emp)
                                 <option value="{{ $emp->id }}" {{ request('employee_id') == $emp->id ? 'selected' : '' }}>
@@ -382,7 +382,7 @@
 
                         <!-- Reporting Manager Filter -->
                         @if(!empty($reportingManagers) && count($reportingManagers) > 0)
-                            <select name="reporting_manager_id" class="filter-control-sm" style="min-width: 160px; height: 36px; border-radius: 8px;" onchange="this.form.submit()">
+                            <select name="reporting_manager_id" class="filter-control-sm select2-searchable" style="min-width: 160px; height: 36px; border-radius: 8px;">
                                 <option value="">All Managers</option>
                                 @foreach($reportingManagers as $rm)
                                     <option value="{{ $rm->id }}" {{ request('reporting_manager_id') == $rm->id ? 'selected' : '' }}>
@@ -393,7 +393,7 @@
                         @endif
 
                         <!-- Leave Type Filter -->
-                        <select name="leave_type_id" class="filter-control-sm" style="min-width: 140px; height: 36px; border-radius: 8px;" onchange="this.form.submit()">
+                        <select name="leave_type_id" class="filter-control-sm" style="min-width: 140px; height: 36px; border-radius: 8px;">
                             <option value="">Leave Type</option>
                             @foreach($leaveTypes as $lt)
                                 <option value="{{ $lt->id }}" {{ request('leave_type_id') == $lt->id ? 'selected' : '' }}>
@@ -403,10 +403,13 @@
                         </select>
 
                         <!-- Search Input -->
-                        <input type="text" name="search" value="{{ request('search') }}" class="filter-control-sm" style="min-width: 170px; height: 36px; border-radius: 8px;" placeholder="Search employee..." onchange="this.form.submit()">
+                        <input type="text" name="search" value="{{ request('search') }}" class="filter-control-sm" style="min-width: 170px; height: 36px; border-radius: 8px;" placeholder="Search employee...">
                     </div>
 
                     <div class="d-flex align-items-center" style="gap: 8px;">
+                        <button type="submit" class="btn btn-sm text-white font-weight-bold" style="height: 36px; border-radius: 8px; padding: 0 16px; background: var(--orb-primary); border: none; display: inline-flex; align-items: center; gap: 6px;">
+                            <i class="fas fa-search" style="font-size: 11px;"></i> Search
+                        </button>
                         <a href="{{ route('leave-approvals.index') }}" class="btn btn-sm btn-outline-secondary font-weight-bold" style="height: 36px; border-radius: 8px; padding: 0 14px; display: inline-flex; align-items: center; gap: 6px;">
                             <i class="fas fa-undo" style="font-size: 11px;"></i> Reset
                         </a>

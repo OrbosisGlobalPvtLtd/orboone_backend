@@ -111,6 +111,16 @@ class RoleMenuC extends Controller
             $permissionSyncService->syncRolePermissionsFromMenus((int) $roleData->id, $validMenuIds);
         });
 
+        // Clear sidebar cache for users assigned to this role
+        $userIds = DB::table('users')->where('system_role_id', $roleData->id)->pluck('id');
+        if (Schema::hasTable('user_roles')) {
+            $userIds = $userIds->merge(DB::table('user_roles')->where('role_id', $roleData->id)->pluck('user_id'));
+        }
+        $sidebarService = app(SidebarS::class);
+        foreach ($userIds->unique() as $uid) {
+            $sidebarService->clearCache((int) $uid);
+        }
+
         return redirect()
             ->route('role_menus.index')
             ->with('success', 'Role menu access & permissions synchronized successfully.');

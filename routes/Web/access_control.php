@@ -19,6 +19,9 @@ Route::middleware(['auth', 'web.admin.access'])->group(function () {
     Route::post('/module-permissions/user/{user}', [ModulePermissionC::class, 'updateUser'])
         ->middleware('permission:roles.manage|access.roles.manage')
         ->name('access_control.module_permissions.update_user');
+    Route::post('/module-permissions/position/{designation}', [ModulePermissionC::class, 'updatePosition'])
+        ->middleware('permission:roles.manage|access.roles.manage')
+        ->name('access_control.module_permissions.update_position');
     Route::post('/module-permissions/profile/{department}', [ModulePermissionC::class, 'updateProfile'])
         ->middleware('permission:roles.manage|access.roles.manage')
         ->name('access_control.module_permissions.update_profile');

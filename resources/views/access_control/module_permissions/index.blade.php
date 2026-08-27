@@ -157,15 +157,19 @@
 
     <!-- Navigation Scope Tabs -->
     <div class="perm-nav-tabs">
-        <a href="{{ route('access_control.module_permissions.index', ['tab' => 'role', 'role_id' => $selectedRoleId]) }}" 
+        <a href="{{ route('access_control.module_permissions.index', ['tab' => 'role', 'role_id' => $selectedRoleId]) }}"
            class="perm-tab-item {{ $tab === 'role' ? 'active' : '' }}">
             <i class="fas fa-user-shield"></i> Permissions By Role
         </a>
-        <a href="{{ route('access_control.module_permissions.index', ['tab' => 'user', 'user_id' => $selectedUserId]) }}" 
+        <a href="{{ route('access_control.module_permissions.index', ['tab' => 'user', 'user_id' => $selectedUserId]) }}"
            class="perm-tab-item {{ $tab === 'user' ? 'active' : '' }}">
             <i class="fas fa-user-cog"></i> Permissions By User (Overrides)
         </a>
-        <a href="{{ route('access_control.module_permissions.index', ['tab' => 'profile', 'department_id' => $selectedDepartmentId]) }}" 
+        <a href="{{ route('access_control.module_permissions.index', ['tab' => 'position', 'designation_id' => $selectedDesignationId]) }}"
+           class="perm-tab-item {{ $tab === 'position' ? 'active' : '' }}">
+            <i class="fas fa-user-tie"></i> Permissions By Position / Designation
+        </a>
+        <a href="{{ route('access_control.module_permissions.index', ['tab' => 'profile', 'department_id' => $selectedDepartmentId]) }}"
            class="perm-tab-item {{ $tab === 'profile' ? 'active' : '' }}">
             <i class="fas fa-id-card"></i> Permissions By Profile / Department
         </a>
@@ -205,6 +209,28 @@
                             @foreach($users as $u)
                                 <option value="{{ $u->id }}" {{ (int)$selectedUserId === (int)$u->id ? 'selected' : '' }}>
                                     {{ $u->name }} ({{ $u->email }})
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-3 mb-2 mb-md-0">
+                        <button type="submit" class="btn btn-primary font-weight-bold px-4 rounded-12 shadow-sm" style="height: 48px; background: var(--orb-primary); border: none;">
+                            <i class="fas fa-search mr-1"></i> Search
+                        </button>
+                    </div>
+                    <div class="col-md-4 text-md-right">
+                        <input type="text" id="moduleSearch" class="form-control rounded-12" placeholder="Search modules & permissions...">
+                    </div>
+                </form>
+            @elseif($tab === 'position')
+                <form method="GET" action="{{ route('access_control.module_permissions.index') }}" class="row align-items-end">
+                    <input type="hidden" name="tab" value="position">
+                    <div class="col-md-5 mb-2 mb-md-0">
+                        <label class="font-weight-bold text-gray-700 mb-1"><i class="fas fa-user-tie text-primary mr-2"></i>Select Position / Designation:</label>
+                        <select name="designation_id" class="form-control form-control-lg rounded-12 select2-searchable">
+                            @foreach($designations as $dsg)
+                                <option value="{{ $dsg->id }}" {{ (int)$selectedDesignationId === (int)$dsg->id ? 'selected' : '' }}>
+                                    {{ $dsg->name }} @if(!empty($dsg->department_name))({{ $dsg->department_name }})@endif
                                 </option>
                             @endforeach
                         </select>
@@ -385,7 +411,57 @@
             </div>
         </form>
 
-    <!-- TAB 3: BY PROFILE / DEPARTMENT -->
+    <!-- TAB 3: BY POSITION / DESIGNATION -->
+    @elseif($tab === 'position')
+        <form method="POST" action="{{ route('access_control.module_permissions.update_position', $selectedDesignationId) }}">
+            @csrf
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <span class="text-muted font-weight-bold">Position / Designation permissions for: <span class="text-primary">{{ $designation->name ?? 'Position' }}</span> @if(!empty($designation->department_name))<span class="badge badge-light border">Dept: {{ $designation->department_name }}</span>@endif</span>
+                <button type="submit" class="btn btn-primary btn-lg rounded-12 px-4 shadow-sm">
+                    <i class="fas fa-save mr-2"></i>Save Position Permissions
+                </button>
+            </div>
+
+            @foreach($modulesTree as $module)
+                <div class="matrix-card module-block">
+                    <div class="matrix-card-header">
+                        <h3 class="matrix-card-title">
+                            <i class="fas fa-user-tie text-primary"></i> {{ $module['name'] }}
+                        </h3>
+                    </div>
+
+                    <div class="crud-grid-container">
+                        @foreach($module['submenus'] as $sub)
+                            <div class="crud-row submenu-block">
+                                <div class="crud-row-header">
+                                    <span class="font-weight-bold text-dark">
+                                        <i class="fas fa-file-alt text-primary mr-1"></i> {{ $sub['name'] }}
+                                    </span>
+                                </div>
+                                <div class="crud-badges-group">
+                                    @foreach(['view', 'create', 'edit', 'delete'] as $type)
+                                        @foreach($sub['crud'][$type] ?? [] as $perm)
+                                            <label class="crud-badge-pill type-{{ $type }}">
+                                                <input type="checkbox" name="permission_keys[]" value="{{ $perm['key'] }}" {{ $perm['is_assigned'] ? 'checked' : '' }}>
+                                                <span>{{ ucfirst($type) }}: {{ $perm['action'] }}</span>
+                                            </label>
+                                        @endforeach
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endforeach
+
+            <div class="text-right mt-4 mb-5">
+                <button type="submit" class="btn btn-primary btn-lg rounded-12 px-5 shadow-sm">
+                    <i class="fas fa-save mr-2"></i>Save Position Permissions
+                </button>
+            </div>
+        </form>
+
+    <!-- TAB 4: BY PROFILE / DEPARTMENT -->
     @elseif($tab === 'profile')
         <form method="POST" action="{{ route('access_control.module_permissions.update_profile', $selectedDepartmentId) }}">
             @csrf

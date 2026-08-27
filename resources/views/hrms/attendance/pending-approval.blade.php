@@ -281,7 +281,7 @@
 
     .att-filter-grid {
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
         gap: 12px;
     }
 
@@ -843,7 +843,7 @@
                     <div class="att-filter-grid">
                         <div>
                             <label>Employee</label>
-                            <select name="employee_id" class="form-control auto-filter">
+                            <select name="employee_id" class="form-control select2-searchable">
                                 <option value="">All Employees</option>
                                 @foreach($employees as $emp)
                                 @php $employeeId = optional($emp->employee)->id; @endphp
@@ -858,23 +858,35 @@
 
                         <div>
                             <label>From Date</label>
-                            <input type="date" name="from_date" class="form-control auto-filter" value="{{ request('from_date') }}">
+                            <input type="date" name="from_date" class="form-control" value="{{ request('from_date') }}">
                         </div>
 
                         <div>
                             <label>To Date</label>
-                            <input type="date" name="to_date" class="form-control auto-filter" value="{{ request('to_date') }}">
+                            <input type="date" name="to_date" class="form-control" value="{{ request('to_date') }}">
                         </div>
 
                         <div>
                             <label>Status Type</label>
-                            <select name="flag" class="form-control auto-filter">
+                            <select name="flag" class="form-control">
                                 <option value="">All Status</option>
                                 <option value="blocked" {{ request('flag') == 'blocked' ? 'selected' : '' }}>Punch Blocked</option>
                                 <option value="missed" {{ request('flag') == 'missed' ? 'selected' : '' }}>Missed Punch</option>
                                 <option value="unlocked" {{ request('flag') == 'unlocked' ? 'selected' : '' }}>Unlocked</option>
                                 <option value="manual_punch_in" {{ request('flag') == 'manual_punch_in' ? 'selected' : '' }}>Manual Punch-In Approved</option>
                             </select>
+                        </div>
+
+                        <div>
+                            <label>&nbsp;</label>
+                            <div class="d-flex align-items-center" style="gap: 8px;">
+                                <button type="submit" class="btn text-white font-weight-bold shadow-sm" style="height: 43px; border-radius: 14px; background: var(--orb-primary); border: none; flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px;">
+                                    <i class="fas fa-search"></i> Search
+                                </button>
+                                <a href="{{ route('attendances.pending-approval') }}" class="btn btn-light border text-secondary font-weight-bold" style="height: 43px; width: 43px; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Reset Filters">
+                                    <i class="fas fa-undo"></i>
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </form>

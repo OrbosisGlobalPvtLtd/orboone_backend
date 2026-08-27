@@ -639,7 +639,7 @@
         <!-- Filters Attached Inside Card -->
         <div class="ann-filters-wrapper">
             <div class="row align-items-end g-2">
-                <div class="col-12 col-md-3">
+                <div class="col-12 col-md-2">
                     <label style="font-size: 10px; font-weight: 850; color: var(--orb-muted); text-transform: uppercase; margin-bottom: 6px; display: block; letter-spacing: 0.5px;">Notice Type</label>
                     <select id="filterType" class="form-select">
                         <option value="">All Types</option>
@@ -650,7 +650,7 @@
                         <option value="meeting">Meeting</option>
                     </select>
                 </div>
-                <div class="col-12 col-md-3">
+                <div class="col-12 col-md-2">
                     <label style="font-size: 10px; font-weight: 850; color: var(--orb-muted); text-transform: uppercase; margin-bottom: 6px; display: block; letter-spacing: 0.5px;">Priority</label>
                     <select id="filterPriority" class="form-select">
                         <option value="">All Priorities</option>
@@ -678,10 +678,15 @@
                         <option value="inactive">Inactive</option>
                     </select>
                 </div>
-                <div class="col-12 col-md-2">
-                    <button type="button" id="btnResetFilters" class="btn btn-light w-100" style="height: 40px; border-radius: 12px; border: 1px solid var(--orb-border); background: #fff; color: var(--orb-primary); font-weight: 800; font-size: 13px;">
-                        <i class="fas fa-undo mr-1"></i> Reset
-                    </button>
+                <div class="col-12 col-md-4">
+                    <div class="d-flex align-items-center" style="gap: 8px;">
+                        <button type="button" id="btnSearchFilters" class="btn btn-primary font-weight-bold shadow-sm" style="height: 40px; border-radius: 12px; background: var(--orb-primary); border: none; font-size: 13px; flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                        <button type="button" id="btnResetFilters" class="btn btn-light" style="height: 40px; border-radius: 12px; border: 1px solid var(--orb-border); background: #fff; color: var(--orb-primary); font-weight: 800; font-size: 13px; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                            <i class="fas fa-undo"></i> Reset
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1131,10 +1136,9 @@
             table.page(parseInt($(this).data('page'))).draw('page');
         });
 
-        $('#filterType, #filterPriority, #filterTarget, #filterStatus')
-            .on('change', function() {
-                table.ajax.reload();
-            });
+        $('#btnSearchFilters').on('click', function() {
+            table.ajax.reload();
+        });
 
         $('#btnResetFilters').on('click', function() {
             $('#filterType').val('');

@@ -669,8 +669,11 @@
                     <option value="Live">Live</option>
                 </select>
             </div>
-            <div class="orb-filter-group" style="display: flex; align-items: flex-end;">
-                <button type="button" id="dtReset" class="orb-btn-reset">
+            <div class="orb-filter-group" style="display: flex; align-items: flex-end; gap: 8px;">
+                <button type="button" id="dtSearchBtn" class="btn text-white font-weight-bold shadow-sm" style="height: 42px; border-radius: 12px; background: var(--orb-primary); border: none; padding: 0 16px; display: inline-flex; align-items: center; gap: 6px; font-size: 13px;">
+                    <i class="fas fa-search"></i> Search
+                </button>
+                <button type="button" id="dtReset" class="orb-btn-reset" style="height: 42px;">
                     <i class="fas fa-undo"></i> Reset
                 </button>
             </div>
@@ -1138,20 +1141,28 @@ $(document).ready(function() {
     });
 
     // Custom Filters
-    $('#dtSearch').on('keyup', function() {
-        table.search(this.value).draw();
-    });
+    function applyTemplateFilters() {
+        var searchVal = $('#dtSearch').val();
+        var typeVal = $('#dtType').val();
+        var statusVal = $('#dtStatus').val();
+        var archivedVal = $('#dtArchived').val();
 
-    $('#dtType').on('change', function() {
-        table.column(3).search(this.value ? '^' + this.value + '$' : '', true, false).draw();
-    });
+        table.search(searchVal || '');
+        table.column(3).search(typeVal ? '^' + typeVal + '$' : '', true, false);
 
-    $('#dtStatus').on('change', function() {
-        table.column(5).search(this.value).draw();
-    });
+        var statusOrArchived = statusVal || archivedVal;
+        table.column(5).search(statusOrArchived || '');
 
-    $('#dtArchived').on('change', function() {
-        table.column(5).search(this.value).draw();
+        table.draw();
+    }
+
+    $('#dtSearchBtn').on('click', applyTemplateFilters);
+
+    $('#dtSearch').on('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            applyTemplateFilters();
+        }
     });
 
     $('#dtReset').on('click', function() {

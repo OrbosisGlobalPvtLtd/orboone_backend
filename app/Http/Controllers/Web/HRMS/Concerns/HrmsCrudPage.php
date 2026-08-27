@@ -68,25 +68,21 @@ trait HrmsCrudPage
     protected function scopeEmployeeVisibility($query, string $allPermission, ?string $teamPermission = null, string $column = 'employee_id')
     {
         $user = auth()->user();
-        $isEmployeeRole = ($user->role_id ?? null) == 7 
-            || ($user->system_role_id ?? null) == 7;
 
-        if ($isEmployeeRole) {
-            $employeeId = $this->ownEmployeeId();
-            abort_if(! $employeeId, 403);
-            return $query->where($column, $employeeId);
-        }
-
+        // 1. If user has full view/manage permission (via SuperAdmin, User Override, Role, Position, or Dept)
         if ($this->canViewAll($allPermission)) {
             return $query;
         }
 
+        // 2. If user has team view permission (e.g. Manager / Team Lead)
         if ($teamPermission && $this->canViewTeam($teamPermission)) {
             $ids = $this->teamEmployeeIds(true);
-            abort_if(empty($ids), 403);
-            return $query->whereIn($column, $ids);
+            if (! empty($ids)) {
+                return $query->whereIn($column, $ids);
+            }
         }
 
+        // 3. Fallback to own employee record
         $employeeId = $this->ownEmployeeId();
         abort_if(! $employeeId, 403);
 

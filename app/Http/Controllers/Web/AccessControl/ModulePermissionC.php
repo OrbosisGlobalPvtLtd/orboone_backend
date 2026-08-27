@@ -16,16 +16,22 @@ class ModulePermissionC extends Controller
     public function index(Request $request)
     {
         $tab = strtolower((string) $request->input('tab', 'role'));
-        if (! in_array($tab, ['role', 'user', 'profile'], true)) {
+        if (! in_array($tab, ['role', 'user', 'position', 'profile'], true)) {
             $tab = 'role';
         }
 
         $roles = DB::table('roles')->orderByDesc('is_system')->orderBy('name')->get();
         $users = DB::table('users')->where('is_active', 1)->orderBy('name')->get(['id', 'name', 'email']);
+        $designations = DB::table('designations')
+            ->leftJoin('departments', 'departments.id', '=', 'designations.department_id')
+            ->orderBy('designations.name')
+            ->select('designations.*', 'departments.name as department_name')
+            ->get();
         $departments = DB::table('departments')->orderBy('name')->get();
 
         $selectedRoleId = (int) $request->input('role_id', $roles->firstWhere('slug', 'admin')->id ?? $roles->first()->id ?? 1);
         $selectedUserId = (int) $request->input('user_id', $users->first()->id ?? 0);
+        $selectedDesignationId = (int) $request->input('designation_id', $designations->first()->id ?? 0);
         $selectedDepartmentId = (int) $request->input('department_id', $departments->first()->id ?? 0);
 
         $matrixData = [];
@@ -34,6 +40,8 @@ class ModulePermissionC extends Controller
             $matrixData = $this->modulePermissionService->getRoleMatrix($selectedRoleId);
         } elseif ($tab === 'user') {
             $matrixData = $this->modulePermissionService->getUserMatrix($selectedUserId);
+        } elseif ($tab === 'position') {
+            $matrixData = $this->modulePermissionService->getPositionMatrix($selectedDesignationId);
         } elseif ($tab === 'profile') {
             $matrixData = $this->modulePermissionService->getProfileMatrix($selectedDepartmentId);
         }
@@ -42,9 +50,11 @@ class ModulePermissionC extends Controller
             'tab' => $tab,
             'roles' => $roles,
             'users' => $users,
+            'designations' => $designations,
             'departments' => $departments,
             'selectedRoleId' => $selectedRoleId,
             'selectedUserId' => $selectedUserId,
+            'selectedDesignationId' => $selectedDesignationId,
             'selectedDepartmentId' => $selectedDepartmentId,
         ]));
     }
@@ -77,6 +87,20 @@ class ModulePermissionC extends Controller
         return redirect()
             ->route('access_control.module_permissions.index', ['tab' => 'user', 'user_id' => $userId])
             ->with('success', "User custom permission overrides updated successfully for '{$user->name}'.");
+    }
+
+    public function updatePosition(Request $request, $designationId)
+    {
+        $designation = DB::table('designations')->where('id', $designationId)->first();
+        abort_if(! $designation, 404, 'Position / Designation not found.');
+
+        $permissionKeys = (array) $request->input('permission_keys', []);
+
+        $this->modulePermissionService->savePositionMatrix((int) $designationId, $permissionKeys);
+
+        return redirect()
+            ->route('access_control.module_permissions.index', ['tab' => 'position', 'designation_id' => $designationId])
+            ->with('success', "Position / Designation CRUD permissions updated successfully for '{$designation->name}'.");
     }
 
     public function updateProfile(Request $request, $departmentId)

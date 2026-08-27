@@ -215,7 +215,6 @@ class RbacPolicyMatrixS
     {
         $userIds = DB::table('users')
             ->where('system_role_id', $roleId)
-            ->orWhere('role_id', $roleId)
             ->pluck('id')
             ->merge(DB::table('user_roles')->where('role_id', $roleId)->pluck('user_id'))
             ->unique()

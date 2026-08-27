@@ -461,11 +461,13 @@
                                 $userEmpId = \App\Models\HRMS\Employee\EmployeeM::where('user_id', $user->id)->value('id');
                                 $isAssignedManager = (!empty($managerEmpId) && (int)$managerEmpId === (int)$userEmpId);
                                 $isSuperAdminUser = method_exists($user, 'isSuperAdmin') ? $user->isSuperAdmin() : (in_array((int)($user->system_role_id ?? $user->role_id ?? 0), [1, 2], true));
-
                                 $mgrApproved = !empty($lr->manager_approved_by) || !empty($lr->manager_approved_at) || ($lr->approval_level === 'manager_approved');
                                 $mgrRejected = ($stLower === 'rejected' && empty($lr->manager_approved_by));
                                 $hrApproved = ($stLower === 'approved');
                                 $hrRejected = ($stLower === 'rejected' && !empty($lr->manager_approved_by));
+
+                                $canApprove = $isSuperAdminUser || $user->hasPermission('leave.approvals.approve') || ($isAssignedManager && $user->hasPermission('leave.approvals.view_team'));
+                                $canReject = $isSuperAdminUser || $user->hasPermission('leave.approvals.reject') || ($isAssignedManager && $user->hasPermission('leave.approvals.view_team'));
                             @endphp
                         <tr>
                             <!-- 1. S.No. -->
@@ -619,30 +621,38 @@
                                             <i class="fas fa-eye text-primary"></i> View Details & Timeline
                                         </a>
 
-                                        @if($stLower === 'pending' && Route::has('leave-approvals.approve'))
+                                        @if($stLower === 'pending' && Route::has('leave-approvals.approve') && ($canApprove || $canReject))
                                             @if($isSuperAdminUser)
                                                 <!-- Super Admin Override Actions -->
+                                                @if($canApprove)
                                                 <form method="POST" action="{{ route('leave-approvals.approve', $lr->id) }}" class="d-inline">
                                                     @csrf
                                                     <button type="submit" class="dropdown-item text-success border-0 bg-transparent font-weight-bold" onclick="return confirm('Super Admin Override: Approve leave request?')">
                                                         <i class="fas fa-crown text-warning"></i> Super Admin Approve
                                                     </button>
                                                 </form>
+                                                @endif
+                                                @if($canReject)
                                                 <a class="dropdown-item text-danger" href="#" data-toggle="modal" data-target="#rejectModal{{ $lr->id }}">
                                                     <i class="fas fa-times-circle text-danger"></i> Reject Request
                                                 </a>
+                                                @endif
                                             @elseif($hasManager && !$mgrApproved)
                                                 <!-- Manager Pending Stage -->
                                                 @if($isAssignedManager)
+                                                    @if($canApprove)
                                                     <form method="POST" action="{{ route('leave-approvals.approve', $lr->id) }}" class="d-inline">
                                                         @csrf
                                                         <button type="submit" class="dropdown-item text-success border-0 bg-transparent font-weight-bold" onclick="return confirm('Approve leave request at Manager stage?')">
                                                             <i class="fas fa-check-circle text-success"></i> Approve Request
                                                         </button>
                                                     </form>
+                                                    @endif
+                                                    @if($canReject)
                                                     <a class="dropdown-item text-danger" href="#" data-toggle="modal" data-target="#rejectModal{{ $lr->id }}">
                                                         <i class="fas fa-times-circle text-danger"></i> Reject Request
                                                     </a>
+                                                    @endif
                                                 @else
                                                     <button type="button" class="dropdown-item text-muted border-0 bg-transparent" onclick="alert('Reporting manager ne leave approved nhi ki hai abhi. Manager approval is required first.')">
                                                         <i class="fas fa-clock text-warning"></i> Waiting for Reporting Manager
@@ -650,15 +660,19 @@
                                                 @endif
                                             @else
                                                 <!-- HR Stage (No Manager OR Manager HAS Approved) -->
+                                                @if($canApprove)
                                                 <form method="POST" action="{{ route('leave-approvals.approve', $lr->id) }}" class="d-inline">
                                                     @csrf
                                                     <button type="submit" class="dropdown-item text-success border-0 bg-transparent font-weight-bold" onclick="return confirm('Perform final HR approval & deduct leave balance?')">
                                                         <i class="fas fa-check-double text-success"></i> HR Approve & Finalize
                                                     </button>
                                                 </form>
+                                                @endif
+                                                @if($canReject)
                                                 <a class="dropdown-item text-danger" href="#" data-toggle="modal" data-target="#rejectModal{{ $lr->id }}">
                                                     <i class="fas fa-times-circle text-danger"></i> Reject Request
                                                 </a>
+                                                @endif
                                             @endif
                                         @endif
                                     </div>
@@ -1006,29 +1020,37 @@
                                         </button>
 
                                         <div class="d-flex align-items-center" style="gap: 8px;">
-                                            @if($stLower === 'pending' && Route::has('leave-approvals.approve'))
+                                            @if($stLower === 'pending' && Route::has('leave-approvals.approve') && ($canApprove || $canReject))
                                                 @if($isSuperAdminUser)
                                                     <!-- Super Admin Actions -->
+                                                    @if($canReject)
                                                     <button type="button" class="btn btn-sm font-weight-bold px-3.5" style="border-radius: 8px; height: 38px; background: #FEF2F2; color: #DC2626; border: 1px solid #FCA5A5; font-size: 12.5px;" data-toggle="modal" data-target="#rejectModal{{ $lr->id }}" data-dismiss="modal">
                                                         <i class="fas fa-times mr-1"></i> Reject Request
                                                     </button>
+                                                    @endif
+                                                    @if($canApprove)
                                                     <form method="POST" action="{{ route('leave-approvals.approve', $lr->id) }}" class="d-inline">
                                                         @csrf
                                                         <button type="submit" class="btn btn-sm text-white font-weight-bold px-3.5" style="border-radius: 8px; height: 38px; background: linear-gradient(135deg, {{ $branding['primary_color'] ?? '#4B00E8' }} 0%, {{ $branding['secondary_color'] ?? '#FF5252' }} 100%); border: none; box-shadow: 0 4px 14px rgba(75, 0, 232, 0.3); font-size: 12.5px;" onclick="return confirm('Super Admin Override: Approve leave request for {{ addslashes($lr->display_name) }}?')">
                                                             <i class="fas fa-crown mr-1 text-warning"></i> Super Admin Approve
                                                         </button>
                                                     </form>
+                                                    @endif
                                                 @elseif($hasManager && !$mgrApproved)
                                                     @if($isAssignedManager)
+                                                        @if($canReject)
                                                         <button type="button" class="btn btn-sm font-weight-bold px-3.5" style="border-radius: 8px; height: 38px; background: #FEF2F2; color: #DC2626; border: 1px solid #FCA5A5; font-size: 12.5px;" data-toggle="modal" data-target="#rejectModal{{ $lr->id }}" data-dismiss="modal">
                                                             <i class="fas fa-times mr-1"></i> Reject Request
                                                         </button>
+                                                        @endif
+                                                        @if($canApprove)
                                                         <form method="POST" action="{{ route('leave-approvals.approve', $lr->id) }}" class="d-inline">
                                                             @csrf
                                                             <button type="submit" class="btn btn-sm text-white font-weight-bold px-3.5" style="border-radius: 8px; height: 38px; background: linear-gradient(135deg, {{ $branding['primary_color'] ?? '#4B00E8' }} 0%, {{ $branding['secondary_color'] ?? '#FF5252' }} 100%); border: none; box-shadow: 0 4px 14px rgba(75, 0, 232, 0.3); font-size: 12.5px;" onclick="return confirm('Approve leave request at Manager stage for {{ addslashes($lr->display_name) }}?')">
                                                                 <i class="fas fa-check mr-1"></i> Approve Request
                                                             </button>
                                                         </form>
+                                                        @endif
                                                     @else
                                                         <span class="badge border font-weight-bold px-3 py-1.5" style="border-radius: 8px; background: #FFFBEB; color: #D97706; border-color: #FDE68A !important; font-size: 11px;">
                                                             <i class="fas fa-clock mr-1"></i> Waiting for Reporting Manager
@@ -1036,15 +1058,19 @@
                                                     @endif
                                                 @else
                                                     <!-- HR Stage (No Manager OR Manager HAS Approved) -->
+                                                    @if($canReject)
                                                     <button type="button" class="btn btn-sm font-weight-bold px-3.5" style="border-radius: 8px; height: 38px; background: #FEF2F2; color: #DC2626; border: 1px solid #FCA5A5; font-size: 12.5px;" data-toggle="modal" data-target="#rejectModal{{ $lr->id }}" data-dismiss="modal">
                                                         <i class="fas fa-times mr-1"></i> Reject Request
                                                     </button>
+                                                    @endif
+                                                    @if($canApprove)
                                                     <form method="POST" action="{{ route('leave-approvals.approve', $lr->id) }}" class="d-inline">
                                                         @csrf
                                                         <button type="submit" class="btn btn-sm text-white font-weight-bold px-3.5" style="border-radius: 8px; height: 38px; background: linear-gradient(135deg, {{ $branding['primary_color'] ?? '#4B00E8' }} 0%, {{ $branding['secondary_color'] ?? '#FF5252' }} 100%); border: none; box-shadow: 0 4px 14px rgba(75, 0, 232, 0.3); font-size: 12.5px;" onclick="return confirm('Perform final HR approval & deduct leave balance for {{ addslashes($lr->display_name) }}?')">
                                                             <i class="fas fa-check-double mr-1"></i> HR Approve & Finalize
                                                         </button>
                                                     </form>
+                                                    @endif
                                                 @endif
                                             @endif
                                         </div>

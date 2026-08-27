@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Laravel\Sanctum\HasApiTokens;
 
 use App\Models\Core\RoleM;
@@ -209,14 +210,46 @@ class UserM extends Authenticatable
             }
         }
 
-        // 4. Employee Profile / Department Baseline Check
-        if (Schema::hasTable('employees_new') && Schema::hasTable('department_module_access')) {
+        // 4. Employee Position / Designation Permission Check
+        if (Schema::hasTable('employees_new') && Schema::hasTable('designation_module_access')) {
+            $employee = DB::table('employees_new')->where('user_id', $this->id)->first(['designation_id', 'department_id']);
+            if ($employee && ! empty($employee->designation_id)) {
+                $hasPosPerm = DB::table('designation_module_access')
+                    ->where('designation_id', $employee->designation_id)
+                    ->where('permission_key', $permissionKey)
+                    ->where(function ($q) {
+                        $q->where('is_allowed', 1)->orWhere('is_enabled', 1);
+                    })
+                    ->exists();
+
+                if ($hasPosPerm) {
+                    return true;
+                }
+            }
+
+            // 5. Employee Profile / Department Baseline Check
+            if ($employee && ! empty($employee->department_id) && Schema::hasTable('department_module_access')) {
+                $hasDeptPerm = DB::table('department_module_access')
+                    ->where('department_id', $employee->department_id)
+                    ->where('permission_key', $permissionKey)
+                    ->where(function ($q) {
+                        $q->where('is_allowed', 1)->orWhere('is_enabled', 1);
+                    })
+                    ->exists();
+
+                if ($hasDeptPerm) {
+                    return true;
+                }
+            }
+        } elseif (Schema::hasTable('employees_new') && Schema::hasTable('department_module_access')) {
             $employee = DB::table('employees_new')->where('user_id', $this->id)->first(['department_id']);
             if ($employee && ! empty($employee->department_id)) {
                 $hasDeptPerm = DB::table('department_module_access')
                     ->where('department_id', $employee->department_id)
                     ->where('permission_key', $permissionKey)
-                    ->where('is_allowed', 1)
+                    ->where(function ($q) {
+                        $q->where('is_allowed', 1)->orWhere('is_enabled', 1);
+                    })
                     ->exists();
 
                 if ($hasDeptPerm) {

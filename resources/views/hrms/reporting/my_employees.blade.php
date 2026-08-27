@@ -431,8 +431,11 @@
                         </button>
                     </div>
 
-                    <!-- Reset Button aligned on the right -->
-                    <div>
+                    <!-- Search and Reset Buttons aligned on the right -->
+                    <div class="d-flex align-items-center" style="gap: 8px;">
+                        <button type="button" class="btn btn-sm btn-primary font-weight-bold" id="btn-apply-my-team-filters" style="height: 36px; border-radius: 9px; font-size: 12px; background: var(--orb-primary); border: none; display: inline-flex; align-items: center; gap: 6px; padding: 0 14px;">
+                            <i class="fas fa-search"></i> Search
+                        </button>
                         <button type="button" class="btn btn-sm btn-light border font-weight-bold" id="btn-reset-my-team-filters" style="height: 36px; border-radius: 9px; font-size: 12px; color: #475467; display: inline-flex; align-items: center; gap: 6px;">
                             <i class="fas fa-undo text-muted" style="font-size: 11px;"></i> Reset
                         </button>
@@ -1039,13 +1042,16 @@
             table.draw();
         }
 
-        // Real-Time Event Handlers for Automatic Filtering
-        $('#filter-team-source, #filter-employment-combo, #filter-department, #filter-project, #filter-designation, #filter-manager, #filter-emp-stage, #filter-emp-type').on('change', function() {
+        // Manual Search Execution via Button or Enter key
+        $('#btn-apply-my-team-filters').on('click', function() {
             applyInstantFilters();
         });
 
-        $('#filter-search-keyword').on('keyup change input clear', function() {
-            applyInstantFilters();
+        $('#filter-search-keyword').on('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                applyInstantFilters();
+            }
         });
 
         // Reset Filters Handler

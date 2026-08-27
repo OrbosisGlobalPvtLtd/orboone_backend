@@ -772,7 +772,10 @@ $fnfStatuses = $employees->pluck('fnf_status')->filter()->unique()->sort();
                             @endforeach
                         </select>
                     </div>
-                    <div class="eo-field">
+                    <div class="eo-field d-flex align-items-end" style="gap: 8px;">
+                        <button type="button" id="btnExitFilterSubmit" class="eo-btn eo-btn-primary" style="height:38px !important; min-height:38px !important; border-radius:12px !important; font-size:12px !important; font-weight:800; padding:0 16px; background: var(--orb-primary); color: #fff; border: none; box-shadow:none; display: inline-flex; align-items: center; gap: 6px;">
+                            <i class="fas fa-search"></i> Search
+                        </button>
                         <button type="button" id="resetFilter" class="eo-btn eo-btn-light" style="height:38px !important; min-height:38px !important; border-radius:12px !important; font-size:12px !important; font-weight:800; padding:0 16px; box-shadow:none;">
                             <i class="fas fa-undo mr-1"></i> Reset
                         </button>
@@ -1769,13 +1772,17 @@ default => 'eo-pill-warning',
             table.button('.buttons-print').trigger();
         });
 
-        // Event listeners for responsive filtering
-        searchInput.addEventListener('keyup', applyFilters);
-        departmentFilter.addEventListener('change', applyFilters);
-        statusFilter.addEventListener('change', applyFilters);
-        exitTypeFilter.addEventListener('change', applyFilters);
-        assetStatusFilter.addEventListener('change', applyFilters);
-        fnfStatusFilter.addEventListener('change', applyFilters);
+        const submitBtn = document.getElementById('btnExitFilterSubmit');
+        if (submitBtn) {
+            submitBtn.addEventListener('click', applyFilters);
+        }
+
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                applyFilters();
+            }
+        });
 
         // Reset Filters action
         resetBtn.addEventListener('click', function() {

@@ -816,9 +816,12 @@
                         </select>
                     </div>
 
-                    <div class="eo-field">
+                    <div class="eo-field d-flex align-items-end" style="gap: 8px;">
                         <label>&nbsp;</label>
-                        <button type="button" id="resetFilter" class="eo-btn eo-btn-light">
+                        <button type="button" id="btnProbationFilterSubmit" class="eo-btn eo-btn-primary" style="height: 42px; background: var(--orb-primary); color: #fff; border: none; border-radius: 12px; padding: 0 16px; font-weight: 800; display: inline-flex; align-items: center; gap: 6px; font-size: 13px;">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                        <button type="button" id="resetFilter" class="eo-btn eo-btn-light" style="height: 42px; border-radius: 12px;">
                             <i class="fas fa-undo"></i> Reset
                         </button>
                     </div>
@@ -1410,10 +1413,17 @@
             }
         }
 
-        searchInput.addEventListener('keyup', applyFilters);
-        departmentFilter.addEventListener('change', applyFilters);
-        statusFilter.addEventListener('change', applyFilters);
-        employmentTypeFilter.addEventListener('change', applyFilters);
+        const submitBtn = document.getElementById('btnProbationFilterSubmit');
+        if (submitBtn) {
+            submitBtn.addEventListener('click', applyFilters);
+        }
+
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                applyFilters();
+            }
+        });
 
         resetBtn.addEventListener('click', function() {
             searchInput.value = '';

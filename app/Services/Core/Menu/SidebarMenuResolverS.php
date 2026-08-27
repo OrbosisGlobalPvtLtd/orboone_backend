@@ -27,21 +27,10 @@ class SidebarMenuResolverS
             $isSuperAdmin = (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin())
                 || (method_exists($user, 'hasRole') && $user->hasRole('super_admin'));
 
-            $hasEmployeeRole = method_exists($user, 'hasRole') && $user->hasRole('employee');
-            $hasAdminRole = $isSuperAdmin || (method_exists($user, 'hasRole') && $user->hasRole([
-                'admin',
-                'hr_admin',
-                'finance_admin',
-                'project_admin',
-                'operations_admin',
-                'custom_admin',
-                'manager',
-            ]));
-
-            // Fallback for user without roles
-            if (!$hasEmployeeRole && !$hasAdminRole) {
-                $hasEmployeeRole = true;
-            }
+            $userRoles = !empty($roleIds) ? DB::table('roles')->whereIn('id', $roleIds)->get(['id', 'slug', 'is_system']) : collect();
+            $isOnlyEmployee = $userRoles->isNotEmpty() && $userRoles->every(fn ($r) => $r->slug === 'employee');
+            $hasAdminRole = $isSuperAdmin || !$isOnlyEmployee;
+            $hasEmployeeRole = $userRoles->isEmpty() || $userRoles->contains(fn ($r) => $r->slug === 'employee' || $r->slug === 'super_admin') || $hasAdminRole;
 
             $employeeMenus = collect();
             $adminMenus = collect();

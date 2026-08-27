@@ -118,13 +118,29 @@ class ModulePermissionS
             }
         }
 
+        // Position/Designation permissions
+        $posPermKeys = [];
         // Department/Profile permissions
         $deptPermKeys = [];
-        $employee = Schema::hasTable('employees_new') ? DB::table('employees_new')->where('user_id', $userId)->first(['department_id']) : null;
+        $employee = Schema::hasTable('employees_new') ? DB::table('employees_new')->where('user_id', $userId)->first(['designation_id', 'department_id']) : null;
+
+        if ($employee && ! empty($employee->designation_id) && Schema::hasTable('designation_module_access')) {
+            $posPermKeys = DB::table('designation_module_access')
+                ->where('designation_id', $employee->designation_id)
+                ->where(function ($q) {
+                    $q->where('is_allowed', 1)->orWhere('is_enabled', 1);
+                })
+                ->pluck('permission_key')
+                ->filter()
+                ->all();
+        }
+
         if ($employee && ! empty($employee->department_id) && Schema::hasTable('department_module_access')) {
             $deptPermKeys = DB::table('department_module_access')
                 ->where('department_id', $employee->department_id)
-                ->where('is_allowed', 1)
+                ->where(function ($q) {
+                    $q->where('is_allowed', 1)->orWhere('is_enabled', 1);
+                })
                 ->pluck('permission_key')
                 ->filter()
                 ->all();
@@ -144,7 +160,7 @@ class ModulePermissionS
             }
         }
 
-        $modulesTree = $this->buildModuleCrudTreeWithUserStatus($rolePermIds, $deptPermKeys, $userOverrides, $user->primary_role_slug === 'super_admin');
+        $modulesTree = $this->buildModuleCrudTreeWithUserStatus($rolePermIds, $posPermKeys, $deptPermKeys, $userOverrides, $user->primary_role_slug === 'super_admin');
 
         return [
             'user' => $user,
@@ -208,6 +224,94 @@ class ModulePermissionS
 
         // Flush user cache
         $this->flushUserCache($userId);
+    }
+
+    /**
+     * Get Module & CRUD matrix for a Position / Designation.
+     */
+    public function getPositionMatrix(int $designationId): array
+    {
+        $designation = DB::table('designations')
+            ->leftJoin('departments', 'departments.id', '=', 'designations.department_id')
+            ->where('designations.id', $designationId)
+            ->select('designations.*', 'departments.name as department_name')
+            ->first();
+
+        $designations = DB::table('designations')
+            ->leftJoin('departments', 'departments.id', '=', 'designations.department_id')
+            ->orderBy('designations.name')
+            ->select('designations.*', 'departments.name as department_name')
+            ->get();
+
+        $assignedKeys = [];
+        if ($designation && Schema::hasTable('designation_module_access')) {
+            $assignedKeys = DB::table('designation_module_access')
+                ->where('designation_id', $designationId)
+                ->where(function ($q) {
+                    $q->where('is_allowed', 1)->orWhere('is_enabled', 1);
+                })
+                ->pluck('permission_key')
+                ->filter()
+                ->all();
+        }
+
+        $modulesTree = $this->buildModuleCrudTreeForProfile($assignedKeys);
+
+        return [
+            'designation' => $designation,
+            'designations' => $designations,
+            'modulesTree' => $modulesTree,
+            'assignedKeys' => $assignedKeys,
+        ];
+    }
+
+    /**
+     * Save Position / Designation Matrix.
+     */
+    public function savePositionMatrix(int $designationId, array $permissionKeys): void
+    {
+        if (! Schema::hasTable('designation_module_access')) {
+            return;
+        }
+
+        DB::transaction(function () use ($designationId, $permissionKeys) {
+            DB::table('designation_module_access')->where('designation_id', $designationId)->delete();
+
+            $rows = [];
+            foreach (array_unique($permissionKeys) as $permKey) {
+                $permKey = trim((string) $permKey);
+                if ($permKey === '') {
+                    continue;
+                }
+                $moduleKey = explode('.', $permKey)[0] ?? 'general';
+                $rows[] = [
+                    'designation_id' => $designationId,
+                    'module_key' => $moduleKey,
+                    'permission_key' => $permKey,
+                    'is_enabled' => 1,
+                    'is_allowed' => 1,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+
+            foreach (array_chunk($rows, 100) as $chunk) {
+                DB::table('designation_module_access')->insert($chunk);
+            }
+        });
+
+        // Flush cache for all users with this designation
+        if (Schema::hasTable('employees_new')) {
+            $userIds = DB::table('employees_new')
+                ->where('designation_id', $designationId)
+                ->whereNotNull('user_id')
+                ->pluck('user_id')
+                ->all();
+
+            foreach ($userIds as $uId) {
+                $this->flushUserCache((int) $uId);
+            }
+        }
     }
 
     /**
@@ -345,7 +449,7 @@ class ModulePermissionS
     /**
      * Build unified Module CRUD tree for User with override calculation.
      */
-    private function buildModuleCrudTreeWithUserStatus(array $rolePermIds, array $deptPermKeys, array $userOverrides, bool $isSuperAdmin): array
+    private function buildModuleCrudTreeWithUserStatus(array $rolePermIds, array $posPermKeys, array $deptPermKeys, array $userOverrides, bool $isSuperAdmin): array
     {
         $rawMenus = DB::table('menus')
             ->where('is_active', 1)
@@ -369,7 +473,7 @@ class ModulePermissionS
             $submenusTree = [];
 
             foreach ($children as $child) {
-                $crud = $this->groupPermissionsByCrudForUser($child, $allPermissions, $rolePermIds, $deptPermKeys, $userOverrides, $isSuperAdmin);
+                $crud = $this->groupPermissionsByCrudForUser($child, $allPermissions, $rolePermIds, $posPermKeys, $deptPermKeys, $userOverrides, $isSuperAdmin);
 
                 $submenusTree[] = [
                     'id' => (int) $child->id,
@@ -379,7 +483,7 @@ class ModulePermissionS
                 ];
             }
 
-            $parentCrud = $this->groupPermissionsByCrudForUser($parent, $allPermissions, $rolePermIds, $deptPermKeys, $userOverrides, $isSuperAdmin);
+            $parentCrud = $this->groupPermissionsByCrudForUser($parent, $allPermissions, $rolePermIds, $posPermKeys, $deptPermKeys, $userOverrides, $isSuperAdmin);
 
             $tree[] = [
                 'id' => (int) $parent->id,
@@ -471,7 +575,7 @@ class ModulePermissionS
         return $crud;
     }
 
-    private function groupPermissionsByCrudForUser(object $menu, $allPermissions, array $rolePermIds, array $deptPermKeys, array $userOverrides, bool $isSuperAdmin): array
+    private function groupPermissionsByCrudForUser(object $menu, $allPermissions, array $rolePermIds, array $posPermKeys, array $deptPermKeys, array $userOverrides, bool $isSuperAdmin): array
     {
         $relevant = $this->findPermissionsForMenu($menu, $allPermissions);
 
@@ -488,8 +592,9 @@ class ModulePermissionS
             $type = $this->categorizeAction($action, $key);
 
             $isRoleGranted = $isSuperAdmin || in_array((int) $perm->id, $rolePermIds, true);
+            $isPosGranted = in_array($perm->key, $posPermKeys, true);
             $isDeptGranted = in_array($perm->key, $deptPermKeys, true);
-            $hasInherited = $isRoleGranted || $isDeptGranted;
+            $hasInherited = $isRoleGranted || $isPosGranted || $isDeptGranted;
 
             $overrideStatus = $userOverrides[$perm->key] ?? null; // true (grant), false (revoke), null (none)
             $isEffective = $overrideStatus !== null ? $overrideStatus : $hasInherited;

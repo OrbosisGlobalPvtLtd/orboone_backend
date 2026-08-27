@@ -900,7 +900,7 @@
                         
                         <div class="orb-filter-item">
                             <label>Month</label>
-                            <select name="month" class="form-control auto-filter">
+                            <select name="month" class="form-control">
                                 @for($m = 1; $m <= 12; $m++)
                                     <option value="{{ $m }}" {{ (int)$month === $m ? 'selected' : '' }}>
                                         {{ \Carbon\Carbon::create(null,$m,1)->format('F') }}
@@ -911,13 +911,13 @@
 
                         <div class="orb-filter-item">
                             <label>Year</label>
-                            <input type="number" name="year" class="form-control auto-filter" value="{{ $year }}">
+                            <input type="number" name="year" class="form-control" value="{{ $year }}">
                         </div>
 
                         @if(count($employees) > 1)
                         <div class="orb-filter-item">
                             <label>Employee</label>
-                            <select name="employee_id" class="form-control auto-filter">
+                            <select name="employee_id" class="form-control select2-searchable">
                                 <option value="">All Employees</option>
                                 @foreach($employees as $emp)
                                     @php

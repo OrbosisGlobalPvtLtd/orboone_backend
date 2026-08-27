@@ -233,11 +233,16 @@
                 <h3>Attendance Access Control</h3>
                 <p>Configure Mobile and Web Attendance punching permissions employee-wise or in bulk.</p>
             </div>
+            @php
+                $canManageAccess = auth()->user()->hasRole('super_admin') || auth()->user()->hasPermission('attendance.access_control.manage') || auth()->user()->hasPermission('attendance.blocked.unlock');
+            @endphp
+            @if($canManageAccess)
             <div>
                 <button type="button" class="btn btn-light font-weight-bold px-4 py-2 shadow-sm" data-toggle="modal" data-target="#bulkUpdateModal" style="border-radius: 50px; color: var(--orb-primary); font-weight: 800;">
                     <i class="fas fa-users-cog mr-2"></i> Bulk Access Update
                 </button>
             </div>
+            @endif
         </div>
 
         {{-- Automatic Filtering Card with Reset Button --}}
@@ -354,6 +359,7 @@
                                 
                                 {{-- Mobile Attendance Toggle Switch --}}
                                 <td class="text-center">
+                                    @if($canManageAccess)
                                     <form method="POST" action="{{ route('attendances.access-control.update', $emp->id) }}" class="d-inline-flex align-items-center justify-content-center">
                                         @csrf
                                         <input type="hidden" name="allow_mobile_attendance" value="{{ $emp->allow_mobile_attendance ? '0' : '1' }}">
@@ -365,10 +371,16 @@
                                             {{ $emp->allow_mobile_attendance ? 'Allowed' : 'Disabled' }}
                                         </span>
                                     </form>
+                                    @else
+                                    <span class="badge {{ $emp->allow_mobile_attendance ? 'badge-success' : 'badge-light border text-muted' }}" style="border-radius: 8px; font-size: 11px; padding: 5px 10px;">
+                                        <i class="fas {{ $emp->allow_mobile_attendance ? 'fa-check-circle mr-1' : 'fa-ban mr-1' }}"></i> {{ $emp->allow_mobile_attendance ? 'Allowed' : 'Disabled' }}
+                                    </span>
+                                    @endif
                                 </td>
 
                                 {{-- Web Attendance Toggle Switch --}}
                                 <td class="text-center">
+                                    @if($canManageAccess)
                                     <form method="POST" action="{{ route('attendances.access-control.update', $emp->id) }}" class="d-inline-flex align-items-center justify-content-center">
                                         @csrf
                                         <input type="hidden" name="allow_web_attendance" value="{{ $emp->allow_web_attendance ? '0' : '1' }}">
@@ -380,9 +392,15 @@
                                             {{ $emp->allow_web_attendance ? 'Allowed' : 'Disabled' }}
                                         </span>
                                     </form>
+                                    @else
+                                    <span class="badge {{ $emp->allow_web_attendance ? 'badge-success' : 'badge-light border text-muted' }}" style="border-radius: 8px; font-size: 11px; padding: 5px 10px;">
+                                        <i class="fas {{ $emp->allow_web_attendance ? 'fa-check-circle mr-1' : 'fa-ban mr-1' }}"></i> {{ $emp->allow_web_attendance ? 'Allowed' : 'Disabled' }}
+                                    </span>
+                                    @endif
                                 </td>
 
                                 <td class="text-right pr-4">
+                                    @if($canManageAccess)
                                     <div class="dropdown">
                                         <button class="btn manage-dropdown-btn dropdown-toggle" type="button" data-toggle="dropdown">
                                             Manage
@@ -415,6 +433,11 @@
                                             </form>
                                         </div>
                                     </div>
+                                    @else
+                                    <span class="badge badge-light border text-muted px-2 py-1" style="font-size: 11px;">
+                                        <i class="fas fa-eye mr-1"></i> Read-only
+                                    </span>
+                                    @endif
                                 </td>
                             </tr>
                         @empty
@@ -551,24 +574,11 @@ document.addEventListener('DOMContentLoaded', function() {
         desigGroup.classList.toggle('d-none', val !== 'designation');
     });
 
-    // Automatic debounced search submission
-    let searchDebounceTimer;
     const accessSearchInput = document.getElementById('accessSearchInput');
-    const accessFilterForm = document.getElementById('accessFilterForm');
-
-    if (accessSearchInput && accessFilterForm) {
-        accessSearchInput.addEventListener('input', function() {
-            clearTimeout(searchDebounceTimer);
-            searchDebounceTimer = setTimeout(() => {
-                accessFilterForm.submit();
-            }, 450);
-        });
-
-        if (accessSearchInput.value) {
-            accessSearchInput.focus();
-            const valLen = accessSearchInput.value.length;
-            accessSearchInput.setSelectionRange(valLen, valLen);
-        }
+    if (accessSearchInput && accessSearchInput.value) {
+        accessSearchInput.focus();
+        const valLen = accessSearchInput.value.length;
+        accessSearchInput.setSelectionRange(valLen, valLen);
     }
 });
 </script>

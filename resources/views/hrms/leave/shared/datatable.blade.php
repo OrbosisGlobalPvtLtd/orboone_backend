@@ -80,21 +80,6 @@ table.dataTable.dtr-inline.collapsed>tbody>tr>td.dtr-control:before, table.dataT
                 }
             });
 
-            // Auto-filter for dropdowns with class .auto-filter
-            $('.auto-filter').on('change', function() {
-                var table = $('.js-datatable').DataTable();
-                if ($.fn.DataTable.isDataTable(table)) {
-                    var colIdx = $(this).data('column-index');
-                    if (colIdx !== undefined) {
-                        table.column(colIdx).search($(this).val()).draw();
-                    } else {
-                        $(this).closest('form').submit();
-                    }
-                } else {
-                    $(this).closest('form').submit();
-                }
-            });
-            
             // Reset filters
             $('.btn-reset-filters').on('click', function() {
                 var table = $('.js-datatable').DataTable();

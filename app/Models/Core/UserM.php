@@ -158,7 +158,7 @@ class UserM extends Authenticatable
 
     public function hasPermission(string $permissionKey): bool
     {
-        // ✅ Super Admin = full access
+        // 1. Super Admin = full access
         if ($this->hasRole('super_admin')) {
             return true;
         }
@@ -168,25 +168,64 @@ class UserM extends Authenticatable
             $permissionKey = 'employees.edit';
         }
 
-        // collect role ids
-        $roleIds = $this->roles()->pluck('roles.id')->toArray();
+        // 2. User Level Direct Override Check
+        if (Schema::hasTable('user_module_access')) {
+            $userOverride = DB::table('user_module_access')
+                ->where('user_id', $this->id)
+                ->where('permission_key', $permissionKey)
+                ->first(['is_allowed', 'is_enabled']);
+
+            if ($userOverride) {
+                return (bool) ($userOverride->is_allowed ?? $userOverride->is_enabled);
+            }
+        }
+
+        // 3. Role Level Permission Check
+        $roleIds = [];
 
         if ($this->system_role_id) {
-            $roleIds[] = $this->system_role_id;
+            $roleIds[] = (int) $this->system_role_id;
         }
 
-        $roleIds = array_unique($roleIds);
-
-        if (empty($roleIds)) {
-            return false;
+        if (Schema::hasTable('user_roles')) {
+            $roleIds = array_merge(
+                $roleIds,
+                DB::table('user_roles')->where('user_id', $this->id)->pluck('role_id')->map(fn ($id) => (int) $id)->all()
+            );
         }
 
-        return PermissionM::query()
-            ->where('key', $permissionKey)
-            ->whereHas('roles', function ($query) use ($roleIds) {
-                $query->whereIn('roles.id', $roleIds);
-            })
-            ->exists();
+        $roleIds = array_unique(array_filter($roleIds));
+
+        if (! empty($roleIds)) {
+            $hasRolePerm = PermissionM::query()
+                ->where('key', $permissionKey)
+                ->whereHas('roles', function ($query) use ($roleIds) {
+                    $query->whereIn('roles.id', $roleIds);
+                })
+                ->exists();
+
+            if ($hasRolePerm) {
+                return true;
+            }
+        }
+
+        // 4. Employee Profile / Department Baseline Check
+        if (Schema::hasTable('employees_new') && Schema::hasTable('department_module_access')) {
+            $employee = DB::table('employees_new')->where('user_id', $this->id)->first(['department_id']);
+            if ($employee && ! empty($employee->department_id)) {
+                $hasDeptPerm = DB::table('department_module_access')
+                    ->where('department_id', $employee->department_id)
+                    ->where('permission_key', $permissionKey)
+                    ->where('is_allowed', 1)
+                    ->exists();
+
+                if ($hasDeptPerm) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     public function hasModuleAccess(string $moduleKey): bool
@@ -195,10 +234,18 @@ class UserM extends Authenticatable
             return true;
         }
 
-        return DB::table('user_module_access')
-            ->where('user_id', $this->id)
-            ->where('module_key', $moduleKey)
-            ->where('is_enabled', 1)
-            ->exists();
+        if (Schema::hasTable('user_module_access')) {
+            $userMod = DB::table('user_module_access')
+                ->where('user_id', $this->id)
+                ->where('module_key', $moduleKey)
+                ->whereNull('permission_key')
+                ->first(['is_allowed', 'is_enabled']);
+
+            if ($userMod) {
+                return (bool) ($userMod->is_allowed ?? $userMod->is_enabled);
+            }
+        }
+
+        return true;
     }
 }

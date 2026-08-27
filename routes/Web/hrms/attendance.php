@@ -111,6 +111,8 @@ Route::middleware(['auth', 'check.access'])
         Route::put('/policy-overrides/{id}', [AttendancePolicyOverrideC::class, 'update'])->middleware('permission:attendance.policy_overrides.manage')->name('policy_overrides.update');
 
         Route::get('/work-reports', [\App\Http\Controllers\Web\HRMS\Attendance\WorkReportC::class, 'index'])->middleware('permission:attendance.work_reports.view_all|attendance.work_reports.view_team|attendance.work_reports.view_own')->name('work-reports');
+        Route::get('/work-reports/employee/{employee}', [\App\Http\Controllers\Web\HRMS\Attendance\WorkReportC::class, 'employeeHistory'])->middleware('permission:attendance.work_reports.view_all|attendance.work_reports.view_team|attendance.work_reports.view_own')->name('work-reports.employee-history');
+        Route::get('/work-reports/employee/{employee}/print', [\App\Http\Controllers\Web\HRMS\Attendance\WorkReportC::class, 'printEmployeeHistory'])->middleware('permission:attendance.work_reports.view_all|attendance.work_reports.view_team|attendance.work_reports.view_own')->name('work-reports.employee-history.print');
         Route::get('/my-work-reports', [\App\Http\Controllers\Web\HRMS\Attendance\WorkReportC::class, 'index'])->middleware('permission:attendance.work_reports.view_own')->name('my-work-reports');
 
         Route::get('/wfh', [WfhRequestC::class, 'index'])->middleware('permission:attendance.wfh.view|attendance.wfh.own')->name('wfh.index');

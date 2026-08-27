@@ -350,7 +350,7 @@
 
                         <div class="col-lg-2 col-md-6 mb-2">
                             <label class="font-weight-bold small">Employee</label>
-                            <select name="employee_id" class="form-control">
+                            <select name="employee_id" class="form-control select2-searchable">
                                 <option value="">All Employees</option>
                                 @foreach ($employees as $emp)
                                     <option value="{{ optional($emp->employee)->id }}"

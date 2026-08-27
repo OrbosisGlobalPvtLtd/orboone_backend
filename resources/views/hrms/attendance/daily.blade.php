@@ -419,7 +419,7 @@
 
                         <div>
                             <label>Employee</label>
-                            <select name="employee_id" class="form-control">
+                            <select name="employee_id" class="form-control select2-searchable">
                                 <option value="">All Staff</option>
                                 @foreach($employees as $emp)
                                 <option value="{{ optional($emp->employee)->id }}"

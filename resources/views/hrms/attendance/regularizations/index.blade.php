@@ -758,7 +758,7 @@ body {
                             <div>
                                 <label>{{ $filter['label'] }}</label>
                                 @if(($filter['type'] ?? 'text') === 'select')
-                                    <select name="{{ $filter['name'] }}" class="form-control js-auto-filter">
+                                    <select name="{{ $filter['name'] }}" class="form-control select2-searchable">
                                         <option value="">{{ $filter['placeholder'] ?? 'All' }}</option>
                                         @foreach($filter['options'] as $value => $label)
                                             @php
@@ -773,14 +773,20 @@ body {
                                         @endforeach
                                     </select>
                                 @else
-                                    <input type="{{ $filter['type'] ?? 'text' }}" name="{{ $filter['name'] }}" value="{{ request($filter['name']) }}" class="form-control js-auto-filter" placeholder="{{ $filter['placeholder'] ?? '' }}">
+                                    <input type="{{ $filter['type'] ?? 'text' }}" name="{{ $filter['name'] }}" value="{{ request($filter['name']) }}" class="form-control" placeholder="{{ $filter['placeholder'] ?? '' }}">
                                 @endif
                             </div>
                         @endforeach
                         <div>
-                            <a href="{{ url()->current() }}" class="att-btn att-btn-light w-100 justify-content-center" style="height: 36px !important; border-radius: 8px !important; font-size: 12px !important; font-weight: 800 !important; display: inline-flex !important; align-items: center !important; gap: 6px !important; border: 1px solid var(--orb-border) !important;">
-                                <i class="fas fa-undo"></i> Reset
-                            </a>
+                            <label>&nbsp;</label>
+                            <div class="d-flex align-items-center" style="gap: 8px;">
+                                <button type="submit" class="btn text-white font-weight-bold shadow-sm" style="height: 38px; border-radius: 8px; background: var(--orb-primary); border: none; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; flex: 1;">
+                                    <i class="fas fa-search"></i> Search
+                                </button>
+                                <a href="{{ url()->current() }}" class="att-btn att-btn-light justify-content-center" style="height: 38px !important; width: 38px !important; border-radius: 8px !important; font-size: 12px !important; font-weight: 800 !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; flex-shrink: 0 !important; border: 1px solid var(--orb-border) !important;" title="Reset Filters">
+                                    <i class="fas fa-undo"></i>
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </form>
@@ -1558,23 +1564,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
-
-    // Auto filter triggering
-    document.querySelectorAll('.js-auto-filter').forEach(function (input) {
-        input.addEventListener('change', function () {
-            document.getElementById('filterForm').submit();
-        });
-
-        if (input.tagName === 'INPUT') {
-            let timeout = null;
-            input.addEventListener('keyup', function () {
-                clearTimeout(timeout);
-                timeout = setTimeout(function () {
-                    document.getElementById('filterForm').submit();
-                }, 500);
-            });
-        }
-    });
 
     // DataTable initialization
     if (window.jQuery && $.fn.DataTable) {

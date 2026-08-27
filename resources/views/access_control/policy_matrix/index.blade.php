@@ -135,14 +135,17 @@
                     <p class="mb-0 mt-1 small" style="opacity: 0.85;">Switching role will update the policy matrix below.</p>
                 </div>
                 <div>
-                    <form method="GET" action="{{ route('access_control.policy_matrix.index') }}" id="roleSelectForm">
-                        <select name="role_id" class="role-select-box" onchange="document.getElementById('roleSelectForm').submit();">
+                    <form method="GET" action="{{ route('access_control.policy_matrix.index') }}" id="roleSelectForm" class="d-flex align-items-center" style="gap: 8px;">
+                        <select name="role_id" class="role-select-box select2-searchable">
                             @foreach($roles as $r)
                                 <option value="{{ $r->id }}" {{ (int)$selectedRoleId === (int)$r->id ? 'selected' : '' }}>
                                     {{ $r->name }} {{ $r->slug === 'super_admin' ? '(Super Admin)' : '' }}
                                 </option>
                             @endforeach
                         </select>
+                        <button type="submit" class="btn btn-light font-weight-bold px-3" style="height: 42px; border-radius: 12px; font-size: 13px; color: var(--orb-primary, #4B00E8);">
+                            <i class="fas fa-search mr-1"></i> Search
+                        </button>
                     </form>
                 </div>
             </div>

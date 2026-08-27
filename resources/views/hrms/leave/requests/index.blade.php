@@ -386,13 +386,13 @@
                 <div class="filter-grid">
                     <div>
                         <label class="font-weight-bold text-muted mb-1" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;">Leave Type</label>
-                        <select id="filterLeaveType" class="filter-control" onchange="applyLeaveFilters()">
+                        <select id="filterLeaveType" class="filter-control select2-searchable">
                             <option value="">All Types</option>
                         </select>
                     </div>
                     <div>
                         <label class="font-weight-bold text-muted mb-1" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;">Status</label>
-                        <select id="filterStatus" class="filter-control" onchange="applyLeaveFilters()">
+                        <select id="filterStatus" class="filter-control">
                             <option value="">All Statuses</option>
                             <option value="pending">Pending</option>
                             <option value="approved">Approved</option>
@@ -403,11 +403,14 @@
                     </div>
                     <div>
                         <label class="font-weight-bold text-muted mb-1" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;">Search Reason / Date</label>
-                        <input type="text" id="filterSearch" class="filter-control" placeholder="Search reason notes..." onkeyup="applyLeaveFilters()">
+                        <input type="text" id="filterSearch" class="filter-control" placeholder="Search reason notes..." onkeyup="if(event.keyCode === 13) applyLeaveFilters()">
                     </div>
-                    <div>
+                    <div class="d-flex align-items-end" style="gap: 8px;">
+                        <button type="button" class="btn text-white font-weight-bold shadow-sm" style="height: 42px; border-radius: 12px; background: var(--orb-primary); border: none; padding: 0 16px; display: inline-flex; align-items: center; gap: 6px; font-size: 13px;" onclick="applyLeaveFilters()">
+                            <i class="fas fa-search"></i> Search
+                        </button>
                         <button type="button" class="filter-btn-reset" onclick="resetLeaveFilters()">
-                            <i class="fas fa-undo mr-1"></i> Reset Filters
+                            <i class="fas fa-undo mr-1"></i> Reset
                         </button>
                     </div>
                 </div>

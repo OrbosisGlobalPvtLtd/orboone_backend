@@ -50,21 +50,24 @@
                 <div class="ac-filter-row">
                     <div class="ac-filter-col">
                         <label class="ac-filter-label">Search Name</label>
-                        <input type="text" id="filterRoleName" class="ac-filter-control" placeholder="Search by role name..." onkeyup="applyRoleFilters()">
+                        <input type="text" id="filterRoleName" class="ac-filter-control" placeholder="Search by role name..." onkeyup="if(event.keyCode === 13) applyRoleFilters()">
                     </div>
                     <div class="ac-filter-col">
                         <label class="ac-filter-label">Search Code</label>
-                        <input type="text" id="filterRoleCode" class="ac-filter-control" placeholder="Search by code slug..." onkeyup="applyRoleFilters()">
+                        <input type="text" id="filterRoleCode" class="ac-filter-control" placeholder="Search by code slug..." onkeyup="if(event.keyCode === 13) applyRoleFilters()">
                     </div>
                     <div class="ac-filter-col">
                         <label class="ac-filter-label">Status State</label>
-                        <select id="filterRoleStatus" class="ac-filter-control" onchange="applyRoleFilters()">
+                        <select id="filterRoleStatus" class="ac-filter-control select2-searchable">
                             <option value="">All Statuses</option>
                             <option value="active">Active</option>
                             <option value="inactive">Inactive</option>
                         </select>
                     </div>
-                    <div style="flex: 0 0 auto; display: flex; align-items: flex-end;">
+                    <div style="flex: 0 0 auto; display: flex; align-items: flex-end; gap: 8px;">
+                        <button type="button" class="ac-btn text-white font-weight-bold" style="height: 38px; border-radius: 9px; background: var(--orb-primary, #4B00E8); border: none; font-weight: 850; display: inline-flex; align-items: center; gap: 6px; font-size: 12px;" onclick="applyRoleFilters()">
+                            <i class="fas fa-search"></i> Search
+                        </button>
                         <button type="button" class="ac-btn" style="height: 38px; border-radius: 9px; background: #F1F5F9; border-color: #E2E8F0; color: #475569; font-weight: 850; display: inline-flex; align-items: center; gap: 6px; font-size: 12px;" onclick="resetRoleFilters()">
                             <i class="fas fa-undo"></i> Reset
                         </button>

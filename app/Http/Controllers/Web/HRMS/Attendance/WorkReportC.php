@@ -39,10 +39,68 @@ class WorkReportC extends Controller
         
         $query = $this->scopeEmployeeVisibility($query, $allPermission, $teamPermission, 'employee_id');
 
-        // Retrieve all scoping-restricted work logs for full client-side search/filter
+        // Apply request filters
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('user', function ($qu) use ($search) {
+                    $qu->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%");
+                })->orWhereHas('employee', function ($qe) use ($search) {
+                    $qe->where('employee_code', 'like', "%{$search}%");
+                })->orWhere('work_summary', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('employee_id')) {
+            $query->where('employee_id', $request->employee_id);
+        }
+
+        if ($request->filled('from_date')) {
+            $query->whereDate('work_date', '>=', $request->from_date);
+        }
+
+        if ($request->filled('to_date')) {
+            $query->whereDate('work_date', '<=', $request->to_date);
+        }
+
+        // Retrieve work logs
         $workLogs = $query->orderByDesc('work_date')
             ->orderByDesc('id')
             ->get();
+
+        // Batch preload passport photos to eliminate N+1 queries
+        $empIds = $workLogs->pluck('employee_id')->filter()->unique()->values()->toArray();
+        global $preloadedPassportPhotos;
+        $preloadedPassportPhotos = [];
+        if (!empty($empIds) && \Illuminate\Support\Facades\Schema::hasTable('employee_documents_new') && \Illuminate\Support\Facades\Schema::hasTable('document_types')) {
+            try {
+                $photos = \Illuminate\Support\Facades\DB::table('employee_documents_new')
+                    ->join('document_types', 'document_types.id', '=', 'employee_documents_new.document_type_id')
+                    ->whereIn('employee_documents_new.employee_id', $empIds)
+                    ->where(function ($q) {
+                        $q->where('document_types.name', 'Passport Size Photo')
+                            ->orWhere('document_types.code', 'passport_size_photo')
+                            ->orWhere('document_types.name', 'Passport Photo')
+                            ->orWhere('document_types.code', 'passport_photo')
+                            ->orWhere('document_types.name', 'Photo')
+                            ->orWhere('document_types.name', 'Passport')
+                            ->orWhere('document_types.name', 'like', '%Passport%Photo%')
+                            ->orWhere('document_types.name', 'like', '%Passport%Size%Photo%');
+                    })
+                    ->select('employee_documents_new.employee_id', 'employee_documents_new.file_path', 'employee_documents_new.verification_status')
+                    ->orderByRaw("CASE WHEN employee_documents_new.verification_status = 'verified' THEN 0 ELSE 1 END")
+                    ->orderBy('employee_documents_new.id', 'desc')
+                    ->get()
+                    ->groupBy('employee_id');
+
+                foreach ($empIds as $id) {
+                    $document = isset($photos[$id]) ? $photos[$id]->first() : null;
+                    $preloadedPassportPhotos[$id] = ($document && $document->file_path)
+                        ? route('hrms.documents.file', ['path' => $document->file_path])
+                        : null;
+                }
+            } catch (\Throwable $e) {}
+        }
 
         // Build Employee Summaries grouping for Employee Cards View
         $employeeSummaries = $workLogs->groupBy(function ($log) {

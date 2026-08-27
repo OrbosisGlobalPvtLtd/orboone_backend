@@ -889,7 +889,7 @@
                 @else
                 <div>
                     <h5 class="att-section-title"><i class="fas fa-table"></i> Attendance Records List</h5>
-                    <div class="att-section-sub">Filters are attached with this table and auto-apply on change/search.</div>
+                    <div class="att-section-sub">Filters are attached with this table. Select criteria and click Search.</div>
                 </div>
                 <div class="att-head-badges align-items-center">
                     <span class="att-total-pill">Total: {{ $totalRecords }}</span>
@@ -918,7 +918,7 @@
                         @if(!$isMyAttendance)
                         <div class="att-filter-group">
                             <label>Search</label>
-                            <input type="text" name="search" class="form-control auto-filter-input"
+                            <input type="text" name="search" class="form-control"
                                 value="{{ request('search') }}"
                                 placeholder="Name, email, employee code">
                         </div>
@@ -926,23 +926,23 @@
 
                         <div class="att-filter-group">
                             <label>Date</label>
-                            <input type="date" name="date" class="form-control auto-filter" value="{{ request('date') }}">
+                            <input type="date" name="date" class="form-control" value="{{ request('date') }}">
                         </div>
 
                         <div class="att-filter-group">
                             <label>From Date</label>
-                            <input type="date" name="from_date" class="form-control auto-filter" value="{{ request('from_date') }}">
+                            <input type="date" name="from_date" class="form-control" value="{{ request('from_date') }}">
                         </div>
 
                         <div class="att-filter-group">
                             <label>To Date</label>
-                            <input type="date" name="to_date" class="form-control auto-filter" value="{{ request('to_date') }}">
+                            <input type="date" name="to_date" class="form-control" value="{{ request('to_date') }}">
                         </div>
 
                         @if(!$isMyAttendance)
                         <div class="att-filter-group">
                             <label>Employee</label>
-                            <select name="employee_id" class="form-control auto-filter">
+                            <select name="employee_id" class="form-control select2-searchable">
                                 <option value="">All Employees</option>
                                 @foreach($employees as $emp)
                                 @php $employeeId = optional($emp->employee)->id ?? $emp->id; @endphp
@@ -956,7 +956,7 @@
 
                         <div class="att-filter-group">
                             <label>Status</label>
-                            <select name="attendance_type_id" class="form-control auto-filter">
+                            <select name="attendance_type_id" class="form-control">
                                 <option value="">All Status</option>
                                 @foreach($attendanceTypes as $type)
                                 <option value="{{ $type->id }}" {{ request('attendance_type_id') == $type->id ? 'selected' : '' }}>
@@ -968,7 +968,7 @@
 
                         <div class="att-filter-group">
                             <label>Shift</label>
-                            <select name="attendance_time_id" class="form-control auto-filter">
+                            <select name="attendance_time_id" class="form-control">
                                 <option value="">All Shifts</option>
                                 @foreach($attendanceTimes ?? [] as $shift)
                                 <option value="{{ $shift->id }}" {{ request('attendance_time_id') == $shift->id ? 'selected' : '' }}>
@@ -980,7 +980,7 @@
 
                         <div class="att-filter-group">
                             <label>Work Mode</label>
-                            <select name="work_mode" class="form-control auto-filter">
+                            <select name="work_mode" class="form-control">
                                 <option value="">All</option>
                                 <option value="wfo" {{ request('work_mode') == 'wfo' ? 'selected' : '' }}>WFO</option>
                                 <option value="wfh" {{ request('work_mode') == 'wfh' ? 'selected' : '' }}>WFH</option>
@@ -989,7 +989,7 @@
 
                         <div class="att-filter-group">
                             <label>Flags</label>
-                            <select name="flag" class="form-control auto-filter">
+                            <select name="flag" class="form-control">
                                 <option value="">All Records</option>
                                 <option value="late" {{ request('flag') == 'late' ? 'selected' : '' }}>Late</option>
                                 <option value="early_out" {{ request('flag') == 'early_out' ? 'selected' : '' }}>Early Logout</option>
@@ -999,9 +999,12 @@
                             </select>
                         </div>
 
-                        <div class="att-filter-group d-flex align-items-end">
-                            <a href="{{ $isMyAttendance ? route('hrms.attendance.my') : route('attendances.record') }}" class="btn btn-light w-100" style="height:43px; border-radius:14px; display:inline-flex; align-items:center; justify-content:center; gap:8px; font-weight:750; border:1px solid #E4E7EC; background:#fff; color:#344054;">
-                                <i class="fas fa-undo"></i> Reset
+                        <div class="att-filter-group d-flex align-items-end" style="gap: 8px;">
+                            <button type="submit" class="btn text-white font-weight-bold shadow-sm" style="height:43px; border-radius:14px; background:var(--orb-primary); border:none; flex:1; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
+                                <i class="fas fa-search"></i> Search
+                            </button>
+                            <a href="{{ $isMyAttendance ? route('hrms.attendance.my') : route('attendances.record') }}" class="btn btn-light" style="height:43px; width:43px; border-radius:14px; display:inline-flex; align-items:center; justify-content:center; font-weight:750; border:1px solid #E4E7EC; background:#fff; color:#344054; flex-shrink:0;" title="Reset Filters">
+                                <i class="fas fa-undo"></i>
                             </a>
                         </div>
 
@@ -1501,30 +1504,6 @@
             toDateInput.addEventListener('change', function() {
                 if (this.value && dateInput) {
                     dateInput.value = '';
-                }
-            });
-        }
-
-        function submitFilterForm() {
-            if (form) {
-                form.submit();
-            }
-        }
-
-        filters.forEach(function(filter) {
-            filter.addEventListener('change', submitFilterForm);
-        });
-
-        if (searchInput) {
-            searchInput.addEventListener('keyup', function() {
-                clearTimeout(typingTimer);
-                typingTimer = setTimeout(submitFilterForm, 500);
-            });
-
-            searchInput.addEventListener('keypress', function(event) {
-                if (event.key === 'Enter') {
-                    event.preventDefault();
-                    submitFilterForm();
                 }
             });
         }

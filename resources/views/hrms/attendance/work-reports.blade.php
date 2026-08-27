@@ -512,7 +512,7 @@
         <!-- Filter Card Bar -->
         <div class="card orb-table-card mb-4">
             <div class="report-filters-attached">
-                <form id="reportFilterForm" onsubmit="event.preventDefault();">
+                <form method="GET" action="{{ route('hrms.attendance.work-reports') }}" id="reportFilterForm">
                     <div class="report-filter-grid">
                         @if($isAdminOrManager)
                         <div>
@@ -520,7 +520,7 @@
                             <select name="employee_id" id="filterEmployee" class="form-control select2-searchable">
                                 <option value="">All Staff</option>
                                 @foreach($employees as $emp)
-                                <option value="{{ optional($emp->employee)->id }}">
+                                <option value="{{ optional($emp->employee)->id }}" {{ (string) request('employee_id') === (string) optional($emp->employee)->id ? 'selected' : '' }}>
                                     {{ $emp->name }}
                                 </option>
                                 @endforeach
@@ -535,24 +535,29 @@
 
                         <div>
                             <label>From Date</label>
-                            <input type="date" name="from_date" id="filterFromDate" class="form-control">
+                            <input type="date" name="from_date" id="filterFromDate" value="{{ request('from_date') }}" class="form-control">
                         </div>
 
                         <div>
                             <label>To Date</label>
-                            <input type="date" name="to_date" id="filterToDate" class="form-control">
+                            <input type="date" name="to_date" id="filterToDate" value="{{ request('to_date') }}" class="form-control">
                         </div>
 
                         <div>
                             <label>Search Keyword</label>
-                            <input type="text" name="search" id="filterSearch" class="form-control" placeholder="Search tasks or summary...">
+                            <input type="text" name="search" id="filterSearch" value="{{ request('search') }}" class="form-control" placeholder="Search tasks or summary...">
                         </div>
 
                         <div>
                             <label>&nbsp;</label>
-                            <button type="submit" id="btnFilterSubmit" class="btn btn-primary btn-block rounded-12 font-weight-bold" style="height: 44px; background: var(--orb-primary); border: none;">
-                                <i class="fas fa-search mr-1"></i> Search
-                            </button>
+                            <div class="d-flex align-items-center" style="gap: 8px;">
+                                <button type="submit" id="btnFilterSubmit" class="btn text-white font-weight-bold shadow-sm" style="height: 44px; border-radius: 12px; background: var(--orb-primary); border: none; flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                                    <i class="fas fa-search"></i> Search
+                                </button>
+                                <a href="{{ route('hrms.attendance.work-reports') }}" class="btn btn-light border text-secondary font-weight-bold" style="height: 44px; width: 44px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Reset Filters">
+                                    <i class="fas fa-undo"></i>
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </form>

@@ -623,9 +623,9 @@
             </div>
 
             <div class="leave-action-wrap align-items-center">
-                <form action="{{ route('leave-allocations.index') }}" method="GET" class="d-inline-flex align-items-center mr-3">
+                <form action="{{ route('leave-allocations.index') }}" method="GET" class="d-inline-flex align-items-center mr-3" style="gap: 6px;">
                     <label class="mr-2 mb-0 font-weight-bold" style="font-size:12px; color:#475467;"><i class="fas fa-calendar-alt text-primary mr-1"></i> Filter Year:</label>
-                    <select name="year" onchange="this.form.submit()" class="form-control form-control-sm" style="border-radius:10px; font-weight:800; width:95px; height:36px; border:1px solid #D0D5DD; background:#ffffff; color:#101828; box-shadow:0 1px 2px rgba(16,24,40,0.05);">
+                    <select name="year" class="form-control form-control-sm" style="border-radius:10px; font-weight:800; width:95px; height:36px; border:1px solid #D0D5DD; background:#ffffff; color:#101828; box-shadow:0 1px 2px rgba(16,24,40,0.05);">
                         @php
                             $selectedYear = (int) ($year ?? date('Y'));
                         @endphp
@@ -633,6 +633,9 @@
                             <option value="{{ $y }}" {{ $selectedYear == $y ? 'selected' : '' }}>{{ $y }}</option>
                         @endfor
                     </select>
+                    <button type="submit" class="btn btn-sm btn-primary font-weight-bold" style="height:36px; border-radius:10px; background: var(--orb-primary); border:none; padding: 0 12px;">
+                        <i class="fas fa-search"></i>
+                    </button>
                 </form>
 
                 <button type="button" class="leave-light-btn" onclick="triggerLeaveExport('csv');">

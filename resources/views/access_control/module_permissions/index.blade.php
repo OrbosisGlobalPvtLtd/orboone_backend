@@ -175,11 +175,11 @@
     <div class="card border-0 shadow-sm rounded-16 mb-4">
         <div class="card-body p-4">
             @if($tab === 'role')
-                <form method="GET" action="{{ route('access_control.module_permissions.index') }}" class="row align-items-center">
+                <form method="GET" action="{{ route('access_control.module_permissions.index') }}" class="row align-items-end">
                     <input type="hidden" name="tab" value="role">
-                    <div class="col-md-6 mb-2 mb-md-0">
+                    <div class="col-md-5 mb-2 mb-md-0">
                         <label class="font-weight-bold text-gray-700 mb-1"><i class="fas fa-user-tag text-primary mr-2"></i>Select System Role:</label>
-                        <select name="role_id" class="form-control form-control-lg rounded-12" onchange="this.form.submit()">
+                        <select name="role_id" class="form-control form-control-lg rounded-12 select2-searchable">
                             @foreach($roles as $r)
                                 <option value="{{ $r->id }}" {{ (int)$selectedRoleId === (int)$r->id ? 'selected' : '' }}>
                                     {{ $r->name }} ({{ $r->slug }}) {{ $r->is_system ? '- System Default' : '' }}
@@ -187,16 +187,21 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-6 text-md-right">
+                    <div class="col-md-3 mb-2 mb-md-0">
+                        <button type="submit" class="btn btn-primary font-weight-bold px-4 rounded-12 shadow-sm" style="height: 48px; background: var(--orb-primary); border: none;">
+                            <i class="fas fa-search mr-1"></i> Search
+                        </button>
+                    </div>
+                    <div class="col-md-4 text-md-right">
                         <input type="text" id="moduleSearch" class="form-control rounded-12" placeholder="Search modules & permissions...">
                     </div>
                 </form>
             @elseif($tab === 'user')
-                <form method="GET" action="{{ route('access_control.module_permissions.index') }}" class="row align-items-center">
+                <form method="GET" action="{{ route('access_control.module_permissions.index') }}" class="row align-items-end">
                     <input type="hidden" name="tab" value="user">
-                    <div class="col-md-6 mb-2 mb-md-0">
+                    <div class="col-md-5 mb-2 mb-md-0">
                         <label class="font-weight-bold text-gray-700 mb-1"><i class="fas fa-user text-primary mr-2"></i>Select Target User:</label>
-                        <select name="user_id" class="form-control form-control-lg rounded-12" onchange="this.form.submit()">
+                        <select name="user_id" class="form-control form-control-lg rounded-12 select2-searchable">
                             @foreach($users as $u)
                                 <option value="{{ $u->id }}" {{ (int)$selectedUserId === (int)$u->id ? 'selected' : '' }}>
                                     {{ $u->name }} ({{ $u->email }})
@@ -204,16 +209,21 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-6 text-md-right">
+                    <div class="col-md-3 mb-2 mb-md-0">
+                        <button type="submit" class="btn btn-primary font-weight-bold px-4 rounded-12 shadow-sm" style="height: 48px; background: var(--orb-primary); border: none;">
+                            <i class="fas fa-search mr-1"></i> Search
+                        </button>
+                    </div>
+                    <div class="col-md-4 text-md-right">
                         <input type="text" id="moduleSearch" class="form-control rounded-12" placeholder="Search modules & permissions...">
                     </div>
                 </form>
             @elseif($tab === 'profile')
-                <form method="GET" action="{{ route('access_control.module_permissions.index') }}" class="row align-items-center">
+                <form method="GET" action="{{ route('access_control.module_permissions.index') }}" class="row align-items-end">
                     <input type="hidden" name="tab" value="profile">
-                    <div class="col-md-6 mb-2 mb-md-0">
+                    <div class="col-md-5 mb-2 mb-md-0">
                         <label class="font-weight-bold text-gray-700 mb-1"><i class="fas fa-building text-primary mr-2"></i>Select Profile / Department:</label>
-                        <select name="department_id" class="form-control form-control-lg rounded-12" onchange="this.form.submit()">
+                        <select name="department_id" class="form-control form-control-lg rounded-12 select2-searchable">
                             @foreach($departments as $d)
                                 <option value="{{ $d->id }}" {{ (int)$selectedDepartmentId === (int)$d->id ? 'selected' : '' }}>
                                     {{ $d->name }} Department / Profile
@@ -221,7 +231,12 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-6 text-md-right">
+                    <div class="col-md-3 mb-2 mb-md-0">
+                        <button type="submit" class="btn btn-primary font-weight-bold px-4 rounded-12 shadow-sm" style="height: 48px; background: var(--orb-primary); border: none;">
+                            <i class="fas fa-search mr-1"></i> Search
+                        </button>
+                    </div>
+                    <div class="col-md-4 text-md-right">
                         <input type="text" id="moduleSearch" class="form-control rounded-12" placeholder="Search modules & permissions...">
                     </div>
                 </form>

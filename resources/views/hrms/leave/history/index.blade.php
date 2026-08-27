@@ -308,7 +308,7 @@ body {
                 <div class="lh-filter-grid">
                     <div>
                         <label>Status</label>
-                        <select name="status" class="form-control js-auto-filter">
+                        <select name="status" class="form-control">
                             <option value="">All Statuses</option>
                             <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Pending</option>
                             <option value="approved" {{ request('status') === 'approved' ? 'selected' : '' }}>Approved</option>
@@ -320,7 +320,7 @@ body {
 
                     <div>
                         <label>Leave Type</label>
-                        <select name="leave_type_id" class="form-control js-auto-filter">
+                        <select name="leave_type_id" class="form-control">
                             <option value="">All Leave Types</option>
                             @foreach($leaveTypes as $lt)
                                 <option value="{{ $lt->id }}" {{ (string)request('leave_type_id') === (string)$lt->id ? 'selected' : '' }}>
@@ -333,7 +333,7 @@ body {
                     @if(!$isEmployeeRole)
                     <div>
                         <label>Employee</label>
-                        <select name="employee_id" class="form-control js-auto-filter">
+                        <select name="employee_id" class="form-control select2-searchable">
                             <option value="">All Employees</option>
                             @foreach($employees as $emp)
                                 <option value="{{ $emp->id }}" {{ (string)request('employee_id') === (string)$emp->id ? 'selected' : '' }}>
@@ -345,7 +345,7 @@ body {
 
                     <div>
                         <label>Department</label>
-                        <select name="department_id" class="form-control js-auto-filter">
+                        <select name="department_id" class="form-control">
                             <option value="">All Departments</option>
                             @foreach($departments as $dept)
                                 <option value="{{ $dept->id }}" {{ (string)request('department_id') === (string)$dept->id ? 'selected' : '' }}>
@@ -354,25 +354,28 @@ body {
                             @endforeach
                         </select>
                     </div>
-                    @else
-                    <div></div>
-                    <div></div>
                     @endif
 
                     <div>
                         <label>From Date</label>
-                        <input type="date" name="from" value="{{ request('from') }}" class="form-control js-auto-filter">
+                        <input type="date" name="from" value="{{ request('from') }}" class="form-control">
                     </div>
 
                     <div>
                         <label>To Date</label>
-                        <input type="date" name="to" value="{{ request('to') }}" class="form-control js-auto-filter">
+                        <input type="date" name="to" value="{{ request('to') }}" class="form-control">
                     </div>
 
                     <div>
-                        <a href="{{ route('hrms.leave.history') }}" class="btn btn-light border font-weight-bold btn-block d-flex align-items-center justify-content-center" style="height: 38px; border-radius: 10px;">
-                            <i class="fas fa-undo-alt mr-1"></i> Reset
-                        </a>
+                        <label>&nbsp;</label>
+                        <div class="d-flex align-items-center" style="gap: 8px;">
+                            <button type="submit" class="btn text-white font-weight-bold shadow-sm" style="height: 38px; border-radius: 10px; background: var(--orb-primary); border: none; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; flex: 1;">
+                                <i class="fas fa-search"></i> Search
+                            </button>
+                            <a href="{{ route('hrms.leave.history') }}" class="btn btn-light border text-secondary font-weight-bold" style="height: 38px; width: 38px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Reset Filters">
+                                <i class="fas fa-undo"></i>
+                            </a>
+                        </div>
                     </div>
                 </div>
             </form>
@@ -553,10 +556,6 @@ $(document).ready(function() {
     }
 
     $('[data-toggle="tooltip"]').tooltip();
-
-    $('.js-auto-filter').on('change', function() {
-        $('#filterForm').submit();
-    });
 
     if ($('#leaveHistoryTable').length) {
         $('#leaveHistoryTable').DataTable({

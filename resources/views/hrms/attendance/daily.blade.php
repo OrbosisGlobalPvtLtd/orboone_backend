@@ -835,16 +835,6 @@
             applyDailyFilters();
         });
 
-        // Flags filter
-        $('select[name="flag"]').on('change', function() {
-            var val = $(this).val();
-            if (!val) {
-                table.column(10).search('').draw();
-            } else {
-                table.column(10).search(val).draw();
-            }
-        });
-
         // Reset Button
         $('.btn-undo').on('click', function(e) {
             e.preventDefault();

@@ -572,7 +572,7 @@
 
                     <div class="col-12 col-md-3 px-2">
                         <label class="dm-filter-label" style="font-size: 11px; font-weight: 700; color: var(--dm-muted); text-transform: uppercase; margin-bottom: 6px; display: block;">Department</label>
-                        <select name="department_id" id="filterDepartment" class="dm-filter-control w-100" style="border-radius: 8px; height: 38px; border: 1px solid var(--dm-border); padding: 0 12px; outline: none; font-weight: 600; font-size: 13px;">
+                        <select name="department_id" id="filterDepartment" class="dm-filter-control w-100 select2-searchable" style="border-radius: 8px; height: 38px; border: 1px solid var(--dm-border); padding: 0 12px; outline: none; font-weight: 600; font-size: 13px;">
                             <option value="">All Depts</option>
                             @if(isset($departments) && count($departments) > 0)
                             @foreach($departments as $dept)
@@ -582,7 +582,7 @@
                         </select>
                     </div>
 
-                    <div class="col-12 col-md-3 px-2">
+                    <div class="col-12 col-md-2 px-2">
                         <label class="dm-filter-label" style="font-size: 11px; font-weight: 700; color: var(--dm-muted); text-transform: uppercase; margin-bottom: 6px; display: block;">Doc Type</label>
                         <select name="document_type_id" id="filterDocumentType" class="dm-filter-control w-100" style="border-radius: 8px; height: 38px; border: 1px solid var(--dm-border); padding: 0 12px; outline: none; font-weight: 600; font-size: 13px;">
                             <option value="">All Types</option>
@@ -596,7 +596,7 @@
                         </select>
                     </div>
 
-                    <div class="col-12 col-md-3 px-2">
+                    <div class="col-12 col-md-2 px-2">
                         <label class="dm-filter-label" style="font-size: 11px; font-weight: 700; color: var(--dm-muted); text-transform: uppercase; margin-bottom: 6px; display: block;">Status</label>
                         <select name="status" id="filterStatus" class="dm-filter-control w-100" style="border-radius: 8px; height: 38px; border: 1px solid var(--dm-border); padding: 0 12px; outline: none; font-weight: 600; font-size: 13px;">
                             <option value="">Pending Only</option>
@@ -604,6 +604,15 @@
                             <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
                             <option value="verified" {{ request('status') == 'verified' ? 'selected' : '' }}>Verified</option>
                         </select>
+                    </div>
+
+                    <div class="col-12 col-md-2 px-2 d-flex align-items-end" style="gap: 6px;">
+                        <button type="submit" class="btn text-white font-weight-bold shadow-sm" style="height: 38px; border-radius: 8px; background: var(--orb-primary); border: none; flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 4px; font-size: 12px;">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                        <a href="{{ route('documents.hr.index') }}" class="btn btn-light border text-secondary font-weight-bold" style="height: 38px; width: 38px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Reset Filters">
+                            <i class="fas fa-undo"></i>
+                        </a>
                     </div>
                 </div>
             </div>
@@ -833,20 +842,6 @@
                 $('.dataTables_info').appendTo('#employeeInfoBox');
                 $('.dataTables_paginate').appendTo('#employeePaginationBox');
             }
-        });
-
-        let searchTimer = null;
-
-        $('#filterSearch').on('keyup', function() {
-            clearTimeout(searchTimer);
-
-            searchTimer = setTimeout(function() {
-                $('#docFilterForm').submit();
-            }, 500);
-        });
-
-        $('#filterDepartment, #filterDocumentType, #filterStatus').on('change', function() {
-            $('#docFilterForm').submit();
         });
 
         $('.verify-all-toggle').on('change', function() {

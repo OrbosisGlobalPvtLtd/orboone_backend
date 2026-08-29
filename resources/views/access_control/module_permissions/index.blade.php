@@ -127,6 +127,7 @@
 
 @section('content')
 <div class="container-fluid px-4 py-4">
+    @include('access_control.partials.nav')
     <!-- Header -->
     <div class="d-flex align-items-center justify-content-between mb-4">
         <div>

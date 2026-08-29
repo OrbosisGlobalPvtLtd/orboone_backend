@@ -109,6 +109,8 @@
 <div class="ac-page">
     <div class="ac-container">
         
+        @include('access_control.partials.nav')
+
         <!-- Header -->
         <div class="ac-header mb-4">
             <div>

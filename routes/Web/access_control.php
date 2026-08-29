@@ -8,8 +8,19 @@ use App\Http\Controllers\Web\AccessControl\RolePermissionC;
 use App\Http\Controllers\Web\AccessControl\RoleMenuC;
 use App\Http\Controllers\Web\AccessControl\RbacPolicyMatrixC;
 use App\Http\Controllers\Web\AccessControl\ModulePermissionC;
+use App\Http\Controllers\Web\AccessControl\RbacVisualizerC;
 
 Route::middleware(['auth', 'web.admin.access'])->group(function () {
+    Route::get('/visualizer', [RbacVisualizerC::class, 'index'])
+        ->middleware('permission:roles.manage|access.roles.manage')
+        ->name('access_control.visualizer.index');
+    Route::post('/visualizer/simulate', [RbacVisualizerC::class, 'simulate'])
+        ->middleware('permission:roles.manage|access.roles.manage')
+        ->name('access_control.visualizer.simulate');
+    Route::get('/visualizer/export', [RbacVisualizerC::class, 'exportCsv'])
+        ->middleware('permission:roles.manage|access.roles.manage')
+        ->name('access_control.visualizer.export');
+
     Route::get('/module-permissions', [ModulePermissionC::class, 'index'])
         ->middleware('permission:roles.manage|access.roles.manage')
         ->name('access_control.module_permissions.index');

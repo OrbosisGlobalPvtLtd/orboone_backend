@@ -239,36 +239,9 @@ class AdminUserC extends Controller
 
     private function selectedAdminRoleIds(StoreAdminUserRequest $request, $adminUserId = null): array
     {
-        $roleIds = $request->input('role_ids', []);
+        $roleId = $request->input('role_id') ?: ($request->input('role_ids')[0] ?? null);
 
-        if (! is_array($roleIds)) {
-            $roleIds = [$roleIds];
-        }
-
-        if ($request->filled('role_id')) {
-            $roleIds[] = $request->role_id;
-        }
-
-        $roleIds = collect($roleIds)
-            ->filter()
-            ->map(fn ($roleId) => (int) $roleId)
-            ->unique()
-            ->values()
-            ->all();
-
-        $query = DB::table('roles')
-            ->whereIn('id', $roleIds)
-            ->whereIn('slug', self::ADMIN_ROLE_SLUGS);
-
-        if (Schema::hasColumn('roles', 'status')) {
-            $query->where('status', 1);
-        }
-
-        $selectedRoleIds = $query->pluck('id')
-            ->map(fn ($id) => (int) $id)
-            ->all();
-
-        if (empty($selectedRoleIds)) {
+        if (! $roleId) {
             if ($adminUserId && Schema::hasTable('employees_new') && DB::table('employees_new')->where('user_id', $adminUserId)->exists()) {
                 $employeeRoleId = DB::table('roles')->where('slug', 'employee')->value('id');
                 if ($employeeRoleId) {
@@ -277,11 +250,11 @@ class AdminUserC extends Controller
             }
 
             throw \Illuminate\Validation\ValidationException::withMessages([
-                'role_ids' => 'Select at least one active admin role.',
+                'role_id' => 'Select a role.',
             ]);
         }
 
-        return $selectedRoleIds;
+        return [(int) $roleId];
     }
 
     private function syncAdminRoles(int $userId, array $selectedRoleIds): void
@@ -290,16 +263,9 @@ class AdminUserC extends Controller
             return;
         }
 
-        $adminRoleIds = $this->adminRoleIds();
-
-        if (! empty($adminRoleIds)) {
-            DB::table('user_roles')
-                ->where('user_id', $userId)
-                ->whereIn('role_id', $adminRoleIds)
-                ->delete();
-        }
-
-        $this->ensureEmployeePivotRole($userId);
+        DB::table('user_roles')
+            ->where('user_id', $userId)
+            ->delete();
 
         foreach (array_unique($selectedRoleIds) as $roleId) {
             DB::table('user_roles')->updateOrInsert(
@@ -313,76 +279,28 @@ class AdminUserC extends Controller
         }
     }
 
-    private function ensureEmployeePivotRole(int $userId): void
-    {
-        if (! Schema::hasTable('employees_new') || ! Schema::hasTable('user_roles')) {
-            return;
-        }
-
-        if (! DB::table('employees_new')->where('user_id', $userId)->exists()) {
-            return;
-        }
-
-        $employeeRoleId = DB::table('roles')->where('slug', 'employee')->value('id');
-
-        if (! $employeeRoleId) {
-            return;
-        }
-
-        DB::table('user_roles')->updateOrInsert(
-            ['user_id' => $userId, 'role_id' => (int) $employeeRoleId],
-            ['created_at' => now(), 'updated_at' => now()]
-        );
-    }
-
     private function assignedAdminRoleIds(int $userId, $systemRoleId = null): array
     {
-        $roleIds = [];
-
         if ($systemRoleId) {
-            $roleIds[] = (int) $systemRoleId;
+            return [(int) $systemRoleId];
         }
 
         if (Schema::hasTable('user_roles')) {
-            $roleIds = array_merge(
-                $roleIds,
-                DB::table('user_roles')
-                    ->where('user_id', $userId)
-                    ->pluck('role_id')
-                    ->map(fn ($id) => (int) $id)
-                    ->all()
-            );
+            $first = DB::table('user_roles')->where('user_id', $userId)->value('role_id');
+            if ($first) {
+                return [(int) $first];
+            }
         }
 
-        return DB::table('roles')
-            ->whereIn('id', array_unique($roleIds))
-            ->whereIn('slug', self::ADMIN_ROLE_SLUGS)
-            ->pluck('id')
-            ->map(fn ($id) => (int) $id)
-            ->all();
+        return [];
     }
 
     private function assignedRoleSlugs(int $userId, $systemRoleId = null): array
     {
-        $roleIds = [];
-
-        if ($systemRoleId) {
-            $roleIds[] = (int) $systemRoleId;
-        }
-
-        if (Schema::hasTable('user_roles')) {
-            $roleIds = array_merge(
-                $roleIds,
-                DB::table('user_roles')
-                    ->where('user_id', $userId)
-                    ->pluck('role_id')
-                    ->map(fn ($id) => (int) $id)
-                    ->all()
-            );
-        }
+        $roleIds = $this->assignedAdminRoleIds($userId, $systemRoleId);
 
         return DB::table('roles')
-            ->whereIn('id', array_unique($roleIds))
+            ->whereIn('id', $roleIds)
             ->pluck('slug')
             ->filter()
             ->values()
@@ -410,25 +328,18 @@ class AdminUserC extends Controller
         }
 
         $users->setCollection($collection->map(function ($user) use ($pivotRoles) {
-            $roleNames = collect();
-            $roleSlugs = collect();
+            $primaryName = $user->primary_role_name;
+            $primarySlug = $user->primary_role_slug;
 
-            if ($user->primary_role_name) {
-                $roleNames->push($user->primary_role_name);
+            if (! $primaryName) {
+                $firstPivot = $pivotRoles->get($user->id, collect())->first();
+                $primaryName = $firstPivot?->name;
+                $primarySlug = $firstPivot?->slug;
             }
 
-            if ($user->primary_role_slug) {
-                $roleSlugs->push($user->primary_role_slug);
-            }
-
-            foreach ($pivotRoles->get($user->id, collect()) as $role) {
-                $roleNames->push($role->name);
-                $roleSlugs->push($role->slug);
-            }
-
-            $user->role_name = $roleNames->unique()->implode(', ') ?: '-';
-            $user->role_slug = $roleSlugs->first();
-            $user->role_slugs = $roleSlugs->unique()->values()->all();
+            $user->role_name = $primaryName ?: '-';
+            $user->role_slug = $primarySlug;
+            $user->role_slugs = $primarySlug ? [$primarySlug] : [];
 
             return $user;
         }));

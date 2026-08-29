@@ -229,8 +229,8 @@
 
     .report-filter-grid {
         display: grid;
-        grid-template-columns: 2fr 1fr 1.2fr 1.2fr 2fr auto;
-        gap: 14px;
+        grid-template-columns: 1.8fr 1fr 1.1fr 1.1fr 1.8fr 0.9fr auto;
+        gap: 12px;
         align-items: flex-end;
     }
 
@@ -838,12 +838,18 @@
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
     }
 
+    @media (max-width: 1400px) {
+        .report-filter-grid {
+            grid-template-columns: repeat(4, 1fr);
+        }
+    }
+
     @media (max-width: 1200px) {
         .report-kpi-grid {
             grid-template-columns: repeat(3, minmax(0, 1fr));
         }
         .report-filter-grid {
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(3, 1fr);
         }
     }
 
@@ -1002,6 +1008,19 @@
                     <div>
                         <label><i class="fas fa-search text-muted mr-1"></i> Search Keyword</label>
                         <input type="text" name="search" id="filterSearch" value="{{ request('search') }}" class="form-control" placeholder="Search tasks, project or summary...">
+                    </div>
+
+                    <div>
+                        <label><i class="fas fa-list-ol text-muted mr-1"></i> Per Page</label>
+                        <select name="per_page" id="filterPerPage" class="form-control font-weight-bold">
+                            <option value="10" {{ (int)request('per_page', 25) === 10 ? 'selected' : '' }}>10 rows</option>
+                            <option value="25" {{ (int)request('per_page', 25) === 25 ? 'selected' : '' }}>25 rows</option>
+                            <option value="50" {{ (int)request('per_page', 25) === 50 ? 'selected' : '' }}>50 rows</option>
+                            <option value="100" {{ (int)request('per_page', 25) === 100 ? 'selected' : '' }}>100 rows</option>
+                            <option value="250" {{ (int)request('per_page', 25) === 250 ? 'selected' : '' }}>250 rows</option>
+                            <option value="500" {{ (int)request('per_page', 25) === 500 ? 'selected' : '' }}>500 rows</option>
+                            <option value="-1" {{ (int)request('per_page', 25) === -1 ? 'selected' : '' }}>All rows</option>
+                        </select>
                     </div>
 
                     <div>
@@ -1529,8 +1548,10 @@
 
         // Initialize DataTables for Table View
         if ($('#workReportsTable tbody tr td').length > 1) {
+            var initialPageLen = parseInt($('#filterPerPage').val()) || 25;
             var table = $('#workReportsTable').DataTable({
-                pageLength: 25,
+                pageLength: initialPageLen,
+                lengthMenu: [[10, 25, 50, 100, 250, 500, -1], [10, 25, 50, 100, 250, 500, "All"]],
                 order: [[2, 'desc']], // Sort by Date desc
                 ordering: true,
                 searching: true, 
@@ -1817,6 +1838,14 @@
 
             // Append buttons into the custom toolbar container
             table.buttons().container().appendTo('#dtButtonsContainer');
+
+            // Instant page length change when Per Page dropdown is changed
+            $('#filterPerPage').on('change', function() {
+                var len = parseInt($(this).val());
+                if (table) {
+                    table.page.len(len).draw();
+                }
+            });
         }
 
         // Instant Cards Search & Filter

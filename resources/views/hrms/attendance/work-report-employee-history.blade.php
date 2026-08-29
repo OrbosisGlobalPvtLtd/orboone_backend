@@ -273,17 +273,28 @@
             <!-- Filter Row -->
             <div class="p-4 bg-light border-bottom">
                 <form method="GET" action="{{ route('hrms.attendance.work-reports.employee-history', $employee->id) }}" class="row align-items-end">
-                    <div class="col-md-3 mb-2 mb-md-0">
+                    <div class="col-md-2 mb-2 mb-md-0">
                         <label class="font-weight-bold text-muted small text-uppercase mb-1">From Date</label>
                         <input type="date" name="from_date" class="form-control rounded-10" value="{{ request('from_date') }}">
                     </div>
-                    <div class="col-md-3 mb-2 mb-md-0">
+                    <div class="col-md-2 mb-2 mb-md-0">
                         <label class="font-weight-bold text-muted small text-uppercase mb-1">To Date</label>
                         <input type="date" name="to_date" class="form-control rounded-10" value="{{ request('to_date') }}">
                     </div>
                     <div class="col-md-3 mb-2 mb-md-0">
                         <label class="font-weight-bold text-muted small text-uppercase mb-1">Search Keyword</label>
                         <input type="text" id="dtSearchInput" class="form-control rounded-10" placeholder="Search tasks or summary...">
+                    </div>
+                    <div class="col-md-2 mb-2 mb-md-0">
+                        <label class="font-weight-bold text-muted small text-uppercase mb-1">Per Page</label>
+                        <select name="per_page" id="filterPerPage" class="form-control rounded-10 font-weight-bold">
+                            <option value="10" {{ (int)request('per_page', 25) === 10 ? 'selected' : '' }}>10 rows</option>
+                            <option value="25" {{ (int)request('per_page', 25) === 25 ? 'selected' : '' }}>25 rows</option>
+                            <option value="50" {{ (int)request('per_page', 25) === 50 ? 'selected' : '' }}>50 rows</option>
+                            <option value="100" {{ (int)request('per_page', 25) === 100 ? 'selected' : '' }}>100 rows</option>
+                            <option value="250" {{ (int)request('per_page', 25) === 250 ? 'selected' : '' }}>250 rows</option>
+                            <option value="-1" {{ (int)request('per_page', 25) === -1 ? 'selected' : '' }}>All rows</option>
+                        </select>
                     </div>
                     <div class="col-md-3 text-md-right d-flex align-items-end justify-content-end">
                         <button type="submit" class="btn btn-primary rounded-10 font-weight-bold px-3 mr-2" style="background: var(--orb-primary); border: none;">
@@ -526,8 +537,10 @@
 
 <script>
 $(function() {
+    var initialPageLen = parseInt($('#filterPerPage').val()) || 25;
     var table = $('#employeeHistoryTable').DataTable({
-        pageLength: 25,
+        pageLength: initialPageLen,
+        lengthMenu: [[10, 25, 50, 100, 250, 500, -1], [10, 25, 50, 100, 250, 500, "All"]],
         ordering: true,
         searching: true,
         paging: true,
@@ -783,6 +796,13 @@ $(function() {
     });
 
     table.buttons().container().appendTo('#employeeHistoryTable_wrapper .col-md-6:eq(0)');
+
+    $('#filterPerPage').on('change', function() {
+        var len = parseInt($(this).val());
+        if (table) {
+            table.page.len(len).draw();
+        }
+    });
 
     $('#dtSearchInput').on('keyup', function() {
         table.search(this.value).draw();

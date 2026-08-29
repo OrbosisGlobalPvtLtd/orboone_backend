@@ -654,27 +654,51 @@ document.addEventListener('DOMContentLoaded', function () {
     const isPunchedIn = {{ $hasPunchedIn && !$hasPunchedOut ? 'true' : 'false' }};
 
     if (isPunchedIn && punchInTimeStr) {
-        const punchInDate = new Date(todayDateStr + 'T' + punchInTimeStr);
-        let targetOutDate = targetOutTimeStr ? new Date(todayDateStr + 'T' + targetOutTimeStr) : null;
+        let punchInDate = null;
+        if (punchInTimeStr.includes('-') && punchInTimeStr.includes(' ')) {
+            punchInDate = new Date(punchInTimeStr.replace(' ', 'T'));
+        } else if (punchInTimeStr.includes('T')) {
+            punchInDate = new Date(punchInTimeStr);
+        } else {
+            punchInDate = new Date(todayDateStr + 'T' + punchInTimeStr);
+        }
+
+        let targetOutDate = null;
+        if (targetOutTimeStr) {
+            if (targetOutTimeStr.includes('-') && targetOutTimeStr.includes(' ')) {
+                targetOutDate = new Date(targetOutTimeStr.replace(' ', 'T'));
+            } else if (targetOutTimeStr.includes('T')) {
+                targetOutDate = new Date(targetOutTimeStr);
+            } else {
+                targetOutDate = new Date(todayDateStr + 'T' + targetOutTimeStr);
+            }
+        }
 
         function updateTimers() {
+            if (!punchInDate || isNaN(punchInDate.getTime())) return;
             const now = new Date();
-            let elapsedSec = Math.floor((now - punchInDate) / 1000);
+            let elapsedSec = Math.floor((now.getTime() - punchInDate.getTime()) / 1000);
             if (elapsedSec < 0) elapsedSec = 0;
 
             const hours = String(Math.floor(elapsedSec / 3600)).padStart(2, '0');
             const minutes = String(Math.floor((elapsedSec % 3600) / 60)).padStart(2, '0');
             const seconds = String(elapsedSec % 60).padStart(2, '0');
-            document.getElementById('liveWorkingTimer').textContent = `${hours}:${minutes}:${seconds}`;
+            const liveWorkingEl = document.getElementById('liveWorkingTimer');
+            if (liveWorkingEl) {
+                liveWorkingEl.textContent = `${hours}:${minutes}:${seconds}`;
+            }
 
-            if (targetOutDate) {
-                let remainSec = Math.floor((targetOutDate - now) / 1000);
+            if (targetOutDate && !isNaN(targetOutDate.getTime())) {
+                let remainSec = Math.floor((targetOutDate.getTime() - now.getTime()) / 1000);
                 if (remainSec < 0) remainSec = 0;
 
                 const rHours = String(Math.floor(remainSec / 3600)).padStart(2, '0');
                 const rMinutes = String(Math.floor((remainSec % 3600) / 60)).padStart(2, '0');
                 const rSeconds = String(remainSec % 60).padStart(2, '0');
-                document.getElementById('liveRemainingTimer').textContent = `${rHours}:${rMinutes}:${rSeconds}`;
+                const liveRemainingEl = document.getElementById('liveRemainingTimer');
+                if (liveRemainingEl) {
+                    liveRemainingEl.textContent = `${rHours}:${rMinutes}:${rSeconds}`;
+                }
             }
         }
 

@@ -305,6 +305,197 @@ class AttendancesC extends Controller
         return view('hrms.attendance.daily', compact('attendances', 'employees', 'attendanceTypes', 'attendanceTimes', 'departments', 'canManageAttendance'));
     }
 
+    public function teamAttendance(Request $request)
+    {
+        $user = auth()->user();
+        $isGlobal = $this->canViewAll('attendance.records.view_all');
+        $canTeam = $this->canViewTeam('attendance.regularization.view_team') || $this->canViewTeam('attendance.monthly_report.view_team');
+
+        abort_unless(
+            $isGlobal || $canTeam || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin()) || (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin', 'manager'])),
+            403
+        );
+
+        $supervisorEmpId = $this->ownEmployeeId();
+        $teamEmpIds = $isGlobal ? [] : array_merge($this->teamEmployeeIds(false), array_filter([$supervisorEmpId]));
+
+        $today = Carbon::now($this->attendanceService->attendanceTimezone())->toDateString();
+        $viewMode = $request->input('view_mode', 'today'); // 'today' or 'history'
+
+        // Date filters
+        $date = $request->input('date', $today);
+        $fromDate = $request->input('from_date');
+        $toDate = $request->input('to_date');
+
+        if ($viewMode === 'today') {
+            $fromDate = $today;
+            $toDate = $today;
+            $date = $today;
+        }
+
+        // Base Query
+        $query = Attendance::with([
+            'user',
+            'employee.department',
+            'employee.designation',
+            'employee.reportingManager.user',
+            'attendanceType',
+            'attendanceTime',
+            'workLogs',
+        ]);
+
+        if (! $isGlobal) {
+            $query->whereIn('employee_id', array_filter($teamEmpIds));
+        }
+
+        // Apply filters
+        if ($request->filled('employee_id')) {
+            $query->where('employee_id', $request->employee_id);
+        }
+
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('user', function ($uq) use ($search) {
+                    $uq->where('name', 'LIKE', "%{$search}%")
+                        ->orWhere('email', 'LIKE', "%{$search}%");
+                })->orWhereHas('employee', function ($eq) use ($search) {
+                    $eq->where('employee_code', 'LIKE', "%{$search}%");
+                });
+            });
+        }
+
+        if ($request->filled('work_mode')) {
+            $query->where('work_mode', strtolower($request->work_mode));
+        }
+
+        if ($request->filled('status_filter')) {
+            $sf = $request->status_filter;
+            if ($sf === 'working') {
+                $query->whereNotNull('punch_in_time')->whereNull('punch_out_time')->where('is_blocked', 0);
+            } elseif ($sf === 'completed') {
+                $query->whereNotNull('punch_in_time')->whereNotNull('punch_out_time');
+            } elseif ($sf === 'late') {
+                $query->where('is_late', 1);
+            } elseif ($sf === 'half_day') {
+                $query->where('is_half_day', 1);
+            } elseif ($sf === 'wfh') {
+                $query->where('work_mode', 'wfh');
+            } elseif ($sf === 'blocked') {
+                $query->where(function ($q) {
+                    $q->where('is_blocked', 1)->orWhere('is_punch_blocked', 1);
+                });
+            }
+        }
+
+        if ($viewMode === 'today') {
+            $query->whereDate('attendance_date', $today);
+        } else {
+            if ($fromDate && $toDate) {
+                $query->whereBetween('attendance_date', [$fromDate, $toDate]);
+            } elseif ($fromDate) {
+                $query->whereDate('attendance_date', '>=', $fromDate);
+            } elseif ($toDate) {
+                $query->whereDate('attendance_date', '<=', $toDate);
+            } elseif ($date) {
+                $query->whereDate('attendance_date', $date);
+            }
+        }
+
+        // Team stats today calculation
+        $todayStatsQuery = Attendance::whereDate('attendance_date', $today);
+        if (! $isGlobal) {
+            $todayStatsQuery->whereIn('employee_id', array_filter($teamEmpIds));
+        }
+        $todayAttendanceRows = $todayStatsQuery->get();
+
+        $activeTeamEmpQuery = EmployeeM::with(['user', 'department', 'designation'])->active();
+        if (! $isGlobal) {
+            $activeTeamEmpQuery->whereIn('id', array_filter($teamEmpIds));
+        }
+        $teamEmployees = $activeTeamEmpQuery->orderBy('id')->get();
+        $totalTeamCount = $teamEmployees->count();
+
+        $punchedInEmpIds = $todayAttendanceRows->whereNotNull('punch_in_time')->pluck('employee_id')->filter()->unique()->toArray();
+        $currentlyWorkingCount = $todayAttendanceRows->whereNotNull('punch_in_time')->whereNull('punch_out_time')->where('is_blocked', 0)->count();
+        $completedShiftCount = $todayAttendanceRows->whereNotNull('punch_in_time')->whereNotNull('punch_out_time')->count();
+        $lateTodayCount = $todayAttendanceRows->where('is_late', 1)->count();
+        $wfhTodayCount = $todayAttendanceRows->where('work_mode', 'wfh')->count();
+        $blockedCount = $todayAttendanceRows->filter(fn ($r) => $r->is_blocked || $r->is_punch_blocked)->count();
+
+        // Approved Leaves today
+        $leaveEmpQuery = DB::table('leave_requests')
+            ->whereDate('start_date', '<=', $today)
+            ->whereDate('end_date', '>=', $today)
+            ->where('status', 'approved');
+        if (! $isGlobal) {
+            $leaveEmpQuery->whereIn('employee_id', array_filter($teamEmpIds));
+        }
+        $onLeaveTodayCount = $leaveEmpQuery->distinct('employee_id')->count('employee_id');
+
+        $notPunchedCount = max(0, $totalTeamCount - count($punchedInEmpIds) - $onLeaveTodayCount);
+
+        $stats = [
+            'total_team' => $totalTeamCount,
+            'currently_working' => $currentlyWorkingCount,
+            'completed_shift' => $completedShiftCount,
+            'late_today' => $lateTodayCount,
+            'wfh_today' => $wfhTodayCount,
+            'on_leave_today' => $onLeaveTodayCount,
+            'not_punched_today' => $notPunchedCount,
+            'blocked_today' => $blockedCount,
+        ];
+
+        $attendances = $query->orderByDesc('attendance_date')
+            ->orderByDesc('punch_in_time')
+            ->orderByDesc('id')
+            ->paginate(50)
+            ->appends($request->query());
+
+        $this->normalizeAttendanceCollection($attendances->getCollection());
+
+        // Transform collection for easy view rendering
+        $attendances->getCollection()->transform(function ($row) {
+            $punchIn = $row->punch_in_time ? Carbon::parse($row->punch_in_time) : null;
+            $punchOut = $row->punch_out_time ? Carbon::parse($row->punch_out_time) : null;
+
+            $row->punch_in_formatted = $punchIn ? $punchIn->format('h:i A') : '--:--';
+            $row->punch_out_formatted = $punchOut ? $punchOut->format('h:i A') : ($punchIn ? 'Currently Active' : '--:--');
+            $row->date_formatted = $row->attendance_date ? Carbon::parse($row->attendance_date)->format('d M Y') : '-';
+
+            // Working hours calculation
+            if ($punchIn && $punchOut) {
+                $mins = $punchIn->diffInMinutes($punchOut);
+                $h = floor($mins / 60);
+                $m = $mins % 60;
+                $row->working_hours_label = sprintf('%02dh %02dm', $h, $m);
+            } elseif ($punchIn) {
+                $mins = $punchIn->diffInMinutes(Carbon::now());
+                $h = floor($mins / 60);
+                $m = $mins % 60;
+                $row->working_hours_label = sprintf('%02dh %02dm (Live)', $h, $m);
+            } else {
+                $row->working_hours_label = '--';
+            }
+
+            return $row;
+        });
+
+        return view('hrms.attendance.team_attendance', [
+            'attendances' => $attendances,
+            'teamEmployees' => $teamEmployees,
+            'stats' => $stats,
+            'today' => $today,
+            'date' => $date,
+            'fromDate' => $fromDate,
+            'toDate' => $toDate,
+            'viewMode' => $viewMode,
+            'accesses' => $this->accesses(),
+            'active' => 'attendances',
+            'isGlobal' => $isGlobal,
+        ]);
+    }
+
     public function attendanceRecord(Request $request)
     {
         abort_unless(

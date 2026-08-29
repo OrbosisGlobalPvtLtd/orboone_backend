@@ -424,6 +424,8 @@ class SidebarMenuResolverS
                     'module.project-mgmt',
                     'hrms.attendance.holiday_work.index',
                     'attendances.index',
+                    'attendances.team',
+                    'reporting.attendance',
                     'attendances.record',
                     'attendances.pending-approval',
                     'attendances.monthly-report',
@@ -613,6 +615,8 @@ class SidebarMenuResolverS
         return [
             'employee.shift-assignment.index' => ['employee.shift.assign.manage'],
             'attendances.today' => ['attendance.my.view', 'attendance.records.view_all', 'attendance.dashboard.view'],
+            'attendances.team' => ['attendance.records.view_all', 'attendance.monthly_report.view_team', 'attendance.regularization.view_team', 'attendance.dashboard.view'],
+            'reporting.attendance' => ['attendance.records.view_all', 'attendance.monthly_report.view_team', 'attendance.regularization.view_team', 'attendance.dashboard.view'],
             'attendance.policies.index' => ['attendance.rules.manage'],
             'attendance.rules.index' => ['attendance.rules.manage'],
             'attendances.access-control' => ['attendance.blocked.view', 'attendance.access_control.manage', 'attendance.records.view_all', 'attendance.dashboard.view'],

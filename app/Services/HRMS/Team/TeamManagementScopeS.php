@@ -28,11 +28,19 @@ class TeamManagementScopeS
     public function isSuperAdminOrGlobal(): bool
     {
         $user = Auth::user();
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 
         if (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) {
+            return true;
+        }
+
+        if (method_exists($user, 'isHrAdmin') && $user->isHrAdmin()) {
+            return true;
+        }
+
+        if (method_exists($user, 'isAdmin') && $user->isAdmin()) {
             return true;
         }
 
@@ -41,27 +49,8 @@ class TeamManagementScopeS
             return true;
         }
 
-        $roleName = strtolower($user->role->name ?? '');
-        if (in_array($roleName, ['super_admin', 'super admin', 'admin', 'hr_admin', 'hr admin', 'hr', 'human resources'], true)) {
+        if (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin'])) {
             return true;
-        }
-
-        if (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin', 'hr'])) {
-            return true;
-        }
-
-        if (method_exists($user, 'hasPermission')) {
-            if ($user->hasPermission('leave.approvals.view_all')
-                || $user->hasPermission('leave.approvals.approve')
-                || $user->hasPermission('attendance.regularization.view_all')
-                || $user->hasPermission('attendance.regularization.approve')
-                || $user->hasPermission('attendance.records.view_all')
-                || $user->hasPermission('reporting.structure.manage')
-                || $user->hasPermission('reporting.view_all')
-                || $user->hasPermission('projects.view_all')
-            ) {
-                return true;
-            }
         }
 
         return false;

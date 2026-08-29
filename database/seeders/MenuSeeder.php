@@ -27,8 +27,9 @@ class MenuSeeder extends Seeder
 
             ['id' => 20, 'name' => 'Attendance & Time Tracking', 'route' => null, 'icon' => 'fas fa-calendar-check', 'module_key' => 'attendance', 'parent_id' => null, 'sort_order' => 20],
             ['id' => 349, 'name' => "Today's Attendance", 'route' => 'attendances.today', 'icon' => 'fas fa-fingerprint', 'module_key' => 'employee.attendance', 'parent_id' => 20, 'sort_order' => 1],
-            ['id' => 21, 'name' => 'Attendance Dashboard', 'route' => 'attendances.index', 'icon' => 'fas fa-chart-line', 'module_key' => 'attendance', 'parent_id' => 20, 'sort_order' => 2],
-            ['id' => 22, 'name' => 'Attendance Records', 'route' => 'attendances.record', 'icon' => 'fas fa-fingerprint', 'module_key' => 'attendance', 'parent_id' => 20, 'sort_order' => 2],
+            ['id' => 380, 'name' => 'Team Attendance', 'route' => 'attendances.team', 'icon' => 'fas fa-users-cog', 'module_key' => 'attendance', 'parent_id' => 20, 'sort_order' => 2],
+            ['id' => 21, 'name' => 'Attendance Dashboard', 'route' => 'attendances.index', 'icon' => 'fas fa-chart-line', 'module_key' => 'attendance', 'parent_id' => 20, 'sort_order' => 3],
+            ['id' => 22, 'name' => 'Attendance Records', 'route' => 'attendances.record', 'icon' => 'fas fa-fingerprint', 'module_key' => 'attendance', 'parent_id' => 20, 'sort_order' => 4],
             ['id' => 145, 'name' => 'My Attendance', 'route' => 'hrms.attendance.my', 'icon' => 'fas fa-user-clock', 'module_key' => 'my.attendance', 'parent_id' => 20, 'sort_order' => 3],
             ['id' => 23, 'name' => 'Blocked / HR Approval', 'route' => 'attendances.pending-approval', 'icon' => 'fas fa-user-lock', 'module_key' => 'attendance', 'parent_id' => 20, 'sort_order' => 4],
             ['id' => 28, 'name' => 'Regularization Requests', 'route' => 'hrms.attendance.regularizations.index', 'icon' => 'fas fa-user-check', 'module_key' => 'attendance', 'parent_id' => 20, 'sort_order' => 5],

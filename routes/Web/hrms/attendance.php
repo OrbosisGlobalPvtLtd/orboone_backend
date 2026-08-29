@@ -21,7 +21,7 @@ Route::middleware(['auth', 'check.access', 'check.profile.complete'])
     ->group(function () {
         Route::get('/', [AttendancesC::class, 'index'])->middleware('permission:attendance.dashboard.view')->name('index');
         Route::get('/today', [AttendancesC::class, 'today'])->middleware('permission:attendance.my.view|attendance.records.view_all')->name('today');
-
+        Route::get('/team', [AttendancesC::class, 'teamAttendance'])->name('team');
         Route::get('/daily', [AttendancesC::class, 'daily'])->middleware('permission:attendance.records.view_all|attendance.my.view')->name('daily');
         Route::get('/record', [AttendancesC::class, 'attendanceRecord'])->middleware('permission:attendance.records.view_all')->name('record');
         Route::get('/pending-approval', [AttendancesC::class, 'pendingApproval'])->middleware('permission:attendance.blocked.view')->name('pending-approval');

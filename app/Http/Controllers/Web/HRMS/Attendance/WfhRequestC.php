@@ -24,20 +24,30 @@ class WfhRequestC extends Controller
         $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
         $isHrOrAdmin = $isSuperAdmin
             || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin())
+            || (method_exists($user, 'isAdmin') && $user->isAdmin())
             || (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin']))
+            || in_array((int) ($user->system_role_id ?? $user->role_id ?? 0), [1, 2, 3], true);
+
+        $canTeam = $this->canViewTeam('attendance.regularization.view_team')
+            || (method_exists($user, 'hasRole') && $user->hasRole('manager'))
+            || ! empty($this->teamEmployeeIds(false));
+
+        $canOwn = $this->userHasPermission('attendance.wfh.own')
+            || (method_exists($user, 'isEmployee') && $user->isEmployee())
             || $this->userHasPermission('attendance.wfh.view');
 
-        $canOwn = $this->userHasPermission('attendance.wfh.own') || (method_exists($user, 'isEmployee') && $user->isEmployee());
-        abort_unless($isHrOrAdmin || $this->canViewTeam('attendance.regularization.view_team') || $canOwn, 403);
+        abort_unless($isHrOrAdmin || $canTeam || $canOwn, 403);
 
         $query = $this->employeeJoinedQuery('wfh_requests');
 
         if ($isHrOrAdmin) {
-            // Global view
-        } elseif ($this->canViewTeam('attendance.regularization.view_team')) {
-            $teamEmpIds = array_merge($this->teamEmployeeIds(false), [$this->ownEmployeeId()]);
+            // Global view for Super Admin / Admin / HR Admin
+        } elseif ($canTeam) {
+            // Scoped strictly to supervised team members + own
+            $teamEmpIds = array_merge($this->teamEmployeeIds(false), array_filter([$this->ownEmployeeId()]));
             $query->whereIn('wfh_requests.employee_id', array_filter($teamEmpIds));
         } else {
+            // Self only
             $ownEmployeeId = $this->ownEmployeeId();
             abort_unless($ownEmployeeId, 403);
             $query->where('wfh_requests.employee_id', $ownEmployeeId);

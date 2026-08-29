@@ -185,10 +185,9 @@ class LeaveApprovalC extends Controller
         $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
         $isHrOrAdmin = $isSuperAdmin
             || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin())
+            || (method_exists($user, 'isAdmin') && $user->isAdmin())
             || (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin']))
-            || $this->userHasPermission('leave.approvals.view_all')
-            || $this->userHasPermission('leave.approvals.view')
-            || $this->userHasPermission('leave.approvals.approve');
+            || in_array((int) ($user->system_role_id ?? $user->role_id ?? 0), [1, 2, 3], true);
 
         $supervisorEmpId = $this->scopeS->getOwnEmployeeId();
         $isReportingManager = ! empty($supervisorEmpId) && \Illuminate\Support\Facades\DB::table('employees_new')->where('reporting_manager_employee_id', $supervisorEmpId)->exists();
@@ -261,10 +260,9 @@ class LeaveApprovalC extends Controller
         $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
         $isHrOrAdmin = $isSuperAdmin
             || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin())
+            || (method_exists($user, 'isAdmin') && $user->isAdmin())
             || (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin']))
-            || $this->userHasPermission('leave.approvals.view_all')
-            || $this->userHasPermission('leave.approvals.view')
-            || $this->userHasPermission('leave.approvals.reject');
+            || in_array((int) ($user->system_role_id ?? $user->role_id ?? 0), [1, 2, 3], true);
 
         $supervisorEmpId = $this->scopeS->getOwnEmployeeId();
         $isReportingManager = ! empty($supervisorEmpId) && \Illuminate\Support\Facades\DB::table('employees_new')->where('reporting_manager_employee_id', $supervisorEmpId)->exists();

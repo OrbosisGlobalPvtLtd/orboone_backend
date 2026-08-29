@@ -5,17 +5,19 @@
     }
 
     $isSuperAdmin = method_exists($user, 'isSuperAdmin') ? $user->isSuperAdmin() : false;
+    $isAdminOrHr = (method_exists($user, 'isAdmin') ? $user->isAdmin() : false) || (method_exists($user, 'isHrAdmin') ? $user->isHrAdmin() : false);
 
     // Dynamic RBAC Permission Checks for Leave Management Sub-menus
-    $canDashboard = $isSuperAdmin || $user->hasPermission('leave.dashboard.view');
-    $canApprovals = $isSuperAdmin || $user->hasPermission('leave.approvals.view_all') || $user->hasPermission('leave.approvals.view_team') || $user->hasPermission('leave.approvals.view');
-    $canHistory = $isSuperAdmin || $user->hasPermission('leave.history.view') || $user->hasPermission('leave.my_requests.view');
-    $canApply = $isSuperAdmin || $user->hasPermission('leave.my_requests.create') || $user->hasPermission('leave.my_requests.view') || $user->hasPermission('leave.apply') || $user->hasPermission('leave_self.apply');
-    $canAllocations = $isSuperAdmin || $user->hasPermission('leave.allocation.manage') || $user->hasPermission('leave.allocation.view_all') || $user->hasPermission('leave.allocation.view');
-    $canBalances = $isSuperAdmin || $user->hasPermission('leave.balance.view_all') || $user->hasPermission('leave.balance.view_team') || $user->hasPermission('leave.balance.view_own') || $user->hasPermission('leave.balance.view') || $user->hasPermission('leave_self.view_balance');
-    $canHolidays = $isSuperAdmin || $user->hasPermission('leave.holidays.manage') || $user->hasPermission('leave.team_calendar.view');
+    $canDashboard = $isSuperAdmin || $isAdminOrHr || $user->hasPermission('leave.dashboard.view');
+    $canApprovals = $isSuperAdmin || $isAdminOrHr || $user->hasPermission('leave.approvals.view_all') || $user->hasPermission('leave.approvals.view_team') || $user->hasPermission('leave.approvals.view');
+    $canLeaveRequests = $isSuperAdmin || $isAdminOrHr || $user->hasPermission('leave.my_requests.view') || $user->hasPermission('leave.approvals.view_all') || $user->hasPermission('leave.history.view');
+    $canHistory = $isSuperAdmin || $isAdminOrHr || $user->hasPermission('leave.history.view') || $user->hasPermission('leave.my_requests.view');
+    $canApply = $isSuperAdmin || $isAdminOrHr || $user->hasPermission('leave.my_requests.create') || $user->hasPermission('leave.my_requests.view') || $user->hasPermission('leave.apply') || $user->hasPermission('leave_self.apply');
+    $canAllocations = $isSuperAdmin || $isAdminOrHr || $user->hasPermission('leave.allocation.manage') || $user->hasPermission('leave.allocation.view_all') || $user->hasPermission('leave.allocation.view');
+    $canBalances = $isSuperAdmin || $isAdminOrHr || $user->hasPermission('leave.balance.view_all') || $user->hasPermission('leave.balance.view_team') || $user->hasPermission('leave.balance.view_own') || $user->hasPermission('leave.balance.view') || $user->hasPermission('leave_self.view_balance');
+    $canHolidays = $isSuperAdmin || $isAdminOrHr || $user->hasPermission('leave.holidays.manage') || $user->hasPermission('leave.team_calendar.view');
 
-    $hasAnyLeaveAccess = $canDashboard || $canApprovals || $canHistory || $canApply || $canAllocations || $canBalances || $canHolidays;
+    $hasAnyLeaveAccess = $canDashboard || $canApprovals || $canLeaveRequests || $canHistory || $canApply || $canAllocations || $canBalances || $canHolidays;
     $leaveOpen = request()->routeIs('hrms.leave.*') || request()->routeIs('leave-*') || request()->routeIs('employees-leave-request*');
 @endphp
 
@@ -47,7 +49,16 @@
     </li>
     @endif
 
-    {{-- 3. Leave History --}}
+    {{-- 3. Leave Requests --}}
+    @if($canLeaveRequests)
+    <li>
+        <a href="{{ route('leave-requests.index') }}" class="nav-link sub-nav-link {{ request()->routeIs('leave-requests.index') ? 'active' : '' }}">
+            <i class="fas fa-calendar-check small mr-2 text-primary"></i> Leave Requests
+        </a>
+    </li>
+    @endif
+
+    {{-- 4. Leave History --}}
     @if($canHistory)
     <li>
         <a href="{{ route('hrms.leave.history') }}" class="nav-link sub-nav-link {{ request()->routeIs('hrms.leave.history') ? 'active' : '' }}">

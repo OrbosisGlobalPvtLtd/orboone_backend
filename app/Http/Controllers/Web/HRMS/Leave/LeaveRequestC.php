@@ -35,62 +35,91 @@ class LeaveRequestC extends Controller
 
     public function index(Request $request)
     {
-        $employee = EmployeeM::where('user_id', Auth::id())->first();
-        abort_if(! $employee, 403, 'No employee profile linked to your account.');
+        $user = Auth::user();
+        $employee = EmployeeM::where('user_id', $user->id)->first();
+        $isAdminOrHr = $user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin() || $this->canViewAll('leave.approvals.view_all');
+
+        if (! $employee && ! $isAdminOrHr) {
+            abort(403, 'No employee profile linked to your account.');
+        }
 
         // Auto-expire past pending leaves
         app(\App\Services\HRMS\Leave\AutoExpireLeaveService::class)->expirePastPendingRequests();
 
-        $requests = LeaveRequestM::with(['leaveType', 'dates'])
-            ->when($request->status, fn ($query) => $query->where('status', $request->status));
+        $query = LeaveRequestM::with(['leaveType', 'dates', 'employee.user', 'employee.department', 'employee.designation'])
+            ->when($request->status, fn ($q) => $q->where('status', $request->status))
+            ->when($request->leave_type_id, fn ($q) => $q->where('leave_type_id', $request->leave_type_id));
 
-        if ($this->canViewAll('leave.approvals.view_all')) {
-            $requests->when($request->employee_id, fn ($query) => $query->where('employee_id', $request->employee_id));
+        if ($isAdminOrHr) {
+            $query->when($request->employee_id, fn ($q) => $q->where('employee_id', $request->employee_id));
         } elseif ($this->canViewTeam('leave.approvals.view_team')) {
-            $requests->whereIn('employee_id', $this->teamEmployeeIds(true));
+            $query->whereIn('employee_id', $this->teamEmployeeIds(true));
         } else {
-            $requests->where('employee_id', $employee->id);
+            $query->where('employee_id', $employee?->id);
         }
 
-        $requests = $requests->latest()->paginate(20);
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $query->where(function ($q) use ($search) {
+                $q->where('reason', 'like', "%{$search}%")
+                  ->orWhereHas('employee.user', fn ($uq) => $uq->where('name', 'like', "%{$search}%"))
+                  ->orWhereHas('employee', fn ($eq) => $eq->where('employee_code', 'like', "%{$search}%"))
+                  ->orWhereHas('leaveType', fn ($tq) => $tq->where('name', 'like', "%{$search}%"));
+            });
+        }
 
-        $allocation = $employee->leaveAllocations()->where('year', Carbon::now('Asia/Kolkata')->year)->latest()->first();
+        $perPage = (int) $request->input('per_page', 25);
+        $requests = $perPage > 0 ? $query->latest()->paginate($perPage) : $query->latest()->paginate(1000);
+
+        $allocation = $employee ? $employee->leaveAllocations()->where('year', Carbon::now('Asia/Kolkata')->year)->latest()->first() : null;
         $leaveTypes = LeaveTypeM::where('is_active', true)->orderBy('name')->get();
+        $employees = $isAdminOrHr ? EmployeeM::where('is_active', true)->get()->sortBy(fn ($e) => strtolower($e->display_name))->values() : collect();
         $accesses = $this->accesses();
 
-        return view('hrms.leave.requests.index', compact('requests', 'allocation', 'leaveTypes', 'employee', 'accesses'))
+        return view('hrms.leave.requests.index', compact('requests', 'allocation', 'leaveTypes', 'employee', 'employees', 'isAdminOrHr', 'accesses'))
             ->with('active', 'leave_management');
     }
 
     public function create()
     {
-        $employee = EmployeeM::where('user_id', Auth::id())->first();
-        abort_if(! $employee, 403, 'No employee profile linked to your account.');
+        $user = Auth::user();
+        $employee = EmployeeM::where('user_id', $user->id)->first();
+        $isAdminOrHr = $user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin() || $this->canViewAll('leave.approvals.view_all');
 
-        if (! $this->isEligibleForLeaveRequest($employee)) {
+        if (! $employee && ! $isAdminOrHr) {
+            abort(403, 'No employee profile linked to your account.');
+        }
+
+        if ($employee && ! $this->isEligibleForLeaveRequest($employee) && ! $isAdminOrHr) {
             return back()->with('error', 'Leave applications are currently restricted to Engineering/Development and QA/Testing team members.');
         }
 
         $year = Carbon::now('Asia/Kolkata')->year;
-        $allocation = resolve(\App\Services\HRMS\Leave\LeaveAllocationService::class)->getOrGenerate($employee, $year, auth()->id());
+        $allocation = $employee ? resolve(\App\Services\HRMS\Leave\LeaveAllocationService::class)->getOrGenerate($employee, $year, auth()->id()) : null;
 
         $leaveTypes = LeaveTypeM::where('is_active', true)->orderBy('name')->get();
+        $employees = $isAdminOrHr ? EmployeeM::where('is_active', true)->get()->sortBy(fn ($e) => strtolower($e->display_name))->values() : collect();
         $accesses = $this->accesses();
 
-        return view('hrms.leave.requests.create', compact('leaveTypes', 'employee', 'accesses', 'allocation'))
+        return view('hrms.leave.requests.create', compact('leaveTypes', 'employee', 'employees', 'isAdminOrHr', 'accesses', 'allocation'))
             ->with('active', 'leave_management');
     }
 
     public function store(StoreLeaveRequestRequest $request)
     {
         try {
-            abort_unless($this->userHasPermission('leave.my_requests.create'), 403);
+            $user = Auth::user();
+            $isAdminOrHr = $user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin() || $this->canViewAll('leave.approvals.view_all');
 
-            $employee = $request->filled('employee_id') && $this->canViewAll('leave.approvals.view_all')
+            $employee = $request->filled('employee_id') && $isAdminOrHr
                 ? EmployeeM::findOrFail($request->employee_id)
-                : EmployeeM::where('user_id', Auth::id())->firstOrFail();
+                : EmployeeM::where('user_id', Auth::id())->first();
 
-            if (! $this->isEligibleForLeaveRequest($employee)) {
+            if (! $employee) {
+                return back()->with('error', 'No employee profile selected or linked to your account.')->withInput();
+            }
+
+            if (! $this->isEligibleForLeaveRequest($employee) && ! $isAdminOrHr) {
                 return back()->with('error', 'Leave applications are currently restricted to Engineering/Development and QA/Testing team members.')->withInput();
             }
 
@@ -143,9 +172,15 @@ class LeaveRequestC extends Controller
     public function update(Request $request, $id)
     {
         try {
+            $user = Auth::user();
+            $isAdminOrHr = $user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin() || $this->canViewAll('leave.approvals.view_all');
+
             $leaveRequest = LeaveRequestM::findOrFail($id);
-            $employee = EmployeeM::where('user_id', Auth::id())->first();
-            abort_unless($employee && (int) $leaveRequest->employee_id === (int) $employee->id, 403);
+            $employee = $isAdminOrHr ? $leaveRequest->employee : EmployeeM::where('user_id', Auth::id())->first();
+
+            if (! $isAdminOrHr) {
+                abort_unless($employee && (int) $leaveRequest->employee_id === (int) $employee->id, 403);
+            }
             abort_unless($leaveRequest->status === 'pending', 400, 'Cannot edit request after approval or rejection.');
 
             $request->validate([
@@ -198,7 +233,13 @@ class LeaveRequestC extends Controller
     public function preview(Request $request)
     {
         try {
-            $employee = EmployeeM::where('user_id', Auth::id())->first();
+            $user = Auth::user();
+            $isAdminOrHr = $user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin() || $this->canViewAll('leave.approvals.view_all');
+
+            $employee = $request->filled('employee_id') && $isAdminOrHr
+                ? EmployeeM::find($request->employee_id)
+                : EmployeeM::where('user_id', Auth::id())->first();
+
             if (! $employee) {
                 return response()->json(['success' => false, 'message' => 'Employee profile not found.'], 400);
             }
@@ -252,11 +293,16 @@ class LeaveRequestC extends Controller
     public function cancel(Request $request, $id)
     {
         try {
-            abort_unless($this->userHasPermission('leave.my_requests.cancel'), 403);
+            $user = Auth::user();
+            $isAdminOrHr = $user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin() || $this->canViewAll('leave.approvals.view_all');
 
             $leaveRequest = LeaveRequestM::findOrFail($id);
             $employeeId = $this->ownEmployeeId();
-            abort_unless($employeeId && (int) $leaveRequest->employee_id === (int) $employeeId, 403);
+
+            if (! $isAdminOrHr) {
+                abort_unless($employeeId && (int) $leaveRequest->employee_id === (int) $employeeId, 403);
+            }
+
             $this->approvalService->cancel($leaveRequest, Auth::id(), $request->input('reason'));
 
             return back()->with('success', 'Leave request cancelled successfully.');

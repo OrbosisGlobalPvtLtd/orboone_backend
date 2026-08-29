@@ -18,13 +18,13 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'check.access'])->group(function () {
     Route::get('/leave-dashboard', [LeaveDashboardC::class, 'index'])->name('hrms.leave.dashboard');
-    Route::get('/leave-requests', [LeaveRequestC::class, 'index'])->middleware('permission:leave.my_requests.view')->name('leave-requests.index');
+    Route::get('/leave-requests', [LeaveRequestC::class, 'index'])->middleware('permission:leave.my_requests.view|leave.approvals.view_all|leave.approvals.view_team|leave.allocation.manage|leave.dashboard.view|leave.history.view')->name('leave-requests.index');
     Route::get('/leave-history', [LeaveHistoryC::class, 'index'])->name('hrms.leave.history');
-    Route::get('/leave-requests/create', [LeaveRequestC::class, 'create'])->middleware('permission:leave.my_requests.create')->name('leave-requests.create');
-    Route::post('/leave-requests', [LeaveRequestC::class, 'store'])->middleware('permission:leave.my_requests.create')->name('leave-requests.store');
-    Route::post('/leave-requests/preview', [LeaveRequestC::class, 'preview'])->middleware('permission:leave.my_requests.create')->name('leave-requests.preview');
-    Route::put('/leave-requests/{id}', [LeaveRequestC::class, 'update'])->middleware('permission:leave.my_requests.create')->name('leave-requests.update');
-    Route::post('/leave-requests/{id}/cancel', [LeaveRequestC::class, 'cancel'])->middleware('permission:leave.my_requests.cancel')->name('leave-requests.cancel');
+    Route::get('/leave-requests/create', [LeaveRequestC::class, 'create'])->middleware('permission:leave.my_requests.create|leave.my_requests.view|leave.approvals.view_all|leave.history.view')->name('leave-requests.create');
+    Route::post('/leave-requests', [LeaveRequestC::class, 'store'])->middleware('permission:leave.my_requests.create|leave.my_requests.view|leave.approvals.view_all|leave.history.view')->name('leave-requests.store');
+    Route::post('/leave-requests/preview', [LeaveRequestC::class, 'preview'])->middleware('permission:leave.my_requests.create|leave.my_requests.view|leave.approvals.view_all|leave.history.view')->name('leave-requests.preview');
+    Route::put('/leave-requests/{id}', [LeaveRequestC::class, 'update'])->middleware('permission:leave.my_requests.create|leave.my_requests.view|leave.approvals.view_all|leave.history.view')->name('leave-requests.update');
+    Route::post('/leave-requests/{id}/cancel', [LeaveRequestC::class, 'cancel'])->middleware('permission:leave.my_requests.cancel|leave.my_requests.create|leave.my_requests.view|leave.approvals.view_all')->name('leave-requests.cancel');
 
     Route::get('/leave-approvals', [LeaveApprovalC::class, 'index'])->name('leave-approvals.index');
     Route::post('/leave-approvals/{id}/approve', [LeaveApprovalC::class, 'approve'])->name('leave-approvals.approve');

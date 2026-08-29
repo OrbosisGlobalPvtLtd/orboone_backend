@@ -131,6 +131,20 @@
                         <form id="applyLeaveForm" method="POST" action="{{ route('leave-requests.store') }}" enctype="multipart/form-data">
                             @csrf
 
+                            @if($isAdminOrHr && $employees->isNotEmpty())
+                            <!-- Employee Selector for Admin/HR -->
+                            <div class="form-group mb-3">
+                                <label class="font-weight-bold text-dark mb-1" style="font-size: 13px;">Applying For Employee <span class="text-danger">*</span></label>
+                                <select name="employee_id" id="apply_employee_id" class="form-control select2-searchable" style="border-radius: 12px; height: 44px;" onchange="triggerLivePreview()">
+                                    @foreach($employees as $emp)
+                                        <option value="{{ $emp->id }}" {{ ($employee && $employee->id == $emp->id) ? 'selected' : '' }}>
+                                            {{ $emp->display_name }} ({{ $emp->employee_code ?? 'EMP' }}) &bull; {{ optional($emp->department)->name ?? 'General' }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            @endif
+
                             <!-- 1. Duration Mode Selector -->
                             <div class="form-group mb-3">
                                 <label class="font-weight-bold text-muted mb-2" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;">Leave Duration Mode</label>
@@ -152,14 +166,14 @@
                                     <option value="" disabled {{ old('leave_type_id') === null ? '' : 'selected' }}>Select leave type...</option>
                                     @foreach($leaveTypes as $type)
                                         @php
-                                            $isConfirmed = $employee->is_permanent;
+                                            $isConfirmed = $employee ? (bool)$employee->is_permanent : true;
                                             $isDisabled = false;
                                             $suffix = '';
                                             
-                                            if (!$isConfirmed && !$type->is_lwp) {
+                                            if (!$isConfirmed && !$type->is_lwp && !$isAdminOrHr) {
                                                 $isDisabled = true;
                                                 $suffix = ' (Confirmed employees only)';
-                                            } elseif ($type->is_comp_off && ($allocation->comp_off_remaining ?? 0) <= 0) {
+                                            } elseif ($type->is_comp_off && ($allocation->comp_off_remaining ?? 0) <= 0 && !$isAdminOrHr) {
                                                 $isDisabled = true;
                                                 $suffix = ' (No balance available)';
                                             }

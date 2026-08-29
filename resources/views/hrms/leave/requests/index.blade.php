@@ -227,8 +227,8 @@
         <div class="ep-hero" style="background: linear-gradient(135deg, #4B00E8 0%, #7C3AED 100%);">
             <div>
                 <div class="ep-kicker"><i class="fas fa-plane-departure"></i> LEAVE MANAGEMENT</div>
-                <h1 style="font-size: 26px; font-weight: 900; color: #fff;">My Leave Requests</h1>
-                <p style="font-size: 13px; color: rgba(255,255,255,0.85); margin-bottom: 0;">Track your applied leaves, quota splits, approval states, and remaining allocations.</p>
+                <h1 style="font-size: 26px; font-weight: 900; color: #fff;">{{ $isAdminOrHr ? 'Leave Requests Directory' : 'My Leave Requests' }}</h1>
+                <p style="font-size: 13px; color: rgba(255,255,255,0.85); margin-bottom: 0;">{{ $isAdminOrHr ? 'Review employee leave applications, quota splits, approval states, and remaining allocations.' : 'Track your applied leaves, quota splits, approval states, and remaining allocations.' }}</p>
             </div>
             
             <div>
@@ -242,23 +242,28 @@
 
         <!-- Leaves Calculation Metadata -->
         @php
-            $isConfirmed = $employee->is_permanent;
+            $isConfirmed = $employee ? (bool)$employee->is_permanent : true;
             
-            $monthlyQuotaInfo = app(\App\Services\HRMS\Leave\MonthlyLeaveQuotaService::class)->getMonthlyQuota($employee);
+            $monthlyQuotaInfo = $employee ? app(\App\Services\HRMS\Leave\MonthlyLeaveQuotaService::class)->getMonthlyQuota($employee) : [
+                'current_month_used' => 0,
+                'total_monthly_remaining_paid' => 0,
+                'monthly_limit' => 0,
+                'carry_forward_available' => 0,
+            ];
 
-            $paidRemaining = $isConfirmed ? ($allocation->paid_remaining ?? 0) : 0.0;
-            $paidUsed = $isConfirmed ? ($allocation->paid_used ?? 0) : 0.0;
-            $sickRemaining = $isConfirmed ? ($allocation->sick_remaining ?? 0) : 0.0;
-            $compRemaining = $isConfirmed ? ($allocation->comp_off_remaining ?? 0) : 0.0;
-            $lwpUsed = (float) ($allocation->lwp_used ?? 0);
+            $paidRemaining = $isConfirmed && $allocation ? (float)($allocation->paid_remaining ?? 0) : 0.0;
+            $paidUsed = $isConfirmed && $allocation ? (float)($allocation->paid_used ?? 0) : 0.0;
+            $sickRemaining = $isConfirmed && $allocation ? (float)($allocation->sick_remaining ?? 0) : 0.0;
+            $compRemaining = $isConfirmed && $allocation ? (float)($allocation->comp_off_remaining ?? 0) : 0.0;
+            $lwpUsed = $allocation ? (float) ($allocation->lwp_used ?? 0) : 0.0;
 
-            $alreadyUsedThisMonth = $isConfirmed ? (float) $monthlyQuotaInfo['current_month_used'] : 0.0;
-            $remainingThisMonth = $isConfirmed ? (float) $monthlyQuotaInfo['total_monthly_remaining_paid'] : 0.0;
-            $paidAvailableThisMonth = $isConfirmed ? (float) ($monthlyQuotaInfo['monthly_limit'] + $monthlyQuotaInfo['carry_forward_available']) : 0.0;
+            $alreadyUsedThisMonth = (float) ($monthlyQuotaInfo['current_month_used'] ?? 0);
+            $remainingThisMonth = (float) ($monthlyQuotaInfo['total_monthly_remaining_paid'] ?? 0);
+            $paidAvailableThisMonth = (float) (($monthlyQuotaInfo['monthly_limit'] ?? 0) + ($monthlyQuotaInfo['carry_forward_available'] ?? 0));
 
             // Apply November/December rule to dynamic balances
             $currentMonth = Carbon\Carbon::now('Asia/Kolkata')->month;
-            if (in_array((int) $currentMonth, [11, 12], true) && ($allocation->total_remaining ?? 0) > 10.0) {
+            if ($allocation && in_array((int) $currentMonth, [11, 12], true) && ($allocation->total_remaining ?? 0) > 10.0) {
                 $paidRemaining = round($paidRemaining * 0.5, 2);
                 $sickRemaining = round($sickRemaining * 0.5, 2);
                 $compRemaining = round($compRemaining * 0.5, 2);
@@ -266,14 +271,22 @@
             }
 
             // Requests Counts
-            $pendingCount = DB::table('leave_requests')->where('employee_id', $employee->id)->where('status', 'pending')->count();
-            $approvedCount = DB::table('leave_requests')->where('employee_id', $employee->id)->where('status', 'approved')->count();
-            $rejectedCount = DB::table('leave_requests')->where('employee_id', $employee->id)->where('status', 'rejected')->count();
-            $emergencyUsed = DB::table('leave_requests')->where('employee_id', $employee->id)->where('status', 'approved')->where('emergency_leave', 1)->count();
+            $countQuery = DB::table('leave_requests');
+            if (!$isAdminOrHr && $employee) {
+                $countQuery->where('employee_id', $employee->id);
+            } elseif ($isAdminOrHr && request('employee_id')) {
+                $countQuery->where('employee_id', request('employee_id'));
+            }
+            $pendingCount = (clone $countQuery)->where('status', 'pending')->count();
+            $approvedCount = (clone $countQuery)->where('status', 'approved')->count();
+            $rejectedCount = (clone $countQuery)->where('status', 'rejected')->count();
+            $emergencyUsed = (clone $countQuery)->where('status', 'approved')->where('emergency_leave', 1)->count();
+            $totalCount = (clone $countQuery)->count();
         @endphp
 
         <!-- 1. PRIMARY QUOTA CARDS (4-Column Layout) -->
         <div class="row mb-4">
+            @if($employee)
             <div class="col-12 col-sm-6 col-lg-3 mb-3 mb-lg-0">
                 <div class="metric-card-primary">
                     <div class="metric-icon-box" style="background: #ECFDF5; color: #10B981;">
@@ -316,11 +329,57 @@
                         <i class="fas fa-calendar-check"></i>
                     </div>
                     <div>
-                        <div class="metric-lbl" title="Total Paid Leave balance available for this month (including Carry Forward)">Monthly Paid Leave Balance</div>
+                        <div class="metric-lbl" title="Total Paid Leave balance available for this month (including Carry Forward)">Monthly Paid Balance</div>
                         <div class="metric-val">{{ number_format((float) $remainingThisMonth, 2) }}</div>
                     </div>
                 </div>
             </div>
+            @else
+            <div class="col-12 col-sm-6 col-lg-3 mb-3 mb-lg-0">
+                <div class="metric-card-primary">
+                    <div class="metric-icon-box" style="background: #EEF2FF; color: #4F46E5;">
+                        <i class="fas fa-layer-group"></i>
+                    </div>
+                    <div>
+                        <div class="metric-lbl">Total Requests</div>
+                        <div class="metric-val">{{ $totalCount }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-lg-3 mb-3 mb-lg-0">
+                <div class="metric-card-primary">
+                    <div class="metric-icon-box" style="background: #FEF3C7; color: #D97706;">
+                        <i class="fas fa-hourglass-half"></i>
+                    </div>
+                    <div>
+                        <div class="metric-lbl">Pending Review</div>
+                        <div class="metric-val">{{ $pendingCount }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-lg-3 mb-3 mb-lg-0">
+                <div class="metric-card-primary">
+                    <div class="metric-icon-box" style="background: #ECFDF5; color: #059669;">
+                        <i class="fas fa-check-double"></i>
+                    </div>
+                    <div>
+                        <div class="metric-lbl">Approved Leaves</div>
+                        <div class="metric-val">{{ $approvedCount }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-lg-3">
+                <div class="metric-card-primary">
+                    <div class="metric-icon-box" style="background: #FEE2E2; color: #DC2626;">
+                        <i class="fas fa-ban"></i>
+                    </div>
+                    <div>
+                        <div class="metric-lbl">Rejected Leaves</div>
+                        <div class="metric-val">{{ $rejectedCount }}</div>
+                    </div>
+                </div>
+            </div>
+            @endif
         </div>
 
         <!-- 2. SECONDARY STATS COUNTER ROW -->
@@ -369,7 +428,7 @@
                 <div class="ep-table-head-left">
                     <div class="ep-icon-box"><i class="fas fa-list-alt"></i></div>
                     <div>
-                        <h5 class="ep-table-title">Leave Request History</h5>
+                        <h5 class="ep-table-title">{{ $isAdminOrHr ? 'Leave Requests Directory' : 'Leave Request History' }}</h5>
                         <p class="ep-table-subtitle">Review active requests, splits, reason logs, and processing states.</p>
                     </div>
                 </div>
@@ -383,37 +442,71 @@
 
             <!-- Filters Header Bar -->
             <div style="border-bottom: 1px solid #E2E8F0; background: #F8FAFC; padding: 18px 24px;">
-                <div class="filter-grid">
-                    <div>
-                        <label class="font-weight-bold text-muted mb-1" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;">Leave Type</label>
-                        <select id="filterLeaveType" class="filter-control select2-searchable">
-                            <option value="">All Types</option>
-                        </select>
+                <form method="GET" action="{{ route('leave-requests.index') }}" id="leaveFilterForm">
+                    <div class="filter-grid" style="grid-template-columns: {{ $isAdminOrHr ? '1.5fr 1.1fr 1fr 1.8fr 0.9fr auto' : '1.2fr 1fr 2fr 0.9fr auto' }};">
+                        @if($isAdminOrHr && $employees->isNotEmpty())
+                        <div>
+                            <label class="font-weight-bold text-muted mb-1" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;">Employee</label>
+                            <select name="employee_id" id="filterEmployee" class="filter-control select2-searchable">
+                                <option value="">All Employees</option>
+                                @foreach($employees as $emp)
+                                    <option value="{{ $emp->id }}" {{ (string)request('employee_id') === (string)$emp->id ? 'selected' : '' }}>
+                                        {{ $emp->display_name }} ({{ $emp->employee_code ?? 'EMP' }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        @endif
+
+                        <div>
+                            <label class="font-weight-bold text-muted mb-1" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;">Leave Type</label>
+                            <select name="leave_type_id" id="filterLeaveType" class="filter-control">
+                                <option value="">All Types</option>
+                                @foreach($leaveTypes as $lt)
+                                    <option value="{{ $lt->id }}" {{ (string)request('leave_type_id') === (string)$lt->id ? 'selected' : '' }}>{{ $lt->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="font-weight-bold text-muted mb-1" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;">Status</label>
+                            <select name="status" id="filterStatus" class="filter-control">
+                                <option value="">All Statuses</option>
+                                <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Pending</option>
+                                <option value="approved" {{ request('status') === 'approved' ? 'selected' : '' }}>Approved</option>
+                                <option value="rejected" {{ request('status') === 'rejected' ? 'selected' : '' }}>Rejected</option>
+                                <option value="cancelled" {{ request('status') === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
+                                <option value="expired" {{ request('status') === 'expired' ? 'selected' : '' }}>Expired</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="font-weight-bold text-muted mb-1" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;">Search Keyword</label>
+                            <input type="text" name="search" id="filterSearch" value="{{ request('search') }}" class="filter-control" placeholder="Search reason notes, employee, code...">
+                        </div>
+
+                        <div>
+                            <label class="font-weight-bold text-muted mb-1" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;">Per Page</label>
+                            <select name="per_page" id="filterPerPage" class="filter-control font-weight-bold">
+                                <option value="10" {{ (int)request('per_page', 25) === 10 ? 'selected' : '' }}>10 rows</option>
+                                <option value="25" {{ (int)request('per_page', 25) === 25 ? 'selected' : '' }}>25 rows</option>
+                                <option value="50" {{ (int)request('per_page', 25) === 50 ? 'selected' : '' }}>50 rows</option>
+                                <option value="100" {{ (int)request('per_page', 25) === 100 ? 'selected' : '' }}>100 rows</option>
+                                <option value="250" {{ (int)request('per_page', 25) === 250 ? 'selected' : '' }}>250 rows</option>
+                                <option value="-1" {{ (int)request('per_page', 25) === -1 ? 'selected' : '' }}>All rows</option>
+                            </select>
+                        </div>
+
+                        <div class="d-flex align-items-end" style="gap: 8px;">
+                            <button type="submit" class="btn text-white font-weight-bold shadow-sm" style="height: 42px; border-radius: 12px; background: var(--orb-primary); border: none; padding: 0 18px; display: inline-flex; align-items: center; gap: 6px; font-size: 13px;">
+                                <i class="fas fa-filter"></i> Filter
+                            </button>
+                            <a href="{{ route('leave-requests.index') }}" class="filter-btn-reset" title="Reset Filters">
+                                <i class="fas fa-undo"></i>
+                            </a>
+                        </div>
                     </div>
-                    <div>
-                        <label class="font-weight-bold text-muted mb-1" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;">Status</label>
-                        <select id="filterStatus" class="filter-control">
-                            <option value="">All Statuses</option>
-                            <option value="pending">Pending</option>
-                            <option value="approved">Approved</option>
-                            <option value="rejected">Rejected</option>
-                            <option value="cancelled">Cancelled</option>
-                            <option value="expired">Expired</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="font-weight-bold text-muted mb-1" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;">Search Reason / Date</label>
-                        <input type="text" id="filterSearch" class="filter-control" placeholder="Search reason notes..." onkeyup="if(event.keyCode === 13) applyLeaveFilters()">
-                    </div>
-                    <div class="d-flex align-items-end" style="gap: 8px;">
-                        <button type="button" class="btn text-white font-weight-bold shadow-sm" style="height: 42px; border-radius: 12px; background: var(--orb-primary); border: none; padding: 0 16px; display: inline-flex; align-items: center; gap: 6px; font-size: 13px;" onclick="applyLeaveFilters()">
-                            <i class="fas fa-search"></i> Search
-                        </button>
-                        <button type="button" class="filter-btn-reset" onclick="resetLeaveFilters()">
-                            <i class="fas fa-undo mr-1"></i> Reset
-                        </button>
-                    </div>
-                </div>
+                </form>
             </div>
 
             <div class="ep-card-body p-0">
@@ -421,19 +514,35 @@
                     <table class="table ep-table js-custom-leaves-table" id="employeeLeavesTable" style="width: 100%;">
                         <thead>
                             <tr>
-                                <th>S.No.</th>
-                                <th>Leave Type</th>
-                                <th>Requested Dates</th>
-                                <th>Duration</th>
-                                <th>Status</th>
-                                <th>Reason / Note</th>
-                                <th class="text-right pr-4">Actions</th>
+                                <th style="width: 50px;">S.No.</th>
+                                @if($isAdminOrHr)
+                                    <th style="min-width: 180px;">Employee</th>
+                                @endif
+                                <th style="min-width: 130px;">Leave Type</th>
+                                <th style="min-width: 170px;">Requested Dates</th>
+                                <th style="min-width: 90px;">Duration</th>
+                                <th style="min-width: 100px;">Status</th>
+                                <th style="min-width: 250px;">Reason / Note</th>
+                                <th class="text-right pr-4 no-export" style="width: 110px;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse($requests as $request)
                                 <tr class="leave-data-row">
                                     <td><strong>{{ $loop->iteration + ($requests->currentPage() - 1) * $requests->perPage() }}</strong></td>
+                                    @if($isAdminOrHr)
+                                        <td>
+                                            <div class="d-flex align-items-center" style="gap: 10px;">
+                                                <div class="rounded-circle d-flex align-items-center justify-content-center text-white font-weight-bold" style="width: 34px; height: 34px; font-size: 11px; background: linear-gradient(135deg, #4B00E8, #7C3AED); flex-shrink: 0;">
+                                                    {{ strtoupper(substr(optional($request->employee)->display_name ?? 'E', 0, 2)) }}
+                                                </div>
+                                                <div>
+                                                    <div class="font-weight-bold text-dark" style="font-size: 12.5px;">{{ optional($request->employee)->display_name ?? 'Unknown' }}</div>
+                                                    <small class="text-muted" style="font-size: 10.5px;">{{ optional($request->employee)->employee_code ?? 'EMP' }} &bull; {{ optional(optional($request->employee)->department)->name ?? 'General' }}</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    @endif
                                     <td class="leave-type-cell">
                                         <span class="font-weight-bold text-dark">{{ optional($request->leaveType)->name ?? 'Leave' }}</span>
                                     </td>
@@ -474,7 +583,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="text-center py-5 text-muted">
+                                    <td colspan="{{ $isAdminOrHr ? '8' : '7' }}" class="text-center py-5 text-muted">
                                         <i class="fas fa-calendar-times fa-3x mb-3 text-light"></i>
                                         <p class="mb-0 font-weight-bold">No leave requests found.</p>
                                     </td>
@@ -504,6 +613,12 @@
                 <div class="ep-section-card mb-3 p-3" style="background: #F8FAFC; border-radius: 12px; border: 1px solid #E2E8F0;">
                     <div class="ep-section-title font-weight-bold text-primary mb-2" style="font-size: 14px;"><i class="fas fa-file-alt mr-1"></i> Leave Information</div>
                     <div class="row">
+                        @if($isAdminOrHr)
+                        <div class="col-12 mb-2">
+                            <small class="text-muted d-block" style="font-size: 11px;">Employee</small>
+                            <strong id="det_employee_name" class="text-dark">-</strong>
+                        </div>
+                        @endif
                         <div class="col-md-6 mb-2">
                             <small class="text-muted d-block" style="font-size: 11px;">Leave Type</small>
                             <strong id="det_leave_type" class="text-dark">-</strong>
@@ -634,150 +749,101 @@
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        if (window.jQuery && $.fn.DataTable) {
-            $.fn.dataTable.ext.errMode = 'none';
-        }
+$(function() {
+    if ($.fn.select2) {
+        $('.select2-searchable').select2({
+            placeholder: "Select employee...",
+            allowClear: true,
+            width: '100%'
+        });
+    }
 
-        if (window.jQuery && $.fn.DataTable && $('#employeeLeavesTable').length) {
-            $.fn.dataTable.ext.errMode = 'none';
+    var table = null;
+    if ($('#employeeLeavesTable').length) {
+        $.fn.dataTable.ext.errMode = 'none';
 
-            var hasButtons = typeof $.fn.dataTable.Buttons !== 'undefined';
-            var domLayout = hasButtons 
-                ? '<"leave-dt-toolbar"<"leave-dt-left"l><"leave-dt-right"B>>rt<"ep-table-footer"ip>'
-                : '<"leave-dt-toolbar"<"leave-dt-left"l>>rt<"ep-table-footer"ip>';
-
-            if ($.fn.DataTable.isDataTable('#employeeLeavesTable')) {
-                $('#employeeLeavesTable').DataTable().destroy();
-            }
-
-            $('.js-custom-leaves-table').DataTable({
-                pageLength: 25,
-                responsive: false,
-                destroy: true,
-                language: {
-                    emptyTable: 'No records found',
-                    zeroRecords: 'No matching records found'
-                },
-                dom: domLayout,
-                buttons: [
-                    { extend: 'excelHtml5', text: 'Excel', className: 'leave-export-btn' },
-                    { extend: 'csvHtml5', text: 'CSV', className: 'leave-export-btn' },
-                    { extend: 'pdfHtml5', text: 'PDF', className: 'leave-export-btn' },
-                    { extend: 'print', text: 'Print', className: 'leave-export-btn' }
-                ]
-            });
-        }
-
-        var typeSelect = document.getElementById('filterLeaveType');
-        var types = new Set();
-        document.querySelectorAll('#employeeLeavesTable tbody tr.leave-data-row').forEach(function(row) {
-            var typeCell = row.querySelector('.leave-type-cell');
-            if (typeCell) {
-                var text = typeCell.textContent.trim();
-                if (text) {
-                    types.add(text);
+        var initialPageLen = parseInt($('#filterPerPage').val()) || 25;
+        table = $('#employeeLeavesTable').DataTable({
+            pageLength: initialPageLen,
+            lengthMenu: [[10, 25, 50, 100, 250, -1], [10, 25, 50, 100, 250, "All"]],
+            ordering: true,
+            searching: true,
+            paging: true,
+            info: true,
+            dom: '<"leave-dt-toolbar"<"leave-dt-left"l><"leave-dt-right"B>>rt<"ep-table-footer d-flex justify-content-between align-items-center p-3 border-top bg-white"ip>',
+            buttons: [
+                { extend: 'excelHtml5', text: '<i class="far fa-file-excel text-success mr-1"></i> Excel', className: 'leave-export-btn', exportOptions: { columns: ':not(.no-export)' } },
+                { extend: 'csvHtml5', text: '<i class="fas fa-file-csv text-primary mr-1"></i> CSV', className: 'leave-export-btn', exportOptions: { columns: ':not(.no-export)' } },
+                { extend: 'pdfHtml5', text: '<i class="far fa-file-pdf text-danger mr-1"></i> PDF', className: 'leave-export-btn', orientation: 'landscape', exportOptions: { columns: ':not(.no-export)' } },
+                { extend: 'print', text: '<i class="fas fa-print text-dark mr-1"></i> Print', className: 'leave-export-btn', exportOptions: { columns: ':not(.no-export)' } }
+            ],
+            language: {
+                emptyTable: 'No leave requests found matching criteria.',
+                zeroRecords: 'No matching records found.',
+                paginate: {
+                    previous: '<i class="fas fa-chevron-left"></i>',
+                    next: '<i class="fas fa-chevron-right"></i>'
                 }
             }
         });
+
+        $('#filterPerPage').on('change', function() {
+            var len = parseInt($(this).val());
+            if (table) {
+                table.page.len(len).draw();
+            }
+        });
+    }
+
+    // View Details Modal Handler
+    $('.js-view-details').on('click', function() {
+        var row = JSON.parse($(this).attr('data-row') || '{}');
+        var fmt = function(v) { return v ? String(v) : '-'; };
         
-        types.forEach(function(tp) {
-            var opt = document.createElement('option');
-            opt.value = tp;
-            opt.textContent = tp;
-            typeSelect.appendChild(opt);
-        });
+        var startDateStr = row.start_date ? new Date(row.start_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+        var endDateStr = row.end_date ? new Date(row.end_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+        var appliedOnStr = row.created_at ? new Date(row.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
 
-        // View Details Modal Handler
-        document.querySelectorAll('.js-view-details').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                var row = JSON.parse(this.getAttribute('data-row') || '{}');
-                var fmt = function(v) { return v ? String(v) : '-'; };
-                
-                var startDateStr = row.start_date ? new Date(row.start_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
-                var endDateStr = row.end_date ? new Date(row.end_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
-                var appliedOnStr = row.created_at ? new Date(row.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+        var empName = row.employee ? (row.employee.name + (row.employee.employee_code ? ' (' + row.employee.employee_code + ')' : '')) : '-';
+        $('#det_employee_name').text(empName);
 
-                document.getElementById('det_leave_type').textContent = (row.leave_type ? row.leave_type.name : 'Leave');
-                document.getElementById('det_deducted_days').textContent = (row.deducted_days || '0') + ' Days';
-                document.getElementById('det_date_range').textContent = startDateStr + ' - ' + endDateStr;
-                document.getElementById('det_applied_on').textContent = appliedOnStr;
-                document.getElementById('det_breakdown').textContent = 'Paid: ' + (row.paid_days || 0) + ' | Sick: ' + (row.sick_days || 0) + ' | Comp-Off: ' + (row.comp_off_days || 0) + ' | LWP: ' + (row.lwp_days || 0);
-                document.getElementById('det_reason').textContent = fmt(row.reason);
-                document.getElementById('det_status').textContent = fmt(row.status).toUpperCase();
-                document.getElementById('det_emergency').textContent = row.emergency_leave ? 'YES' : 'NO';
+        $('#det_leave_type').text(row.leave_type ? row.leave_type.name : 'Leave');
+        $('#det_deducted_days').text((row.deducted_days || '0') + ' Days');
+        $('#det_date_range').text(startDateStr + ' - ' + endDateStr);
+        $('#det_applied_on').text(appliedOnStr);
+        $('#det_breakdown').text('Paid: ' + (row.paid_days || 0) + ' | Sick: ' + (row.sick_days || 0) + ' | Comp-Off: ' + (row.comp_off_days || 0) + ' | LWP: ' + (row.lwp_days || 0));
+        $('#det_reason').text(fmt(row.reason));
+        $('#det_status').text(fmt(row.status).toUpperCase());
+        $('#det_emergency').text(row.emergency_leave ? 'YES' : 'NO');
 
-                var rejRow = document.getElementById('det_rejection_row');
-                if (row.rejection_reason) {
-                    rejRow.style.display = 'block';
-                    document.getElementById('det_rejection_note').textContent = row.rejection_reason;
-                } else {
-                    rejRow.style.display = 'none';
-                }
+        if (row.rejection_reason) {
+            $('#det_rejection_row').show();
+            $('#det_rejection_note').text(row.rejection_reason);
+        } else {
+            $('#det_rejection_row').hide();
+        }
 
-                $('#leaveDetailsModal').modal('show');
-            });
-        });
-
-        // Edit Request Modal Handler
-        document.querySelectorAll('.js-edit-request').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                var row = JSON.parse(this.getAttribute('data-row') || '{}');
-                var updateUrl = "{{ route('leave-requests.update', ':id') }}".replace(':id', row.id);
-                document.getElementById('editLeaveForm').setAttribute('action', updateUrl);
-                document.getElementById('edit_leave_type_id').value = row.leave_type_id || '';
-                
-                var cleanStartDate = (row.start_date || '').toString().split('T')[0].split(' ')[0];
-                var cleanEndDate = (row.end_date || '').toString().split('T')[0].split(' ')[0];
-
-                document.getElementById('edit_start_date').value = cleanStartDate;
-                document.getElementById('edit_end_date').value = cleanEndDate;
-                document.getElementById('edit_leave_reason').value = row.reason || '';
-                document.getElementById('edit_is_half_day').checked = !!row.is_half_day;
-                document.getElementById('edit_emergency_leave').checked = !!row.emergency_leave;
-
-                $('#editLeaveModal').modal('show');
-            });
-        });
+        $('#leaveDetailsModal').modal('show');
     });
 
-    function applyLeaveFilters() {
-        var typeVal = document.getElementById('filterLeaveType').value.toLowerCase().trim();
-        var statusVal = document.getElementById('filterStatus').value.toLowerCase().trim();
-        var searchVal = document.getElementById('filterSearch').value.toLowerCase().trim();
-
-        document.querySelectorAll('#employeeLeavesTable tbody tr.leave-data-row').forEach(function(row) {
-            var typeCell = row.querySelector('.leave-type-cell');
-            var statusCell = row.querySelector('.leave-status-cell');
-            var reasonCell = row.querySelector('.leave-reason-cell');
-            var datesCell = row.querySelector('.leave-dates-cell');
-
-            if (!typeCell) return;
-
-            var typeText = typeCell.textContent.toLowerCase();
-            var statusText = statusCell ? statusCell.textContent.trim().toLowerCase() : '';
-            var searchText = (reasonCell ? reasonCell.textContent.toLowerCase() : '') + ' ' + (datesCell ? datesCell.textContent.toLowerCase() : '');
-
-            var matchesType = !typeVal || typeText.includes(typeVal);
-            var matchesStatus = !statusVal || statusText.includes(statusVal);
-            var matchesSearch = !searchVal || searchText.includes(searchVal);
-
-            if (matchesType && matchesStatus && matchesSearch) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        });
-    }
-
-    function resetLeaveFilters() {
-        document.getElementById('filterLeaveType').value = '';
-        document.getElementById('filterStatus').value = '';
-        document.getElementById('filterSearch').value = '';
+    // Edit Request Modal Handler
+    $('.js-edit-request').on('click', function() {
+        var row = JSON.parse($(this).attr('data-row') || '{}');
+        var updateUrl = "{{ route('leave-requests.update', ':id') }}".replace(':id', row.id);
+        $('#editLeaveForm').attr('action', updateUrl);
+        $('#edit_leave_type_id').val(row.leave_type_id || '');
         
-        document.querySelectorAll('#employeeLeavesTable tbody tr.leave-data-row').forEach(function(row) {
-            row.style.display = '';
-        });
-    }
+        var cleanStartDate = (row.start_date || '').toString().split('T')[0].split(' ')[0];
+        var cleanEndDate = (row.end_date || '').toString().split('T')[0].split(' ')[0];
+
+        $('#edit_start_date').val(cleanStartDate);
+        $('#edit_end_date').val(cleanEndDate);
+        $('#edit_leave_reason').val(row.reason || '');
+        $('#edit_is_half_day').prop('checked', !!row.is_half_day);
+        $('#edit_emergency_leave').prop('checked', !!row.emergency_leave);
+
+        $('#editLeaveModal').modal('show');
+    });
+});
 </script>
 @endsection

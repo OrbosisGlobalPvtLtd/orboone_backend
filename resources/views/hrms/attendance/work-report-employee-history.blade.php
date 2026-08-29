@@ -167,8 +167,8 @@
 
             <div class="action-toolbar-pill">
                 <a href="{{ route('hrms.attendance.work-reports.employee-history.print', ['employee' => $employee->id, 'from_date' => request('from_date'), 'to_date' => request('to_date')]) }}" 
-                   target="_blank" class="btn-pill-action">
-                    <i class="fas fa-print"></i> Print Report
+                   target="_blank" class="btn-pill-action" style="background: rgba(255, 255, 255, 0.95); color: var(--orb-primary) !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                    <i class="fas fa-file-pdf text-danger"></i> Print / Save PDF
                 </a>
                 <a href="{{ route('hrms.attendance.work-reports') }}" class="btn-pill-action">
                     <i class="fas fa-arrow-left"></i> All Work Reports
@@ -177,7 +177,7 @@
         </div>
 
         <!-- Metric Summary Cards Grid -->
-        <div class="stats-card-grid">
+        <div class="stats-card-grid" style="grid-template-columns: repeat(4, 1fr);">
             <div class="stat-card-box">
                 <div class="stat-card-icon"><i class="fas fa-clipboard-check"></i></div>
                 <div>
@@ -189,16 +189,24 @@
             <div class="stat-card-box">
                 <div class="stat-card-icon"><i class="fas fa-clock"></i></div>
                 <div>
-                    <div class="stat-card-val">{{ $summary['total_gross_formatted'] }}</div>
-                    <div class="stat-card-lbl">Total Gross Work Duration</div>
+                    <div class="stat-card-val" style="font-size: 19px;">{{ $summary['total_gross_formatted'] }}</div>
+                    <div class="stat-card-lbl">Avg {{ $summary['avg_daily_formatted'] }}</div>
                 </div>
             </div>
 
             <div class="stat-card-box">
                 <div class="stat-card-icon"><i class="fas fa-tasks"></i></div>
                 <div>
-                    <div class="stat-card-val">{{ $summary['total_tasks'] }}</div>
-                    <div class="stat-card-lbl">Structured Tasks Logged</div>
+                    <div class="stat-card-val" style="font-size: 19px;">{{ $summary['completed_tasks'] }} <span style="font-size: 13px; color: #667085; font-weight: 700;">/ {{ $summary['total_tasks'] }}</span></div>
+                    <div class="stat-card-lbl">{{ $summary['completion_rate'] }}% Tasks Completed</div>
+                </div>
+            </div>
+
+            <div class="stat-card-box">
+                <div class="stat-card-icon"><i class="fas fa-laptop-house"></i></div>
+                <div>
+                    <div class="stat-card-val" style="font-size: 19px;">{{ $summary['wfo_count'] }} <span style="font-size: 12px; color: #166534; font-weight: 800;">WFO</span> &bull; {{ $summary['wfh_count'] }} <span style="font-size: 12px; color: #1E40AF; font-weight: 800;">WFH</span></div>
+                    <div class="stat-card-lbl">Work Mode Distribution</div>
                 </div>
             </div>
         </div>
@@ -312,6 +320,8 @@
                             $tasksCount = is_array($requirementsList) ? count($requirementsList) : 0;
 
                             $logPayload = [
+                                'id' => $log->id,
+                                'work_log_id' => $log->id,
                                 'employee_name' => $summary['employee_name'],
                                 'employee_code' => $summary['employee_code'],
                                 'passport_photo_url' => $summary['passport_photo_url'],

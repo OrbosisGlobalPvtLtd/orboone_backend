@@ -28,10 +28,13 @@
                                 </div>
                             </div>
                         </div>
-                        <div>
+                        <div class="d-flex align-items-center" style="gap: 8px;">
                             <span id="modal-attendance-badge" class="badge-premium-pill" style="font-size: 9px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; padding: 4px 10px; border-radius: 6px;">
                                 Present
                             </span>
+                            <button type="button" id="modal-print-btn" onclick="printModalWorkReport()" class="btn btn-sm btn-light font-weight-bold" style="border-radius: 8px; font-size: 11px; height: 28px; padding: 0 10px; display: inline-flex; align-items: center; gap: 5px; border: none; box-shadow: 0 2px 6px rgba(0,0,0,0.15); color: var(--orb-primary, #4B00E8);">
+                                <i class="fas fa-file-pdf text-danger"></i> <span>Print Slip</span>
+                            </button>
                         </div>
                     </div>
 
@@ -348,6 +351,15 @@
                 notesWrapper.classList.add('d-none');
             }
 
+            // Save active log references for printing
+            activeModalWorkLogId = log.id || log.work_log_id || null;
+            activeModalWorkLogData = log;
+
+            const printBtn = document.getElementById('modal-print-btn');
+            if (printBtn) {
+                printBtn.style.display = activeModalWorkLogId ? 'inline-flex' : 'none';
+            }
+
             // Show modal
             $('#sharedWorkReportModal').modal('show');
 
@@ -357,7 +369,23 @@
         }
     }
 
+    let activeModalWorkLogId = null;
+    let activeModalWorkLogData = null;
+
+    function printModalWorkReport() {
+        if (activeModalWorkLogId) {
+            window.open('{{ url('/work-reports') }}/' + activeModalWorkLogId + '/print-single', '_blank');
+        }
+    }
+
     function showModalFallback(message) {
+        activeModalWorkLogId = null;
+        activeModalWorkLogData = null;
+        const printBtn = document.getElementById('modal-print-btn');
+        if (printBtn) {
+            printBtn.style.display = 'none';
+        }
+
         document.getElementById('modal-emp-name').innerText = 'Work Report';
         const avatarBox = document.getElementById('modal-emp-avatar');
         avatarBox.innerHTML = '';

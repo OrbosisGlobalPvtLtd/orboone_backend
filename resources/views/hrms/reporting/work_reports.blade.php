@@ -266,6 +266,8 @@
                                 }
 
                                 $logPayload = [
+                                    'id' => $report->id,
+                                    'work_log_id' => $report->id,
                                     'employee_name' => $report->display_name ?? 'Employee',
                                     'employee_code' => $report->employee_code ?? 'N/A',
                                     'passport_photo_url' => $passportPhotoUrl,

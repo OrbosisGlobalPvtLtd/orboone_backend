@@ -1374,6 +1374,8 @@
                                                 }
 
                                                 $logPayload = [
+                                                    'id' => $firstLog->id,
+                                                    'work_log_id' => $firstLog->id,
                                                     'employee_name' => $employeeName,
                                                     'employee_code' => $employeeCode,
                                                     'passport_photo_url' => resolveEmployeePassportPhoto($attendance->employee ?? $attendance),

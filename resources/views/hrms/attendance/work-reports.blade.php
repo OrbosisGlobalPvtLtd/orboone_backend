@@ -1087,6 +1087,8 @@
                                 $desigName = optional(optional($log->employee)->designation)->name ?? 'Member';
 
                                 $logPayload = [
+                                    'id' => $log->id,
+                                    'work_log_id' => $log->id,
                                     'employee_name' => $employeeName,
                                     'employee_code' => $employeeCode,
                                     'passport_photo_url' => resolveEmployeePassportPhoto($log->employee ?? $log),

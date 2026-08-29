@@ -3,8 +3,10 @@
 @section('page_title', 'Daily Work Reports')
 
 @section('_head')
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap4.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap4.min.css">
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 @endsection
 
 @section('_content')
@@ -22,6 +24,11 @@
         --orb-shadow: 0 14px 35px rgba(16, 24, 40, .07);
     }
 
+    body {
+        background: var(--orb-bg) !important;
+        font-family: 'Outfit', sans-serif !important;
+    }
+
     .report-page {
         min-height: calc(100vh - 90px);
         background: var(--orb-bg);
@@ -30,7 +37,7 @@
     }
 
     .report-container {
-        max-width: 1500px;
+        max-width: 1600px;
         margin: 0 auto;
     }
 
@@ -38,16 +45,16 @@
     .report-header-premium {
         background: linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%) !important;
         border-radius: 26px !important;
-        padding: 32px 36px !important;
+        padding: 30px 36px !important;
         color: #fff !important;
         display: flex !important;
         justify-content: space-between !important;
         align-items: center !important;
         gap: 20px !important;
-        box-shadow: 0 12px 30px rgba(75, 0, 232, 0.15) !important;
+        box-shadow: 0 14px 35px rgba(75, 0, 232, 0.18) !important;
         position: relative !important;
         overflow: hidden !important;
-        margin-bottom: 28px !important;
+        margin-bottom: 24px !important;
         border: none !important;
     }
 
@@ -56,9 +63,9 @@
         position: absolute !important;
         top: -50% !important;
         right: -20% !important;
-        width: 300px !important;
-        height: 300px !important;
-        background: rgba(255, 255, 255, 0.08) !important;
+        width: 320px !important;
+        height: 320px !important;
+        background: rgba(255, 255, 255, 0.09) !important;
         border-radius: 50% !important;
         filter: blur(40px) !important;
         pointer-events: none !important;
@@ -73,8 +80,8 @@
     }
 
     .report-header-premium .title-area p {
-        font-size: 14px !important;
-        color: rgba(255, 255, 255, 0.85) !important;
+        font-size: 13.5px !important;
+        color: rgba(255, 255, 255, 0.88) !important;
         margin: 6px 0 0 0 !important;
         font-weight: 500 !important;
     }
@@ -84,7 +91,7 @@
         font-weight: 800 !important;
         text-transform: uppercase !important;
         letter-spacing: 0.15em !important;
-        color: rgba(255, 255, 255, 0.75) !important;
+        color: rgba(255, 255, 255, 0.8) !important;
         margin-bottom: 8px !important;
         display: flex !important;
         align-items: center !important;
@@ -94,7 +101,7 @@
     /* View Switcher Toggle Pill */
     .view-switcher-pill {
         display: inline-flex;
-        background: rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.18);
         padding: 4px;
         border-radius: 50px;
         border: 1px solid rgba(255, 255, 255, 0.25);
@@ -103,37 +110,478 @@
     .view-switcher-btn {
         border: none;
         background: transparent;
-        color: rgba(255, 255, 255, 0.85);
+        color: rgba(255, 255, 255, 0.9);
         padding: 8px 18px;
         border-radius: 50px;
-        font-size: 12px;
+        font-size: 12.5px;
         font-weight: 800;
         display: inline-flex;
         align-items: center;
-        gap: 6px;
+        gap: 7px;
         cursor: pointer;
         transition: all 0.2s ease;
     }
 
+    .view-switcher-btn:hover {
+        color: #FFFFFF;
+        background: rgba(255, 255, 255, 0.12);
+    }
+
     .view-switcher-btn.active {
+        background: #FFFFFF !important;
+        color: var(--orb-primary) !important;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12) !important;
+    }
+
+    .report-btn-pill {
+        height: 40px;
+        padding: 0 18px;
+        border-radius: 50px;
+        font-size: 12.5px;
+        font-weight: 800;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        background: rgba(255, 255, 255, 0.15);
+        color: #FFFFFF !important;
+        text-decoration: none !important;
+        transition: all 0.2s ease;
+    }
+
+    .report-btn-pill:hover {
         background: #FFFFFF;
+        color: var(--orb-primary) !important;
+        transform: translateY(-2px);
+    }
+
+    /* KPI Metrics Summary Grid */
+    .report-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .report-kpi-card {
+        background: #FFFFFF;
+        border: 1px solid var(--orb-border);
+        border-radius: 20px;
+        padding: 18px 20px;
+        box-shadow: 0 8px 22px rgba(16, 24, 40, .04);
+        position: relative;
+        overflow: hidden;
+        transition: all 0.25s ease;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .report-kpi-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 14px 28px rgba(75, 0, 232, 0.08);
+        border-color: rgba(75, 0, 232, 0.25);
+    }
+
+    .report-kpi-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 19px;
+        flex-shrink: 0;
+    }
+
+    .kpi-purple { background: #F4F2FF; color: var(--orb-primary); }
+    .kpi-blue { background: #EFF8FF; color: #175CD3; }
+    .kpi-amber { background: #FEF7C3; color: #B54708; }
+    .kpi-emerald { background: #ECFDF3; color: #027A48; }
+    .kpi-indigo { background: #EEF4FF; color: #3538CD; }
+
+    .report-kpi-val {
+        font-size: 20px;
+        font-weight: 900;
+        color: var(--orb-text);
+        line-height: 1.2;
+        font-feature-settings: "tnum";
+    }
+
+    .report-kpi-lbl {
+        font-size: 11px;
+        font-weight: 800;
+        color: var(--orb-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-top: 2px;
+    }
+
+    /* Filter Card */
+    .orb-filter-card {
+        background: #FFFFFF;
+        border-radius: 20px;
+        border: 1px solid var(--orb-border);
+        box-shadow: 0 8px 24px rgba(16, 24, 40, .03);
+        padding: 20px 24px;
+        margin-bottom: 24px;
+    }
+
+    .report-filter-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1.2fr 1.2fr 2fr auto;
+        gap: 14px;
+        align-items: flex-end;
+    }
+
+    .report-filter-grid label {
+        font-size: 11px;
+        font-weight: 800;
+        color: var(--orb-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-bottom: 6px;
+        display: block;
+    }
+
+    .report-filter-grid .form-control {
+        height: 44px;
+        border-radius: 12px;
+        border: 1px solid var(--orb-border);
+        background: #FFFFFF;
+        padding: 8px 14px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--orb-text);
+        width: 100%;
+        outline: none;
+        transition: all 0.2s ease;
+    }
+
+    .report-filter-grid .form-control:focus {
+        border-color: var(--orb-primary);
+        box-shadow: 0 0 0 3px rgba(75, 0, 232, 0.1);
+    }
+
+    .select2-container .select2-selection--single {
+        height: 44px !important;
+        border-radius: 12px !important;
+        border: 1px solid var(--orb-border) !important;
+        padding: 6px 12px !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        top: 9px !important;
+    }
+
+    /* Main Table Card */
+    .orb-table-card {
+        background: #FFFFFF !important;
+        border-radius: 24px !important;
+        border: 1px solid var(--orb-border) !important;
+        box-shadow: var(--orb-shadow) !important;
+        overflow: hidden !important;
+        margin-bottom: 30px !important;
+    }
+
+    .orb-table-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+        padding: 18px 24px;
+        border-bottom: 1px solid var(--orb-border);
+        background: linear-gradient(180deg, #FFFFFF 0%, #FAFBFC 100%);
+    }
+
+    .toolbar-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .toolbar-title {
+        font-size: 17px;
+        font-weight: 900;
+        color: var(--orb-text);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .toolbar-badge {
+        background: #F4F2FF;
         color: var(--orb-primary);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        font-size: 11px;
+        font-weight: 800;
+        padding: 4px 10px;
+        border-radius: 50px;
+        border: 1px solid rgba(75, 0, 232, 0.15);
+    }
+
+    .toolbar-right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .leave-export-btn {
+        height: 38px !important;
+        border-radius: 12px !important;
+        padding: 8px 16px !important;
+        font-size: 12.5px !important;
+        font-weight: 800 !important;
+        color: #344054 !important;
+        background: #fff !important;
+        border: 1px solid #E7EAF3 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        box-shadow: 0 1px 2px rgba(16,24,40,0.05) !important;
+        transition: all 0.2s ease !important;
+        margin-bottom: 0 !important;
+        cursor: pointer;
+    }
+
+    .leave-export-btn:hover {
+        background: #F9F5FF !important;
+        color: var(--orb-primary) !important;
+        border-color: #D9CCFF !important;
+    }
+
+    /* Table Scroll & Styles */
+    .orb-table-scroll {
+        width: 100% !important;
+        overflow-x: auto !important;
+    }
+
+    .report-table {
+        width: 100% !important;
+        margin-bottom: 0 !important;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .report-table thead th {
+        background: #F8FAFC !important;
+        color: #475467 !important;
+        font-size: 11.5px !important;
+        font-weight: 800 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.06em !important;
+        padding: 14px 18px !important;
+        border-top: none !important;
+        border-bottom: 1px solid var(--orb-border) !important;
+        white-space: nowrap;
+        vertical-align: middle !important;
+    }
+
+    .report-table tbody td {
+        padding: 16px 18px !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        color: var(--orb-text) !important;
+        border-bottom: 1px solid #F1F5F9 !important;
+        background: #FFFFFF !important;
+        vertical-align: middle !important;
+        transition: background 0.15s ease;
+    }
+
+    .report-table tbody tr:hover td {
+        background: #FBFBFE !important;
+    }
+
+    /* Employee Pill in Table */
+    .table-emp-cell {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .table-emp-avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        background: #F4F2FF;
+        color: var(--orb-primary);
+        font-weight: 900;
+        font-size: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        flex-shrink: 0;
+        border: 1px solid rgba(75, 0, 232, 0.12);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+    }
+
+    .table-emp-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .table-emp-name {
+        font-weight: 800;
+        font-size: 13.5px;
+        color: #101828;
+        line-height: 1.3;
+    }
+
+    .table-emp-meta {
+        font-size: 11.5px;
+        color: #667085;
+        font-weight: 600;
+        margin-top: 2px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .badge-dept-tag {
+        background: #F1F5F9;
+        color: #475569;
+        font-size: 10.5px;
+        font-weight: 700;
+        padding: 2px 6px;
+        border-radius: 6px;
+    }
+
+    /* Badge Pills */
+    .badge-premium-pill {
+        padding: 5px 12px;
+        border-radius: 50px;
+        font-weight: 800;
+        font-size: 11px;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        letter-spacing: 0.02em;
+    }
+
+    .badge-wfo {
+        background: #ECFDF3;
+        color: #027A48;
+        border: 1px solid #D1FADF;
+    }
+
+    .badge-wfh {
+        background: #EFF8FF;
+        color: #175CD3;
+        border: 1px solid #D1E9FF;
+    }
+
+    .badge-gross-pill {
+        background: #FEF7C3;
+        color: #B54708;
+        border: 1px solid #FEF08A;
+        font-weight: 800;
+        font-size: 12px;
+        padding: 4px 10px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .project-tag-pill {
+        background: #F4F2FF;
+        color: var(--orb-primary);
+        border: 1px solid rgba(75, 0, 232, 0.15);
+        font-weight: 800;
+        font-size: 11.5px;
+        padding: 3px 8px;
+        border-radius: 6px;
+        display: inline-block;
+        max-width: 220px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        margin-bottom: 4px;
+    }
+
+    .work-summary-snippet {
+        font-size: 12.5px;
+        color: #344054;
+        line-height: 1.4;
+        max-width: 320px;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .action-btn-group {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 6px;
+    }
+
+    .btn-action-primary {
+        height: 34px;
+        padding: 0 12px;
+        border-radius: 10px;
+        font-size: 12px;
+        font-weight: 800;
+        background: #F4F2FF;
+        color: var(--orb-primary);
+        border: 1px solid rgba(75, 0, 232, 0.15);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s ease;
+        text-decoration: none !important;
+        cursor: pointer;
+    }
+
+    .btn-action-primary:hover {
+        background: var(--orb-primary);
+        color: #FFFFFF !important;
+        box-shadow: 0 4px 10px rgba(75, 0, 232, 0.25);
+    }
+
+    .btn-action-secondary {
+        height: 34px;
+        width: 34px;
+        border-radius: 10px;
+        font-size: 12px;
+        font-weight: 800;
+        background: #FFFFFF;
+        color: #475467;
+        border: 1px solid #E7EAF3;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+        text-decoration: none !important;
+    }
+
+    .btn-action-secondary:hover {
+        background: #F8FAFC;
+        color: var(--orb-primary);
+        border-color: #D9CCFF;
     }
 
     /* Cards Grid View */
     .emp-cards-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-        gap: 24px;
+        grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+        gap: 22px;
         margin-bottom: 30px;
     }
 
     .emp-summary-card {
         background: #FFFFFF;
         border: 1px solid #E7EAF3;
-        border-radius: 20px;
-        padding: 24px;
+        border-radius: 22px;
+        padding: 22px;
         box-shadow: 0 10px 25px rgba(16, 24, 40, .03);
         transition: all 0.25s ease;
         display: flex;
@@ -144,15 +592,15 @@
 
     .emp-summary-card:hover {
         transform: translateY(-4px);
-        box-shadow: 0 18px 35px rgba(75, 0, 232, 0.08);
-        border-color: rgba(75, 0, 232, 0.2);
+        box-shadow: 0 18px 35px rgba(75, 0, 232, 0.09);
+        border-color: rgba(75, 0, 232, 0.22);
     }
 
     .emp-card-header {
         display: flex;
         align-items: center;
         gap: 14px;
-        margin-bottom: 18px;
+        margin-bottom: 16px;
     }
 
     .emp-card-avatar {
@@ -198,7 +646,7 @@
         padding: 12px;
         border-radius: 14px;
         border: 1px solid #F1F5F9;
-        margin-bottom: 18px;
+        margin-bottom: 16px;
         text-align: center;
     }
 
@@ -231,14 +679,14 @@
     .emp-latest-snippet .snippet-title {
         font-weight: 800;
         color: #0F172A;
-        font-size: 12px;
+        font-size: 11.5px;
         margin-bottom: 4px;
         display: flex;
         align-items: center;
         justify-content: space-between;
     }
 
-    /* Slide-Out Timeline Drawer (Offcanvas) */
+    /* Slide-Out Timeline Drawer */
     .drawer-overlay {
         position: fixed;
         top: 0;
@@ -313,7 +761,6 @@
         background: #F8FAFC;
     }
 
-    /* Timeline Items */
     .timeline-list {
         position: relative;
         padding-left: 24px;
@@ -355,118 +802,27 @@
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
     }
 
-    /* Table card styling */
-    .orb-table-card {
-        background: #fff !important;
-        border-radius: 24px !important;
-        border: 1px solid #E7EAF3 !important;
-        box-shadow: 0 14px 35px rgba(16,24,40,.07) !important;
-        overflow: hidden !important;
-        margin-bottom: 30px !important;
+    @media (max-width: 1200px) {
+        .report-kpi-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        .report-filter-grid {
+            grid-template-columns: 1fr 1fr;
+        }
     }
 
-    .report-filters-attached {
-        background: #F8FAFC !important;
-        border-bottom: 1px solid var(--orb-border) !important;
-        padding: 20px 26px 12px !important;
-    }
-
-    .report-filter-grid {
-        display: grid !important;
-        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-        gap: 12px !important;
-        align-items: flex-end !important;
-    }
-
-    .report-filter-grid label {
-        font-size: 11px !important;
-        font-weight: 800 !important;
-        color: var(--orb-muted) !important;
-        text-transform: uppercase !important;
-        letter-spacing: 0.08em !important;
-        margin-bottom: 6px !important;
-        display: block !important;
-    }
-
-    .report-filter-grid .form-control {
-        height: 44px !important;
-        border-radius: 9px !important;
-        border: 1px solid var(--orb-border) !important;
-        background: #fff !important;
-        padding: 8px 12px !important;
-        font-size: 13px !important;
-        font-weight: 600 !important;
-        color: var(--orb-text) !important;
-        width: 100% !important;
-        outline: none !important;
-        transition: all 0.2s ease !important;
-    }
-
-    .orb-table-toolbar {
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        gap: 16px !important;
-        flex-wrap: wrap !important;
-        padding: 16px 26px !important;
-        border-top: 1px solid #F1F5F9 !important;
-        border-bottom: 1px solid #F1F5F9 !important;
-        background: #fff !important;
-    }
-
-    .orb-table-scroll {
-        width: 100% !important;
-        overflow-x: auto !important;
-        overflow-y: hidden !important;
-        -webkit-overflow-scrolling: touch !important;
-    }
-
-    .orb-table-scroll table {
-        min-width: 1100px !important;
-        width: 100% !important;
-        margin-bottom: 0 !important;
-    }
-
-    .orb-table-scroll table thead th {
-        background: #F8FAFC !important;
-        color: #101828 !important;
-        font-size: 12px !important;
-        font-weight: 700 !important;
-        text-transform: uppercase !important;
-        letter-spacing: 0.05em !important;
-        padding: 16px 18px !important;
-        border-bottom: 1px solid var(--orb-border) !important;
-    }
-
-    .orb-table-scroll table tbody td {
-        padding: 16px 18px !important;
-        font-size: 13px !important;
-        font-weight: 600 !important;
-        color: var(--orb-text) !important;
-        border-bottom: 1px solid var(--orb-border) !important;
-        background: #fff !important;
-    }
-
-    .badge-wfo { background: #E6F4EA; color: #137333; }
-    .badge-wfh { background: #E8F0FE; color: #1A73E8; }
-    .badge-premium-pill {
-        padding: 6px 14px;
-        border-radius: 50px;
-        font-weight: 700;
-        font-size: 11px;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-
-    .work-summary-bubble {
-        background: #FAFBFC;
-        border: 1px solid #EEF2F6;
-        border-radius: 14px;
-        padding: 12px 16px;
-        color: #344054;
-        font-size: 13px;
-        line-height: 1.5;
+    @media (max-width: 768px) {
+        .report-header-premium {
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 24px 20px !important;
+        }
+        .report-kpi-grid {
+            grid-template-columns: 1fr;
+        }
+        .report-filter-grid {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
 
@@ -483,19 +839,19 @@
                 <p>Track, manage, and review employee tasks, daily progress summaries, and work details.</p>
             </div>
 
-            <div class="d-flex align-items-center" style="gap:12px;">
-                <!-- View Mode Switcher Toggle Pill -->
+            <div class="d-flex align-items-center flex-wrap" style="gap:12px;">
+                <!-- View Mode Switcher Toggle Pill (Listing default active) -->
                 <div class="view-switcher-pill">
-                    <button type="button" class="view-switcher-btn active" id="btnCardsView" onclick="switchWorkReportView('cards')">
-                        <i class="fas fa-th-large"></i> Employee Cards
+                    <button type="button" class="view-switcher-btn active" id="btnTableView" onclick="switchWorkReportView('table')">
+                        <i class="fas fa-list-ul"></i> Listing View
                     </button>
-                    <button type="button" class="view-switcher-btn" id="btnTableView" onclick="switchWorkReportView('table')">
-                        <i class="fas fa-list"></i> All Daily Logs
+                    <button type="button" class="view-switcher-btn" id="btnCardsView" onclick="switchWorkReportView('cards')">
+                        <i class="fas fa-th-large"></i> Employee Summaries
                     </button>
                 </div>
 
                 @if($isAdminOrManager)
-                <a href="{{ route('attendances.daily') }}" class="report-btn-pill text-white ml-2">
+                <a href="{{ route('attendances.daily') }}" class="report-btn-pill">
                     <i class="fas fa-calendar-check"></i>
                     Daily Attendance
                 </a>
@@ -504,160 +860,158 @@
         </div>
 
         @if(session('success'))
-        <div class="alert alert-success border-0 shadow-sm mb-4 py-3" style="border-radius: 12px;">
-            <i class="fas fa-check-circle mr-2"></i> {{ session('success') }}
+        <div class="alert alert-success border-0 shadow-sm mb-4 py-3" style="border-radius: 14px; background: #F0FDF4; border-left: 5px solid #22C55E !important;">
+            <i class="fas fa-check-circle text-success mr-2"></i> {{ session('success') }}
         </div>
         @endif
 
+        <!-- KPI Metric Summary Grid -->
+        <div class="report-kpi-grid">
+            <div class="report-kpi-card">
+                <div class="report-kpi-icon kpi-purple">
+                    <i class="fas fa-clipboard-check"></i>
+                </div>
+                <div>
+                    <div class="report-kpi-val">{{ $statsSummary['total_reports'] ?? count($workLogs) }}</div>
+                    <div class="report-kpi-lbl">Work Reports</div>
+                </div>
+            </div>
+
+            <div class="report-kpi-card">
+                <div class="report-kpi-icon kpi-blue">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div>
+                    <div class="report-kpi-val">{{ $statsSummary['unique_employees'] ?? count($employeeSummaries) }}</div>
+                    <div class="report-kpi-lbl">Active Staff</div>
+                </div>
+            </div>
+
+            <div class="report-kpi-card">
+                <div class="report-kpi-icon kpi-amber">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div>
+                    <div class="report-kpi-val" style="font-size: 17px;">{{ $statsSummary['total_gross_formatted'] ?? '0 mins' }}</div>
+                    <div class="report-kpi-lbl">Gross Work Duration</div>
+                </div>
+            </div>
+
+            <div class="report-kpi-card">
+                <div class="report-kpi-icon kpi-emerald">
+                    <i class="fas fa-tasks"></i>
+                </div>
+                <div>
+                    <div class="report-kpi-val">{{ $statsSummary['total_tasks'] ?? 0 }}</div>
+                    <div class="report-kpi-lbl">Structured Tasks</div>
+                </div>
+            </div>
+
+            <div class="report-kpi-card">
+                <div class="report-kpi-icon kpi-indigo">
+                    <i class="fas fa-laptop-house"></i>
+                </div>
+                <div>
+                    <div class="report-kpi-val" style="font-size: 16px;">
+                        <span class="text-success">{{ $statsSummary['wfo_count'] ?? 0 }}</span> WFO / 
+                        <span class="text-primary">{{ $statsSummary['wfh_count'] ?? 0 }}</span> WFH
+                    </div>
+                    <div class="report-kpi-lbl">Work Modes</div>
+                </div>
+            </div>
+        </div>
+
         <!-- Filter Card Bar -->
-        <div class="card orb-table-card mb-4">
-            <div class="report-filters-attached">
-                <form method="GET" action="{{ route('hrms.attendance.work-reports') }}" id="reportFilterForm">
-                    <div class="report-filter-grid">
-                        @if($isAdminOrManager)
-                        <div>
-                            <label>Employee</label>
-                            <select name="employee_id" id="filterEmployee" class="form-control select2-searchable">
-                                <option value="">All Staff</option>
-                                @foreach($employees as $emp)
-                                <option value="{{ optional($emp->employee)->id }}" {{ (string) request('employee_id') === (string) optional($emp->employee)->id ? 'selected' : '' }}>
-                                    {{ $emp->name }}
-                                </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        @else
-                        <div>
-                            <label>Employee</label>
-                            <input type="text" class="form-control" value="{{ auth()->user()->name }}" readonly disabled>
-                        </div>
-                        @endif
-
-                        <div>
-                            <label>From Date</label>
-                            <input type="date" name="from_date" id="filterFromDate" value="{{ request('from_date') }}" class="form-control">
-                        </div>
-
-                        <div>
-                            <label>To Date</label>
-                            <input type="date" name="to_date" id="filterToDate" value="{{ request('to_date') }}" class="form-control">
-                        </div>
-
-                        <div>
-                            <label>Search Keyword</label>
-                            <input type="text" name="search" id="filterSearch" value="{{ request('search') }}" class="form-control" placeholder="Search tasks or summary...">
-                        </div>
-
-                        <div>
-                            <label>&nbsp;</label>
-                            <div class="d-flex align-items-center" style="gap: 8px;">
-                                <button type="submit" id="btnFilterSubmit" class="btn text-white font-weight-bold shadow-sm" style="height: 44px; border-radius: 12px; background: var(--orb-primary); border: none; flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
-                                    <i class="fas fa-search"></i> Search
-                                </button>
-                                <a href="{{ route('hrms.attendance.work-reports') }}" class="btn btn-light border text-secondary font-weight-bold" style="height: 44px; width: 44px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Reset Filters">
-                                    <i class="fas fa-undo"></i>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- VIEW MODE 1: EMPLOYEE CARDS GRID VIEW -->
-        <div id="cardsViewArea">
-            <div class="d-flex align-items-center justify-content-between mb-3">
-                <h4 class="font-weight-bold text-dark mb-0" style="font-size:18px;">
-                    <i class="fas fa-users text-primary mr-2"></i>Employee Work Summaries
-                </h4>
-                <span class="text-muted font-weight-bold" style="font-size:13px;" id="cardsCountLabel">
-                    Showing {{ count($employeeSummaries) }} Employees
-                </span>
-            </div>
-
-            <div class="emp-cards-grid" id="employeeCardsGrid">
-                @forelse($employeeSummaries as $sum)
-                <div class="emp-summary-card card-item" 
-                     data-employee-id="{{ $sum['employee_id'] }}"
-                     data-employee-name="{{ strtolower($sum['user_name']) }}">
+        <div class="orb-filter-card">
+            <form method="GET" action="{{ route('hrms.attendance.work-reports') }}" id="reportFilterForm">
+                <div class="report-filter-grid">
+                    @if($isAdminOrManager)
                     <div>
-                        <div class="emp-card-header">
-                            <div class="emp-card-avatar">
-                                @if($sum['passport_photo_url'])
-                                    <img src="{{ $sum['passport_photo_url'] }}" alt="{{ $sum['user_name'] }}">
-                                @else
-                                    <span>{{ $sum['employee_initial'] }}</span>
-                                @endif
-                            </div>
-                            <div>
-                                <h5 class="emp-card-name">{{ $sum['user_name'] }}</h5>
-                                <div class="emp-card-meta">{{ $sum['employee_code'] }} &bull; {{ $sum['department'] }}</div>
-                            </div>
-                        </div>
+                        <label><i class="fas fa-user text-muted mr-1"></i> Employee</label>
+                        <select name="employee_id" id="filterEmployee" class="form-control select2-searchable">
+                            <option value="">All Staff Members</option>
+                            @foreach($employees as $emp)
+                            <option value="{{ optional($emp->employee)->id }}" {{ (string) request('employee_id') === (string) optional($emp->employee)->id ? 'selected' : '' }}>
+                                {{ $emp->name }} ({{ optional($emp->employee)->employee_code ?? 'EMP' }})
+                            </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    @else
+                    <div>
+                        <label><i class="fas fa-user text-muted mr-1"></i> Employee</label>
+                        <input type="text" class="form-control" value="{{ auth()->user()->name }}" readonly disabled>
+                    </div>
+                    @endif
 
-                        <div class="emp-stats-bar">
-                            <div class="emp-stat-item">
-                                <div class="stat-val">{{ $sum['total_reports'] }}</div>
-                                <div class="stat-lbl">Reports</div>
-                            </div>
-                            <div class="emp-stat-item">
-                                <div class="stat-val">{{ $sum['total_gross_formatted'] }}</div>
-                                <div class="stat-lbl">Gross Work</div>
-                            </div>
-                            <div class="emp-stat-item">
-                                <div class="stat-val">{{ $sum['total_tasks'] }}</div>
-                                <div class="stat-lbl">Tasks</div>
-                            </div>
-                        </div>
-
-                        <div class="emp-latest-snippet">
-                            <div class="snippet-title">
-                                <span><i class="fas fa-clock text-primary mr-1"></i> Latest Log</span>
-                                <span class="badge badge-light border">{{ $sum['latest_date'] }}</span>
-                            </div>
-                            <div class="text-truncate">{{ $sum['latest_summary'] }}</div>
-                        </div>
+                    <div>
+                        <label><i class="fas fa-building mr-1 text-muted"></i> Work Mode</label>
+                        <select name="work_mode" id="filterWorkMode" class="form-control">
+                            <option value="">All Modes</option>
+                            <option value="wfo" {{ strtolower(request('work_mode')) === 'wfo' ? 'selected' : '' }}>Office (WFO)</option>
+                            <option value="wfh" {{ strtolower(request('work_mode')) === 'wfh' ? 'selected' : '' }}>Remote (WFH)</option>
+                        </select>
                     </div>
 
                     <div>
-                        <a href="{{ route('hrms.attendance.work-reports.employee-history', $sum['employee_id']) }}" target="_blank" class="btn btn-primary btn-block rounded-12 font-weight-bold py-2 shadow-sm">
-                            <i class="fas fa-history mr-2"></i> View Daily History ({{ $sum['total_reports'] }})
-                        </a>
+                        <label><i class="far fa-calendar-alt text-muted mr-1"></i> From Date</label>
+                        <input type="date" name="from_date" id="filterFromDate" value="{{ request('from_date') }}" class="form-control">
+                    </div>
+
+                    <div>
+                        <label><i class="far fa-calendar-alt text-muted mr-1"></i> To Date</label>
+                        <input type="date" name="to_date" id="filterToDate" value="{{ request('to_date') }}" class="form-control">
+                    </div>
+
+                    <div>
+                        <label><i class="fas fa-search text-muted mr-1"></i> Search Keyword</label>
+                        <input type="text" name="search" id="filterSearch" value="{{ request('search') }}" class="form-control" placeholder="Search tasks, project or summary...">
+                    </div>
+
+                    <div>
+                        <label>&nbsp;</label>
+                        <div class="d-flex align-items-center" style="gap: 8px;">
+                            <button type="submit" id="btnFilterSubmit" class="btn text-white font-weight-bold shadow-sm" style="height: 44px; border-radius: 12px; background: linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%); border: none; padding: 0 20px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;">
+                                <i class="fas fa-filter"></i> Filter
+                            </button>
+                            <a href="{{ route('hrms.attendance.work-reports') }}" class="btn btn-light border text-secondary font-weight-bold" style="height: 44px; width: 44px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Reset Filters">
+                                <i class="fas fa-undo"></i>
+                            </a>
+                        </div>
                     </div>
                 </div>
-                @empty
-                <div class="col-12 text-center py-5 bg-white rounded-20 border">
-                    <i class="fas fa-folder-open text-muted fa-3x mb-3"></i>
-                    <h5 class="font-weight-bold text-dark">No Employee Work Reports Found</h5>
-                    <p class="text-muted">Adjust search filters or select a different date range.</p>
-                </div>
-                @endforelse
-            </div>
+            </form>
         </div>
 
-        <!-- VIEW MODE 2: ALL DAILY LOGS TABLE VIEW (HIDDEN BY DEFAULT) -->
-        <div id="tableViewArea" style="display: none;">
+        <!-- VIEW MODE 1: ALL DAILY LOGS LISTING TABLE VIEW (DEFAULT ACTIVE) -->
+        <div id="tableViewArea">
             <div class="card orb-table-card">
                 <div class="orb-table-toolbar">
-                    <div class="toolbar-left"></div>
-                    <div class="toolbar-right"></div>
+                    <div class="toolbar-left">
+                        <h4 class="toolbar-title">
+                            <i class="fas fa-list-check text-primary"></i> Daily Work Report Listing
+                        </h4>
+                        <span class="toolbar-badge">
+                            {{ count($workLogs) }} Logged Reports
+                        </span>
+                    </div>
+                    <div class="toolbar-right">
+                        <div id="dtButtonsContainer" class="d-flex align-items-center" style="gap: 8px;"></div>
+                    </div>
                 </div>
 
                 <div class="orb-table-scroll">
                     <table class="report-table table mb-0" id="workReportsTable">
                         <thead>
                             <tr>
-                                <th class="text-center" style="width: 50px;">S.No.</th>
-                                @if($isAdminOrManager)
+                                <th class="text-center" style="width: 50px;">#</th>
                                 <th>Employee</th>
-                                @endif
-                                <th>Date</th>
-                                <th>Mode</th>
-                                <th>Shift Context</th>
+                                <th>Date & Time</th>
+                                <th>Mode & Shift</th>
                                 <th>Gross Work</th>
-                                <th>Work Summary Description</th>
-                                <th>Structured Tasks</th>
-                                <th class="text-right pr-4 no-export">Actions</th>
+                                <th>Project & Work Summary</th>
+                                <th>Tasks</th>
+                                <th class="text-right pr-4 no-export" style="width: 140px;">Actions</th>
                             </tr>
                         </thead>
 
@@ -729,14 +1083,16 @@
                                 $tasksCount = is_array($requirementsList) ? count($requirementsList) : 0;
                                 $employeeName = optional($log->user)->name ?? 'Employee';
                                 $employeeCode = optional($log->employee)->employee_code ?? 'N/A';
+                                $deptName = optional(optional($log->employee)->department)->name ?? 'Staff';
+                                $desigName = optional(optional($log->employee)->designation)->name ?? 'Member';
 
                                 $logPayload = [
                                     'employee_name' => $employeeName,
                                     'employee_code' => $employeeCode,
                                     'passport_photo_url' => resolveEmployeePassportPhoto($log->employee ?? $log),
                                     'employee_initial' => resolveEmployeeInitials($log->employee ?? $log),
-                                    'department' => optional(optional($log->employee)->department)->name ?? 'Staff',
-                                    'designation' => optional(optional($log->employee)->designation)->name ?? 'Member',
+                                    'department' => $deptName,
+                                    'designation' => $desigName,
                                     'work_date' => $log->work_date ? $log->work_date->format('d M Y') : '-',
                                     'shift_name' => optional(optional($log->attendance)->attendanceTime)->name ?? 'Default Shift',
                                     'attendance_status' => (optional($log->attendance)->attendance_status ?? 'present'),
@@ -751,57 +1107,87 @@
                                     'issues' => $issues,
                                     'notes' => $notes,
                                 ];
+
+                                $empId = $log->employee_id ?: ($log->user_id ?: 0);
                             @endphp
                             <tr>
-                                <td class="text-center font-weight-bold text-muted align-middle" style="font-size: 12.5px;">
+                                <td class="text-center font-weight-bold text-muted" style="font-size: 12.5px;">
                                     {{ $loop->iteration }}
                                 </td>
-                                @if($isAdminOrManager)
+                                
                                 <td>
-                                    <div class="att-emp">
-                                        <span class="hrms-emp-avatar hrms-emp-avatar-sm mr-2">
+                                    <div class="table-emp-cell">
+                                        <div class="table-emp-avatar">
                                             @if(resolveEmployeePassportPhoto($log->employee ?? $log))
-                                                <img src="{{ resolveEmployeePassportPhoto($log->employee ?? $log) }}" alt="{{ $employeeName }}" class="hrms-emp-avatar-img">
+                                                <img src="{{ resolveEmployeePassportPhoto($log->employee ?? $log) }}" alt="{{ $employeeName }}">
                                             @else
-                                                <span class="hrms-emp-avatar-fallback is-visible">{{ resolveEmployeeInitials($log->employee ?? $log) }}</span>
+                                                <span>{{ resolveEmployeeInitials($log->employee ?? $log) }}</span>
                                             @endif
-                                        </span>
+                                        </div>
                                         <div>
-                                            <div class="att-emp-name">{{ $employeeName }}</div>
-                                            <div class="att-emp-code">{{ $employeeCode }}</div>
+                                            <div class="table-emp-name">{{ $employeeName }}</div>
+                                            <div class="table-emp-meta">
+                                                <span>{{ $employeeCode }}</span>
+                                                <span>&bull;</span>
+                                                <span class="badge-dept-tag">{{ $deptName }}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </td>
-                                @endif
 
                                 <td data-order="{{ $log->work_date ? $log->work_date->format('Y-m-d') : '' }}">
-                                    <strong>{{ $log->work_date ? $log->work_date->format('d M Y') : '-' }}</strong>
+                                    <div class="font-weight-bold text-dark" style="font-size: 13px;">
+                                        {{ $log->work_date ? $log->work_date->format('d M Y') : '-' }}
+                                    </div>
+                                    <div class="small text-muted font-weight-semibold">
+                                        {{ $log->work_date ? $log->work_date->format('l') : '' }}
+                                        @if($log->created_at)
+                                            &bull; <i class="far fa-clock text-muted"></i> {{ $log->created_at->format('h:i A') }}
+                                        @endif
+                                    </div>
                                 </td>
 
                                 <td>
-                                    <span class="badge-premium-pill {{ $modeBadgeClass }}">
-                                        {{ $modeText }}
-                                    </span>
+                                    <div>
+                                        <span class="badge-premium-pill {{ $modeBadgeClass }} mb-1">
+                                            @if($mode === 'wfh')
+                                                <i class="fas fa-laptop-house mr-1"></i> WFH
+                                            @else
+                                                <i class="fas fa-building mr-1"></i> WFO
+                                            @endif
+                                        </span>
+                                    </div>
+                                    <div class="small text-muted font-weight-bold" style="font-size: 11px;">
+                                        {{ optional($attendance)->attendanceTime->name ?? 'Default Shift' }}
+                                    </div>
                                 </td>
 
                                 <td>
-                                    {{ optional($attendance)->attendanceTime->name ?? 'Default Shift' }}
+                                    <div class="badge-gross-pill">
+                                        <i class="fas fa-stopwatch"></i> {{ $grossWork }}
+                                    </div>
+                                    @if($attendance && $attendance->punch_in_time)
+                                    <div class="small text-muted font-weight-bold mt-1" style="font-size: 10.5px;">
+                                        {{ \Carbon\Carbon::parse($attendance->punch_in_time)->format('h:i A') }} - {{ $attendance->punch_out_time ? \Carbon\Carbon::parse($attendance->punch_out_time)->format('h:i A') : 'Active' }}
+                                    </div>
+                                    @endif
                                 </td>
 
                                 <td>
-                                    <span style="font-weight: 700; color: #344054;">{{ $grossWork }}</span>
-                                </td>
-
-                                <td>
-                                    <div class="work-summary-bubble">
-                                        <i class="fas fa-file-alt text-primary mr-1"></i> {{ $title }}
+                                    @if(!empty($title) && $title !== 'Work Report Submitted')
+                                    <div class="project-tag-pill" title="{{ $title }}">
+                                        <i class="fas fa-folder-open mr-1"></i> {{ $title }}
+                                    </div>
+                                    @endif
+                                    <div class="work-summary-snippet" title="{{ $description }}">
+                                        {{ $description ?: 'Work report submitted.' }}
                                     </div>
                                 </td>
 
                                 <td>
                                     @if($tasksCount > 0)
-                                    <span class="badge badge-light border px-2 py-1 font-weight-bold">
-                                        <i class="fas fa-list-check text-primary"></i> {{ $tasksCount }} Tasks
+                                    <span class="badge badge-light border font-weight-bold px-2 py-1" style="border-radius: 8px; font-size: 12px;">
+                                        <i class="fas fa-tasks text-primary mr-1"></i> {{ $tasksCount }} Tasks
                                     </span>
                                     @else
                                     <span class="text-muted font-italic" style="font-size:12px;">None</span>
@@ -809,20 +1195,107 @@
                                 </td>
 
                                 <td class="text-right pr-4">
-                                    <button type="button" class="btn btn-sm btn-light border p-2 rounded-10" 
-                                            data-work-log="{{ json_encode($logPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}" 
-                                            onclick="parseAndOpenWorkReport(this)">
-                                        <i class="fas fa-eye text-primary"></i> Details
-                                    </button>
+                                    <div class="action-btn-group">
+                                        <button type="button" class="btn-action-primary" 
+                                                data-work-log="{{ json_encode($logPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}" 
+                                                onclick="parseAndOpenWorkReport(this)"
+                                                title="View Full Report Details">
+                                            <i class="fas fa-eye"></i> Details
+                                        </button>
+                                        @if($empId)
+                                        <a href="{{ route('hrms.attendance.work-reports.employee-history', $empId) }}" 
+                                           target="_blank" 
+                                           class="btn-action-secondary" 
+                                           title="View Employee Work History">
+                                            <i class="fas fa-history"></i>
+                                        </a>
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
                             @empty
+                            <tr>
+                                <td colspan="8" class="text-center py-5">
+                                    <i class="fas fa-clipboard-list text-muted fa-3x mb-3"></i>
+                                    <h5 class="font-weight-bold text-dark mb-1">No Daily Work Reports Found</h5>
+                                    <p class="text-muted font-weight-semibold mb-0">Try adjusting your filters or date range to see results.</p>
+                                </td>
+                            </tr>
                             @endforelse
                         </tbody>
                     </table>
                 </div>
+            </div>
+        </div>
 
-                <div class="orb-table-footer"></div>
+        <!-- VIEW MODE 2: EMPLOYEE CARDS GRID VIEW (TOGGLED ON DEMAND) -->
+        <div id="cardsViewArea" style="display: none;">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <h4 class="font-weight-bold text-dark mb-0" style="font-size:18px;">
+                    <i class="fas fa-users text-primary mr-2"></i>Employee Work Summaries
+                </h4>
+                <span class="text-muted font-weight-bold" style="font-size:13px;" id="cardsCountLabel">
+                    Showing {{ count($employeeSummaries) }} Staff Members
+                </span>
+            </div>
+
+            <div class="emp-cards-grid" id="employeeCardsGrid">
+                @forelse($employeeSummaries as $sum)
+                <div class="emp-summary-card card-item" 
+                     data-employee-id="{{ $sum['employee_id'] }}"
+                     data-employee-name="{{ strtolower($sum['user_name']) }}">
+                    <div>
+                        <div class="emp-card-header">
+                            <div class="emp-card-avatar">
+                                @if($sum['passport_photo_url'])
+                                    <img src="{{ $sum['passport_photo_url'] }}" alt="{{ $sum['user_name'] }}">
+                                @else
+                                    <span>{{ $sum['employee_initial'] }}</span>
+                                @endif
+                            </div>
+                            <div>
+                                <h5 class="emp-card-name">{{ $sum['user_name'] }}</h5>
+                                <div class="emp-card-meta">{{ $sum['employee_code'] }} &bull; {{ $sum['department'] }}</div>
+                            </div>
+                        </div>
+
+                        <div class="emp-stats-bar">
+                            <div class="emp-stat-item">
+                                <div class="stat-val">{{ $sum['total_reports'] }}</div>
+                                <div class="stat-lbl">Reports</div>
+                            </div>
+                            <div class="emp-stat-item">
+                                <div class="stat-val">{{ $sum['total_gross_formatted'] }}</div>
+                                <div class="stat-lbl">Gross Work</div>
+                            </div>
+                            <div class="emp-stat-item">
+                                <div class="stat-val">{{ $sum['total_tasks'] }}</div>
+                                <div class="stat-lbl">Tasks</div>
+                            </div>
+                        </div>
+
+                        <div class="emp-latest-snippet">
+                            <div class="snippet-title">
+                                <span><i class="fas fa-clock text-primary mr-1"></i> Latest Log</span>
+                                <span class="badge badge-light border">{{ $sum['latest_date'] }}</span>
+                            </div>
+                            <div class="text-truncate">{{ $sum['latest_summary'] }}</div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <a href="{{ route('hrms.attendance.work-reports.employee-history', $sum['employee_id']) }}" target="_blank" class="btn btn-primary btn-block rounded-12 font-weight-bold py-2 shadow-sm" style="background: linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%); border: none;">
+                            <i class="fas fa-history mr-2"></i> View Daily History ({{ $sum['total_reports'] }})
+                        </a>
+                    </div>
+                </div>
+                @empty
+                <div class="col-12 text-center py-5 bg-white rounded-20 border">
+                    <i class="fas fa-folder-open text-muted fa-3x mb-3"></i>
+                    <h5 class="font-weight-bold text-dark">No Employee Work Reports Found</h5>
+                    <p class="text-muted">Adjust search filters or select a different date range.</p>
+                </div>
+                @endforelse
             </div>
         </div>
 
@@ -864,6 +1337,7 @@
 @endsection
 
 @section('_script')
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap4.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
@@ -877,19 +1351,19 @@
 <script>
     // View Switcher Function
     function switchWorkReportView(mode) {
-        if (mode === 'cards') {
-            $('#cardsViewArea').show();
-            $('#tableViewArea').hide();
-            $('#btnCardsView').addClass('active');
-            $('#btnTableView').removeClass('active');
-        } else {
-            $('#cardsViewArea').hide();
+        if (mode === 'table') {
             $('#tableViewArea').show();
+            $('#cardsViewArea').hide();
             $('#btnTableView').addClass('active');
             $('#btnCardsView').removeClass('active');
             if ($.fn.DataTable.isDataTable('#workReportsTable')) {
                 $('#workReportsTable').DataTable().columns.adjust().draw();
             }
+        } else {
+            $('#tableViewArea').hide();
+            $('#cardsViewArea').show();
+            $('#btnCardsView').addClass('active');
+            $('#btnTableView').removeClass('active');
         }
     }
 
@@ -946,20 +1420,63 @@
     }
 
     $(function() {
+        // Initialize Select2 if available
+        if ($.fn.select2) {
+            $('.select2-searchable').select2({
+                placeholder: "Select employee...",
+                allowClear: true,
+                width: '100%'
+            });
+        }
+
         // Initialize DataTables for Table View
-        var table = $('#workReportsTable').DataTable({
-            pageLength: 25,
-            order: [[{{ $isAdminOrManager ? 1 : 0 }}, 'desc']],
-            ordering: true,
-            searching: true, 
-            paging: true,
-            info: true,
-            dom: "t<'d-none'ip>",
-            buttons: ['csvHtml5', 'excelHtml5', 'pdfHtml5', 'print'],
-            language: {
-                emptyTable: 'No work reports found.'
-            }
-        });
+        if ($('#workReportsTable tbody tr td').length > 1) {
+            var table = $('#workReportsTable').DataTable({
+                pageLength: 25,
+                order: [[2, 'desc']], // Sort by Date desc
+                ordering: true,
+                searching: true, 
+                paging: true,
+                info: true,
+                dom: "t<'d-flex align-items-center justify-content-between p-3 border-top bg-white'ip>",
+                buttons: [
+                    {
+                        extend: 'excelHtml5',
+                        text: '<i class="far fa-file-excel text-success mr-1"></i> Excel',
+                        className: 'leave-export-btn',
+                        exportOptions: { columns: ':not(.no-export)' }
+                    },
+                    {
+                        extend: 'csvHtml5',
+                        text: '<i class="fas fa-file-csv text-primary mr-1"></i> CSV',
+                        className: 'leave-export-btn',
+                        exportOptions: { columns: ':not(.no-export)' }
+                    },
+                    {
+                        extend: 'pdfHtml5',
+                        text: '<i class="far fa-file-pdf text-danger mr-1"></i> PDF',
+                        className: 'leave-export-btn',
+                        exportOptions: { columns: ':not(.no-export)' }
+                    },
+                    {
+                        extend: 'print',
+                        text: '<i class="fas fa-print mr-1"></i> Print',
+                        className: 'leave-export-btn',
+                        exportOptions: { columns: ':not(.no-export)' }
+                    }
+                ],
+                language: {
+                    emptyTable: 'No work reports found matching criteria.',
+                    paginate: {
+                        previous: '<i class="fas fa-chevron-left"></i>',
+                        next: '<i class="fas fa-chevron-right"></i>'
+                    }
+                }
+            });
+
+            // Append buttons into the custom toolbar container
+            table.buttons().container().appendTo('#dtButtonsContainer');
+        }
 
         // Instant Cards Search & Filter
         function filterEmployeeCards() {
@@ -982,15 +1499,12 @@
                 }
             });
 
-            $('#cardsCountLabel').text(`Showing ${visibleCount} Employees`);
+            $('#cardsCountLabel').text(`Showing ${visibleCount} Staff Members`);
         }
 
-        $('#reportFilterForm').on('submit', function(e) {
-            e.preventDefault();
-            filterEmployeeCards();
-            if (typeof table !== 'undefined') {
-                const searchVal = $('#filterSearch').val();
-                table.search(searchVal).draw();
+        $('#filterSearch').on('keyup', function() {
+            if ($('#cardsViewArea').is(':visible')) {
+                filterEmployeeCards();
             }
         });
     });

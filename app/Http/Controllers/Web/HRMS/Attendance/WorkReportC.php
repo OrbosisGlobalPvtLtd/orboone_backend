@@ -55,6 +55,13 @@ class WorkReportC extends Controller
             $query->where('employee_id', $request->employee_id);
         }
 
+        if ($request->filled('work_mode')) {
+            $workMode = strtolower($request->work_mode);
+            $query->whereHas('attendance', function ($qa) use ($workMode) {
+                $qa->where('work_mode', $workMode);
+            });
+        }
+
         if ($request->filled('from_date')) {
             $query->whereDate('work_date', '>=', $request->from_date);
         }
@@ -163,6 +170,27 @@ class WorkReportC extends Controller
             ];
         })->values();
 
+        // Calculate aggregate KPI statistics
+        $totalSecondsAll = 0;
+        foreach ($workLogs as $log) {
+            $gross = optional($log->attendance)->gross_duration;
+            if ($gross && preg_match('/(?:(\d+)\s*h(?:ours?)?)?\s*(?:(\d+)\s*m(?:ins?)?)?/i', $gross, $m)) {
+                $totalSecondsAll += ((int)($m[1] ?? 0) * 3600) + ((int)($m[2] ?? 0) * 60);
+            }
+        }
+        $hrsAll = floor($totalSecondsAll / 3600);
+        $minsAll = floor(($totalSecondsAll % 3600) / 60);
+        $formattedTotalGross = $hrsAll > 0 ? "{$hrsAll} hrs {$minsAll} mins" : "{$minsAll} mins";
+
+        $statsSummary = [
+            'total_reports' => $workLogs->count(),
+            'unique_employees' => $employeeSummaries->count(),
+            'total_tasks' => $employeeSummaries->sum('total_tasks'),
+            'total_gross_formatted' => $formattedTotalGross,
+            'wfo_count' => $workLogs->filter(fn($l) => strtolower(optional($l->attendance)->work_mode ?? 'wfo') !== 'wfh')->count(),
+            'wfh_count' => $workLogs->filter(fn($l) => strtolower(optional($l->attendance)->work_mode ?? '') === 'wfh')->count(),
+        ];
+
         // Get employees dropdown depending on role visibility
         $employees = $this->attendanceEmployees();
 
@@ -170,7 +198,7 @@ class WorkReportC extends Controller
         $isAdminOrManager = $this->userHasPermission('attendance.work_reports.view_all') 
             || $this->userHasPermission('attendance.work_reports.view_team');
 
-        return view('hrms.attendance.work-reports', compact('workLogs', 'employeeSummaries', 'employees', 'isAdminOrManager'));
+        return view('hrms.attendance.work-reports', compact('workLogs', 'employeeSummaries', 'employees', 'isAdminOrManager', 'statsSummary'));
     }
 
     private function attendanceEmployees()

@@ -377,6 +377,46 @@ class WfhRequestService
         return ['created' => $created, 'skipped' => $skipped];
     }
 
+    public function approveManagerStage(WfhRequestM $request, int $actorId, ?string $note = null): WfhRequestM
+    {
+        if ($request->status === 'rejected' || $request->status === 'cancelled' || $request->status === 'approved') {
+            throw ValidationException::withMessages(['status' => 'Only pending requests can be approved at manager stage.']);
+        }
+
+        DB::transaction(function () use ($request, $actorId, $note) {
+            $request->status = 'manager_approved';
+            $request->manager_approved_by = $actorId;
+            $request->manager_approved_at = now();
+            if ($note) {
+                $existingRemarks = trim((string) ($request->remarks ?? ''));
+                $mgrNote = 'Manager Note: ' . $note;
+                $request->remarks = trim($existingRemarks . ($existingRemarks !== '' ? ' | ' : '') . $mgrNote);
+            }
+            $request->save();
+        });
+
+        // Notify Employee that Manager Approved and sent to HR
+        try {
+            $notificationService = app(NotificationS::class);
+            $user = $request->employee?->user;
+            if ($user) {
+                $notificationService->notifyEmployee(
+                    'WFH Request Manager Approved',
+                    "Your Work From Home request has been approved by your Reporting Manager and sent to HR Admin for final approval.",
+                    'wfh_manager_approved',
+                    'my-wfh.index',
+                    [],
+                    ['employee_id' => $request->employee_id, 'wfh_request_id' => $request->id],
+                    $user->id
+                );
+            }
+        } catch (\Throwable $e) {
+            Log::warning('WFH manager approval notification skipped: ' . $e->getMessage());
+        }
+
+        return $request->fresh();
+    }
+
     public function approve(WfhRequestM $request, int $actorId, ?array $partialRange = null, bool $canOverrideQuota = false): WfhRequestM
     {
         $policy = $this->policy();

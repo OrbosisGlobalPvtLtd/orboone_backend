@@ -635,6 +635,8 @@ class SidebarMenuResolverS
             'hrms.attendance.my-work-reports' => ['attendance.work_reports.view_own'],
             'enterprise-payroll.policies.index' => ['enterprise_payroll.policy.view'],
             'hrms.organization.index' => ['departments.manage', 'designations.manage', 'employees.organization.manage'],
+            'hrms.attendance.regularizations.index' => ['attendance.regularization.view_all', 'attendance.regularization.view_team', 'attendance.regularization.view_own'],
+            'hrms.attendance.holiday-work.index' => ['attendance.holiday_work.view', 'attendance.holiday_work.manage', 'attendance.holiday_work.approve'],
             'hrms.attendance.wfh.index' => ['attendance.wfh.view', 'attendance.wfh.own'],
             'hrms.attendance.my-wfh.index' => ['attendance.wfh.own'],
             'hrms.leave.dashboard' => ['leave.dashboard.view', 'leave.my_requests.view'],

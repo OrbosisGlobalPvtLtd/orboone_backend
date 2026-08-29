@@ -20,13 +20,24 @@ class WfhRequestC extends Controller
 
     public function index(Request $request)
     {
-        $canView = $this->userHasPermission('attendance.wfh.view');
-        $canOwn = $this->userHasPermission('attendance.wfh.own');
-        abort_unless($canView || $canOwn, 403);
+        $user = auth()->user();
+        $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
+        $isHrOrAdmin = $isSuperAdmin
+            || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin())
+            || (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin']))
+            || $this->userHasPermission('attendance.wfh.view');
+
+        $canOwn = $this->userHasPermission('attendance.wfh.own') || (method_exists($user, 'isEmployee') && $user->isEmployee());
+        abort_unless($isHrOrAdmin || $this->canViewTeam('attendance.regularization.view_team') || $canOwn, 403);
 
         $query = $this->employeeJoinedQuery('wfh_requests');
 
-        if (! $canView && $canOwn) {
+        if ($isHrOrAdmin) {
+            // Global view
+        } elseif ($this->canViewTeam('attendance.regularization.view_team')) {
+            $teamEmpIds = array_merge($this->teamEmployeeIds(false), [$this->ownEmployeeId()]);
+            $query->whereIn('wfh_requests.employee_id', array_filter($teamEmpIds));
+        } else {
             $ownEmployeeId = $this->ownEmployeeId();
             abort_unless($ownEmployeeId, 403);
             $query->where('wfh_requests.employee_id', $ownEmployeeId);
@@ -93,6 +104,8 @@ class WfhRequestC extends Controller
             return $row;
         });
 
+        $userEmpId = $this->ownEmployeeId();
+
         return view('hrms.attendance.wfh.index', [
             'rows' => $rows,
             'employees' => $this->employeeOptions(),
@@ -100,14 +113,17 @@ class WfhRequestC extends Controller
             'designations' => \App\Models\HRMS\Designation\DesignationM::query()->orderBy('name')->get(['id', 'name']),
             'accesses' => $this->accesses(),
             'active' => 'attendance',
-            'canApprove' => $this->userHasPermission('attendance.wfh.approve'),
-            'canReject' => $this->userHasPermission('attendance.wfh.reject'),
+            'isSuperAdmin' => $isSuperAdmin,
+            'isHrOrAdmin' => $isHrOrAdmin,
+            'userEmpId' => $userEmpId,
+            'canApprove' => $isHrOrAdmin || $this->canViewTeam('attendance.regularization.view_team') || $this->userHasPermission('attendance.wfh.approve'),
+            'canReject' => $isHrOrAdmin || $this->canViewTeam('attendance.regularization.view_team') || $this->userHasPermission('attendance.wfh.reject'),
             'canMarkLwp' => $this->userHasPermission('attendance.wfh.mark_lwp'),
             'canAssign' => $this->userHasPermission('attendance.wfh.assign'),
             'canOverrideQuota' => $this->canOverrideQuota(),
             'stats' => [
                 'total' => (clone $statsQuery)->count(),
-                'pending' => (clone $statsQuery)->whereIn('wfh_requests.status', ['pending', 'manager_approved', 'hr_approved'])->count(),
+                'pending' => (clone $statsQuery)->whereIn('wfh_requests.status', ['pending', 'manager_approved'])->count(),
                 'approved' => (clone $statsQuery)->where('wfh_requests.status', 'approved')->count(),
                 'rejected' => (clone $statsQuery)->where('wfh_requests.status', 'rejected')->count(),
                 'company_assigned' => (clone $statsQuery)->where('wfh_requests.request_type', 'company_assigned_wfh')->count(),
@@ -118,33 +134,80 @@ class WfhRequestC extends Controller
 
     public function approve(int $id, Request $request)
     {
+        $user = auth()->user();
+        $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
+        $isHrOrAdmin = $isSuperAdmin
+            || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin())
+            || (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin']))
+            || $this->userHasPermission('attendance.wfh.approve');
+
+        $supervisorEmpId = $this->ownEmployeeId();
         $row = WfhRequestM::findOrFail($id);
-        $partialRange = null;
-        if ($request->filled('approved_from_date') && $request->filled('approved_to_date')) {
-            $partialRange = [
-                'approved_from_date' => $request->input('approved_from_date'),
-                'approved_to_date' => $request->input('approved_to_date'),
-            ];
+        $employee = EmployeeM::find($row->employee_id);
+        $managerEmpId = $employee?->reporting_manager_employee_id;
+        $hasManager = ! empty($managerEmpId);
+        $isAssignedManager = ($supervisorEmpId && $managerEmpId && (int) $supervisorEmpId === (int) $managerEmpId);
+        $isManagerApproved = ! empty($row->manager_approved_at) || $row->status === 'manager_approved';
+
+        // Stage 1: Reporting Manager Approval
+        if ($isAssignedManager && ! $isHrOrAdmin) {
+            if ($isManagerApproved) {
+                return back()->with('error', 'You have already approved this request at Manager stage. Awaiting HR Admin final approval.');
+            }
+            $note = $request->input('remarks');
+            try {
+                $this->service->approveManagerStage($row, (int) $this->actorId(), $note);
+                return back()->with('success', 'WFH request approved at Manager stage. Sent to HR Admin for final approval.');
+            } catch (\Throwable $e) {
+                return back()->with('error', $e->getMessage());
+            }
         }
 
-        $canOverride = $this->canOverrideQuota();
-        $allowOverride = $canOverride && ($request->boolean('override_quota') || $request->has('override_quota'));
+        // Stage 2: HR Admin / Super Admin Final Approval
+        if ($isHrOrAdmin) {
+            $partialRange = null;
+            if ($request->filled('approved_from_date') && $request->filled('approved_to_date')) {
+                $partialRange = [
+                    'approved_from_date' => $request->input('approved_from_date'),
+                    'approved_to_date' => $request->input('approved_to_date'),
+                ];
+            }
 
-        try {
-            $this->service->approve($row, (int) $this->actorId(), $partialRange, $allowOverride || $canOverride);
-            return back()->with('success', 'WFH request approved successfully.');
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            $msg = collect($e->errors())->flatten()->first() ?: $e->getMessage();
-            return back()->with('error', $msg)->withErrors($e->errors());
-        } catch (\Throwable $e) {
-            return back()->with('error', $e->getMessage());
+            $canOverride = $this->canOverrideQuota();
+            $allowOverride = $canOverride && ($request->boolean('override_quota') || $request->has('override_quota'));
+
+            try {
+                $this->service->approve($row, (int) $this->actorId(), $partialRange, $allowOverride || $canOverride);
+                return back()->with('success', 'WFH request approved & finalized.');
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                $msg = collect($e->errors())->flatten()->first() ?: $e->getMessage();
+                return back()->with('error', $msg)->withErrors($e->errors());
+            } catch (\Throwable $e) {
+                return back()->with('error', $e->getMessage());
+            }
         }
+
+        abort(403, 'Unauthorized to approve this WFH request.');
     }
 
     public function reject(int $id, Request $request)
     {
-        $data = $request->validate(['rejection_reason' => 'required|string|max:2000']);
+        $user = auth()->user();
+        $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
+        $isHrOrAdmin = $isSuperAdmin
+            || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin())
+            || (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin']))
+            || $this->userHasPermission('attendance.wfh.reject');
+
+        $supervisorEmpId = $this->ownEmployeeId();
         $row = WfhRequestM::findOrFail($id);
+        $employee = EmployeeM::find($row->employee_id);
+        $managerEmpId = $employee?->reporting_manager_employee_id;
+        $isAssignedManager = ($supervisorEmpId && $managerEmpId && (int) $supervisorEmpId === (int) $managerEmpId);
+
+        abort_unless($isSuperAdmin || $isHrOrAdmin || $isAssignedManager, 403);
+
+        $data = $request->validate(['rejection_reason' => 'required|string|max:2000']);
         $this->service->reject($row, (int) $this->actorId(), $data['rejection_reason']);
         return back()->with('success', 'WFH request rejected.');
     }

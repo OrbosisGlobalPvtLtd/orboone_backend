@@ -374,7 +374,8 @@
 
     function printModalWorkReport() {
         if (activeModalWorkLogId) {
-            window.open('{{ url('/work-reports') }}/' + activeModalWorkLogId + '/print-single', '_blank');
+            const printUrl = "{{ route('hrms.attendance.work-reports.single.print', ['id' => ':id']) }}".replace(':id', activeModalWorkLogId);
+            window.open(printUrl, '_blank');
         }
     }
 

@@ -43,17 +43,20 @@ class AttendanceRegularizationC extends Controller
             ->whereNull('attendance_regularizations.deleted_at');
 
         $user = auth()->user();
-        $isEmployeeRole = ($user->role_id ?? null) == 7 
-            || ($user->system_role_id ?? null) == 7 
-            || ! $this->userHasPermission('attendance.regularization.approve');
+        $roleId = (int) ($user->system_role_id ?? $user->role_id ?? 0);
+        $roleName = strtolower($user->role->name ?? '');
+        $isSuperAdmin = method_exists($user, 'isSuperAdmin') ? $user->isSuperAdmin() : in_array($roleId, [1, 2], true);
+        $isHrOrAdmin = $isSuperAdmin || in_array($roleId, [1, 2, 3], true) || in_array($roleName, ['admin', 'super_admin', 'hr_admin', 'hr admin', 'hr'], true) || $this->userHasPermission('attendance.regularization.view_all') || $this->userHasPermission('attendance.regularization.approve');
 
-        if ($isEmployeeRole) {
+        if ($isHrOrAdmin) {
+            // Global visibility for HR Admin & Super Admin
+        } elseif ($this->canViewTeam('attendance.regularization.view_team')) {
+            $this->scopeEmployeeVisibility($query, 'attendance.regularization.view_all', 'attendance.regularization.view_team', 'attendance_regularizations.employee_id');
+        } else {
             $ownEmpId = $this->ownEmployeeId();
             if ($ownEmpId) {
                 $query->where('attendance_regularizations.employee_id', $ownEmpId);
             }
-        } else {
-            $this->scopeEmployeeVisibility($query, 'attendance.regularization.view_all', 'attendance.regularization.view_team', 'attendance_regularizations.employee_id');
         }
 
         $this->applyCommonFilters($query, $request, [
@@ -427,9 +430,11 @@ class AttendanceRegularizationC extends Controller
     private function pageData($rows, Request $request): array
     {
         $user = auth()->user();
-        $isEmployeeRole = ($user->role_id ?? null) == 7 
-            || ($user->system_role_id ?? null) == 7 
-            || ! $this->userHasPermission('attendance.regularization.approve');
+        $roleId = (int) ($user->system_role_id ?? $user->role_id ?? 0);
+        $roleName = strtolower($user->role->name ?? '');
+        $isSuperAdmin = method_exists($user, 'isSuperAdmin') ? $user->isSuperAdmin() : in_array($roleId, [1, 2], true);
+        $isHrOrAdmin = $isSuperAdmin || in_array($roleId, [1, 2, 3], true) || in_array($roleName, ['admin', 'super_admin', 'hr_admin', 'hr admin', 'hr'], true) || $this->userHasPermission('attendance.regularization.view_all') || $this->userHasPermission('attendance.regularization.approve');
+        $isEmployeeRole = ! $isHrOrAdmin && ! $this->canViewTeam('attendance.regularization.view_team') && ! $this->userHasPermission('attendance.regularization.approve');
 
         if ($isEmployeeRole) {
             $ownEmp = $user->employee ?? $this->currentEmployee();

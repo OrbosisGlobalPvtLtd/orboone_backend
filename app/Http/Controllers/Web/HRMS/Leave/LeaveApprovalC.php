@@ -143,11 +143,13 @@ class LeaveApprovalC extends Controller
         $rejectedLeaveCount = (clone $baseCountQuery)->where('leave_requests.status', 'rejected')->count();
 
         $user = auth()->user();
-        $roleId = (int)($user->system_role_id ?? $user->role_id ?? 0);
-        $roleName = strtolower($user->role->name ?? '');
-
-        $isSuperAdmin = method_exists($user, 'isSuperAdmin') ? $user->isSuperAdmin() : in_array($roleId, [1, 2], true);
-        $isHrOrAdmin = $isSuperAdmin || in_array($roleId, [1, 2, 3, 5], true) || in_array($roleName, ['admin', 'super_admin', 'hr_admin', 'hr admin', 'manager', 'hr'], true) || ($user->can('leave.approvals.view_all') || $user->can('leave.approvals.view'));
+        $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
+        $isHrOrAdmin = $isSuperAdmin
+            || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin())
+            || (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin', 'manager']))
+            || $this->userHasPermission('leave.approvals.view_all')
+            || $this->userHasPermission('leave.approvals.view')
+            || $this->userHasPermission('leave.approvals.approve');
 
         if ($isHrOrAdmin || $isSuperAdmin) {
             $employees = EmployeeM::with(['user'])->active()->get();
@@ -180,11 +182,16 @@ class LeaveApprovalC extends Controller
     {
         $referer = $request->header('referer') ?: route('reporting.leave');
         $user = auth()->user();
-        $isSuperAdmin = method_exists($user, 'isSuperAdmin') ? $user->isSuperAdmin() : (in_array((int)($user->system_role_id ?? $user->role_id ?? 0), [1, 2], true));
+        $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
+        $isHrOrAdmin = $isSuperAdmin
+            || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin())
+            || (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin']))
+            || $this->userHasPermission('leave.approvals.view_all')
+            || $this->userHasPermission('leave.approvals.view')
+            || $this->userHasPermission('leave.approvals.approve');
 
         $supervisorEmpId = $this->scopeS->getOwnEmployeeId();
         $isReportingManager = ! empty($supervisorEmpId) && \Illuminate\Support\Facades\DB::table('employees_new')->where('reporting_manager_employee_id', $supervisorEmpId)->exists();
-        $isHrOrAdmin = $isSuperAdmin || ($user->can('leave.approvals.view_all') || $user->can('leave.approvals.view'));
 
         abort_unless($isSuperAdmin || $isHrOrAdmin || $isReportingManager, 403);
 
@@ -204,29 +211,29 @@ class LeaveApprovalC extends Controller
 
             $isAssignedManager = ($supervisorEmpId && $managerEmpId && (int)$supervisorEmpId === (int)$managerEmpId);
 
-            // CASE 1: Super Admin Override
-            if ($isSuperAdmin) {
+            // CASE 1: Super Admin or HR Admin Full Approval
+            if ($isSuperAdmin || $isHrOrAdmin) {
                 if ($hasManager && ! $managerApproved) {
                     $leaveRequest->manager_approved_by = Auth::id();
                     $leaveRequest->manager_approved_at = \Carbon\Carbon::now('Asia/Kolkata');
-                    $leaveRequest->manager_note = 'Super Admin Override Approval';
+                    $leaveRequest->manager_note = $isSuperAdmin ? 'Super Admin Override Approval' : 'HR Admin Direct Approval';
                     $leaveRequest->save();
                 }
-                $this->approvalService->approve($leaveRequest, Auth::id(), $note ?: 'Approved by Super Admin');
-                return redirect()->to($referer)->with('success', 'Leave request approved & finalized by Super Admin.');
+                $this->approvalService->approve($leaveRequest, Auth::id(), $note ?: ($isSuperAdmin ? 'Approved by Super Admin' : 'Approved by HR Admin'));
+                return redirect()->to($referer)->with('success', 'Leave request approved & finalized.');
             }
 
             // CASE 2: Employee HAS a Reporting Manager and Manager stage is pending
             if ($hasManager && ! $managerApproved) {
                 if (! $isAssignedManager) {
-                    return redirect()->to($referer)->with('error', 'Awaiting Reporting Manager approval. HR Admin cannot approve before the Reporting Manager.');
+                    return redirect()->to($referer)->with('error', 'Awaiting Reporting Manager approval.');
                 }
 
                 $this->approvalService->approveManagerStage($leaveRequest, Auth::id(), $note);
                 return redirect()->to($referer)->with('success', 'Leave request approved by Manager. Sent to HR for final approval.');
             }
 
-            // CASE 3: HR Stage Approval (Manager approved or No Manager assigned)
+            // CASE 3: HR Stage Approval
             if (! $isHrOrAdmin && ! $isAssignedManager) {
                 abort(403, 'Unauthorized. HR Admin permission is required for final leave approval.');
             }
@@ -237,7 +244,7 @@ class LeaveApprovalC extends Controller
 
             $this->approvalService->approve($leaveRequest, Auth::id(), $note);
 
-            return redirect()->to($referer)->with('success', 'Leave request approved by HR Admin and attendance synced.');
+            return redirect()->to($referer)->with('success', 'Leave request approved and attendance synced.');
         } catch (\Illuminate\Validation\ValidationException $e) {
             $firstError = collect($e->errors())->flatten()->first() ?: 'Validation failed for leave approval.';
             return redirect()->to($referer)->with('error', $firstError);
@@ -251,11 +258,16 @@ class LeaveApprovalC extends Controller
     {
         $referer = $request->header('referer') ?: route('reporting.leave');
         $user = auth()->user();
-        $isSuperAdmin = method_exists($user, 'isSuperAdmin') ? $user->isSuperAdmin() : (in_array((int)($user->system_role_id ?? $user->role_id ?? 0), [1, 2], true));
+        $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
+        $isHrOrAdmin = $isSuperAdmin
+            || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin())
+            || (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin']))
+            || $this->userHasPermission('leave.approvals.view_all')
+            || $this->userHasPermission('leave.approvals.view')
+            || $this->userHasPermission('leave.approvals.reject');
 
         $supervisorEmpId = $this->scopeS->getOwnEmployeeId();
         $isReportingManager = ! empty($supervisorEmpId) && \Illuminate\Support\Facades\DB::table('employees_new')->where('reporting_manager_employee_id', $supervisorEmpId)->exists();
-        $isHrOrAdmin = $isSuperAdmin || ($user->can('leave.approvals.view_all') || $user->can('leave.approvals.view'));
 
         abort_unless($isSuperAdmin || $isHrOrAdmin || $isReportingManager, 403);
 
@@ -281,8 +293,16 @@ class LeaveApprovalC extends Controller
     private function authorizeLeaveRequestForApproval(LeaveRequestM $leaveRequest): void
     {
         $user = auth()->user();
-        $isSuperAdmin = method_exists($user, 'isSuperAdmin') ? $user->isSuperAdmin() : (in_array((int)($user->system_role_id ?? $user->role_id ?? 0), [1, 2], true));
-        if ($isSuperAdmin || $this->canViewAll('leave.approvals.view_all') || $this->userHasPermission('leave.approvals.view')) {
+        $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
+        $isHrOrAdmin = $isSuperAdmin
+            || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin())
+            || (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin']))
+            || $this->userHasPermission('leave.approvals.view_all')
+            || $this->userHasPermission('leave.approvals.view')
+            || $this->userHasPermission('leave.approvals.approve')
+            || $this->userHasPermission('leave.approvals.reject');
+
+        if ($isHrOrAdmin || $this->canViewAll('leave.approvals.view_all') || $this->userHasPermission('leave.approvals.view')) {
             return;
         }
 

@@ -36,12 +36,32 @@ class TeamManagementScopeS
             return true;
         }
 
-        if (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin'])) {
+        $roleId = (int) ($user->system_role_id ?? $user->role_id ?? 0);
+        if (in_array($roleId, [1, 2, 3], true)) {
             return true;
         }
 
-        if (method_exists($user, 'hasPermission') && ($user->hasPermission('reporting.structure.manage') || $user->hasPermission('reporting.view_all') || $user->hasPermission('projects.view_all'))) {
+        $roleName = strtolower($user->role->name ?? '');
+        if (in_array($roleName, ['super_admin', 'super admin', 'admin', 'hr_admin', 'hr admin', 'hr', 'human resources'], true)) {
             return true;
+        }
+
+        if (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin', 'hr'])) {
+            return true;
+        }
+
+        if (method_exists($user, 'hasPermission')) {
+            if ($user->hasPermission('leave.approvals.view_all')
+                || $user->hasPermission('leave.approvals.approve')
+                || $user->hasPermission('attendance.regularization.view_all')
+                || $user->hasPermission('attendance.regularization.approve')
+                || $user->hasPermission('attendance.records.view_all')
+                || $user->hasPermission('reporting.structure.manage')
+                || $user->hasPermission('reporting.view_all')
+                || $user->hasPermission('projects.view_all')
+            ) {
+                return true;
+            }
         }
 
         return false;
@@ -133,7 +153,7 @@ class TeamManagementScopeS
      */
     public function scopeTeamAttendanceQuery($query, ?int $empId = null)
     {
-        if ($this->isSuperAdminOrGlobal() && !$empId) {
+        if ($this->isSuperAdminOrGlobal()) {
             return $query;
         }
 
@@ -146,7 +166,7 @@ class TeamManagementScopeS
      */
     public function scopeTeamLeaveQuery($query, ?int $empId = null)
     {
-        if ($this->isSuperAdminOrGlobal() && !$empId) {
+        if ($this->isSuperAdminOrGlobal()) {
             return $query;
         }
 
@@ -159,7 +179,7 @@ class TeamManagementScopeS
      */
     public function scopeTeamWorkReportsQuery($query, ?int $empId = null)
     {
-        if ($this->isSuperAdminOrGlobal() && !$empId) {
+        if ($this->isSuperAdminOrGlobal()) {
             return $query;
         }
 
@@ -177,7 +197,7 @@ class TeamManagementScopeS
      */
     public function scopeTeamTasksQuery($query, ?int $empId = null)
     {
-        if ($this->isSuperAdminOrGlobal() && !$empId) {
+        if ($this->isSuperAdminOrGlobal()) {
             return $query;
         }
 

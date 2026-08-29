@@ -96,17 +96,30 @@ class AttendanceViolationC extends Controller
         if ($request->filled('type')) {
             $query->where('attendance_violations.type', $request->input('type'));
         }
+        $fromDate = $request->input('from_date') ?: $request->input('from');
+        $toDate = $request->input('to_date') ?: $request->input('to');
+
         if ($request->filled('month')) {
             $monthDate = Carbon::parse($request->input('month') . '-01');
             $query->whereDate('attendance_violations.violation_date', '>=', $monthDate->copy()->startOfMonth()->toDateString())
                   ->whereDate('attendance_violations.violation_date', '<=', $monthDate->copy()->endOfMonth()->toDateString());
         } else {
-            if ($request->filled('from')) {
-                $query->whereDate('attendance_violations.violation_date', '>=', $request->input('from'));
+            if ($fromDate) {
+                $query->whereDate('attendance_violations.violation_date', '>=', $fromDate);
             }
-            if ($request->filled('to')) {
-                $query->whereDate('attendance_violations.violation_date', '<=', $request->input('to'));
+            if ($toDate) {
+                $query->whereDate('attendance_violations.violation_date', '<=', $toDate);
             }
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('users.name', 'like', "%{$search}%")
+                  ->orWhere('users.email', 'like', "%{$search}%")
+                  ->orWhere('employees_new.employee_code', 'like', "%{$search}%")
+                  ->orWhere('attendance_violations.remarks', 'like', "%{$search}%");
+            });
         }
         if ($request->filled('penalty_status')) {
             $status = $request->input('penalty_status');

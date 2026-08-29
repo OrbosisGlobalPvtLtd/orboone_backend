@@ -28,24 +28,7 @@ class ReportingScopeS
      */
     public function isSuperAdminOrGlobal(): bool
     {
-        $user = Auth::user();
-        if (!$user) {
-            return false;
-        }
-
-        if (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) {
-            return true;
-        }
-
-        if (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin'])) {
-            return true;
-        }
-
-        if (method_exists($user, 'hasPermission') && ($user->hasPermission('reporting.structure.manage') || $user->hasPermission('reporting.view_all'))) {
-            return true;
-        }
-
-        return false;
+        return app(\App\Services\HRMS\Team\TeamManagementScopeS::class)->isSuperAdminOrGlobal();
     }
 
     /**

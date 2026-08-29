@@ -223,7 +223,7 @@ class AdminUserC extends Controller
         }
 
         return $query
-            ->whereIn('slug', self::ADMIN_ROLE_SLUGS)
+            ->where('slug', '!=', 'employee')
             ->orderBy('name')
             ->get();
     }
@@ -231,7 +231,7 @@ class AdminUserC extends Controller
     private function adminRoleIds(): array
     {
         return DB::table('roles')
-            ->whereIn('slug', self::ADMIN_ROLE_SLUGS)
+            ->where('slug', '!=', 'employee')
             ->pluck('id')
             ->map(fn ($id) => (int) $id)
             ->all();

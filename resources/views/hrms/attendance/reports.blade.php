@@ -495,7 +495,7 @@
                     Attendance Filters
                 </h5>
 
-                <form method="GET" action="{{ route('attendances.daily') }}">
+                <form method="GET" action="{{ url()->current() }}">
 
                     <div class="att-filter-grid">
 
@@ -657,7 +657,7 @@
                             <button type="submit" class="btn text-white font-weight-bold shadow-sm" style="height: 42px; border-radius: 12px; background: var(--orb-primary); border: none; flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
                                 <i class="fas fa-search"></i> Search
                             </button>
-                            <a href="{{ route('attendances.daily') }}" class="att-btn att-btn-light" style="height: 42px; width: 42px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Reset Filters">
+                            <a href="{{ url()->current() }}" class="att-btn att-btn-light" style="height: 42px; width: 42px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Reset Filters">
                                 <i class="fas fa-undo"></i>
                             </a>
                         </div>

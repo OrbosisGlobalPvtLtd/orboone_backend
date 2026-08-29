@@ -458,16 +458,19 @@
                                 $hasManager = !empty($managerEmpId);
 
                                 $user = auth()->user();
+                                $userRoleId = (int)($user->system_role_id ?? $user->role_id ?? 0);
+                                $userRoleName = strtolower($user->role->name ?? '');
                                 $userEmpId = \App\Models\HRMS\Employee\EmployeeM::where('user_id', $user->id)->value('id');
                                 $isAssignedManager = (!empty($managerEmpId) && (int)$managerEmpId === (int)$userEmpId);
-                                $isSuperAdminUser = method_exists($user, 'isSuperAdmin') ? $user->isSuperAdmin() : (in_array((int)($user->system_role_id ?? $user->role_id ?? 0), [1, 2], true));
+                                $isSuperAdminUser = method_exists($user, 'isSuperAdmin') ? $user->isSuperAdmin() : (in_array($userRoleId, [1, 2], true));
+                                $isHrAdminUser = $isSuperAdminUser || in_array($userRoleId, [1, 2, 3], true) || in_array($userRoleName, ['admin', 'super_admin', 'hr_admin', 'hr admin', 'hr'], true) || $user->hasPermission('leave.approvals.view_all') || $user->hasPermission('leave.approvals.approve');
                                 $mgrApproved = !empty($lr->manager_approved_by) || !empty($lr->manager_approved_at) || ($lr->approval_level === 'manager_approved');
                                 $mgrRejected = ($stLower === 'rejected' && empty($lr->manager_approved_by));
                                 $hrApproved = ($stLower === 'approved');
                                 $hrRejected = ($stLower === 'rejected' && !empty($lr->manager_approved_by));
 
-                                $canApprove = $isSuperAdminUser || $user->hasPermission('leave.approvals.approve') || ($isAssignedManager && $user->hasPermission('leave.approvals.view_team'));
-                                $canReject = $isSuperAdminUser || $user->hasPermission('leave.approvals.reject') || ($isAssignedManager && $user->hasPermission('leave.approvals.view_team'));
+                                $canApprove = $isSuperAdminUser || $isHrAdminUser || $user->hasPermission('leave.approvals.approve') || ($isAssignedManager && $user->hasPermission('leave.approvals.view_team'));
+                                $canReject = $isSuperAdminUser || $isHrAdminUser || $user->hasPermission('leave.approvals.reject') || ($isAssignedManager && $user->hasPermission('leave.approvals.view_team'));
                             @endphp
                         <tr>
                             <!-- 1. S.No. -->
@@ -653,8 +656,20 @@
                                                         <i class="fas fa-times-circle text-danger"></i> Reject Request
                                                     </a>
                                                     @endif
+                                                @elseif($isHrAdminUser)
+                                                    <form method="POST" action="{{ route('leave-approvals.approve', $lr->id) }}" class="d-inline">
+                                                        @csrf
+                                                        <button type="submit" class="dropdown-item text-primary border-0 bg-transparent font-weight-bold" onclick="return confirm('HR Admin Direct Approval: Approve & finalize leave request?')">
+                                                            <i class="fas fa-check-double text-primary"></i> HR Admin Approve
+                                                        </button>
+                                                    </form>
+                                                    @if($canReject)
+                                                    <a class="dropdown-item text-danger" href="#" data-toggle="modal" data-target="#rejectModal{{ $lr->id }}">
+                                                        <i class="fas fa-times-circle text-danger"></i> Reject Request
+                                                    </a>
+                                                    @endif
                                                 @else
-                                                    <button type="button" class="dropdown-item text-muted border-0 bg-transparent" onclick="alert('Reporting manager ne leave approved nhi ki hai abhi. Manager approval is required first.')">
+                                                    <button type="button" class="dropdown-item text-muted border-0 bg-transparent" onclick="alert('Reporting manager approval is required first.')">
                                                         <i class="fas fa-clock text-warning"></i> Waiting for Reporting Manager
                                                     </button>
                                                 @endif
@@ -1048,6 +1063,20 @@
                                                             @csrf
                                                             <button type="submit" class="btn btn-sm text-white font-weight-bold px-3.5" style="border-radius: 8px; height: 38px; background: linear-gradient(135deg, {{ $branding['primary_color'] ?? '#4B00E8' }} 0%, {{ $branding['secondary_color'] ?? '#FF5252' }} 100%); border: none; box-shadow: 0 4px 14px rgba(75, 0, 232, 0.3); font-size: 12.5px;" onclick="return confirm('Approve leave request at Manager stage for {{ addslashes($lr->display_name) }}?')">
                                                                 <i class="fas fa-check mr-1"></i> Approve Request
+                                                            </button>
+                                                        </form>
+                                                        @endif
+                                                    @elseif($isHrAdminUser)
+                                                        @if($canReject)
+                                                        <button type="button" class="btn btn-sm font-weight-bold px-3.5" style="border-radius: 8px; height: 38px; background: #FEF2F2; color: #DC2626; border: 1px solid #FCA5A5; font-size: 12.5px;" data-toggle="modal" data-target="#rejectModal{{ $lr->id }}" data-dismiss="modal">
+                                                            <i class="fas fa-times mr-1"></i> Reject Request
+                                                        </button>
+                                                        @endif
+                                                        @if($canApprove)
+                                                        <form method="POST" action="{{ route('leave-approvals.approve', $lr->id) }}" class="d-inline">
+                                                            @csrf
+                                                            <button type="submit" class="btn btn-sm text-white font-weight-bold px-3.5" style="border-radius: 8px; height: 38px; background: linear-gradient(135deg, {{ $branding['primary_color'] ?? '#4B00E8' }} 0%, {{ $branding['secondary_color'] ?? '#FF5252' }} 100%); border: none; box-shadow: 0 4px 14px rgba(75, 0, 232, 0.3); font-size: 12.5px;" onclick="return confirm('HR Admin Direct Approval: Approve leave request for {{ addslashes($lr->display_name) }}?')">
+                                                                <i class="fas fa-check-double mr-1"></i> HR Admin Approve
                                                             </button>
                                                         </form>
                                                         @endif

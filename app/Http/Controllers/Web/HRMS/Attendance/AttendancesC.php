@@ -74,18 +74,23 @@ class AttendancesC extends Controller
             $query->where('attendance_time_id', $request->attendance_time_id);
         }
 
-        if ($request->filled('from_date') || $request->filled('to_date')) {
-            if ($request->filled('from_date')) {
-                $query->whereDate('attendance_date', '>=', $request->from_date);
+        $fromDate = $request->input('from_date') ?: $request->input('from');
+        $toDate = $request->input('to_date') ?: $request->input('to');
+
+        if ($fromDate || $toDate) {
+            if ($fromDate) {
+                $query->whereDate('attendance_date', '>=', $fromDate);
             }
-            if ($request->filled('to_date')) {
-                $query->whereDate('attendance_date', '<=', $request->to_date);
+            if ($toDate) {
+                $query->whereDate('attendance_date', '<=', $toDate);
             }
         } elseif ($request->filled('date')) {
             $query->whereDate('attendance_date', $request->date);
-        } elseif ($request->filled('month') && $request->filled('year')) {
-            $query->whereMonth('attendance_date', (int) $request->month)
-                ->whereYear('attendance_date', (int) $request->year);
+        } elseif ($request->filled('month')) {
+            $query->whereMonth('attendance_date', (int) $request->month);
+            if ($request->filled('year')) {
+                $query->whereYear('attendance_date', (int) $request->year);
+            }
         } else {
             $today = Carbon::now($this->attendanceService->attendanceTimezone())->toDateString();
             if ($request->filter === 'today') {
@@ -236,27 +241,37 @@ class AttendancesC extends Controller
             ->get();
         $this->normalizeAttendanceCollection($blockedAttendances);
 
+        $blockedEmpIds = $blockedAttendances->pluck('employee_id')->filter()->unique()->toArray();
+        $regRequestsByEmp = collect();
+        if (!empty($blockedEmpIds)) {
+            $regRequestsByEmp = DB::table('attendance_regularizations')
+                ->whereIn('employee_id', $blockedEmpIds)
+                ->whereNull('deleted_at')
+                ->latest('id')
+                ->get()
+                ->groupBy('employee_id');
+        }
+
         foreach ($blockedAttendances as $blocked) {
             $empId = $blocked->employee_id;
             $attDate = $blocked->attendance_date ? Carbon::parse($blocked->attendance_date)->toDateString() : null;
             $attId = is_numeric($blocked->id) ? $blocked->id : null;
 
-            $regRequest = null;
-            if ($empId && $attDate) {
-                $regRequest = DB::table('attendance_regularizations')
-                    ->where('employee_id', $empId)
-                    ->whereNull('deleted_at')
-                    ->where(function ($q) use ($attDate, $attId) {
-                        if ($attId) {
-                            $q->where('attendance_id', $attId);
-                        }
-                        $q->orWhereDate('requested_punch_in', $attDate)
-                          ->orWhereDate('requested_punch_out', $attDate)
-                          ->orWhereDate('created_at', $attDate);
-                    })
-                    ->latest('id')
-                    ->first();
-            }
+            $empRegs = $regRequestsByEmp->get($empId, collect());
+            $regRequest = $empRegs->first(function ($r) use ($attDate, $attId) {
+                if ($attId && $r->attendance_id == $attId) {
+                    return true;
+                }
+                if ($attDate) {
+                    $inDate = $r->requested_punch_in ? Carbon::parse($r->requested_punch_in)->toDateString() : null;
+                    $outDate = $r->requested_punch_out ? Carbon::parse($r->requested_punch_out)->toDateString() : null;
+                    $cDate = $r->created_at ? Carbon::parse($r->created_at)->toDateString() : null;
+                    if ($inDate === $attDate || $outDate === $attDate || $cDate === $attDate) {
+                        return true;
+                    }
+                }
+                return false;
+            });
             $blocked->regularization_request = $regRequest;
         }
 
@@ -465,6 +480,12 @@ class AttendancesC extends Controller
                     ->orWhere('is_admin_unlocked', false)
                     ->orWhere('is_admin_unlocked', 0);
             })->whereNull('unlocked_at')->where('attendance_status', '<>', 'unlocked');
+        } elseif ($request->flag === 'missed') {
+            $query->where(function ($sq) {
+                $sq->where('missed_punch', 1)->orWhere('is_missed_punch', 1)->orWhere('attendance_status', 'missed_punch');
+            });
+        } elseif ($request->flag === 'manual_punch_in') {
+            $query->where('unlock_type', 'manual_punch_in');
         } elseif ($request->flag === 'today') {
             $query->whereDate('attendance_date', $today);
         }
@@ -503,12 +524,15 @@ class AttendancesC extends Controller
             $violationQuery->whereHas('employee', fn($eq) => $eq->where('department_id', $request->department_id));
         }
 
+        $vFrom = $request->input('from_date') ?: $request->input('from');
+        $vTo = $request->input('to_date') ?: $request->input('to');
+
         if ($request->filled('date')) {
             $violationQuery->whereDate('violation_date', $request->date);
-        } elseif ($request->filled('from_date')) {
-            $violationQuery->whereDate('violation_date', '>=', $request->from_date);
-            if ($request->filled('to_date')) {
-                $violationQuery->whereDate('violation_date', '<=', $request->to_date);
+        } elseif ($vFrom) {
+            $violationQuery->whereDate('violation_date', '>=', $vFrom);
+            if ($vTo) {
+                $violationQuery->whereDate('violation_date', '<=', $vTo);
             }
         } else {
             if ($request->filter === 'today' || $request->flag === 'today') {

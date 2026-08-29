@@ -945,10 +945,13 @@
                         </div>
                         @endif
 
-                        <div class="orb-filter-item align-self-end">
-                            <button type="submit" class="btn btn-primary font-weight-bold px-4 rounded-10" style="height: 42px; background: var(--orb-primary); border: none;">
+                        <div class="orb-filter-item align-self-end d-flex align-items-center" style="gap: 8px;">
+                            <button type="submit" class="btn btn-primary font-weight-bold px-4 rounded-10 shadow-sm" style="height: 42px; background: var(--orb-primary); border: none;">
                                 <i class="fas fa-search mr-1"></i> Search
                             </button>
+                            <a href="{{ route('hrms.attendance.monthly-report') }}" class="btn btn-light border text-secondary font-weight-bold" style="height: 42px; width: 42px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Reset Filters">
+                                <i class="fas fa-undo"></i>
+                            </a>
                         </div>
 
                     </form>

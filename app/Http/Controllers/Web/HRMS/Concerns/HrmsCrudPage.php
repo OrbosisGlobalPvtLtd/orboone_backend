@@ -25,8 +25,16 @@ trait HrmsCrudPage
     protected function canViewAll(string $permission): bool
     {
         $user = auth()->user();
+        if (! $user) {
+            return false;
+        }
 
-        return ($user && method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin())
+        $roleId = (int) ($user->system_role_id ?? $user->role_id ?? 0);
+        $roleName = strtolower($user->role->name ?? '');
+
+        return (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin())
+            || in_array($roleId, [1, 2, 3], true)
+            || in_array($roleName, ['super_admin', 'super admin', 'admin', 'hr_admin', 'hr admin', 'hr', 'human resources'], true)
             || $this->userHasPermission($permission);
     }
 
@@ -146,13 +154,25 @@ trait HrmsCrudPage
         }
 
         if (! empty($config['dateColumn'])) {
-            if ($request->filled('from')) {
-                $query->whereDate($config['dateColumn'], '>=', $request->from);
+            $fromDate = $request->input('from_date') ?: $request->input('from');
+            $toDate = $request->input('to_date') ?: $request->input('to');
+
+            if ($fromDate) {
+                $query->whereDate($config['dateColumn'], '>=', $fromDate);
             }
 
-            if ($request->filled('to')) {
-                $query->whereDate($config['dateColumn'], '<=', $request->to);
+            if ($toDate) {
+                $query->whereDate($config['dateColumn'], '<=', $toDate);
             }
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('users.name', 'like', "%{$search}%")
+                    ->orWhere('users.email', 'like', "%{$search}%")
+                    ->orWhere('employees_new.employee_code', 'like', "%{$search}%");
+            });
         }
 
         return $query;

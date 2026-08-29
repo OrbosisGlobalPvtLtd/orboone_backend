@@ -54,12 +54,27 @@ class LeaveHistoryC extends Controller
             });
         }
 
-        if ($request->filled('from')) {
-            $query->whereDate('start_date', '>=', $request->from);
+        $fromDate = $request->input('from_date') ?: $request->input('from');
+        $toDate = $request->input('to_date') ?: $request->input('to');
+
+        if ($fromDate) {
+            $query->whereDate('start_date', '>=', $fromDate);
         }
 
-        if ($request->filled('to')) {
-            $query->whereDate('end_date', '<=', $request->to);
+        if ($toDate) {
+            $query->whereDate('end_date', '<=', $toDate);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('employee.user', function ($uq) use ($search) {
+                    $uq->where('name', 'like', "%{$search}%")
+                       ->orWhere('email', 'like', "%{$search}%");
+                })->orWhereHas('employee', function ($eq) use ($search) {
+                    $eq->where('employee_code', 'like', "%{$search}%");
+                })->orWhere('reason', 'like', "%{$search}%");
+            });
         }
 
         if ($request->filled('month')) {

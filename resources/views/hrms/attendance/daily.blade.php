@@ -36,7 +36,7 @@
             </div>
             
             <div class="card-body bg-light border-bottom">
-                <form id="attendanceFilterForm" onsubmit="return false;">
+                <form method="GET" action="{{ route('attendances.daily') }}" id="attendanceFilterForm">
                     <div class="row">
                         <div class="col-md-2 form-group mb-0">
                             <label>Employee</label>
@@ -78,8 +78,8 @@
                             <label>Work Mode</label>
                             <select name="work_mode" class="form-control">
                                 <option value="">All</option>
-                                <option value="WFO">WFO</option>
-                                <option value="WFH">WFH</option>
+                                <option value="wfo" {{ strtolower(request('work_mode')) === 'wfo' ? 'selected' : '' }}>WFO</option>
+                                <option value="wfh" {{ strtolower(request('work_mode')) === 'wfh' ? 'selected' : '' }}>WFH</option>
                             </select>
                         </div>
 
@@ -87,9 +87,9 @@
                             <button type="submit" class="btn btn-primary btn-block">
                                 <i class="fas fa-search"></i> Search
                             </button>
-                            <button type="button" class="btn btn-default btn-undo ml-2" title="Reset Filters">
+                            <a href="{{ route('attendances.daily') }}" class="btn btn-default ml-2" title="Reset Filters">
                                 <i class="fas fa-undo"></i>
-                            </button>
+                            </a>
                         </div>
                     </div>
                 </form>
@@ -279,39 +279,6 @@
             }
         });
 
-        function applyDailyFilters() {
-            var empVal = $('select[name="employee_id"]').val();
-            if (!empVal) {
-                table.column(0).search('');
-            } else {
-                var text = $('select[name="employee_id"]').find('option:selected').text().trim();
-                table.column(0).search(text);
-            }
-
-            var typeVal = $('select[name="attendance_type_id"]').val();
-            if (!typeVal) {
-                table.column(8).search('');
-            } else {
-                var typeText = $('select[name="attendance_type_id"]').find('option:selected').text().trim();
-                table.column(8).search(typeText);
-            }
-
-            var modeVal = $('select[name="work_mode"]').val();
-            table.column(2).search(modeVal ? modeVal : '');
-
-            table.draw();
-        }
-
-        $('#attendanceFilterForm').on('submit', function(e) {
-            e.preventDefault();
-            applyDailyFilters();
-        });
-
-        $('.btn-undo').on('click', function(e) {
-            e.preventDefault();
-            $('#attendanceFilterForm')[0].reset();
-            $('select.select2-searchable').trigger('change');
-            table.search('').columns().search('').draw();
         });
     });
 </script>

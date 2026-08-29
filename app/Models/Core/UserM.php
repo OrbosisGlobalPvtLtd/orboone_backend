@@ -103,24 +103,38 @@ class UserM extends Authenticatable
 
     public function hasRole($roles): bool
     {
-        $roles = (array) $roles;
+        $roles = array_map(fn ($r) => strtolower(trim((string) $r)), (array) $roles);
 
-        // ✅ check primary role
-        if ($this->system_role_id) {
+        // 1. Check primary role
+        $primaryRoleId = $this->system_role_id ?: ($this->role_id ?? null);
+        if ($primaryRoleId) {
             $primary = $this->primaryRole()->first();
-            if ($primary && in_array($primary->slug, $roles)) {
-                return true;
+            if ($primary) {
+                if (in_array(strtolower($primary->slug), $roles, true) || in_array(strtolower($primary->name), $roles, true)) {
+                    return true;
+                }
             }
         }
 
-        // ✅ check multiple roles
-        return $this->roles()
-            ->whereIn('slug', $roles)
-            ->exists();
+        // 2. Check multiple roles from user_roles
+        if (Schema::hasTable('user_roles')) {
+            return $this->roles()
+                ->where(function ($q) use ($roles) {
+                    $q->whereIn(DB::raw('LOWER(roles.slug)'), $roles)
+                        ->orWhereIn(DB::raw('LOWER(roles.name)'), $roles);
+                })
+                ->exists();
+        }
+
+        return false;
     }
 
     public function isAdmin(): bool
     {
+        if ($this->hasRole('super_admin')) {
+            return true;
+        }
+
         return $this->hasRole([
             'super_admin',
             'admin',
@@ -129,12 +143,18 @@ class UserM extends Authenticatable
             'project_admin',
             'operations_admin',
             'custom_admin',
+            'manager',
         ]);
+    }
+
+    public function isHrAdmin(): bool
+    {
+        return $this->hasRole(['super_admin', 'admin', 'hr_admin', 'hr admin', 'hr', 'human resources']);
     }
 
     public function isSuperAdmin(): bool
     {
-        return $this->hasRole('super_admin');
+        return $this->hasRole(['super_admin', 'super admin']);
     }
 
     public function isEmployee(): bool

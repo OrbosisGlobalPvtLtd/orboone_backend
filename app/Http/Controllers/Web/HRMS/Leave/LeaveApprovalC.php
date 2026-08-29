@@ -213,7 +213,13 @@ class LeaveApprovalC extends Controller
 
             $isAssignedManager = ($supervisorEmpId && $managerEmpId && (int)$supervisorEmpId === (int)$managerEmpId);
 
-            // CASE 1: Super Admin or HR Admin Full Approval
+            // CASE 1: Assigned Reporting Manager approving Manager Stage
+            if ($hasManager && ! $managerApproved && $isAssignedManager) {
+                $this->approvalService->approveManagerStage($leaveRequest, Auth::id(), $note ?: 'Approved by Reporting Manager');
+                return redirect()->to($referer)->with('success', 'Leave request approved by Manager. Sent to HR for final approval.');
+            }
+
+            // CASE 2: Super Admin or HR Admin Full Approval (Direct / Override)
             if ($isSuperAdmin || $isHrOrAdmin) {
                 if ($hasManager && ! $managerApproved) {
                     $leaveRequest->manager_approved_by = Auth::id();
@@ -223,16 +229,6 @@ class LeaveApprovalC extends Controller
                 }
                 $this->approvalService->approve($leaveRequest, Auth::id(), $note ?: ($isSuperAdmin ? 'Approved by Super Admin' : 'Approved by HR Admin'));
                 return redirect()->to($referer)->with('success', 'Leave request approved & finalized.');
-            }
-
-            // CASE 2: Employee HAS a Reporting Manager and Manager stage is pending
-            if ($hasManager && ! $managerApproved) {
-                if (! $isAssignedManager) {
-                    return redirect()->to($referer)->with('error', 'Awaiting Reporting Manager approval.');
-                }
-
-                $this->approvalService->approveManagerStage($leaveRequest, Auth::id(), $note);
-                return redirect()->to($referer)->with('success', 'Leave request approved by Manager. Sent to HR for final approval.');
             }
 
             // CASE 3: HR Stage Approval

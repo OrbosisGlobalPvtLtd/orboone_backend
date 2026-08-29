@@ -661,7 +661,8 @@
                             <th class="py-3">Leave Type</th>
                             <th class="py-3 text-center">Leave Period</th>
                             <th class="py-3 text-center">Days</th>
-                            <th class="py-3 text-center">Approver Details</th>
+                            <th class="py-3 text-center">Manager Approval</th>
+                            <th class="py-3 text-center">HR Approval</th>
                             <th class="py-3 text-center">Overall Status</th>
                             <th class="py-3 text-center" style="width: 60px;">Actions</th>
                         </tr>
@@ -699,7 +700,7 @@
                                 $isHrAdminUser = $isSuperAdminUser || in_array($userRoleId, [1, 2, 3], true) || in_array($userRoleName, ['admin', 'super_admin', 'hr_admin', 'hr admin', 'hr'], true) || $user->hasPermission('leave.approvals.view_all') || $user->hasPermission('leave.approvals.approve');
                                 $mgrApproved = !empty($lr->manager_approved_by) || !empty($lr->manager_approved_at) || ($lr->approval_level === 'manager_approved');
                                 $mgrRejected = ($stLower === 'rejected' && empty($lr->manager_approved_by));
-                                $hrApproved = ($stLower === 'approved');
+                                $hrApproved = ($stLower === 'approved' && (!empty($lr->hr_approved_by) || !empty($lr->hr_approved_at)));
                                 $hrRejected = ($stLower === 'rejected' && !empty($lr->manager_approved_by));
 
                                 $canApprove = $isSuperAdminUser || $isHrAdminUser || $user->hasPermission('leave.approvals.approve') || ($isAssignedManager && $user->hasPermission('leave.approvals.view_team'));
@@ -758,37 +759,59 @@
                                 </span>
                             </td>
 
-                            <!-- 7. Approver Details -->
+                            <!-- 7. Manager Approval -->
                             <td class="py-3 align-middle text-center">
-                                @if($hrApproved || $stLower === 'approved')
+                                @if($mgrApproved)
                                     <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 10.5px; background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC;">
                                         ✓ Approved
                                     </span>
                                     @if(!empty($lr->manager_approver_name))
                                         <small class="text-muted d-block" style="font-size: 9.5px; font-weight: 600;">by {{ $lr->manager_approver_name }}</small>
-                                    @elseif(!empty($lr->hr_approver_name))
-                                        <small class="text-muted d-block" style="font-size: 9.5px; font-weight: 600;">by {{ $lr->hr_approver_name }}</small>
                                     @endif
-                                @elseif($stLower === 'rejected')
+                                @elseif($mgrRejected)
                                     <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 10.5px; background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5;">
                                         ✕ Rejected
                                     </span>
                                     @if(!empty($lr->manager_approver_name))
                                         <small class="text-muted d-block" style="font-size: 9.5px; font-weight: 600;">by {{ $lr->manager_approver_name }}</small>
-                                    @elseif(!empty($lr->hr_approver_name))
-                                        <small class="text-muted d-block" style="font-size: 9.5px; font-weight: 600;">by {{ $lr->hr_approver_name }}</small>
                                     @endif
-                                @elseif($mgrApproved)
+                                @else
+                                    @if($hasManager)
+                                        <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 10.5px; background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D;">
+                                            🟠 PENDING
+                                        </span>
+                                    @else
+                                        <span class="badge border font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 10.5px; background: #F8FAFC; color: #64748B;">⚪ NOT REQUIRED</span>
+                                    @endif
+                                @endif
+                            </td>
+
+                            <!-- 8. HR Approval -->
+                            <td class="py-3 align-middle text-center">
+                                @if($hrApproved || ($stLower === 'approved' && !empty($lr->hr_approved_by)))
                                     <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 10.5px; background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC;">
                                         ✓ Approved
                                     </span>
-                                    @if(!empty($lr->manager_approver_name))
-                                        <small class="text-muted d-block" style="font-size: 9.5px; font-weight: 600;">by {{ $lr->manager_approver_name }}</small>
+                                    @if(!empty($lr->hr_approver_name))
+                                        <small class="text-muted d-block" style="font-size: 9.5px; font-weight: 600;">by {{ $lr->hr_approver_name }}</small>
+                                    @endif
+                                @elseif($hrRejected)
+                                    <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 10.5px; background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5;">
+                                        ✕ Rejected
+                                    </span>
+                                    @if(!empty($lr->hr_approver_name))
+                                        <small class="text-muted d-block" style="font-size: 9.5px; font-weight: 600;">by {{ $lr->hr_approver_name }}</small>
+                                    @endif
+                                @elseif($stLower === 'pending')
+                                    @if($hasManager && !$mgrApproved)
+                                        <span class="text-muted small" style="font-size: 11px;">— Waiting for Manager</span>
+                                    @else
+                                        <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 10.5px; background: #EEF2FF; color: #3730A3; border: 1px solid #C7D2FE;">
+                                            🔵 PENDING HR
+                                        </span>
                                     @endif
                                 @else
-                                    <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 10.5px; background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D;">
-                                        🟠 PENDING
-                                    </span>
+                                    <span class="text-muted" style="font-size: 11px;">—</span>
                                 @endif
                             </td>
 
@@ -1344,7 +1367,7 @@
                         </div>
                         @empty
                         <tr>
-                            <td colspan="9" class="text-center py-5 text-muted">
+                            <td colspan="10" class="text-center py-5 text-muted">
                                 <div class="py-4">
                                     <i class="fas fa-inbox text-muted mb-3" style="font-size: 38px; opacity: 0.5;"></i>
                                     <h6 class="font-weight-bold text-dark mb-1">No Leave Approvals Found</h6>

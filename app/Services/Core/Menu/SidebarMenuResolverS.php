@@ -295,6 +295,10 @@ class SidebarMenuResolverS
             $allowedIds[] = 349;
         }
 
+        // Always allow Leave Requests (32) and Apply Leave (137)
+        $allowedIds[] = 32;
+        $allowedIds[] = 137;
+
         if (empty($allowedIds)) {
             return collect();
         }
@@ -644,9 +648,10 @@ class SidebarMenuResolverS
             'hrms.attendance.wfh.index' => ['attendance.wfh.view', 'attendance.wfh.own'],
             'hrms.attendance.my-wfh.index' => ['attendance.wfh.own'],
             'hrms.leave.dashboard' => ['leave.dashboard.view', 'leave.my_requests.view'],
+            'leave-requests.index' => ['leave.my_requests.view', 'leave.approvals.view_all', 'leave.history.view', 'leave.dashboard.view'],
             'leave-approvals.index' => ['leave.approvals.view_all', 'leave.approvals.view_team', 'leave.approvals.view', 'leave.approve'],
             'hrms.leave.history' => ['leave.history.view', 'leave.my_requests.view', 'leave.approvals.view_all', 'leave.approvals.view_team'],
-            'leave-requests.create' => ['leave.my_requests.create', 'leave.my_requests.view', 'leave.apply', 'leave_self.apply'],
+            'leave-requests.create' => ['leave.my_requests.create', 'leave.my_requests.view', 'leave.apply', 'leave_self.apply', 'leave.approvals.view_all'],
             'leave-allocations.index' => ['leave.allocation.manage', 'leave.allocation.view_all', 'leave.allocation.view'],
             'hrms.leave.balances.index' => ['leave.balance.view_all', 'leave.balance.view_team', 'leave.balance.view_own', 'leave.balance.view', 'leave_self.view_balance'],
             'employees-leave-request.summary' => ['leave.balance.view_all', 'leave.balance.view_team', 'leave.balance.view_own', 'leave.balance.view', 'leave_self.view_balance'],
@@ -699,7 +704,6 @@ class SidebarMenuResolverS
             'hrms.attendance.my',
             'hrms.employee.',
             'profile.',
-            'leave-requests.',
         ];
 
         $employeeRouteExact = [
@@ -719,7 +723,6 @@ class SidebarMenuResolverS
             'my attendance',
             'my holiday work',
             'my work requests',
-            'my leave requests',
             'my documents',
             'upload documents',
             'my payslips',

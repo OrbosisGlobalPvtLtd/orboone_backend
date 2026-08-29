@@ -61,9 +61,11 @@ class LeaveApprovalC extends Controller
             $query->where('e.reporting_manager_employee_id', $request->reporting_manager_id);
         }
 
-        if ($request->filled('status')) {
+        if ($request->filled('status') && strtolower($request->status) !== 'all') {
             $st = strtolower($request->status);
-            if ($st === 'pending_manager') {
+            if ($st === 'pending') {
+                $query->where('leave_requests.status', 'pending');
+            } elseif ($st === 'pending_manager') {
                 $query->where('leave_requests.status', 'pending')
                     ->whereNotNull('e.reporting_manager_employee_id')
                     ->whereNull('leave_requests.manager_approved_at');
@@ -74,14 +76,9 @@ class LeaveApprovalC extends Controller
                             ->orWhereNotNull('leave_requests.manager_approved_at')
                             ->orWhere('leave_requests.approval_level', 'manager_approved');
                     });
-            } elseif ($st === 'all') {
-                // Show all statuses (pending, approved, rejected)
             } else {
                 $query->where('leave_requests.status', $st);
             }
-        } else {
-            // Default to PENDING leaves only
-            $query->where('leave_requests.status', 'pending');
         }
 
         if ($request->filled('leave_type_id')) {
@@ -89,18 +86,22 @@ class LeaveApprovalC extends Controller
         }
 
         if ($request->filled('start_date')) {
-            $query->whereDate('leave_requests.start_date', '>=', $request->start_date);
+            $query->whereDate('leave_requests.end_date', '>=', $request->start_date);
         }
 
         if ($request->filled('end_date')) {
-            $query->whereDate('leave_requests.end_date', '<=', $request->end_date);
+            $query->whereDate('leave_requests.start_date', '<=', $request->end_date);
         }
 
         if ($request->filled('search')) {
             $search = '%' . trim($request->search) . '%';
             $query->where(function ($q) use ($search) {
                 $q->where('eu.name', 'like', $search)
-                    ->orWhere('e.employee_code', 'like', $search);
+                    ->orWhere('e.employee_code', 'like', $search)
+                    ->orWhere('lt.name', 'like', $search)
+                    ->orWhere('d.name', 'like', $search)
+                    ->orWhere('dept.name', 'like', $search)
+                    ->orWhere('leave_requests.reason', 'like', $search);
             });
         }
 
@@ -125,6 +126,7 @@ class LeaveApprovalC extends Controller
             ->join('employees_new as e', 'e.id', '=', 'leave_requests.employee_id');
         $baseCountQuery = $this->scopeS->scopeLeaveQuery($baseCountQuery, $supervisorEmpId);
 
+        $totalAllCount = (clone $baseCountQuery)->count();
         $totalPendingCount = (clone $baseCountQuery)->where('leave_requests.status', 'pending')->count();
         $managerPendingCount = (clone $baseCountQuery)
             ->where('leave_requests.status', 'pending')
@@ -164,6 +166,7 @@ class LeaveApprovalC extends Controller
 
         return view('hrms.leave.approvals.index', compact(
             'leaveRequests',
+            'totalAllCount',
             'totalPendingCount',
             'managerPendingCount',
             'hrPendingCount',

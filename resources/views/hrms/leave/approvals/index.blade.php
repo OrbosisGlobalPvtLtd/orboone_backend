@@ -53,10 +53,10 @@
     margin: 0;
 }
 
-/* 5 Rich Metric Summary Cards Grid */
+/* 6 Rich Metric Summary Cards Grid */
 .team-stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
     gap: 14px;
     margin-bottom: 24px;
 }
@@ -70,12 +70,23 @@
     display: flex;
     align-items: center;
     gap: 14px;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: all 0.22s ease;
+    text-decoration: none !important;
+    color: inherit;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
 }
 
 .team-stat-card:hover {
     transform: translateY(-3px);
     box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+    color: inherit;
+}
+
+.team-stat-card.active {
+    box-shadow: 0 8px 24px rgba(75, 0, 232, 0.14);
+    border-width: 2px !important;
 }
 
 .team-stat-icon {
@@ -116,13 +127,114 @@
 }
 
 .filter-control-sm {
-    height: 36px;
-    border-radius: 9px;
-    font-size: 12.5px;
-    border: 1px solid #CBD5E1;
-    background: #FFFFFF;
-    padding: 4px 10px;
-    outline: none;
+    height: 38px !important;
+    border-radius: 9px !important;
+    font-size: 12.5px !important;
+    border: 1px solid #CBD5E1 !important;
+    background: #FFFFFF !important;
+    padding: 0 10px !important;
+    outline: none !important;
+    width: 100% !important;
+    color: #1E293B !important;
+    font-weight: 600 !important;
+    box-sizing: border-box !important;
+}
+
+.filter-control-sm:focus {
+    border-color: var(--orb-primary) !important;
+    box-shadow: 0 0 0 3px rgba(75, 0, 232, 0.08) !important;
+}
+
+/* Filter Item Wrappers */
+.filter-form-grid {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.filter-item-wrap {
+    flex: 1 1 150px;
+    min-width: 135px;
+}
+
+.filter-item-wrap.sm-wrap {
+    flex: 1 1 125px;
+    min-width: 115px;
+}
+
+.filter-item-wrap.date-wrap {
+    flex: 1 1 135px;
+    min-width: 125px;
+}
+
+.filter-item-wrap.lg-wrap {
+    flex: 1.5 1 180px;
+    min-width: 160px;
+}
+
+.filter-item-wrap .select2-container {
+    width: 100% !important;
+    display: block !important;
+}
+
+.filter-item-wrap .select2-container .select2-selection--single {
+    height: 38px !important;
+    border-radius: 9px !important;
+    border: 1px solid #CBD5E1 !important;
+    display: flex !important;
+    align-items: center !important;
+    background: #FFFFFF !important;
+}
+
+.filter-item-wrap .select2-container .select2-selection--single .select2-selection__rendered {
+    line-height: 36px !important;
+    font-size: 12.5px !important;
+    color: #1E293B !important;
+    font-weight: 600 !important;
+    padding-left: 10px !important;
+    padding-right: 24px !important;
+}
+
+.filter-item-wrap .select2-container .select2-selection--single .select2-selection__arrow {
+    height: 36px !important;
+    right: 8px !important;
+}
+
+/* Active filters pill */
+.active-filters-bar {
+    padding: 8px 16px;
+    background: #F8FAFC;
+    border-bottom: 1px solid #E2E8F0;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 11.5px;
+}
+
+.active-filter-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #EEF2FF;
+    color: #4338CA;
+    border: 1px solid #C7D2FE;
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-weight: 700;
+}
+
+.active-filter-badge a {
+    color: #6366F1;
+    text-decoration: none;
+    margin-left: 3px;
+    font-weight: 800;
+}
+
+.active-filter-badge a:hover {
+    color: #DC2626;
 }
 
 /* Sticky Table Header */
@@ -274,20 +386,41 @@
 @endsection
 
 @section('_content')
+@php
+    $curStatus = request('status', 'all');
+    if (empty($curStatus)) {
+        $curStatus = 'all';
+    }
+@endphp
 <div class="rep-page">
     <div class="rep-container">
         <!-- Hero Header Banner for HR Admin Leave Approvals -->
         <div class="rep-hero">
             <div>
                 <h3 class="text-white font-weight-bold mb-1"><i class="fas fa-check-circle mr-2"></i>Leave Approvals</h3>
-                <p class="mb-0 opacity-90 small">Review employee leave applications, manage 2-stage approval workflow, and finalize leave deductions.</p>
+                <p class="mb-0 opacity-90 small">Review employee leave applications, manage 2-stage approval workflow, and view all past approvals.</p>
             </div>
         </div>
 
-        <!-- 5 Rich Metric Summary Cards Grid -->
+        <!-- 6 Rich Interactive Metric Summary Cards Grid -->
         <div class="team-stats-grid">
-            <!-- Total Pending -->
-            <div class="team-stat-card">
+            <!-- 1. All Requests -->
+            <a href="{{ route('leave-approvals.index', array_merge(request()->except(['status', 'page']), ['status' => 'all'])) }}"
+               class="team-stat-card {{ ($curStatus === 'all') ? 'active' : '' }}"
+               style="{{ ($curStatus === 'all') ? 'border-color: #6366F1 !important; background: #F8FAFC;' : '' }}">
+                <div class="team-stat-icon" style="background: #F1F5F9; color: #475569; border: 1px solid #CBD5E1;">
+                    <i class="fas fa-layer-group"></i>
+                </div>
+                <div>
+                    <div class="team-stat-label">All Requests</div>
+                    <div class="team-stat-val">{{ $totalAllCount ?? 0 }}</div>
+                </div>
+            </a>
+
+            <!-- 2. Total Pending -->
+            <a href="{{ route('leave-approvals.index', array_merge(request()->except(['status', 'page']), ['status' => 'pending'])) }}"
+               class="team-stat-card {{ ($curStatus === 'pending') ? 'active' : '' }}"
+               style="{{ ($curStatus === 'pending') ? 'border-color: #4F46E5 !important; background: #EEF2FF;' : '' }}">
                 <div class="team-stat-icon" style="background: #EEF2FF; color: #4F46E5; border: 1px solid #C7D2FE;">
                     <i class="fas fa-clock"></i>
                 </div>
@@ -295,10 +428,12 @@
                     <div class="team-stat-label">Total Pending</div>
                     <div class="team-stat-val">{{ $totalPendingCount ?? 0 }}</div>
                 </div>
-            </div>
+            </a>
 
-            <!-- Manager Pending -->
-            <div class="team-stat-card">
+            <!-- 3. Manager Pending -->
+            <a href="{{ route('leave-approvals.index', array_merge(request()->except(['status', 'page']), ['status' => 'pending_manager'])) }}"
+               class="team-stat-card {{ ($curStatus === 'pending_manager') ? 'active' : '' }}"
+               style="{{ ($curStatus === 'pending_manager') ? 'border-color: #D97706 !important; background: #FFFBEB;' : '' }}">
                 <div class="team-stat-icon" style="background: #FFFBEB; color: #D97706; border: 1px solid #FDE68A;">
                     <i class="fas fa-user-clock"></i>
                 </div>
@@ -306,10 +441,12 @@
                     <div class="team-stat-label">Pending Manager</div>
                     <div class="team-stat-val">{{ $managerPendingCount ?? 0 }}</div>
                 </div>
-            </div>
+            </a>
 
-            <!-- HR Pending -->
-            <div class="team-stat-card">
+            <!-- 4. HR Pending -->
+            <a href="{{ route('leave-approvals.index', array_merge(request()->except(['status', 'page']), ['status' => 'pending_hr'])) }}"
+               class="team-stat-card {{ ($curStatus === 'pending_hr') ? 'active' : '' }}"
+               style="{{ ($curStatus === 'pending_hr') ? 'border-color: #0284C7 !important; background: #F0F9FF;' : '' }}">
                 <div class="team-stat-icon" style="background: #F0F9FF; color: #0284C7; border: 1px solid #BAE6FD;">
                     <i class="fas fa-hourglass-half"></i>
                 </div>
@@ -317,10 +454,12 @@
                     <div class="team-stat-label">Pending HR</div>
                     <div class="team-stat-val">{{ $hrPendingCount ?? 0 }}</div>
                 </div>
-            </div>
+            </a>
 
-            <!-- Approved Requests -->
-            <div class="team-stat-card">
+            <!-- 5. Approved Requests -->
+            <a href="{{ route('leave-approvals.index', array_merge(request()->except(['status', 'page']), ['status' => 'approved'])) }}"
+               class="team-stat-card {{ ($curStatus === 'approved') ? 'active' : '' }}"
+               style="{{ ($curStatus === 'approved') ? 'border-color: #047857 !important; background: #ECFDF5;' : '' }}">
                 <div class="team-stat-icon" style="background: #ECFDF5; color: #047857; border: 1px solid #A7F3D0;">
                     <i class="fas fa-check-circle"></i>
                 </div>
@@ -328,10 +467,12 @@
                     <div class="team-stat-label">Approved</div>
                     <div class="team-stat-val">{{ $approvedLeaveCount ?? 0 }}</div>
                 </div>
-            </div>
+            </a>
 
-            <!-- Rejected Requests -->
-            <div class="team-stat-card">
+            <!-- 6. Rejected Requests -->
+            <a href="{{ route('leave-approvals.index', array_merge(request()->except(['status', 'page']), ['status' => 'rejected'])) }}"
+               class="team-stat-card {{ ($curStatus === 'rejected') ? 'active' : '' }}"
+               style="{{ ($curStatus === 'rejected') ? 'border-color: #DC2626 !important; background: #FEF2F2;' : '' }}">
                 <div class="team-stat-icon" style="background: #FEF2F2; color: #DC2626; border: 1px solid #FCA5A5;">
                     <i class="fas fa-times-circle"></i>
                 </div>
@@ -339,7 +480,7 @@
                     <div class="team-stat-label">Rejected</div>
                     <div class="team-stat-val">{{ $rejectedLeaveCount ?? 0 }}</div>
                 </div>
-            </div>
+            </a>
         </div>
 
         <!-- Main Table Container Card -->
@@ -354,68 +495,161 @@
                         <h5 class="font-weight-bold mb-0 text-dark" style="font-size: 15px;">Leave Approvals Workbench</h5>
                     </div>
                 </div>
+                <div class="d-flex align-items-center" style="gap: 8px;">
+                    <span class="badge badge-light border text-muted font-weight-bold px-2.5 py-1" style="font-size: 11.5px; border-radius: 7px;">
+                        Showing {{ $leaveRequests->total() }} {{ \Illuminate\Support\Str::plural('Record', $leaveRequests->total()) }}
+                    </span>
+                </div>
             </div>
 
-            <!-- Filter Toolbar Bar -->
+            <!-- Comprehensive Filter Toolbar Bar -->
             <div class="p-3 border-bottom bg-white">
-                <form method="GET" action="{{ route('leave-approvals.index') }}" class="d-flex flex-wrap align-items-center justify-content-between" style="gap: 10px;">
-                    <div class="d-flex align-items-center flex-wrap" style="gap: 8px; flex: 1;">
+                <form method="GET" action="{{ route('leave-approvals.index') }}" class="d-flex flex-column" style="gap: 12px;">
+                    <div class="filter-form-grid">
                         <!-- Status / Stage Filter -->
-                        <select name="status" class="filter-control-sm" style="min-width: 170px; height: 36px; border-radius: 8px;">
-                            <option value="" {{ request('status') == '' ? 'selected' : '' }}>⏳ Pending Requests (Default)</option>
-                            <option value="pending_manager" {{ request('status') == 'pending_manager' ? 'selected' : '' }}>🟠 Pending Manager</option>
-                            <option value="pending_hr" {{ request('status') == 'pending_hr' ? 'selected' : '' }}>🔵 Pending HR</option>
-                            <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>🟢 Approved</option>
-                            <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>🔴 Rejected</option>
-                            <option value="all" {{ request('status') == 'all' ? 'selected' : '' }}>All Requests</option>
-                        </select>
+                        <div class="filter-item-wrap">
+                            <select name="status" class="filter-control-sm">
+                                <option value="all" {{ $curStatus === 'all' ? 'selected' : '' }}>🌟 All Requests</option>
+                                <option value="pending" {{ $curStatus === 'pending' ? 'selected' : '' }}>⏳ Total Pending</option>
+                                <option value="pending_manager" {{ $curStatus === 'pending_manager' ? 'selected' : '' }}>🟠 Pending Manager</option>
+                                <option value="pending_hr" {{ $curStatus === 'pending_hr' ? 'selected' : '' }}>🔵 Pending HR</option>
+                                <option value="approved" {{ $curStatus === 'approved' ? 'selected' : '' }}>🟢 Approved (Past)</option>
+                                <option value="rejected" {{ $curStatus === 'rejected' ? 'selected' : '' }}>🔴 Rejected</option>
+                                <option value="cancelled" {{ $curStatus === 'cancelled' ? 'selected' : '' }}>⚪ Cancelled</option>
+                            </select>
+                        </div>
 
                         <!-- Employee Filter -->
-                        <select name="employee_id" class="filter-control-sm select2-searchable" style="min-width: 160px; height: 36px; border-radius: 8px;">
-                            <option value="">All Employees</option>
-                            @foreach($employees as $emp)
-                                <option value="{{ $emp->id }}" {{ request('employee_id') == $emp->id ? 'selected' : '' }}>
-                                    {{ $emp->display_name }} ({{ $emp->employee_code }})
-                                </option>
-                            @endforeach
-                        </select>
-
-                        <!-- Reporting Manager Filter -->
-                        @if(!empty($reportingManagers) && count($reportingManagers) > 0)
-                            <select name="reporting_manager_id" class="filter-control-sm select2-searchable" style="min-width: 160px; height: 36px; border-radius: 8px;">
-                                <option value="">All Managers</option>
-                                @foreach($reportingManagers as $rm)
-                                    <option value="{{ $rm->id }}" {{ request('reporting_manager_id') == $rm->id ? 'selected' : '' }}>
-                                        {{ $rm->display_name }}
+                        <div class="filter-item-wrap lg-wrap">
+                            <select name="employee_id" class="filter-control-sm select2-searchable" data-placeholder="All Employees" placeholder="All Employees">
+                                <option value="">All Employees</option>
+                                @foreach($employees as $emp)
+                                    <option value="{{ $emp->id }}" {{ request('employee_id') == $emp->id ? 'selected' : '' }}>
+                                        {{ $emp->display_name }} ({{ $emp->employee_code }})
                                     </option>
                                 @endforeach
                             </select>
+                        </div>
+
+                        <!-- Reporting Manager Filter -->
+                        @if(!empty($reportingManagers) && count($reportingManagers) > 0)
+                            <div class="filter-item-wrap lg-wrap">
+                                <select name="reporting_manager_id" class="filter-control-sm select2-searchable" data-placeholder="All Managers" placeholder="All Managers">
+                                    <option value="">All Managers</option>
+                                    @foreach($reportingManagers as $rm)
+                                        <option value="{{ $rm->id }}" {{ request('reporting_manager_id') == $rm->id ? 'selected' : '' }}>
+                                            {{ $rm->display_name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
                         @endif
 
                         <!-- Leave Type Filter -->
-                        <select name="leave_type_id" class="filter-control-sm" style="min-width: 140px; height: 36px; border-radius: 8px;">
-                            <option value="">Leave Type</option>
-                            @foreach($leaveTypes as $lt)
-                                <option value="{{ $lt->id }}" {{ request('leave_type_id') == $lt->id ? 'selected' : '' }}>
-                                    {{ $lt->name }}
-                                </option>
-                            @endforeach
-                        </select>
+                        <div class="filter-item-wrap sm-wrap">
+                            <select name="leave_type_id" class="filter-control-sm">
+                                <option value="">All Leave Types</option>
+                                @foreach($leaveTypes as $lt)
+                                    <option value="{{ $lt->id }}" {{ request('leave_type_id') == $lt->id ? 'selected' : '' }}>
+                                        {{ $lt->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <!-- Start Date (From) -->
+                        <div class="filter-item-wrap date-wrap" title="From Date">
+                            <input type="date" name="start_date" value="{{ request('start_date') }}" class="filter-control-sm" placeholder="From Date">
+                        </div>
+
+                        <!-- End Date (To) -->
+                        <div class="filter-item-wrap date-wrap" title="To Date">
+                            <input type="date" name="end_date" value="{{ request('end_date') }}" class="filter-control-sm" placeholder="To Date">
+                        </div>
 
                         <!-- Search Input -->
-                        <input type="text" name="search" value="{{ request('search') }}" class="filter-control-sm" style="min-width: 170px; height: 36px; border-radius: 8px;" placeholder="Search employee...">
-                    </div>
+                        <div class="filter-item-wrap lg-wrap">
+                            <input type="text" name="search" value="{{ request('search') }}" class="filter-control-sm" placeholder="Search employee, type, reason...">
+                        </div>
 
-                    <div class="d-flex align-items-center" style="gap: 8px;">
-                        <button type="submit" class="btn btn-sm text-white font-weight-bold" style="height: 36px; border-radius: 8px; padding: 0 16px; background: var(--orb-primary); border: none; display: inline-flex; align-items: center; gap: 6px;">
-                            <i class="fas fa-search" style="font-size: 11px;"></i> Search
-                        </button>
-                        <a href="{{ route('leave-approvals.index') }}" class="btn btn-sm btn-outline-secondary font-weight-bold" style="height: 36px; border-radius: 8px; padding: 0 14px; display: inline-flex; align-items: center; gap: 6px;">
-                            <i class="fas fa-undo" style="font-size: 11px;"></i> Reset
-                        </a>
+                        <!-- Buttons -->
+                        <div class="d-flex align-items-center" style="gap: 6px;">
+                            <button type="submit" class="btn btn-sm text-white font-weight-bold" style="height: 38px; border-radius: 9px; padding: 0 16px; background: var(--orb-primary); border: none; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(75,0,232,0.2);">
+                                <i class="fas fa-search" style="font-size: 11px;"></i> Search
+                            </button>
+                            <a href="{{ route('leave-approvals.index') }}" class="btn btn-sm btn-outline-secondary font-weight-bold" style="height: 38px; border-radius: 9px; padding: 0 14px; display: inline-flex; align-items: center; gap: 6px;" title="Reset all filters">
+                                <i class="fas fa-undo" style="font-size: 11px;"></i> Reset
+                            </a>
+                        </div>
                     </div>
                 </form>
             </div>
+
+            <!-- Active Filters Chip Bar -->
+            @php
+                $hasActiveFilters = request()->filled('employee_id')
+                    || request()->filled('reporting_manager_id')
+                    || request()->filled('leave_type_id')
+                    || request()->filled('start_date')
+                    || request()->filled('end_date')
+                    || request()->filled('search')
+                    || (request()->filled('status') && request('status') !== 'all');
+            @endphp
+            @if($hasActiveFilters)
+                <div class="active-filters-bar">
+                    <span class="font-weight-bold text-muted" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px;">
+                        <i class="fas fa-filter text-primary mr-1"></i> Active Filters:
+                    </span>
+                    @if(request()->filled('status') && request('status') !== 'all')
+                        <span class="active-filter-badge">
+                            Status: {{ ucwords(str_replace('_', ' ', request('status'))) }}
+                            <a href="{{ route('leave-approvals.index', request()->except('status')) }}" title="Remove status filter">&times;</a>
+                        </span>
+                    @endif
+                    @if(request()->filled('employee_id'))
+                        @php $filterEmp = $employees->firstWhere('id', request('employee_id')); @endphp
+                        <span class="active-filter-badge">
+                            Employee: {{ $filterEmp?->display_name ?? 'ID #' . request('employee_id') }}
+                            <a href="{{ route('leave-approvals.index', request()->except('employee_id')) }}" title="Remove employee filter">&times;</a>
+                        </span>
+                    @endif
+                    @if(request()->filled('reporting_manager_id'))
+                        @php $filterRm = $reportingManagers->firstWhere('id', request('reporting_manager_id')); @endphp
+                        <span class="active-filter-badge">
+                            Manager: {{ $filterRm?->display_name ?? 'ID #' . request('reporting_manager_id') }}
+                            <a href="{{ route('leave-approvals.index', request()->except('reporting_manager_id')) }}" title="Remove manager filter">&times;</a>
+                        </span>
+                    @endif
+                    @if(request()->filled('leave_type_id'))
+                        @php $filterLt = $leaveTypes->firstWhere('id', request('leave_type_id')); @endphp
+                        <span class="active-filter-badge">
+                            Type: {{ $filterLt?->name ?? 'Type #' . request('leave_type_id') }}
+                            <a href="{{ route('leave-approvals.index', request()->except('leave_type_id')) }}" title="Remove type filter">&times;</a>
+                        </span>
+                    @endif
+                    @if(request()->filled('start_date'))
+                        <span class="active-filter-badge">
+                            From: {{ \Carbon\Carbon::parse(request('start_date'))->format('d M Y') }}
+                            <a href="{{ route('leave-approvals.index', request()->except('start_date')) }}" title="Remove from-date filter">&times;</a>
+                        </span>
+                    @endif
+                    @if(request()->filled('end_date'))
+                        <span class="active-filter-badge">
+                            To: {{ \Carbon\Carbon::parse(request('end_date'))->format('d M Y') }}
+                            <a href="{{ route('leave-approvals.index', request()->except('end_date')) }}" title="Remove to-date filter">&times;</a>
+                        </span>
+                    @endif
+                    @if(request()->filled('search'))
+                        <span class="active-filter-badge">
+                            Search: "{{ request('search') }}"
+                            <a href="{{ route('leave-approvals.index', request()->except('search')) }}" title="Remove search filter">&times;</a>
+                        </span>
+                    @endif
+                    <a href="{{ route('leave-approvals.index') }}" class="text-danger font-weight-bold ml-auto" style="text-decoration: none; font-size: 11.5px;">
+                        <i class="fas fa-times-circle mr-1"></i> Clear All
+                    </a>
+                </div>
+            @endif
 
             <div class="table-responsive">
                 <table class="table table-hover mb-0">
@@ -427,8 +661,7 @@
                             <th class="py-3">Leave Type</th>
                             <th class="py-3 text-center">Leave Period</th>
                             <th class="py-3 text-center">Days</th>
-                            <th class="py-3 text-center">Manager Approval</th>
-                            <th class="py-3 text-center">HR Approval</th>
+                            <th class="py-3 text-center">Approver Details</th>
                             <th class="py-3 text-center">Overall Status</th>
                             <th class="py-3 text-center" style="width: 60px;">Actions</th>
                         </tr>
@@ -447,9 +680,9 @@
                                 };
 
                                 $stLower = strtolower(trim($lr->status ?? 'pending'));
-                                $startDateFormatted = \Carbon\Carbon::parse($lr->start_date)->format('d M Y');
-                                $endDateFormatted = \Carbon\Carbon::parse($lr->end_date)->format('d M Y');
-                                $isSingleDay = ($lr->start_date === $lr->end_date);
+                                $startDateFormatted = !empty($lr->start_date) ? \Carbon\Carbon::parse($lr->start_date)->format('d M Y') : '—';
+                                $endDateFormatted = !empty($lr->end_date) ? \Carbon\Carbon::parse($lr->end_date)->format('d M Y') : '—';
+                                $isSingleDay = (!empty($lr->start_date) && !empty($lr->end_date) && $lr->start_date === $lr->end_date);
 
                                 $daysVal = (float)($lr->requested_days ?? $lr->deducted_days ?? 1);
                                 $daysText = ($daysVal == floor($daysVal) ? number_format($daysVal, 0) : number_format($daysVal, 1)) . ' ' . \Illuminate\Support\Str::plural('Day', $daysVal);
@@ -525,18 +758,25 @@
                                 </span>
                             </td>
 
-                            <!-- 7. Manager Approval -->
+                            <!-- 7. Approver Details -->
                             <td class="py-3 align-middle text-center">
-                                @if($hrApproved)
-                                    @if($hasManager && $mgrApproved)
-                                        <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 10.5px; background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC;">
-                                            ✓ Approved
-                                        </span>
-                                        @if(!empty($lr->manager_approver_name))
-                                            <small class="text-muted d-block" style="font-size: 9.5px; font-weight: 600;">by {{ $lr->manager_approver_name }}</small>
-                                        @endif
-                                    @else
-                                        <span class="badge border font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 10.5px; background: #F8FAFC; color: #64748B;">⚪ NOT REQUIRED</span>
+                                @if($hrApproved || $stLower === 'approved')
+                                    <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 10.5px; background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC;">
+                                        ✓ Approved
+                                    </span>
+                                    @if(!empty($lr->manager_approver_name))
+                                        <small class="text-muted d-block" style="font-size: 9.5px; font-weight: 600;">by {{ $lr->manager_approver_name }}</small>
+                                    @elseif(!empty($lr->hr_approver_name))
+                                        <small class="text-muted d-block" style="font-size: 9.5px; font-weight: 600;">by {{ $lr->hr_approver_name }}</small>
+                                    @endif
+                                @elseif($stLower === 'rejected')
+                                    <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 10.5px; background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5;">
+                                        ✕ Rejected
+                                    </span>
+                                    @if(!empty($lr->manager_approver_name))
+                                        <small class="text-muted d-block" style="font-size: 9.5px; font-weight: 600;">by {{ $lr->manager_approver_name }}</small>
+                                    @elseif(!empty($lr->hr_approver_name))
+                                        <small class="text-muted d-block" style="font-size: 9.5px; font-weight: 600;">by {{ $lr->hr_approver_name }}</small>
                                     @endif
                                 @elseif($mgrApproved)
                                     <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 10.5px; background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC;">
@@ -545,44 +785,10 @@
                                     @if(!empty($lr->manager_approver_name))
                                         <small class="text-muted d-block" style="font-size: 9.5px; font-weight: 600;">by {{ $lr->manager_approver_name }}</small>
                                     @endif
-                                @elseif($mgrRejected)
-                                    <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 10.5px; background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5;">
-                                        ✕ Rejected
-                                    </span>
                                 @else
-                                    @if($hasManager)
-                                        <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 10.5px; background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D;">
-                                            🟠 PENDING
-                                        </span>
-                                    @else
-                                        <span class="badge border font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 10.5px; background: #F8FAFC; color: #64748B;">⚪ NOT REQUIRED</span>
-                                    @endif
-                                @endif
-                            </td>
-
-                            <!-- 8. HR Approval -->
-                            <td class="py-3 align-middle text-center">
-                                @if($hrApproved)
-                                    <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 10.5px; background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC;">
-                                        ✓ Approved
+                                    <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 10.5px; background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D;">
+                                        🟠 PENDING
                                     </span>
-                                    @if(!empty($lr->hr_approver_name))
-                                        <small class="text-muted d-block" style="font-size: 9.5px; font-weight: 600;">by {{ $lr->hr_approver_name }}</small>
-                                    @endif
-                                @elseif($hrRejected)
-                                    <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 10.5px; background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5;">
-                                        ✕ Rejected
-                                    </span>
-                                @elseif($stLower === 'pending')
-                                    @if($hasManager && !$mgrApproved)
-                                        <span class="text-muted small" style="font-size: 11px;">— Waiting for Manager</span>
-                                    @else
-                                        <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 10.5px; background: #EEF2FF; color: #3730A3; border: 1px solid #C7D2FE;">
-                                            🔵 PENDING HR
-                                        </span>
-                                    @endif
-                                @else
-                                    <span class="text-muted" style="font-size: 11px;">—</span>
                                 @endif
                             </td>
 
@@ -711,7 +917,7 @@
                                                     Leave Request Details
                                                 </h5>
                                                 <div class="text-white-50" style="font-size: 10.5px; font-weight: 500; opacity: 0.92;">
-                                                    Request ID: #LR-{{ str_pad($lr->id, 4, '0', STR_PAD_LEFT) }} &bull; Submitted {{ \Carbon\Carbon::parse($lr->created_at)->format('d M Y') }}
+                                                    Request ID: #LR-{{ str_pad($lr->id, 4, '0', STR_PAD_LEFT) }} &bull; Submitted {{ !empty($lr->created_at) ? \Carbon\Carbon::parse($lr->created_at)->format('d M Y') : '—' }}
                                                 </div>
                                             </div>
                                         </div>
@@ -916,7 +1122,7 @@
                                                             <strong class="text-dark font-weight-bold" style="font-size: 12.5px;">Leave Request Submitted</strong>
                                                             <span class="badge badge-light border text-success font-weight-bold" style="font-size: 9.5px;">✓ Completed</span>
                                                         </div>
-                                                        <div class="text-muted mt-0.5" style="font-size: 10.5px;">Submitted by <strong>{{ $lr->display_name }}</strong> &bull; {{ \Carbon\Carbon::parse($lr->created_at)->format('d M Y, h:i A') }}</div>
+                                                        <div class="text-muted mt-0.5" style="font-size: 10.5px;">Submitted by <strong>{{ $lr->display_name }}</strong> &bull; {{ !empty($lr->created_at) ? \Carbon\Carbon::parse($lr->created_at)->format('d M Y, h:i A') : '—' }}</div>
                                                     </div>
                                                 </div>
 
@@ -1138,7 +1344,7 @@
                         </div>
                         @empty
                         <tr>
-                            <td colspan="10" class="text-center py-5 text-muted">
+                            <td colspan="9" class="text-center py-5 text-muted">
                                 <div class="py-4">
                                     <i class="fas fa-inbox text-muted mb-3" style="font-size: 38px; opacity: 0.5;"></i>
                                     <h6 class="font-weight-bold text-dark mb-1">No Leave Approvals Found</h6>

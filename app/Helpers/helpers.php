@@ -508,3 +508,249 @@ if (!function_exists('branding_logo_url_or_embed')) {
     }
 }
 
+if (!function_exists('formatWorkReportRow')) {
+    /**
+     * Standardize and format a daily work report entry for table, print, PDF, and excel views.
+     *
+     * @param mixed $log
+     * @return array
+     */
+    function formatWorkReportRow($log)
+    {
+        if (!$log) {
+            return [];
+        }
+
+        // 1. Employee Name and Code
+        $emp = is_object($log) && isset($log->employee) ? $log->employee : null;
+        $user = is_object($log) && isset($log->user) ? $log->user : null;
+        
+        $empName = optional($user)->name 
+            ?? (is_object($log) && isset($log->display_name) ? $log->display_name : null)
+            ?? optional($emp)->name 
+            ?? 'Employee';
+
+        $empCode = (is_object($log) && isset($log->employee_code) ? $log->employee_code : null)
+            ?? optional($emp)->employee_code 
+            ?? 'N/A';
+
+        $employeeDisplay = "{$empName} ({$empCode})";
+
+        // 2. Date
+        $workDateRaw = is_object($log) && isset($log->work_date) ? $log->work_date : null;
+        $dateCarbon = null;
+        if ($workDateRaw instanceof \Carbon\Carbon || $workDateRaw instanceof \DateTimeInterface) {
+            $dateCarbon = $workDateRaw;
+        } elseif (!empty($workDateRaw)) {
+            try {
+                $dateCarbon = \Carbon\Carbon::parse($workDateRaw);
+            } catch (\Throwable $e) {}
+        }
+        $dateDisplay = $dateCarbon ? $dateCarbon->format('d M Y') : '-';
+        $dayName = $dateCarbon ? $dateCarbon->format('l') : '';
+        $dateRaw = $dateCarbon ? $dateCarbon->format('Y-m-d') : '';
+
+        // Submitted time
+        $submittedAtRaw = is_object($log) && isset($log->created_at) ? $log->created_at : null;
+        $submittedTime = '-';
+        if ($submittedAtRaw instanceof \Carbon\Carbon || $submittedAtRaw instanceof \DateTimeInterface) {
+            $submittedTime = $submittedAtRaw->format('h:i A');
+        } elseif (!empty($submittedAtRaw)) {
+            try {
+                $submittedTime = \Carbon\Carbon::parse($submittedAtRaw)->format('h:i A');
+            } catch (\Throwable $e) {}
+        }
+
+        // 3. Work Mode
+        $att = is_object($log) && isset($log->attendance) ? $log->attendance : null;
+        $modeRaw = (is_object($att) && isset($att->work_mode) ? $att->work_mode : null)
+            ?? (is_object($log) && isset($log->work_mode) ? $log->work_mode : 'wfo');
+        $modeDisplay = strtoupper($modeRaw ?: 'WFO');
+
+        // 4. Shift Context
+        $shiftTime = is_object($att) && isset($att->attendanceTime) ? $att->attendanceTime : null;
+        $shiftName = optional($shiftTime)->name 
+            ?? (is_object($att) && isset($att->shift_name) ? $att->shift_name : null)
+            ?? (is_object($log) && isset($log->shift_name) ? $log->shift_name : null)
+            ?? 'General Shift';
+        $shiftContext = $shiftName;
+
+        // 5. Gross Work
+        $grossRaw = is_object($att) && isset($att->gross_duration) ? $att->gross_duration : null;
+        if (!$grossRaw && is_object($log) && !empty($log->duration_minutes)) {
+            $h = floor($log->duration_minutes / 60);
+            $m = $log->duration_minutes % 60;
+            $grossRaw = ($h > 0 ? "{$h} hours " : "") . "{$m} mins";
+        }
+        if ($grossRaw && preg_match('/(?:(\d+)\s*h(?:ours?|rs?)?)?\s*(?:(\d+)\s*m(?:ins?|inutes?)?)?/i', $grossRaw, $m)) {
+            $hrs = (int)($m[1] ?? 0);
+            $mins = (int)($m[2] ?? 0);
+            if ($hrs > 0 && $mins > 0) {
+                $grossDisplay = "{$hrs} hours {$mins} mins";
+            } elseif ($hrs > 0) {
+                $grossDisplay = "{$hrs} hours";
+            } else {
+                $grossDisplay = "{$mins} mins";
+            }
+        } else {
+            $grossDisplay = $grossRaw ?: '-';
+        }
+
+        // 6 & 7. Tasks & Summary parsing
+        $tasks = is_object($log) && isset($log->work_summary_json) ? $log->work_summary_json : null;
+        if (is_string($tasks)) {
+            $tasks = json_decode($tasks, true);
+        }
+
+        $title = (is_object($log) && isset($log->project_name) ? $log->project_name : null);
+        $description = null;
+        $status = 'Completed';
+        $structuredTasks = [];
+        $projectsList = [];
+
+        if (is_array($tasks)) {
+            if (isset($tasks['projects']) && is_array($tasks['projects'])) {
+                $projectsList = $tasks['projects'];
+                foreach ($tasks['projects'] as $p) {
+                    $pName = $p['project_name'] ?? ($p['name'] ?? null);
+                    if (!$title && $pName) $title = $pName;
+                    if (isset($p['tasks']) && is_array($p['tasks'])) {
+                        foreach ($p['tasks'] as $t) {
+                            $tName = $t['task_name'] ?? ($t['description'] ?? ($t['task'] ?? ($t['title'] ?? 'Task')));
+                            $tDone = (isset($t['is_completed']) ? ($t['is_completed'] == 1 || $t['is_completed'] === true || $t['is_completed'] === 'true') : (isset($t['completed']) ? ($t['completed'] == 1 || $t['completed'] === true || $t['completed'] === 'true') : true));
+                            $structuredTasks[] = [
+                                'text' => trim($tName),
+                                'done' => (bool)$tDone,
+                                'project' => $pName,
+                                'formatted' => ($tDone ? '[Done] ' : '[Pending] ') . trim($tName)
+                            ];
+                        }
+                    }
+                }
+            }
+
+            if (empty($structuredTasks)) {
+                $reqs = $tasks['requirements'] ?? ($tasks['tasks'] ?? []);
+                if (is_array($reqs)) {
+                    foreach ($reqs as $r) {
+                        $rText = is_string($r) ? $r : ($r['text'] ?? ($r['task_name'] ?? ($r['task'] ?? ($r['title'] ?? ($r['description'] ?? '')))));
+                        $rDone = is_array($r) ? (isset($r['done']) ? ($r['done'] === true || $r['done'] === 'true' || $r['done'] == 1) : true) : true;
+                        if (!empty($rText)) {
+                            $structuredTasks[] = [
+                                'text' => trim($rText),
+                                'done' => (bool)$rDone,
+                                'project' => $title,
+                                'formatted' => ($rDone ? '[Done] ' : '[Pending] ') . trim($rText)
+                            ];
+                        }
+                    }
+                }
+            }
+
+            if (!$title) {
+                $title = $tasks['title'] ?? ($tasks['task_name'] ?? null);
+            }
+
+            $status = $tasks['today_work_status'] ?? ($tasks['current_status'] ?? ($tasks['status'] ?? 'Completed'));
+            $description = $tasks['description'] ?? ($tasks['today_work_description'] ?? null);
+        }
+
+        if (!$description) {
+            $description = is_object($log) && isset($log->work_summary) ? $log->work_summary : (is_object($log) && isset($log->work_description) ? $log->work_description : null);
+        }
+
+        // Clean description lines & separate into distinct paragraphs
+        if ($description) {
+            $rawLines = explode("\n", str_replace(["\r\n", "\r"], "\n", $description));
+            $cleanedParagraphs = [];
+            $currentParagraph = [];
+
+            foreach ($rawLines as $l) {
+                $trimmed = trim($l);
+                if (empty($trimmed)) {
+                    if (!empty($currentParagraph)) {
+                        $cleanedParagraphs[] = implode(' ', $currentParagraph);
+                        $currentParagraph = [];
+                    }
+                    continue;
+                }
+
+                // Ignore boilerplate status/test markers
+                if (stripos($trimmed, 'Project:') === 0) continue;
+                if (stripos($trimmed, "Today's Work Status:") === 0 || stripos($trimmed, "Today Work Status:") === 0) continue;
+                if (stripos($trimmed, "Status") === 0 && in_array(strtolower($trimmed), ['status', 'status:', 'status :'])) continue;
+                if (in_array(strtolower($trimmed), ['completed', 'in-progress', 'in_progress', 'testing', 'done'])) continue;
+                if (stripos($trimmed, "Requirements") === 0) continue;
+                if (stripos($trimmed, "Test Status") === 0) continue;
+                if (stripos($trimmed, "Tested:") === 0) continue;
+                if (stripos($trimmed, "Completed:") === 0) continue;
+                if (stripos($trimmed, "Issues") === 0) continue;
+                if (stripos($trimmed, "Notes") === 0) continue;
+                if (in_array(strtolower($trimmed), ['none', 'no issues'])) continue;
+
+                // Strip leading checkboxes or bullet icons
+                if (preg_match('/^[☑🗹☐✓✔•\-*]\s*/u', $trimmed)) {
+                    $trimmed = preg_replace('/^[☑🗹☐✓✔•\-*]\s*/u', '', $trimmed);
+                }
+
+                if (!empty($trimmed)) {
+                    $currentParagraph[] = $trimmed;
+                }
+            }
+            if (!empty($currentParagraph)) {
+                $cleanedParagraphs[] = implode(' ', $currentParagraph);
+            }
+
+            if (count($cleanedParagraphs) > 0) {
+                // If the first line is the project title, merge it nicely with the next line or keep clean
+                if (!empty($title) && strtolower(trim($cleanedParagraphs[0])) === strtolower(trim($title))) {
+                    if (count($cleanedParagraphs) > 1) {
+                        $cleanedParagraphs[1] = "{$title} - {$cleanedParagraphs[1]}";
+                        array_shift($cleanedParagraphs);
+                    }
+                } elseif (!empty($title) && stripos($cleanedParagraphs[0], $title) === false && count($cleanedParagraphs) <= 2) {
+                    $cleanedParagraphs[0] = "{$title} - {$cleanedParagraphs[0]}";
+                }
+                $description = implode("\n\n", $cleanedParagraphs);
+            }
+        }
+
+        if (empty($description)) {
+            if (!empty($title)) {
+                $description = $title;
+            } else {
+                $description = 'Work report submitted.';
+            }
+        }
+
+        $structuredTaskLines = array_column($structuredTasks, 'formatted');
+        if (empty($structuredTaskLines)) {
+            $structuredTaskLines = ['[Done] ' . ($title ?: 'Work completed')];
+        }
+
+        return [
+            'id' => is_object($log) && isset($log->id) ? $log->id : null,
+            'employee' => $employeeDisplay,
+            'employee_name' => $empName,
+            'employee_code' => $empCode,
+            'department' => optional(optional($emp)->department)->name ?? (is_object($log) && isset($log->department_name) ? $log->department_name : 'Staff'),
+            'designation' => optional(optional($emp)->designation)->name ?? (is_object($log) && isset($log->designation_name) ? $log->designation_name : 'Member'),
+            'date' => $dateDisplay,
+            'date_raw' => $dateRaw,
+            'day_name' => $dayName,
+            'submitted_time' => $submittedTime,
+            'mode' => $modeDisplay,
+            'shift_context' => $shiftContext,
+            'gross_work' => $grossDisplay,
+            'title' => $title,
+            'status' => $status,
+            'summary_desc' => $description,
+            'summary_paragraphs' => explode("\n\n", $description),
+            'structured_tasks' => $structuredTasks,
+            'structured_task_lines' => $structuredTaskLines,
+            'structured_tasks_text' => implode("\n", $structuredTaskLines),
+        ];
+    }
+}
+
+

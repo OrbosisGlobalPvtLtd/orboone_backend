@@ -816,7 +816,8 @@ class ReportingC extends Controller
             ->leftJoin('projects as p', 'p.id', '=', 'attendance_work_logs.project_id')
             ->leftJoin('departments as d', 'd.id', '=', 'e.department_id')
             ->leftJoin('designations as des', 'des.id', '=', 'e.designation_id')
-            ->leftJoin('attendances as att', 'att.id', '=', 'attendance_work_logs.attendance_id');
+            ->leftJoin('attendances as att', 'att.id', '=', 'attendance_work_logs.attendance_id')
+            ->leftJoin('attendance_times as at_time', 'at_time.id', '=', 'att.attendance_time_id');
 
         $query = $this->scopeS->scopeWorkReports($query, $supervisorEmpId);
 
@@ -841,7 +842,11 @@ class ReportingC extends Controller
             'des.name as designation_name',
             'att.attendance_status',
             'att.is_lwp',
-            'att.work_mode'
+            'att.work_mode',
+            'att.gross_duration',
+            'att.punch_in_time',
+            'att.punch_out_time',
+            'at_time.name as shift_name'
         )
             ->orderByDesc('attendance_work_logs.work_date')
             ->orderByDesc('attendance_work_logs.id')

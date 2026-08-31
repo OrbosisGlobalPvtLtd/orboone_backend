@@ -95,6 +95,37 @@
     display: inline-flex !important;
     align-items: center !important;
 }
+
+/* Badge Pills */
+.badge-premium-pill {
+    padding: 4px 10px;
+    border-radius: 50px;
+    font-weight: 800;
+    font-size: 11px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    letter-spacing: 0.02em;
+}
+.badge-wfo { background: #ECFDF3; color: #027A48; border: 1px solid #D1FADF; }
+.badge-wfh { background: #EFF8FF; color: #175CD3; border: 1px solid #D1E9FF; }
+.badge-gross-pill {
+    background: #FEF7C3;
+    color: #B54708;
+    border: 1px solid #FEF08A;
+    font-weight: 800;
+    font-size: 11.5px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.structured-task-item {
+    font-size: 11.5px;
+    line-height: 1.45;
+    margin-bottom: 3px;
+}
 </style>
 @endsection
 
@@ -147,198 +178,116 @@
                 <table class="table table-hover mb-0" id="reportingWorkReportsTable">
                     <thead class="bg-light">
                         <tr>
-                            <th class="py-3 px-3 text-center" style="width: 55px;">S.No.</th>
-                            <th class="py-3 px-4">Date</th>
-                            <th class="py-3">Employee Name</th>
-                            <th class="py-3">Project Name</th>
-                            <th class="py-3">Tasks & Status</th>
-                            <th class="py-3 text-center">Submitted At</th>
-                            <th class="py-3 text-right pr-4 no-export">Action</th>
+                            <th class="py-3 px-3 text-center" style="width: 45px;">#</th>
+                            <th class="py-3 px-3" style="min-width: 170px;">Employee</th>
+                            <th class="py-3 px-3" style="min-width: 110px;">Date</th>
+                            <th class="py-3 px-2" style="min-width: 80px;">Mode</th>
+                            <th class="py-3 px-3" style="min-width: 120px;">Shift Context</th>
+                            <th class="py-3 px-3" style="min-width: 110px;">Gross Work</th>
+                            <th class="py-3 px-3" style="min-width: 380px; width: 34%;">Work Summary Description</th>
+                            <th class="py-3 px-3" style="min-width: 250px; width: 22%;">Structured Tasks</th>
+                            <th class="py-3 text-right pr-4 no-export" style="width: 110px;">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($workReports as $report)
                             @php
-                                $tasks = $report->work_summary_json;
-                                if (is_string($tasks)) {
-                                    $tasks = json_decode($tasks, true);
-                                }
-
-                                $repTitle = $report->project_name ?? 'General Work';
-                                $repDesc = null;
-                                $repStatus = 'Completed';
-                                $projectsList = [];
-                                $requirementsList = [];
-                                $issues = [];
-                                $notes = null;
-
-                                if (is_array($tasks)) {
-                                    if (isset($tasks['projects']) && is_array($tasks['projects'])) {
-                                        $projectsList = $tasks['projects'];
-                                        foreach ($projectsList as $p) {
-                                            $pName = $p['project_name'] ?? $p['name'] ?? 'Project';
-                                            if (isset($p['tasks']) && is_array($p['tasks'])) {
-                                                foreach ($p['tasks'] as $t) {
-                                                    $tName = $t['task_name'] ?? $t['description'] ?? $t['task'] ?? $t['title'] ?? 'Task';
-                                                    $tDone = (isset($t['is_completed']) ? ($t['is_completed'] == 1 || $t['is_completed'] === true || $t['is_completed'] === 'true') : (isset($t['completed']) ? ($t['completed'] == 1 || $t['completed'] === true || $t['completed'] === 'true') : true));
-                                                    $requirementsList[] = [
-                                                        'text' => $tName,
-                                                        'done' => $tDone,
-                                                        'project' => $pName
-                                                    ];
-                                                }
-                                            }
-                                        }
-                                    }
-
-                                    if (empty($requirementsList)) {
-                                        $reqItems = $tasks['requirements'] ?? ($tasks['tasks'] ?? []);
-                                        if (is_array($reqItems)) {
-                                            $requirementsList = $reqItems;
-                                        }
-                                    }
-
-                                    $repStatus = $tasks['today_work_status'] ?? ($tasks['current_status'] ?? ($tasks['status'] ?? 'Completed'));
-
-                                    if (!empty($projectsList) && !empty($projectsList[0]['project_name'])) {
-                                        $repTitle = $projectsList[0]['project_name'];
-                                    } elseif (!empty($tasks['task_name'])) {
-                                        $repTitle = $tasks['task_name'];
-                                    } elseif (!empty($tasks['title'])) {
-                                        $repTitle = $tasks['title'];
-                                    }
-
-                                    $rawDesc = $tasks['description'] ?? ($tasks['today_work_description'] ?? null);
-                                    if ($rawDesc && !str_contains($rawDesc, '☑') && !str_contains($rawDesc, '☐')) {
-                                        $repDesc = $rawDesc;
-                                    } else {
-                                        if ($repStatus) {
-                                            $repDesc = "Today's Work Status: " . ucfirst($repStatus);
-                                        } else {
-                                            $repDesc = "Work report submitted with project tasks.";
-                                        }
-                                    }
-
-                                    $rawIssues = $tasks['issues_blockers'] ?? ($tasks['issues'] ?? []);
-                                    if (is_array($rawIssues)) {
-                                        $issues = $rawIssues;
-                                    } elseif (is_string($rawIssues) && trim($rawIssues) !== '' && strtolower(trim($rawIssues)) !== 'no issues' && strtolower(trim($rawIssues)) !== 'none') {
-                                        $issues = [$rawIssues];
-                                    }
-
-                                    $notes = $tasks['additional_notes'] ?? ($tasks['remarks'] ?? ($tasks['notes'] ?? null));
-                                } else {
-                                    $repDesc = $report->work_description ?? ($report->work_summary ?? 'No summary provided.');
-                                }
-
-                                $taskCount = is_array($requirementsList) ? count($requirementsList) : 0;
-                                $tasksLabel = $taskCount . ' ' . \Illuminate\Support\Str::plural('Task', $taskCount);
-                                $stLower = strtolower(trim($repStatus));
-                                $statusBadgeStyle = match(true) {
-                                    in_array($stLower, ['completed', 'done', 'success']) => 'background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC;',
-                                    in_array($stLower, ['testing', 'tested']) => 'background: #E0F2FE; color: #0369A1; border: 1px solid #7DD3FC;',
-                                    in_array($stLower, ['in-progress', 'in_progress', 'progress', 'pending']) => 'background: #FEF3C7; color: #B45309; border: 1px solid #FCD34D;',
-                                    in_array($stLower, ['blocked', 'failed']) => 'background: #FEE2E2; color: #B91C1C; border: 1px solid #FCA5A5;',
-                                    default => 'background: #F1F5F9; color: #475569; border: 1px solid #CBD5E1;'
-                                };
-
-                                $passportPhotoUrl = resolveEmployeePassportPhoto($report);
-                                $employeeInitial = resolveEmployeeInitials($report);
-
-                                $reportDate = $report->work_date ? \Carbon\Carbon::parse($report->work_date)->format('d M Y') : '-';
-                                $submittedAt = $report->created_at ? \Carbon\Carbon::parse($report->created_at)->format('h:i A') : '—';
-                                $empFullText = ($report->display_name ?? 'Employee') . ' (' . ($report->employee_code ?? 'N/A') . ')';
-
-                                // Construct clean template string for exports (CSV, Excel, PDF, Print)
-                                $exportTaskLines = [];
-                                if (!empty($requirementsList)) {
-                                    foreach ($requirementsList as $tItem) {
-                                        $tText = is_string($tItem) ? $tItem : ($tItem['text'] ?? $tItem['task'] ?? $tItem['title'] ?? '');
-                                        $tDone = is_array($tItem) ? ($tItem['done'] ?? true) : true;
-                                        if ($tText) {
-                                            $exportTaskLines[] = ($tDone ? '[Done] ' : '[Pending] ') . $tText;
-                                        }
-                                    }
-                                }
-                                $exportTaskText = "Status: " . strtoupper($repStatus);
-                                if (!empty($exportTaskLines)) {
-                                    $exportTaskText .= "\nTasks:\n" . implode("\n", $exportTaskLines);
-                                }
+                                $row = formatWorkReportRow($report);
+                                $modeBadgeClass = $row['mode'] === 'WFH' ? 'badge-wfh' : 'badge-wfo';
 
                                 $logPayload = [
                                     'id' => $report->id,
                                     'work_log_id' => $report->id,
-                                    'employee_name' => $report->display_name ?? 'Employee',
-                                    'employee_code' => $report->employee_code ?? 'N/A',
-                                    'passport_photo_url' => $passportPhotoUrl,
-                                    'employee_initial' => $employeeInitial,
-                                    'department' => $report->department_name ?? 'Staff',
-                                    'designation' => $report->designation_name ?? 'Member',
-                                    'work_date' => $reportDate,
-                                    'shift_name' => 'Default Shift',
+                                    'employee_name' => $row['employee_name'],
+                                    'employee_code' => $row['employee_code'],
+                                    'passport_photo_url' => resolveEmployeePassportPhoto($report),
+                                    'employee_initial' => resolveEmployeeInitials($report),
+                                    'department' => $row['department'],
+                                    'designation' => $row['designation'],
+                                    'work_date' => $row['date'],
+                                    'shift_name' => $row['shift_context'],
                                     'attendance_status' => ($report->attendance_status ?? 'present') === 'absent' && ($report->is_lwp ?? false) ? '🔴 ABSENT' : ($report->attendance_status ?? 'present'),
                                     'is_lwp' => (bool) ($report->is_lwp ?? false),
-                                    'title' => $repTitle,
-                                    'description' => $repDesc,
-                                    'status' => $repStatus,
-                                    'work_mode' => strtoupper($report->work_mode ?? 'WFO'),
-                                    'submitted_time' => $submittedAt,
-                                    'projects' => $projectsList,
-                                    'requirements' => $requirementsList,
-                                    'issues' => $issues,
-                                    'notes' => $notes,
+                                    'title' => $row['title'] ?? 'Work Report',
+                                    'description' => $row['summary_desc'],
+                                    'status' => $row['status'],
+                                    'work_mode' => $row['mode'],
+                                    'submitted_time' => $row['submitted_time'],
+                                    'projects' => [],
+                                    'requirements' => array_map(fn($t) => ['text' => $t['text'], 'done' => $t['done']], $row['structured_tasks']),
+                                    'issues' => [],
+                                    'notes' => null,
                                 ];
                             @endphp
                         <tr>
-                            <!-- S.No. -->
-                            <td class="py-3 px-3 align-middle text-center font-weight-bold text-muted" style="font-size: 12.5px;" data-export="{{ $loop->iteration }}">
+                            <td class="py-3 px-3 align-middle text-center font-weight-bold text-muted table-sr-no" style="font-size: 12px;" data-export="{{ $loop->iteration }}">
                                 {{ $loop->iteration }}
                             </td>
-                            <td class="py-3 px-4 align-middle font-weight-bold text-dark" style="white-space: nowrap;" data-export="{{ $reportDate }}">
-                                {{ $reportDate }}
-                            </td>
-                            <td class="py-3 align-middle" data-export="{{ $empFullText }}">
-                                <div class="d-flex align-items-center">
-                                    <!-- <span class="hrms-emp-avatar hrms-emp-avatar-sm mr-2" style="width: 34px; height: 34px; border-radius: 10px; background: #EEF2FF; color: #4F46E5; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; overflow: hidden;">
-                                        @if($passportPhotoUrl)
-                                            <img src="{{ $passportPhotoUrl }}" alt="{{ $report->display_name }}" style="width: 100%; height: 100%; object-fit: cover;">
-                                        @else
-                                            {{ $employeeInitial }}
-                                        @endif
-                                    </span> -->
-                                    <div>
-                                        <strong class="text-dark font-weight-bold d-block" style="line-height: 1.2;">{{ $report->display_name }}</strong>
-                                        <small class="text-muted" style="font-size: 11px;">{{ $report->employee_code }}</small>
-                                    </div>
+
+                            <td class="py-3 px-3 align-middle" data-export="{{ $row['employee'] }}">
+                                <div>
+                                    <strong class="text-dark font-weight-bold d-block" style="line-height: 1.2; font-size: 13px;">{{ $row['employee_name'] }}</strong>
+                                    <small class="text-muted font-weight-bold" style="font-size: 11px;">({{ $row['employee_code'] }})</small>
                                 </div>
                             </td>
-                            <td class="py-3 align-middle" data-export="{{ $repTitle }}">
-                                <span class="font-weight-bold text-primary" style="font-size: 13px;">
-                                    <i class="fas fa-folder mr-1 text-primary"></i> {{ $repTitle }}
+
+                            <td class="py-3 px-3 align-middle font-weight-bold text-dark" style="white-space: nowrap; font-size: 13px;" data-export="{{ $row['date'] }}" data-order="{{ $row['date_raw'] }}">
+                                {{ $row['date'] }}
+                                @if($row['day_name'])
+                                    <div class="small text-muted font-weight-semibold" style="font-size: 11px;">{{ $row['day_name'] }}</div>
+                                @endif
+                            </td>
+
+                            <td class="py-3 px-2 align-middle" data-export="{{ $row['mode'] }}">
+                                <span class="badge-premium-pill {{ $modeBadgeClass }}">
+                                    @if($row['mode'] === 'WFH')
+                                        <i class="fas fa-laptop-house mr-1"></i> WFH
+                                    @else
+                                        <i class="fas fa-building mr-1"></i> WFO
+                                    @endif
                                 </span>
                             </td>
-                            <td class="py-3 align-middle" data-export="{{ $exportTaskText }}">
-                                <div class="d-flex align-items-center gap-2" style="gap: 8px;">
-                                    <span class="badge badge-light border font-weight-bold px-2.5 py-1 text-dark" style="border-radius: 8px; font-size: 11px;">
-                                        <i class="fas fa-list-check text-primary mr-1"></i> {{ $tasksLabel }}
-                                    </span>
-                                    <span class="badge font-weight-bold text-uppercase px-2.5 py-1" style="border-radius: 8px; font-size: 10px; letter-spacing: 0.05em; {{ $statusBadgeStyle }}">
-                                        {{ str_replace('_', ' ', $repStatus) }}
-                                    </span>
+
+                            <td class="py-3 px-3 align-middle font-weight-bold text-dark" style="font-size: 12.5px;" data-export="{{ $row['shift_context'] }}">
+                                {{ $row['shift_context'] }}
+                            </td>
+
+                            <td class="py-3 px-3 align-middle" data-export="{{ $row['gross_work'] }}">
+                                <div class="badge-gross-pill" style="white-space: nowrap;">
+                                    <i class="fas fa-stopwatch mr-1"></i> {{ $row['gross_work'] }}
                                 </div>
                             </td>
-                            <td class="py-3 align-middle text-center font-weight-bold text-muted small" data-export="{{ $submittedAt }}">
-                                {{ $submittedAt }}
+
+                            <td class="py-3 px-3 align-middle" style="min-width: 350px;" data-export="{{ $row['summary_desc'] }}">
+                                <div class="work-summary-full-text">
+                                    @foreach($row['summary_paragraphs'] as $para)
+                                        <p class="mb-2" style="line-height: 1.5; color: #1E293B; font-size: 12.5px; font-weight: 500;">
+                                            {{ $para }}
+                                        </p>
+                                    @endforeach
+                                </div>
                             </td>
-                            <td class="py-3 align-middle text-right pr-4 no-export">
+
+                            <td class="py-3 px-3 align-middle" style="min-width: 240px;" data-export="{{ $row['structured_tasks_text'] }}">
+                                <div class="structured-tasks-list">
+                                    @foreach($row['structured_tasks'] as $tItem)
+                                        <div class="structured-task-item {{ $tItem['done'] ? 'done' : 'pending' }}" style="line-height: 1.5; margin-bottom: 3px; font-size: 12px; font-weight: 600;">
+                                            <span class="task-tag font-weight-bold {{ $tItem['done'] ? 'text-success' : 'text-warning' }}">{{ $tItem['done'] ? '[Done]' : '[Pending]' }}</span>
+                                            <span class="text-dark">{{ $tItem['text'] }}</span>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </td>
+
+                            <td class="py-3 align-middle text-right pr-4 no-export" style="white-space: nowrap;">
                                 <button type="button" class="btn btn-sm btn-light border p-2 font-weight-bold" style="border-radius: 10px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s;" data-work-log="{{ json_encode($logPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}" onclick="parseAndOpenWorkReport(this)">
-                                    <i class="fas fa-eye text-primary"></i> View Report
+                                    <i class="fas fa-eye text-primary"></i> Details
                                 </button>
                             </td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="6" class="text-center text-muted py-5">
+                            <td colspan="9" class="text-center text-muted py-5">
                                 <i class="fas fa-file-signature fa-3x mb-3 text-muted"></i>
                                 <h5 class="font-weight-bold text-dark">No Daily Work Reports Found</h5>
                             </td>
@@ -386,61 +335,24 @@
             $('#reportingWorkReportsTable').DataTable().destroy();
         }
 
-        const exportOptionsExcel = {
-            columns: ':not(.no-export)',
-            format: {
-                body: function ( data, row, column, node ) {
-                    if (node && node.hasAttribute('data-export')) {
-                        return node.getAttribute('data-export');
-                    }
-                    if (typeof data === 'string') {
-                        var temp = document.createElement("div");
-                        temp.innerHTML = data;
-                        return (temp.textContent || temp.innerText || "").trim();
-                    }
-                    return data;
+        const exportFormatFn = {
+            body: function ( data, row, column, node ) {
+                if (node && node.hasAttribute('data-export')) {
+                    return node.getAttribute('data-export');
                 }
-            }
-        };
-
-        const exportOptionsPdf = {
-            columns: ':not(.no-export)',
-            format: {
-                body: function ( data, row, column, node ) {
-                    if (node && node.hasAttribute('data-export')) {
-                        let val = node.getAttribute('data-export');
-                        return val;
-                    }
-                    if (typeof data === 'string') {
-                        var temp = document.createElement("div");
-                        temp.innerHTML = data;
-                        return (temp.textContent || temp.innerText || "").trim();
-                    }
-                    return data;
+                if (typeof data === 'string') {
+                    var temp = document.createElement("div");
+                    temp.innerHTML = data;
+                    return (temp.textContent || temp.innerText || "").trim();
                 }
-            }
-        };
-
-        const exportOptionsPrint = {
-            columns: ':not(.no-export)',
-            format: {
-                body: function ( data, row, column, node ) {
-                    if (node && node.hasAttribute('data-export')) {
-                        return node.getAttribute('data-export');
-                    }
-                    if (typeof data === 'string') {
-                        var temp = document.createElement("div");
-                        temp.innerHTML = data;
-                        return (temp.textContent || temp.innerText || "").trim();
-                    }
-                    return data;
-                }
+                return data;
             }
         };
 
         var table = $('#reportingWorkReportsTable').DataTable({
             pageLength: 25,
-            ordering: false,
+            order: [[2, 'desc']], // Sort by Date desc (Date is col 2, Sr No is col 0)
+            ordering: true,
             searching: true, 
             paging: true,
             info: true,
@@ -453,265 +365,195 @@
             },
             buttons: [
                 {
-                    extend: 'csvHtml5',
-                    text: '<i class="fas fa-file-csv text-info"></i> CSV',
+                    extend: 'excelHtml5',
+                    text: '<i class="far fa-file-excel text-success mr-1"></i> Excel',
                     className: 'orb-export-btn',
-                    exportOptions: exportOptionsExcel
+                    title: 'Daily Work Reports',
+                    exportOptions: {
+                        columns: ':not(.no-export)',
+                        format: exportFormatFn
+                    }
                 },
                 {
-                    extend: 'excelHtml5',
-                    text: '<i class="fas fa-file-excel text-success"></i> Excel',
+                    extend: 'csvHtml5',
+                    text: '<i class="fas fa-file-csv text-primary mr-1"></i> CSV',
                     className: 'orb-export-btn',
-                    exportOptions: exportOptionsExcel,
-                    customize: function (xlsx) {
-                        var sheet = xlsx.xl.worksheets['sheet1.xml'];
-                        $('row c', sheet).each(function () {
-                            if ($('is t', this).text().indexOf('\n') !== -1) {
-                                $(this).attr('s', '55'); // wrapped text style
-                            }
-                        });
+                    title: 'Daily Work Reports',
+                    exportOptions: {
+                        columns: ':not(.no-export)',
+                        format: exportFormatFn
                     }
                 },
                 {
                     extend: 'pdfHtml5',
-                    text: '<i class="fas fa-file-pdf text-danger"></i> PDF',
+                    text: '<i class="far fa-file-pdf text-danger mr-1"></i> PDF',
                     className: 'orb-export-btn',
                     orientation: 'landscape',
                     pageSize: 'A4',
-                    title: 'OrboOne HRMS - Team Management Daily Work Reports',
-                    exportOptions: exportOptionsPdf,
-                    customize: function (doc) {
-                        doc.pageOrientation = 'landscape';
-                        doc.pageSize = 'A4';
-                        doc.pageMargins = [20, 45, 20, 35];
-
-                        doc['header'] = function(currentPage, pageCount) {
-                            return {
-                                margin: [20, 15, 20, 0],
-                                columns: [
-                                    {
-                                        text: 'ORBOONE HRMS — DAILY WORK REPORTS SUMMARY',
-                                        fontSize: 9,
-                                        bold: true,
-                                        color: '#4B00E8'
-                                    },
-                                    {
-                                        text: 'Page ' + currentPage.toString() + ' of ' + pageCount,
-                                        alignment: 'right',
-                                        fontSize: 9,
-                                        color: '#64748B'
-                                    }
-                                ]
-                            };
-                        };
-
-                        var objLayout = {};
-                        objLayout['hLineWidth'] = function(i) { return 0.5; };
-                        objLayout['vLineWidth'] = function(i) { return 0; };
-                        objLayout['hLineColor'] = function(i) { return '#CBD5E1'; };
-                        objLayout['paddingLeft'] = function(i) { return 8; };
-                        objLayout['paddingRight'] = function(i) { return 8; };
-                        objLayout['paddingTop'] = function(i) { return 6; };
-                        objLayout['paddingBottom'] = function(i) { return 6; };
-                        doc.content[1].layout = objLayout;
-
-                        var headerRow = doc.content[1].table.body[0];
-                        for (var i = 0; i < headerRow.length; i++) {
-                            headerRow[i].fillColor = '#1E293B';
-                            headerRow[i].color = '#FFFFFF';
-                            headerRow[i].fontSize = 9.5;
-                            headerRow[i].bold = true;
+                    title: 'Daily Work Reports',
+                    exportOptions: {
+                        columns: ':not(.no-export)',
+                        format: exportFormatFn
+                    },
+                    customize: function(doc) {
+                        doc.pageMargins = [18, 20, 18, 20];
+                        doc.defaultStyle.fontSize = 8;
+                        if (doc.styles.tableHeader) {
+                            doc.styles.tableHeader.fontSize = 9;
+                            doc.styles.tableHeader.fillColor = '#243746';
+                            doc.styles.tableHeader.color = '#FFFFFF';
+                            doc.styles.tableHeader.alignment = 'left';
+                            doc.styles.tableHeader.bold = true;
                         }
-
-                        doc.content[1].table.widths = ['6%', '11%', '22%', '18%', '33%', '10%'];
+                        if (doc.content && doc.content[1] && doc.content[1].table) {
+                            doc.content[1].table.widths = ['4%', '14%', '9%', '6%', '10%', '10%', '29%', '18%'];
+                        }
                     }
                 },
                 {
                     extend: 'print',
-                    text: '<i class="fas fa-print text-primary"></i> Print',
+                    text: '<i class="fas fa-print mr-1"></i> Print',
                     className: 'orb-export-btn',
-                    title: '',
-                    exportOptions: exportOptionsPrint,
-                    customize: function (win) {
-                        var body = $(win.document.body);
+                    exportOptions: {
+                        columns: ':not(.no-export)',
+                        format: exportFormatFn
+                    },
+                    customize: function(win) {
+                        var $winBody = $(win.document.body);
+                        $winBody.empty();
 
-                        $(win.document.head).append(`
-                            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-                            <style>
-                                @media print {
-                                    @page {
-                                        size: A4 landscape;
-                                        margin: 10mm 12mm;
-                                    }
-                                }
-                                body {
-                                    font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
-                                    color: #0F172A !important;
-                                    background: #FFFFFF !important;
-                                    padding: 15px !important;
-                                    margin: 0 !important;
-                                }
-                                .print-hero {
-                                    background: linear-gradient(135deg, #4B00E8 0%, #FF5252 100%) !important;
-                                    border-radius: 12px !important;
-                                    padding: 16px 22px !important;
-                                    color: #FFFFFF !important;
-                                    margin-bottom: 20px !important;
-                                    display: flex !important;
-                                    align-items: center !important;
-                                    justify-content: space-between !important;
-                                    -webkit-print-color-adjust: exact !important;
-                                    print-color-adjust: exact !important;
-                                }
-                                .print-hero h2 {
-                                    margin: 0 !important;
-                                    font-size: 20px !important;
-                                    font-weight: 800 !important;
-                                    letter-spacing: -0.01em !important;
-                                    color: #FFFFFF !important;
-                                }
-                                .print-hero p {
-                                    margin: 2px 0 0 0 !important;
-                                    font-size: 12px !important;
-                                    opacity: 0.92 !important;
-                                    color: #FFFFFF !important;
-                                }
-                                .print-meta-badge {
-                                    background: rgba(255, 255, 255, 0.22) !important;
-                                    padding: 6px 14px !important;
-                                    border-radius: 8px !important;
-                                    font-size: 11px !important;
-                                    font-weight: 700 !important;
-                                    color: #FFFFFF !important;
-                                    border: 1px solid rgba(255, 255, 255, 0.3) !important;
-                                    white-space: nowrap !important;
-                                }
-                                table.dataTable {
-                                    width: 100% !important;
-                                    border-collapse: separate !important;
-                                    border-spacing: 0 !important;
-                                    border-radius: 10px !important;
-                                    overflow: hidden !important;
-                                    border: 1px solid #CBD5E1 !important;
-                                    margin-top: 10px !important;
-                                }
-                                table.dataTable thead th {
-                                    background: #1E293B !important;
-                                    color: #FFFFFF !important;
-                                    font-size: 11px !important;
-                                    font-weight: 800 !important;
-                                    text-transform: uppercase !important;
-                                    letter-spacing: 0.05em !important;
-                                    padding: 10px 14px !important;
-                                    border: none !important;
-                                    -webkit-print-color-adjust: exact !important;
-                                    print-color-adjust: exact !important;
-                                }
-                                table.dataTable tbody td {
-                                    padding: 10px 14px !important;
-                                    border-bottom: 1px solid #E2E8F0 !important;
-                                    font-size: 11.5px !important;
-                                    vertical-align: top !important;
-                                }
-                                table.dataTable tbody tr:nth-child(even) {
-                                    background: #F8FAFC !important;
-                                    -webkit-print-color-adjust: exact !important;
-                                    print-color-adjust: exact !important;
-                                }
-                                .print-status-badge {
-                                    display: inline-block !important;
-                                    padding: 3px 8px !important;
-                                    border-radius: 6px !important;
-                                    font-size: 10px !important;
-                                    font-weight: 800 !important;
-                                    text-transform: uppercase !important;
-                                    letter-spacing: 0.04em !important;
-                                    margin-bottom: 6px !important;
-                                    -webkit-print-color-adjust: exact !important;
-                                    print-color-adjust: exact !important;
-                                }
-                                .print-st-completed { background: #DCFCE7 !important; color: #15803D !important; border: 1px solid #86EFAC !important; }
-                                .print-st-testing { background: #E0F2FE !important; color: #0369A1 !important; border: 1px solid #7DD3FC !important; }
-                                .print-st-progress { background: #FEF3C7 !important; color: #B45309 !important; border: 1px solid #FCD34D !important; }
-                                .print-st-blocked { background: #FEE2E2 !important; color: #B91C1C !important; border: 1px solid #FCA5A5 !important; }
-                                .print-task-box {
-                                    background: #F8FAFC !important;
-                                    border: 1px solid #E2E8F0 !important;
-                                    border-radius: 8px !important;
-                                    padding: 8px 10px !important;
-                                    margin-top: 4px !important;
-                                    -webkit-print-color-adjust: exact !important;
-                                    print-color-adjust: exact !important;
-                                }
-                                .print-task-line {
-                                    font-size: 11px !important;
-                                    line-height: 1.5 !important;
-                                    color: #334155 !important;
-                                    display: flex !important;
-                                    align-items: flex-start !important;
-                                    margin-bottom: 2px !important;
-                                }
-                                .print-icon-done { color: #16A34A !important; font-weight: 800 !important; margin-right: 6px !important; }
-                                .print-icon-pend { color: #D97706 !important; font-weight: 800 !important; margin-right: 6px !important; }
-                            </style>
-                        `);
+                        var printHtml = `
+                            <div class="print-container">
+                                <h1 class="print-title">Daily Work Reports</h1>
+                                <table class="print-table">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 4%; text-align: center;">#</th>
+                                            <th style="width: 14%;">Employee</th>
+                                            <th style="width: 9%;">Date</th>
+                                            <th style="width: 6%;">Mode</th>
+                                            <th style="width: 10%;">Shift Context</th>
+                                            <th style="width: 10%;">Gross Work</th>
+                                            <th style="width: 29%;">Work Summary Description</th>
+                                            <th style="width: 18%;">Structured Tasks</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                        `;
 
-                        body.find('h1').remove();
+                        var srNo = 1;
+                        table.rows({ filter: 'applied' }).every(function() {
+                            var $tr = $(this.node());
+                            var emp = $tr.find('td:nth-child(2)').attr('data-export') || $tr.find('td:nth-child(2)').text().trim();
+                            var date = $tr.find('td:nth-child(3)').attr('data-export') || $tr.find('td:nth-child(3)').text().trim();
+                            var mode = $tr.find('td:nth-child(4)').attr('data-export') || $tr.find('td:nth-child(4)').text().trim();
+                            var shift = $tr.find('td:nth-child(5)').attr('data-export') || $tr.find('td:nth-child(5)').text().trim();
+                            var gross = $tr.find('td:nth-child(6)').attr('data-export') || $tr.find('td:nth-child(6)').text().trim();
+                            var summary = $tr.find('td:nth-child(7)').attr('data-export') || $tr.find('td:nth-child(7)').text().trim();
+                            var tasks = $tr.find('td:nth-child(8)').attr('data-export') || $tr.find('td:nth-child(8)').text().trim();
 
-                        var printDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-                        body.prepend(`
-                            <div class="print-hero">
-                                <div>
-                                    <h2>OrboOne HRMS</h2>
-                                    <p>Team Management — Daily Work Reports & Project Tasks Summary</p>
-                                </div>
-                                <div class="print-meta-badge">
-                                    Date: ${printDate}
-                                </div>
-                            </div>
-                        `);
+                            var summaryHtml = summary.split('\n\n').map(function(p) {
+                                var esc = $('<div>').text(p).html();
+                                return '<p style="margin: 0 0 8px 0; line-height: 1.45;">' + esc + '</p>';
+                            }).join('');
 
-                        body.find('table tbody tr').each(function() {
-                            var $td = $(this).find('td:nth-child(5)');
-                            var rawText = $td.text() || '';
-                            if (!rawText.trim()) return;
+                            var tasksHtml = tasks.split('\n').map(function(t) {
+                                if (!t.trim()) return '';
+                                var esc = $('<div>').text(t).html();
+                                return '<div style="margin-bottom: 3px; line-height: 1.45;">' + esc + '</div>';
+                            }).join('');
 
-                            var lines = rawText.split('\n');
-                            var html = '';
-                            var taskLinesHtml = '';
-
-                            lines.forEach(function(line) {
-                                var trimmed = line.trim();
-                                if (!trimmed) return;
-
-                                if (trimmed.startsWith('Status:')) {
-                                    var statusStr = trimmed.replace('Status:', '').trim().toUpperCase();
-                                    var cls = 'print-st-progress';
-                                    if (statusStr === 'COMPLETED' || statusStr === 'DONE') cls = 'print-st-completed';
-                                    else if (statusStr === 'TESTING' || statusStr === 'TESTED') cls = 'print-st-testing';
-                                    else if (statusStr === 'BLOCKED') cls = 'print-st-blocked';
-
-                                    html += `<div class="print-status-badge ${cls}">${statusStr}</div>`;
-                                } else if (trimmed === 'Tasks:') {
-                                } else if (trimmed.startsWith('[Done]')) {
-                                    var taskName = trimmed.replace('[Done]', '').trim();
-                                    taskLinesHtml += `<div class="print-task-line"><span class="print-icon-done">✓</span><span>${taskName}</span></div>`;
-                                } else if (trimmed.startsWith('[Pending]')) {
-                                    var taskName = trimmed.replace('[Pending]', '').trim();
-                                    taskLinesHtml += `<div class="print-task-line"><span class="print-icon-pend">○</span><span>${taskName}</span></div>`;
-                                } else {
-                                    taskLinesHtml += `<div class="print-task-line"><span>${trimmed}</span></div>`;
-                                }
-                            });
-
-                            if (taskLinesHtml) {
-                                html += `<div class="print-task-box">${taskLinesHtml}</div>`;
-                            }
-
-                            if (html) {
-                                $td.html(html);
-                            }
+                            printHtml += `
+                                <tr>
+                                    <td style="text-align: center; font-weight: 700; color: #64748B;">${srNo++}</td>
+                                    <td style="font-weight: 500;">${$('<div>').text(emp).html()}</td>
+                                    <td style="white-space: nowrap;">${$('<div>').text(date).html()}</td>
+                                    <td style="font-weight: 500;">${$('<div>').text(mode).html()}</td>
+                                    <td>${$('<div>').text(shift).html()}</td>
+                                    <td style="white-space: nowrap;">${$('<div>').text(gross).html()}</td>
+                                    <td>${summaryHtml}</td>
+                                    <td>${tasksHtml}</td>
+                                </tr>
+                            `;
                         });
+
+                        printHtml += `
+                                    </tbody>
+                                </table>
+                            </div>
+                        `;
+
+                        var customStyles = `
+                            @page {
+                                size: landscape A4;
+                                margin: 10mm 12mm;
+                            }
+                            * {
+                                -webkit-print-color-adjust: exact !important;
+                                print-color-adjust: exact !important;
+                                box-sizing: border-box;
+                            }
+                            body {
+                                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+                                color: #111827 !important;
+                                background: #ffffff !important;
+                                padding: 0 !important;
+                                margin: 0 !important;
+                                font-size: 11px !important;
+                            }
+                            .print-container {
+                                width: 100%;
+                                padding: 10px 15px;
+                            }
+                            .print-title {
+                                text-align: center;
+                                font-size: 21px;
+                                font-weight: 800;
+                                color: #111827;
+                                margin: 0 0 16px 0;
+                                letter-spacing: -0.01em;
+                            }
+                            .print-table {
+                                width: 100%;
+                                border-collapse: collapse;
+                                font-size: 11px;
+                            }
+                            .print-table thead th {
+                                background-color: #243746 !important;
+                                color: #ffffff !important;
+                                font-weight: 700;
+                                font-size: 11px;
+                                padding: 8px 10px;
+                                text-align: left;
+                                border: 1px solid #243746;
+                                vertical-align: middle;
+                            }
+                            .print-table tbody tr {
+                                page-break-inside: avoid;
+                                break-inside: avoid;
+                            }
+                            .print-table tbody tr:nth-child(odd) td {
+                                background-color: #F2F4F8 !important;
+                            }
+                            .print-table tbody tr:nth-child(even) td {
+                                background-color: #FFFFFF !important;
+                            }
+                            .print-table tbody td {
+                                padding: 8px 10px;
+                                border: 1px solid #E2E8F0;
+                                vertical-align: top;
+                                color: #1E293B;
+                                font-size: 11px;
+                                line-height: 1.45;
+                            }
+                        `;
+
+                        var styleElem = win.document.createElement('style');
+                        styleElem.type = 'text/css';
+                        styleElem.innerHTML = customStyles;
+                        win.document.head.appendChild(styleElem);
+
+                        $winBody.html(printHtml);
                     }
                 }
             ],
@@ -725,6 +567,16 @@
                     next: 'Next'
                 }
             }
+        });
+
+        // Dynamic sequential numbering for Sr. No. across pagination, filtering & sorting
+        table.on('draw.dt', function () {
+            var info = table.page.info();
+            table.column(0, { search: 'applied', order: 'applied', page: 'applied' }).nodes().each(function (cell, i) {
+                var num = i + 1 + info.start;
+                cell.innerHTML = num;
+                cell.setAttribute('data-export', num);
+            });
         });
 
         // Inject the entries dropdown on the left, and print/export buttons on the right

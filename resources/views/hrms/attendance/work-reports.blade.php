@@ -1061,257 +1061,125 @@
                             <tr>
                                 <th class="text-center" style="width: 45px;">#</th>
                                 <th style="min-width: 170px;">Employee</th>
-                                <th style="min-width: 130px;">Date & Time</th>
-                                <th style="min-width: 110px;">Mode & Shift</th>
+                                <th style="min-width: 110px;">Date</th>
+                                <th style="min-width: 80px;">Mode</th>
+                                <th style="min-width: 120px;">Shift Context</th>
                                 <th style="min-width: 110px;">Gross Work</th>
-                                <th style="min-width: 380px; width: 42%;">Project & Work Summary</th>
-                                <th class="text-center" style="min-width: 90px;">Tasks</th>
-                                <th class="text-right pr-4 no-export" style="width: 140px;">Actions</th>
+                                <th style="min-width: 380px; width: 34%;">Work Summary Description</th>
+                                <th style="min-width: 250px; width: 22%;">Structured Tasks</th>
+                                <th class="text-right pr-4 no-export" style="width: 110px;">Actions</th>
                             </tr>
                         </thead>
 
                         <tbody>
                             @forelse($workLogs as $log)
                             @php
-                                $attendance = $log->attendance;
-                                $mode = strtolower($attendance->work_mode ?? 'wfo');
-                                $modeText = strtoupper($mode);
-                                $modeBadgeClass = $mode === 'wfh' ? 'badge-wfh' : 'badge-wfo';
-                                
-                                $grossWork = $attendance && $attendance->gross_duration ? $attendance->gross_duration : '-';
-                                    
-                                $tasks = $log->work_summary_json;
-                                if (is_string($tasks)) {
-                                    $tasks = json_decode($tasks, true);
-                                }
-                                
-                                $title = 'Work Report Submitted';
-                                $description = null;
-                                $status = 'Completed';
-                                $projectsList = [];
-                                $requirementsList = [];
-                                $testStatus = ['tested' => false, 'completed' => false];
-                                $issues = [];
-                                $notes = null;
-
-                                if (is_array($tasks)) {
-                                    if (isset($tasks['projects']) && is_array($tasks['projects'])) {
-                                        $projectsList = $tasks['projects'];
-                                        foreach ($projectsList as $p) {
-                                            $pName = $p['project_name'] ?? $p['name'] ?? 'Project';
-                                            if (isset($p['tasks']) && is_array($p['tasks'])) {
-                                                foreach ($p['tasks'] as $t) {
-                                                    $tName = $t['task_name'] ?? $t['description'] ?? $t['task'] ?? $t['title'] ?? 'Task';
-                                                    $tDone = (isset($t['is_completed']) ? ($t['is_completed'] == 1 || $t['is_completed'] === true) : true);
-                                                    $requirementsList[] = [
-                                                        'text' => $tName,
-                                                        'done' => $tDone,
-                                                        'project' => $pName
-                                                    ];
-                                                }
-                                            }
-                                        }
-                                    }
-
-                                    if (empty($requirementsList)) {
-                                        $reqItems = $tasks['requirements'] ?? ($tasks['tasks'] ?? []);
-                                        if (is_array($reqItems)) {
-                                            $requirementsList = $reqItems;
-                                        }
-                                    }
-
-                                    $status = $tasks['today_work_status'] ?? ($tasks['status'] ?? 'Completed');
-
-                                    if (!empty($projectsList) && !empty($projectsList[0]['project_name'])) {
-                                        $title = $projectsList[0]['project_name'];
-                                    } elseif (!empty($tasks['task_name'])) {
-                                        $title = $tasks['task_name'];
-                                    } elseif (!empty($tasks['title'])) {
-                                        $title = $tasks['title'];
-                                    }
-
-                                    $description = $tasks['description'] ?? ($tasks['today_work_description'] ?? 'Work report submitted.');
-                                } else {
-                                    $description = $log->work_summary ?? 'No summary provided.';
-                                }
-                                
-                                // Clean and normalize summary description
-                                $cleanSummary = $description;
-                                if ($cleanSummary) {
-                                    if (str_contains($cleanSummary, '☑') || str_contains($cleanSummary, '🗹') || str_contains($cleanSummary, '☐') || str_contains($cleanSummary, 'Project:')) {
-                                        $rawLines = explode("\n", str_replace(["\r\n", "\r"], "\n", $cleanSummary));
-                                        $filteredLines = [];
-                                        foreach ($rawLines as $rLine) {
-                                            $trimmed = trim($rLine);
-                                            if (empty($trimmed)) continue;
-                                            if (stripos($trimmed, 'Project:') === 0) continue;
-                                            if (stripos($trimmed, "Today's Work Status:") === 0 || stripos($trimmed, "Today Work Status:") === 0) continue;
-                                            if (preg_match('/^[☑🗹☐✓✔•\-*]\s*/u', $trimmed)) {
-                                                $trimmed = preg_replace('/^[☑🗹☐✓✔•\-*]\s*/u', '', $trimmed);
-                                            }
-                                            if (!empty($trimmed)) {
-                                                $filteredLines[] = $trimmed;
-                                            }
-                                        }
-                                        $filteredLines = array_unique($filteredLines);
-                                        if (count($filteredLines) > 1 && !empty($title) && strtolower(trim($filteredLines[0])) === strtolower(trim($title))) {
-                                            array_shift($filteredLines);
-                                        }
-                                        $cleanSummary = implode(' ', $filteredLines);
-                                    }
-                                    $cleanSummary = preg_replace('/[☑🗹☐✓✔]/u', '', $cleanSummary);
-                                    $cleanSummary = preg_replace('/Today\'?s\s+Work\s+Status:\s*[^\n\r]+/i', '', $cleanSummary);
-                                    $cleanSummary = preg_replace('/\s+/', ' ', trim($cleanSummary));
-                                }
-
-                                if (empty($cleanSummary) || $cleanSummary === 'Work report submitted.') {
-                                    if (!empty($requirementsList)) {
-                                        $taskTexts = array_map(function($r) {
-                                            return is_array($r) ? ($r['text'] ?? ($r['task_name'] ?? ($r['task'] ?? ''))) : (string)$r;
-                                        }, array_slice($requirementsList, 0, 3));
-                                        $taskTexts = array_filter($taskTexts);
-                                        if (!empty($taskTexts)) {
-                                            $cleanSummary = implode('; ', $taskTexts);
-                                        }
-                                    }
-                                    if (empty($cleanSummary)) {
-                                        $cleanSummary = 'Daily work deliverables logged.';
-                                    }
-                                }
-
-                                $tasksCount = is_array($requirementsList) ? count($requirementsList) : 0;
-                                $employeeName = optional($log->user)->name ?? 'Employee';
-                                $employeeCode = optional($log->employee)->employee_code ?? 'N/A';
-                                $deptName = optional(optional($log->employee)->department)->name ?? 'Staff';
-                                $desigName = optional(optional($log->employee)->designation)->name ?? 'Member';
+                                $row = formatWorkReportRow($log);
+                                $empId = $log->employee_id ?: ($log->user_id ?: 0);
+                                $modeBadgeClass = $row['mode'] === 'WFH' ? 'badge-wfh' : 'badge-wfo';
 
                                 $logPayload = [
                                     'id' => $log->id,
                                     'work_log_id' => $log->id,
-                                    'employee_name' => $employeeName,
-                                    'employee_code' => $employeeCode,
+                                    'employee_name' => $row['employee_name'],
+                                    'employee_code' => $row['employee_code'],
                                     'passport_photo_url' => resolveEmployeePassportPhoto($log->employee ?? $log),
                                     'employee_initial' => resolveEmployeeInitials($log->employee ?? $log),
-                                    'department' => $deptName,
-                                    'designation' => $desigName,
-                                    'work_date' => $log->work_date ? $log->work_date->format('d M Y') : '-',
-                                    'shift_name' => optional(optional($log->attendance)->attendanceTime)->name ?? 'Default Shift',
+                                    'department' => $row['department'],
+                                    'designation' => $row['designation'],
+                                    'work_date' => $row['date'],
+                                    'shift_name' => $row['shift_context'],
                                     'attendance_status' => (optional($log->attendance)->attendance_status ?? 'present'),
-                                    'title' => $title,
-                                    'description' => $cleanSummary,
-                                    'status' => $status,
-                                    'work_mode' => strtoupper(optional($log->attendance)->work_mode ?? 'WFO'),
-                                    'submitted_time' => $log->created_at ? $log->created_at->format('h:i A') : '-',
-                                    'projects' => $projectsList,
-                                    'requirements' => $requirementsList,
-                                    'test_status' => $testStatus,
-                                    'issues' => $issues,
-                                    'notes' => $notes,
+                                    'title' => $row['title'] ?? 'Work Report',
+                                    'description' => $row['summary_desc'],
+                                    'status' => $row['status'],
+                                    'work_mode' => $row['mode'],
+                                    'submitted_time' => $row['submitted_time'],
+                                    'projects' => [],
+                                    'requirements' => array_map(fn($t) => ['text' => $t['text'], 'done' => $t['done']], $row['structured_tasks']),
+                                    'test_status' => ['tested' => false, 'completed' => true],
+                                    'issues' => [],
+                                    'notes' => null,
                                 ];
-
-                                $empId = $log->employee_id ?: ($log->user_id ?: 0);
                             @endphp
                             <tr>
-                                <td class="text-center font-weight-bold text-muted" style="font-size: 12.5px;">
+                                <td class="text-center font-weight-bold text-muted table-sr-no" style="font-size: 12px;" data-export="{{ $loop->iteration }}">
                                     {{ $loop->iteration }}
                                 </td>
-                                
-                                <td>
+
+                                <td data-export="{{ $row['employee'] }}">
                                     <div class="table-emp-cell">
                                         <div class="table-emp-avatar">
                                             @if(resolveEmployeePassportPhoto($log->employee ?? $log))
-                                                <img src="{{ resolveEmployeePassportPhoto($log->employee ?? $log) }}" alt="{{ $employeeName }}">
+                                                <img src="{{ resolveEmployeePassportPhoto($log->employee ?? $log) }}" alt="{{ $row['employee_name'] }}">
                                             @else
                                                 <span>{{ resolveEmployeeInitials($log->employee ?? $log) }}</span>
                                             @endif
                                         </div>
                                         <div>
-                                            <div class="table-emp-name">{{ $employeeName }}</div>
+                                            <div class="table-emp-name">{{ $row['employee_name'] }}</div>
                                             <div class="table-emp-meta">
-                                                <span>{{ $employeeCode }}</span>
-                                                <span>&bull;</span>
-                                                <span class="badge-dept-tag">{{ $deptName }}</span>
+                                                <span class="font-weight-bold">({{ $row['employee_code'] }})</span>
                                             </div>
                                         </div>
                                     </div>
                                 </td>
 
-                                <td data-order="{{ $log->work_date ? $log->work_date->format('Y-m-d') : '' }}">
-                                    <div class="font-weight-bold text-dark" style="font-size: 13px;">
-                                        {{ $log->work_date ? $log->work_date->format('d M Y') : '-' }}
+                                <td data-export="{{ $row['date'] }}" data-order="{{ $row['date_raw'] }}">
+                                    <div class="font-weight-bold text-dark" style="font-size: 13px; white-space: nowrap;">
+                                        {{ $row['date'] }}
                                     </div>
+                                    @if($row['day_name'])
                                     <div class="small text-muted font-weight-semibold">
-                                        {{ $log->work_date ? $log->work_date->format('l') : '' }}
-                                        @if($log->created_at)
-                                            &bull; <i class="far fa-clock text-muted"></i> {{ $log->created_at->format('h:i A') }}
+                                        {{ $row['day_name'] }}
+                                    </div>
+                                    @endif
+                                </td>
+
+                                <td data-export="{{ $row['mode'] }}">
+                                    <span class="badge-premium-pill {{ $modeBadgeClass }}">
+                                        @if($row['mode'] === 'WFH')
+                                            <i class="fas fa-laptop-house mr-1"></i> WFH
+                                        @else
+                                            <i class="fas fa-building mr-1"></i> WFO
                                         @endif
-                                    </div>
-                                </td>
-
-                                <td>
-                                    <div>
-                                        <span class="badge-premium-pill {{ $modeBadgeClass }} mb-1">
-                                            @if($mode === 'wfh')
-                                                <i class="fas fa-laptop-house mr-1"></i> WFH
-                                            @else
-                                                <i class="fas fa-building mr-1"></i> WFO
-                                            @endif
-                                        </span>
-                                    </div>
-                                    <div class="small text-muted font-weight-bold" style="font-size: 11px;">
-                                        {{ optional($attendance)->attendanceTime->name ?? 'Default Shift' }}
-                                    </div>
-                                </td>
-
-                                <td>
-                                    <div class="badge-gross-pill">
-                                        <i class="fas fa-stopwatch"></i> {{ $grossWork }}
-                                    </div>
-                                    @if($attendance && $attendance->punch_in_time)
-                                    <div class="small text-muted font-weight-bold mt-1" style="font-size: 10.5px;">
-                                        {{ \Carbon\Carbon::parse($attendance->punch_in_time)->format('h:i A') }} - {{ $attendance->punch_out_time ? \Carbon\Carbon::parse($attendance->punch_out_time)->format('h:i A') : 'Active' }}
-                                    </div>
-                                    @endif
-                                </td>
-
-                                <td style="min-width: 380px;">
-                                    @if(!empty($title) && $title !== 'Work Report Submitted' && strtolower(trim($title)) !== strtolower(trim($cleanSummary)))
-                                    <div class="project-tag-pill" title="{{ $title }}">
-                                        <i class="fas fa-folder-open"></i> {{ $title }}
-                                    </div>
-                                    @endif
-                                    <div class="work-summary-snippet" title="{{ $cleanSummary }}">
-                                        {{ $cleanSummary }}
-                                    </div>
-                                    @if(!empty($requirementsList) && count($requirementsList) > 0)
-                                    <div class="work-tasks-mini-list">
-                                        @foreach(array_slice($requirementsList, 0, 2) as $reqItem)
-                                            @php
-                                                $rText = is_array($reqItem) ? ($reqItem['text'] ?? ($reqItem['task_name'] ?? 'Task')) : (string)$reqItem;
-                                                $rDone = is_array($reqItem) ? ($reqItem['done'] ?? true) : true;
-                                            @endphp
-                                            <span class="mini-task-pill {{ $rDone ? 'done' : 'pending' }}">
-                                                <i class="fas {{ $rDone ? 'fa-check' : 'fa-circle' }}"></i> {{ Str::limit($rText, 45) }}
-                                            </span>
-                                        @endforeach
-                                        @if(count($requirementsList) > 2)
-                                            <span class="mini-task-more">+{{ count($requirementsList) - 2 }} more</span>
-                                        @endif
-                                    </div>
-                                    @endif
-                                </td>
-
-                                <td class="text-center">
-                                    @if($tasksCount > 0)
-                                    <span class="badge badge-light border font-weight-bold px-2 py-1" style="border-radius: 8px; font-size: 12px;">
-                                        <i class="fas fa-tasks text-primary mr-1"></i> {{ $tasksCount }} Tasks
                                     </span>
-                                    @else
-                                    <span class="text-muted font-italic" style="font-size:12px;">None</span>
-                                    @endif
                                 </td>
 
-                                <td class="text-right pr-4">
+                                <td data-export="{{ $row['shift_context'] }}">
+                                    <div class="font-weight-bold text-dark" style="font-size: 12.5px;">
+                                        {{ $row['shift_context'] }}
+                                    </div>
+                                </td>
+
+                                <td data-export="{{ $row['gross_work'] }}">
+                                    <div class="badge-gross-pill" style="white-space: nowrap;">
+                                        <i class="fas fa-stopwatch mr-1"></i> {{ $row['gross_work'] }}
+                                    </div>
+                                </td>
+
+                                <td data-export="{{ $row['summary_desc'] }}" style="min-width: 350px;">
+                                    <div class="work-summary-full-text">
+                                        @foreach($row['summary_paragraphs'] as $para)
+                                            <p class="mb-2" style="line-height: 1.5; color: #1E293B; font-size: 12.5px; font-weight: 500;">
+                                                {{ $para }}
+                                            </p>
+                                        @endforeach
+                                    </div>
+                                </td>
+
+                                <td data-export="{{ $row['structured_tasks_text'] }}" style="min-width: 240px;">
+                                    <div class="structured-tasks-list">
+                                        @foreach($row['structured_tasks'] as $tItem)
+                                            <div class="structured-task-item {{ $tItem['done'] ? 'done' : 'pending' }}" style="line-height: 1.5; margin-bottom: 3px; font-size: 12px; font-weight: 600;">
+                                                <span class="task-tag font-weight-bold {{ $tItem['done'] ? 'text-success' : 'text-warning' }}">{{ $tItem['done'] ? '[Done]' : '[Pending]' }}</span>
+                                                <span class="text-dark">{{ $tItem['text'] }}</span>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </td>
+
+                                <td class="text-right pr-4 no-export" style="white-space: nowrap;">
                                     <div class="action-btn-group">
                                         <button type="button" class="btn-action-primary" 
                                                 data-work-log="{{ json_encode($logPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}" 
@@ -1332,7 +1200,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="8" class="text-center py-5">
+                                <td colspan="9" class="text-center py-5">
                                     <i class="fas fa-clipboard-list text-muted fa-3x mb-3"></i>
                                     <h5 class="font-weight-bold text-dark mb-1">No Daily Work Reports Found</h5>
                                     <p class="text-muted font-weight-semibold mb-0">Try adjusting your filters or date range to see results.</p>
@@ -1341,6 +1209,7 @@
                             @endforelse
                         </tbody>
                     </table>
+                </div>             </table>
                 </div>
             </div>
         </div>
@@ -1549,10 +1418,25 @@
         // Initialize DataTables for Table View
         if ($('#workReportsTable tbody tr td').length > 1) {
             var initialPageLen = parseInt($('#filterPerPage').val()) || 25;
+
+            var exportFormatFn = {
+                body: function ( data, row, column, node ) {
+                    if (node && node.hasAttribute('data-export')) {
+                        return node.getAttribute('data-export');
+                    }
+                    if (typeof data === 'string') {
+                        var temp = document.createElement("div");
+                        temp.innerHTML = data;
+                        return (temp.textContent || temp.innerText || "").trim();
+                    }
+                    return data;
+                }
+            };
+
             var table = $('#workReportsTable').DataTable({
                 pageLength: initialPageLen,
                 lengthMenu: [[10, 25, 50, 100, 250, 500, -1], [10, 25, 50, 100, 250, 500, "All"]],
-                order: [[2, 'desc']], // Sort by Date desc
+                order: [[2, 'desc']], // Sort by Date desc (Date is col 2, Sr No is col 0)
                 ordering: true,
                 searching: true, 
                 paging: true,
@@ -1563,13 +1447,21 @@
                         extend: 'excelHtml5',
                         text: '<i class="far fa-file-excel text-success mr-1"></i> Excel',
                         className: 'leave-export-btn',
-                        exportOptions: { columns: ':not(.no-export)' }
+                        title: 'Daily Work Reports',
+                        exportOptions: {
+                            columns: ':not(.no-export)',
+                            format: exportFormatFn
+                        }
                     },
                     {
                         extend: 'csvHtml5',
                         text: '<i class="fas fa-file-csv text-primary mr-1"></i> CSV',
                         className: 'leave-export-btn',
-                        exportOptions: { columns: ':not(.no-export)' }
+                        title: 'Daily Work Reports',
+                        exportOptions: {
+                            columns: ':not(.no-export)',
+                            format: exportFormatFn
+                        }
                     },
                     {
                         extend: 'pdfHtml5',
@@ -1577,18 +1469,23 @@
                         className: 'leave-export-btn',
                         orientation: 'landscape',
                         pageSize: 'A4',
-                        exportOptions: { columns: ':not(.no-export)' },
+                        title: 'Daily Work Reports',
+                        exportOptions: {
+                            columns: ':not(.no-export)',
+                            format: exportFormatFn
+                        },
                         customize: function(doc) {
-                            doc.pageMargins = [20, 20, 20, 20];
-                            doc.defaultStyle.fontSize = 8.5;
+                            doc.pageMargins = [18, 20, 18, 20];
+                            doc.defaultStyle.fontSize = 8;
                             if (doc.styles.tableHeader) {
-                                doc.styles.tableHeader.fontSize = 9.5;
-                                doc.styles.tableHeader.fillColor = '#1E293B';
+                                doc.styles.tableHeader.fontSize = 9;
+                                doc.styles.tableHeader.fillColor = '#243746';
                                 doc.styles.tableHeader.color = '#FFFFFF';
                                 doc.styles.tableHeader.alignment = 'left';
+                                doc.styles.tableHeader.bold = true;
                             }
                             if (doc.content && doc.content[1] && doc.content[1].table) {
-                                doc.content[1].table.widths = ['4%', '16%', '11%', '9%', '9%', '43%', '8%'];
+                                doc.content[1].table.widths = ['4%', '14%', '9%', '6%', '10%', '10%', '29%', '18%'];
                             }
                         }
                     },
@@ -1596,22 +1493,79 @@
                         extend: 'print',
                         text: '<i class="fas fa-print mr-1"></i> Print',
                         className: 'leave-export-btn',
-                        exportOptions: { columns: ':not(.no-export)' },
+                        exportOptions: {
+                            columns: ':not(.no-export)',
+                            format: exportFormatFn
+                        },
                         customize: function(win) {
-                            $(win.document.body).css({
-                                'font-family': "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-                                'color': '#0F172A',
-                                'background': '#ffffff',
-                                'padding': '16px 20px',
-                                'font-size': '11px',
-                                '-webkit-print-color-adjust': 'exact',
-                                'print-color-adjust': 'exact'
+                            var $winBody = $(win.document.body);
+                            $winBody.empty();
+
+                            var printHtml = `
+                                <div class="print-container">
+                                    <h1 class="print-title">Daily Work Reports</h1>
+                                    <table class="print-table">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 4%; text-align: center;">#</th>
+                                                <th style="width: 14%;">Employee</th>
+                                                <th style="width: 9%;">Date</th>
+                                                <th style="width: 6%;">Mode</th>
+                                                <th style="width: 10%;">Shift Context</th>
+                                                <th style="width: 10%;">Gross Work</th>
+                                                <th style="width: 29%;">Work Summary Description</th>
+                                                <th style="width: 18%;">Structured Tasks</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                            `;
+
+                            var srNo = 1;
+                            table.rows({ filter: 'applied' }).every(function() {
+                                var $tr = $(this.node());
+                                var emp = $tr.find('td:nth-child(2)').attr('data-export') || $tr.find('td:nth-child(2)').text().trim();
+                                var date = $tr.find('td:nth-child(3)').attr('data-export') || $tr.find('td:nth-child(3)').text().trim();
+                                var mode = $tr.find('td:nth-child(4)').attr('data-export') || $tr.find('td:nth-child(4)').text().trim();
+                                var shift = $tr.find('td:nth-child(5)').attr('data-export') || $tr.find('td:nth-child(5)').text().trim();
+                                var gross = $tr.find('td:nth-child(6)').attr('data-export') || $tr.find('td:nth-child(6)').text().trim();
+                                var summary = $tr.find('td:nth-child(7)').attr('data-export') || $tr.find('td:nth-child(7)').text().trim();
+                                var tasks = $tr.find('td:nth-child(8)').attr('data-export') || $tr.find('td:nth-child(8)').text().trim();
+
+                                var summaryHtml = summary.split('\n\n').map(function(p) {
+                                    var esc = $('<div>').text(p).html();
+                                    return '<p style="margin: 0 0 8px 0; line-height: 1.45;">' + esc + '</p>';
+                                }).join('');
+
+                                var tasksHtml = tasks.split('\n').map(function(t) {
+                                    if (!t.trim()) return '';
+                                    var esc = $('<div>').text(t).html();
+                                    return '<div style="margin-bottom: 3px; line-height: 1.45;">' + esc + '</div>';
+                                }).join('');
+
+                                printHtml += `
+                                    <tr>
+                                        <td style="text-align: center; font-weight: 700; color: #64748B;">${srNo++}</td>
+                                        <td style="font-weight: 500;">${$('<div>').text(emp).html()}</td>
+                                        <td style="white-space: nowrap;">${$('<div>').text(date).html()}</td>
+                                        <td style="font-weight: 500;">${$('<div>').text(mode).html()}</td>
+                                        <td>${$('<div>').text(shift).html()}</td>
+                                        <td style="white-space: nowrap;">${$('<div>').text(gross).html()}</td>
+                                        <td>${summaryHtml}</td>
+                                        <td>${tasksHtml}</td>
+                                    </tr>
+                                `;
                             });
+
+                            printHtml += `
+                                        </tbody>
+                                    </table>
+                                </div>
+                            `;
 
                             var customStyles = `
                                 @page {
                                     size: landscape A4;
-                                    margin: 10mm 12mm 12mm 12mm;
+                                    margin: 10mm 12mm;
                                 }
                                 * {
                                     -webkit-print-color-adjust: exact !important;
@@ -1619,174 +1573,57 @@
                                     box-sizing: border-box;
                                 }
                                 body {
-                                    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
-                                    color: #0F172A !important;
+                                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+                                    color: #111827 !important;
                                     background: #ffffff !important;
                                     padding: 0 !important;
-                                }
-                                .dt-print-header {
-                                    display: flex;
-                                    justify-content: space-between;
-                                    align-items: center;
-                                    border-bottom: 2px solid #0F172A;
-                                    padding-bottom: 12px;
-                                    margin-bottom: 16px;
-                                }
-                                .dt-print-brand {
-                                    display: flex;
-                                    align-items: center;
-                                    gap: 12px;
-                                }
-                                .dt-print-logo {
-                                    max-height: 42px;
-                                    max-width: 150px;
-                                    object-fit: contain;
-                                }
-                                .dt-print-title {
-                                    font-size: 19px;
-                                    font-weight: 900;
-                                    color: #0F172A;
-                                    margin: 0;
-                                    line-height: 1.1;
-                                }
-                                .dt-print-subtitle {
-                                    font-size: 10.5px;
-                                    font-weight: 700;
-                                    color: #64748B;
-                                    text-transform: uppercase;
-                                    letter-spacing: 0.08em;
-                                    margin-top: 3px;
-                                }
-                                .dt-print-meta {
-                                    text-align: right;
-                                    font-size: 10px;
-                                    color: #64748B;
-                                    font-weight: 600;
-                                }
-                                .dt-print-badge {
-                                    display: inline-block;
-                                    background: #F1F5F9;
-                                    border: 1px solid #CBD5E1;
-                                    color: #334155;
-                                    font-size: 9px;
-                                    font-weight: 800;
-                                    text-transform: uppercase;
-                                    letter-spacing: 0.06em;
-                                    padding: 3px 8px;
-                                    border-radius: 4px;
-                                    margin-bottom: 4px;
-                                }
-                                table.dataTable {
-                                    width: 100% !important;
-                                    border-collapse: collapse !important;
                                     margin: 0 !important;
                                     font-size: 11px !important;
                                 }
-                                table.dataTable thead th {
-                                    background: #0F172A !important;
+                                .print-container {
+                                    width: 100%;
+                                    padding: 10px 15px;
+                                }
+                                .print-title {
+                                    text-align: center;
+                                    font-size: 21px;
+                                    font-weight: 800;
+                                    color: #111827;
+                                    margin: 0 0 16px 0;
+                                    letter-spacing: -0.01em;
+                                }
+                                .print-table {
+                                    width: 100%;
+                                    border-collapse: collapse;
+                                    font-size: 11px;
+                                }
+                                .print-table thead th {
+                                    background-color: #243746 !important;
                                     color: #ffffff !important;
-                                    font-size: 10.5px !important;
-                                    font-weight: 800 !important;
-                                    text-transform: uppercase !important;
-                                    letter-spacing: 0.05em !important;
-                                    padding: 10px 10px !important;
-                                    border: 1px solid #0F172A !important;
-                                    vertical-align: middle !important;
+                                    font-weight: 700;
+                                    font-size: 11px;
+                                    padding: 8px 10px;
+                                    text-align: left;
+                                    border: 1px solid #243746;
+                                    vertical-align: middle;
                                 }
-                                table.dataTable thead th:nth-child(1) { width: 4% !important; text-align: center; }
-                                table.dataTable thead th:nth-child(2) { width: 16% !important; }
-                                table.dataTable thead th:nth-child(3) { width: 11% !important; }
-                                table.dataTable thead th:nth-child(4) { width: 9% !important; }
-                                table.dataTable thead th:nth-child(5) { width: 9% !important; }
-                                table.dataTable thead th:nth-child(6) { width: 43% !important; }
-                                table.dataTable thead th:nth-child(7) { width: 8% !important; text-align: center; }
-
-                                table.dataTable tbody td {
-                                    padding: 9px 10px !important;
-                                    border: 1px solid #E2E8F0 !important;
-                                    font-size: 11px !important;
-                                    color: #1E293B !important;
-                                    vertical-align: top !important;
-                                    background: #ffffff !important;
-                                    line-height: 1.45 !important;
+                                .print-table tbody tr {
+                                    page-break-inside: avoid;
+                                    break-inside: avoid;
                                 }
-                                table.dataTable tbody tr:nth-child(even) td {
-                                    background: #F8FAFC !important;
+                                .print-table tbody tr:nth-child(odd) td {
+                                    background-color: #F2F4F8 !important;
                                 }
-                                table.dataTable tbody tr {
-                                    page-break-inside: avoid !important;
-                                    break-inside: avoid !important;
+                                .print-table tbody tr:nth-child(even) td {
+                                    background-color: #FFFFFF !important;
                                 }
-                                .project-tag-pill {
-                                    background: #EEF2FF !important;
-                                    color: #4338CA !important;
-                                    border: 1px solid #C7D2FE !important;
-                                    font-weight: 800 !important;
-                                    font-size: 10px !important;
-                                    padding: 2px 6px !important;
-                                    border-radius: 4px !important;
-                                    display: inline-block !important;
-                                    margin-bottom: 4px !important;
-                                }
-                                .work-summary-snippet {
-                                    font-size: 11.5px !important;
-                                    color: #1E293B !important;
-                                    line-height: 1.45 !important;
-                                    max-width: 100% !important;
-                                    display: block !important;
-                                    word-wrap: break-word !important;
-                                    white-space: normal !important;
-                                }
-                                .work-tasks-mini-list {
-                                    margin-top: 5px !important;
-                                    display: flex !important;
-                                    flex-wrap: wrap !important;
-                                    gap: 4px !important;
-                                }
-                                .mini-task-pill {
-                                    font-size: 9.5px !important;
-                                    padding: 2px 6px !important;
-                                    border-radius: 4px !important;
-                                    background: #F1F5F9 !important;
-                                    border: 1px solid #CBD5E1 !important;
-                                    color: #334155 !important;
-                                    display: inline-flex !important;
-                                    align-items: center !important;
-                                    gap: 3px !important;
-                                }
-                                .mini-task-pill.done {
-                                    background: #ECFDF5 !important;
-                                    border-color: #A7F3D0 !important;
-                                    color: #065F46 !important;
-                                }
-                                .badge-premium-pill {
-                                    padding: 3px 7px !important;
-                                    border-radius: 4px !important;
-                                    font-size: 9.5px !important;
-                                    font-weight: 800 !important;
-                                    display: inline-block !important;
-                                }
-                                .badge-wfo { background: #ECFDF5 !important; color: #065F46 !important; border: 1px solid #A7F3D0 !important; }
-                                .badge-wfh { background: #EFF6FF !important; color: #1E40AF !important; border: 1px solid #BFDBFE !important; }
-                                .badge-gross-pill {
-                                    background: #FFFBEB !important;
-                                    color: #92400E !important;
-                                    border: 1px solid #FDE68A !important;
-                                    font-weight: 800 !important;
-                                    font-size: 10.5px !important;
-                                    padding: 2px 6px !important;
-                                    border-radius: 4px !important;
-                                    display: inline-block !important;
-                                }
-                                .dt-print-footer {
-                                    margin-top: 16px;
-                                    padding-top: 10px;
-                                    border-top: 1px solid #E2E8F0;
-                                    display: flex;
-                                    justify-content: space-between;
-                                    font-size: 9.5px;
-                                    color: #64748B;
-                                    font-weight: 600;
+                                .print-table tbody td {
+                                    padding: 8px 10px;
+                                    border: 1px solid #E2E8F0;
+                                    vertical-align: top;
+                                    color: #1E293B;
+                                    font-size: 11px;
+                                    line-height: 1.45;
                                 }
                             `;
 
@@ -1795,35 +1632,7 @@
                             styleElem.innerHTML = customStyles;
                             win.document.head.appendChild(styleElem);
 
-                            $(win.document.body).find('h1').remove();
-
-                            var headerHtml = `
-                                <div class="dt-print-header">
-                                    <div class="dt-print-brand">
-                                        @if(branding_logo())
-                                            <img src="{{ branding_logo() }}" alt="{{ company_name() }}" class="dt-print-logo">
-                                        @endif
-                                        <div>
-                                            <div class="dt-print-title">{{ company_name() }}</div>
-                                            <div class="dt-print-subtitle">Daily Work Reports Register</div>
-                                        </div>
-                                    </div>
-                                    <div class="dt-print-meta">
-                                        <span class="dt-print-badge">Official Attendance & Work Record</span>
-                                        <div>Printed: ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
-                                        <div style="margin-top: 2px;">Records: ${table.rows({ filter: 'applied' }).count()} Logged Entries</div>
-                                    </div>
-                                </div>
-                            `;
-                            $(win.document.body).prepend(headerHtml);
-
-                            var footerHtml = `
-                                <div class="dt-print-footer">
-                                    <div><strong>{{ company_name() }}</strong> &bull; OrboOne HRMS Work Reports Module</div>
-                                    <div>Confidential & Official Document &bull; Valid Without Physical Stamp</div>
-                                </div>
-                            `;
-                            $(win.document.body).append(footerHtml);
+                            $winBody.html(printHtml);
                         }
                     }
                 ],
@@ -1834,6 +1643,16 @@
                         next: '<i class="fas fa-chevron-right"></i>'
                     }
                 }
+            });
+
+            // Dynamic sequential numbering for Sr. No. across pagination, filtering & sorting
+            table.on('draw.dt', function () {
+                var info = table.page.info();
+                table.column(0, { search: 'applied', order: 'applied', page: 'applied' }).nodes().each(function (cell, i) {
+                    var num = i + 1 + info.start;
+                    cell.innerHTML = num;
+                    cell.setAttribute('data-export', num);
+                });
             });
 
             // Append buttons into the custom toolbar container

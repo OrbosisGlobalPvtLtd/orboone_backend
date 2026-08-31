@@ -30,7 +30,8 @@ class SidebarMenuResolverS
             $userRoles = !empty($roleIds) ? DB::table('roles')->whereIn('id', $roleIds)->get(['id', 'slug', 'is_system']) : collect();
             $isOnlyEmployee = $userRoles->isNotEmpty() && $userRoles->every(fn ($r) => $r->slug === 'employee');
             $hasAdminRole = $isSuperAdmin || !$isOnlyEmployee;
-            $hasEmployeeRole = $userRoles->isEmpty() || $userRoles->contains(fn ($r) => $r->slug === 'employee' || $r->slug === 'super_admin') || $hasAdminRole;
+            $hasEmployeeRecord = DB::table('employees_new')->where('user_id', $user->id)->exists();
+            $hasEmployeeRole = !$isSuperAdmin && ($hasEmployeeRecord || $userRoles->contains(fn ($r) => $r->slug === 'employee') || ($userRoles->isEmpty() && !$hasAdminRole));
 
             $employeeMenus = collect();
             $adminMenus = collect();
@@ -723,6 +724,10 @@ class SidebarMenuResolverS
             'my attendance',
             'my holiday work',
             'my work requests',
+            'my work reports',
+            'my wfh requests',
+            'my leave requests',
+            'my leaves',
             'my documents',
             'upload documents',
             'my payslips',
@@ -730,6 +735,7 @@ class SidebarMenuResolverS
             'my reimbursements',
             'my announcements',
             'my profile',
+            'my assets',
             'complete profile',
         ];
 

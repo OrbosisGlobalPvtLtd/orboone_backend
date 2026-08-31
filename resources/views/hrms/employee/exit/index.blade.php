@@ -1480,8 +1480,10 @@ default => 'eo-pill-warning',
                     <form action="{{ route('hrms.employees.exit.complete', $employee->id) }}" method="POST" class="mb-0">
                         @csrf
                         <input type="hidden" name="exit_process_id" value="{{ $employee->exit_process_id }}">
-                        <div class="eo-action-body d-flex justify-content-between align-items-center flex-wrap gap-2">
-                            <span class="text-muted small">This action is permanent and will disable login credentials.</span>
+                        <div class="eo-action-body">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                                <span class="text-muted small">This action is permanent and will disable login credentials.</span>
+                            </div>
                             @php
                             $clearanceApproved = true;
                             $mandatoryDepts = ['hr', 'manager', 'it', 'admin', 'finance', 'asset'];
@@ -1493,17 +1495,22 @@ default => 'eo-pill-warning',
                             }
                             }
                             @endphp
-                            <div class="js-complete-exit-btn-container d-inline-block text-right">
-                                @if($clearanceApproved)
-                                <button type="submit" class="btn btn-success em-btn-success px-3 py-2" style="height:36px; min-height:36px; font-size:12px; border-radius:50px; font-weight:800; border:none;" onclick="return confirm('Complete exit and disable login?')">
-                                    <i class="fas fa-user-check mr-1"></i> Complete Exit
-                                </button>
-                                @else
-                                <button type="button" class="btn btn-success em-btn-success px-3 py-2" style="height:36px; min-height:36px; font-size:12px; border-radius:50px; font-weight:800; border:none; opacity: 0.5; cursor: not-allowed;" disabled title="Clearances are pending approval">
-                                    <i class="fas fa-ban mr-1"></i> Complete Exit (Blocked)
-                                </button>
-                                <span class="text-danger small mt-1 d-block w-100"><i class="fas fa-exclamation-triangle mr-1"></i> All mandatory clearances (HR, Manager, IT, Admin, Finance, Assets) must be approved.</span>
-                                @endif
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <label class="mb-0 small" style="cursor:pointer;">
+                                    <input type="checkbox" name="waive_incomplete" value="1" class="mr-1"> Waive incomplete items (force complete)
+                                </label>
+                                <div class="js-complete-exit-btn-container d-inline-block text-right">
+                                    @if($clearanceApproved)
+                                    <button type="submit" class="btn btn-success em-btn-success px-3 py-2" style="height:36px; min-height:36px; font-size:12px; border-radius:50px; font-weight:800; border:none;" onclick="return confirm('Complete exit and disable login?')">
+                                        <i class="fas fa-user-check mr-1"></i> Complete Exit
+                                    </button>
+                                    @else
+                                    <button type="button" class="btn btn-success em-btn-success px-3 py-2" style="height:36px; min-height:36px; font-size:12px; border-radius:50px; font-weight:800; border:none; opacity: 0.5; cursor: not-allowed;" disabled title="Clearances are pending approval">
+                                        <i class="fas fa-ban mr-1"></i> Complete Exit (Blocked)
+                                    </button>
+                                    <span class="text-danger small mt-1 d-block w-100"><i class="fas fa-exclamation-triangle mr-1"></i> All mandatory clearances (HR, Manager, IT, Admin, Finance, Assets) must be approved.</span>
+                                    @endif
+                                </div>
                             </div>
                         </div>
                     </form>

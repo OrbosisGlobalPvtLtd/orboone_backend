@@ -206,25 +206,35 @@ class EmployeeExitProcessS
         $fnfDone = $this->isFnfCompleted($employeeId, $exitId);
         $documentDone = $this->isDocumentCompleted($employeeId, (string) $exit->exit_type);
 
-        $assetStatus = in_array((string) $exit->asset_status, ['waived'], true) ? 'waived' : ($assetPending ? 'pending' : 'cleared');
+        $managerApproved = DB::table('employee_exit_clearances')->where('exit_process_id', $exitId)->where('department_key', 'manager')->where('status', 'approved')->exists();
+        $assetApproved = DB::table('employee_exit_clearances')->where('exit_process_id', $exitId)->where('department_key', 'asset')->where('status', 'approved')->exists();
+        $financeApproved = DB::table('employee_exit_clearances')->where('exit_process_id', $exitId)->where('department_key', 'finance')->where('status', 'approved')->exists();
+        $hrApproved = DB::table('employee_exit_clearances')->where('exit_process_id', $exitId)->where('department_key', 'hr')->where('status', 'approved')->exists();
+
+        $assetStatus = in_array((string) $exit->asset_status, ['waived', 'cleared'], true)
+            ? (string) $exit->asset_status
+            : ($assetApproved ? 'cleared' : ($assetPending ? 'pending' : 'cleared'));
+
         $fnfStatus = in_array((string) $exit->fnf_status, ['waived', 'approved', 'paid', 'completed'], true)
             ? (string) $exit->fnf_status
-            : ($fnfDone ? 'completed' : 'pending');
+            : ($financeApproved || $fnfDone ? 'completed' : 'pending');
+
         $documentStatus = in_array((string) $exit->document_status, ['waived', 'generated', 'sent', 'completed'], true)
             ? (string) $exit->document_status
-            : ($documentDone ? 'completed' : 'pending');
+            : ($hrApproved || $documentDone ? 'completed' : 'pending');
+
         $handoverStatus = in_array((string) $exit->handover_status, ['cleared', 'completed', 'waived'], true)
             ? (string) $exit->handover_status
-            : 'pending';
+            : ($managerApproved ? 'completed' : 'pending');
 
         $overall = 'ready_for_final_approval';
         if ($assetStatus !== 'cleared' && $assetStatus !== 'waived') {
             $overall = 'asset_pending';
-        } elseif (! in_array($fnfStatus, ['completed', 'waived'], true)) {
+        } elseif (! in_array($fnfStatus, ['completed', 'approved', 'paid', 'waived'], true)) {
             $overall = 'fnf_pending';
-        } elseif (! in_array($documentStatus, ['completed', 'waived'], true)) {
+        } elseif (! in_array($documentStatus, ['completed', 'generated', 'sent', 'waived'], true)) {
             $overall = 'document_pending';
-        } elseif (! in_array($handoverStatus, ['completed', 'waived'], true)) {
+        } elseif (! in_array($handoverStatus, ['completed', 'cleared', 'waived'], true)) {
             $overall = 'handover_pending';
         }
 
@@ -287,15 +297,36 @@ class EmployeeExitProcessS
             abort(422, 'Exit checklist is not fully completed.' . $suffix);
         }
 
-        DB::transaction(function () use ($exit, $actorUserId) {
-            DB::table($this->exitTable)->where('id', $exit->id)->update([
+        DB::transaction(function () use ($exit, $actorUserId, $waive) {
+            $exitUpdates = [
                 'status' => 'exit_completed',
                 'final_status' => 'completed',
                 'completed_by_user_id' => $actorUserId,
                 'approved_by_user_id' => $actorUserId,
                 'completed_at' => now(),
                 'updated_at' => now(),
-            ]);
+            ];
+
+            if ($waive) {
+                $currentExit = DB::table($this->exitTable)->where('id', $exit->id)->first();
+                if ($currentExit) {
+                    if (! in_array($currentExit->asset_status, ['cleared', 'waived'], true)) {
+                        $exitUpdates['asset_status'] = 'waived';
+                        $exitUpdates['asset_handover_status'] = 'waived';
+                    }
+                    if (! in_array($currentExit->fnf_status, ['completed', 'approved', 'paid', 'waived'], true)) {
+                        $exitUpdates['fnf_status'] = 'waived';
+                    }
+                    if (! in_array($currentExit->document_status, ['completed', 'generated', 'sent', 'waived'], true)) {
+                        $exitUpdates['document_status'] = 'waived';
+                    }
+                    if (! in_array($currentExit->handover_status, ['cleared', 'completed', 'waived'], true)) {
+                        $exitUpdates['handover_status'] = 'waived';
+                    }
+                }
+            }
+
+            DB::table($this->exitTable)->where('id', $exit->id)->update($exitUpdates);
 
             if (Schema::hasTable($this->employeeTable)) {
                 $finalStatus = in_array((string) $exit->exit_type, ['termination'], true) ? 'terminated' : 'exited';

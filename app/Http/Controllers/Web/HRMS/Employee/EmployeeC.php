@@ -2033,7 +2033,8 @@ class EmployeeC extends Controller
                 'employee_exit_processes.handover_status',
                 'employee_exit_processes.asset_handover_status',
                 'employee_exit_processes.fnf_status',
-                'employee_exit_processes.last_working_day'
+                'employee_exit_processes.last_working_day',
+                $this->employeeTable . '.reporting_manager_employee_id'
             )
             ->where(function ($q) {
                 $q->where(function ($sq) {

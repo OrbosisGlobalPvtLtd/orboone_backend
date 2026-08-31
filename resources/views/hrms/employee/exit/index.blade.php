@@ -1252,7 +1252,7 @@ default => 'eo-pill-warning',
                             if ($isHRorAdmin) {
                             $canApproveDept = true;
                             } else {
-                            if ($dKey === 'manager' && $actor->employee && $employee->reporting_manager_employee_id == $actor->employee->id) {
+                            if ($dKey === 'manager' && $actor->employee && !empty($employee->reporting_manager_employee_id) && $employee->reporting_manager_employee_id == $actor->employee->id) {
                             $canApproveDept = true;
                             }
 

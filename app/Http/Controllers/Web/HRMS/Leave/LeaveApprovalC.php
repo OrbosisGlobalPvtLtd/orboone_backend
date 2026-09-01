@@ -49,7 +49,8 @@ class LeaveApprovalC extends Controller
             ->leftJoin('users as mu', 'mu.id', '=', 'leave_requests.manager_approved_by')
             ->leftJoin('users as hru', 'hru.id', '=', 'leave_requests.hr_approved_by')
             ->leftJoin('employees_new as rm', 'rm.id', '=', 'e.reporting_manager_employee_id')
-            ->leftJoin('users as rmu', 'rmu.id', '=', 'rm.user_id');
+            ->leftJoin('users as rmu', 'rmu.id', '=', 'rm.user_id')
+            ->leftJoin('users as reju', 'reju.id', '=', 'leave_requests.approved_by_user_id');
 
         $query = $this->scopeS->scopeLeaveQuery($query, $supervisorEmpId);
 
@@ -115,7 +116,8 @@ class LeaveApprovalC extends Controller
             'lt.name as leave_type_name',
             'mu.name as manager_approver_name',
             'hru.name as hr_approver_name',
-            'rmu.name as reporting_manager_name'
+            'rmu.name as reporting_manager_name',
+            'reju.name as rejected_by_name'
         )
             ->orderByDesc('leave_requests.id')
             ->paginate(20)
@@ -273,7 +275,7 @@ class LeaveApprovalC extends Controller
             if (! in_array($leaveRequest->status, ['pending', 'manager_approved', 'approved'], true)) {
                 return redirect()->to($referer)->with('error', 'Only pending or approved leave requests can be rejected.');
             }
-            $reason = $request->input('reason') ?: $request->input('remark') ?: $request->input('admin_remark') ?: 'Rejected by approver.';
+            $reason = $request->input('rejection_reason') ?: $request->input('reason') ?: $request->input('remark') ?: $request->input('admin_remark') ?: 'Rejected by approver.';
             $this->authorizeLeaveRequestForApproval($leaveRequest);
             $this->approvalService->reject($leaveRequest, Auth::id(), $reason);
 

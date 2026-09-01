@@ -510,10 +510,20 @@ body {
                                                 <div class="text-muted small uppercase font-weight-bold mb-1">Application Reason</div>
                                                 <div class="text-dark">{{ $req->reason ?: 'N/A' }}</div>
                                             </div>
-                                            @if($req->rejection_reason)
+                                            @if($req->rejection_reason || $req->status === 'rejected')
                                             <div class="p-3 bg-white rounded-lg border border-danger">
-                                                <div class="text-danger small uppercase font-weight-bold mb-1">Manager Note / Rejection Reason</div>
-                                                <div class="text-dark">{{ $req->rejection_reason }}</div>
+                                                <div class="text-danger small uppercase font-weight-bold mb-1">Rejection Details</div>
+                                                @if($req->rejection_reason)
+                                                    <div class="text-dark">{{ $req->rejection_reason }}</div>
+                                                @endif
+                                                @if(optional($req->approver)->name)
+                                                    <div class="text-muted small mt-1" style="font-size: 11px;">
+                                                        Rejected by <strong>{{ $req->approver->name }}</strong>
+                                                        @if($req->approved_at)
+                                                            &bull; {{ \Carbon\Carbon::parse($req->approved_at)->format('d M Y, h:i A') }}
+                                                        @endif
+                                                    </div>
+                                                @endif
                                             </div>
                                             @endif
                                         </div>

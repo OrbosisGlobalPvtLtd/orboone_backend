@@ -73,7 +73,7 @@ class AdminUserC extends Controller
     public function create()
     {
         return view('access_control.admins.create', [
-            'roles' => $this->adminRoles(),
+            'roles' => $this->allRoles(),
         ]);
     }
 
@@ -121,7 +121,7 @@ class AdminUserC extends Controller
 
         return view('access_control.admins.edit', [
             'admin' => $adminUser,
-            'roles' => $this->adminRoles(),
+            'roles' => $this->allRoles(),
         ]);
     }
 
@@ -224,6 +224,20 @@ class AdminUserC extends Controller
 
         return $query
             ->where('slug', '!=', 'employee')
+            ->orderBy('name')
+            ->get();
+    }
+
+    private function allRoles()
+    {
+        $query = DB::table('roles')->select('id', 'name', 'slug', 'status');
+
+        if (Schema::hasColumn('roles', 'status')) {
+            $query->where('status', 1);
+        }
+
+        return $query
+            ->orderByRaw("CASE WHEN slug = 'super_admin' THEN 0 WHEN slug = 'admin' THEN 1 WHEN slug = 'hr_admin' THEN 2 ELSE 3 END")
             ->orderBy('name')
             ->get();
     }

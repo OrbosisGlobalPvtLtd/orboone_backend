@@ -280,7 +280,7 @@
             @endforeach
 
             <!-- Unmapped Permissions Accordion -->
-            @if(!$unmapped_permissions->isEmpty())
+            @if(isset($unmapped_permissions) && !$unmapped_permissions->isEmpty())
                 <div class="matrix-module-card mt-4">
                     <div class="matrix-module-header bg-light">
                         <div class="matrix-module-title text-secondary">

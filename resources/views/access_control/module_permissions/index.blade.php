@@ -1,6 +1,6 @@
 @extends('layouts.panel', ['active' => 'access_control'])
 
-@section('page_title', 'Module CRUD Permissions Management')
+@section('page_title', 'Module Access & Permissions')
 
 @section('_head')
 @include('access_control.partials.styles')
@@ -167,7 +167,7 @@
             <h1 class="h3 font-weight-bold text-gray-800 mb-1">
                 <i class="fas fa-layer-group text-primary mr-2"></i>Module Access & Permissions
             </h1>
-            <p class="text-muted mb-0">Choose what each role or user can see and do.</p>
+            <p class="text-muted mb-0">Choose which modules, pages, and actions each role, user, position, or department can access.</p>
         </div>
     </div>
 
@@ -305,16 +305,22 @@
     </div>
 
     <!-- Simple Help Box -->
-    <div class="help-box mb-4 d-flex align-items-center flex-wrap" style="gap: 12px;">
-        <div><i class="fas fa-info-circle text-primary mr-1"></i> <strong>How this works:</strong></div>
-        <div>
-            <span class="legend-pill type-view"><i class="fas fa-eye"></i> View</span>
-            <span class="legend-pill type-create"><i class="fas fa-plus"></i> Create</span>
-            <span class="legend-pill type-edit"><i class="fas fa-pen"></i> Edit</span>
-            <span class="legend-pill type-delete"><i class="fas fa-trash"></i> Delete</span>
-            <span class="legend-pill type-manage"><i class="fas fa-cog"></i> Manage</span>
+    <div class="help-box mb-4">
+        <div class="d-flex align-items-center flex-wrap mb-2" style="gap: 12px;">
+            <div><i class="fas fa-info-circle text-primary mr-1"></i> <strong>How to use this page:</strong></div>
+            <div>
+                <span class="legend-pill type-view"><i class="fas fa-eye"></i> View</span>
+                <span class="legend-pill type-create"><i class="fas fa-plus"></i> Create</span>
+                <span class="legend-pill type-edit"><i class="fas fa-pen"></i> Edit</span>
+                <span class="legend-pill type-delete"><i class="fas fa-trash"></i> Delete</span>
+                <span class="legend-pill type-manage"><i class="fas fa-cog"></i> Manage</span>
+            </div>
         </div>
-        <div class="ml-md-auto text-muted">Checked = allowed / Unchecked = not allowed</div>
+        <div class="text-muted small">
+            <strong>For Roles:</strong> Check the module folder and the pages inside it, then check the actions each role can perform. Click <strong>Save Access</strong> when done.<br>
+            <strong>For Users:</strong> Choose whether the user follows their role (<em>Inherit Default</em>), gets extra access (<em>Explicit Grant</em>), or is blocked (<em>Explicit Revoke</em>).<br>
+            <strong>For Positions / Departments:</strong> Check the actions that should be available by default for everyone in that position or department.
+        </div>
     </div>
 
     @php
@@ -376,10 +382,12 @@
                         <h3 class="matrix-card-title">
                             <input type="checkbox" name="menu_ids[]" value="{{ $module['id'] }}"
                                    class="parent-menu-checkbox" {{ $module['is_assigned'] ? 'checked' : '' }}>
-                            <i class="fas fa-folder text-warning"></i> {{ $module['name'] }}
+                            <i class="fas fa-folder text-warning"></i>
+                            <span>{{ $module['name'] }}</span>
+                            <span class="badge badge-light border text-muted font-weight-normal" style="font-size: 11px;">module</span>
                         </h3>
                         <button type="button" class="btn btn-sm btn-outline-secondary rounded-8 toggle-all-btn">
-                            Toggle All
+                            <i class="fas fa-check-double mr-1"></i> Toggle All
                         </button>
                     </div>
 
@@ -387,12 +395,12 @@
                         @if(!empty($module['crud']))
                             <div class="crud-row">
                                 <div class="crud-row-header">
-                                    <span class="font-weight-bold text-dark"><i class="fas fa-cog text-muted mr-1"></i> Module-level actions</span>
+                                    <span class="font-weight-bold text-dark"><i class="fas fa-cog text-muted mr-1"></i> Actions allowed for the whole module</span>
                                 </div>
                                 <div class="crud-badges-group">
                                     @foreach(['view', 'create', 'edit', 'delete'] as $type)
                                         @foreach($module['crud'][$type] ?? [] as $perm)
-                                            <label class="crud-badge-pill type-{{ permissionBadgeType($perm) }}" title="{{ $perm['key'] }}">
+                                            <label class="crud-badge-pill type-{{ permissionBadgeType($perm) }}" title="{{ $perm['description'] ?: $perm['key'] }}">
                                                 <input type="checkbox" name="permission_ids[]" value="{{ $perm['id'] }}" {{ $perm['is_assigned'] ? 'checked' : '' }}>
                                                 <span>{{ friendlyPermissionLabel($perm) }}</span>
                                             </label>
@@ -417,7 +425,7 @@
                                 <div class="crud-badges-group">
                                     @foreach(['view', 'create', 'edit', 'delete'] as $type)
                                         @foreach($sub['crud'][$type] ?? [] as $perm)
-                                            <label class="crud-badge-pill type-{{ permissionBadgeType($perm) }}" title="{{ $perm['key'] }}">
+                                            <label class="crud-badge-pill type-{{ permissionBadgeType($perm) }}" title="{{ $perm['description'] ?: $perm['key'] }}">
                                                 <input type="checkbox" name="permission_ids[]" value="{{ $perm['id'] }}" {{ $perm['is_assigned'] ? 'checked' : '' }}>
                                                 <span>{{ friendlyPermissionLabel($perm) }}</span>
                                             </label>

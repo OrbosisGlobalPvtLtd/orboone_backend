@@ -28,10 +28,8 @@ class StoreAdminUserRequest extends FormRequest
             $roleIdsRule[] = 'min:1';
         }
 
-        $adminRoleRule = function () {
-            return Rule::exists('roles', 'id')->where(function ($query) {
-                $query->where('slug', '!=', 'employee');
-            });
+        $roleRule = function () {
+            return Rule::exists('roles', 'id');
         };
 
         return [
@@ -43,9 +41,9 @@ class StoreAdminUserRequest extends FormRequest
                 Rule::unique('users', 'email')->ignore($adminId),
             ],
             'password' => $passwordRule,
-            'role_id' => [$isEmployee ? 'nullable' : 'required', 'integer', $adminRoleRule()],
+            'role_id' => [$isEmployee ? 'nullable' : 'required', 'integer', $roleRule()],
             'role_ids' => ['nullable', 'array'],
-            'role_ids.*' => ['integer', $adminRoleRule()],
+            'role_ids.*' => ['integer', $roleRule()],
             'is_active' => ['nullable', 'boolean'],
             'is_app_access' => ['nullable', 'boolean'],
         ];

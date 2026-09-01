@@ -47,7 +47,9 @@ return new class extends Migration
             'employees.create',
             'employees.edit',
             'employees.delete',
+            'employees.update',
             'employees.directory.view',
+            'employees.performance.view',
             'employees.pending_profiles.view',
             'employees.pending_profiles.approve',
             'employees.probation_internship.view',
@@ -60,6 +62,7 @@ return new class extends Migration
             'departments.manage',
             'designations.manage',
             'organization_hierarchy.manage',
+            'probation.manage',
         ];
 
         if (Schema::hasTable('permissions') && Schema::hasTable('role_permissions')) {
@@ -113,7 +116,9 @@ return new class extends Migration
             'employees.create',
             'employees.edit',
             'employees.delete',
+            'employees.update',
             'employees.directory.view',
+            'employees.performance.view',
             'employees.pending_profiles.view',
             'employees.pending_profiles.approve',
             'employees.probation_internship.view',
@@ -126,6 +131,7 @@ return new class extends Migration
             'departments.manage',
             'designations.manage',
             'organization_hierarchy.manage',
+            'probation.manage',
         ];
 
         if (Schema::hasTable('permissions') && Schema::hasTable('role_permissions')) {

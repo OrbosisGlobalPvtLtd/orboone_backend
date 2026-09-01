@@ -107,6 +107,12 @@
     .crud-badge-pill.type-create { background: #ECFDF5; color: #047857; border-color: #A7F3D0; }
     .crud-badge-pill.type-edit { background: #FFFBEB; color: #B45309; border-color: #FDE68A; }
     .crud-badge-pill.type-delete { background: #FEF2F2; color: #B91C1C; border-color: #FECACA; }
+    .crud-badge-pill.type-manage { background: #FAF5FF; color: #6B21A8; border-color: #E9D5FF; }
+    .legend-pill.type-view { background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; }
+    .legend-pill.type-create { background: #ECFDF5; color: #047857; border: 1px solid #A7F3D0; }
+    .legend-pill.type-edit { background: #FFFBEB; color: #B45309; border: 1px solid #FDE68A; }
+    .legend-pill.type-delete { background: #FEF2F2; color: #B91C1C; border: 1px solid #FECACA; }
+    .legend-pill.type-manage { background: #FAF5FF; color: #6B21A8; border: 1px solid #E9D5FF; }
     .crud-badge-pill input[type="checkbox"] {
         cursor: pointer;
         width: 15px;
@@ -122,19 +128,46 @@
     .badge-status-inherited { background: #E2E8F0; color: #475569; }
     .badge-status-granted { background: #10B981; color: #FFFFFF; }
     .badge-status-revoked { background: #EF4444; color: #FFFFFF; }
+    .legend-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 700;
+    }
+    .help-box {
+        background: #F8FAFC;
+        border: 1px solid #E2E8F0;
+        border-radius: 12px;
+        padding: 14px 18px;
+        font-size: 13px;
+        color: #475569;
+    }
+    .help-box strong { color: #0F172A; }
+    .route-label {
+        font-family: monospace;
+        font-size: 10px;
+        background: #F1F5F9;
+        color: #64748B;
+        border-radius: 4px;
+        padding: 1px 6px;
+    }
 </style>
 @endsection
 
 @section('content')
 <div class="container-fluid px-4 py-4">
     @include('access_control.partials.nav')
+
     <!-- Header -->
     <div class="d-flex align-items-center justify-content-between mb-4">
         <div>
             <h1 class="h3 font-weight-bold text-gray-800 mb-1">
-                <i class="fas fa-layer-group text-primary mr-2"></i>Module CRUD Permissions
+                <i class="fas fa-layer-group text-primary mr-2"></i>Module Access & Permissions
             </h1>
-            <p class="text-muted mb-0">Manage granular CRUD permissions and menu visibility by Role, User, and Profile.</p>
+            <p class="text-muted mb-0">Choose what each role or user can see and do.</p>
         </div>
     </div>
 
@@ -156,56 +189,56 @@
         </div>
     @endif
 
-    <!-- Navigation Scope Tabs -->
+    <!-- Scope Tabs -->
     <div class="perm-nav-tabs">
         <a href="{{ route('access_control.module_permissions.index', ['tab' => 'role', 'role_id' => $selectedRoleId]) }}"
            class="perm-tab-item {{ $tab === 'role' ? 'active' : '' }}">
-            <i class="fas fa-user-shield"></i> Permissions By Role
+            <i class="fas fa-user-shield"></i> By Role
         </a>
         <a href="{{ route('access_control.module_permissions.index', ['tab' => 'user', 'user_id' => $selectedUserId]) }}"
            class="perm-tab-item {{ $tab === 'user' ? 'active' : '' }}">
-            <i class="fas fa-user-cog"></i> Permissions By User (Overrides)
+            <i class="fas fa-user-cog"></i> By User
         </a>
         <a href="{{ route('access_control.module_permissions.index', ['tab' => 'position', 'designation_id' => $selectedDesignationId]) }}"
            class="perm-tab-item {{ $tab === 'position' ? 'active' : '' }}">
-            <i class="fas fa-user-tie"></i> Permissions By Position / Designation
+            <i class="fas fa-user-tie"></i> By Position
         </a>
         <a href="{{ route('access_control.module_permissions.index', ['tab' => 'profile', 'department_id' => $selectedDepartmentId]) }}"
            class="perm-tab-item {{ $tab === 'profile' ? 'active' : '' }}">
-            <i class="fas fa-id-card"></i> Permissions By Profile / Department
+            <i class="fas fa-id-card"></i> By Department
         </a>
     </div>
 
-    <!-- Filter Bar & Target Selector -->
+    <!-- Target Selector -->
     <div class="card border-0 shadow-sm rounded-16 mb-4">
         <div class="card-body p-4">
             @if($tab === 'role')
                 <form method="GET" action="{{ route('access_control.module_permissions.index') }}" class="row align-items-end">
                     <input type="hidden" name="tab" value="role">
                     <div class="col-md-5 mb-2 mb-md-0">
-                        <label class="font-weight-bold text-gray-700 mb-1"><i class="fas fa-user-tag text-primary mr-2"></i>Select System Role:</label>
+                        <label class="font-weight-bold text-gray-700 mb-1"><i class="fas fa-user-tag text-primary mr-2"></i>Select Role:</label>
                         <select name="role_id" class="form-control form-control-lg rounded-12 select2-searchable">
                             @foreach($roles as $r)
                                 <option value="{{ $r->id }}" {{ (int)$selectedRoleId === (int)$r->id ? 'selected' : '' }}>
-                                    {{ $r->name }} ({{ $r->slug }}) {{ $r->is_system ? '- System Default' : '' }}
+                                    {{ $r->name }} ({{ $r->slug }}) {{ $r->is_system ? '- System' : '' }}
                                 </option>
                             @endforeach
                         </select>
                     </div>
                     <div class="col-md-3 mb-2 mb-md-0">
                         <button type="submit" class="btn btn-primary font-weight-bold px-4 rounded-12 shadow-sm" style="height: 48px; background: var(--orb-primary); border: none;">
-                            <i class="fas fa-search mr-1"></i> Search
+                            <i class="fas fa-search mr-1"></i> Load
                         </button>
                     </div>
                     <div class="col-md-4 text-md-right">
-                        <input type="text" id="moduleSearch" class="form-control rounded-12" placeholder="Search modules & permissions...">
+                        <input type="text" id="moduleSearch" class="form-control rounded-12" placeholder="Search modules & pages...">
                     </div>
                 </form>
             @elseif($tab === 'user')
                 <form method="GET" action="{{ route('access_control.module_permissions.index') }}" class="row align-items-end">
                     <input type="hidden" name="tab" value="user">
                     <div class="col-md-5 mb-2 mb-md-0">
-                        <label class="font-weight-bold text-gray-700 mb-1"><i class="fas fa-user text-primary mr-2"></i>Select Target User:</label>
+                        <label class="font-weight-bold text-gray-700 mb-1"><i class="fas fa-user text-primary mr-2"></i>Select User:</label>
                         <select name="user_id" class="form-control form-control-lg rounded-12 select2-searchable">
                             @foreach($users as $u)
                                 <option value="{{ $u->id }}" {{ (int)$selectedUserId === (int)$u->id ? 'selected' : '' }}>
@@ -216,18 +249,18 @@
                     </div>
                     <div class="col-md-3 mb-2 mb-md-0">
                         <button type="submit" class="btn btn-primary font-weight-bold px-4 rounded-12 shadow-sm" style="height: 48px; background: var(--orb-primary); border: none;">
-                            <i class="fas fa-search mr-1"></i> Search
+                            <i class="fas fa-search mr-1"></i> Load
                         </button>
                     </div>
                     <div class="col-md-4 text-md-right">
-                        <input type="text" id="moduleSearch" class="form-control rounded-12" placeholder="Search modules & permissions...">
+                        <input type="text" id="moduleSearch" class="form-control rounded-12" placeholder="Search modules & pages...">
                     </div>
                 </form>
             @elseif($tab === 'position')
                 <form method="GET" action="{{ route('access_control.module_permissions.index') }}" class="row align-items-end">
                     <input type="hidden" name="tab" value="position">
                     <div class="col-md-5 mb-2 mb-md-0">
-                        <label class="font-weight-bold text-gray-700 mb-1"><i class="fas fa-user-tie text-primary mr-2"></i>Select Position / Designation:</label>
+                        <label class="font-weight-bold text-gray-700 mb-1"><i class="fas fa-user-tie text-primary mr-2"></i>Select Position:</label>
                         <select name="designation_id" class="form-control form-control-lg rounded-12 select2-searchable">
                             @foreach($designations as $dsg)
                                 <option value="{{ $dsg->id }}" {{ (int)$selectedDesignationId === (int)$dsg->id ? 'selected' : '' }}>
@@ -238,47 +271,102 @@
                     </div>
                     <div class="col-md-3 mb-2 mb-md-0">
                         <button type="submit" class="btn btn-primary font-weight-bold px-4 rounded-12 shadow-sm" style="height: 48px; background: var(--orb-primary); border: none;">
-                            <i class="fas fa-search mr-1"></i> Search
+                            <i class="fas fa-search mr-1"></i> Load
                         </button>
                     </div>
                     <div class="col-md-4 text-md-right">
-                        <input type="text" id="moduleSearch" class="form-control rounded-12" placeholder="Search modules & permissions...">
+                        <input type="text" id="moduleSearch" class="form-control rounded-12" placeholder="Search modules & pages...">
                     </div>
                 </form>
             @elseif($tab === 'profile')
                 <form method="GET" action="{{ route('access_control.module_permissions.index') }}" class="row align-items-end">
                     <input type="hidden" name="tab" value="profile">
                     <div class="col-md-5 mb-2 mb-md-0">
-                        <label class="font-weight-bold text-gray-700 mb-1"><i class="fas fa-building text-primary mr-2"></i>Select Profile / Department:</label>
+                        <label class="font-weight-bold text-gray-700 mb-1"><i class="fas fa-building text-primary mr-2"></i>Select Department:</label>
                         <select name="department_id" class="form-control form-control-lg rounded-12 select2-searchable">
                             @foreach($departments as $d)
                                 <option value="{{ $d->id }}" {{ (int)$selectedDepartmentId === (int)$d->id ? 'selected' : '' }}>
-                                    {{ $d->name }} Department / Profile
+                                    {{ $d->name }}
                                 </option>
                             @endforeach
                         </select>
                     </div>
                     <div class="col-md-3 mb-2 mb-md-0">
                         <button type="submit" class="btn btn-primary font-weight-bold px-4 rounded-12 shadow-sm" style="height: 48px; background: var(--orb-primary); border: none;">
-                            <i class="fas fa-search mr-1"></i> Search
+                            <i class="fas fa-search mr-1"></i> Load
                         </button>
                     </div>
                     <div class="col-md-4 text-md-right">
-                        <input type="text" id="moduleSearch" class="form-control rounded-12" placeholder="Search modules & permissions...">
+                        <input type="text" id="moduleSearch" class="form-control rounded-12" placeholder="Search modules & pages...">
                     </div>
                 </form>
             @endif
         </div>
     </div>
 
+    <!-- Simple Help Box -->
+    <div class="help-box mb-4 d-flex align-items-center flex-wrap" style="gap: 12px;">
+        <div><i class="fas fa-info-circle text-primary mr-1"></i> <strong>How this works:</strong></div>
+        <div>
+            <span class="legend-pill type-view"><i class="fas fa-eye"></i> View</span>
+            <span class="legend-pill type-create"><i class="fas fa-plus"></i> Create</span>
+            <span class="legend-pill type-edit"><i class="fas fa-pen"></i> Edit</span>
+            <span class="legend-pill type-delete"><i class="fas fa-trash"></i> Delete</span>
+            <span class="legend-pill type-manage"><i class="fas fa-cog"></i> Manage</span>
+        </div>
+        <div class="ml-md-auto text-muted">Checked = allowed / Unchecked = not allowed</div>
+    </div>
+
+    @php
+        if (! function_exists('friendlyPermissionLabel')) {
+            function friendlyPermissionLabel($perm) {
+                $key = strtolower($perm['key'] ?? '');
+                $action = strtolower($perm['action'] ?? '');
+
+                if (str_contains($action, 'view') || str_contains($action, 'show') || str_contains($action, 'list') || str_ends_with($key, '.view')) {
+                    return 'View';
+                }
+                if (str_contains($action, 'create') || str_contains($action, 'store') || str_contains($action, 'add') || str_ends_with($key, '.create')) {
+                    return 'Create';
+                }
+                if (str_contains($action, 'edit') || str_contains($action, 'update') || str_contains($action, 'modify') || str_ends_with($key, '.edit')) {
+                    return 'Edit';
+                }
+                if (str_contains($action, 'delete') || str_contains($action, 'destroy') || str_contains($action, 'remove') || str_ends_with($key, '.delete')) {
+                    return 'Delete';
+                }
+                if (str_contains($action, 'manage') || str_contains($action, 'approve') || str_contains($action, 'assign') || str_ends_with($key, '.manage')) {
+                    return 'Manage';
+                }
+                if (str_contains($action, 'reject')) {
+                    return 'Reject';
+                }
+
+                return ucfirst($perm['action'] ?: 'Action');
+            }
+        }
+        if (! function_exists('permissionBadgeType')) {
+            function permissionBadgeType($perm) {
+                $label = strtolower(friendlyPermissionLabel($perm));
+                return match ($label) {
+                    'view' => 'view',
+                    'create' => 'create',
+                    'edit' => 'edit',
+                    'delete' => 'delete',
+                    default => 'manage',
+                };
+            }
+        }
+    @endphp
+
     <!-- TAB 1: BY ROLE -->
     @if($tab === 'role')
         <form method="POST" action="{{ route('access_control.module_permissions.update_role', $selectedRoleId) }}">
             @csrf
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <span class="text-muted font-weight-bold">Configuring permissions for role: <span class="text-primary">{{ $role->name ?? 'Role' }}</span></span>
+                <span class="text-muted font-weight-bold">Setting access for: <span class="text-primary">{{ $role->name ?? 'Role' }}</span></span>
                 <button type="submit" class="btn btn-primary btn-lg rounded-12 px-4 shadow-sm">
-                    <i class="fas fa-save mr-2"></i>Save Role Permissions
+                    <i class="fas fa-save mr-2"></i>Save Access
                 </button>
             </div>
 
@@ -286,7 +374,7 @@
                 <div class="matrix-card module-block">
                     <div class="matrix-card-header">
                         <h3 class="matrix-card-title">
-                            <input type="checkbox" name="menu_ids[]" value="{{ $module['id'] }}" 
+                            <input type="checkbox" name="menu_ids[]" value="{{ $module['id'] }}"
                                    class="parent-menu-checkbox" {{ $module['is_assigned'] ? 'checked' : '' }}>
                             <i class="fas fa-folder text-warning"></i> {{ $module['name'] }}
                         </h3>
@@ -299,14 +387,14 @@
                         @if(!empty($module['crud']))
                             <div class="crud-row">
                                 <div class="crud-row-header">
-                                    <span class="font-weight-bold text-dark"><i class="fas fa-cog text-muted mr-1"></i> Module Level Controls</span>
+                                    <span class="font-weight-bold text-dark"><i class="fas fa-cog text-muted mr-1"></i> Module-level actions</span>
                                 </div>
                                 <div class="crud-badges-group">
                                     @foreach(['view', 'create', 'edit', 'delete'] as $type)
                                         @foreach($module['crud'][$type] ?? [] as $perm)
-                                            <label class="crud-badge-pill type-{{ $type }}">
+                                            <label class="crud-badge-pill type-{{ permissionBadgeType($perm) }}" title="{{ $perm['key'] }}">
                                                 <input type="checkbox" name="permission_ids[]" value="{{ $perm['id'] }}" {{ $perm['is_assigned'] ? 'checked' : '' }}>
-                                                <span>{{ ucfirst($type) }}: {{ $perm['action'] }}</span>
+                                                <span>{{ friendlyPermissionLabel($perm) }}</span>
                                             </label>
                                         @endforeach
                                     @endforeach
@@ -318,17 +406,20 @@
                             <div class="crud-row submenu-block">
                                 <div class="crud-row-header">
                                     <span class="font-weight-bold text-dark">
-                                        <input type="checkbox" name="menu_ids[]" value="{{ $sub['id'] }}" 
+                                        <input type="checkbox" name="menu_ids[]" value="{{ $sub['id'] }}"
                                                class="child-menu-checkbox" {{ $sub['is_assigned'] ? 'checked' : '' }}>
                                         <i class="fas fa-file-alt text-primary mr-1"></i> {{ $sub['name'] }}
+                                        @if(!empty($sub['route']))
+                                            <span class="route-label ml-2">{{ $sub['route'] }}</span>
+                                        @endif
                                     </span>
                                 </div>
                                 <div class="crud-badges-group">
                                     @foreach(['view', 'create', 'edit', 'delete'] as $type)
                                         @foreach($sub['crud'][$type] ?? [] as $perm)
-                                            <label class="crud-badge-pill type-{{ $type }}">
+                                            <label class="crud-badge-pill type-{{ permissionBadgeType($perm) }}" title="{{ $perm['key'] }}">
                                                 <input type="checkbox" name="permission_ids[]" value="{{ $perm['id'] }}" {{ $perm['is_assigned'] ? 'checked' : '' }}>
-                                                <span>{{ ucfirst($type) }}: {{ $perm['action'] }}</span>
+                                                <span>{{ friendlyPermissionLabel($perm) }}</span>
                                             </label>
                                         @endforeach
                                     @endforeach
@@ -341,7 +432,7 @@
 
             <div class="text-right mt-4 mb-5">
                 <button type="submit" class="btn btn-primary btn-lg rounded-12 px-5 shadow-sm">
-                    <i class="fas fa-save mr-2"></i>Save Role Permissions
+                    <i class="fas fa-save mr-2"></i>Save Access
                 </button>
             </div>
         </form>
@@ -352,12 +443,17 @@
             @csrf
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
-                    <span class="text-muted font-weight-bold">Custom permission overrides for user: <span class="text-primary">{{ $user->name ?? 'User' }}</span></span>
+                    <span class="text-muted font-weight-bold">Custom overrides for: <span class="text-primary">{{ $user->name ?? 'User' }}</span></span>
                     <span class="badge badge-info ml-2">Primary Role: {{ $user->primary_role_name ?? 'Default' }}</span>
                 </div>
                 <button type="submit" class="btn btn-primary btn-lg rounded-12 px-4 shadow-sm">
-                    <i class="fas fa-save mr-2"></i>Save User Overrides
+                    <i class="fas fa-save mr-2"></i>Save Overrides
                 </button>
+            </div>
+
+            <div class="help-box mb-4">
+                <i class="fas fa-info-circle text-primary mr-1"></i>
+                <strong>Inherit Default</strong> = follow the user's role. <strong>Explicit Grant</strong> / <strong>Explicit Revoke</strong> = override the role for this user only.
             </div>
 
             @foreach($modulesTree as $module)
@@ -374,16 +470,19 @@
                                 <div class="crud-row-header">
                                     <span class="font-weight-bold text-dark">
                                         <i class="fas fa-file-alt text-primary mr-1"></i> {{ $sub['name'] }}
+                                        @if(!empty($sub['route']))
+                                            <span class="route-label ml-2">{{ $sub['route'] }}</span>
+                                        @endif
                                     </span>
                                 </div>
                                 <div class="crud-badges-group">
                                     @foreach(['view', 'create', 'edit', 'delete'] as $type)
                                         @foreach($sub['crud'][$type] ?? [] as $perm)
                                             <div class="p-2 border rounded-8 bg-white d-inline-flex align-items-center gap-2 mr-2 mb-2">
-                                                <span class="font-weight-bold text-capitalize text-dark" style="font-size:12px;">{{ $type }}: {{ $perm['action'] }}</span>
-                                                
+                                                <span class="font-weight-bold text-capitalize text-dark" style="font-size:12px;" title="{{ $perm['key'] }}">{{ friendlyPermissionLabel($perm) }}</span>
+
                                                 @if($perm['is_inherited'])
-                                                    <span class="badge-status badge-status-inherited">Role Inherited</span>
+                                                    <span class="badge-status badge-status-inherited">Role</span>
                                                 @endif
 
                                                 <select name="user_override[{{ $perm['key'] }}]" class="form-control form-control-sm rounded-6" style="width:130px; font-size:11px;">
@@ -391,8 +490,7 @@
                                                     <option value="grant" {{ $perm['override_status'] === true ? 'selected' : '' }}>Explicit Grant</option>
                                                     <option value="revoke" {{ $perm['override_status'] === false ? 'selected' : '' }}>Explicit Revoke</option>
                                                 </select>
-                                                
-                                                <!-- Processed in controller -->
+
                                                 <input type="hidden" name="grants[]" value="{{ $perm['key'] }}" class="grant-input" {{ $perm['override_status'] === true ? '' : 'disabled' }}>
                                                 <input type="hidden" name="revokes[]" value="{{ $perm['key'] }}" class="revoke-input" {{ $perm['override_status'] === false ? '' : 'disabled' }}>
                                             </div>
@@ -407,7 +505,7 @@
 
             <div class="text-right mt-4 mb-5">
                 <button type="submit" class="btn btn-primary btn-lg rounded-12 px-5 shadow-sm">
-                    <i class="fas fa-save mr-2"></i>Save User Overrides
+                    <i class="fas fa-save mr-2"></i>Save Overrides
                 </button>
             </div>
         </form>
@@ -417,9 +515,9 @@
         <form method="POST" action="{{ route('access_control.module_permissions.update_position', $selectedDesignationId) }}">
             @csrf
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <span class="text-muted font-weight-bold">Position / Designation permissions for: <span class="text-primary">{{ $designation->name ?? 'Position' }}</span> @if(!empty($designation->department_name))<span class="badge badge-light border">Dept: {{ $designation->department_name }}</span>@endif</span>
+                <span class="text-muted font-weight-bold">Position permissions for: <span class="text-primary">{{ $designation->name ?? 'Position' }}</span> @if(!empty($designation->department_name))<span class="badge badge-light border">Dept: {{ $designation->department_name }}</span>@endif</span>
                 <button type="submit" class="btn btn-primary btn-lg rounded-12 px-4 shadow-sm">
-                    <i class="fas fa-save mr-2"></i>Save Position Permissions
+                    <i class="fas fa-save mr-2"></i>Save Position Access
                 </button>
             </div>
 
@@ -437,14 +535,17 @@
                                 <div class="crud-row-header">
                                     <span class="font-weight-bold text-dark">
                                         <i class="fas fa-file-alt text-primary mr-1"></i> {{ $sub['name'] }}
+                                        @if(!empty($sub['route']))
+                                            <span class="route-label ml-2">{{ $sub['route'] }}</span>
+                                        @endif
                                     </span>
                                 </div>
                                 <div class="crud-badges-group">
                                     @foreach(['view', 'create', 'edit', 'delete'] as $type)
                                         @foreach($sub['crud'][$type] ?? [] as $perm)
-                                            <label class="crud-badge-pill type-{{ $type }}">
+                                            <label class="crud-badge-pill type-{{ permissionBadgeType($perm) }}" title="{{ $perm['key'] }}">
                                                 <input type="checkbox" name="permission_keys[]" value="{{ $perm['key'] }}" {{ $perm['is_assigned'] ? 'checked' : '' }}>
-                                                <span>{{ ucfirst($type) }}: {{ $perm['action'] }}</span>
+                                                <span>{{ friendlyPermissionLabel($perm) }}</span>
                                             </label>
                                         @endforeach
                                     @endforeach
@@ -457,7 +558,7 @@
 
             <div class="text-right mt-4 mb-5">
                 <button type="submit" class="btn btn-primary btn-lg rounded-12 px-5 shadow-sm">
-                    <i class="fas fa-save mr-2"></i>Save Position Permissions
+                    <i class="fas fa-save mr-2"></i>Save Position Access
                 </button>
             </div>
         </form>
@@ -467,9 +568,9 @@
         <form method="POST" action="{{ route('access_control.module_permissions.update_profile', $selectedDepartmentId) }}">
             @csrf
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <span class="text-muted font-weight-bold">Profile Baseline permissions for: <span class="text-primary">{{ $department->name ?? 'Department' }} Profile</span></span>
+                <span class="text-muted font-weight-bold">Department baseline for: <span class="text-primary">{{ $department->name ?? 'Department' }}</span></span>
                 <button type="submit" class="btn btn-primary btn-lg rounded-12 px-4 shadow-sm">
-                    <i class="fas fa-save mr-2"></i>Save Profile Permissions
+                    <i class="fas fa-save mr-2"></i>Save Department Access
                 </button>
             </div>
 
@@ -487,14 +588,17 @@
                                 <div class="crud-row-header">
                                     <span class="font-weight-bold text-dark">
                                         <i class="fas fa-file-alt text-primary mr-1"></i> {{ $sub['name'] }}
+                                        @if(!empty($sub['route']))
+                                            <span class="route-label ml-2">{{ $sub['route'] }}</span>
+                                        @endif
                                     </span>
                                 </div>
                                 <div class="crud-badges-group">
                                     @foreach(['view', 'create', 'edit', 'delete'] as $type)
                                         @foreach($sub['crud'][$type] ?? [] as $perm)
-                                            <label class="crud-badge-pill type-{{ $type }}">
+                                            <label class="crud-badge-pill type-{{ permissionBadgeType($perm) }}" title="{{ $perm['key'] }}">
                                                 <input type="checkbox" name="permission_keys[]" value="{{ $perm['key'] }}" {{ $perm['is_assigned'] ? 'checked' : '' }}>
-                                                <span>{{ ucfirst($type) }}: {{ $perm['action'] }}</span>
+                                                <span>{{ friendlyPermissionLabel($perm) }}</span>
                                             </label>
                                         @endforeach
                                     @endforeach
@@ -507,7 +611,7 @@
 
             <div class="text-right mt-4 mb-5">
                 <button type="submit" class="btn btn-primary btn-lg rounded-12 px-5 shadow-sm">
-                    <i class="fas fa-save mr-2"></i>Save Profile Permissions
+                    <i class="fas fa-save mr-2"></i>Save Department Access
                 </button>
             </div>
         </form>
@@ -554,6 +658,18 @@ document.addEventListener('DOMContentLoaded', function () {
             const block = this.closest('.module-block');
             block.querySelectorAll('.child-menu-checkbox').forEach(function (childCb) {
                 childCb.checked = parentCb.checked;
+            });
+        });
+    });
+
+    // Per-module toggle-all button
+    document.querySelectorAll('.toggle-all-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const block = this.closest('.module-block');
+            const checkboxes = block.querySelectorAll('input[type="checkbox"]:not([disabled])');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            checkboxes.forEach(function (cb) {
+                cb.checked = !allChecked;
             });
         });
     });

@@ -263,15 +263,27 @@ class AdminUserC extends Controller
             return;
         }
 
+        // Enforce a single role per user: take only the first selected role.
+        $selectedRoleIds = array_slice(array_unique(array_filter(array_map('intval', $selectedRoleIds))), 0, 1);
+
         DB::table('user_roles')
             ->where('user_id', $userId)
             ->delete();
 
-        foreach (array_unique($selectedRoleIds) as $roleId) {
+        foreach ($selectedRoleIds as $roleId) {
             DB::table('user_roles')->updateOrInsert(
                 ['user_id' => $userId, 'role_id' => $roleId],
                 ['created_at' => now(), 'updated_at' => now()]
             );
+        }
+
+        // Safety net: ensure no stale extra rows exist for this user.
+        if (! empty($selectedRoleIds)) {
+            $keptRoleId = (int) $selectedRoleIds[0];
+            DB::table('user_roles')
+                ->where('user_id', $userId)
+                ->where('role_id', '!=', $keptRoleId)
+                ->delete();
         }
 
         if (class_exists(\App\Services\AccessControl\SidebarS::class)) {

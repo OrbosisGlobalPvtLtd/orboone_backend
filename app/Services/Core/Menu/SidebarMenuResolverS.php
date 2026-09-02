@@ -317,12 +317,14 @@ class SidebarMenuResolverS
         return $menus->filter(function ($menu) use ($user, $menuPermissionMap) {
             $permKey = (string) ($menu->permission_key ?? '');
             if ($permKey !== '') {
-                return $user->hasPermission($permKey);
+                if ($user->hasPermission($permKey)) {
+                    return true;
+                }
             }
 
             $route = (string) ($menu->route ?? '');
             if ($route === '' || ! isset($menuPermissionMap[$route])) {
-                return true;
+                return $permKey === '';
             }
 
             if ($route === 'projects.my' || $route === 'projects.tasks.index' || $route === 'projects.index') {

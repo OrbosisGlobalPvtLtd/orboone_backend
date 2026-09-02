@@ -184,9 +184,72 @@ class UserM extends Authenticatable
             return true;
         }
 
-        // Fallback mapping: treat employees.update as employees.edit
+        // Support pipe-separated permission keys (e.g. 'perm.a|perm.b')
+        if (str_contains($permissionKey, '|')) {
+            $keys = array_filter(array_map('trim', explode('|', $permissionKey)));
+            foreach ($keys as $k) {
+                if ($this->hasPermission($k)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // 2. HR Admin = full access to all HRMS operations, Employee Management, Attendance & Leave
+        if ($this->isHrAdmin()) {
+            if (
+                str_starts_with($permissionKey, 'employees.') ||
+                str_starts_with($permissionKey, 'employee.') ||
+                str_starts_with($permissionKey, 'employee_') ||
+                str_starts_with($permissionKey, 'attendance.') ||
+                str_starts_with($permissionKey, 'attendance_') ||
+                str_starts_with($permissionKey, 'leave.') ||
+                str_starts_with($permissionKey, 'leave_') ||
+                str_starts_with($permissionKey, 'departments.') ||
+                str_starts_with($permissionKey, 'designations.') ||
+                str_starts_with($permissionKey, 'organization_hierarchy.') ||
+                str_starts_with($permissionKey, 'probation.') ||
+                str_starts_with($permissionKey, 'internship.') ||
+                str_starts_with($permissionKey, 'hrms_exit_policy.') ||
+                str_starts_with($permissionKey, 'reporting.') ||
+                str_starts_with($permissionKey, 'reporting_structure.') ||
+                str_starts_with($permissionKey, 'document_generation.') ||
+                str_starts_with($permissionKey, 'documents.') ||
+                str_starts_with($permissionKey, 'company_documents.') ||
+                str_starts_with($permissionKey, 'asset_allocation.') ||
+                str_starts_with($permissionKey, 'asset_allocations.')
+            ) {
+                return true;
+            }
+        }
+
+        // Fallback / Alias mappings
         if ($permissionKey === 'employees.update') {
             $permissionKey = 'employees.edit';
+        } elseif ($permissionKey === 'attendance.regularization.view') {
+            if (
+                $this->hasPermission('attendance.regularization.view_all') ||
+                $this->hasPermission('attendance.regularization.view_team') ||
+                $this->hasPermission('attendance.regularization.view_own')
+            ) {
+                return true;
+            }
+        } elseif ($permissionKey === 'attendance.monthly_report.view') {
+            if (
+                $this->hasPermission('attendance.monthly_report.view_all') ||
+                $this->hasPermission('attendance.monthly_report.view_team') ||
+                $this->hasPermission('attendance.monthly_report.view_own')
+            ) {
+                return true;
+            }
+        } elseif ($permissionKey === 'attendance.work_reports.view') {
+            if (
+                $this->hasPermission('attendance.work_reports.view_all') ||
+                $this->hasPermission('attendance.work_reports.view_team') ||
+                $this->hasPermission('attendance.work_reports.view_own')
+            ) {
+                return true;
+            }
         }
 
         // 2. User Level Direct Override Check

@@ -2472,6 +2472,8 @@ class EmployeeC extends Controller
         abort_if(! $actor, 401);
 
         $isSuperAdmin = method_exists($actor, 'isSuperAdmin') && $actor->isSuperAdmin();
+        $isHrAdmin = method_exists($actor, 'isHrAdmin') ? $actor->isHrAdmin() : (method_exists($actor, 'hasRole') && $actor->hasRole(['super_admin', 'admin', 'hr_admin', 'hr', 'human resources']));
+        $isAdminOrHr = $isSuperAdmin || $isHrAdmin;
 
         $request->validate([
             'exit_type' => ['required', Rule::in(['resignation', 'termination', 'discontinued', 'retirement', 'contract_end', 'mutual_separation', 'layoff_redundancy', 'absconding', 'deceased', 'other', 'internship_completed', 'internship_exit'])],
@@ -2501,7 +2503,7 @@ class EmployeeC extends Controller
                     'notice_waived' => (bool) $request->boolean('notice_waived'),
                     'immediate_exit' => (bool) $request->boolean('immediate_exit'),
                     'buyout_recovery' => (bool) $request->boolean('buyout_recovery'),
-                    'actor_is_super_admin' => $isSuperAdmin,
+                    'actor_is_super_admin' => $isAdminOrHr,
                     'immediate_disable_login' => (bool) $request->boolean('immediate_disable_login'),
                 ],
                 (int) auth()->id()
@@ -2564,7 +2566,7 @@ class EmployeeC extends Controller
 
         // Check Permissions
         $isSuperAdmin = method_exists($actor, 'isSuperAdmin') && $actor->isSuperAdmin();
-        $isHrAdmin = method_exists($actor, 'hasRole') && $actor->hasRole('hr_admin');
+        $isHrAdmin = method_exists($actor, 'isHrAdmin') ? $actor->isHrAdmin() : (method_exists($actor, 'hasRole') && $actor->hasRole(['super_admin', 'admin', 'hr_admin', 'hr', 'human resources']));
 
         $canApprove = false;
         if ($isSuperAdmin || $isHrAdmin) {
@@ -2703,10 +2705,13 @@ class EmployeeC extends Controller
         $handoverStatus = $request->input('handover_status');
 
         $isSuperAdmin = method_exists($actor, 'isSuperAdmin') && $actor->isSuperAdmin();
-        $canFnf = $isSuperAdmin || (method_exists($actor, 'hasPermission') && $actor->hasPermission('employee_exit.fnf_process'));
-        $canAsset = $isSuperAdmin || (method_exists($actor, 'hasPermission') && $actor->hasPermission('employee_exit.asset_clearance'));
-        $canDocument = $isSuperAdmin || (method_exists($actor, 'hasPermission') && $actor->hasPermission('employee_exit.document_generate'));
-        $canUpdate = $isSuperAdmin || (method_exists($actor, 'hasPermission') && $actor->hasPermission('employee_exit.update'));
+        $isHrAdmin = method_exists($actor, 'isHrAdmin') ? $actor->isHrAdmin() : (method_exists($actor, 'hasRole') && $actor->hasRole(['super_admin', 'admin', 'hr_admin', 'hr', 'human resources']));
+        $isAdminOrHr = $isSuperAdmin || $isHrAdmin;
+
+        $canFnf = $isAdminOrHr || (method_exists($actor, 'hasPermission') && $actor->hasPermission('employee_exit.fnf_process'));
+        $canAsset = $isAdminOrHr || (method_exists($actor, 'hasPermission') && $actor->hasPermission('employee_exit.asset_clearance'));
+        $canDocument = $isAdminOrHr || (method_exists($actor, 'hasPermission') && $actor->hasPermission('employee_exit.document_generate'));
+        $canUpdate = $isAdminOrHr || (method_exists($actor, 'hasPermission') && $actor->hasPermission('employee_exit.update'));
 
         abort_if(! $canUpdate, 403, 'You are not allowed to update exit clearance.');
         abort_if($assetStatus !== null && ! $canAsset, 403, 'You are not allowed to update asset clearance.');

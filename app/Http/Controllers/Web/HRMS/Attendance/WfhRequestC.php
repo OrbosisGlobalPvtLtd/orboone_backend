@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Web\HRMS\Concerns\HrmsCrudPage;
 use App\Models\Core\UserM;
 use App\Models\HRMS\Attendance\WfhRequestM;
+use App\Models\HRMS\Employee\EmployeeM;
 use App\Services\HRMS\Attendance\WfhRequestService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;

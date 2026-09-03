@@ -280,7 +280,7 @@
             @endforeach
 
             <!-- Unmapped Permissions Accordion -->
-            @if(!$unmappedPermissions->isEmpty())
+            @if(isset($unmapped_permissions) && !$unmapped_permissions->isEmpty())
                 <div class="matrix-module-card mt-4">
                     <div class="matrix-module-header bg-light">
                         <div class="matrix-module-title text-secondary">
@@ -289,7 +289,7 @@
                         </div>
                     </div>
                     <div class="p-4">
-                        @foreach($unmappedPermissions as $modName => $perms)
+                        @foreach($unmapped_permissions as $modName => $perms)
                             <div class="mb-3">
                                 <h6 class="font-weight-bold text-dark text-capitalize"><i class="fas fa-layer-group mr-1 text-primary"></i> Module: {{ $modName }}</h6>
                                 <div class="crud-grid pl-0">

@@ -660,6 +660,7 @@
                         <div class="col-12 mb-0" id="det_rejection_row" style="display: none;">
                             <small class="text-muted d-block text-danger" style="font-size: 11px;">Rejection / Response Note</small>
                             <strong class="text-danger" id="det_rejection_note">-</strong>
+                            <div id="det_rejected_by" class="text-muted small mt-1" style="font-size: 11px; display: none;"></div>
                         </div>
                     </div>
                 </div>
@@ -819,8 +820,19 @@ $(function() {
         if (row.rejection_reason) {
             $('#det_rejection_row').show();
             $('#det_rejection_note').text(row.rejection_reason);
+            if (row.approver && row.approver.name) {
+                var rejectedByText = 'Rejected by ' + row.approver.name;
+                if (row.approved_at) {
+                    var rejDate = new Date(row.approved_at);
+                    rejectedByText += ' \u2022 ' + rejDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                }
+                $('#det_rejected_by').text(rejectedByText).show();
+            } else {
+                $('#det_rejected_by').hide();
+            }
         } else {
             $('#det_rejection_row').hide();
+            $('#det_rejected_by').hide();
         }
 
         $('#leaveDetailsModal').modal('show');

@@ -562,6 +562,9 @@
                                     <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 10.5px; background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5;">
                                         ✕ Rejected
                                     </span>
+                                    @if(!empty($lr->rejected_by_name))
+                                        <small class="text-muted d-block" style="font-size: 9.5px; font-weight: 600;">by {{ $lr->rejected_by_name }}</small>
+                                    @endif
                                 @else
                                     @if($hasManager)
                                         <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 10.5px; background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D;">
@@ -586,6 +589,9 @@
                                     <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 10.5px; background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5;">
                                         ✕ Rejected
                                     </span>
+                                    @if(!empty($lr->rejected_by_name))
+                                        <small class="text-muted d-block" style="font-size: 9.5px; font-weight: 600;">by {{ $lr->rejected_by_name }}</small>
+                                    @endif
                                 @elseif($stLower === 'pending')
                                     @if($hasManager && !$mgrApproved)
                                         <span class="text-muted small" style="font-size: 11px;">— Waiting for Manager</span>
@@ -940,7 +946,10 @@
                                                                 <strong class="text-danger font-weight-bold" style="font-size: 12.5px;">✕ Manager Rejected</strong>
                                                                 <span class="badge font-weight-bold" style="background: #FEE2E2; color: #991B1B; font-size: 9.5px;">Rejected</span>
                                                             </div>
-                                                            <div class="text-danger mt-0.5" style="font-size: 10.5px;">Reason: {{ $lr->rejection_reason ?? 'Rejected by Manager' }}</div>
+                                                            <div class="text-danger mt-0.5" style="font-size: 10.5px;">Rejected by <strong>{{ $lr->rejected_by_name ?? 'Manager' }}</strong> @if(!empty($lr->approved_at)) &bull; {{ \Carbon\Carbon::parse($lr->approved_at)->format('d M Y, h:i A') }} @endif</div>
+                                                            @if(!empty($lr->rejection_reason))
+                                                                <div class="text-muted small mt-1 italic" style="font-size: 10px; background: #FEF2F2; padding: 4px 8px; border-radius: 4px; border: 1px solid #FCA5A5;">Reason: "{{ $lr->rejection_reason }}"</div>
+                                                            @endif
                                                         </div>
                                                     @else
                                                         <div style="position: absolute; left: -24px; top: 2px; width: 20px; height: 20px; border-radius: 50%; background: #F59E0B; color: #FFF; display: flex; align-items: center; justify-content: center; font-size: 9.5px; box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);">
@@ -981,7 +990,10 @@
                                                                 <strong class="text-danger font-weight-bold" style="font-size: 12.5px;">✕ HR Rejected</strong>
                                                                 <span class="badge font-weight-bold" style="background: #FEE2E2; color: #991B1B; font-size: 9.5px;">Rejected</span>
                                                             </div>
-                                                            <div class="text-danger mt-0.5" style="font-size: 10.5px;">Reason: {{ $lr->rejection_reason ?? 'Rejected by HR' }}</div>
+                                                            <div class="text-danger mt-0.5" style="font-size: 10.5px;">Rejected by <strong>{{ $lr->rejected_by_name ?? 'HR Admin' }}</strong> @if(!empty($lr->approved_at)) &bull; {{ \Carbon\Carbon::parse($lr->approved_at)->format('d M Y, h:i A') }} @endif</div>
+                                                            @if(!empty($lr->rejection_reason))
+                                                                <div class="text-muted small mt-1 italic" style="font-size: 10px; background: #FEF2F2; padding: 4px 8px; border-radius: 4px; border: 1px solid #FCA5A5;">Reason: "{{ $lr->rejection_reason }}"</div>
+                                                            @endif
                                                         </div>
                                                     @elseif($mgrApproved || !$hasManager)
                                                         <div style="position: absolute; left: -24px; top: 2px; width: 20px; height: 20px; border-radius: 50%; background: {{ $branding['primary_color'] ?? '#4B00E8' }}; color: #FFF; display: flex; align-items: center; justify-content: center; font-size: 9.5px; box-shadow: 0 0 0 3px rgba(75, 0, 232, 0.25);">

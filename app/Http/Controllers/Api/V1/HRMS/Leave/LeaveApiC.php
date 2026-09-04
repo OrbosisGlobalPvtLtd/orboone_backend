@@ -325,6 +325,7 @@ class LeaveApiC extends Controller
                     'reason' => $data['reason'],
                     'attachment_path' => $attachmentPath,
                     'status' => 'pending',
+                    'approval_level' => !empty($employee->reporting_manager_employee_id) ? 'pending_manager' : 'pending_hr',
                     'sandwich_applied' => $calculation['sandwich_applied'],
                     'paid_days' => $calculation['paid_days'],
                     'sick_days' => $calculation['sick_days'],
@@ -551,7 +552,7 @@ class LeaveApiC extends Controller
         $leaveType = LeaveTypeM::findOrFail($data['leave_type_id']);
         $attachmentPath = $request->hasFile('attachment') ? $this->storeAttachment($request) : $leaveRequest->attachment_path;
 
-        $calculation = $this->calculationService->calculate($employee, $leaveType, array_merge($data, ['attachment_path' => $attachmentPath]));
+        $calculation = $this->calculationService->calculate($employee, $leaveType, array_merge($data, ['attachment_path' => $attachmentPath]), $leaveRequest);
 
         $leaveRequest = DB::transaction(function () use ($leaveRequest, $leaveType, $data, $attachmentPath, $calculation, $request) {
             $leaveRequest->update([

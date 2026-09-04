@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Api\V1\HRMS\Leave;
 
 use App\Http\Controllers\Controller;
+use App\Models\HRMS\Employee\EmployeeM;
 use App\Models\HRMS\Leave\LeaveRequestM;
 use App\Services\HRMS\Leave\LeaveApprovalService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class LeaveApprovalApiC extends Controller
@@ -35,7 +37,7 @@ class LeaveApprovalApiC extends Controller
         $requests = LeaveRequestM::with(['employee.user', 'leaveType', 'dates'])
             ->where('status', 'pending')
             ->when(!$canViewAll, function ($query) use ($user) {
-                $employeeId = \Illuminate\Support\Facades\DB::table('employees_new')->where('user_id', $user->id)->value('id');
+                $employeeId = DB::table('employees_new')->where('user_id', $user->id)->value('id');
                 $teamEmployeeIds = $employeeId ? app(\App\Services\HRMS\Team\TeamManagementScopeS::class)->getTeamEmployeeIds((int)$employeeId) : [];
                 $query->whereIn('employee_id', $teamEmployeeIds);
             })
@@ -54,16 +56,28 @@ class LeaveApprovalApiC extends Controller
         }
 
         $leaveRequest = LeaveRequestM::with('employee')->findOrFail($id);
-        $employeeId = \Illuminate\Support\Facades\DB::table('employees_new')->where('user_id', $user->id)->value('id');
-        $isAssignedManager = $employeeId && (int)$leaveRequest->reporting_manager_employee_id === (int)$employeeId;
+        $employee = $leaveRequest->employee ?: EmployeeM::find($leaveRequest->employee_id);
+        $managerEmpId = $leaveRequest->reporting_manager_employee_id ?: $employee?->reporting_manager_employee_id ?: DB::table('employees_new')->where('id', $leaveRequest->employee_id)->value('reporting_manager_employee_id');
+
+        if (empty($leaveRequest->reporting_manager_employee_id) && !empty($managerEmpId)) {
+            $leaveRequest->reporting_manager_employee_id = $managerEmpId;
+            $leaveRequest->save();
+        }
+
+        $employeeId = DB::table('employees_new')->where('user_id', $user->id)->value('id');
+        $isAssignedManager = $employeeId && $managerEmpId && (int)$managerEmpId === (int)$employeeId;
 
         $isSuperAdmin = (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin())
             || (method_exists($user, 'hasRole') && $user->hasRole('super_admin'))
             || in_array((int)($user->system_role_id ?? 0), [1, 2], true);
 
+        $isHrOrAdmin = $isSuperAdmin
+            || (method_exists($user, 'hasRole') && $user->hasRole(['admin', 'hr_admin']))
+            || (method_exists($user, 'hasPermission') && $user->hasPermission('leave.approvals.approve'));
+
         $canApprove = $isSuperAdmin
-            || (method_exists($user, 'hasPermission') && $user->hasPermission('leave.approvals.approve'))
-            || ($isAssignedManager && method_exists($user, 'hasPermission') && $user->hasPermission('leave.approvals.view_team'));
+            || $isHrOrAdmin
+            || ($isAssignedManager && method_exists($user, 'hasPermission') && ($user->hasPermission('leave.approvals.view_team') || $user->hasPermission('leave.approvals.view') || $user->hasPermission('leave.approvals.approve')));
 
         if (!$canApprove) {
             return $this->fail('Unauthorized. You do not have permission to approve this leave request.', 403);
@@ -72,9 +86,18 @@ class LeaveApprovalApiC extends Controller
         $request->validate(['note' => 'nullable|string|max:2000']);
 
         try {
-            if (!$isSuperAdmin && $isAssignedManager && $leaveRequest->approval_level === 'pending_manager') {
-                $updated = $this->approvalService->approveManagerStage($leaveRequest, $user->id, $request->note);
+            $hasManager = !empty($managerEmpId);
+            $managerApproved = !empty($leaveRequest->manager_approved_at) || $leaveRequest->approval_level === 'manager_approved';
+
+            if ($hasManager && !$managerApproved && $isAssignedManager && !$isSuperAdmin) {
+                $updated = $this->approvalService->approveManagerStage($leaveRequest, $user->id, $request->note ?: 'Approved by Reporting Manager');
             } else {
+                if ($hasManager && !$managerApproved) {
+                    $leaveRequest->manager_approved_by = $user->id;
+                    $leaveRequest->manager_approved_at = \Carbon\Carbon::now('Asia/Kolkata');
+                    $leaveRequest->manager_note = $isSuperAdmin ? 'Super Admin Direct Approval' : 'HR Admin Direct Approval';
+                    $leaveRequest->save();
+                }
                 $updated = $this->approvalService->approve($leaveRequest, $user->id, $request->note);
             }
 
@@ -93,16 +116,28 @@ class LeaveApprovalApiC extends Controller
         }
 
         $leaveRequest = LeaveRequestM::with('employee')->findOrFail($id);
-        $employeeId = \Illuminate\Support\Facades\DB::table('employees_new')->where('user_id', $user->id)->value('id');
-        $isAssignedManager = $employeeId && (int)$leaveRequest->reporting_manager_employee_id === (int)$employeeId;
+        $employee = $leaveRequest->employee ?: EmployeeM::find($leaveRequest->employee_id);
+        $managerEmpId = $leaveRequest->reporting_manager_employee_id ?: $employee?->reporting_manager_employee_id ?: DB::table('employees_new')->where('id', $leaveRequest->employee_id)->value('reporting_manager_employee_id');
+
+        if (empty($leaveRequest->reporting_manager_employee_id) && !empty($managerEmpId)) {
+            $leaveRequest->reporting_manager_employee_id = $managerEmpId;
+            $leaveRequest->save();
+        }
+
+        $employeeId = DB::table('employees_new')->where('user_id', $user->id)->value('id');
+        $isAssignedManager = $employeeId && $managerEmpId && (int)$managerEmpId === (int)$employeeId;
 
         $isSuperAdmin = (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin())
             || (method_exists($user, 'hasRole') && $user->hasRole('super_admin'))
             || in_array((int)($user->system_role_id ?? 0), [1, 2], true);
 
+        $isHrOrAdmin = $isSuperAdmin
+            || (method_exists($user, 'hasRole') && $user->hasRole(['admin', 'hr_admin']))
+            || (method_exists($user, 'hasPermission') && $user->hasPermission('leave.approvals.reject'));
+
         $canReject = $isSuperAdmin
-            || (method_exists($user, 'hasPermission') && $user->hasPermission('leave.approvals.reject'))
-            || ($isAssignedManager && method_exists($user, 'hasPermission') && $user->hasPermission('leave.approvals.view_team'));
+            || $isHrOrAdmin
+            || ($isAssignedManager && method_exists($user, 'hasPermission') && ($user->hasPermission('leave.approvals.view_team') || $user->hasPermission('leave.approvals.view') || $user->hasPermission('leave.approvals.reject')));
 
         if (!$canReject) {
             return $this->fail('Unauthorized. You do not have permission to reject this leave request.', 403);

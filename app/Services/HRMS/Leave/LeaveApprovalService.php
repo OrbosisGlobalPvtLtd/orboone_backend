@@ -36,7 +36,14 @@ class LeaveApprovalService
             }
 
             if (empty($leaveRequest->reporting_manager_employee_id)) {
-                throw ValidationException::withMessages(['reporting_manager' => 'This employee has no Reporting Manager assigned. HR approval is required directly.']);
+                $mgrId = $leaveRequest->employee?->reporting_manager_employee_id 
+                    ?: \Illuminate\Support\Facades\DB::table('employees_new')->where('id', $leaveRequest->employee_id)->value('reporting_manager_employee_id');
+                if ($mgrId) {
+                    $leaveRequest->reporting_manager_employee_id = $mgrId;
+                    $leaveRequest->save();
+                } else {
+                    throw ValidationException::withMessages(['reporting_manager' => 'This employee has no Reporting Manager assigned. HR approval is required directly.']);
+                }
             }
 
             $leaveRequest->forceFill([
@@ -46,7 +53,7 @@ class LeaveApprovalService
                 'manager_note' => $note,
             ])->save();
 
-            $this->notifyLeaveDecision($leaveRequest->fresh(['employee.user', 'leaveType', 'dates']), 'leave_manager_approved');
+            $this->notifyLeaveDecision($leaveRequest->fresh(['employee.user', 'leaveType', 'dates']), 'leave_manager_approved', null, $managerUserId);
 
             return $leaveRequest->fresh(['employee', 'leaveType', 'dates']);
         });
@@ -129,7 +136,7 @@ class LeaveApprovalService
             $this->logBalance($leaveRequest, $allocation, 'leave_approved', $before, (float) $allocation->total_monthly_remaining_paid, $approvedByUserId);
             $this->attendanceSyncService->syncApprovedLeave($leaveRequest->fresh(['dates']), $approvedByUserId);
             $this->createPayrollImpacts($leaveRequest->fresh(['dates']), $approvedByUserId);
-            $this->notifyLeaveDecision($leaveRequest->fresh(['employee.user', 'leaveType', 'dates']), 'leave_approved');
+            $this->notifyLeaveDecision($leaveRequest->fresh(['employee.user', 'leaveType', 'dates']), 'leave_approved', null, $approvedByUserId);
 
             return $leaveRequest->fresh(['employee', 'leaveType', 'dates']);
         });
@@ -156,7 +163,7 @@ class LeaveApprovalService
                 'rejection_reason' => $reason,
             ])->save();
 
-            $this->notifyLeaveDecision($leaveRequest->fresh(['employee.user', 'leaveType', 'dates']), 'leave_rejected', $reason);
+            $this->notifyLeaveDecision($leaveRequest->fresh(['employee.user', 'leaveType', 'dates']), 'leave_rejected', $reason, $rejectedByUserId);
 
             return $leaveRequest->fresh(['employee', 'leaveType', 'dates']);
         });
@@ -274,24 +281,71 @@ class LeaveApprovalService
         }
     }
 
-    private function notifyLeaveDecision(LeaveRequestM $leaveRequest, string $type, ?string $reason = null): void
+    private function getApproverRoleTitle(int $actorId): string
+    {
+        $user = \App\Models\Core\UserM::with('role')->find($actorId);
+        if (! $user) {
+            return 'Approver';
+        }
+
+        $roleName = strtolower((string) ($user->role?->name ?? $user->role?->code ?? $user->role?->title ?? ''));
+        if (str_contains($roleName, 'super')) {
+            return 'Super Admin';
+        }
+        if (str_contains($roleName, 'admin') && ! str_contains($roleName, 'hr')) {
+            return 'Admin';
+        }
+        if (str_contains($roleName, 'hr')) {
+            return 'HR';
+        }
+        if (str_contains($roleName, 'manager')) {
+            return 'Manager';
+        }
+
+        if (method_exists($user, 'hasRole')) {
+            if ($user->hasRole('super_admin')) return 'Super Admin';
+            if ($user->hasRole('admin')) return 'Admin';
+            if ($user->hasRole('hr_admin') || $user->hasRole('hr')) return 'HR';
+            if ($user->hasRole('manager')) return 'Manager';
+        }
+
+        return 'HR';
+    }
+
+    private function notifyLeaveDecision(LeaveRequestM $leaveRequest, string $type, ?string $reason = null, ?int $actorId = null): void
     {
         $userId = $leaveRequest->user_id ?: $leaveRequest->employee?->user_id;
         if (! $userId) {
             return;
         }
 
+        $approverRole = 'HR';
+        if ($type === 'leave_manager_approved' || $leaveRequest->approval_level === 'manager_rejected') {
+            $approverRole = 'Manager';
+        } elseif ($actorId) {
+            $approverRole = $this->getApproverRoleTitle($actorId);
+        }
+
         $leaveType = $leaveRequest->leaveType?->name ?: 'Leave';
         $fromDate = Carbon::parse($leaveRequest->start_date)->format('Y-m-d');
         $toDate = Carbon::parse($leaveRequest->end_date)->format('Y-m-d');
         $dateRange = $fromDate . ' to ' . $toDate;
-        $approved = $type === 'leave_approved';
+
+        $title = match ($type) {
+            'leave_manager_approved' => "Leave Approved by {$approverRole}",
+            'leave_approved' => "Leave Approved by {$approverRole}",
+            default => "Leave Rejected by {$approverRole}",
+        };
+
+        $message = match ($type) {
+            'leave_manager_approved' => "Your {$leaveType} leave from {$fromDate} to {$toDate} has been approved by your Manager.",
+            'leave_approved' => "Your {$leaveType} leave from {$fromDate} to {$toDate} has been approved by {$approverRole}.",
+            default => "Your {$leaveType} leave from {$fromDate} to {$toDate} has been rejected by {$approverRole}." . ($reason ? " Reason: {$reason}" : ""),
+        };
 
         app(\App\Services\HRMS\Notification\NotificationS::class)->notifyEmployee(
-            $approved ? 'Leave Approved' : 'Leave Rejected',
-            $approved
-                ? "Your {$leaveType} leave from {$fromDate} to {$toDate} has been approved."
-                : "Your {$leaveType} leave from {$fromDate} to {$toDate} has been rejected. Reason: {$reason}",
+            $title,
+            $message,
             $type,
             'leave',
             ['leave_id' => $leaveRequest->id],

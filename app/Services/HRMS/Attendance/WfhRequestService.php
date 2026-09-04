@@ -103,7 +103,7 @@ class WfhRequestService
         ];
     }
 
-    public function validateRange(EmployeeM $employee, string $fromDateStr, string $toDateStr): array
+    public function validateRange(EmployeeM $employee, string $fromDateStr, string $toDateStr, ?int $ignoreRequestId = null): array
     {
         $policy = $this->policy();
         if (! ($policy['wfh_enabled'] ?? true)) {
@@ -125,6 +125,7 @@ class WfhRequestService
         $duplicate = WfhRequestM::query()
             ->where('employee_id', $employee->id)
             ->whereNotIn('status', ['rejected', 'cancelled'])
+            ->when($ignoreRequestId, fn ($q) => $q->where('id', '!=', $ignoreRequestId))
             ->where(function ($q) use ($from, $to) {
                 $q->where(function ($q2) use ($from, $to) {
                     $q2->whereDate('from_date', '<=', $to->toDateString())
@@ -244,7 +245,7 @@ class WfhRequestService
 
         $employee = EmployeeM::find($requestRecord->employee_id);
         $stats = $employee
-            ? $this->validateRange($employee, (string) $fromDateStr, (string) $toDateStr)
+            ? $this->validateRange($employee, (string) $fromDateStr, (string) $toDateStr, (int) $requestRecord->id)
             : [
                 'total_days' => 1,
                 'working_days' => 1,

@@ -2840,7 +2840,7 @@ class EmployeeC extends Controller
                 $this->profileTable . '.highest_qualification',
                 $this->profileTable . '.cgpa_percentage',
                 $this->profileTable . '.total_experience',
-                $this->profileTable . '.experience_type',
+                DB::raw("COALESCE(" . $this->profileTable . ".experience_type, " . $this->employeeTable . ".experience_type, 'experienced') as experience_type"),
                 $this->profileTable . '.emergency_contact_number',
                 $this->profileTable . '.bank_account_no',
                 $this->profileTable . '.bank_account_type',

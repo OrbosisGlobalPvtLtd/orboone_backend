@@ -3,10 +3,18 @@
 namespace App\Models\HRMS\Announcement;
 
 use App\Models\Core\UserM;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class AnnouncementM extends Model
 {
+    use HasFactory;
+
+    protected static function newFactory()
+    {
+        return \Database\Factories\AnnouncementFactory::new();
+    }
+
     protected $table = 'announcements';
 
     protected $fillable = [

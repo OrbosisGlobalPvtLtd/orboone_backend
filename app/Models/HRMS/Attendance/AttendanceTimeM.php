@@ -9,6 +9,11 @@ class AttendanceTimeM extends Model
 {
     use HasFactory;
 
+    protected static function newFactory()
+    {
+        return \Database\Factories\AttendanceTimeFactory::new();
+    }
+
     protected $table = 'attendance_times';
 
     protected $fillable = [

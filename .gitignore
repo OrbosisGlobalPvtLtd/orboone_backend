@@ -47,3 +47,6 @@ coverage/
 .php-cs-fixer.cache
 
 /storage/debugbar
+
+/tests/Feature/*Test.php
+/attendance_postman_collection.json

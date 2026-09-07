@@ -561,10 +561,11 @@ class EmployeeC extends Controller
                 'attendance_policy_rule_id' => $policyId,
                 'joining_date' => $lifecyclePayload['joining_date'],
                 'employment_status' => 'active',
-                'probation_months' => 3,
-                'probation_start_date' => $lifecyclePayload['probation_start_date'],
-                'probation_end_date' => $lifecyclePayload['probation_end_date'],
-                'probation_status' => $lifecyclePayload['probation_status'],
+                'probation_months' => $lifecyclePayload['employee_stage'] === 'internship' ? null : ($lifecyclePayload['probation_months'] ?? 3),
+                'probation_start_date' => $lifecyclePayload['employee_stage'] === 'internship' ? null : $lifecyclePayload['probation_start_date'],
+                'probation_end_date' => $lifecyclePayload['employee_stage'] === 'internship' ? null : $lifecyclePayload['probation_end_date'],
+                'confirmation_effective_date' => $lifecyclePayload['employee_stage'] === 'internship' ? null : ($lifecyclePayload['confirmation_effective_date'] ?? null),
+                'probation_status' => $lifecyclePayload['employee_stage'] === 'internship' ? null : $lifecyclePayload['probation_status'],
                 'internship_start_date' => $lifecyclePayload['internship_start_date'],
                 'internship_end_date' => $lifecyclePayload['internship_end_date'],
                 'is_paid_intern' => $lifecyclePayload['is_paid_intern'],
@@ -576,16 +577,28 @@ class EmployeeC extends Controller
                 'updated_at' => now(),
             ];
 
+            if (Schema::hasColumn($this->employeeTable, 'probation_duration_type')) {
+                $employeeInsertData['probation_duration_type'] = $lifecyclePayload['employee_stage'] === 'internship' ? null : ($lifecyclePayload['probation_duration_type'] ?? 'months');
+            }
+
+            if (Schema::hasColumn($this->employeeTable, 'probation_duration_value')) {
+                $employeeInsertData['probation_duration_value'] = $lifecyclePayload['employee_stage'] === 'internship' ? null : ($lifecyclePayload['probation_duration_value'] ?? 3);
+            }
+
             if (Schema::hasColumn($this->employeeTable, 'internship_status')) {
                 $employeeInsertData['internship_status'] = $lifecyclePayload['employee_stage'] === 'internship' ? 'active' : null;
             }
 
             if (Schema::hasColumn($this->employeeTable, 'is_permanent')) {
-                $employeeInsertData['is_permanent'] = 0;
+                $employeeInsertData['is_permanent'] = $lifecyclePayload['employee_stage'] === 'permanent' ? 1 : 0;
             }
 
             if (Schema::hasColumn($this->employeeTable, 'permanent_at')) {
-                $employeeInsertData['permanent_at'] = null;
+                $employeeInsertData['permanent_at'] = $lifecyclePayload['employee_stage'] === 'permanent' ? ($lifecyclePayload['confirmation_effective_date'] ?? null) : null;
+            }
+
+            if (Schema::hasColumn($this->employeeTable, 'confirmation_date')) {
+                $employeeInsertData['confirmation_date'] = $lifecyclePayload['employee_stage'] === 'permanent' ? ($lifecyclePayload['confirmation_effective_date'] ?? null) : null;
             }
 
             $employeeId = DB::table($this->employeeTable)->insertGetId($employeeInsertData);
@@ -930,6 +943,11 @@ class EmployeeC extends Controller
             'is_paid_intern' => ['nullable', Rule::in(['0', '1', 0, 1])],
 
             'probation_months' => ['nullable', 'integer', 'min:1'],
+            'probation_duration_option' => ['nullable', Rule::in(['3_months', '6_months', 'custom'])],
+            'probation_duration_type' => ['nullable', Rule::in(['months', 'days'])],
+            'probation_duration_value' => ['nullable', 'integer', 'min:1'],
+            'custom_duration_value' => ['nullable', 'integer', 'min:1'],
+            'custom_duration_unit' => ['nullable', Rule::in(['months', 'days'])],
             'probation_start_date' => ['nullable', 'date'],
             'probation_end_date' => ['nullable', 'date'],
             'confirmation_date' => ['nullable', 'date'],
@@ -966,8 +984,25 @@ class EmployeeC extends Controller
             'resume_file' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:5120'],
         ]);
 
+        $input = $request->all();
+        if ($request->probation_duration_option === '6_months') {
+            $input['probation_duration_type'] = 'months';
+            $input['probation_duration_value'] = 6;
+            $input['probation_months'] = 6;
+        } elseif ($request->probation_duration_option === '3_months') {
+            $input['probation_duration_type'] = 'months';
+            $input['probation_duration_value'] = 3;
+            $input['probation_months'] = 3;
+        } elseif ($request->probation_duration_option === 'custom' || $request->filled('probation_duration_value') || $request->filled('custom_duration_value')) {
+            $val = max(1, (int) ($request->probation_duration_value ?: $request->custom_duration_value ?: 1));
+            $unit = strtolower((string) ($request->probation_duration_type ?: $request->custom_duration_unit ?: 'months'));
+            $input['probation_duration_value'] = $val;
+            $input['probation_duration_type'] = $unit;
+            $input['probation_months'] = $val;
+        }
+
         $lifecyclePayload = $this->lifecycleService->buildLifecyclePayload(
-            $request->all(),
+            $input,
             $employeeData->probation_status,
             $employeeData->employee_stage ?? null,
             true
@@ -1030,6 +1065,29 @@ class EmployeeC extends Controller
             list($newShift, $newPolicyId) = $this->resolveShiftAndPolicyBySchedule($request->work_schedule_type, $request->work_mode, $request->employment_type);
             $dbScheduleType = $this->mapScheduleTypeForDb($request->work_schedule_type ?: ($request->work_mode === 'wfh' ? 'wfh' : ($request->employment_type === 'part_time' ? 'part_time' : 'general')));
 
+            $isInternshipStage = $lifecyclePayload['employee_stage'] === 'internship';
+
+            if ($isInternshipStage) {
+                // Clear probation-specific fields for internship
+                $probationStartDate = null;
+                $probationEndDate = null;
+                $confirmationEffectiveDate = null;
+                $probationStatus = null;
+                $probationMonths = null;
+                $probationDurationType = null;
+                $probationDurationValue = null;
+            } else {
+                // For probation and permanent: persist authoritative lifecycle values,
+                // falling back to existing employee data so historical probation data is preserved.
+                $probationStartDate = $lifecyclePayload['probation_start_date'] ?: ($employeeData->probation_start_date ?? null);
+                $probationEndDate = $lifecyclePayload['probation_end_date'] ?: ($employeeData->probation_end_date ?? null);
+                $confirmationEffectiveDate = $lifecyclePayload['confirmation_effective_date'] ?: ($employeeData->confirmation_effective_date ?? null);
+                $probationStatus = $lifecyclePayload['probation_status'] ?: ($employeeData->probation_status ?? 'pending');
+                $probationMonths = $lifecyclePayload['probation_months'] ?? ($employeeData->probation_months ?? null);
+                $probationDurationType = $lifecyclePayload['probation_duration_type'] ?? ($employeeData->probation_duration_type ?? 'months');
+                $probationDurationValue = $lifecyclePayload['probation_duration_value'] ?? ($employeeData->probation_duration_value ?? null);
+            }
+
             $employeeUpdateData = [
                 'system_role_id' => $request->system_role_id,
                 'department_id' => $request->department_id,
@@ -1042,11 +1100,13 @@ class EmployeeC extends Controller
                 'employment_status' => $request->employment_status,
                 'joining_date' => $request->filled('joining_date') ? $request->joining_date : ($lifecyclePayload['joining_date'] ?: $employeeData->joining_date),
                 'relieving_date' => $request->filled('relieving_date') ? $request->relieving_date : ($lifecyclePayload['relieving_date'] ?: $employeeData->relieving_date),
-                'probation_start_date' => $request->filled('probation_start_date') ? $request->probation_start_date : ($lifecyclePayload['probation_start_date'] ?: $employeeData->probation_start_date),
-                'probation_end_date' => $request->filled('probation_end_date') ? $request->probation_end_date : ($lifecyclePayload['probation_end_date'] ?: $employeeData->probation_end_date),
-                'probation_status' => $request->filled('probation_status') ? $request->probation_status : ($lifecyclePayload['probation_status'] ?: $employeeData->probation_status),
-                'internship_start_date' => $request->filled('internship_start_date') ? $request->internship_start_date : ($lifecyclePayload['internship_start_date'] ?: $employeeData->internship_start_date),
-                'internship_end_date' => $request->filled('internship_end_date') ? $request->internship_end_date : ($lifecyclePayload['internship_end_date'] ?: $employeeData->internship_end_date),
+                'probation_start_date' => $probationStartDate,
+                'probation_end_date' => $probationEndDate,
+                'confirmation_effective_date' => $confirmationEffectiveDate,
+                'probation_status' => $probationStatus,
+                'probation_months' => $probationMonths,
+                'internship_start_date' => $lifecyclePayload['internship_start_date'],
+                'internship_end_date' => $lifecyclePayload['internship_end_date'],
                 'is_paid_intern' => $request->has('is_paid_intern') && $request->is_paid_intern !== null ? $request->is_paid_intern : ($lifecyclePayload['is_paid_intern'] ?? $employeeData->is_paid_intern),
                 'actual_salary' => $request->filled('actual_salary') ? $request->actual_salary : ($lifecyclePayload['actual_salary'] ?: $employeeData->actual_salary),
                 'is_active' => $request->employment_status === 'active' ? 1 : 0,
@@ -1054,12 +1114,16 @@ class EmployeeC extends Controller
                 'updated_at' => now(),
             ];
 
-            if ($request->filled('probation_months')) {
-                $employeeUpdateData['probation_months'] = (int) $request->probation_months;
+            if (Schema::hasColumn($this->employeeTable, 'probation_duration_type')) {
+                $employeeUpdateData['probation_duration_type'] = $probationDurationType;
             }
 
-            if ($request->filled('confirmation_date')) {
-                $employeeUpdateData['confirmation_date'] = $request->confirmation_date;
+            if (Schema::hasColumn($this->employeeTable, 'probation_duration_value')) {
+                $employeeUpdateData['probation_duration_value'] = $probationDurationValue;
+            }
+
+            if (Schema::hasColumn($this->employeeTable, 'confirmation_date')) {
+                $employeeUpdateData['confirmation_date'] = $lifecyclePayload['employee_stage'] === 'permanent' ? ($confirmationEffectiveDate ?? null) : null;
             }
 
             if (Schema::hasColumn($this->employeeTable, 'internship_status')) {
@@ -1071,18 +1135,11 @@ class EmployeeC extends Controller
             if (Schema::hasColumn($this->employeeTable, 'is_permanent')) {
                 $employeeUpdateData['is_permanent'] = $lifecyclePayload['employee_stage'] === 'permanent'
                     ? 1
-                    : ((int)($employeeData->is_permanent ?? 0));
+                    : 0;
             }
 
             if (Schema::hasColumn($this->employeeTable, 'permanent_at')) {
-                $permDate = $request->filled('confirmation_date')
-                    ? $request->confirmation_date
-                    : ($request->filled('permanent_at')
-                        ? $request->permanent_at
-                        : ($employeeData->permanent_at ?? ($lifecyclePayload['employee_stage'] === 'permanent' ? now()->toDateString() : null)));
-                if ($permDate) {
-                    $employeeUpdateData['permanent_at'] = $permDate;
-                }
+                $employeeUpdateData['permanent_at'] = $lifecyclePayload['employee_stage'] === 'permanent' ? ($confirmationEffectiveDate ?? null) : null;
             }
 
             if ($request->has('reporting_manager_employee_id')) {
@@ -2840,7 +2897,11 @@ class EmployeeC extends Controller
                 $this->profileTable . '.highest_qualification',
                 $this->profileTable . '.cgpa_percentage',
                 $this->profileTable . '.total_experience',
-                DB::raw("COALESCE(" . $this->profileTable . ".experience_type, " . $this->employeeTable . ".experience_type, 'experienced') as experience_type"),
+                DB::raw(
+                    Schema::hasColumn($this->employeeTable, 'experience_type')
+                        ? "COALESCE(" . $this->profileTable . ".experience_type, " . $this->employeeTable . ".experience_type, 'experienced') as experience_type"
+                        : "COALESCE(" . $this->profileTable . ".experience_type, 'experienced') as experience_type"
+                ),
                 $this->profileTable . '.emergency_contact_number',
                 $this->profileTable . '.bank_account_no',
                 $this->profileTable . '.bank_account_type',

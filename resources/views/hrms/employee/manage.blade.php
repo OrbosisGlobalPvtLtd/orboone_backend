@@ -1572,12 +1572,20 @@ $canSeeSalary = $user->hasRole('super_admin')
                             </div>
                         </div>
 
-                        <div class="em-section probation-section">
+                        @php
+                            $manageStage = strtolower($employeeData->employee_stage ?? 'probation');
+                            $isManageInternship = $manageStage === 'internship' || ($employeeData->employment_type ?? '') === 'intern';
+                            $isManageContractOrFreelance = in_array($manageStage, ['contract', 'freelance']);
+                        @endphp
+                        <div class="em-section probation-section" style="{{ ($isManageInternship || $isManageContractOrFreelance) ? 'display: none;' : '' }}">
                             <h6 class="em-section-title"><i class="fas fa-hourglass-half"></i>Probation / Permanent Details</h6>
                             <div class="em-form-grid">
                                 <div class="em-field">
-                                    <label>Probation Months</label>
-                                    <input type="number" name="probation_months" class="em-control editable" value="{{ old('probation_months', $employeeData->probation_months) }}" readonly>
+                                    <label>Probation Duration</label>
+                                    <input type="text" class="em-control em-control-readonly" value="{{ formatProbationDuration($employeeData) }}" readonly>
+                                    <input type="hidden" name="probation_months" value="{{ old('probation_months', $employeeData->probation_months) }}">
+                                    <input type="hidden" name="probation_duration_type" value="{{ old('probation_duration_type', $employeeData->probation_duration_type) }}">
+                                    <input type="hidden" name="probation_duration_value" value="{{ old('probation_duration_value', $employeeData->probation_duration_value) }}">
                                 </div>
 
                                 <div class="em-field">

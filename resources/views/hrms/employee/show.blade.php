@@ -585,8 +585,10 @@
 
     $isCompleted = (int)($employeeData->is_profile_completed ?? 0) === 1;
 
-    function evDate($date) {
-        return !empty($date) ? \Carbon\Carbon::parse($date)->format('d M Y') : '-';
+    if (!function_exists('evDate')) {
+        function evDate($date) {
+            return !empty($date) ? \Carbon\Carbon::parse($date)->format('d M Y') : '-';
+        }
     }
 @endphp
 
@@ -715,8 +717,15 @@
 
             <!-- Section C: Lifecycle Details (Conditional) -->
             @php
-                $hasInternship = !empty($employeeData->internship_start_date) || !empty($employeeData->internship_end_date) || ($employeeData->employee_stage ?? '') === 'internship';
-                $hasProbation = !empty($employeeData->probation_start_date) || !empty($employeeData->probation_end_date) || ($employeeData->employee_stage ?? '') === 'probation';
+                $isInternship = ($employeeData->employee_stage ?? '') === 'internship' || ($employeeData->employment_type ?? '') === 'intern';
+                $hasInternship = !empty($employeeData->internship_start_date) || !empty($employeeData->internship_end_date) || $isInternship;
+                $hasProbation = !$isInternship && (
+                    !empty($employeeData->probation_start_date) ||
+                    !empty($employeeData->probation_end_date) ||
+                    !empty($employeeData->probation_duration_value) ||
+                    !empty($employeeData->probation_months) ||
+                    ($employeeData->employee_stage ?? '') === 'probation'
+                );
                 $hasConfirmation = ($employeeData->employee_stage ?? '') === 'permanent' || !empty($employeeData->permanent_at) || in_array($employeeData->probation_status ?? '', ['completed', 'confirmed']);
                 $hasExit = $employmentStatus !== 'active' || !empty($employeeData->relieving_date) || !$isActive;
             @endphp
@@ -742,14 +751,19 @@
                             @endif
 
                             @if($hasProbation)
-                                <div class="ev-item" style="border-left: 4px solid #F59E0B;"><span class="ev-label">Probation Months</span><span class="ev-value">{{ $employeeData->probation_months ?? '-' }}</span></div>
+                                <div class="ev-item" style="border-left: 4px solid #F59E0B;"><span class="ev-label">Probation Duration</span><span class="ev-value">{{ formatProbationDuration($employeeData) }}</span></div>
                                 <div class="ev-item" style="border-left: 4px solid #F59E0B;"><span class="ev-label">Probation Status</span><span class="ev-value">{{ !empty($employeeData->probation_status) ? ucfirst($employeeData->probation_status) : '-' }}</span></div>
                                 <div class="ev-item" style="border-left: 4px solid #F59E0B;"><span class="ev-label">Probation Start</span><span class="ev-value">{{ evDate($employeeData->probation_start_date ?? null) }}</span></div>
                                 <div class="ev-item" style="border-left: 4px solid #F59E0B;"><span class="ev-label">Probation End</span><span class="ev-value">{{ evDate($employeeData->probation_end_date ?? null) }}</span></div>
                             @endif
 
-                            @if($hasConfirmation)
-                                <div class="ev-item" style="border-left: 4px solid #10B981; grid-column: span 2;"><span class="ev-label">Confirmation / Permanent Date</span><span class="ev-value">{{ evDate($employeeData->permanent_at ?? $employeeData->joining_date ?? null) }} (Confirmed)</span></div>
+                            @if(($employeeData->employee_stage ?? '') === 'permanent' || !empty($employeeData->permanent_at))
+                                <div class="ev-item" style="border-left: 4px solid #10B981; grid-column: span 2;"><span class="ev-label">Confirmation / Permanent Date</span><span class="ev-value">{{ evDate($employeeData->permanent_at ?? null) }} (Confirmed)</span></div>
+                            @elseif($hasProbation)
+                                @php
+                                    $expectedPerm = !empty($employeeData->probation_end_date) ? \Carbon\Carbon::parse($employeeData->probation_end_date)->addDay()->format('d M Y') : 'Not Yet Confirmed';
+                                @endphp
+                                <div class="ev-item" style="border-left: 4px solid #F59E0B; grid-column: span 2;"><span class="ev-label">Expected Permanent Date</span><span class="ev-value">{{ $expectedPerm }} (Under Probation)</span></div>
                             @endif
 
                             @if($hasExit)

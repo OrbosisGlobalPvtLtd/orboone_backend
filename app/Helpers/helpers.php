@@ -753,4 +753,52 @@ if (!function_exists('formatWorkReportRow')) {
     }
 }
 
+if (!function_exists('formatProbationDuration')) {
+    /**
+     * Format probation duration for UI display with correct unit, pluralization, and fallbacks.
+     *
+     * @param mixed $employeeOrType Object/array of employee, or string duration type
+     * @param int|null $value Numeric duration value if first arg is type
+     * @param int|null $fallbackMonths Fallback months if type/val null
+     * @param string|null $stage Employee stage
+     * @return string
+     */
+    function formatProbationDuration($employeeOrType = null, $value = null, $fallbackMonths = null, $stage = null): string
+    {
+        if (is_object($employeeOrType) || (is_array($employeeOrType) && !is_numeric(key($employeeOrType)))) {
+            $emp = $employeeOrType;
+            $stage = is_array($emp) ? ($emp['employee_stage'] ?? null) : ($emp->employee_stage ?? null);
+            $type = is_array($emp) ? ($emp['probation_duration_type'] ?? null) : ($emp->probation_duration_type ?? null);
+            $value = is_array($emp) ? ($emp['probation_duration_value'] ?? null) : ($emp->probation_duration_value ?? null);
+            $fallbackMonths = is_array($emp) ? ($emp['probation_months'] ?? null) : ($emp->probation_months ?? null);
+        } else {
+            $type = $employeeOrType;
+        }
 
+        if ($stage === 'internship') {
+            return 'Not Applicable';
+        }
+
+        if ($value !== null && $value !== '' && !empty($type)) {
+            $val = (int) $value;
+            $typeStr = strtolower(trim((string)$type));
+            if ($typeStr === 'days' || $typeStr === 'day') {
+                return $val . ' ' . ($val === 1 ? 'Day' : 'Days');
+            }
+            return $val . ' ' . ($val === 1 ? 'Month' : 'Months');
+        }
+
+        // Backward compatibility fallback: existing old records with probation_months only
+        if ($fallbackMonths !== null && $fallbackMonths !== '') {
+            $m = (int) $fallbackMonths;
+            return $m . ' ' . ($m === 1 ? 'Month' : 'Months');
+        }
+
+        if ($value !== null && $value !== '') {
+            $val = (int) $value;
+            return $val . ' ' . ($val === 1 ? 'Month' : 'Months');
+        }
+
+        return '-';
+    }
+}

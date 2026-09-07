@@ -53,7 +53,6 @@ class LeaveAllocationService
             $allocation = LeaveAllocationM::firstOrNew([
                 'employee_id' => $employee->id,
                 'year' => $year,
-                'employment_stage' => $stage,
             ]);
 
             if ($allocation->exists && $allocation->is_locked) {
@@ -75,6 +74,7 @@ class LeaveAllocationService
             $lwpUsed = $allocation->exists ? (float) ($allocation->lwp_used ?? 0.0) : 0.0;
 
             $allocation->fill([
+                'employment_stage' => $stage,
                 'policy_id' => $policy->id,
                 'confirmation_date' => $employee->confirmation_date,
                 'allocation_from_date' => $fromDate?->toDateString(),
@@ -136,15 +136,21 @@ class LeaveAllocationService
             return $allocation;
         }
 
-        $approvedRequests = $employee->leaveRequests()
+        $sums = $employee->leaveRequests()
             ->whereYear('start_date', $year)
             ->where('status', 'approved')
-            ->get();
+            ->selectRaw('
+                COALESCE(SUM(paid_days), 0) as paid_used,
+                COALESCE(SUM(sick_days), 0) as sick_used,
+                COALESCE(SUM(comp_off_days), 0) as comp_off_used,
+                COALESCE(SUM(lwp_days), 0) as lwp_used
+            ')
+            ->first();
 
-        $allocation->paid_used = $approvedRequests->sum('paid_days');
-        $allocation->sick_used = $approvedRequests->sum('sick_days');
-        $allocation->comp_off_used = $approvedRequests->sum('comp_off_days');
-        $allocation->lwp_used = $approvedRequests->sum('lwp_days');
+        $allocation->paid_used = (float) ($sums->paid_used ?? 0.0);
+        $allocation->sick_used = (float) ($sums->sick_used ?? 0.0);
+        $allocation->comp_off_used = (float) ($sums->comp_off_used ?? 0.0);
+        $allocation->lwp_used = (float) ($sums->lwp_used ?? 0.0);
 
         $this->recalculateAllocationFields($allocation);
         $allocation->save();
@@ -172,7 +178,11 @@ class LeaveAllocationService
             $allocation->monthly_quota = round($rawQuota, 2);
         }
 
-        $allocation->monthly_carry_forward = round(max(0.0, min((float) ($allocation->monthly_carry_forward ?? 0.0), (float) $allocation->paid_remaining)), 2);
+        if ($isInternOrProbation) {
+            $allocation->monthly_carry_forward = 0.0;
+        } else {
+            $allocation->monthly_carry_forward = round(max(0.0, min((float) ($allocation->monthly_carry_forward ?? 0.0), (float) $allocation->paid_remaining)), 2);
+        }
 
         $carry = (float) $allocation->monthly_carry_forward;
         $quota = (float) $allocation->monthly_quota;
@@ -206,18 +216,8 @@ class LeaveAllocationService
             return [0.0, 0.0, 0.0];
         }
 
-        if ($toDate) {
-            $monthsCount = ($toDate->year - $fromDate->year) * 12 + ($toDate->month - $fromDate->month) + 1;
-            $monthsCount = max(1, min(12, $monthsCount));
-            $monthsToTotalMap = [
-                12 => 25, 11 => 23, 10 => 21, 9 => 19, 8 => 17, 7 => 15,
-                6 => 13, 5 => 10, 4 => 8, 3 => 6, 2 => 4, 1 => 2,
-            ];
-            $baseTotal = (float) ($monthsToTotalMap[$monthsCount] ?? 25);
-        } else {
-            $month = (int) $fromDate->month;
-            $baseTotal = (float) (self::PERMANENT_PRORATION_BY_MONTH[$month] ?? 0);
-        }
+        $month = (int) $fromDate->month;
+        $baseTotal = (float) (self::PERMANENT_PRORATION_BY_MONTH[$month] ?? 25.0);
 
         $annualTotal = (float) $policy->annual_total_leaves;
         $total = ($annualTotal == 25) ? $baseTotal : round(($baseTotal / 25.0) * $annualTotal, 2);
@@ -237,14 +237,13 @@ class LeaveAllocationService
     private function allocationStartDate(EmployeeM $employee, string $stage, int $year, ?Carbon $effectiveDate = null): ?Carbon
     {
         if ($stage === 'permanent') {
-            $date = $effectiveDate?->toDateString()
-                ?: $employee->confirmation_date
-                ?: $employee->confirmation_effective_date
-                ?: $employee->permanent_at
-                ?: (property_exists($employee, 'permanent_effective_date') ? $employee->permanent_effective_date : null)
-                ?: ($employee->probation_end_date ? Carbon::parse($employee->probation_end_date, 'Asia/Kolkata')->addDay()->toDateString() : null)
-                ?: ($employee->joining_date && (int) ($employee->probation_months ?? 0) > 0 ? Carbon::parse($employee->joining_date, 'Asia/Kolkata')->addMonthsNoOverflow((int) $employee->probation_months)->toDateString() : null)
-                ?: $employee->joining_date;
+            $date = $employee->permanent_at;
+            if (! $date && $effectiveDate) {
+                $date = $effectiveDate->toDateString();
+            }
+            if (! $date) {
+                $date = $employee->confirmation_effective_date ?: $employee->confirmation_date;
+            }
         } elseif ($stage === 'internship') {
             $date = $effectiveDate?->toDateString()
                 ?: $employee->internship_start_date
@@ -259,10 +258,10 @@ class LeaveAllocationService
             return null;
         }
 
-        $start = Carbon::parse($date, 'Asia/Kolkata')->startOfMonth();
+        $parsedDate = Carbon::parse($date, 'Asia/Kolkata');
         $yearStart = Carbon::create($year, 1, 1, 0, 0, 0, 'Asia/Kolkata');
 
-        return $start->lt($yearStart) ? $yearStart : $start;
+        return $parsedDate->lt($yearStart) ? $yearStart : $parsedDate;
     }
 
     private function stageFor(EmployeeM $employee): string
@@ -278,23 +277,5 @@ class LeaveAllocationService
         }
 
         return 'permanent';
-    }
-
-    private function roundByPolicy(float $value, ?string $method): float
-    {
-        return match ($method) {
-            'floor' => floor($value * 2) / 2,
-            'ceil' => ceil($value * 2) / 2,
-            default => round($value, 2),
-        };
-    }
-
-    private function allocationReason(string $stage): string
-    {
-        return match ($stage) {
-            'internship' => 'Auto allocation for internship',
-            'probation' => 'Auto allocation for probation',
-            default => 'Auto allocation after confirmation',
-        };
     }
 }

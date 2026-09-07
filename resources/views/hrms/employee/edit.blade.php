@@ -241,6 +241,29 @@
         font-weight: 600 !important;
     }
 
+    .custom-probation-box .input-group {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        width: 100% !important;
+    }
+
+    .custom-probation-box .input-group #custom_duration_value {
+        flex: 1 1 auto !important;
+        width: auto !important;
+        border-top-right-radius: 0 !important;
+        border-bottom-right-radius: 0 !important;
+    }
+
+    .custom-probation-box .input-group #custom_duration_unit {
+        flex: 0 0 auto !important;
+        width: 110px !important;
+        max-width: 110px !important;
+        border-top-left-radius: 0 !important;
+        border-bottom-left-radius: 0 !important;
+        padding-right: 32px !important;
+    }
+
     .eo-smart-panel {
         display: none;
         margin-top: 10px !important;
@@ -559,17 +582,61 @@ $probationMonths = old('probation_months', $employeeData->probation_months ?? 3)
                             @error('joining_date') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
 
+                        @php
+                            $savedOption = old('probation_duration_option');
+                            if (! $savedOption) {
+                                $durationType = $employeeData->probation_duration_type ?? 'months';
+                                $durationVal = (int) ($employeeData->probation_duration_value ?? $employeeData->probation_months ?? 3);
+                                if ($durationType === 'months' && $durationVal === 3) {
+                                    $savedOption = '3_months';
+                                } elseif ($durationType === 'months' && $durationVal === 6) {
+                                    $savedOption = '6_months';
+                                } else {
+                                    $savedOption = 'custom';
+                                }
+                            }
+                            $savedCustomType = old('probation_duration_type', $employeeData->probation_duration_type ?? (!empty($employeeData->probation_months) ? 'months' : 'days'));
+                            $savedCustomVal = old('probation_duration_value', $employeeData->probation_duration_value ?? $employeeData->probation_months ?? 10);
+                        @endphp
+
                         <div class="col-xl-3 col-lg-4 col-md-6 eo-field probation-box">
                             <label>Probation Duration</label>
-                            <select name="probation_months" id="probation_months" class="form-select">
-                                <option value="3" {{ (string)$probationMonths === '3' ? 'selected' : '' }}>3 Months</option>
-                                <option value="6" {{ (string)$probationMonths === '6' ? 'selected' : '' }}>6 Months</option>
+                            <select name="probation_duration_option" id="probation_duration_option" class="form-select">
+                                <option value="3_months" {{ $savedOption === '3_months' ? 'selected' : '' }}>3 Months</option>
+                                <option value="6_months" {{ $savedOption === '6_months' ? 'selected' : '' }}>6 Months</option>
+                                <option value="custom" {{ $savedOption === 'custom' ? 'selected' : '' }}>Custom</option>
                             </select>
+                            <input type="hidden" name="probation_months" id="probation_months" value="{{ old('probation_months', $employeeData->probation_months ?? 3) }}">
+                        </div>
+
+                        <div class="col-xl-3 col-lg-4 col-md-6 eo-field probation-box custom-probation-box {{ $savedOption === 'custom' ? '' : 'eo-hidden' }}">
+                            <label>Custom Duration <span class="required">*</span></label>
+                            <div class="input-group">
+                                <input type="number" name="probation_duration_value" id="custom_duration_value" class="form-control" min="1" max="365" value="{{ $savedCustomVal }}" placeholder="e.g. 10">
+                                <select name="probation_duration_type" id="custom_duration_unit" class="form-select" style="max-width: 110px;">
+                                    <option value="days" {{ $savedCustomType === 'days' ? 'selected' : '' }}>Days</option>
+                                    <option value="months" {{ $savedCustomType === 'months' ? 'selected' : '' }}>Months</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="col-xl-3 col-lg-4 col-md-6 eo-field probation-box">
+                            <label>Probation Start Date</label>
+                            <input type="text" id="probation_start_date_display" class="form-control readonly-field" readonly>
                         </div>
 
                         <div class="col-xl-3 col-lg-4 col-md-6 eo-field probation-box">
                             <label>Probation End Date</label>
                             <input type="text" id="probation_end_date_display" class="form-control readonly-field" readonly>
+                        </div>
+
+                        <div class="col-xl-3 col-lg-4 col-md-6 eo-field probation-box">
+                            <label>Permanent Effective Date</label>
+                            @php
+                                $rawPermDate = old('confirmation_date', old('permanent_at', $employeeData->confirmation_effective_date ?? $employeeData->confirmation_date ?? $employeeData->permanent_at ?? ''));
+                                $formattedPermDate = $rawPermDate ? \Carbon\Carbon::parse($rawPermDate)->format('Y-m-d') : '';
+                            @endphp
+                            <input type="date" name="confirmation_date" id="permanent_effective_date_display" class="form-control" value="{{ $formattedPermDate }}">
                         </div>
 
                         <div class="col-xl-3 col-lg-4 col-md-6 eo-field">
@@ -870,11 +937,11 @@ $probationMonths = old('probation_months', $employeeData->probation_months ?? 3)
                         <i class="fas fa-save"></i> Update Employee
                     </button>
 
-                    @if(Route::has('hrms.employees.profile.complete'))
+                    <!-- @if(Route::has('hrms.employees.profile.complete'))
                     <a href="{{ route('hrms.employees.profile.complete', $employeeData->id) }}" class="btn btn-profile">
                         <i class="fas fa-user-check"></i> Complete Profile
                     </a>
-                    @endif
+                    @endif -->
                 </div>
             </div>
         </form>
@@ -981,6 +1048,8 @@ $probationMonths = old('probation_months', $employeeData->probation_months ?? 3)
             }
         }
 
+        const initialStage = employeeStage ? employeeStage.value : '';
+
         function defaultStageForType() {
             if (!employmentType || !employmentType.value) return '';
             if (employmentType.value === 'intern') return 'internship';
@@ -990,40 +1059,120 @@ $probationMonths = old('probation_months', $employeeData->probation_months ?? 3)
         }
 
         function currentStage() {
-            let stage = employeeStage.value || defaultStageForType();
+            let stage = (employeeStage && employeeStage.value) ? employeeStage.value : (initialStage || defaultStageForType());
 
             if (employmentTypeChanged) {
                 stage = defaultStageForType();
             }
 
-            if (stage === 'probation' && joiningDate && joiningDate.value) {
-                const duration = probationMonths ? (probationMonths.value || 3) : 3;
-                const endDate = addMonths(joiningDate.value, duration);
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                const end = new Date(endDate);
-                end.setHours(0, 0, 0, 0);
-                if (today > end) {
-                    stage = 'permanent';
-                }
-            }
-
-            employeeStage.value = stage;
-            employeeStageDisplay.value = stageLabels[stage] || 'Auto';
+            if (employeeStage) employeeStage.value = stage;
+            if (employeeStageDisplay) employeeStageDisplay.value = stageLabels[stage] || 'Auto';
 
             return stage;
         }
 
+        function calculateClientProbation(startDateStr, option, customValue, customUnit) {
+            if (!startDateStr) return null;
+            const parts = startDateStr.split('-');
+            if (parts.length !== 3) return null;
+            const y = parseInt(parts[0]);
+            const m = parseInt(parts[1]) - 1;
+            const d = parseInt(parts[2]);
+            const start = new Date(y, m, d);
+            if (isNaN(start.getTime())) return null;
+
+            let type = 'months';
+            let val = 3;
+
+            if (option === '6_months') {
+                type = 'months';
+                val = 6;
+            } else if (option === 'custom') {
+                type = customUnit === 'days' ? 'days' : 'months';
+                val = parseInt(customValue) || 1;
+                if (val < 1) val = 1;
+            } else {
+                type = 'months';
+                val = 3;
+            }
+
+            let endDate;
+
+            if (type === 'days') {
+                endDate = new Date(y, m, d + (val - 1));
+            } else {
+                const lastDayOfStartMonth = new Date(y, m + 1, 0).getDate();
+                const isLast = (d === lastDayOfStartMonth);
+
+                if (isLast) {
+                    endDate = new Date(y, m + val + 1, 0);
+                } else {
+                    const maxDaysInTarget = new Date(y, m + val + 1, 0).getDate();
+                    const targetDay = Math.min(d, maxDaysInTarget);
+                    const temp = new Date(y, m + val, targetDay);
+                    temp.setDate(temp.getDate() - 1);
+                    endDate = temp;
+                }
+            }
+
+            const permDate = new Date(endDate);
+            permDate.setDate(permDate.getDate() + 1);
+
+            return {
+                start: start,
+                end: endDate,
+                permanent: permDate
+            };
+        }
+
         function updateProbation() {
             const stage = currentStage();
+            const optionElem = document.getElementById('probation_duration_option');
+            const option = optionElem ? optionElem.value : '3_months';
+            const customBox = document.querySelector('.custom-probation-box');
+            const customValElem = document.getElementById('custom_duration_value');
+            const customVal = customValElem ? customValElem.value : 10;
+            const customUnitElem = document.getElementById('custom_duration_unit');
+            const customUnit = customUnitElem ? customUnitElem.value : 'days';
+            const probationHiddenMonths = document.getElementById('probation_months');
+
+            if (customBox) {
+                if (option === 'custom') {
+                    customBox.classList.remove('eo-hidden');
+                } else {
+                    customBox.classList.add('eo-hidden');
+                }
+            }
+
+            if (probationHiddenMonths) {
+                if (option === '6_months') {
+                    probationHiddenMonths.value = 6;
+                } else if (option === 'custom' && customUnit === 'months') {
+                    probationHiddenMonths.value = parseInt(customVal) || 1;
+                } else {
+                    probationHiddenMonths.value = 3;
+                }
+            }
+
+            const startDisplay = document.getElementById('probation_start_date_display');
+            const endDisplay = document.getElementById('probation_end_date_display');
+            const permDisplay = document.getElementById('permanent_effective_date_display');
 
             if (!joiningDate.value || (stage !== 'probation' && stage !== 'permanent')) {
-                probationDisplay.value = '';
+                if (startDisplay) startDisplay.value = '';
+                if (endDisplay) endDisplay.value = '';
+                if (permDisplay && !permDisplay.dataset.userEdited) permDisplay.value = '';
                 return;
             }
 
-            const date = addMonths(joiningDate.value, probationMonths.value || 3);
-            probationDisplay.value = formatDateDDMMYYYY(date);
+            const res = calculateClientProbation(joiningDate.value, option, customVal, customUnit);
+            if (res) {
+                if (startDisplay) startDisplay.value = formatDateDDMMYYYY(res.start);
+                if (endDisplay) endDisplay.value = formatDateDDMMYYYY(res.end);
+                if (permDisplay && !permDisplay.dataset.userEdited) {
+                    permDisplay.value = formatInputDate(res.permanent);
+                }
+            }
         }
 
         function updateInternshipEndDate() {
@@ -1187,6 +1336,16 @@ $probationMonths = old('probation_months', $employeeData->probation_months ?? 3)
         });
 
         probationMonths?.addEventListener('change', updateProbation);
+        document.getElementById('probation_duration_option')?.addEventListener('change', updateProbation);
+        document.getElementById('custom_duration_value')?.addEventListener('input', updateProbation);
+        document.getElementById('custom_duration_unit')?.addEventListener('change', updateProbation);
+        document.getElementById('permanent_effective_date_display')?.addEventListener('change', function() {
+            if (this.value) {
+                this.dataset.userEdited = 'true';
+            } else {
+                delete this.dataset.userEdited;
+            }
+        });
 
         internshipStart?.addEventListener('change', function() {
             if (currentStage() === 'internship' && paidIntern.value !== '0') {

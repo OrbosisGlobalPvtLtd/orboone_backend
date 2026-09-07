@@ -264,7 +264,7 @@ class EmployeeM extends Model
         if (
             $this->employee_stage === 'probation'
             && ! empty($this->probation_end_date)
-            && Carbon::now()->greaterThanOrEqualTo(Carbon::parse($this->probation_end_date))
+            && Carbon::now('Asia/Kolkata')->startOfDay()->greaterThan(Carbon::parse($this->probation_end_date, 'Asia/Kolkata')->startOfDay())
         ) {
             return true;
         }

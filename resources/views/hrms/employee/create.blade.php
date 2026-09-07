@@ -249,6 +249,29 @@
         font-weight: 600;
     }
 
+    .custom-probation-box .input-group {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        width: 100% !important;
+    }
+
+    .custom-probation-box .input-group #custom_duration_value {
+        flex: 1 1 auto !important;
+        width: auto !important;
+        border-top-right-radius: 0 !important;
+        border-bottom-right-radius: 0 !important;
+    }
+
+    .custom-probation-box .input-group #custom_duration_unit {
+        flex: 0 0 auto !important;
+        width: 110px !important;
+        max-width: 110px !important;
+        border-top-left-radius: 0 !important;
+        border-bottom-left-radius: 0 !important;
+        padding-right: 32px !important;
+    }
+
     .eo-smart-panel {
         display: none;
         margin-top: 4px;
@@ -536,18 +559,38 @@
 
                         <div class="col-xl-3 col-lg-4 col-md-6 eo-field probation-box">
                             <label>Probation Duration</label>
-                            <select name="probation_months" id="probation_months" class="form-select">
-                                <option value="3" {{ old('probation_months', 3) == 3 ? 'selected' : '' }}>3 Months
-                                </option>
-                                <option value="6" {{ old('probation_months') == 6 ? 'selected' : '' }}>6 Months
-                                </option>
+                            <select name="probation_duration_option" id="probation_duration_option" class="form-select">
+                                <option value="3_months" {{ old('probation_duration_option', '3_months') == '3_months' ? 'selected' : '' }}>3 Months</option>
+                                <option value="6_months" {{ old('probation_duration_option') == '6_months' ? 'selected' : '' }}>6 Months</option>
+                                <option value="custom" {{ old('probation_duration_option') == 'custom' ? 'selected' : '' }}>Custom</option>
                             </select>
+                            <input type="hidden" name="probation_months" id="probation_months" value="{{ old('probation_months', 3) }}">
+                        </div>
+
+                        <div class="col-xl-3 col-lg-4 col-md-6 eo-field probation-box custom-probation-box eo-hidden">
+                            <label>Custom Duration <span class="required">*</span></label>
+                            <div class="input-group">
+                                <input type="number" name="probation_duration_value" id="custom_duration_value" class="form-control" min="1" max="365" value="{{ old('probation_duration_value', 10) }}" placeholder="e.g. 10">
+                                <select name="probation_duration_type" id="custom_duration_unit" class="form-select" style="max-width: 110px;">
+                                    <option value="days" {{ old('probation_duration_type') == 'days' ? 'selected' : '' }}>Days</option>
+                                    <option value="months" {{ old('probation_duration_type') == 'months' ? 'selected' : '' }}>Months</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="col-xl-3 col-lg-4 col-md-6 eo-field probation-box">
+                            <label>Probation Start Date</label>
+                            <input type="text" id="probation_start_date_display" class="form-control readonly-field" readonly>
                         </div>
 
                         <div class="col-xl-3 col-lg-4 col-md-6 eo-field probation-box">
                             <label>Probation End Date</label>
-                            <input type="text" id="probation_end_date_display" class="form-control readonly-field"
-                                readonly>
+                            <input type="text" id="probation_end_date_display" class="form-control readonly-field" readonly>
+                        </div>
+
+                        <div class="col-xl-3 col-lg-4 col-md-6 eo-field probation-box">
+                            <label>Expected Permanent Date</label>
+                            <input type="text" id="permanent_effective_date_display" class="form-control readonly-field" placeholder="Calculated after probation" readonly>
                         </div>
 
                         <div class="col-xl-3 col-lg-4 col-md-6 eo-field">
@@ -563,18 +606,23 @@
 
                         <div class="col-xl-3 col-lg-4 col-md-6 eo-field">
                             <label>Work Schedule</label>
-                            <select name="work_schedule_type" id="work_schedule_type" class="form-select">
-                                <option value="">Select Schedule</option>
+                            <select name="work_schedule_type" id="work_schedule_type" class="form-select @error('work_schedule_type') is-invalid @enderror">
+                                <option value="" {{ empty(old('work_schedule_type')) ? 'selected' : '' }}>Select Schedule</option>
                                 @foreach($attendanceTimes as $shiftItem)
                                 @php
-                                $currentVal = old('work_schedule_type') ?: 'general_shift';
-                                $isMatch = $currentVal == $shiftItem->code
-                                || $currentVal == str_replace('_shift', '', $shiftItem->code)
-                                || (in_array($currentVal, ['general', 'full_day']) && str_contains($shiftItem->code, 'general'));
+                                $currentVal = old('work_schedule_type');
+                                $isMatch = $currentVal && (
+                                    $currentVal == $shiftItem->code
+                                    || $currentVal == str_replace('_shift', '', $shiftItem->code)
+                                    || (in_array($currentVal, ['general', 'full_day']) && str_contains($shiftItem->code, 'general'))
+                                    || (in_array($currentVal, ['part_time', 'part_day']) && $shiftItem->code === 'part_time_shift')
+                                    || (in_array($currentVal, ['half_day', 'hourly']) && $shiftItem->code === 'half_day_shift')
+                                    || (in_array($currentVal, ['wfh']) && $shiftItem->code === 'wfh_shift')
+                                );
 
                                 $displayName = $shiftItem->name;
                                 if (str_contains($shiftItem->code, 'general')) {
-                                $displayName = 'General Shift (Full Day)';
+                                    $displayName = 'General Shift (Full Day)';
                                 }
                                 @endphp
                                 <option value="{{ $shiftItem->code }}" {{ $isMatch ? 'selected' : '' }}>
@@ -582,6 +630,7 @@
                                 </option>
                                 @endforeach
                             </select>
+                            @error('work_schedule_type') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
 
                         <div class="col-xl-3 col-lg-4 col-md-6 eo-field">
@@ -949,32 +998,111 @@
 
         function currentStage() {
             let stage = defaultStageForType();
-            if (stage === 'probation' && joiningDate && joiningDate.value) {
-                const duration = probationMonths ? (probationMonths.value || 3) : 3;
-                const endDate = addMonths(joiningDate.value, duration);
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                const end = new Date(endDate);
-                end.setHours(0, 0, 0, 0);
-                if (today > end) {
-                    stage = 'permanent';
-                }
-            }
             employeeStage.value = stage;
             employeeStageDisplay.value = stageLabels[stage] || 'Auto';
             return stage;
         }
 
+        function calculateClientProbation(startDateStr, option, customValue, customUnit) {
+            if (!startDateStr) return null;
+            const parts = startDateStr.split('-');
+            if (parts.length !== 3) return null;
+            const y = parseInt(parts[0]);
+            const m = parseInt(parts[1]) - 1;
+            const d = parseInt(parts[2]);
+            const start = new Date(y, m, d);
+            if (isNaN(start.getTime())) return null;
+
+            let type = 'months';
+            let val = 3;
+
+            if (option === '6_months') {
+                type = 'months';
+                val = 6;
+            } else if (option === 'custom') {
+                type = customUnit === 'days' ? 'days' : 'months';
+                val = parseInt(customValue) || 1;
+                if (val < 1) val = 1;
+            } else {
+                type = 'months';
+                val = 3;
+            }
+
+            let endDate;
+
+            if (type === 'days') {
+                endDate = new Date(y, m, d + (val - 1));
+            } else {
+                const lastDayOfStartMonth = new Date(y, m + 1, 0).getDate();
+                const isLast = (d === lastDayOfStartMonth);
+
+                if (isLast) {
+                    endDate = new Date(y, m + val + 1, 0);
+                } else {
+                    const maxDaysInTarget = new Date(y, m + val + 1, 0).getDate();
+                    const targetDay = Math.min(d, maxDaysInTarget);
+                    const temp = new Date(y, m + val, targetDay);
+                    temp.setDate(temp.getDate() - 1);
+                    endDate = temp;
+                }
+            }
+
+            const permDate = new Date(endDate);
+            permDate.setDate(permDate.getDate() + 1);
+
+            return {
+                start: start,
+                end: endDate,
+                permanent: permDate
+            };
+        }
+
         function updateProbation() {
             const stage = currentStage();
+            const optionElem = document.getElementById('probation_duration_option');
+            const option = optionElem ? optionElem.value : '3_months';
+            const customBox = document.querySelector('.custom-probation-box');
+            const customValElem = document.getElementById('custom_duration_value');
+            const customVal = customValElem ? customValElem.value : 10;
+            const customUnitElem = document.getElementById('custom_duration_unit');
+            const customUnit = customUnitElem ? customUnitElem.value : 'days';
+            const probationHiddenMonths = document.getElementById('probation_months');
+
+            if (customBox) {
+                if (option === 'custom') {
+                    customBox.classList.remove('eo-hidden');
+                } else {
+                    customBox.classList.add('eo-hidden');
+                }
+            }
+
+            if (probationHiddenMonths) {
+                if (option === '6_months') {
+                    probationHiddenMonths.value = 6;
+                } else if (option === 'custom' && customUnit === 'months') {
+                    probationHiddenMonths.value = parseInt(customVal) || 1;
+                } else {
+                    probationHiddenMonths.value = 3;
+                }
+            }
+
+            const startDisplay = document.getElementById('probation_start_date_display');
+            const endDisplay = document.getElementById('probation_end_date_display');
+            const permDisplay = document.getElementById('permanent_effective_date_display');
 
             if (!joiningDate.value || (stage !== 'probation' && stage !== 'permanent')) {
-                probationDisplay.value = '';
+                if (startDisplay) startDisplay.value = '';
+                if (endDisplay) endDisplay.value = '';
+                if (permDisplay) permDisplay.value = '';
                 return;
             }
 
-            const date = addMonths(joiningDate.value, probationMonths.value || 3);
-            probationDisplay.value = formatDateDDMMYYYY(date);
+            const res = calculateClientProbation(joiningDate.value, option, customVal, customUnit);
+            if (res) {
+                if (startDisplay) startDisplay.value = formatDateDDMMYYYY(res.start);
+                if (endDisplay) endDisplay.value = formatDateDDMMYYYY(res.end);
+                if (permDisplay) permDisplay.value = formatDateDDMMYYYY(res.permanent);
+            }
         }
 
         function updateInternshipEndDate() {
@@ -1105,16 +1233,26 @@
             updateEmploymentFields();
 
             const workScheduleMap = {
-                'full_time': 'general',
-                'part_time': 'part_time',
-                'intern': 'general',
-                'contract': 'general',
-                'consultant': 'general',
-                'trainee': 'general'
+                'full_time': 'general_shift',
+                'part_time': 'part_time_shift',
+                'intern': 'general_shift',
+                'contract': 'general_shift',
+                'consultant': 'general_shift',
+                'trainee': 'general_shift'
             };
-            const schedule = workScheduleMap[employmentType.value];
-            if (schedule && workScheduleType) {
-                workScheduleType.value = schedule;
+            if (workScheduleType) {
+                const schedule = workScheduleMap[employmentType.value];
+                if (schedule) {
+                    const hasOption = Array.from(workScheduleType.options).some(opt => opt.value === schedule);
+                    if (hasOption) {
+                        workScheduleType.value = schedule;
+                    } else {
+                        workScheduleType.value = '';
+                    }
+                } else if (!employmentType.value) {
+                    workScheduleType.value = '';
+                }
+                handleScheduleChange(false);
             }
         });
 
@@ -1127,7 +1265,17 @@
             updateSalary();
         });
 
-        probationMonths.addEventListener('change', updateProbation);
+        const probationOption = document.getElementById('probation_duration_option');
+        const customValue = document.getElementById('custom_duration_value');
+        const customUnit = document.getElementById('custom_duration_unit');
+
+        if (probationOption) probationOption.addEventListener('change', updateProbation);
+        if (customValue) {
+            customValue.addEventListener('input', updateProbation);
+            customValue.addEventListener('change', updateProbation);
+        }
+        if (customUnit) customUnit.addEventListener('change', updateProbation);
+        if (probationMonths) probationMonths.addEventListener('change', updateProbation);
 
         internshipStart.addEventListener('change', function() {
             if (currentStage() === 'internship' && paidIntern.value !== '0') {

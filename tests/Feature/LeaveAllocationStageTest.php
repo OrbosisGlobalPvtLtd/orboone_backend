@@ -124,7 +124,7 @@ class LeaveAllocationStageTest extends TestCase
         ]);
         $user->roles()->sync([$role->id]);
 
-        return EmployeeM::create([
+        $emp = EmployeeM::create([
             'user_id' => $user->id,
             'employee_code' => 'EMP-STAGE-' . rand(1000, 9999),
             'employment_type' => $stage === 'internship' ? 'intern' : 'full_time',
@@ -134,6 +134,14 @@ class LeaveAllocationStageTest extends TestCase
             'is_active' => 1,
             'work_mode' => 'wfo',
         ]);
+
+        \App\Models\HRMS\Employee\EmployeeProfileM::create([
+            'employee_id' => $emp->id,
+            'profile_status' => 'approved',
+            'is_profile_completed' => 1,
+        ]);
+
+        return $emp;
     }
 }
 

@@ -49,7 +49,10 @@ class EmployeeExitProcessS
         }
 
         $lastWorkingDay = now()->toDateString();
-        if (in_array($exitType, ['resignation', 'contract_end', 'internship_exit', 'internship_completed'], true)) {
+        if (in_array($exitType, ['internship_completed', 'internship_exit'], true)) {
+            $noticeDays = 0;
+            $lastWorkingDay = $payload['last_working_day'] ?? $resignationDate;
+        } elseif (in_array($exitType, ['resignation', 'contract_end'], true)) {
             if ($noticeWaived && $policyFlags['allow_waiver']) {
                 $lastWorkingDay = $payload['last_working_day'] ?? $resignationDate;
                 $noticeDays = 0;

@@ -276,6 +276,8 @@ class LeaveRequestC extends Controller
                     'sandwich_days' => $calc['sandwich_days'],
                     'deducted_days' => $calc['deducted_days'],
                     'sandwich_applied' => $calc['sandwich_applied'],
+                    'sandwich_details' => $calc['sandwich_details'] ?? [],
+                    'sandwich_message' => $calc['sandwich_message'] ?? null,
                     'paid_days' => $calc['paid_days'],
                     'sick_days' => $calc['sick_days'],
                     'comp_off_days' => $calc['comp_off_days'],

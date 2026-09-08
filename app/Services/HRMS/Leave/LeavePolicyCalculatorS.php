@@ -3,10 +3,12 @@
 namespace App\Services\HRMS\Leave;
 
 use App\Models\HRMS\Employee\EmployeeM;
+use App\Models\HRMS\Leave\LeaveAllocationM;
+use App\Models\HRMS\Leave\LeavePolicyM;
 use App\Models\HRMS\Leave\LeaveRequestM;
 use App\Models\HRMS\Leave\LeaveTypeM;
-use App\Models\HRMS\Leave\LeaveAllocationM;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -15,7 +17,8 @@ class LeavePolicyCalculatorS
     public function __construct(
         private LeavePolicyService $policyService,
         private LeaveAllocationService $allocationService,
-        private SandwichLeaveService $sandwichLeaveService
+        private SandwichLeaveService $sandwichLeaveService,
+        private MonthlyLeaveQuotaService $monthlyQuotaService
     ) {
     }
 
@@ -29,7 +32,7 @@ class LeavePolicyCalculatorS
         }
 
         $policy = $this->policyService->forEmployee($employee, $start);
-        $allocation = $this->allocationService->getOrGenerate($employee, $start->year, auth()->id());
+        $allocation = $this->allocationService->getOrGenerate($employee, $start->year, Auth::id());
         $isHalfDay = (bool) ($payload['is_half_day'] ?? false);
 
         if ($isHalfDay && ! $leaveType->allow_half_day) {
@@ -80,12 +83,10 @@ class LeavePolicyCalculatorS
         $isLwp = (bool) $leaveType->is_lwp;
         $isEmergency = (bool) ($payload['emergency_leave'] ?? false);
 
-        $isHalfDay = (bool) ($payload['is_half_day'] ?? false);
-
-        if (! $isSick && ! $isLwp && ! $isEmergency && ! $isHalfDay && ! $existingRequest) {
+        if (! $isSick && ! $isLwp && ! $isEmergency && ! $isHalfDay && ! $existingRequest && ! ($payload['bypass_notice_period'] ?? false)) {
             $today = Carbon::now('Asia/Kolkata')->startOfDay();
             $startDate = Carbon::parse($payload['start_date'], 'Asia/Kolkata')->startOfDay();
-            if ($today->diffInDays($startDate, false) < 2) {
+            if ($startDate->gte($today) && $today->diffInDays($startDate, false) < 2) {
                 throw ValidationException::withMessages([
                     'start_date' => 'Normal leaves must be applied at least 2 days in advance.'
                 ]);
@@ -114,8 +115,7 @@ class LeavePolicyCalculatorS
             $allocation,
             $start,
             $dateRows,
-            $deductedDays,
-            $existingRequest?->id
+            $deductedDays
         );
 
         $dateRows = $this->applySplitToDates($dateRows, $isHalfDay ? 0.5 : 1.0, $paid, $sick, $compOff, $lwp);
@@ -128,6 +128,26 @@ class LeavePolicyCalculatorS
             'total_remaining' => round(max(0, (float) $allocation->total_remaining - $paid - $sick - $compOff), 2),
         ];
 
+        $sandwichDetails = [];
+        $sandwichMessage = null;
+        if ($sandwichDays > 0) {
+            foreach ($dateRows as $r) {
+                if (! empty($r['is_sandwich_day'])) {
+                    $typeStr = ! empty($r['is_weekoff']) ? 'Week Off' : (! empty($r['is_holiday']) ? 'Holiday' : 'Non-Working Day');
+                    $formattedDate = Carbon::parse($r['leave_date'])->format('d M Y');
+                    $sandwichDetails[] = [
+                        'date' => $r['leave_date'],
+                        'formatted_date' => $formattedDate,
+                        'day_name' => $r['day_name'] ?? Carbon::parse($r['leave_date'])->format('l'),
+                        'type' => $typeStr,
+                        'reason' => "{$formattedDate} ({$r['day_name']} - {$typeStr}) is enclosed by leave days and included as leave.",
+                    ];
+                }
+            }
+            $dateFormattedList = implode(', ', array_column($sandwichDetails, 'formatted_date'));
+            $sandwichMessage = "Sandwich Policy Applied: {$sandwichDays} non-working day(s) ({$dateFormattedList}) falling between leave days are included as leave.";
+        }
+
         return [
             'policy' => $policy,
             'allocation' => $allocation,
@@ -139,6 +159,8 @@ class LeavePolicyCalculatorS
             'requested_days' => $deductedDays,
             'deducted_days' => $deductedDays,
             'sandwich_applied' => $sandwichDays > 0,
+            'sandwich_details' => $sandwichDetails,
+            'sandwich_message' => $sandwichMessage,
             'paid_days' => $paid,
             'sick_days' => $sick,
             'comp_off_days' => $compOff,
@@ -152,12 +174,11 @@ class LeavePolicyCalculatorS
     private function splitDays(
         EmployeeM $employee, 
         LeaveTypeM $leaveType, 
-        $policy, 
-        $allocation, 
+        LeavePolicyM $policy, 
+        LeaveAllocationM $allocation, 
         Carbon $start, 
         array $dateRows, 
-        float $deductedDays,
-        ?int $excludeRequestId = null
+        float $deductedDays
     ): array
     {
         $paid = 0.0;
@@ -165,7 +186,7 @@ class LeavePolicyCalculatorS
         $compOff = 0.0;
         $lwp = 0.0;
 
-        $quota = app(MonthlyLeaveQuotaService::class)->getMonthlyQuota($employee, $start);
+        $quota = $this->monthlyQuotaService->getMonthlyQuota($employee, $start);
         $monthlyAvailable = (float) $quota['available_this_month'];
 
         $paidCapacity = (float) $allocation->paid_remaining;
@@ -189,15 +210,14 @@ class LeavePolicyCalculatorS
         // Paid leave capacity is driven by total_remaining_paid ($paidCapacity) and monthly available quota
         $maxAllowedPaid = min($paidCapacity, $monthlyAvailable);
 
+        $deductCount = count(array_filter($dateRows, fn($r) => ! empty($r['deduct_as_leave'])));
+
         foreach ($dateRows as $row) {
             if (! $row['deduct_as_leave']) {
                 continue;
             }
 
-            $deductCount = count(array_filter($dateRows, fn($r) => $r['deduct_as_leave']));
             $dayUnit = $deductCount > 0 ? ($deductedDays / $deductCount) : 1.0;
-
-            $d = Carbon::parse($row['leave_date'], 'Asia/Kolkata');
 
             if ($leaveType->is_lwp) {
                 $lwp += $dayUnit;
@@ -221,31 +241,6 @@ class LeavePolicyCalculatorS
         }
 
         return [round($paid, 2), round($sick, 2), round($compOff, 2), round($lwp, 2)];
-    }
-
-    private function remainingMonthlyLimit(EmployeeM $employee, $policy, array $dateRows): float
-    {
-        $limit = (float) ($policy->monthly_leave_limit ?? 0);
-        if ($limit <= 0) {
-            return INF;
-        }
-
-        $firstDeductedDate = collect($dateRows)->firstWhere('deduct_as_leave', true)['leave_date'] ?? null;
-        if (! $firstDeductedDate) {
-            return 0.0;
-        }
-
-        $date = Carbon::parse($firstDeductedDate, 'Asia/Kolkata');
-        $used = DB::table('leave_request_dates')
-            ->join('leave_requests', 'leave_requests.id', '=', 'leave_request_dates.leave_request_id')
-            ->where('leave_request_dates.employee_id', $employee->id)
-            ->where('leave_requests.status', 'approved')
-            ->whereMonth('leave_request_dates.leave_date', $date->month)
-            ->whereYear('leave_request_dates.leave_date', $date->year)
-            ->where('leave_request_dates.deduct_as_leave', 1)
-            ->sum(DB::raw('paid_day + sick_day + comp_off_day'));
-
-        return max(0, $limit - (float) $used);
     }
 
     private function ensureNoDuplicateDates(EmployeeM $employee, array $dateRows, ?LeaveRequestM $existingRequest): void

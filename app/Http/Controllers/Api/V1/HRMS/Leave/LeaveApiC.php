@@ -279,7 +279,7 @@ class LeaveApiC extends Controller
 
     public function calculate(Request $request)
     {
-        $data = \App\Services\HRMS\Leave\LeaveValidationService::validate($request->all());
+        $data = \App\Services\HRMS\Leave\LeaveValidationService::validateCalculation($request->all());
 
         $employee = $this->employee();
         $leaveType = LeaveTypeM::findOrFail($data['leave_type_id']);
@@ -353,6 +353,9 @@ class LeaveApiC extends Controller
                 'comp_off_days' => (float) $calculation['comp_off_days'],
                 'lwp_days' => (float) $calculation['lwp_days'],
                 'sandwich_days' => (int) $calculation['sandwich_days'],
+                'sandwich_applied' => (bool) $calculation['sandwich_applied'],
+                'sandwich_details' => $calculation['sandwich_details'] ?? [],
+                'sandwich_message' => $calculation['sandwich_message'] ?? null,
                 'requires_medical_certificate' => (bool) $calculation['requires_medical_certificate'],
             ];
 
@@ -826,7 +829,12 @@ class LeaveApiC extends Controller
             'comp_off_days' => $calculation['comp_off_days'],
             'lwp_days' => $calculation['lwp_days'],
             'sandwich_applied' => $calculation['sandwich_applied'],
+            'sandwich_days' => (int) ($calculation['sandwich_days'] ?? 0),
+            'sandwich_details' => $calculation['sandwich_details'] ?? [],
+            'sandwich_message' => $calculation['sandwich_message'] ?? null,
+            'message' => $calculation['sandwich_message'] ?? null,
             'dates' => $calculation['dates'],
+            'balance_after_split' => $calculation['balance_after_split'] ?? null,
         ];
     }
 

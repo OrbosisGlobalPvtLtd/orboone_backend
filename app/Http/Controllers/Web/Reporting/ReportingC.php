@@ -845,7 +845,7 @@ class ReportingC extends Controller
             'att.attendance_status',
             'att.is_lwp',
             'att.work_mode',
-            'att.gross_duration',
+            'att.gross_work_minutes',
             'att.punch_in_time',
             'att.punch_out_time',
             'at_time.name as shift_name'

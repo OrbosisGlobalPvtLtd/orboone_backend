@@ -577,7 +577,15 @@ if (!function_exists('formatWorkReportRow')) {
 
         // 5. Gross Work
         $grossRaw = is_object($att) && isset($att->gross_duration) ? $att->gross_duration : null;
-        if (!$grossRaw && is_object($log) && !empty($log->duration_minutes)) {
+        if (!$grossRaw && is_object($log) && isset($log->gross_work_minutes) && (int)$log->gross_work_minutes > 0) {
+            $h = floor($log->gross_work_minutes / 60);
+            $m = $log->gross_work_minutes % 60;
+            $grossRaw = ($h > 0 ? "{$h} hours " : "") . "{$m} mins";
+        } elseif (!$grossRaw && is_object($att) && isset($att->gross_work_minutes) && (int)$att->gross_work_minutes > 0) {
+            $h = floor($att->gross_work_minutes / 60);
+            $m = $att->gross_work_minutes % 60;
+            $grossRaw = ($h > 0 ? "{$h} hours " : "") . "{$m} mins";
+        } elseif (!$grossRaw && is_object($log) && !empty($log->duration_minutes)) {
             $h = floor($log->duration_minutes / 60);
             $m = $log->duration_minutes % 60;
             $grossRaw = ($h > 0 ? "{$h} hours " : "") . "{$m} mins";

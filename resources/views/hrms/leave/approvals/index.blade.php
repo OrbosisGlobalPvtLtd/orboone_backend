@@ -1363,7 +1363,7 @@
                                                     </form>
                                                     @endif
                                                 @endif
-                                            @elseif($isApproved && ($isSuperAdminUser || $isHrAdminUser) && Route::has('leave-approvals.void'))
+                                            @elseif($stLower === 'approved' && ($isSuperAdminUser || $isHrAdminUser) && Route::has('leave-approvals.void'))
                                                 <button type="button" class="btn btn-sm font-weight-bold px-3.5" style="border-radius: 8px; height: 38px; background: #FFF1F2; color: #E11D48; border: 1px solid #FECDD3; font-size: 12.5px;" data-toggle="modal" data-target="#voidModal{{ $lr->id }}" data-dismiss="modal">
                                                     <i class="fas fa-ban mr-1"></i> Make Null & Void
                                                 </button>
@@ -1404,7 +1404,7 @@
                         </div>
 
                         <!-- VOID (NULL & VOID) MODAL -->
-                        @if($isApproved && ($isSuperAdminUser || $isHrAdminUser) && Route::has('leave-approvals.void'))
+                        @if($stLower === 'approved' && ($isSuperAdminUser || $isHrAdminUser) && Route::has('leave-approvals.void'))
                         <div class="modal fade" id="voidModal{{ $lr->id }}" tabindex="-1" role="dialog" aria-hidden="true">
                             <div class="modal-dialog modal-dialog-centered" role="document">
                                 <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
@@ -1421,7 +1421,7 @@
                                                 <i class="fas fa-exclamation-triangle mr-1 text-warning"></i>
                                                 <strong>Notice:</strong> This action will reverse deducted leave balances (Paid/Sick/Comp-off/LWP), restore monthly quota, unlock attendance for the dates, and record a permanent audit log.
                                             </div>
-                                            <p class="text-dark font-weight-bold mb-2">Are you sure you want to void the approved leave for <strong>{{ $lr->display_name }}</strong> ({{ $lr->formatted_dates }})?</p>
+                                            <p class="text-dark font-weight-bold mb-2">Are you sure you want to void the approved leave for <strong>{{ $lr->display_name }}</strong> ({{ $isSingleDay ? $startDateFormatted : ($startDateFormatted . ' - ' . $endDateFormatted) }})?</p>
                                             <div class="form-group mb-0">
                                                 <label class="font-weight-bold text-muted small uppercase mb-1">HR Note / Reason <span class="text-danger">*</span></label>
                                                 <textarea name="note" class="form-control" rows="3" required style="border-radius: 10px;" placeholder="e.g. Employee worked on this day / informed HR they were working..."></textarea>

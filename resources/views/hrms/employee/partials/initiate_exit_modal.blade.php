@@ -37,13 +37,13 @@
                             <label class="eo-label font-weight-bold" style="font-size: 13px; color: #374151;">Resignation / Effective Date</label>
                             <input type="date" name="resignation_date" class="eo-control eo-resignation-date form-control" value="{{ date('Y-m-d') }}" style="border-radius: 10px; height: 42px;">
                         </div>
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-6 mb-3 eo-notice-days-wrapper">
                             <label class="eo-label font-weight-bold" style="font-size: 13px; color: #374151;">Notice Period (Days)</label>
                             <input type="number" name="notice_period_days" class="eo-control eo-notice-days form-control" value="15" min="0" max="365" style="border-radius: 10px; height: 42px;">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="eo-label font-weight-bold" style="font-size: 13px; color: #374151;">Last Working Day <span class="text-danger">*</span></label>
-                            <input type="date" name="last_working_day" class="eo-control eo-last-working-day form-control" value="{{ date('Y-m-d', strtotime('+14 days')) }}" required style="border-radius: 10px; height: 42px;">
+                            <input type="date" name="last_working_day" class="eo-control eo-last-working-day form-control" value="{{ date('Y-m-d') }}" required style="border-radius: 10px; height: 42px;">
                         </div>
                         <div class="col-md-12 mb-3">
                             <div class="d-flex align-items-center gap-4 flex-wrap" style="background: #F8FAFC; padding: 12px 16px; border-radius: 10px; border: 1px solid #E2E8F0;">
@@ -77,3 +77,102 @@
         </div>
     </div>
 </div>
+
+<script>
+(function() {
+    function initGlobalExitForm() {
+        document.querySelectorAll('.eo-exit-init-form').forEach(function(form) {
+            if (form.dataset.exitFormBound === 'true') return;
+            form.dataset.exitFormBound = 'true';
+
+            const exitType = form.querySelector('.eo-exit-type');
+            const resignationDate = form.querySelector('.eo-resignation-date');
+            const terminationDate = form.querySelector('.eo-termination-date');
+            const lastWorkingDay = form.querySelector('.eo-last-working-day');
+            const noticeDays = form.querySelector('.eo-notice-days');
+            const noticeWaived = form.querySelector('.eo-notice-waived');
+            const immediateExit = form.querySelector('.eo-immediate-exit');
+            const noticeWrapper = form.querySelector('.eo-notice-days-wrapper') || (noticeDays ? noticeDays.closest('.col-md-6') : null);
+
+            const toYmd = function(dateObj) {
+                const y = dateObj.getFullYear();
+                const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+                const d = String(dateObj.getDate()).padStart(2, '0');
+                return y + '-' + m + '-' + d;
+            };
+
+            const recalc = function() {
+                if (!exitType || !lastWorkingDay) return;
+
+                const type = String(exitType.value || '').toLowerCase();
+                const waived = !!(noticeWaived && noticeWaived.checked);
+                const immediate = !!(immediateExit && immediateExit.checked);
+
+                const isInternship = (type === 'internship_completed' || type === 'internship_exit' || type.includes('intern'));
+
+                if (noticeWrapper) {
+                    if (isInternship || type === 'termination' || type === 'absconding' || type === 'deceased') {
+                        noticeWrapper.style.display = 'none';
+                    } else {
+                        noticeWrapper.style.display = '';
+                    }
+                }
+
+                if (isInternship) {
+                    if (noticeDays) noticeDays.value = 0;
+                    if (resignationDate && resignationDate.value) {
+                        lastWorkingDay.value = resignationDate.value;
+                    }
+                    return;
+                }
+
+                if (type === 'termination' || type === 'absconding' || immediate) {
+                    if (terminationDate && terminationDate.value) {
+                        lastWorkingDay.value = terminationDate.value;
+                    } else if (resignationDate && resignationDate.value) {
+                        lastWorkingDay.value = resignationDate.value;
+                    }
+                    return;
+                }
+
+                if (waived) {
+                    if (resignationDate && resignationDate.value) {
+                        lastWorkingDay.value = resignationDate.value;
+                    }
+                    return;
+                }
+
+                const notice = Math.max(0, parseInt((noticeDays && noticeDays.value) ? noticeDays.value : '15', 10) || 0);
+
+                if (resignationDate && resignationDate.value) {
+                    const base = new Date(resignationDate.value + 'T00:00:00');
+                    if (!isNaN(base.getTime())) {
+                        base.setDate(base.getDate() + (Math.max(1, notice) - 1));
+                        lastWorkingDay.value = toYmd(base);
+                    }
+                }
+            };
+
+            [exitType, resignationDate, terminationDate, noticeDays, noticeWaived, immediateExit].forEach(function(el) {
+                if (!el) return;
+                el.addEventListener('change', recalc);
+                el.addEventListener('input', recalc);
+            });
+
+            if (typeof jQuery !== 'undefined') {
+                $(form).closest('.modal').on('shown.bs.modal', function() {
+                    recalc();
+                });
+            }
+
+            recalc();
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initGlobalExitForm);
+    } else {
+        initGlobalExitForm();
+    }
+})();
+</script>

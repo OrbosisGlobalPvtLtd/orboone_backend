@@ -965,9 +965,16 @@
                         $employee->internship_end_date)
                         : $employee->probation_end_date;
 
+                        if (!$isIntern && !$endDate && $startDate) {
+                            $durationType = $employee->probation_duration_type ?? 'months';
+                            $durationValue = (int) ($employee->probation_duration_value ?? $employee->probation_months ?? 3);
+                            $calc = app(\App\Services\HRMS\Employee\EmployeeLifecycleService::class)->calculateProbationDates($startDate, $durationType, $durationValue);
+                            $endDate = $calc['probation_end_date'];
+                        }
+
                         $effectiveDate = $endDate
                         ? \Carbon\Carbon::parse($endDate)->copy()->addDay()
-                        : \Carbon\Carbon::today();
+                        : \Carbon\Carbon::today()->addDay();
 
                         $status = $isIntern
                         ? ($employee->internship_status ?:
@@ -1062,14 +1069,26 @@
         $isIntern = $stage === 'internship' || ($stage === '' && $type === 'intern');
         $displayType = $isIntern ? 'Internship' : 'Probation';
 
+        $startDate = $isIntern
+        ? $employee->internship_start_date
+        : ($employee->probation_start_date ?:
+        $employee->joining_date);
+
         $endDate = $isIntern
         ? ($employee->internship_extended_to ?:
         $employee->internship_end_date)
         : $employee->probation_end_date;
 
+        if (!$isIntern && !$endDate && $startDate) {
+            $durationType = $employee->probation_duration_type ?? 'months';
+            $durationValue = (int) ($employee->probation_duration_value ?? $employee->probation_months ?? 3);
+            $calc = app(\App\Services\HRMS\Employee\EmployeeLifecycleService::class)->calculateProbationDates($startDate, $durationType, $durationValue);
+            $endDate = $calc['probation_end_date'];
+        }
+
         $effectiveDate = $endDate
         ? \Carbon\Carbon::parse($endDate)->copy()->addDay()
-        : \Carbon\Carbon::today();
+        : \Carbon\Carbon::today()->addDay();
 
         $status = $isIntern
         ? ($employee->internship_status ?:
@@ -1121,8 +1140,8 @@
                                     <div class="row">
                                         <div class="col-md-6 mb-3">
                                             <label>Permanent Effective Date</label>
-                                            <input type="text" class="eo-date eo-readonly-date"
-                                                value="{{ $effectiveDate->format('d M Y') }}" readonly>
+                                            <input type="date" name="permanent_effective_date" class="eo-date"
+                                                value="{{ $effectiveDate->format('Y-m-d') }}">
                                         </div>
                                         <div class="col-md-6 mb-3">
                                             <label>Permanent Salary</label>
@@ -1262,12 +1281,30 @@
                                         </div>
                                         <div class="col-md-6 mb-3">
                                             <label>Action</label>
-                                            <select name="next_stage" class="eo-date" required>
+                                            <select name="next_stage" class="eo-date select-next-stage" data-emp-id="{{ $employee->id }}" required>
                                                 <option value="completed">Only Mark Internship Completed
                                                 </option>
                                                 <option value="probation">Complete & Move to Probation</option>
                                                 <!-- <option value="permanent">Complete & Move Permanent</option> -->
                                             </select>
+                                        </div>
+                                        <div class="col-md-6 mb-3 probation-duration-box-{{ $employee->id }}" style="display: none;">
+                                            <label>Probation Duration</label>
+                                            <select name="probation_duration_option" class="eo-date select-probation-option" data-emp-id="{{ $employee->id }}">
+                                                <option value="3_months" selected>3 Months</option>
+                                                <option value="6_months">6 Months</option>
+                                                <option value="custom">Custom</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6 mb-3 custom-probation-box-{{ $employee->id }}" style="display: none;">
+                                            <label>Custom Duration</label>
+                                            <div style="display: flex; gap: 8px;">
+                                                <input type="number" name="custom_duration_value" class="eo-date" min="1" max="365" value="3" placeholder="e.g. 10" style="flex: 1;">
+                                                <select name="custom_duration_unit" class="eo-date" style="max-width: 110px;">
+                                                    <option value="months">Months</option>
+                                                    <option value="days">Days</option>
+                                                </select>
+                                            </div>
                                         </div>
                                         <div class="col-md-6 mb-3">
                                             <label>Salary / Stipend</label>
@@ -1567,6 +1604,37 @@
             const targetPane = modal.querySelector('#' + targetId);
             if (targetPane) {
                 targetPane.classList.add('active');
+            }
+        });
+
+        // Toggle Probation Duration Fields on Action dropdown change
+        document.addEventListener('change', function(e) {
+            if (e.target && e.target.classList.contains('select-next-stage')) {
+                const empId = e.target.getAttribute('data-emp-id');
+                const probBox = document.querySelector('.probation-duration-box-' + empId);
+                const customBox = document.querySelector('.custom-probation-box-' + empId);
+                if (e.target.value === 'probation') {
+                    if (probBox) probBox.style.display = 'block';
+                    const optVal = probBox ? probBox.querySelector('.select-probation-option')?.value : null;
+                    if (optVal === 'custom') {
+                        if (customBox) customBox.style.display = 'block';
+                    } else {
+                        if (customBox) customBox.style.display = 'none';
+                    }
+                } else {
+                    if (probBox) probBox.style.display = 'none';
+                    if (customBox) customBox.style.display = 'none';
+                }
+            }
+
+            if (e.target && e.target.classList.contains('select-probation-option')) {
+                const empId = e.target.getAttribute('data-emp-id');
+                const customBox = document.querySelector('.custom-probation-box-' + empId);
+                if (e.target.value === 'custom') {
+                    if (customBox) customBox.style.display = 'block';
+                } else {
+                    if (customBox) customBox.style.display = 'none';
+                }
             }
         });
     });

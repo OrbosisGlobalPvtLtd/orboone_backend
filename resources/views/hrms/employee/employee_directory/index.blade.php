@@ -460,10 +460,13 @@
         font-weight: 950 !important;
         padding: 8px 12px !important;
         box-shadow: 0 6px 16px rgba(16, 24, 40, .045) !important;
+    }
+
     .dt-buttons .btn:hover {
         color: #fff !important;
         border-color: var(--orb-primary) !important;
-        background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary)) !important    }
+        background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary)) !important;
+    }
 
     #employeesTable {
         width: 100% !important;
@@ -790,11 +793,11 @@
                 </div>
             </div>
 
-            <div class="eo-stat border-bottom-danger">
-                <div class="eo-stat-icon danger"><i class="fas fa-file-signature"></i></div>
+            <div class="eo-stat" style="border-bottom: 3px solid #8B5CF6 !important;">
+                <div class="eo-stat-icon" style="background: rgba(139, 92, 246, 0.12); color: #8B5CF6;"><i class="fas fa-user-graduate"></i></div>
                 <div>
-                    <p class="eo-stat-label">Docs Pending</p>
-                    <h3 class="eo-stat-value">{{ $stats['docs_pending'] ?? 0 }}</h3>
+                    <p class="eo-stat-label">Internship</p>
+                    <h3 class="eo-stat-value">{{ $stats['internship'] ?? 0 }}</h3>
                 </div>
             </div>
         </div>
@@ -822,9 +825,12 @@
                         <p>Manage active employees, verification status, work mode, and HR lifecycle.</p>
                     </div>
                 </div>
-                <!-- RIGHT: Reset button -->
-                <div class="d-flex align-items-center">
-                    <button type="button" id="resetFilter" class="orb-btn-light py-2 px-3 h-auto">
+                <!-- RIGHT: Search & Reset buttons -->
+                <div class="d-flex align-items-center" style="gap: 12px !important;">
+                    <button type="button" id="btnEmpFilterSubmit" class="btn text-white font-weight-bold shadow-sm" style="height: 38px; border-radius: 12px; background: linear-gradient(135deg, var(--orb-primary, #6366F1), var(--orb-secondary, #8B5CF6)); border: none; padding: 0 20px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; margin-right: 8px;">
+                        <i class="fas fa-search mr-1"></i> Search
+                    </button>
+                    <button type="button" id="resetFilter" class="orb-btn-light py-2 px-3" style="height: 38px !important; display: inline-flex; align-items: center; gap: 6px;">
                         <i class="fas fa-undo mr-1"></i> Reset
                     </button>
                 </div>
@@ -879,13 +885,6 @@
                             <option value="notice">Notice</option>
                             <option value="inactive">Inactive</option>
                         </select>
-                    </div>
-
-                    <div class="eo-field d-flex align-items-end">
-                        <label>&nbsp;</label>
-                        <button type="button" id="btnEmpFilterSubmit" class="btn text-white font-weight-bold shadow-sm w-100" style="height: 38px; border-radius: 12px; background: var(--orb-primary); border: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px;">
-                            <i class="fas fa-search"></i> Search
-                        </button>
                     </div>
                 </div>
             </div>
@@ -943,8 +942,45 @@
 <script>
     $(document).ready(function() {
 
+        function formatExportColumn(data, row, column, node, targetType) {
+            if (!data) return '-';
+            let $el = $('<div>').html(data);
+
+            // Strip action dropdowns, avatars, fallback initial letters, scripts, styles
+            $el.find('.hrms-emp-avatar, .hrms-emp-avatar-fallback, .eo-action-menu, script, style').remove();
+
+            // Column 0: Employee Name, Code, Email
+            if (column === 0 && $el.find('.eo-name').length > 0) {
+                let name = $el.find('.eo-name').text().trim();
+                let code = $el.find('.eo-meta').text().trim();
+                let email = $el.find('.eo-mini').text().trim();
+
+                if (targetType === 'print') {
+                    let html = '<div style="font-weight:700; color:#0F172A; font-size:12px; line-height:1.3;">' + name + '</div>';
+                    if (code && code !== '-') {
+                        html += '<div style="color:#475569; font-size:11px; font-weight:500; margin-top:2px;">' + code + '</div>';
+                    }
+                    if (email && email !== '-') {
+                        html += '<div style="color:#64748B; font-size:10px; margin-top:1px; word-break:break-all;">' + email + '</div>';
+                    }
+                    return html;
+                } else {
+                    let parts = [name];
+                    if (code && code !== '-') parts.push('(' + code + ')');
+                    if (email && email !== '-') parts.push('- ' + email);
+                    return parts.join(' ');
+                }
+            }
+
+            if (targetType === 'print') {
+                return $el.html().trim() || $el.text().replace(/\s+/g, ' ').trim();
+            }
+
+            return $el.text().replace(/\s+/g, ' ').trim();
+        }
+
         function cleanExportText(data) {
-            return $('<div>').html(data || '').text().replace(/\s+/g, ' ').trim();
+            return formatExportColumn(data, null, null, null, 'text');
         }
 
         function pill(text, type) {
@@ -975,10 +1011,10 @@
         let table = $('#employeesTable').DataTable({
             processing: true,
             serverSide: true,
-            pageLength: 10,
+            pageLength: 50,
             lengthMenu: [
-                [10, 25, 50, 100],
-                [10, 25, 50, 100]
+                [50, 10, 25, 100],
+                [50, 10, 25, 100]
             ],
             ajax: {
                 url: "{{ route('hrms.employees.index') }}",
@@ -1081,8 +1117,8 @@
                     exportOptions: {
                         columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
                         format: {
-                            body: function(data) {
-                                return cleanExportText(data);
+                            body: function(data, row, column, node) {
+                                return formatExportColumn(data, row, column, node, 'excel');
                             }
                         }
                     }
@@ -1095,8 +1131,8 @@
                     exportOptions: {
                         columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
                         format: {
-                            body: function(data) {
-                                return cleanExportText(data);
+                            body: function(data, row, column, node) {
+                                return formatExportColumn(data, row, column, node, 'csv');
                             }
                         }
                     }
@@ -1104,15 +1140,58 @@
                 {
                     extend: 'print',
                     text: '<i class="fas fa-print mr-1"></i> Print',
-                    title: 'Employee Directory',
+                    title: 'Employee Directory Report',
                     className: 'btn btn-sm',
                     exportOptions: {
                         columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
                         format: {
-                            body: function(data) {
-                                return cleanExportText(data);
+                            body: function(data, row, column, node) {
+                                return formatExportColumn(data, row, column, node, 'print');
                             }
                         }
+                    },
+                    customize: function (win) {
+                        $(win.document.body)
+                            .css('font-family', "'Inter', system-ui, -apple-system, sans-serif")
+                            .css('padding', '24px')
+                            .css('background', '#fff')
+                            .css('color', '#0F172A');
+
+                        $(win.document.body).find('h1')
+                            .css('text-align', 'center')
+                            .css('font-size', '20px')
+                            .css('font-weight', '800')
+                            .css('color', '#0F172A')
+                            .css('letter-spacing', '0.5px')
+                            .css('text-transform', 'uppercase')
+                            .css('margin-bottom', '20px')
+                            .css('padding-bottom', '12px')
+                            .css('border-bottom', '2px solid #E2E8F0');
+
+                        $(win.document.body).find('table')
+                            .addClass('compact')
+                            .css('font-size', '11px')
+                            .css('width', '100%')
+                            .css('border-collapse', 'collapse')
+                            .css('margin-top', '10px');
+
+                        $(win.document.body).find('table th')
+                            .css('background-color', '#F8FAFC')
+                            .css('color', '#334155')
+                            .css('font-weight', '700')
+                            .css('padding', '10px 12px')
+                            .css('border', '1px solid #CBD5E1')
+                            .css('text-transform', 'uppercase')
+                            .css('font-size', '10px')
+                            .css('letter-spacing', '0.5px');
+
+                        $(win.document.body).find('table td')
+                            .css('padding', '8px 12px')
+                            .css('border', '1px solid #E2E8F0')
+                            .css('color', '#1E293B')
+                            .css('vertical-align', 'top');
+
+                        $(win.document.body).find('table tbody tr:nth-child(even)').css('background-color', '#F8FAFC');
                     }
                 }
             ],
@@ -1160,6 +1239,8 @@
             const btn = $(this);
             const employeeName = btn.data('employee-name');
             const employeeCode = btn.data('employee-code');
+            const employeeStage = String(btn.data('employee-stage') || '').toLowerCase();
+            const employmentType = String(btn.data('employment-type') || '').toLowerCase();
             const actionUrl = btn.data('action-url');
 
             const modal = $('#initiateExitModal');
@@ -1168,6 +1249,13 @@
             form.attr('action', actionUrl);
             $('#initiateExitModalLabel').html('<i class="fas fa-sign-out-alt mr-2"></i> Initiate Exit: ' + employeeName + ' (' + employeeCode + ')');
             $('#initiateExitModalSub').text('Select exit type and parameters for ' + employeeName);
+
+            const exitTypeSelect = form.find('.eo-exit-type');
+            if (employeeStage === 'internship' || employmentType === 'intern' || employmentType === 'internship') {
+                exitTypeSelect.val('internship_completed').trigger('change');
+            } else {
+                exitTypeSelect.val('resignation').trigger('change');
+            }
 
             modal.modal('show');
         });

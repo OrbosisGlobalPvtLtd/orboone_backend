@@ -126,6 +126,315 @@
     line-height: 1.45;
     margin-bottom: 3px;
 }
+/* Filter Card Redesign */
+.rep-filter-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 18px;
+    box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+    margin-bottom: 24px;
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.rep-filter-card:hover {
+    border-color: #CBD5E1;
+    box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.08);
+}
+
+.filter-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    background: #F8FAFC;
+    border-bottom: 1px solid #EDF2F7;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.filter-header-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #1E293B;
+    margin: 0;
+}
+
+.filter-header-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: rgba(75, 0, 232, 0.08);
+    color: var(--orb-primary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+}
+
+.filter-quick-dates {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.quick-date-btn {
+    border: 1px solid #E2E8F0;
+    background: #FFFFFF;
+    color: #475569;
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.quick-date-btn:hover {
+    background: #EEF2FF;
+    border-color: #C7D2FE;
+    color: var(--orb-primary);
+    transform: translateY(-1px);
+}
+
+.quick-date-btn.active {
+    background: var(--orb-primary);
+    border-color: var(--orb-primary);
+    color: #FFFFFF;
+}
+
+.filter-card-body {
+    padding: 20px;
+}
+
+.filter-grid {
+    display: grid;
+    grid-template-columns: minmax(170px, 1.2fr) minmax(220px, 1.8fr) minmax(200px, 1.6fr) auto;
+    gap: 16px;
+    align-items: flex-end;
+}
+
+@media (max-width: 992px) {
+    .filter-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 576px) {
+    .filter-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.filter-field {
+    display: flex;
+    flex-direction: column;
+}
+
+.filter-label {
+    font-size: 11px;
+    font-weight: 800;
+    color: #64748B;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.filter-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.filter-input-icon {
+    position: absolute;
+    left: 14px;
+    color: #94A3B8;
+    font-size: 13px;
+    pointer-events: none;
+    z-index: 2;
+    transition: color 0.2s ease;
+}
+
+.filter-control {
+    width: 100%;
+    height: 42px;
+    border-radius: 10px;
+    border: 1px solid #CBD5E1;
+    background: #FFFFFF;
+    padding: 8px 14px 8px 38px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #0F172A;
+    outline: none;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+select.filter-control {
+    padding-right: 36px;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2364748B' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 12px 12px;
+    cursor: pointer;
+}
+
+.filter-control:focus {
+    border-color: var(--orb-primary);
+    box-shadow: 0 0 0 3px rgba(75, 0, 232, 0.12);
+    background-color: #FFFFFF;
+}
+
+/* Select2 integration within filter input wrapper */
+.filter-input-wrapper .select2-container {
+    width: 100% !important;
+}
+
+.filter-input-wrapper .select2-container .select2-selection--single {
+    height: 42px !important;
+    border-radius: 10px !important;
+    border: 1px solid #CBD5E1 !important;
+    background: #FFFFFF !important;
+    padding-left: 38px !important;
+    display: flex !important;
+    align-items: center !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.filter-input-wrapper .select2-container--open .select2-selection--single,
+.filter-input-wrapper .select2-container--focus .select2-selection--single {
+    border-color: var(--orb-primary) !important;
+    box-shadow: 0 0 0 3px rgba(75, 0, 232, 0.12) !important;
+}
+
+.filter-input-wrapper .select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: #0F172A !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    padding-left: 0 !important;
+    line-height: 40px !important;
+}
+
+.filter-input-wrapper .select2-container--default .select2-selection--single .select2-selection__placeholder {
+    color: #94A3B8 !important;
+    font-weight: 500 !important;
+}
+
+.filter-input-wrapper .select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 40px !important;
+    right: 10px !important;
+}
+
+.filter-input-wrapper:focus-within .filter-input-icon {
+    color: var(--orb-primary);
+}
+
+.filter-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-filter-apply {
+    height: 42px;
+    padding: 0 20px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--orb-primary) 0%, #6319ED 100%);
+    color: #FFFFFF;
+    font-size: 13px;
+    font-weight: 800;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 4px 12px rgba(75, 0, 232, 0.25);
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.btn-filter-apply:hover {
+    background: linear-gradient(135deg, #3D00C2 0%, #520DD6 100%);
+    color: #FFFFFF;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(75, 0, 232, 0.35);
+}
+
+.btn-filter-reset {
+    height: 42px;
+    padding: 0 16px;
+    border-radius: 10px;
+    background: #F1F5F9;
+    color: #475569;
+    font-size: 13px;
+    font-weight: 700;
+    border: 1px solid #E2E8F0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.btn-filter-reset:hover {
+    background: #E2E8F0;
+    color: #0F172A;
+    text-decoration: none;
+    transform: translateY(-1px);
+}
+
+/* Active Filter Badges Ribbon */
+.active-filters-ribbon {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px dashed #E2E8F0;
+}
+
+.active-filter-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #EEF2FF;
+    border: 1px solid #C7D2FE;
+    color: var(--orb-primary);
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+}
+
+.active-filter-tag .tag-remove {
+    color: #818CF8;
+    cursor: pointer;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    transition: color 0.15s ease;
+}
+
+.active-filter-tag .tag-remove:hover {
+    color: #EF4444;
+}
 </style>
 @endsection
 
@@ -137,34 +446,145 @@
             <p class="mb-0 opacity-90 small">Daily work summaries submitted by your reporting employees upon punch-out.</p>
         </div>
 
-        <!-- Filter Card -->
-        <div class="rep-card p-3 mb-4">
-            <form method="GET" action="{{ route('reporting.work_reports') }}" class="form-inline flex-wrap gap-2">
-                <input type="date" name="date" class="form-control mr-2 mb-2" value="{{ request('date') }}" style="border-radius: 10px;" placeholder="Select Date">
+        <!-- Filter Card Redesign -->
+        @php
+            $todayDate = \Carbon\Carbon::today()->toDateString();
+            $yesterdayDate = \Carbon\Carbon::yesterday()->toDateString();
+            $currentDate = request('date');
+            $currentEmpId = request('employee_id');
+            $currentProjId = request('project_id');
+            
+            $hasActiveFilters = !empty($currentDate) || !empty($currentEmpId) || !empty($currentProjId);
+            $activeCount = (!empty($currentDate) ? 1 : 0) + (!empty($currentEmpId) ? 1 : 0) + (!empty($currentProjId) ? 1 : 0);
+            
+            $selectedEmp = !empty($currentEmpId) ? $teamEmployees->firstWhere('id', $currentEmpId) : null;
+            $selectedProj = !empty($currentProjId) ? $teamProjects->firstWhere('id', $currentProjId) : null;
+        @endphp
 
-                <select name="employee_id" class="form-control mr-2 mb-2" style="border-radius: 10px;">
-                    <option value="">-- All Reporting Employees --</option>
-                    @foreach($teamEmployees as $emp)
-                        <option value="{{ $emp->id }}" {{ request('employee_id') == $emp->id ? 'selected' : '' }}>
-                            {{ $emp->display_name }} ({{ $emp->employee_code }})
-                        </option>
-                    @endforeach
-                </select>
+        <div class="rep-filter-card">
+            <div class="filter-card-header">
+                <div class="filter-header-title">
+                    <span class="filter-header-icon"><i class="fas fa-sliders-h"></i></span>
+                    <span>Filter & Search Reports</span>
+                    @if($hasActiveFilters)
+                        <span class="badge badge-pill badge-primary ml-1" style="background: var(--orb-primary); font-size: 11px; padding: 4px 9px;">
+                            {{ $activeCount }} Active {{ Str::plural('Filter', $activeCount) }}
+                        </span>
+                    @endif
+                </div>
 
-                <select name="project_id" class="form-control mr-2 mb-2" style="border-radius: 10px;">
-                    <option value="">-- All Projects --</option>
-                    @foreach($teamProjects as $prj)
-                        <option value="{{ $prj->id }}" {{ request('project_id') == $prj->id ? 'selected' : '' }}>
-                            {{ $prj->name }}
-                        </option>
-                    @endforeach
-                </select>
+                <div class="filter-quick-dates">
+                    <span class="text-muted small font-weight-bold mr-1 d-none d-sm-inline" style="font-size: 11px;">Quick Date:</span>
+                    <button type="button" class="quick-date-btn {{ $currentDate === $todayDate ? 'active' : '' }}" onclick="applyQuickDate('{{ $todayDate }}')">
+                        <i class="far fa-calendar-check"></i> Today
+                    </button>
+                    <button type="button" class="quick-date-btn {{ $currentDate === $yesterdayDate ? 'active' : '' }}" onclick="applyQuickDate('{{ $yesterdayDate }}')">
+                        <i class="far fa-calendar-minus"></i> Yesterday
+                    </button>
+                    @if($currentDate)
+                        <button type="button" class="quick-date-btn text-danger" onclick="applyQuickDate('')" title="Clear Date Filter">
+                            <i class="fas fa-times"></i> Clear Date
+                        </button>
+                    @endif
+                </div>
+            </div>
 
-                <button type="submit" class="btn btn-primary font-weight-bold px-4 mb-2" style="border-radius: 10px; background: var(--orb-primary); border-color: var(--orb-primary);"><i class="fas fa-filter mr-1"></i> Filter</button>
-                @if(request('date') || request('employee_id') || request('project_id'))
-                    <a href="{{ route('reporting.work_reports') }}" class="btn btn-light border text-muted font-weight-bold ml-2 mb-2" style="border-radius: 10px;">Clear</a>
+            <div class="filter-card-body">
+                <form method="GET" action="{{ route('reporting.work_reports') }}" id="workReportFilterForm">
+                    <div class="filter-grid">
+                        <!-- Date Input -->
+                        <div class="filter-field">
+                            <label class="filter-label" for="filterDateInput">
+                                <i class="far fa-calendar-alt text-muted"></i> Work Date
+                            </label>
+                            <div class="filter-input-wrapper">
+                                <i class="fas fa-calendar-day filter-input-icon"></i>
+                                <input type="date" name="date" id="filterDateInput" class="filter-control" value="{{ $currentDate }}">
+                            </div>
+                        </div>
+
+                        <!-- Reporting Employee (Searchable with Developer / QA / Team) -->
+                        <div class="filter-field">
+                            <label class="filter-label" for="filterEmployeeSelect">
+                                <i class="far fa-user text-muted"></i> Employee (Developers & QA)
+                            </label>
+                            <div class="filter-input-wrapper">
+                                <i class="fas fa-user-tie filter-input-icon"></i>
+                                <select name="employee_id" id="filterEmployeeSelect" class="filter-control select2-searchable">
+                                    <option value="">-- All Developers, QA & Team ({{ $teamEmployees->count() }}) --</option>
+                                    @foreach($teamEmployees as $emp)
+                                        <option value="{{ $emp->id }}" {{ $currentEmpId == $emp->id ? 'selected' : '' }}>
+                                            {{ $emp->display_name }} ({{ $emp->employee_code }}){{ $emp->designation ? ' • ' . $emp->designation->name : ($emp->department ? ' • ' . $emp->department->name : '') }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Project (Searchable) -->
+                        <div class="filter-field">
+                            <label class="filter-label" for="filterProjectSelect">
+                                <i class="far fa-folder text-muted"></i> Project
+                            </label>
+                            <div class="filter-input-wrapper">
+                                <i class="fas fa-project-diagram filter-input-icon"></i>
+                                <select name="project_id" id="filterProjectSelect" class="filter-control select2-searchable">
+                                    <option value="">-- All Projects ({{ $teamProjects->count() }}) --</option>
+                                    @foreach($teamProjects as $prj)
+                                        <option value="{{ $prj->id }}" {{ $currentProjId == $prj->id ? 'selected' : '' }}>
+                                            {{ $prj->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="filter-actions">
+                            <button type="submit" class="btn-filter-apply">
+                                <i class="fas fa-filter"></i>
+                                <span>Apply</span>
+                            </button>
+                            @if($hasActiveFilters)
+                                <a href="{{ route('reporting.work_reports') }}" class="btn-filter-reset" title="Reset all filters">
+                                    <i class="fas fa-undo-alt"></i>
+                                    <span>Reset</span>
+                                </a>
+                            @endif
+                        </div>
+                    </div>
+                </form>
+
+                @if($hasActiveFilters)
+                    <div class="active-filters-ribbon">
+                        <span class="small font-weight-bold text-muted" style="font-size: 11px;">Active Filters:</span>
+                        @if($currentDate)
+                            <div class="active-filter-tag">
+                                <span><i class="far fa-calendar-alt mr-1"></i> Date: <strong>{{ \Carbon\Carbon::parse($currentDate)->format('d M Y') }}</strong></span>
+                                <a href="{{ route('reporting.work_reports', request()->except('date', 'page')) }}" class="tag-remove" title="Remove Date Filter"><i class="fas fa-times"></i></a>
+                            </div>
+                        @endif
+
+                        @if($selectedEmp)
+                            <div class="active-filter-tag">
+                                <span><i class="far fa-user mr-1"></i> Employee: <strong>{{ $selectedEmp->display_name }}</strong></span>
+                                <a href="{{ route('reporting.work_reports', request()->except('employee_id', 'page')) }}" class="tag-remove" title="Remove Employee Filter"><i class="fas fa-times"></i></a>
+                            </div>
+                        @endif
+
+                        @if($selectedProj)
+                            <div class="active-filter-tag">
+                                <span><i class="far fa-folder mr-1"></i> Project: <strong>{{ $selectedProj->name }}</strong></span>
+                                <a href="{{ route('reporting.work_reports', request()->except('project_id', 'page')) }}" class="tag-remove" title="Remove Project Filter"><i class="fas fa-times"></i></a>
+                            </div>
+                        @endif
+
+                        <a href="{{ route('reporting.work_reports') }}" class="text-danger font-weight-bold ml-2" style="font-size: 11.5px; text-decoration: underline;">
+                            Clear All
+                        </a>
+                    </div>
                 @endif
-            </form>
+            </div>
         </div>
 
         <div class="rep-card">
@@ -324,7 +744,29 @@
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
 
 <script>
+    window.applyQuickDate = function(dateVal) {
+        var dateInput = document.getElementById('filterDateInput');
+        if (dateInput) {
+            dateInput.value = dateVal;
+            document.getElementById('workReportFilterForm').submit();
+        }
+    };
+
     $(function() {
+        if (typeof $.fn.select2 !== 'undefined') {
+            $('#filterEmployeeSelect').select2({
+                placeholder: 'Search employee by name, code or designation...',
+                allowClear: true,
+                width: '100%'
+            });
+
+            $('#filterProjectSelect').select2({
+                placeholder: 'Search or select project...',
+                allowClear: true,
+                width: '100%'
+            });
+        }
+
         $.fn.dataTable.ext.errMode = 'none';
 
         if ($('#reportingWorkReportsTable tbody tr td[colspan]').length > 0) {

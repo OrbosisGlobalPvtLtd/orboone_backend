@@ -29,6 +29,7 @@ Route::middleware(['auth', 'check.access'])->group(function () {
     Route::get('/leave-approvals', [LeaveApprovalC::class, 'index'])->name('leave-approvals.index');
     Route::post('/leave-approvals/{id}/approve', [LeaveApprovalC::class, 'approve'])->name('leave-approvals.approve');
     Route::post('/leave-approvals/{id}/reject', [LeaveApprovalC::class, 'reject'])->name('leave-approvals.reject');
+    Route::post('/leave-approvals/{id}/void', [LeaveApprovalC::class, 'void'])->name('leave-approvals.void');
 
     Route::get('/leave-balances', [LeaveBalanceC::class, 'index'])->middleware('permission:leave.balance.view_all|leave.balance.view_team|leave.balance.view_own|leave.balance.view')->name('hrms.leave.balances.index');
     Route::get('/leave-allocations', [LeaveAllocationC::class, 'index'])->middleware('permission:leave.allocation.view_all|leave.allocation.view_own|leave.allocation.view|leave.allocation.manage')->name('leave-allocations.index');

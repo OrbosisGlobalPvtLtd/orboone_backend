@@ -113,10 +113,14 @@ class AttendanceSyncFromLeaveService
             }
 
             $oldStatus = $attendance->attendance_status;
+            $hasPunched = !empty($attendance->punch_in_time);
+            $newStatus = $hasPunched ? 'present' : 'pending';
+            $newSource = $hasPunched ? ($attendance->attendance_source === 'leave_auto' ? 'web' : $attendance->attendance_source) : 'leave_reversed';
+
             $attendance->leave_request_id = null;
             $attendance->attendance_type_id = null;
-            $attendance->attendance_status = 'pending';
-            $attendance->attendance_source = 'leave_reversed';
+            $attendance->attendance_status = $newStatus;
+            $attendance->attendance_source = $newSource;
             $attendance->is_lwp = false;
             $attendance->lwp_reason = null;
             $attendance->is_half_day = false;
@@ -128,9 +132,9 @@ class AttendanceSyncFromLeaveService
                 'attendance_id' => $attendance->id,
                 'status_date' => Carbon::parse($attendance->attendance_date)->toDateString(),
                 'old_status' => $oldStatus,
-                'new_status' => 'pending',
+                'new_status' => $newStatus,
                 'source' => 'leave_reversal',
-                'remarks' => 'Leave sync reversed for request #' . $leaveRequest->id,
+                'remarks' => 'Leave sync reversed for request #' . $leaveRequest->id . ($hasPunched ? ' (Employee worked on this date)' : ''),
                 'created_by_user_id' => $userId,
             ]);
         }

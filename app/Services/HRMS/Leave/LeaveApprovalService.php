@@ -186,6 +186,32 @@ class LeaveApprovalService
         });
     }
 
+    public function voidLeave(LeaveRequestM $leaveRequest, int $voidedByUserId, string $note): LeaveRequestM
+    {
+        return DB::transaction(function () use ($leaveRequest, $voidedByUserId, $note) {
+            $leaveRequest = LeaveRequestM::with(['employee', 'leaveType', 'dates'])->lockForUpdate()->findOrFail($leaveRequest->id);
+
+            if ($leaveRequest->status !== 'approved') {
+                throw ValidationException::withMessages(['status' => 'Only approved leave requests can be marked as Null & Void.']);
+            }
+
+            $this->reverseApprovedLeave($leaveRequest, $voidedByUserId, 'leave_void_reversal');
+
+            $leaveRequest->forceFill([
+                'status' => 'void',
+                'approval_level' => 'hr_voided',
+                'hr_note' => $note,
+                'cancel_reason' => $note,
+                'cancelled_by_user_id' => $voidedByUserId,
+                'cancelled_at' => Carbon::now('Asia/Kolkata'),
+            ])->save();
+
+            $this->notifyLeaveDecision($leaveRequest->fresh(['employee.user', 'leaveType', 'dates']), 'leave_voided', $note);
+
+            return $leaveRequest->fresh(['employee', 'leaveType', 'dates']);
+        });
+    }
+
     private function reverseApprovedLeave(LeaveRequestM $leaveRequest, int $userId, string $action): void
     {
         try {
@@ -207,6 +233,10 @@ class LeaveApprovalService
             } else {
                 $this->allocationService->recalculateAllocationFields($allocation);
                 $allocation->save();
+            }
+
+            if ((float) $leaveRequest->comp_off_days > 0) {
+                $this->compOffService->refund($leaveRequest->employee, (float) $leaveRequest->comp_off_days, $leaveRequest->id);
             }
 
             DB::table('payroll_attendance_impacts')

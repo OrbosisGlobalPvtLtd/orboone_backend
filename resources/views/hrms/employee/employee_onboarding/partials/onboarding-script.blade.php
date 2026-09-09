@@ -214,6 +214,19 @@
             };
         }
 
+        
+        function setProbationInputsEnabled(enabled) {
+            var fields = [elements.probationOption, elements.customValue, elements.customUnit];
+            fields.forEach(function(el) {
+                if (!el) return;
+                if (enabled) {
+                    el.removeAttribute('disabled');
+                } else {
+                    el.setAttribute('disabled', 'disabled');
+                }
+            });
+        }
+
         function updateProbation() {
             const stage = currentStage();
             const option = elements.probationOption ? elements.probationOption.value : '3_months';
@@ -223,8 +236,14 @@
             if (elements.customProbationBox) {
                 if (option === 'custom') {
                     elements.customProbationBox.classList.remove('eo-hidden');
+                  
+                    if (elements.customValue) elements.customValue.removeAttribute('disabled');
+                    if (elements.customUnit) elements.customUnit.removeAttribute('disabled');
                 } else {
                     elements.customProbationBox.classList.add('eo-hidden');
+                  
+                    if (elements.customValue) elements.customValue.setAttribute('disabled', 'disabled');
+                    if (elements.customUnit) elements.customUnit.setAttribute('disabled', 'disabled');
                 }
             }
 
@@ -356,15 +375,21 @@
                 if (elements.internBox) elements.internBox.style.display = 'block';
                 if (elements.contractBox) elements.contractBox.style.display = 'none';
                 document.querySelectorAll('.joining-box,.probation-box').forEach(el => el.classList.add('eo-hidden'));
+               
+                setProbationInputsEnabled(false);
             } else if (stage === 'contract' || stage === 'freelance') {
                 if (elements.internBox) elements.internBox.style.display = 'none';
                 if (elements.contractBox) elements.contractBox.style.display = 'block';
                 document.querySelectorAll('.joining-box').forEach(el => el.classList.remove('eo-hidden'));
                 document.querySelectorAll('.probation-box').forEach(el => el.classList.add('eo-hidden'));
+              
+                setProbationInputsEnabled(false);
             } else {
                 if (elements.internBox) elements.internBox.style.display = 'none';
                 if (elements.contractBox) elements.contractBox.style.display = 'none';
                 document.querySelectorAll('.joining-box,.probation-box').forEach(el => el.classList.remove('eo-hidden'));
+                
+                setProbationInputsEnabled(true);
                 updateProbation();
             }
 
@@ -604,7 +629,7 @@
             bindDoubleSubmitGuard();
         }
 
-        // Run Lifecycle Initialization
+      
         filterDesignations();
         updateEmploymentFields();
         handleScheduleChange(true);

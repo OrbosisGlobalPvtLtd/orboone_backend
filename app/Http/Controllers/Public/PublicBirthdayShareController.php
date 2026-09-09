@@ -3,13 +3,13 @@
 namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
-use App\Services\HRMS\BirthdayShareService;
+use App\Services\HRMS\Birthday\BirthdayShareService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Response;
 
 class PublicBirthdayShareController extends Controller
 {
-    protected $birthdayShareService;
+    protected BirthdayShareService $birthdayShareService;
 
     public function __construct(BirthdayShareService $birthdayShareService)
     {
@@ -24,14 +24,9 @@ class PublicBirthdayShareController extends Controller
         $employeeData = $this->birthdayShareService->resolveToken($token);
 
         if (!$employeeData) {
-            // Fallback default response for unknown/expired tokens
-            $employeeData = [
-                'employee_id' => 0,
-                'name' => 'Orbosis Global Team Member',
-                'department' => 'Orbosis Global Pvt. Ltd.',
-                'designation' => '',
-                'image_url' => null,
-            ];
+            return response()->view('public.birthday_expired', [
+                'companyWebsite' => 'https://orbosis.com',
+            ], 410);
         }
 
         $shareUrl = route('public.birthday.share', ['token' => $token]);
@@ -54,42 +49,39 @@ class PublicBirthdayShareController extends Controller
     {
         $employeeData = $this->birthdayShareService->resolveToken($token);
         $name = $employeeData['name'] ?? 'Team Member';
-        $initial = strtoupper(substr($name, 0, 1));
+        $dept = $employeeData['department'] ?? 'Orbosis Global Pvt. Ltd.';
+        $desig = $employeeData['designation'] ?? '';
 
-        // Create a 1200x630 Open Graph image with GD library
         $width = 1200;
         $height = 630;
 
         $im = imagecreatetruecolor($width, $height);
 
-        // Purple gradient background colors
-        $bgStart = imagecolorallocate($im, 58, 0, 181);  // #3A00B5
-        $bgEnd   = imagecolorallocate($im, 134, 0, 238); // #8600EE
-        $white   = imagecolorallocate($im, 255, 255, 255);
-        $gold    = imagecolorallocate($im, 255, 213, 79); // #FFD54F
-        $subText = imagecolorallocate($im, 235, 225, 255);
-
-        // Fill background with gradient vertical stripes
+        // Rich HRMS Gradient (#4F46E5 -> #7C3AED -> #C026D3)
         for ($y = 0; $y < $height; $y++) {
-            $r = (int) (58 + (134 - 58) * ($y / $height));
-            $g = 0;
-            $b = (int) (181 + (238 - 181) * ($y / $height));
+            $ratio = $y / $height;
+            $r = (int) (79 + (192 - 79) * $ratio);
+            $g = (int) (70 + (38 - 70) * $ratio);
+            $b = (int) (229 + (211 - 229) * $ratio);
             $col = imagecolorallocate($im, $r, $g, $b);
             imageline($im, 0, $y, $width, $y, $col);
         }
 
-        // Draw company header badge text using built-in font
-        imagestring($im, 5, 50, 40, "ORBOSIS GLOBAL PVT. LTD. | BIRTHDAY CELEBRATION", $gold);
-        imagestring($im, 5, 50, 100, "Happy Birthday!", $white);
-        imagestring($im, 5, 50, 160, $name, $gold);
+        $white   = imagecolorallocate($im, 255, 255, 255);
+        $gold    = imagecolorallocate($im, 255, 213, 79);  // #FFD54F
+        $subText = imagecolorallocate($im, 233, 213, 255); // #E9D5FF
 
-        if (!empty($employeeData['department'])) {
-            imagestring($im, 4, 50, 210, $employeeData['department'], $subText);
-        }
+        // Top Header
+        imagestring($im, 5, 80, 50, "ORBOSIS GLOBAL PVT. LTD. | BIRTHDAY CELEBRATION", $gold);
+        imagestring($im, 5, 80, 120, "HAPPY BIRTHDAY!", $white);
+        imagestring($im, 5, 80, 180, strtoupper($name), $gold);
 
-        imagestring($im, 4, 50, 280, "Wishing you joy, success & a fantastic year ahead!", $white);
-        imagestring($im, 5, 50, 340, "- Team Orbosis Global", $gold);
-        imagestring($im, 4, 50, 420, "https://orbosis.com", $subText);
+        $deptLine = $dept . ($desig ? " | " . $desig : "");
+        imagestring($im, 4, 80, 240, $deptLine, $subText);
+
+        imagestring($im, 5, 80, 330, "Wishing you joy, success & a fantastic year ahead!", $white);
+        imagestring($im, 5, 80, 390, "- Team Orbosis Global", $gold);
+        imagestring($im, 4, 80, 480, "https://orbosis.com", $subText);
 
         ob_start();
         imagepng($im);

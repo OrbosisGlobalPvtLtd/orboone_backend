@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api\V1\Birthday;
 
 use App\Http\Controllers\Controller;
 use App\Models\HRMS\Employee\EmployeeM;
-use App\Services\HRMS\BirthdayShareService;
+use App\Services\HRMS\Birthday\BirthdayShareService;
 use Illuminate\Http\Request;
 
 class BirthdayShareApiController extends Controller

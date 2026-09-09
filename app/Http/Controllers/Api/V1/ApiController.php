@@ -206,26 +206,7 @@ class ApiController extends Controller
         
         $allHolidays = $holidays->pluck('name')->merge($nationalHolidays->pluck('name'));
         
-        $rawBirthdays = \App\Models\HRMS\Employee\EmployeeM::whereHas('employeeDetail', function ($query) use ($today) {
-            $query->whereMonth('date_of_birth', $today->month)
-                  ->whereDay('date_of_birth', $today->day);
-        })
-        ->with(['user', 'employeeDetail', 'department'])
-        ->get();
-            
-        $birthdays = $rawBirthdays->map(function ($emp) {
-            $empImageUrl = null;
-            if ($emp->employeeDetail && $emp->employeeDetail->image) {
-                $empImageUrl = $this->resolver->secureFileUrl($emp->employeeDetail->image);
-            }
-
-            return [
-                'employee_id' => $emp->employee_id,
-                'name'        => $emp->user->name ?? 'Unknown',
-                'image_url'   => $empImageUrl,
-                'department'  => $emp->department->name ?? null,
-            ];
-        });
+        $birthdays = app(\App\Services\HRMS\Birthday\BirthdayService::class)->getTodayBirthdays();
 
         $todayStatus = [
             'is_holiday' => $allHolidays->isNotEmpty(),

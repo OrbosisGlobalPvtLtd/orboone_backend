@@ -435,6 +435,8 @@
             </div>
         </div>
 
+        @include('dashboard.partials.birthday-widget', ['dashboard' => $dashboard, 'show_upcoming' => false])
+
         {{-- Flash Messages & Validation Alerts --}}
         @if (session('error') || session('danger'))
             <div class="alert alert-danger border-0 shadow-lg mb-4 mt-3" style="border-radius: 18px; background: #fef2f2; border-left: 6px solid #ef4444 !important; padding: 18px 22px;">
@@ -838,7 +840,7 @@
                             <span class="small font-weight-bold text-primary">{{ $profileCompletion }}%</span>
                         </div>
                         <div class="progress" style="height: 8px; border-radius: 99px; background:#F1F5F9;">
-                            <div class="progress-bar" role="progressbar" style="width: {{ $profileCompletion }}%; border-radius:99px; background: linear-gradient(90deg, var(--orb-primary), var(--orb-secondary));" aria-valuenow="{{ $profileCompletion }}" aria-valuemin="0" aria-valuemax="100"></div>
+                            <div class="progress-bar" role="progressbar" style="--completion: {{ $profileCompletion }}%; width: var(--completion, 0%); border-radius:99px; background: linear-gradient(90deg, var(--orb-primary), var(--orb-secondary));" aria-valuenow="{{ $profileCompletion }}" aria-valuemin="0" aria-valuemax="100"></div>
                         </div>
                     </div>
 
@@ -892,8 +894,6 @@
     </div>
 @endif
 
-{{-- Include Punch In & Punch Out Modals and Scripts --}}
-@include('dashboard.partials.employee-dashboard', ['only_modals' => true])
 
 <script>
 function fetchCalData() {

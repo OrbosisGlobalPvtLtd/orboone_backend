@@ -34,6 +34,34 @@ class HrmsFileResolverS
             ['disk' => 'private', 'relative' => $path, 'absolute' => storage_path('app/private/' . $path)],
         ];
 
+        // HEIC conversion check: if .heic, check if .jpg exists or convert
+        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        if (in_array($ext, ['heic', 'heif'], true)) {
+            $jpgRelative = preg_replace('/\.(heic|heif)$/i', '.jpg', $path);
+            $jpgAbsolute = storage_path('app/private/' . $jpgRelative);
+            $heicAbsolute = storage_path('app/private/' . $path);
+
+            if (is_file($jpgAbsolute)) {
+                return ['disk' => 'private', 'relative' => $jpgRelative, 'absolute' => $jpgAbsolute];
+            } elseif (is_file($heicAbsolute) && function_exists('imagecreatefromstring')) {
+                try {
+                    $content = @file_get_contents($heicAbsolute);
+                    if ($content) {
+                        $img = @imagecreatefromstring($content);
+                        if ($img !== false) {
+                            @imagejpeg($img, $jpgAbsolute, 90);
+                            @imagedestroy($img);
+                            if (is_file($jpgAbsolute)) {
+                                return ['disk' => 'private', 'relative' => $jpgRelative, 'absolute' => $jpgAbsolute];
+                            }
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    // Fallback to original file if conversion fails
+                }
+            }
+        }
+
         foreach ($candidates as $candidate) {
             if (! empty($candidate['relative']) && is_file($candidate['absolute'])) {
                 return $candidate;

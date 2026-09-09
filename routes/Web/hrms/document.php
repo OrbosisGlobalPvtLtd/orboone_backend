@@ -99,8 +99,8 @@ Route::middleware(['auth', 'module:hrms'])
 
             $hasPermission = false;
 
-            // Check 1: Is user the owner employee?
-            if ($employee->user_id == $user->id) {
+            // Check 1: Is user the owner employee, or is it a profile image?
+            if ($employee->user_id == $user->id || $isProfileImage) {
                 $hasPermission = true;
             } 
             // Check 2: Does user have allowed admin roles?

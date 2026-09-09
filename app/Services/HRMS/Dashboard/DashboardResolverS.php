@@ -122,6 +122,22 @@ class DashboardResolverS
         return array_values(array_unique(array_filter($slugs)));
     }
 
+    /**
+     * @param \App\Models\Core\UserM|mixed|null $user
+     * @return array
+     */
+    public function birthdayStats($user = null): array
+    {
+        /** @var \App\Models\Core\UserM|null $user */
+        $user = $user ?: auth()->user();
+        $birthdayS = app(\App\Services\HRMS\Birthday\BirthdayService::class);
+        return [
+            'today'    => $birthdayS->getTodayBirthdays(),
+            'upcoming' => $birthdayS->getUpcomingBirthdays(7),
+            'own'      => $birthdayS->getOwnBirthdayStatus($user),
+        ];
+    }
+
     private function baseDashboardPayload(string $title, string $subtitle = ''): array
     {
         return [
@@ -135,6 +151,7 @@ class DashboardResolverS
             'quick_actions' => [],
             'charts' => [],
             'recent_activities' => [],
+            'birthdays' => $this->birthdayStats(),
         ];
     }
 
@@ -349,6 +366,7 @@ class DashboardResolverS
             'live_attendance' => $liveAttendance,
             'system_health' => [],
             'announcements' => $announcements,
+            'birthdays' => $this->birthdayStats(),
             'charts' => $charts,
             'recent_activities' => $role === 'hr_admin'
                 ? $this->buildRecentActivities()
@@ -740,6 +758,7 @@ class DashboardResolverS
             'recent_activities' => $payload['recent_activities'] ?? [],
             'tables' => $payload['tables'] ?? [],
             'charts' => $payload['charts'] ?? [],
+            'birthdays' => $payload['birthdays'] ?? $this->birthdayStats($user),
             'empty_message' => $payload['empty_message'] ?? null,
         ];
     }
@@ -3014,75 +3033,12 @@ class DashboardResolverS
         }
 
         if ($this->tableExists('employees_new') && $this->tableExists('enterprise_salary_structures')) {
-            $activeCount = $this->countActiveEmployees();
+            $activeCount = \Illuminate\Support\Facades\DB::table('employees_new')->where('status', 'active')->count();
             $withStructure = \Illuminate\Support\Facades\DB::table('enterprise_salary_structures')->distinct('employee_id')->count('employee_id');
             $overview['missing_structure'] = max(0, $activeCount - $withStructure);
         }
 
-        if ($this->tableExists('enterprise_payrolls')) {
-            $trend = \Illuminate\Support\Facades\DB::table('enterprise_payrolls')
-                ->selectRaw('DATE_FORMAT(for_month, "%b %Y") as month, SUM(net_pay) as net, SUM(gross_pay) as gross')
-                ->groupBy('month')
-                ->orderBy('for_month', 'desc')
-                ->limit(6)
-                ->get();
-
-            foreach ($trend->reverse() as $t) {
-                $overview['monthly_trend']['labels'][] = $t->month;
-                $overview['monthly_trend']['net'][] = (float) $t->net;
-                $overview['monthly_trend']['gross'][] = (float) $t->gross;
-            }
-        }
-
         return $overview;
-    }
-
-    private function getLeaveOverview($date): array
-    {
-        $overview = [
-            'on_leave_today' => 0,
-            'paid_leave' => 0,
-            'sick_leave' => 0,
-            'comp_off' => 0,
-            'lwp' => 0,
-            'sandwich_leave' => 0,
-        ];
-
-        if ($this->tableExists('leave_requests')) {
-            $query = \Illuminate\Support\Facades\DB::table('leave_requests')->whereRaw('LOWER(status) = ?', ['approved']);
-            if ($this->columnExists('leave_requests', 'start_date')) {
-                $query->whereDate('start_date', '<=', $date);
-            }
-            if ($this->columnExists('leave_requests', 'end_date')) {
-                $query->whereDate('end_date', '>=', $date);
-            }
-            $overview['on_leave_today'] = $query->count();
-        }
-
-        return $overview;
-    }
-
-    private function getDocumentOverview(): array
-    {
-        $stats = $this->documentStats();
-        return [
-            'pending_verification' => $stats['pending_verification'],
-            'rejected_documents' => $stats['rejected_documents'],
-            'missing_documents' => $stats['missing_documents'],
-            'expired_documents' => $stats['expired_documents'],
-            'recently_uploaded' => $stats['recently_uploaded'],
-        ];
-    }
-
-    private function getDocumentOverview_old(): array
-    {
-        return [
-            'pending_verification' => $this->getPendingDocumentsCount(),
-            'rejected_documents' => 0,
-            'missing_documents' => 0,
-            'expired_documents' => 0,
-            'recently_uploaded' => $this->tableExists('employee_documents_new') ? \Illuminate\Support\Facades\DB::table('employee_documents_new')->whereDate('created_at', '>=', now()->subDays(7))->count() : 0,
-        ];
     }
 
     private function employeeLifecycleDistributionChart(): array

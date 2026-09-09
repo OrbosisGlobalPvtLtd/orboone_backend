@@ -553,6 +553,7 @@
                         in_array($stLower, ['blocked', 'failed']) => 'background: #FEE2E2; color: #B91C1C; border: 1px solid #FCA5A5;',
                         default => 'background: #F1F5F9; color: #475569; border: 1px solid #CBD5E1;'
                     };
+                    $badgeAttr = 'style="border-radius: 20px; font-size: 11px; letter-spacing: 0.04em; ' . $statusBadgeStyle . '"';
                     $statusLabel = $repStatus ? ucwords(str_replace('_', ' ', $repStatus)) : 'Submitted';
                 @endphp
 
@@ -568,7 +569,7 @@
                             </div>
                         </div>
                         <div class="d-flex align-items-center gap-2">
-                            <span class="badge px-3 py-2 font-weight-bold text-uppercase" style="border-radius: 20px; font-size: 11px; letter-spacing: 0.04em; {{ $statusBadgeStyle }}">
+                            <span class="badge px-3 py-2 font-weight-bold text-uppercase" {!! $badgeAttr !!}>
                                 Status: {{ $statusLabel }}
                             </span>
                         </div>
@@ -632,10 +633,6 @@
     </div>
 </div>
 
-{{-- Modals for Web Punch In & Punch Out --}}
-@if ($canWebPunch)
-    @include('dashboard.partials.employee-dashboard', ['only_modals' => true])
-@endif
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
@@ -651,7 +648,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const punchInTimeStr = "{{ $attendanceRecord->punch_in_time ?? '' }}";
     const targetOutTimeStr = "{{ $attendanceRecord->target_punch_out_time ?? '' }}";
     const todayDateStr = "{{ \Carbon\Carbon::now()->toDateString() }}";
-    const isPunchedIn = {{ $hasPunchedIn && !$hasPunchedOut ? 'true' : 'false' }};
+    const isPunchedIn = Boolean("{{ $hasPunchedIn && !$hasPunchedOut ? '1' : '' }}");
 
     if (isPunchedIn && punchInTimeStr) {
         let punchInDate = null;

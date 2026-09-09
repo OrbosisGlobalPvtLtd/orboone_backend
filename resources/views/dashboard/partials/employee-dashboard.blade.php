@@ -368,22 +368,44 @@ $existingWorkMode = strtolower($todayRecord->work_mode ?? 'wfo');
                                         </div>
                                     </div>
 
+                                    @php
+                                        $isWfhError = str_contains(strtolower($errorMsg ?? ''), 'work from home') || str_contains(strtolower($errorMsg ?? ''), 'wfh');
+                                    @endphp
+
                                     <div class="p-3 mt-2" style="background: rgba(255, 255, 255, 0.9); border-radius: 12px; border-left: 4px solid #ef4444; font-size: 12.5px; color: #334155; line-height: 1.5;">
                                         <p class="font-weight-bold mb-1 text-danger" style="font-size: 12px;">
                                             <i class="fas fa-info-circle mr-1"></i> Next Steps & Required Actions:
                                         </p>
                                         <ul class="pl-3 mb-0" style="font-weight: 600; font-size: 12px; color: #475569;">
-                                            <li class="mb-1">Contact your <strong>HR Manager or Administrator</strong> to request an attendance unlock.</li>
-                                            <li>Submit an <strong>Attendance Regularization</strong> request for your late entry or missed punch.</li>
+                                            @if($isWfhError)
+                                                <li class="mb-1">Apply for <strong>Work From Home (WFH)</strong> for today's date and get approval before punching in.</li>
+                                                <li>Contact your <strong>HR Manager or Administrator</strong> if you need an immediate attendance unlock.</li>
+                                            @else
+                                                <li class="mb-1">Submit an <strong>Attendance Regularization</strong> request for your late entry or missed punch.</li>
+                                                <li>Contact your <strong>HR Manager or Administrator</strong> to request an attendance unlock.</li>
+                                            @endif
                                         </ul>
                                     </div>
 
-                                    <div class="d-flex align-items-center justify-content-between mt-3 gap-2">
-                                        @if(Route::has('hrms.attendance.regularizations.index'))
-                                        <a href="{{ route('hrms.attendance.regularizations.index') }}" class="btn btn-warning btn-sm font-weight-bold text-white shadow-xs px-3" style="border-radius: 10px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; font-size: 12px; padding: 7px 12px;">
-                                            <i class="fas fa-calendar-check mr-1"></i> Apply Regularization
-                                        </a>
+                                    <div class="d-flex align-items-center justify-content-between mt-3 gap-2 flex-wrap">
+                                        @if($isWfhError)
+                                            @if(Route::has('hrms.attendance.my-wfh.index'))
+                                            <a href="{{ route('hrms.attendance.my-wfh.index') }}" class="btn btn-primary btn-sm font-weight-bold text-white shadow-xs px-3" style="border-radius: 10px; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); border: none; font-size: 12px; padding: 7px 12px;">
+                                                <i class="fas fa-house-user mr-1"></i> Apply Work From Home
+                                            </a>
+                                            @elseif(Route::has('hrms.attendance.wfh.index'))
+                                            <a href="{{ route('hrms.attendance.wfh.index') }}" class="btn btn-primary btn-sm font-weight-bold text-white shadow-xs px-3" style="border-radius: 10px; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); border: none; font-size: 12px; padding: 7px 12px;">
+                                                <i class="fas fa-house-user mr-1"></i> Apply Work From Home
+                                            </a>
+                                            @endif
+                                        @else
+                                            @if(Route::has('hrms.attendance.regularizations.index'))
+                                            <a href="{{ route('hrms.attendance.regularizations.index') }}" class="btn btn-warning btn-sm font-weight-bold text-white shadow-xs px-3" style="border-radius: 10px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; font-size: 12px; padding: 7px 12px;">
+                                                <i class="fas fa-calendar-check mr-1"></i> Apply Regularization
+                                            </a>
+                                            @endif
                                         @endif
+
                                         <button type="button" onclick="$('#webPunchInFormInputs').slideToggle(); $('#webPunchInSubmitBtn').toggle();" class="btn btn-outline-secondary btn-sm font-weight-bold px-3" style="border-radius: 10px; font-size: 11.5px; padding: 6px 12px;">
                                             <i class="fas fa-redo mr-1"></i> Try Again / View Form
                                         </button>

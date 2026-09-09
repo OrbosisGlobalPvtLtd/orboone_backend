@@ -12,9 +12,16 @@ return new class extends Migration
      */
     public function up()
     {
+        if (!Schema::hasTable('menus') || !Schema::hasColumn('menus', 'route')) {
+            return;
+        }
+
         // Resolve Employee Role ID
-        $employeeRoleId = DB::table('roles')->where('name', 'Employee')->value('id')
-            ?? DB::table('roles')->where('name', 'employee')->value('id');
+        $employeeRoleId = null;
+        if (Schema::hasTable('roles')) {
+            $employeeRoleId = DB::table('roles')->where('name', 'Employee')->value('id')
+                ?? DB::table('roles')->where('name', 'employee')->value('id');
+        }
 
         // 1. My Assets Menu under Assets (parent: 330)
         $assetsMenuId = null;
@@ -70,16 +77,24 @@ return new class extends Migration
      */
     public function down()
     {
+        if (!Schema::hasTable('menus') || !Schema::hasColumn('menus', 'route')) {
+            return;
+        }
+
         $assetsMenuId = DB::table('menus')->where('route', 'hrms.employee.assets.index')->value('id');
         $holidayMenuId = DB::table('menus')->where('route', 'hrms.attendance.my-holiday-work.index')->value('id');
 
         if ($assetsMenuId) {
-            DB::table('role_menu_access')->where('menu_id', $assetsMenuId)->delete();
+            if (Schema::hasTable('role_menu_access')) {
+                DB::table('role_menu_access')->where('menu_id', $assetsMenuId)->delete();
+            }
             DB::table('menus')->where('id', $assetsMenuId)->delete();
         }
 
         if ($holidayMenuId) {
-            DB::table('role_menu_access')->where('menu_id', $holidayMenuId)->delete();
+            if (Schema::hasTable('role_menu_access')) {
+                DB::table('role_menu_access')->where('menu_id', $holidayMenuId)->delete();
+            }
             DB::table('menus')->where('id', $holidayMenuId)->delete();
         }
     }

@@ -29,10 +29,17 @@ class CreateEmployeeDocumentsNewTable extends Migration
                 ->on('employees_new')
                 ->onDelete('cascade');
 
-            $table->foreign('category_id')
-                ->references('id')
-                ->on('document_categories')
-                ->onDelete('set null');
+            if (Schema::hasTable('document_categories')) {
+                $table->foreign('category_id')
+                    ->references('id')
+                    ->on('document_categories')
+                    ->onDelete('set null');
+            } elseif (Schema::hasTable('document_types')) {
+                $table->foreign('category_id')
+                    ->references('id')
+                    ->on('document_types')
+                    ->onDelete('set null');
+            }
 
             $table->foreign('verified_by_user_id')
                 ->references('id')

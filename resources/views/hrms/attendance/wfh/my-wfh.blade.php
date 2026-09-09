@@ -98,7 +98,7 @@
         </div>
 
         <div class="ep-card-filters">
-            <form method="GET" action="{{ route('hrms.attendance.wfh.my') }}" class="row align-items-end ep-form">
+            <form method="GET" action="{{ route('hrms.attendance.my-wfh.index') }}" class="row align-items-end ep-form">
                 <div class="col-md-3 mb-2 mb-md-0">
                     <label>Status</label>
                     <select name="status" class="form-control">
@@ -129,7 +129,7 @@
                     <button type="submit" class="btn btn-primary font-weight-bold px-4 rounded-10 mr-2" style="background: var(--orb-primary); border: none; height: 40px;">
                         <i class="fas fa-search mr-1"></i> Search
                     </button>
-                    <a href="{{ route('hrms.attendance.wfh.my') }}" class="ep-btn ep-btn-light"><i class="fas fa-sync-alt"></i> Reset</a>
+                    <a href="{{ route('hrms.attendance.my-wfh.index') }}" class="ep-btn ep-btn-light"><i class="fas fa-sync-alt"></i> Reset</a>
                 </div>
             </form>
         </div>

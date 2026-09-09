@@ -14,23 +14,23 @@ return new class extends Migration
 
         Schema::table('leave_requests', function (Blueprint $table) {
             if (!Schema::hasColumn('leave_requests', 'reporting_manager_employee_id')) {
-                $table->unsignedBigInteger('reporting_manager_employee_id')->nullable()->after('leave_type_id');
+                $table->unsignedBigInteger('reporting_manager_employee_id')->nullable();
             }
 
             if (!Schema::hasColumn('leave_requests', 'applied_from')) {
-                $table->string('applied_from', 50)->default('web')->after('sandwich_applied');
+                $table->string('applied_from', 50)->default('web');
             }
 
             if (!Schema::hasColumn('leave_requests', 'emergency_leave')) {
-                $table->boolean('emergency_leave')->default(false)->after('applied_from');
+                $table->boolean('emergency_leave')->default(false);
             }
 
             if (!Schema::hasColumn('leave_requests', 'manager_note')) {
-                $table->text('manager_note')->nullable()->after('rejection_reason');
+                $table->text('manager_note')->nullable();
             }
 
             if (!Schema::hasColumn('leave_requests', 'hr_note')) {
-                $table->text('hr_note')->nullable()->after('manager_note');
+                $table->text('hr_note')->nullable();
             }
         });
     }

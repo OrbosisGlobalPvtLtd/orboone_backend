@@ -16,7 +16,7 @@ return new class extends Migration
     {
         if (Schema::hasTable('menus') && ! Schema::hasColumn('menus', 'permission_key')) {
             Schema::table('menus', function (Blueprint $table) {
-                $table->string('permission_key', 150)->nullable()->after('module_key');
+                $table->string('permission_key', 150)->nullable();
             });
         }
 
@@ -76,10 +76,12 @@ return new class extends Migration
             'projects.tasks.index' => 'projects.tasks.view',
         ];
 
-        foreach ($menuPermissionMap as $route => $permKey) {
-            DB::table('menus')
-                ->where('route', $route)
-                ->update(['permission_key' => $permKey]);
+        if (Schema::hasTable('menus') && Schema::hasColumn('menus', 'route') && Schema::hasColumn('menus', 'permission_key')) {
+            foreach ($menuPermissionMap as $route => $permKey) {
+                DB::table('menus')
+                    ->where('route', $route)
+                    ->update(['permission_key' => $permKey]);
+            }
         }
     }
 

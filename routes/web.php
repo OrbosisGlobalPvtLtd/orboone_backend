@@ -21,3 +21,9 @@ require __DIR__ . '/Web/project_management/project_management.php';
 require __DIR__ . '/Web/project_management/task.php';
 require __DIR__ . '/Web/reporting/reporting.php';
 
+
+
+use App\Http\Controllers\Public\PublicBirthdayShareController;
+
+Route::get('/birthday/{token}', [PublicBirthdayShareController::class, 'show'])->name('public.birthday.share');
+Route::get('/birthday/{token}/image.png', [PublicBirthdayShareController::class, 'image'])->name('public.birthday.image');

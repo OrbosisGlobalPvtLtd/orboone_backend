@@ -12,7 +12,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (Schema::hasTable('menus')) {
+        if (Schema::hasTable('menus') && Schema::hasColumn('menus', 'route')) {
             DB::table('menus')
                 ->where('route', 'hrms.attendance.regularizations.index')
                 ->orWhere('id', 28)

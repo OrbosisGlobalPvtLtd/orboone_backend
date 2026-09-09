@@ -19,7 +19,10 @@ return new class extends Migration
                 if (! Schema::hasColumn('user_module_access', 'is_allowed')) {
                     $table->boolean('is_allowed')->default(true)->after('is_enabled');
                 }
-                $table->index(['user_id', 'permission_key']);
+                $indices = collect(DB::select("SHOW INDEX FROM user_module_access"))->pluck('Key_name')->all();
+                if (! in_array('user_module_access_user_id_permission_key_index', $indices)) {
+                    $table->index(['user_id', 'permission_key']);
+                }
             });
         }
 
@@ -34,7 +37,10 @@ return new class extends Migration
                 if (! Schema::hasColumn('department_module_access', 'is_allowed')) {
                     $table->boolean('is_allowed')->default(true)->after('is_enabled');
                 }
-                $table->index(['department_id', 'permission_key']);
+                $deptIndices = collect(DB::select("SHOW INDEX FROM department_module_access"))->pluck('Key_name')->all();
+                if (! in_array('department_module_access_department_id_permission_key_index', $deptIndices)) {
+                    $table->index(['department_id', 'permission_key']);
+                }
             });
         }
     }

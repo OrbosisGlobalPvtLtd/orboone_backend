@@ -222,7 +222,7 @@
                                             </label>
                                         </div>
 
-                                        <div id="half_day_type_container" style="{{ old('is_half_day') ? '' : 'display: none;' }}">
+                                        <div id="half_day_type_container" class="{{ old('is_half_day') ? '' : 'd-none' }}">
                                             <div class="d-flex align-items-center gap-2">
                                                 <span class="font-weight-bold text-muted small mr-2">Session:</span>
                                                 <div class="custom-control custom-radio custom-control-inline">
@@ -319,7 +319,8 @@
                             <div class="d-flex align-items-center gap-2 font-weight-bold text-dark mb-1" style="font-size: 13px;">
                                 <i class="fas fa-bread-slice text-warning"></i> Sandwich Rule Applied!
                             </div>
-                            <div class="small text-muted">Intervening holidays/week-offs are included in total leave span (Total Deducted: <strong id="prev_total_ded_text">0.0</strong> Days).</div>
+                            <div id="sandwichBadgeMsg" class="small text-muted mb-1">Intervening holidays/week-offs are included in total leave span.</div>
+                            <div class="small font-weight-bold text-dark">Total Deducted: <span id="prev_total_ded_text">0.0</span> Days</div>
                         </div>
 
                         <!-- 3. Quota Split Breakdown -->
@@ -463,8 +464,12 @@
 
                 // Sandwich rule badge
                 var sandwichBadge = document.getElementById('sandwichBadge');
+                var sandwichMsgEl = document.getElementById('sandwichBadgeMsg');
                 if (d.sandwich_applied || d.sandwich_days > 0) {
                     sandwichBadge.style.display = 'block';
+                    if (sandwichMsgEl && d.sandwich_message) {
+                        sandwichMsgEl.textContent = d.sandwich_message;
+                    }
                 } else {
                     sandwichBadge.style.display = 'none';
                 }

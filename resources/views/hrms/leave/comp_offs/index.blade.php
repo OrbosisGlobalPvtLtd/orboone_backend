@@ -566,10 +566,10 @@
             <div>
                 <div class="leave-hero-kicker">
                     <i class="fas fa-calendar-plus"></i>
-                    HRMS Comp Off
+                    HRMS Compensatory Off
                 </div>
 
-                <h1 class="leave-hero-title">Comp Off Management</h1>
+                <h1 class="leave-hero-title">Compensatory Off Management</h1>
 
                 <div class="leave-hero-subtitle">
                     Manage compensatory-off balances generated from holiday/weekoff work, approvals, usage and expiry tracking.
@@ -697,9 +697,9 @@
                     <i class="fas fa-list"></i>
                 </div>
                 <div>
-                    <h5 class="leave-card-title">Comp Off Records</h5>
+                    <h5 class="leave-card-title">Compensatory Off Records</h5>
                     <div class="leave-card-subtitle">
-                        Track employee earned, used, expired and available comp-off balances.
+                        Track employee earned, used, expired and available compensatory-off balances.
                     </div>
                 </div>
             </div>
@@ -833,7 +833,7 @@
                     emptyTable: `<div class="empty-state">
                                     <i class="fas fa-calendar-plus"></i>
                                     <div style="font-weight:900;color:var(--leave-text);">
-                                        No Comp Off Records Found
+                                        No Compensatory Off Records Found
                                     </div>
                                     <div style="font-size:12px;margin-top:4px;color:var(--leave-muted);">
                                         Approved holiday/weekoff work will generate comp-off records here.

@@ -118,6 +118,15 @@ class CreateEmployeesNewTable extends Migration
                 } catch (\Exception $e) {}
             });
         }
+
+        if (Schema::hasTable('employee_leaves') && Schema::hasTable('employees_new')) {
+            try {
+                Schema::table('employee_leaves', function (Blueprint $table) {
+                    $table->dropForeign(['employee_id']);
+                    $table->foreign('employee_id')->references('id')->on('employees_new')->onDelete('cascade');
+                });
+            } catch (\Exception $e) {}
+        }
     }
 
     public function down()

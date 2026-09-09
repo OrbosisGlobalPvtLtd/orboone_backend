@@ -13,6 +13,10 @@ class ChangeAttendanceTimesToString extends Migration
      */
     public function up()
     {
+        if (!Schema::hasTable('attendances')) {
+            return;
+        }
+
         Schema::table('attendances', function (Blueprint $table) {
             // Using raw SQL because Doctrine DBAL might not be installed
             \Illuminate\Support\Facades\DB::statement('ALTER TABLE attendances MODIFY clock_in VARCHAR(255) NULL');
@@ -27,6 +31,10 @@ class ChangeAttendanceTimesToString extends Migration
      */
     public function down()
     {
+        if (!Schema::hasTable('attendances')) {
+            return;
+        }
+
         Schema::table('attendances', function (Blueprint $table) {
             \Illuminate\Support\Facades\DB::statement('ALTER TABLE attendances MODIFY clock_in TIME NULL');
             \Illuminate\Support\Facades\DB::statement('ALTER TABLE attendances MODIFY clock_out TIME NULL');

@@ -13,13 +13,11 @@ class AddFilePathToEmployeeDocumentsTable extends Migration
      */
     public function up()
     {
-        Schema::table('employee_documents', function (Blueprint $table) {
-            if (!Schema::hasColumn('employee_documents', 'file_path')) {
-                $table->string('file_path')->nullable()->after('experiencelatter');
-            }
-            // Also fix the status enum if needed, or ensure it accepts 'approved'
-            // The current enum is ('pending','verified','rejected')
-        });
+        if (!Schema::hasColumn('employee_documents', 'file_path')) {
+            Schema::table('employee_documents', function (Blueprint $table) {
+                $table->string('file_path')->nullable();
+            });
+        }
     }
 
     /**
@@ -29,8 +27,10 @@ class AddFilePathToEmployeeDocumentsTable extends Migration
      */
     public function down()
     {
-        Schema::table('employee_documents', function (Blueprint $table) {
-            //
-        });
+        if (Schema::hasColumn('employee_documents', 'file_path')) {
+            Schema::table('employee_documents', function (Blueprint $table) {
+                $table->dropColumn('file_path');
+            });
+        }
     }
 }

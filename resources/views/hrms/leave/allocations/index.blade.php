@@ -760,6 +760,15 @@
                             </td>
 
                             <td class="text-center">
+                                @php
+                                    $mQuota = (float) $allocation->monthly_quota;
+                                    $mCarry = (float) $allocation->monthly_carry_forward;
+                                    $mUsed = (float) $allocation->monthly_used_this_month;
+                                    $mUsedFromCarry = min($mUsed, $mCarry);
+                                    $mRemCarry = max(0.0, $mCarry - $mUsedFromCarry);
+                                    $mUsedFromQuota = max(0.0, $mUsed - $mUsedFromCarry);
+                                    $mRemQuota = max(0.0, $mQuota - $mUsedFromQuota);
+                                @endphp
                                 <div class="leave-breakdown-box" style="font-size:11px; line-height: 1.6;">
                                     <div>
                                         <span class="badge badge-success px-2 py-1" style="border-radius:6px; font-weight:900; font-size:11px; background:#12B76A; color:#fff;">
@@ -767,7 +776,7 @@
                                         </span>
                                     </div>
                                     <div class="mt-1" style="font-size:10px; font-weight:700; color:var(--leave-muted);">
-                                        Quota: <strong>{{ number_format((float)$allocation->monthly_quota, 2) }}</strong> | Carry: <strong>{{ number_format((float)$allocation->monthly_carry_forward, 2) }}</strong> | Used: <strong>{{ number_format((float)$allocation->monthly_used_this_month, 2) }}</strong>
+                                        Quota Rem: <strong class="text-success">{{ number_format($mRemQuota, 2) }}</strong> | Carry Rem: <strong class="text-danger">{{ number_format($mRemCarry, 2) }}</strong> | Used: <strong>{{ number_format($mUsed, 2) }}</strong>
                                     </div>
                                 </div>
                             </td>
@@ -899,7 +908,12 @@
                         </div>
 
                         <div class="col-12"><hr class="my-2"></div>
-                        <div class="col-12"><h6 class="font-weight-bold text-primary mb-2"><i class="fas fa-calculator mr-1"></i> Allocated Leave Quotas</h6></div>
+                        <div class="col-12 d-flex align-items-center justify-content-between mb-2">
+                            <h6 class="font-weight-bold text-primary mb-0"><i class="fas fa-calculator mr-1"></i> Allocated Leave Quotas</h6>
+                            <button type="button" class="btn btn-sm btn-outline-primary btn-recalc-allocation" style="border-radius:10px; font-weight:800; font-size:11px;">
+                                <i class="fas fa-sync-alt mr-1"></i> Recalculate From Policy
+                            </button>
+                        </div>
 
                         <div class="col-md-4 mb-3">
                             <label class="font-weight-bold text-dark">Paid Allocated</label>
@@ -960,6 +974,39 @@
                         <div class="col-md-3 mb-3">
                             <label class="font-weight-bold text-success" style="font-size:12px;"><i class="fas fa-calculator mr-1"></i> Total Monthly Rem Paid</label>
                             <input type="number" step="0.5" min="0" name="total_monthly_remaining_paid" id="total_monthly_remaining_paid_{{ $allocation->id }}" class="leave-control w-100 font-weight-bold text-success" style="background:#F0FDF4; border:1px solid #86EFAC;" value="{{ old('total_monthly_remaining_paid', $allocation->total_monthly_remaining_paid) }}">
+                        </div>
+
+                        @php
+                            $calcQuota = (float) $allocation->monthly_quota;
+                            $calcCarry = (float) $allocation->monthly_carry_forward;
+                            $calcUsed = (float) $allocation->monthly_used_this_month;
+                            $calcUsedCarry = min($calcUsed, $calcCarry);
+                            $calcRemCarry = max(0.0, $calcCarry - $calcUsedCarry);
+                            $calcUsedQuota = max(0.0, $calcUsed - $calcUsedCarry);
+                            $calcRemQuota = max(0.0, $calcQuota - $calcUsedQuota);
+                            $calcTotalRem = (float) $allocation->total_monthly_remaining_paid;
+                        @endphp
+                        <div class="col-12 mb-3">
+                            <div class="p-3 rounded" style="background:#F8FAFC; border:1px solid #E2E8F0;">
+                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                    <span style="font-size:12px; font-weight:800; color:#334155;"><i class="fas fa-info-circle text-primary mr-1"></i> Monthly Deduction & Next Month Carryover Breakdown:</span>
+                                    <span class="badge badge-primary px-2 py-1" style="font-size:10px; font-weight:800;">Real-time Live Calc</span>
+                                </div>
+                                <div class="row text-center" style="font-size:12px;">
+                                    <div class="col-md-4 mb-1">
+                                        <span class="text-muted d-block" style="font-size:11px;">Carry Forward Remaining</span>
+                                        <strong class="text-danger" id="rem_carry_{{ $allocation->id }}" style="font-size:14px;">{{ number_format($calcRemCarry, 2) }}</strong>
+                                    </div>
+                                    <div class="col-md-4 mb-1">
+                                        <span class="text-muted d-block" style="font-size:11px;">Monthly Quota Remaining</span>
+                                        <strong class="text-success" id="rem_quota_{{ $allocation->id }}" style="font-size:14px;">{{ number_format($calcRemQuota, 2) }}</strong>
+                                    </div>
+                                    <div class="col-md-4 mb-1">
+                                        <span class="text-muted d-block" style="font-size:11px;">Next Month Carryover</span>
+                                        <strong class="text-primary" id="next_carryover_{{ $allocation->id }}" style="font-size:14px;">{{ number_format($calcTotalRem, 2) }}</strong>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="col-md-12 mb-3">
@@ -1307,14 +1354,38 @@
         }
     });
 
-    $(document).on('input change keyup', '.monthly-calc-input', function() {
+    $(document).on('input change keyup', '.monthly-calc-input, [name="paid_allocated"], [name="paid_used"]', function() {
         var id = $(this).data('id');
+        var modal = $(this).closest('.modal');
+        if (!id && modal.length) {
+            var quotaInput = modal.find('.monthly-calc-input').first();
+            id = quotaInput.data('id');
+        }
+        if (!id) return;
+        
         var quota = parseFloat($('#monthly_quota_' + id).val()) || 0;
         var carry = parseFloat($('#monthly_carry_forward_' + id).val()) || 0;
         var used = parseFloat($('#monthly_used_this_month_' + id).val()) || 0;
         
-        var totalRem = Math.max(0, (quota + carry) - used);
+        var paidAllocated = parseFloat(modal.find('[name="paid_allocated"]').val()) || 0;
+        var paidUsed = parseFloat(modal.find('[name="paid_used"]').val()) || 0;
+        var paidRemaining = Math.max(0, paidAllocated - paidUsed);
+
+        // Deduct FIRST from Carry Forward
+        var usedFromCarry = Math.min(used, carry);
+        var remCarry = Math.max(0, carry - usedFromCarry);
+
+        // Deduct SECOND from Monthly Quota
+        var usedFromQuota = Math.max(0, used - usedFromCarry);
+        var remQuota = Math.max(0, quota - usedFromQuota);
+
+        var totalRemRaw = remCarry + remQuota;
+        var totalRem = Math.min(totalRemRaw, paidRemaining);
+        
         $('#total_monthly_remaining_paid_' + id).val(totalRem.toFixed(2));
+        $('#rem_carry_' + id).text(remCarry.toFixed(2));
+        $('#rem_quota_' + id).text(remQuota.toFixed(2));
+        $('#next_carryover_' + id).text(totalRem.toFixed(2));
     });
 
     function calculateEditAllocationModal(modal) {
@@ -1399,13 +1470,9 @@
         }
     }
 
-    $(document).on('change input', '.alloc-calc-trigger', function() {
+    $(document).on('click', '.btn-recalc-allocation', function() {
         var modal = $(this).closest('.modal');
         calculateEditAllocationModal(modal);
-    });
-
-    $(document).on('show.bs.modal', '.orb-type-modal', function() {
-        calculateEditAllocationModal(this);
     });
 
     function triggerLeaveExport(type) {

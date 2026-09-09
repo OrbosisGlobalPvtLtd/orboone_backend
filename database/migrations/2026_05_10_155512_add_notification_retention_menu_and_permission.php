@@ -18,34 +18,40 @@ return new class extends Migration
             'updated_at' => now(),
         ]);
 
-        // 2. Assign to Super Admin (Role ID 1)
-        DB::table('role_permissions')->updateOrInsert(
-            ['role_id' => 1, 'permission_id' => $permissionId],
-            ['created_at' => now(), 'updated_at' => now()]
-        );
+        // 2. Assign to Super Admin (Role ID 1) if role exists
+        if (DB::table('roles')->where('id', 1)->exists()) {
+            DB::table('role_permissions')->updateOrInsert(
+                ['role_id' => 1, 'permission_id' => $permissionId],
+                ['created_at' => now(), 'updated_at' => now()]
+            );
+        }
 
-        // 3. Add Menu Item under Settings (Parent ID 80)
-        $menuId = DB::table('menus')->updateOrInsert(
-            ['route' => 'settings.notification-retention.index'],
-            [
-                'name' => 'Notification Retention',
-                'icon' => 'fas fa-history',
-                'module_key' => 'settings',
-                'parent_id' => 80,
-                'sort_order' => 10,
-                'is_active' => 1,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]
-        );
+        // 3. Add Menu Item under Settings (Parent ID 80) if route column exists
+        if (Schema::hasColumn('menus', 'route')) {
+            DB::table('menus')->updateOrInsert(
+                ['route' => 'settings.notification-retention.index'],
+                [
+                    'name' => 'Notification Retention',
+                    'icon' => 'fas fa-history',
+                    'module_key' => 'settings',
+                    'parent_id' => 80,
+                    'sort_order' => 10,
+                    'is_active' => 1,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
 
-        $menuId = DB::table('menus')->where('route', 'settings.notification-retention.index')->value('id');
+            $menuId = DB::table('menus')->where('route', 'settings.notification-retention.index')->value('id');
 
-        // 4. Map Menu to Role (role_menu_access)
-        DB::table('role_menu_access')->updateOrInsert(
-            ['role_id' => 1, 'menu_id' => $menuId],
-            ['created_at' => now(), 'updated_at' => now()]
-        );
+            // 4. Map Menu to Role (role_menu_access) if table and role exist
+            if ($menuId && Schema::hasTable('role_menu_access') && DB::table('roles')->where('id', 1)->exists()) {
+                DB::table('role_menu_access')->updateOrInsert(
+                    ['role_id' => 1, 'menu_id' => $menuId],
+                    ['created_at' => now(), 'updated_at' => now()]
+                );
+            }
+        }
     }
 
     public function down()

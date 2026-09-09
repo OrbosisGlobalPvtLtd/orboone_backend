@@ -12,7 +12,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (! Schema::hasTable('menus')) {
+        if (! Schema::hasTable('menus') || ! Schema::hasColumn('menus', 'route') || ! Schema::hasColumn('menus', 'permission_key')) {
             return;
         }
 
@@ -35,7 +35,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        if (! Schema::hasTable('menus')) {
+        if (! Schema::hasTable('menus') || ! Schema::hasColumn('menus', 'route') || ! Schema::hasColumn('menus', 'permission_key')) {
             return;
         }
 

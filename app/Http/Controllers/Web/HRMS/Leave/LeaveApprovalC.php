@@ -289,6 +289,45 @@ class LeaveApprovalC extends Controller
         }
     }
 
+    public function void(Request $request, $id)
+    {
+        $referer = $request->header('referer') ?: route('leave-approvals.index');
+        $user = auth()->user();
+        $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
+        $isHrOrAdmin = $isSuperAdmin
+            || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin())
+            || (method_exists($user, 'isAdmin') && $user->isAdmin())
+            || (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin']))
+            || in_array((int) ($user->system_role_id ?? $user->role_id ?? 0), [1, 2, 3], true)
+            || $this->userHasPermission('leave.approvals.approve');
+
+        abort_unless($isSuperAdmin || $isHrOrAdmin, 403, 'Only HR Administrators or Super Admins can make approved leaves Null & Void.');
+
+        $request->validate([
+            'note' => 'required|string|min:3|max:1000',
+        ], [
+            'note.required' => 'Please provide a note/reason explaining why this approved leave is being marked Null & Void.',
+        ]);
+
+        try {
+            $leaveRequest = LeaveRequestM::findOrFail($id);
+            if ($leaveRequest->status !== 'approved') {
+                return redirect()->to($referer)->with('error', 'Only approved leave requests can be marked as Null & Void.');
+            }
+
+            $note = $request->input('note');
+            $this->approvalService->voidLeave($leaveRequest, Auth::id(), $note);
+
+            return redirect()->to($referer)->with('success', "Leave request #{$leaveRequest->id} has been marked as Null & Void. Leave balance has been refunded and attendance unlocked.");
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $firstError = collect($e->errors())->flatten()->first() ?: 'Validation failed for marking leave Null & Void.';
+            return redirect()->to($referer)->with('error', $firstError);
+        } catch (\Throwable $e) {
+            Log::error('Leave void failed', ['leave_request_id' => $id, 'error' => $e->getMessage()]);
+            return redirect()->to($referer)->with('error', $e->getMessage());
+        }
+    }
+
     private function authorizeLeaveRequestForApproval(LeaveRequestM $leaveRequest): void
     {
         $user = auth()->user();

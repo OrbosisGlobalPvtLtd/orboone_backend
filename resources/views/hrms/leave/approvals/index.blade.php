@@ -515,6 +515,7 @@
                                 <option value="pending_hr" {{ $curStatus === 'pending_hr' ? 'selected' : '' }}>🔵 Pending HR</option>
                                 <option value="approved" {{ $curStatus === 'approved' ? 'selected' : '' }}>🟢 Approved (Past)</option>
                                 <option value="rejected" {{ $curStatus === 'rejected' ? 'selected' : '' }}>🔴 Rejected</option>
+                                <option value="void" {{ $curStatus === 'void' ? 'selected' : '' }}>⚪ Null & Void</option>
                                 <option value="cancelled" {{ $curStatus === 'cancelled' ? 'selected' : '' }}>⚪ Cancelled</option>
                             </select>
                         </div>
@@ -821,9 +822,13 @@
                                     <span class="badge font-weight-bold px-2.5 py-1" style="border-radius: 7px; font-size: 10.5px; background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC;">
                                         🟢 APPROVED
                                     </span>
+                                @elseif($stLower === 'void')
+                                    <span class="badge font-weight-bold px-2.5 py-1" style="border-radius: 7px; font-size: 10.5px; background: #F1F5F9; color: #475569; border: 1px solid #CBD5E1;" title="{{ $lr->hr_note ?: 'Marked Null & Void' }}">
+                                        ⚪ NULL & VOID
+                                    </span>
                                 @elseif($stLower === 'rejected' || $stLower === 'cancelled')
                                     <span class="badge font-weight-bold px-2.5 py-1" style="border-radius: 7px; font-size: 10.5px; background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5;">
-                                        🔴 REJECTED
+                                        🔴 {{ strtoupper($stLower) }}
                                     </span>
                                 @elseif($stLower === 'pending')
                                     @if($hasManager && !$mgrApproved)
@@ -852,6 +857,12 @@
                                         <a class="dropdown-item" href="#" data-toggle="modal" data-target="#viewModal{{ $lr->id }}">
                                             <i class="fas fa-eye text-primary"></i> View Details & Timeline
                                         </a>
+
+                                        @if($stLower === 'approved' && ($isSuperAdminUser || $isHrAdminUser))
+                                            <a class="dropdown-item text-danger font-weight-bold" href="#" data-toggle="modal" data-target="#voidModal{{ $lr->id }}">
+                                                <i class="fas fa-ban text-danger"></i> Make Null & Void
+                                            </a>
+                                        @endif
 
                                         @if($stLower === 'pending' && Route::has('leave-approvals.approve') && ($canApprove || $canReject))
                                             @if($isSuperAdminUser)
@@ -1220,6 +1231,22 @@
                                                                 <div class="text-muted small mt-1 italic" style="font-size: 10px; background: #F8FAFC; padding: 4px 8px; border-radius: 4px; border: 1px solid #E2E8F0;">Note: "{{ $lr->hr_note }}"</div>
                                                             @endif
                                                         </div>
+                                                    @elseif($stLower === 'void')
+                                                        <div style="position: absolute; left: -24px; top: 2px; width: 20px; height: 20px; border-radius: 50%; background: #64748B; color: #FFF; display: flex; align-items: center; justify-content: center; font-size: 9.5px; box-shadow: 0 0 0 3px rgba(100, 116, 139, 0.15);">
+                                                            <i class="fas fa-ban"></i>
+                                                        </div>
+                                                        <div class="p-2.5 rounded-lg bg-white" style="border: 1px solid #CBD5E1; border-left: 3px solid #64748B; border-radius: 8px;">
+                                                            <div class="d-flex align-items-center justify-content-between">
+                                                                <strong class="text-secondary font-weight-bold" style="font-size: 12.5px;">⚪ Null & Void (Reversed)</strong>
+                                                                <span class="badge font-weight-bold" style="background: #F1F5F9; color: #475569; font-size: 9.5px;">Null & Void</span>
+                                                            </div>
+                                                            <div class="text-muted mt-0.5" style="font-size: 10.5px;">Voided by <strong>{{ $lr->hr_approver_name ?? $lr->rejected_by_name ?? 'HR Admin' }}</strong> @if(!empty($lr->approved_at)) &bull; {{ \Carbon\Carbon::parse($lr->approved_at)->format('d M Y, h:i A') }} @endif</div>
+                                                            @if(!empty($lr->hr_note))
+                                                                <div class="text-muted small mt-1 italic" style="font-size: 10px; background: #F8FAFC; padding: 4px 8px; border-radius: 4px; border: 1px solid #E2E8F0;">Void Note: "{{ $lr->hr_note }}"</div>
+                                                            @elseif(!empty($lr->rejection_reason))
+                                                                <div class="text-muted small mt-1 italic" style="font-size: 10px; background: #F8FAFC; padding: 4px 8px; border-radius: 4px; border: 1px solid #E2E8F0;">Void Note: "{{ $lr->rejection_reason }}"</div>
+                                                            @endif
+                                                        </div>
                                                     @elseif($hrRejected)
                                                         <div style="position: absolute; left: -24px; top: 2px; width: 20px; height: 20px; border-radius: 50%; background: #EF4444; color: #FFF; display: flex; align-items: center; justify-content: center; font-size: 9.5px; box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);">
                                                             <i class="fas fa-times"></i>
@@ -1336,6 +1363,10 @@
                                                     </form>
                                                     @endif
                                                 @endif
+                                            @elseif($stLower === 'approved' && ($isSuperAdminUser || $isHrAdminUser) && Route::has('leave-approvals.void'))
+                                                <button type="button" class="btn btn-sm font-weight-bold px-3.5" style="border-radius: 8px; height: 38px; background: #FFF1F2; color: #E11D48; border: 1px solid #FECDD3; font-size: 12.5px;" data-toggle="modal" data-target="#voidModal{{ $lr->id }}" data-dismiss="modal">
+                                                    <i class="fas fa-ban mr-1"></i> Make Null & Void
+                                                </button>
                                             @endif
                                         </div>
                                     </div>
@@ -1371,6 +1402,42 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- VOID (NULL & VOID) MODAL -->
+                        @if($stLower === 'approved' && ($isSuperAdminUser || $isHrAdminUser) && Route::has('leave-approvals.void'))
+                        <div class="modal fade" id="voidModal{{ $lr->id }}" tabindex="-1" role="dialog" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered" role="document">
+                                <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+                                    <div class="modal-header text-white" style="background: linear-gradient(135deg, #475569 0%, #0F172A 100%); border-radius: 16px 16px 0 0;">
+                                        <h5 class="modal-title font-weight-bold text-white mb-0">
+                                            <i class="fas fa-ban mr-2 text-warning"></i> Mark Leave as Null & Void
+                                        </h5>
+                                        <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                                    </div>
+                                    <form method="POST" action="{{ route('leave-approvals.void', $lr->id) }}">
+                                        @csrf
+                                        <div class="modal-body p-4">
+                                            <div class="alert alert-warning mb-3 p-2.5 rounded-lg font-weight-medium" style="font-size: 12px; border-left: 4px solid #F59E0B;">
+                                                <i class="fas fa-exclamation-triangle mr-1 text-warning"></i>
+                                                <strong>Notice:</strong> This action will reverse deducted leave balances (Paid/Sick/Comp-off/LWP), restore monthly quota, unlock attendance for the dates, and record a permanent audit log.
+                                            </div>
+                                            <p class="text-dark font-weight-bold mb-2">Are you sure you want to void the approved leave for <strong>{{ $lr->display_name }}</strong> ({{ $isSingleDay ? $startDateFormatted : ($startDateFormatted . ' - ' . $endDateFormatted) }})?</p>
+                                            <div class="form-group mb-0">
+                                                <label class="font-weight-bold text-muted small uppercase mb-1">HR Note / Reason <span class="text-danger">*</span></label>
+                                                <textarea name="note" class="form-control" rows="3" required style="border-radius: 10px;" placeholder="e.g. Employee worked on this day / informed HR they were working..."></textarea>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer bg-light p-3">
+                                            <button type="button" class="btn btn-sm btn-light border font-weight-bold" style="border-radius: 8px;" data-dismiss="modal">Cancel</button>
+                                            <button type="submit" class="btn btn-sm btn-dark font-weight-bold" style="border-radius: 8px; background: #0F172A; border-color: #0F172A;">
+                                                <i class="fas fa-ban mr-1 text-warning"></i> Confirm Null & Void
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        @endif
                         @empty
                         <tr>
                             <td colspan="10" class="text-center py-5 text-muted">

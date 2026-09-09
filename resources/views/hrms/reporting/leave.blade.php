@@ -385,6 +385,7 @@
                             <option value="pending_hr" {{ request('status') == 'pending_hr' ? 'selected' : '' }}>🔵 Pending HR</option>
                             <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>🟢 Approved</option>
                             <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>🔴 Rejected</option>
+                            <option value="void" {{ request('status') == 'void' ? 'selected' : '' }}>⚪ Null & Void</option>
                             <option value="all" {{ request('status') == 'all' ? 'selected' : '' }}>All Requests</option>
                         </select>
 
@@ -610,6 +611,10 @@
                                 @if($stLower === 'approved')
                                     <span class="badge font-weight-bold px-2.5 py-1" style="border-radius: 7px; font-size: 10.5px; background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC;">
                                         🟢 APPROVED
+                                    </span>
+                                @elseif($stLower === 'void')
+                                    <span class="badge font-weight-bold px-2.5 py-1" style="border-radius: 7px; font-size: 10.5px; background: #F1F5F9; color: #475569; border: 1px solid #CBD5E1;">
+                                        ⚪ NULL & VOID
                                     </span>
                                 @elseif($stLower === 'rejected' || $stLower === 'cancelled')
                                     <span class="badge font-weight-bold px-2.5 py-1" style="border-radius: 7px; font-size: 10.5px; background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5;">
@@ -858,6 +863,8 @@
                                                 <span class="text-muted font-weight-bold uppercase" style="font-size: 9.5px; letter-spacing: 0.5px;">OVERALL:</span>
                                                 @if($stLower === 'approved')
                                                     <span class="badge badge-pill font-weight-bold px-3 py-1" style="font-size: 10px; background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC; letter-spacing: 0.3px;">🟢 APPROVED</span>
+                                                @elseif($stLower === 'void')
+                                                    <span class="badge badge-pill font-weight-bold px-3 py-1" style="font-size: 10px; background: #F1F5F9; color: #475569; border: 1px solid #CBD5E1; letter-spacing: 0.3px;">⚪ NULL & VOID</span>
                                                 @elseif($stLower === 'rejected' || $stLower === 'cancelled')
                                                     <span class="badge badge-pill font-weight-bold px-3 py-1" style="font-size: 10px; background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5; letter-spacing: 0.3px;">🔴 REJECTED</span>
                                                 @elseif($stLower === 'pending')
@@ -979,6 +986,22 @@
                                                             <div class="text-muted mt-0.5" style="font-size: 10.5px;">Approved by <strong>{{ $lr->hr_approver_name ?? 'HR Admin' }}</strong> @if(!empty($lr->hr_approved_at)) &bull; {{ \Carbon\Carbon::parse($lr->hr_approved_at)->format('d M Y, h:i A') }} @endif</div>
                                                             @if(!empty($lr->hr_note))
                                                                 <div class="text-muted small mt-1 italic" style="font-size: 10px; background: #F8FAFC; padding: 4px 8px; border-radius: 4px; border: 1px solid #E2E8F0;">Note: "{{ $lr->hr_note }}"</div>
+                                                            @endif
+                                                        </div>
+                                                    @elseif($stLower === 'void')
+                                                        <div style="position: absolute; left: -24px; top: 2px; width: 20px; height: 20px; border-radius: 50%; background: #64748B; color: #FFF; display: flex; align-items: center; justify-content: center; font-size: 9.5px; box-shadow: 0 0 0 3px rgba(100, 116, 139, 0.15);">
+                                                            <i class="fas fa-ban"></i>
+                                                        </div>
+                                                        <div class="p-2.5 rounded-lg bg-white" style="border: 1px solid #CBD5E1; border-left: 3px solid #64748B; border-radius: 8px;">
+                                                            <div class="d-flex align-items-center justify-content-between">
+                                                                <strong class="text-secondary font-weight-bold" style="font-size: 12.5px;">⚪ Null & Void (Reversed)</strong>
+                                                                <span class="badge font-weight-bold" style="background: #F1F5F9; color: #475569; font-size: 9.5px;">Null & Void</span>
+                                                            </div>
+                                                            <div class="text-muted mt-0.5" style="font-size: 10.5px;">Voided by <strong>{{ $lr->hr_approver_name ?? $lr->rejected_by_name ?? 'HR Admin' }}</strong> @if(!empty($lr->approved_at)) &bull; {{ \Carbon\Carbon::parse($lr->approved_at)->format('d M Y, h:i A') }} @endif</div>
+                                                            @if(!empty($lr->hr_note))
+                                                                <div class="text-muted small mt-1 italic" style="font-size: 10px; background: #F8FAFC; padding: 4px 8px; border-radius: 4px; border: 1px solid #E2E8F0;">Void Note: "{{ $lr->hr_note }}"</div>
+                                                            @elseif(!empty($lr->rejection_reason))
+                                                                <div class="text-muted small mt-1 italic" style="font-size: 10px; background: #F8FAFC; padding: 4px 8px; border-radius: 4px; border: 1px solid #E2E8F0;">Void Note: "{{ $lr->rejection_reason }}"</div>
                                                             @endif
                                                         </div>
                                                     @elseif($hrRejected)

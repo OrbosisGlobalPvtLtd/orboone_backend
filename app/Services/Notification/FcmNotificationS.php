@@ -108,14 +108,41 @@ class FcmNotificationS
             $bodyResponse = $response->json() ?: ['raw' => $response->body()];
             $status = data_get($bodyResponse, 'error.status');
             $message = data_get($bodyResponse, 'error.message');
+            $errorCode = data_get($bodyResponse, 'error.details.0.errorCode');
 
-            Log::error('FCM HTTP v1 Error', [
-                'status_code' => $response->status(),
-                'firebase_status' => $status,
-                'message' => $message,
-                'response' => $bodyResponse,
-                'image_url' => $imageUrl,
-            ]);
+            $isUnregistered = in_array($status, ['UNREGISTERED', 'NOT_FOUND', 'INVALID_ARGUMENT'], true)
+                || $errorCode === 'UNREGISTERED'
+                || $response->status() === 404;
+
+            if ($isUnregistered) {
+                Log::warning('FCM HTTP v1: Device token unregistered or expired', [
+                    'token_prefix' => substr($token, 0, 16) . '...',
+                    'firebase_status' => $status,
+                    'message' => $message,
+                ]);
+
+                // Auto-cleanup stale token from database so subsequent attempts don't keep failing
+                try {
+                    \Illuminate\Support\Facades\DB::table('users')
+                        ->where('fcm_token', $token)
+                        ->update(['fcm_token' => null]);
+                    if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'device_token')) {
+                        \Illuminate\Support\Facades\DB::table('users')
+                            ->where('device_token', $token)
+                            ->update(['device_token' => null]);
+                    }
+                } catch (\Throwable $ex) {
+                    // Silently ignore DB errors during token cleanup
+                }
+            } else {
+                Log::error('FCM HTTP v1 Error', [
+                    'status_code' => $response->status(),
+                    'firebase_status' => $status,
+                    'message' => $message,
+                    'response' => $bodyResponse,
+                    'image_url' => $imageUrl,
+                ]);
+            }
 
             $this->lastResponse = [
                 'success' => false,
@@ -124,13 +151,6 @@ class FcmNotificationS
                 'message' => $message,
                 'response' => $bodyResponse,
             ];
-
-            if (in_array($status, ['UNREGISTERED', 'INVALID_ARGUMENT'], true)) {
-                Log::warning('FCM HTTP v1 invalid device token', [
-                    'token_prefix' => substr($token, 0, 16),
-                    'firebase_status' => $status,
-                ]);
-            }
 
             if (in_array($response->status(), [401, 403], true) || in_array($status, ['UNAUTHENTICATED', 'PERMISSION_DENIED'], true)) {
                 Cache::forget('firebase_http_v1_access_token');

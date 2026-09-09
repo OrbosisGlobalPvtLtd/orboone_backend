@@ -126,6 +126,12 @@
         color: #475569;
     }
 
+    .orb-pill.void {
+        background: #F1F5F9;
+        color: #475569;
+        border: 1px solid #CBD5E1;
+    }
+
     .orb-pill.expired {
         background: #F3E8FF;
         color: #6B21A8;
@@ -554,7 +560,7 @@
                                     </td>
                                     <td class="leave-status-cell">
                                         <span class="orb-pill {{ $request->status }}">
-                                            <i class="fas fa-circle mr-1" style="font-size: 7px;"></i> {{ ucfirst($request->status) }}
+                                            <i class="fas fa-circle mr-1" style="font-size: 7px;"></i> {{ $request->status === 'void' ? 'Null & Void' : ucfirst($request->status) }}
                                         </span>
                                     </td>
                                     <td class="leave-reason-cell">
@@ -817,16 +823,19 @@ $(function() {
         $('#det_status').text(fmt(row.status).toUpperCase());
         $('#det_emergency').text(row.emergency_leave ? 'YES' : 'NO');
 
-        if (row.rejection_reason) {
+        var displayNote = row.rejection_reason || (row.status === 'void' ? (row.hr_note || 'Leave marked as Null & Void by HR Admin') : '');
+        if (displayNote) {
             $('#det_rejection_row').show();
-            $('#det_rejection_note').text(row.rejection_reason);
+            $('#det_rejection_note').text(displayNote);
+            var headerTitle = row.status === 'void' ? 'Void Note / Reason' : 'Rejection / Response Note';
+            $('#det_rejection_row small').text(headerTitle);
             if (row.approver && row.approver.name) {
-                var rejectedByText = 'Rejected by ' + row.approver.name;
+                var actionByText = (row.status === 'void' ? 'Voided by ' : 'Rejected by ') + row.approver.name;
                 if (row.approved_at) {
                     var rejDate = new Date(row.approved_at);
-                    rejectedByText += ' \u2022 ' + rejDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                    actionByText += ' \u2022 ' + rejDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
                 }
-                $('#det_rejected_by').text(rejectedByText).show();
+                $('#det_rejected_by').text(actionByText).show();
             } else {
                 $('#det_rejected_by').hide();
             }

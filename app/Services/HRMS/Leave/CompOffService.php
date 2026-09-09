@@ -152,4 +152,18 @@ class CompOffService
 
         return round($days - $remaining, 2);
     }
+
+    public function refund(EmployeeM $employee, float $days, int $leaveRequestId): void
+    {
+        $usedCompOffs = CompOffM::where('employee_id', $employee->id)
+            ->where('used_against_leave_request_id', $leaveRequestId)
+            ->get();
+
+        foreach ($usedCompOffs as $compOff) {
+            $compOff->status = 'earned';
+            $compOff->used_against_leave_request_id = null;
+            $compOff->remarks = trim(($compOff->remarks ? $compOff->remarks . "\n" : '') . 'Restored from voided/cancelled leave request #' . $leaveRequestId);
+            $compOff->save();
+        }
+    }
 }

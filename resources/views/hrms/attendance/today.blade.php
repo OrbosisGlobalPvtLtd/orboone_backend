@@ -633,6 +633,11 @@
     </div>
 </div>
 
+{{-- Modals for Web Punch In & Punch Out --}}
+@if ($canWebPunch)
+    @include('hrms.attendance.partials.web-punch-modals')
+@endif
+
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {

@@ -894,6 +894,11 @@
     </div>
 @endif
 
+{{-- Modals for Web Punch In & Punch Out --}}
+@if ($canWebPunch)
+    @include('hrms.attendance.partials.web-punch-modals')
+@endif
+
 
 <script>
 function fetchCalData() {

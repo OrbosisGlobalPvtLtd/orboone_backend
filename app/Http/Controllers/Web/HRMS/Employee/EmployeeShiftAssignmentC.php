@@ -90,14 +90,25 @@ class EmployeeShiftAssignmentC extends Controller
 
         $shiftTime = AttendanceTimeM::find($data['attendance_time_id']);
 
-        $punchAllowedFrom = $request->filled('punch_allowed_from') ? $request->input('punch_allowed_from') : $shiftTime->punch_allowed_from;
-        $shiftStartTime   = $request->filled('shift_start_time') ? $request->input('shift_start_time') : $shiftTime->shift_start_time;
-        $lateAfterTime    = $request->filled('late_after_time') ? $request->input('late_after_time') : $shiftTime->late_after_time;
-        $blockAfterTime   = $request->filled('block_after_time') ? $request->input('block_after_time') : ($shiftTime->block_after_time ?? $shiftTime->half_day_after_time ?? $shiftTime->shift_end_time);
-        $halfDayAfterTime = $request->filled('half_day_after_time') ? $request->input('half_day_after_time') : $shiftTime->half_day_after_time;
-        $shiftEndTime     = $request->filled('shift_end_time') ? $request->input('shift_end_time') : $shiftTime->shift_end_time;
-        $requiredMinutes  = $request->filled('required_work_minutes') ? (int) $request->input('required_work_minutes') : $shiftTime->required_work_minutes;
-        $lunchMinutes     = $request->filled('lunch_minutes') ? (int) $request->input('lunch_minutes') : ($shiftTime->lunch_break_minutes ?? 0);
+        if ($shiftTime && $shiftTime->isDynamicHours()) {
+            $punchAllowedFrom = null;
+            $shiftStartTime   = null;
+            $lateAfterTime    = null;
+            $blockAfterTime   = null;
+            $halfDayAfterTime = null;
+            $shiftEndTime     = null;
+            $requiredMinutes  = $request->filled('required_work_minutes') ? (int) $request->input('required_work_minutes') : $shiftTime->required_work_minutes;
+            $lunchMinutes     = $request->filled('lunch_minutes') ? (int) $request->input('lunch_minutes') : ($shiftTime->lunch_break_minutes ?? 0);
+        } else {
+            $punchAllowedFrom = $request->filled('punch_allowed_from') ? $request->input('punch_allowed_from') : $shiftTime->punch_allowed_from;
+            $shiftStartTime   = $request->filled('shift_start_time') ? $request->input('shift_start_time') : $shiftTime->shift_start_time;
+            $lateAfterTime    = $request->filled('late_after_time') ? $request->input('late_after_time') : $shiftTime->late_after_time;
+            $blockAfterTime   = $request->filled('block_after_time') ? $request->input('block_after_time') : ($shiftTime->block_after_time ?? $shiftTime->half_day_after_time ?? $shiftTime->shift_end_time);
+            $halfDayAfterTime = $request->filled('half_day_after_time') ? $request->input('half_day_after_time') : $shiftTime->half_day_after_time;
+            $shiftEndTime     = $request->filled('shift_end_time') ? $request->input('shift_end_time') : $shiftTime->shift_end_time;
+            $requiredMinutes  = $request->filled('required_work_minutes') ? (int) $request->input('required_work_minutes') : $shiftTime->required_work_minutes;
+            $lunchMinutes     = $request->filled('lunch_minutes') ? (int) $request->input('lunch_minutes') : ($shiftTime->lunch_break_minutes ?? 0);
+        }
 
         EmployeeShiftTimingM::create([
             'employee_id' => $data['employee_id'],
@@ -148,14 +159,25 @@ class EmployeeShiftAssignmentC extends Controller
 
         $shiftTime = AttendanceTimeM::find($data['attendance_time_id']);
 
-        $punchAllowedFrom = $request->filled('punch_allowed_from') ? $request->input('punch_allowed_from') : $shiftTime->punch_allowed_from;
-        $shiftStartTime   = $request->filled('shift_start_time') ? $request->input('shift_start_time') : $shiftTime->shift_start_time;
-        $lateAfterTime    = $request->filled('late_after_time') ? $request->input('late_after_time') : $shiftTime->late_after_time;
-        $blockAfterTime   = $request->filled('block_after_time') ? $request->input('block_after_time') : ($shiftTime->block_after_time ?? $shiftTime->half_day_after_time ?? $shiftTime->shift_end_time);
-        $halfDayAfterTime = $request->filled('half_day_after_time') ? $request->input('half_day_after_time') : $shiftTime->half_day_after_time;
-        $shiftEndTime     = $request->filled('shift_end_time') ? $request->input('shift_end_time') : $shiftTime->shift_end_time;
-        $requiredMinutes  = $request->filled('required_work_minutes') ? (int) $request->input('required_work_minutes') : $shiftTime->required_work_minutes;
-        $lunchMinutes     = $request->filled('lunch_minutes') ? (int) $request->input('lunch_minutes') : ($shiftTime->lunch_break_minutes ?? 0);
+        if ($shiftTime && $shiftTime->isDynamicHours()) {
+            $punchAllowedFrom = null;
+            $shiftStartTime   = null;
+            $lateAfterTime    = null;
+            $blockAfterTime   = null;
+            $halfDayAfterTime = null;
+            $shiftEndTime     = null;
+            $requiredMinutes  = $request->filled('required_work_minutes') ? (int) $request->input('required_work_minutes') : $shiftTime->required_work_minutes;
+            $lunchMinutes     = $request->filled('lunch_minutes') ? (int) $request->input('lunch_minutes') : ($shiftTime->lunch_break_minutes ?? 0);
+        } else {
+            $punchAllowedFrom = $request->filled('punch_allowed_from') ? $request->input('punch_allowed_from') : $shiftTime->punch_allowed_from;
+            $shiftStartTime   = $request->filled('shift_start_time') ? $request->input('shift_start_time') : $shiftTime->shift_start_time;
+            $lateAfterTime    = $request->filled('late_after_time') ? $request->input('late_after_time') : $shiftTime->late_after_time;
+            $blockAfterTime   = $request->filled('block_after_time') ? $request->input('block_after_time') : ($shiftTime->block_after_time ?? $shiftTime->half_day_after_time ?? $shiftTime->shift_end_time);
+            $halfDayAfterTime = $request->filled('half_day_after_time') ? $request->input('half_day_after_time') : $shiftTime->half_day_after_time;
+            $shiftEndTime     = $request->filled('shift_end_time') ? $request->input('shift_end_time') : $shiftTime->shift_end_time;
+            $requiredMinutes  = $request->filled('required_work_minutes') ? (int) $request->input('required_work_minutes') : $shiftTime->required_work_minutes;
+            $lunchMinutes     = $request->filled('lunch_minutes') ? (int) $request->input('lunch_minutes') : ($shiftTime->lunch_break_minutes ?? 0);
+        }
 
         $assignment->update([
             'attendance_time_id' => $data['attendance_time_id'],

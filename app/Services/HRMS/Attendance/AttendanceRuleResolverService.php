@@ -14,6 +14,8 @@ class AttendanceRuleResolverService
 {
     public const TIMEZONE = 'Asia/Kolkata';
 
+    protected array $policyCache = [];
+
     public function getPolicyForEmployee(Employee $employee, Carbon|string|null $date = null): ?object
     {
         return $this->resolveShiftPolicy($employee, $date ?: Carbon::now(self::TIMEZONE)->toDateString());
@@ -110,8 +112,14 @@ class AttendanceRuleResolverService
                     $policy->half_day_min_minutes = $shift->required_work_minutes ? (int) ($shift->required_work_minutes / 2) : 0;
                     $policy->absent_below_minutes = $shift->required_work_minutes ? (int) ($shift->required_work_minutes / 4) : 0;
 
-                    $isFlexible = $shift->shift_type === 'flexible_part_time';
-                    $policy->shift_type = $isFlexible ? 'flexible_part_time' : 'fixed';
+                    $shiftType = strtolower($shift->shift_type ?? '');
+                    if ($shiftType === 'dynamic_hours') {
+                        $policy->shift_type = 'dynamic_hours';
+                    } elseif ($shiftType === 'flexible_part_time' || stripos($shift->name ?? '', 'flexible') !== false) {
+                        $policy->shift_type = 'flexible_part_time';
+                    } else {
+                        $policy->shift_type = 'fixed';
+                    }
                     $policy->policy_name = $shift->name;
                     $policy->name = $shift->name;
                 }
@@ -125,6 +133,11 @@ class AttendanceRuleResolverService
     public function resolveShiftPolicy(Employee $employee, Carbon|string $date, ?int $attendanceTimeId = null): ?object
     {
         $dateStr = $this->date($date)->toDateString();
+        $cacheKey = $employee->id . ':' . $dateStr . ':' . ($attendanceTimeId ?? 'default');
+
+        if (array_key_exists($cacheKey, $this->policyCache)) {
+            return $this->policyCache[$cacheKey];
+        }
 
         $policy = $this->policyFromEmployeeOverride($employee, $dateStr)
             ?: $this->policyFromEmployeeAssignment($employee, $dateStr)
@@ -221,8 +234,14 @@ class AttendanceRuleResolverService
             $policy->lunch_break_minutes = (int) ($overrideTiming->lunch_minutes ?? $shiftTemplate?->lunch_break_minutes ?? $shiftTemplate?->break_minutes ?? 0);
             $policy->break_minutes = $policy->lunch_break_minutes;
 
-            $isFlexible = $shiftTemplate && (in_array(strtolower($shiftTemplate->shift_type ?? ''), ['flexible', 'flexible_part_time']) || stripos($shiftTemplate->name, 'flexible') !== false);
-            $policy->shift_type = $isFlexible ? 'flexible_part_time' : 'fixed';
+            $shiftType = strtolower($shiftTemplate->shift_type ?? '');
+            if ($shiftType === 'dynamic_hours') {
+                $policy->shift_type = 'dynamic_hours';
+            } elseif ($shiftType === 'flexible_part_time' || stripos($shiftTemplate->name ?? '', 'flexible') !== false) {
+                $policy->shift_type = 'flexible_part_time';
+            } else {
+                $policy->shift_type = 'fixed';
+            }
             $policy->policy_name = $shiftTemplate?->name ?? 'Custom Shift';
             $policy->name = $shiftTemplate?->name ?? 'Custom Shift';
         } else {
@@ -256,13 +275,20 @@ class AttendanceRuleResolverService
                 $policy->required_office_minutes = (int) ($shiftTemplate->required_office_minutes ?? $policy->required_work_minutes);
                 $policy->absent_below_minutes = (int) ($shiftTemplate->absent_below_minutes ?? ($policy->half_day_min_minutes ? (int) ($policy->half_day_min_minutes / 2) : 120));
 
-                $isFlexible = $shiftTemplate && (in_array(strtolower($shiftTemplate->shift_type ?? ''), ['flexible', 'flexible_part_time']) || stripos($shiftTemplate->name, 'flexible') !== false);
-                $policy->shift_type = $isFlexible ? 'flexible_part_time' : 'fixed';
+                $shiftType = strtolower($shiftTemplate->shift_type ?? '');
+                if ($shiftType === 'dynamic_hours') {
+                    $policy->shift_type = 'dynamic_hours';
+                } elseif ($shiftType === 'flexible_part_time' || stripos($shiftTemplate->name ?? '', 'flexible') !== false) {
+                    $policy->shift_type = 'flexible_part_time';
+                } else {
+                    $policy->shift_type = 'fixed';
+                }
                 $policy->policy_name = $shiftTemplate->name ?? ($policy->policy_name ?? 'Custom Shift');
                 $policy->name = $shiftTemplate->name ?? ($policy->name ?? 'Custom Shift');
             }
         }
 
+        $this->policyCache[$cacheKey] = $policy;
         return $policy;
     }
 
@@ -400,13 +426,13 @@ class AttendanceRuleResolverService
         return $query->exists();
     }
 
-    public function resolveMobileState(Employee $employee, Carbon|string|null $dateTime = null, ?Attendance $attendance = null): array
+    public function resolveMobileState(Employee $employee, Carbon|string|null $dateTime = null, ?Attendance $attendance = null, ?object $policy = null): array
     {
         $now = $this->date($dateTime);
         $today = $now->toDateString();
         $isFuture = $now->copy()->startOfDay()->gt(Carbon::now(self::TIMEZONE)->startOfDay());
 
-        $policy = $this->getPolicyForEmployee($employee, $now);
+        $policy = $policy ?: $this->getPolicyForEmployee($employee, $now);
         $dayContext = $this->getDayContext($employee, $now);
         $window = $this->calculatePunchWindowState($policy, $now);
         $hasPendingReg = $this->hasPendingRegularizationForDate($employee, $now, $attendance);
@@ -646,7 +672,7 @@ class AttendanceRuleResolverService
             ->first();
 
         $window = $this->calculatePunchWindowState($policy, $now);
-        $state = $this->resolveMobileState($employee, $now, $attendance);
+        $state = $this->resolveMobileState($employee, $now, $attendance, $policy);
 
         $isBlocked = $state['is_blocked'];
         $isPunchBlocked = $state['is_punch_blocked'];
@@ -771,29 +797,33 @@ class AttendanceRuleResolverService
     public function calculatePunchWindowState(?object $policy, Carbon|string|null $dateTime = null): array
     {
         $now = $this->date($dateTime);
-        $earlyLoginFrom = $this->timeOnDate($policy?->early_login_from ?? $policy?->punch_allowed_from, $now);
-        $shiftStart = $this->timeOnDate($policy?->shift_start_time ?? $policy?->normal_login_from, $now);
-        $lateAfter = $this->timeOnDate($policy?->late_after_time, $now);
-        $warningAfter = $this->timeOnDate($policy?->warning_after_time, $now);
-        $halfDayAfter = $this->timeOnDate($policy?->half_day_after_time, $now);
-        $blockAfter = $this->timeOnDate($policy?->block_after_time ?? $policy?->half_day_after_time, $now);
-        $shiftEnd = $this->timeOnDate($policy?->shift_end_time, $now);
+        $earlyLoginFrom = $this->timeOnDate(($policy->early_login_from ?? null) ?: ($policy->punch_allowed_from ?? null), $now);
+        $shiftStart = $this->timeOnDate(($policy->shift_start_time ?? null) ?: ($policy->normal_login_from ?? null), $now);
+        $lateAfter = $this->timeOnDate($policy->late_after_time ?? null, $now);
+        $warningAfter = $this->timeOnDate($policy->warning_after_time ?? null, $now);
+        $halfDayAfter = $this->timeOnDate($policy->half_day_after_time ?? null, $now);
+        $blockAfter = $this->timeOnDate(($policy->block_after_time ?? null) ?: ($policy->half_day_after_time ?? null), $now);
+        $shiftEnd = $this->timeOnDate($policy->shift_end_time ?? null, $now);
 
-        $isFlexible = ($policy?->shift_type ?? 'fixed') === 'flexible_part_time';
-        $isBeforeEarlyLogin = $earlyLoginFrom ? $now->lt($earlyLoginFrom) : false;
-        $isAfterShiftEnd = $shiftEnd ? $now->gt($shiftEnd) : false;
-        $isBlocked = $blockAfter ? $now->gt($blockAfter) : false;
+        $shiftType = strtolower((string) ($policy?->shift_type ?? 'fixed'));
+        $isDynamicHours = $shiftType === 'dynamic_hours';
+        $isFlexible = $shiftType === 'flexible_part_time';
+        $isDynamicOrFlexible = $isDynamicHours || $isFlexible;
 
-        $isHalfDayPunch = (! $isFlexible && $halfDayAfter)
+        $isBeforeEarlyLogin = ($earlyLoginFrom && ! $isDynamicHours) ? $now->lt($earlyLoginFrom) : false;
+        $isAfterShiftEnd = ($shiftEnd && ! $isDynamicHours) ? $now->gt($shiftEnd) : false;
+        $isBlocked = ($blockAfter && ! $isDynamicHours) ? $now->gt($blockAfter) : false;
+
+        $isHalfDayPunch = (! $isDynamicOrFlexible && $halfDayAfter)
             ? $now->gte($halfDayAfter)
             : false;
 
         return [
             'is_before_early_login' => $isBeforeEarlyLogin,
             'is_before_allowed_from' => $isBeforeEarlyLogin,
-            'is_before_shift_start' => $shiftStart ? $now->lt($shiftStart) : false,
-            'is_late' => ! $isFlexible && $lateAfter ? $now->gt($lateAfter) : false,
-            'is_warning' => ! $isFlexible && $warningAfter && $blockAfter ? $now->betweenIncluded($warningAfter, $blockAfter) : false,
+            'is_before_shift_start' => ($shiftStart && ! $isDynamicHours) ? $now->lt($shiftStart) : false,
+            'is_late' => ! $isDynamicOrFlexible && $lateAfter ? $now->gt($lateAfter) : false,
+            'is_warning' => ! $isDynamicOrFlexible && $warningAfter && $blockAfter ? $now->betweenIncluded($warningAfter, $blockAfter) : false,
             'is_half_day_punch' => $isHalfDayPunch,
             'is_blocked' => $isBlocked,
             'is_after_shift_end' => $isAfterShiftEnd,
@@ -847,16 +877,20 @@ class AttendanceRuleResolverService
     public function calculateFinalStatus(Attendance $attendance, ?object $policy = null): array
     {
         $policy = $policy ?: $this->policyForAttendance($attendance);
-        $isFlexible = ($policy?->shift_type ?? 'fixed') === 'flexible_part_time';
+        $shiftType = strtolower((string) ($policy?->shift_type ?? 'fixed'));
+        $isDynamicHours = $shiftType === 'dynamic_hours';
+        $isFlexible = $shiftType === 'flexible_part_time';
+        $isDynamicOrFlexible = $isDynamicHours || $isFlexible;
+
         $work = $this->calculateWorkMinutes($attendance, $policy);
         $required = (int) ($policy?->required_work_minutes ?? 0);
         $halfDay = (int) ($policy?->half_day_min_minutes ?? 0);
-        $absentBelow = (int) ($policy?->absent_below_minutes ?? $halfDay);
-        $violationLimit = $isFlexible ? 0 : (int) ($policy?->combined_violation_limit ?? 0);
-        $violationCount = $isFlexible ? 0 : ((int) $attendance->is_late + (int) $work['is_early_out']);
+        $absentBelow = (int) ($policy?->absent_below_minutes ?? 0);
+        $violationLimit = $isDynamicOrFlexible ? 0 : (int) ($policy?->combined_violation_limit ?? 0);
+        $violationCount = $isDynamicOrFlexible ? 0 : ((int) $attendance->is_late + (int) $work['is_early_out']);
 
         $effectiveHalfDayMin = $halfDay > 0 ? $halfDay : ($required > 0 ? (int)($required / 2) : 240);
-        $effectiveAbsentBelow = ($absentBelow > 0 && $absentBelow < $effectiveHalfDayMin) ? $absentBelow : (int)($effectiveHalfDayMin / 2);
+        $effectiveAbsentBelow = $absentBelow;
 
         $isPreExistingLwp = (bool) $attendance->is_lwp
             || strtolower((string) $attendance->attendance_status) === 'lwp'
@@ -872,8 +906,6 @@ class AttendanceRuleResolverService
             // Already marked Half Day via Step 1 Leave or Step 2 Half Day Punch Window
             if ($effectiveAbsentBelow > 0 && $work['net_minutes'] < $effectiveAbsentBelow) {
                 $code = 'lwp';
-            } elseif ($effectiveHalfDayMin > 0 && $work['net_minutes'] < $effectiveHalfDayMin) {
-                $code = 'lwp';
             } else {
                 $code = 'half_day';
             }
@@ -881,11 +913,11 @@ class AttendanceRuleResolverService
             // Standard Attendance Punch
             if ($effectiveAbsentBelow > 0 && $work['net_minutes'] < $effectiveAbsentBelow) {
                 $code = 'lwp';
-            } elseif ($effectiveHalfDayMin > 0 && $work['net_minutes'] < $effectiveHalfDayMin) {
+            } elseif ($isDynamicOrFlexible && $effectiveHalfDayMin > 0 && $work['net_minutes'] < $effectiveHalfDayMin) {
                 $code = 'lwp';
-            } elseif ($isFlexible && $required > 0 && $work['net_minutes'] < $required) {
+            } elseif ($isDynamicOrFlexible && $required > 0 && $work['net_minutes'] < $required) {
                 $code = 'half_day';
-            } elseif (! $isFlexible && $violationLimit > 0 && $violationCount >= $violationLimit) {
+            } elseif (! $isDynamicOrFlexible && $violationLimit > 0 && $violationCount >= $violationLimit) {
                 $code = 'half_day';
             } else {
                 // Completed required work duration or at least half_day_min_minutes on fixed shift
@@ -1025,7 +1057,7 @@ class AttendanceRuleResolverService
         ];
     }
 
-    public function timeString($value): ?string
+    public function timeString(Carbon|string|null $value): ?string
     {
         if (! $value) {
             return null;
@@ -1159,7 +1191,7 @@ class AttendanceRuleResolverService
         return $policy;
     }
 
-    private function timeOnDate($time, Carbon $date): ?Carbon
+    private function timeOnDate(Carbon|string|null $time, Carbon $date): ?Carbon
     {
         return $time ? Carbon::parse($date->toDateString() . ' ' . $this->timeString($time), self::TIMEZONE) : null;
     }
@@ -1207,7 +1239,7 @@ class AttendanceRuleResolverService
         return null;
     }
 
-    private function displayTime($time): string
+    private function displayTime(Carbon|string|null $time): string
     {
         return $time ? Carbon::parse($time, self::TIMEZONE)->format('h:i A') : 'configured time';
     }

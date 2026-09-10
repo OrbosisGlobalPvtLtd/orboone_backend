@@ -21,7 +21,7 @@ class StoreEmployeeOnboardingRequest extends FormRequest
             'phone' => ['required', 'string', 'max:20'],
             'employment_type' => ['required', Rule::in(['full_time', 'part_time', 'intern', 'freelancer', 'contract'])],
             'work_mode' => ['required', Rule::in(['wfo', 'wfh', 'hybrid'])],
-            'work_schedule_type' => ['nullable', Rule::in(['full_day', 'part_day', 'hourly', 'shift_based', 'general', 'general_shift', 'wfh', 'wfh_shift', 'part_time', 'part_time_shift', 'part_time_morning', 'part_time_evening', 'half_day', 'half_day_shift', 'half_day_morning', 'half_day_evening', 'flexible_part_time'])],
+            'work_schedule_type' => ['nullable', Rule::in(['full_day', 'part_day', 'hourly', 'shift_based', 'general', 'general_shift', 'wfh', 'wfh_shift', 'part_time', 'part_time_shift', 'part_time_morning', 'part_time_evening', 'half_day', 'half_day_shift', 'half_day_morning', 'half_day_evening', 'flexible_part_time', 'dynamic_hours'])],
             'department_id' => ['required', 'exists:departments,id'],
             'designation_id' => ['required', Rule::exists('designations', 'id')->where(function ($query) {
                 if ($this->filled('department_id')) {

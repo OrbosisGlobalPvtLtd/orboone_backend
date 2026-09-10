@@ -211,7 +211,7 @@ class AttendanceController extends Controller
 
     public function getAttendance(Request $request)
     {
-        $query = Attendance::with(['attendanceType', 'attendanceTime', 'workLogs'])
+        $query = Attendance::with(['attendanceType', 'attendanceTime', 'workLogs', 'employee'])
             ->where('user_id', auth()->id())
             ->when($request->filled('date'), fn($query) => $query->whereDate('attendance_date', $request->date))
             ->when($request->filled('month'), fn($query) => $query->whereMonth('attendance_date', (int) $request->month))

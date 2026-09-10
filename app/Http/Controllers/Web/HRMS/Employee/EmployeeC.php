@@ -77,6 +77,23 @@ class EmployeeC extends Controller
         }
 
         $today = Carbon::now('Asia/Kolkata')->toDateString();
+        $activeShiftTimingSub = DB::table('employee_shift_timings')
+            ->leftJoin('attendance_times', 'attendance_times.id', '=', 'employee_shift_timings.attendance_time_id')
+            ->where('employee_shift_timings.is_active', 1)
+            ->where(function ($q) use ($today) {
+                $q->whereNull('employee_shift_timings.effective_from')
+                    ->orWhereDate('employee_shift_timings.effective_from', '<=', $today);
+            })
+            ->where(function ($q) use ($today) {
+                $q->whereNull('employee_shift_timings.effective_to')
+                    ->orWhereDate('employee_shift_timings.effective_to', '>=', $today);
+            })
+            ->select(
+                'employee_shift_timings.employee_id',
+                'attendance_times.name as timing_shift_name',
+                'attendance_times.shift_type as timing_shift_type'
+            );
+
         $activeAssignmentsSub = DB::table('employee_policy_assignments')
             ->join('attendance_policy_rules', 'attendance_policy_rules.id', '=', 'employee_policy_assignments.policy_id')
             ->where('employee_policy_assignments.policy_type', 'attendance')
@@ -93,6 +110,9 @@ class EmployeeC extends Controller
 
         $baseQuery = DB::table($employeeTable)
             ->join('users', 'users.id', '=', $employeeTable . '.user_id')
+            ->leftJoinSub($activeShiftTimingSub, 'active_shift_timing', function ($join) use ($employeeTable) {
+                $join->on('active_shift_timing.employee_id', '=', $employeeTable . '.id');
+            })
             ->leftJoinSub($activeAssignmentsSub, 'active_attendance_policy', function ($join) use ($employeeTable) {
                 $join->on('active_attendance_policy.employee_id', '=', $employeeTable . '.id');
             })
@@ -134,6 +154,9 @@ class EmployeeC extends Controller
             $profileTable . '.profile_status',
             $profileTable . '.is_profile_completed',
             DB::raw("CASE 
+                WHEN active_shift_timing.timing_shift_type = 'dynamic_hours' THEN 'Dynamic Hours'
+                WHEN active_shift_timing.timing_shift_type = 'flexible_part_time' THEN 'Flexible Part Time'
+                WHEN active_shift_timing.timing_shift_name IS NOT NULL THEN active_shift_timing.timing_shift_name
                 WHEN active_attendance_policy.policy_name = 'Flexible Part Time Policy' THEN 'Flexible Part Time'
                 WHEN active_attendance_policy.policy_name = 'Default Attendance Policy' THEN 'General Shift'
                 WHEN active_attendance_policy.policy_name = 'General Shift Policy' THEN 'General Shift'
@@ -143,6 +166,7 @@ class EmployeeC extends Controller
                 WHEN active_attendance_policy.policy_name = 'Half Day Morning Policy' THEN 'Half Day Morning Shift'
                 WHEN active_attendance_policy.policy_name = 'Half Day Evening Policy' THEN 'Half Day Evening Shift'
                 WHEN active_attendance_policy.policy_name IS NOT NULL THEN TRIM(REPLACE(active_attendance_policy.policy_name, 'Policy', ''))
+                " . ($hasAttendanceTime ? "WHEN attendance_times.name IS NOT NULL THEN attendance_times.name" : "") . "
                 ELSE 'General Shift'
             END as shift_name"),
             DB::raw($documentStats ? 'COALESCE(doc_stats.uploaded_documents_count, 0) as uploaded_documents_count' : '0 as uploaded_documents_count'),
@@ -617,15 +641,27 @@ class EmployeeC extends Controller
 
             if ($shift) {
                 $isFlexible = $request->work_schedule_type === 'flexible_part_time';
+                $isDynamicHours = strtolower($shift->shift_type ?? '') === 'dynamic_hours' || $request->work_schedule_type === 'dynamic_hours';
 
-                $punchAllowed = $isFlexible ? $request->punch_allowed_from : $shift->punch_allowed_from;
-                $shiftStart = $isFlexible ? $request->shift_start_time : $shift->shift_start_time;
-                $lateAfter = $isFlexible ? $request->late_after_time : $shift->late_after_time;
-                $halfDayAfter = $isFlexible ? $request->half_day_after_time : $shift->half_day_after_time;
-                $blockAfter = $isFlexible ? $request->block_after_time : $shift->block_after_time;
-                $shiftEnd = $isFlexible ? $request->shift_end_time : $shift->shift_end_time;
-                $reqMinutes = $isFlexible ? $request->required_work_minutes : $shift->required_work_minutes;
-                $lunchMinutes = $isFlexible ? $request->lunch_minutes : $shift->lunch_break_minutes;
+                if ($isDynamicHours) {
+                    $punchAllowed = null;
+                    $shiftStart   = null;
+                    $lateAfter    = null;
+                    $halfDayAfter = null;
+                    $blockAfter   = null;
+                    $shiftEnd     = null;
+                    $reqMinutes   = $request->filled('required_work_minutes') ? (int) $request->required_work_minutes : $shift->required_work_minutes;
+                    $lunchMinutes = $request->filled('lunch_minutes') ? (int) $request->lunch_minutes : ($shift->lunch_break_minutes ?? 0);
+                } else {
+                    $punchAllowed = $isFlexible ? $request->punch_allowed_from : $shift->punch_allowed_from;
+                    $shiftStart = $isFlexible ? $request->shift_start_time : $shift->shift_start_time;
+                    $lateAfter = $isFlexible ? $request->late_after_time : $shift->late_after_time;
+                    $halfDayAfter = $isFlexible ? $request->half_day_after_time : $shift->half_day_after_time;
+                    $blockAfter = $isFlexible ? $request->block_after_time : $shift->block_after_time;
+                    $shiftEnd = $isFlexible ? $request->shift_end_time : $shift->shift_end_time;
+                    $reqMinutes = $isFlexible ? $request->required_work_minutes : $shift->required_work_minutes;
+                    $lunchMinutes = $isFlexible ? $request->lunch_minutes : $shift->lunch_break_minutes;
+                }
 
                 DB::table('employee_shift_timings')->insert([
                     'employee_id' => $employeeId,
@@ -1149,15 +1185,27 @@ class EmployeeC extends Controller
 
             if ($newShift) {
                 $isFlexible = $request->work_schedule_type === 'flexible_part_time';
+                $isDynamicHours = strtolower($newShift->shift_type ?? '') === 'dynamic_hours' || $request->work_schedule_type === 'dynamic_hours';
 
-                $punchAllowed = $isFlexible ? ($request->punch_allowed_from ? Carbon::parse($request->punch_allowed_from)->format('H:i:s') : null) : $newShift->punch_allowed_from;
-                $shiftStart = $isFlexible ? ($request->shift_start_time ? Carbon::parse($request->shift_start_time)->format('H:i:s') : null) : $newShift->shift_start_time;
-                $lateAfter = $isFlexible ? ($request->late_after_time ? Carbon::parse($request->late_after_time)->format('H:i:s') : null) : $newShift->late_after_time;
-                $halfDayAfter = $isFlexible ? ($request->half_day_after_time ? Carbon::parse($request->half_day_after_time)->format('H:i:s') : null) : $newShift->half_day_after_time;
-                $blockAfter = $isFlexible ? ($request->block_after_time ? Carbon::parse($request->block_after_time)->format('H:i:s') : null) : $newShift->block_after_time;
-                $shiftEnd = $isFlexible ? ($request->shift_end_time ? Carbon::parse($request->shift_end_time)->format('H:i:s') : null) : $newShift->shift_end_time;
-                $reqMinutes = $isFlexible ? ($request->required_work_minutes !== null ? (int) $request->required_work_minutes : null) : $newShift->required_work_minutes;
-                $lunchMinutes = $isFlexible ? ($request->lunch_minutes !== null ? (int) $request->lunch_minutes : null) : $newShift->lunch_break_minutes;
+                if ($isDynamicHours) {
+                    $punchAllowed = null;
+                    $shiftStart   = null;
+                    $lateAfter    = null;
+                    $halfDayAfter = null;
+                    $blockAfter   = null;
+                    $shiftEnd     = null;
+                    $reqMinutes   = $request->filled('required_work_minutes') ? (int) $request->required_work_minutes : $newShift->required_work_minutes;
+                    $lunchMinutes = $request->filled('lunch_minutes') ? (int) $request->lunch_minutes : ($newShift->lunch_break_minutes ?? 0);
+                } else {
+                    $punchAllowed = $isFlexible ? ($request->punch_allowed_from ? Carbon::parse($request->punch_allowed_from)->format('H:i:s') : null) : $newShift->punch_allowed_from;
+                    $shiftStart = $isFlexible ? ($request->shift_start_time ? Carbon::parse($request->shift_start_time)->format('H:i:s') : null) : $newShift->shift_start_time;
+                    $lateAfter = $isFlexible ? ($request->late_after_time ? Carbon::parse($request->late_after_time)->format('H:i:s') : null) : $newShift->late_after_time;
+                    $halfDayAfter = $isFlexible ? ($request->half_day_after_time ? Carbon::parse($request->half_day_after_time)->format('H:i:s') : null) : $newShift->half_day_after_time;
+                    $blockAfter = $isFlexible ? ($request->block_after_time ? Carbon::parse($request->block_after_time)->format('H:i:s') : null) : $newShift->block_after_time;
+                    $shiftEnd = $isFlexible ? ($request->shift_end_time ? Carbon::parse($request->shift_end_time)->format('H:i:s') : null) : $newShift->shift_end_time;
+                    $reqMinutes = $isFlexible ? ($request->required_work_minutes !== null ? (int) $request->required_work_minutes : null) : $newShift->required_work_minutes;
+                    $lunchMinutes = $isFlexible ? ($request->lunch_minutes !== null ? (int) $request->lunch_minutes : null) : $newShift->lunch_break_minutes;
+                }
 
                 $activeTiming = DB::table('employee_shift_timings')
                     ->where('employee_id', $employee)
@@ -3104,10 +3152,13 @@ class EmployeeC extends Controller
             if ($scheduleKey === 'flexible_part_time') {
                 $shiftCode = 'flexible_part_time';
                 $policyName = 'Flexible Part Time Policy';
+            } elseif ($scheduleKey === 'dynamic_hours') {
+                $shiftCode = 'dynamic_hours';
+                $policyName = 'Dynamic Hours Policy';
             } elseif ($scheduleKey === 'general_shift' || $scheduleKey === 'general' || $scheduleKey === 'full_day') {
                 $shiftCode = 'general_shift';
                 $policyName = 'General Shift Policy';
-            } elseif ($workMode === 'wfh' || $scheduleKey === 'wfh_shift' || $scheduleKey === 'wfh') {
+            } elseif ($scheduleKey === 'wfh_shift' || $scheduleKey === 'wfh' || ($workMode === 'wfh' && empty($scheduleKey))) {
                 $shiftCode = 'wfh_shift';
                 $policyName = 'WFH Attendance Policy';
             } elseif ($scheduleKey === 'part_time_shift' || $scheduleKey === 'part_time' || $scheduleKey === 'part_day') {
@@ -3167,10 +3218,59 @@ class EmployeeC extends Controller
         return $schedule;
     }
 
-    private function adjustWorkScheduleTypeForView($employeeData): void
+    private function adjustWorkScheduleTypeForView(&$employeeData): void
     {
         if (!$employeeData) {
             return;
+        }
+
+        $today = Carbon::now('Asia/Kolkata')->toDateString();
+        $activeShiftTiming = DB::table('employee_shift_timings')
+            ->leftJoin('attendance_times', 'attendance_times.id', '=', 'employee_shift_timings.attendance_time_id')
+            ->where('employee_shift_timings.employee_id', $employeeData->id)
+            ->where('employee_shift_timings.is_active', 1)
+            ->where(function ($q) use ($today) {
+                $q->whereNull('employee_shift_timings.effective_from')
+                    ->orWhereDate('employee_shift_timings.effective_from', '<=', $today);
+            })
+            ->where(function ($q) use ($today) {
+                $q->whereNull('employee_shift_timings.effective_to')
+                    ->orWhereDate('employee_shift_timings.effective_to', '>=', $today);
+            })
+            ->select('employee_shift_timings.*', 'attendance_times.shift_type as template_shift_type', 'attendance_times.code as template_code')
+            ->orderByDesc('employee_shift_timings.effective_from')
+            ->orderByDesc('employee_shift_timings.id')
+            ->first();
+
+        if ($activeShiftTiming) {
+            $shiftType = strtolower((string) ($activeShiftTiming->shift_type ?? $activeShiftTiming->template_shift_type ?? $activeShiftTiming->template_code ?? ''));
+            $templateCode = strtolower((string) ($activeShiftTiming->template_code ?? ''));
+
+            if ($shiftType === 'dynamic_hours' || $templateCode === 'dynamic_hours') {
+                $employeeData->work_schedule_type = 'dynamic_hours';
+                return;
+            } elseif ($shiftType === 'flexible_part_time' || stripos($templateCode, 'flexible') !== false) {
+                $employeeData->work_schedule_type = 'flexible_part_time';
+                return;
+            } elseif ($templateCode === 'wfh_shift') {
+                $employeeData->work_schedule_type = 'wfh';
+                return;
+            } elseif ($templateCode === 'part_time_shift') {
+                $employeeData->work_schedule_type = 'part_time';
+                return;
+            } elseif ($templateCode === 'half_day_shift') {
+                $employeeData->work_schedule_type = 'half_day';
+                return;
+            } elseif ($templateCode === 'half_day_morning') {
+                $employeeData->work_schedule_type = 'half_day_morning';
+                return;
+            } elseif ($templateCode === 'half_day_evening') {
+                $employeeData->work_schedule_type = 'half_day_evening';
+                return;
+            } else {
+                $employeeData->work_schedule_type = 'general';
+                return;
+            }
         }
 
         $activePolicy = DB::table('employee_policy_assignments')

@@ -43,6 +43,22 @@ class AttendanceTimeM extends Model
         'is_active' => 'boolean',
     ];
 
+    public function isDynamicHours(): bool
+    {
+        return strtolower($this->shift_type ?? '') === 'dynamic_hours';
+    }
+
+    public function isFlexiblePartTime(): bool
+    {
+        return strtolower($this->shift_type ?? '') === 'flexible_part_time';
+    }
+
+    public function isDynamicShift(): bool
+    {
+        return in_array(strtolower($this->shift_type ?? ''), ['dynamic_hours', 'flexible_part_time'], true);
+    }
+
+
     public function attendances()
     {
         return $this->hasMany(AttendanceM::class, 'attendance_time_id');

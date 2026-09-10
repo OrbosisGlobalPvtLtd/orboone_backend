@@ -972,7 +972,7 @@
                     return true;
                 }
 
-                // WFO Flow: Intercept form submit, trigger native browser location permission popup automatically
+                
                 e.preventDefault();
 
                 const submitBtn = punchOutForm.querySelector('button[type="submit"]');

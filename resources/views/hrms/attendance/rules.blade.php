@@ -768,11 +768,11 @@
                                         <div class="text-muted small">{{ $time->code }}</div>
                                     </td>
 
-                                    <td>{{ ($time->shift_type ?? 'fixed') === 'flexible_part_time' ? 'Anytime' : ($time->punch_allowed_from ? \Carbon\Carbon::parse($time->punch_allowed_from)->format('h:i A') : '-') }}</td>
-                                    <td>{{ ($time->shift_type ?? 'fixed') === 'flexible_part_time' ? 'Flexible' : ($time->shift_start_time ? \Carbon\Carbon::parse($time->shift_start_time)->format('h:i A') : '-') }}</td>
-                                    <td>{{ ($time->shift_type ?? 'fixed') === 'flexible_part_time' ? '-' : ($time->late_after_time ? \Carbon\Carbon::parse($time->late_after_time)->format('h:i A') : '-') }}</td>
+                                    <td>{{ in_array($time->shift_type ?? 'fixed', ['flexible_part_time', 'dynamic_hours'], true) ? 'Anytime' : ($time->punch_allowed_from ? \Carbon\Carbon::parse($time->punch_allowed_from)->format('h:i A') : '-') }}</td>
+                                    <td>{{ in_array($time->shift_type ?? 'fixed', ['flexible_part_time', 'dynamic_hours'], true) ? 'Flexible' : ($time->shift_start_time ? \Carbon\Carbon::parse($time->shift_start_time)->format('h:i A') : '-') }}</td>
+                                    <td>{{ in_array($time->shift_type ?? 'fixed', ['flexible_part_time', 'dynamic_hours'], true) ? '-' : ($time->late_after_time ? \Carbon\Carbon::parse($time->late_after_time)->format('h:i A') : '-') }}</td>
                                     <td>{{ $time->half_day_after_time ? \Carbon\Carbon::parse($time->half_day_after_time)->format('h:i A') : '-' }}</td>
-                                    <td>{{ ($time->shift_type ?? 'fixed') === 'flexible_part_time' ? 'Flexible' : ($time->shift_end_time ? \Carbon\Carbon::parse($time->shift_end_time)->format('h:i A') : '-') }}</td>
+                                    <td>{{ in_array($time->shift_type ?? 'fixed', ['flexible_part_time', 'dynamic_hours'], true) ? 'Flexible' : ($time->shift_end_time ? \Carbon\Carbon::parse($time->shift_end_time)->format('h:i A') : '-') }}</td>
                                     <td>{{ $time->required_work_minutes }} mins</td>
                                     <td>{{ $time->half_day_min_minutes }} mins</td>
                                     <td>{{ $time->lunch_break_minutes }} mins</td>
@@ -853,6 +853,15 @@
                                 <div class="col-md-6 mb-3">
                                     <label>Shift Name</label>
                                     <input type="text" name="name" class="form-control" value="{{ old('name', $time->name) }}" required>
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label>Shift Type</label>
+                                    <select name="shift_type" class="form-control">
+                                        <option value="fixed" {{ ($time->shift_type ?? 'fixed') === 'fixed' ? 'selected' : '' }}>Fixed Shift</option>
+                                        <option value="dynamic_hours" {{ ($time->shift_type ?? '') === 'dynamic_hours' ? 'selected' : '' }}>Dynamic Hours Shift</option>
+                                        <option value="flexible_part_time" {{ ($time->shift_type ?? '') === 'flexible_part_time' ? 'selected' : '' }}>Flexible Part Time Shift</option>
+                                    </select>
                                 </div>
 
                                 <div class="col-md-6 mb-3">

@@ -973,15 +973,15 @@ class AttendancesC extends Controller
     {
         abort_unless($this->canManageAttendance(), 403, 'Only Super Admin can modify attendance rules.');
 
-        $isFlexible = $request->input('shift_type') === 'flexible_part_time';
+        $isDynamicDuration = in_array($request->input('shift_type'), ['flexible_part_time', 'dynamic_hours'], true);
 
         $data = $request->validate([
             'name' => 'required|string',
-            'shift_type' => 'nullable|string|in:fixed,flexible_part_time',
-            'punch_allowed_from' => $isFlexible ? 'nullable' : 'required',
-            'shift_start_time' => $isFlexible ? 'nullable' : 'required',
-            'shift_end_time' => $isFlexible ? 'nullable' : 'required',
-            'late_after_time' => $isFlexible ? 'nullable' : 'required',
+            'shift_type' => 'nullable|string|in:fixed,flexible_part_time,dynamic_hours',
+            'punch_allowed_from' => $isDynamicDuration ? 'nullable' : 'required',
+            'shift_start_time' => $isDynamicDuration ? 'nullable' : 'required',
+            'shift_end_time' => $isDynamicDuration ? 'nullable' : 'required',
+            'late_after_time' => $isDynamicDuration ? 'nullable' : 'required',
             'warning_after_time' => 'nullable',
             'block_after_time' => 'nullable',
             'half_day_after_time' => 'nullable',
@@ -994,7 +994,7 @@ class AttendancesC extends Controller
             'is_active' => 'boolean',
         ]);
 
-        $data['shift_type'] = $request->input('shift_type', 'fixed');
+        $data['shift_type'] = $request->input('shift_type', $attendanceTime->shift_type ?? 'fixed');
         $data['is_default'] = $request->boolean('is_default');
         $data['is_active'] = $request->boolean('is_active');
         if ($request->filled('lunch_break_minutes')) {

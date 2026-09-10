@@ -62,8 +62,10 @@ class GeneratedDocumentC extends Controller
                 $q->where('document_number', 'like', "%{$search}%")
                   ->orWhere('candidate_name', 'like', "%{$search}%")
                   ->orWhereHas('employee', function ($eq) use ($search) {
-                      $eq->where('display_name', 'like', "%{$search}%")
-                         ->orWhere('employee_code', 'like', "%{$search}%");
+                      $eq->where('employee_code', 'like', "%{$search}%")
+                         ->orWhereHas('user', function ($uq) use ($search) {
+                             $uq->where('name', 'like', "%{$search}%");
+                         });
                   });
             });
         }

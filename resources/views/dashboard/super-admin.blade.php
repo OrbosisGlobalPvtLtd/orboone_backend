@@ -726,6 +726,8 @@ $announcementCards = [
         </div>
     </div>
 
+    @include('dashboard.partials.birthday-widget', ['dashboard' => $dashboard])
+
     {{-- SECTION 3: EMPLOYEE LIFECYCLE OVERVIEW --}}
     <div class="sa-section">
         <div class="sa-section-head">
@@ -1128,6 +1130,10 @@ $announcementCards = [
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script id="data-monthly-attendance" type="application/json">@json($charts['monthly_attendance'] ?? [])</script>
+<script id="data-payroll-trend" type="application/json">@json($payroll['monthly_trend'] ?? [])</script>
+<script id="data-employee-lifecycle" type="application/json">@json($charts['employee_lifecycle'] ?? [])</script>
+<script id="data-leave-distribution" type="application/json">@json($charts['leave_distribution'] ?? [])</script>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -1147,7 +1153,7 @@ $announcementCards = [
         }
 
         // 1. Attendance Trend Chart
-        var attData = @json($charts['monthly_attendance'] ?? []);
+        var attData = JSON.parse(document.getElementById('data-monthly-attendance') ? document.getElementById('data-monthly-attendance').textContent : '{}');
         if (attData.labels && attData.labels.length > 0) {
             new ApexCharts(document.querySelector("#attendanceTrendChart"), {
                 chart: {
@@ -1194,7 +1200,7 @@ $announcementCards = [
         }
 
         // 2. Payroll Trend Chart
-        var payData = @json($payroll['monthly_trend'] ?? []);
+        var payData = JSON.parse(document.getElementById('data-payroll-trend') ? document.getElementById('data-payroll-trend').textContent : '{}');
         if (payData.labels && payData.labels.length > 0) {
             new ApexCharts(document.querySelector("#payrollTrendChart"), {
                 chart: {
@@ -1231,7 +1237,7 @@ $announcementCards = [
         }
 
         // 3. Employee Lifecycle Distribution
-        var lcData = @json($charts['employee_lifecycle'] ?? []);
+        var lcData = JSON.parse(document.getElementById('data-employee-lifecycle') ? document.getElementById('data-employee-lifecycle').textContent : '{}');
         if (lcData.labels && lcData.labels.length > 0) {
             new ApexCharts(document.querySelector("#employeeLifecycleChart"), {
                 chart: {
@@ -1255,7 +1261,7 @@ $announcementCards = [
         }
 
         // 4. Leave Distribution Chart
-        var leaveData = @json($charts['leave_distribution'] ?? []);
+        var leaveData = JSON.parse(document.getElementById('data-leave-distribution') ? document.getElementById('data-leave-distribution').textContent : '{}');
         if (leaveData.labels && leaveData.labels.length > 0) {
             new ApexCharts(document.querySelector("#leaveDistributionChart"), {
                 chart: {

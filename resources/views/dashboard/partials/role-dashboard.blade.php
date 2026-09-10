@@ -66,6 +66,8 @@
             @endforelse
         </div>
 
+        @include('dashboard.partials.birthday-widget', ['dashboard' => $dashboard])
+
         @if (!empty($actions))
             <div class="dash-section">
                 <h2 class="dash-section-title">
@@ -176,7 +178,7 @@
                         <div class="dash-bar-row">
                             <div class="dash-bar-label">{{ $label }}</div>
                             <div class="dash-bar-track">
-                                <div class="dash-bar-fill" style="width:{{ $deptWidth }}%"></div>
+                                <div class="dash-bar-fill" style="--w: {{ $deptWidth }}%; width: var(--w, 0%);"></div>
                             </div>
                             <div class="dash-bar-value">{{ $val }}</div>
                         </div>
@@ -230,7 +232,9 @@
 </div>
 
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script id="role-data-monthly-labels" type="application/json">@json($monthlyLabels)</script>
+<script id="role-data-monthly-present" type="application/json">@json($monthlyPresent)</script>
+<script id="role-data-monthly-late" type="application/json">@json($monthlyLate)</script>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -240,9 +244,9 @@
             return;
         }
 
-        const labels = @json($monthlyLabels);
-        const presentData = @json($monthlyPresent);
-        const lateData = @json($monthlyLate);
+        const labels = JSON.parse(document.getElementById('role-data-monthly-labels') ? document.getElementById('role-data-monthly-labels').textContent : '[]');
+        const presentData = JSON.parse(document.getElementById('role-data-monthly-present') ? document.getElementById('role-data-monthly-present').textContent : '[]');
+        const lateData = JSON.parse(document.getElementById('role-data-monthly-late') ? document.getElementById('role-data-monthly-late').textContent : '[]');
 
         new Chart(chartCanvas, {
             type: 'line',
@@ -251,7 +255,7 @@
                 datasets: [{
                         label: 'Present',
                         data: presentData,
-                        borderColor: var(--orb-primary),
+                        borderColor: 'var(--orb-primary, #4B00E8)',
                         backgroundColor: 'rgba(75, 0, 232, 0.12)',
                         borderWidth: 3,
                         fill: true,

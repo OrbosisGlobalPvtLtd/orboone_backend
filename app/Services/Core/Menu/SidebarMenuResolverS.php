@@ -282,6 +282,7 @@ class SidebarMenuResolverS
         $allowedIds[] = 9901;
         $allowedIds[] = 9902;
         $allowedIds[] = 9903;
+        $allowedIds[] = 22;
 
         // Always allow Reporting Management (350..360) and Team Management (370..377) containers to pass role filtering
         for ($i = 350; $i <= 377; $i++) {
@@ -622,6 +623,7 @@ class SidebarMenuResolverS
         return [
             'employee.shift-assignment.index' => ['employee.shift.assign.manage'],
             'attendances.today' => ['attendance.my.view', 'attendance.records.view_all', 'attendance.dashboard.view'],
+            'attendances.record' => ['attendance.records.view_all', 'attendance.dashboard.view'],
             'attendances.team' => ['attendance.records.view_all', 'attendance.monthly_report.view_team', 'attendance.regularization.view_team', 'attendance.dashboard.view'],
             'reporting.attendance' => ['attendance.records.view_all', 'attendance.monthly_report.view_team', 'attendance.regularization.view_team', 'attendance.dashboard.view'],
             'attendance.policies.index' => ['attendance.rules.manage'],

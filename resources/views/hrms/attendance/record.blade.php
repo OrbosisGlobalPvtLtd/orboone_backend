@@ -3,8 +3,44 @@
 @section('page_title', request()->routeIs('hrms.attendance.my') ? 'My Attendance' : 'Attendance Records')
 
 @section('_head')
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap4.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap4.min.css">
+<style>
+    .select2-container--default .select2-selection--single {
+        height: 43px !important;
+        border: 1px solid #E4E7EC !important;
+        border-radius: 12px !important;
+        display: flex !important;
+        align-items: center !important;
+        padding: 0 10px !important;
+        background-color: #fff !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 41px !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        color: #101828 !important;
+        padding-left: 0 !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 41px !important;
+        right: 8px !important;
+    }
+    .select2-dropdown {
+        border: 1px solid #E4E7EC !important;
+        border-radius: 12px !important;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
+        font-size: 13px !important;
+        font-weight: 550 !important;
+        z-index: 9999 !important;
+    }
+    .select2-search--dropdown .select2-search__field {
+        border-radius: 8px !important;
+        border: 1px solid #E4E7EC !important;
+        padding: 6px 10px !important;
+    }
+</style>
 @endsection
 
 @section('_content')
@@ -820,16 +856,6 @@
                 <div class="att-metric-label">Late</div>
                 <div class="att-metric-line"></div>
             </div>
-            @if(!$isMyAttendance)
-            <div class="att-metric" style="--metric-color:#E11D48;--metric-soft:#FFE4E6;">
-                <div class="att-metric-top">
-                    <div class="att-metric-icon"><i class="fas fa-user-lock"></i></div>
-                    <div class="att-metric-value">{{ $blockedRecords }}</div>
-                </div>
-                <div class="att-metric-label">Blocked</div>
-                <div class="att-metric-line"></div>
-            </div>
-            @endif
             <div class="att-metric" style="--metric-color:#D97706;--metric-soft:#FEF3C7;">
                 <div class="att-metric-top">
                     <div class="att-metric-icon"><i class="fas fa-exclamation-circle"></i></div>
@@ -838,7 +864,6 @@
                 <div class="att-metric-label">Missed Punch</div>
                 <div class="att-metric-line"></div>
             </div>
-            @if($isMyAttendance)
             <div class="att-metric" style="--metric-color:#F59E0B;--metric-soft:#FEF3C7;">
                 <div class="att-metric-top">
                     <div class="att-metric-icon"><i class="fas fa-business-time"></i></div>
@@ -847,7 +872,6 @@
                 <div class="att-metric-label">Half Day</div>
                 <div class="att-metric-line"></div>
             </div>
-            @endif
             <div class="att-metric" style="--metric-color:#4F46E5;--metric-soft:#EEF2FF;">
                 <div class="att-metric-top">
                     <div class="att-metric-icon"><i class="fas fa-building"></i></div>
@@ -887,13 +911,20 @@
                     </div>
                 </div>
                 @else
-                <div>
-                    <h5 class="att-section-title"><i class="fas fa-table"></i> Attendance Records List</h5>
-                    <div class="att-section-sub">Filters are attached with this table. Select criteria and click Search.</div>
+                <div class="d-flex align-items-center gap-3">
+                    <div style="width:40px; height:40px; border-radius:50%; background:#F4F2FF; color:var(--orb-primary); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;">
+                        <i class="fas fa-fingerprint"></i>
+                    </div>
+                    <div>
+                        <h5 class="att-section-title" style="margin:0; font-size:18px;">Employee Attendance Records</h5>
+                        <div class="att-section-sub" style="margin-top:4px;">Filter by employee to inspect their attendance history, timings, and status.</div>
+                    </div>
                 </div>
                 <div class="att-head-badges align-items-center">
                     <span class="att-total-pill">Total: {{ $totalRecords }}</span>
-                    <span class="att-total-pill">Blocked: {{ $blockedRecords }}</span>
+                    @if($blockedRecords > 0)
+                    <span class="att-total-pill" style="border-color:#FECDD3; background:#FFF1F2; color:#E11D48;">Blocked: {{ $blockedRecords }}</span>
+                    @endif
 
                     <a href="{{ route('attendances.export-excel', request()->query()) }}" class="att-export-btn">
                         <i class="fas fa-file-csv text-success"></i> CSV
@@ -917,10 +948,22 @@
 
                         @if(!$isMyAttendance)
                         <div class="att-filter-group">
-                            <label>Search</label>
-                            <input type="text" name="search" class="form-control"
-                                value="{{ request('search') }}"
-                                placeholder="Name, email, employee code">
+                            <label><i class="fas fa-user text-primary mr-1"></i> Employee</label>
+                            <select name="employee_id" class="form-control select2-searchable" id="employeeSelect">
+                                <option value="all" {{ ((string)($selectedEmployeeId ?? request('employee_id')) === 'all') ? 'selected' : '' }}>👥 All Employees</option>
+                                @foreach($employees as $emp)
+                                @php 
+                                    $empId = optional($emp->employee)->id ?? $emp->id; 
+                                    $empName = $emp->name ?? optional($emp->user)->name ?? 'Employee';
+                                    $empCode = optional($emp->employee)->employee_code ?? $emp->employee_code ?? '';
+                                    $deptName = optional(optional($emp->employee)->department)->name ?? optional($emp->department)->name ?? '';
+                                    $isAuth = ($empId == ($currentEmployeeId ?? null));
+                                @endphp
+                                <option value="{{ $empId }}" {{ ((string)($selectedEmployeeId ?? request('employee_id')) === (string)$empId) ? 'selected' : '' }}>
+                                    {{ $empName }}{{ $empCode ? " ({$empCode})" : '' }}{{ $isAuth ? ' • [You]' : '' }}{{ $deptName ? " • {$deptName}" : '' }}
+                                </option>
+                                @endforeach
+                            </select>
                         </div>
                         @endif
 
@@ -938,21 +981,6 @@
                             <label>To Date</label>
                             <input type="date" name="to_date" class="form-control" value="{{ request('to_date') }}">
                         </div>
-
-                        @if(!$isMyAttendance)
-                        <div class="att-filter-group">
-                            <label>Employee</label>
-                            <select name="employee_id" class="form-control select2-searchable">
-                                <option value="">All Employees</option>
-                                @foreach($employees as $emp)
-                                @php $employeeId = optional($emp->employee)->id ?? $emp->id; @endphp
-                                <option value="{{ $employeeId }}" {{ request('employee_id') == $employeeId ? 'selected' : '' }}>
-                                    {{ $emp->name ?? optional($emp->user)->name ?? 'Employee' }}
-                                </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        @endif
 
                         <div class="att-filter-group">
                             <label>Status</label>
@@ -1473,9 +1501,16 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        if (typeof $ !== 'undefined' && $.fn.select2) {
+            $('.select2-searchable').select2({
+                width: '100%',
+                dropdownAutoWidth: true
+            });
+        }
         const form = document.getElementById('dailyAttendanceFilterForm');
         const filters = document.querySelectorAll('.auto-filter');
         const searchInput = document.querySelector('.auto-filter-input');

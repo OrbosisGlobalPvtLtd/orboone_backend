@@ -33,11 +33,29 @@ class WorkReportC extends Controller
             'attendance.attendanceTime'
         ]);
 
-        // Role-based scoping of employee visibility
-        $allPermission = 'attendance.work_reports.view_all';
-        $teamPermission = 'attendance.work_reports.view_team';
-        
-        $query = $this->scopeEmployeeVisibility($query, $allPermission, $teamPermission, 'employee_id');
+        $isMyWorkReports = request()->routeIs('hrms.attendance.my-work-reports') || request()->routeIs('my-work-reports');
+        if ($isMyWorkReports) {
+            $employee = \App\Models\HRMS\Employee\EmployeeM::where('user_id', auth()->id())->first();
+            $employeeId = $employee ? $employee->id : ($this->ownEmployeeId() ?: null);
+            $userId = auth()->id();
+
+            $query->where(function ($q) use ($employeeId, $userId) {
+                if ($employeeId && $userId) {
+                    $q->where('employee_id', $employeeId)->orWhere('user_id', $userId);
+                } elseif ($employeeId) {
+                    $q->where('employee_id', $employeeId);
+                } elseif ($userId) {
+                    $q->where('user_id', $userId);
+                } else {
+                    $q->whereRaw('1 = 0');
+                }
+            });
+        } else {
+            // Role-based scoping of employee visibility
+            $allPermission = 'attendance.work_reports.view_all';
+            $teamPermission = 'attendance.work_reports.view_team';
+            $query = $this->scopeEmployeeVisibility($query, $allPermission, $teamPermission, 'employee_id');
+        }
 
         // Apply request filters
         if ($request->filled('search')) {

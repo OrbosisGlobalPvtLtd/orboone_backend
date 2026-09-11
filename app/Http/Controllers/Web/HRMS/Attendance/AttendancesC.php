@@ -62,7 +62,7 @@ class AttendancesC extends Controller
             });
         }
 
-        if ($request->filled('employee_id')) {
+        if ($request->filled('employee_id') && $request->employee_id !== 'all') {
             $query->where('employee_id', $request->employee_id);
         }
 
@@ -498,16 +498,57 @@ class AttendancesC extends Controller
 
     public function attendanceRecord(Request $request)
     {
+        $isMyAttendance = request()->routeIs('hrms.attendance.my');
+
         abort_unless(
             $this->userHasPermission('attendance.records.view_all')
                 || $this->userHasPermission('attendance.my.view')
-                || $this->userHasPermission('attendance.regularization.view_team'),
+                || $this->userHasPermission('attendance.regularization.view_team')
+                || $this->canViewAll('attendance.records.view_all'),
             403
         );
 
-        $allPermission = request()->routeIs('hrms.attendance.my') ? 'attendance.__never_all' : 'attendance.records.view_all';
-        $teamPermission = request()->routeIs('hrms.attendance.my') ? null : 'attendance.regularization.view_team';
-        $query = $this->scopeAttendanceQuery($this->applyFilters($this->baseQuery(), $request), $allPermission, $teamPermission);
+        $currentEmployee = \App\Models\HRMS\Employee\EmployeeM::where('user_id', auth()->id())->first();
+        $currentEmployeeId = $currentEmployee ? $currentEmployee->id : ($this->ownEmployeeId() ?: null);
+        $userId = auth()->id();
+
+        if ($isMyAttendance) {
+            $selectedEmployeeId = $currentEmployeeId;
+            $cleanRequest = clone $request;
+            $cleanRequest->query->remove('employee_id');
+            $cleanRequest->query->remove('search');
+
+            $query = $this->applyFilters($this->baseQuery(), $cleanRequest);
+            $query->where(function ($q) use ($currentEmployeeId, $userId) {
+                if ($currentEmployeeId && $userId) {
+                    $q->where('employee_id', $currentEmployeeId)->orWhere('user_id', $userId);
+                } elseif ($currentEmployeeId) {
+                    $q->where('employee_id', $currentEmployeeId);
+                } elseif ($userId) {
+                    $q->where('user_id', $userId);
+                } else {
+                    $q->whereRaw('1 = 0');
+                }
+            });
+        } else {
+            // Admin / HR Admin page (/attendances/record)
+            // By default (first page load without employee_id query param), show the authenticated user's attendance
+            $hasEmployeeFilter = $request->filled('employee_id');
+            if ($hasEmployeeFilter) {
+                $selectedEmployeeId = $request->input('employee_id');
+            } else {
+                $selectedEmployeeId = $currentEmployeeId ? (string) $currentEmployeeId : 'all';
+            }
+
+            $filterRequest = clone $request;
+            if (! $hasEmployeeFilter && $selectedEmployeeId && $selectedEmployeeId !== 'all') {
+                $filterRequest->merge(['employee_id' => $selectedEmployeeId]);
+            } elseif ($selectedEmployeeId === 'all') {
+                $filterRequest->query->remove('employee_id');
+            }
+
+            $query = $this->scopeAttendanceQuery($this->applyFilters($this->baseQuery(), $filterRequest), 'attendance.records.view_all', 'attendance.regularization.view_team');
+        }
 
         $perPage = 50;
         if ($request->filled('per_page')) {
@@ -522,7 +563,16 @@ class AttendancesC extends Controller
         $departments = DepartmentM::orderBy('name')->get();
         $canManageAttendance = $this->canManageAttendance();
 
-        return view('hrms.attendance.record', compact('attendances', 'employees', 'attendanceTypes', 'attendanceTimes', 'departments', 'canManageAttendance'));
+        return view('hrms.attendance.record', compact(
+            'attendances',
+            'employees',
+            'attendanceTypes',
+            'attendanceTimes',
+            'departments',
+            'canManageAttendance',
+            'selectedEmployeeId',
+            'currentEmployeeId'
+        ));
     }
 
     public function unlock(Request $request)
@@ -1282,7 +1332,7 @@ class AttendancesC extends Controller
         $isEmployeeRole = ($user->role_id ?? null) == 7 
             || ($user->system_role_id ?? null) == 7;
 
-        $query = User::whereHas('employee')->with('employee')->orderBy('name');
+        $query = User::whereHas('employee')->with(['employee.department', 'employee.designation'])->orderBy('name');
         if ($isEmployeeRole || (! $this->canViewAll('attendance.records.view_all') && ! $this->canViewAll('attendance.monthly_report.view_all'))) {
             $ids = ($this->userHasPermission('attendance.monthly_report.view_team') || $this->userHasPermission('attendance.regularization.view_team')) && ! $isEmployeeRole
                 ? $this->teamEmployeeIds(true)

@@ -244,6 +244,9 @@ class LeaveAllocationService
             if (! $date) {
                 $date = $employee->confirmation_effective_date ?: $employee->confirmation_date;
             }
+            if (! $date) {
+                $date = $employee->joining_date;
+            }
         } elseif ($stage === 'internship') {
             $date = $effectiveDate?->toDateString()
                 ?: $employee->internship_start_date

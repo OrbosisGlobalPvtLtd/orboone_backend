@@ -5,48 +5,52 @@
                     $employeeInitial = $initial;
                     $employeeName = $employeeData->name ?? 'Employee';
                     @endphp
-                    <span class="hrms-emp-avatar mr-3">
-                        @if($passportPhotoUrl)
-                        <img
-                            src="{{ $passportPhotoUrl }}"
-                            alt="{{ $employeeName }}"
-                            class="hrms-emp-avatar-img"
-                            onerror="this.style.display='none'; this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.remove('is-hidden'); this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.add('is-visible');">
-                        <span class="hrms-emp-avatar-fallback is-hidden">
-                            {{ $employeeInitial }}
+                    <div class="ev-avatar-wrap">
+                        <span class="hrms-emp-avatar">
+                            @if($passportPhotoUrl)
+                            <img
+                                src="{{ $passportPhotoUrl }}"
+                                alt="{{ $employeeName }}"
+                                class="hrms-emp-avatar-img"
+                                onerror="this.style.display='none'; this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.remove('is-hidden'); this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.add('is-visible');">
+                            <span class="hrms-emp-avatar-fallback is-hidden">
+                                {{ $employeeInitial }}
+                            </span>
+                            @else
+                            <span class="hrms-emp-avatar-fallback is-visible">
+                                {{ $employeeInitial }}
+                            </span>
+                            @endif
                         </span>
-                        @else
-                        <span class="hrms-emp-avatar-fallback is-visible">
-                            {{ $employeeInitial }}
-                        </span>
-                        @endif
-                    </span>
+                    </div>
 
-                    <div>
+                    <div class="ev-user-details">
                         <h1 class="ev-title">{{ $employeeData->name ?? 'Employee' }}</h1>
                         <p class="ev-sub">
-                            {{ $employeeData->employee_code ?? '-' }}
-                            · {{ $employeeData->department_name ?? 'No Department' }}
-                            · {{ $employeeData->designation_name ?? 'No Designation' }}
+                            <span>{{ $employeeData->employee_code ?? '-' }}</span>
+                            <span class="ev-sub-dot">·</span>
+                            <span>{{ $employeeData->department_name ?? 'No Department' }}</span>
+                            <span class="ev-sub-dot">·</span>
+                            <span>{{ $employeeData->designation_name ?? 'No Designation' }}</span>
                         </p>
 
-                        <div class="mt-2 d-flex flex-wrap gap-2 align-items-center">
+                        <div class="ev-pills-wrap">
                             <span class="ev-pill {{ $employmentStatus === 'active' ? 'ev-pill-active' : 'ev-pill-inactive' }}">
-                                <i class="fas fa-circle mr-1" style="font-size: 8px;"></i>{{ ucfirst($employmentStatus) }}
+                                <i class="fas fa-circle" style="font-size: 7px;"></i> {{ ucfirst($employmentStatus) }}
                             </span>
                             <span class="ev-pill ev-pill-default">
-                                <i class="fas fa-layer-group mr-1"></i>{{ ucfirst(str_replace('_', ' ', $stage)) }}
+                                <i class="fas fa-layer-group"></i> {{ ucfirst(str_replace('_', ' ', $stage)) }}
                             </span>
                             <span class="ev-pill {{ $profileStatus === 'approved' ? 'ev-pill-completed' : ($profileStatus === 'submitted' ? 'ev-pill-submitted' : ($profileStatus === 'rejected' ? 'ev-pill-rejected' : 'ev-pill-pending')) }}">
-                                <i class="fas fa-id-card mr-1"></i>{{ $isCompleted ? 'Profile Approved' : ucfirst($profileStatus) }}
+                                <i class="fas fa-id-card"></i> {{ $isCompleted ? 'Profile Approved' : ucfirst($profileStatus) }}
                             </span>
                             @if ($isPermanent && $stage !== 'permanent')
                             <span class="ev-pill ev-pill-completed">
-                                <i class="fas fa-user-check mr-1"></i>Permanent
+                                <i class="fas fa-user-check"></i> Permanent
                             </span>
                             @endif
                             <span class="ev-pill ev-pill-default">
-                                <i class="fas fa-briefcase mr-1"></i>{{ strtoupper($employeeData->work_mode ?? '-') }}
+                                <i class="fas fa-briefcase"></i> {{ strtoupper($employeeData->work_mode ?? '-') }}
                             </span>
                         </div>
                     </div>
@@ -54,7 +58,7 @@
 
                 <div class="ev-actions">
                     <a href="{{ route('hrms.employees.index') }}" class="ev-btn-back">
-                        <i class="fas fa-arrow-left"></i> Back
+                        <i class="fas fa-arrow-left"></i> <span>Back</span>
                     </a>
                 </div>
             </div>

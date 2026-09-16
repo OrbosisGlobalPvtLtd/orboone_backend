@@ -52,6 +52,7 @@ class EmployeePermanentDeleteS
         $counts('generated_document_logs', 'actor_user_id', $userId);
         $counts('asset_allocations', 'employee_id', $employeeId);
         $counts('employee_policy_assignments', 'employee_id', $employeeId);
+        $counts('employee_shift_timings', 'employee_id', $employeeId);
         $counts('leave_policy_employee_overrides', 'employee_id', $employeeId);
         $counts('attendance_policy_employee_overrides', 'employee_id', $employeeId);
 
@@ -169,6 +170,7 @@ class EmployeePermanentDeleteS
             $deleteBy('generated_documents', 'employee_id', $employeeId);
             $deleteBy('asset_allocations', 'employee_id', $employeeId);
             $deleteBy('employee_policy_assignments', 'employee_id', $employeeId);
+            $deleteBy('employee_shift_timings', 'employee_id', $employeeId);
             $deleteBy('leave_policy_employee_overrides', 'employee_id', $employeeId);
             $deleteBy('attendance_policy_employee_overrides', 'employee_id', $employeeId);
 

@@ -10,6 +10,7 @@ use App\Services\HRMS\Employee\EmployeeLifecycleService;
 use App\Services\HRMS\Employee\EmployeePermanentDeleteS;
 use App\Services\HRMS\Employee\EmployeeSalaryHistoryService;
 use App\Services\HRMS\Employee\EmployeeS;
+use App\Services\HRMS\Employee\EmployeeShiftAssignmentService;
 use App\Http\Requests\Web\HRMS\Employee\InitiateExitRequest;
 use App\Http\Requests\Web\HRMS\Employee\StoreEmployeeOnboardingRequest;
 use App\Http\Requests\Web\HRMS\Employee\UpdateManageEmployeeRequest;
@@ -35,19 +36,22 @@ class EmployeeC extends Controller
     private EmployeeSalaryHistoryService $salaryHistoryService;
     private EmployeePermanentDeleteS $permanentDeleteService;
     private EmployeeExitProcessS $exitProcessService;
+    private EmployeeShiftAssignmentService $shiftAssignmentService;
 
     public function __construct(
         EmployeeS $employeeService,
         EmployeeLifecycleService $lifecycleService,
         EmployeeSalaryHistoryService $salaryHistoryService,
         EmployeePermanentDeleteS $permanentDeleteService,
-        EmployeeExitProcessS $exitProcessService
+        EmployeeExitProcessS $exitProcessService,
+        EmployeeShiftAssignmentService $shiftAssignmentService
     ) {
         $this->employeeService = $employeeService;
         $this->lifecycleService = $lifecycleService;
         $this->salaryHistoryService = $salaryHistoryService;
         $this->permanentDeleteService = $permanentDeleteService;
         $this->exitProcessService = $exitProcessService;
+        $this->shiftAssignmentService = $shiftAssignmentService;
     }
 
     public function index(Request $request)
@@ -77,35 +81,50 @@ class EmployeeC extends Controller
         }
 
         $today = Carbon::now('Asia/Kolkata')->toDateString();
+
+        $latestShiftSub = DB::table('employee_shift_timings')
+            ->where('is_active', 1)
+            ->where(function ($q) use ($today) {
+                $q->whereNull('effective_from')
+                    ->orWhereDate('effective_from', '<=', $today);
+            })
+            ->where(function ($q) use ($today) {
+                $q->whereNull('effective_to')
+                    ->orWhereDate('effective_to', '>=', $today);
+            })
+            ->select('employee_id', DB::raw('MAX(id) as max_id'))
+            ->groupBy('employee_id');
+
         $activeShiftTimingSub = DB::table('employee_shift_timings')
+            ->joinSub($latestShiftSub, 'latest_shift', function ($join) {
+                $join->on('employee_shift_timings.id', '=', 'latest_shift.max_id');
+            })
             ->leftJoin('attendance_times', 'attendance_times.id', '=', 'employee_shift_timings.attendance_time_id')
-            ->where('employee_shift_timings.is_active', 1)
-            ->where(function ($q) use ($today) {
-                $q->whereNull('employee_shift_timings.effective_from')
-                    ->orWhereDate('employee_shift_timings.effective_from', '<=', $today);
-            })
-            ->where(function ($q) use ($today) {
-                $q->whereNull('employee_shift_timings.effective_to')
-                    ->orWhereDate('employee_shift_timings.effective_to', '>=', $today);
-            })
             ->select(
                 'employee_shift_timings.employee_id',
                 'attendance_times.name as timing_shift_name',
                 'attendance_times.shift_type as timing_shift_type'
             );
 
+        $latestPolicySub = DB::table('employee_policy_assignments')
+            ->where('policy_type', 'attendance')
+            ->where('is_active', 1)
+            ->where(function ($q) use ($today) {
+                $q->whereNull('effective_from')
+                    ->orWhereDate('effective_from', '<=', $today);
+            })
+            ->where(function ($q) use ($today) {
+                $q->whereNull('effective_to')
+                    ->orWhereDate('effective_to', '>=', $today);
+            })
+            ->select('employee_id', DB::raw('MAX(id) as max_id'))
+            ->groupBy('employee_id');
+
         $activeAssignmentsSub = DB::table('employee_policy_assignments')
+            ->joinSub($latestPolicySub, 'latest_policy', function ($join) {
+                $join->on('employee_policy_assignments.id', '=', 'latest_policy.max_id');
+            })
             ->join('attendance_policy_rules', 'attendance_policy_rules.id', '=', 'employee_policy_assignments.policy_id')
-            ->where('employee_policy_assignments.policy_type', 'attendance')
-            ->where('employee_policy_assignments.is_active', 1)
-            ->where(function ($q) use ($today) {
-                $q->whereNull('employee_policy_assignments.effective_from')
-                    ->orWhereDate('employee_policy_assignments.effective_from', '<=', $today);
-            })
-            ->where(function ($q) use ($today) {
-                $q->whereNull('employee_policy_assignments.effective_to')
-                    ->orWhereDate('employee_policy_assignments.effective_to', '>=', $today);
-            })
             ->select('employee_policy_assignments.employee_id', 'attendance_policy_rules.policy_name');
 
         $baseQuery = DB::table($employeeTable)
@@ -219,7 +238,6 @@ class EmployeeC extends Controller
                             ->orWhere($employeeTable . '.employee_code', 'like', "%{$searchValue}%")
                             ->orWhere('departments.name', 'like', "%{$searchValue}%")
                             ->orWhere('designations.name', 'like', "%{$searchValue}%")
-                            ->orWhere('manager_user.name', 'like', "%{$searchValue}%")
                             ->orWhere($employeeTable . '.employment_type', 'like', "%{$searchValue}%")
                             ->orWhere($employeeTable . '.employee_stage', 'like', "%{$searchValue}%")
                             ->orWhere($employeeTable . '.work_mode', 'like', "%{$searchValue}%")
@@ -640,47 +658,25 @@ class EmployeeC extends Controller
             }
 
             if ($shift) {
-                $isFlexible = $request->work_schedule_type === 'flexible_part_time';
-                $isDynamicHours = strtolower($shift->shift_type ?? '') === 'dynamic_hours' || $request->work_schedule_type === 'dynamic_hours';
-
-                if ($isDynamicHours) {
-                    $punchAllowed = null;
-                    $shiftStart   = null;
-                    $lateAfter    = null;
-                    $halfDayAfter = null;
-                    $blockAfter   = null;
-                    $shiftEnd     = null;
-                    $reqMinutes   = $request->filled('required_work_minutes') ? (int) $request->required_work_minutes : $shift->required_work_minutes;
-                    $lunchMinutes = $request->filled('lunch_minutes') ? (int) $request->lunch_minutes : ($shift->lunch_break_minutes ?? 0);
-                } else {
-                    $punchAllowed = $isFlexible ? $request->punch_allowed_from : $shift->punch_allowed_from;
-                    $shiftStart = $isFlexible ? $request->shift_start_time : $shift->shift_start_time;
-                    $lateAfter = $isFlexible ? $request->late_after_time : $shift->late_after_time;
-                    $halfDayAfter = $isFlexible ? $request->half_day_after_time : $shift->half_day_after_time;
-                    $blockAfter = $isFlexible ? $request->block_after_time : $shift->block_after_time;
-                    $shiftEnd = $isFlexible ? $request->shift_end_time : $shift->shift_end_time;
-                    $reqMinutes = $isFlexible ? $request->required_work_minutes : $shift->required_work_minutes;
-                    $lunchMinutes = $isFlexible ? $request->lunch_minutes : $shift->lunch_break_minutes;
-                }
-
-                DB::table('employee_shift_timings')->insert([
-                    'employee_id' => $employeeId,
-                    'attendance_time_id' => $shift->id,
-                    'attendance_policy_rule_id' => $request->attendance_policy_rule_id ?? $request->attendance_policy_id ?? DB::table('employees_new')->where('id', $employeeId)->value('attendance_policy_rule_id'),
-                    'punch_allowed_from' => $punchAllowed ? Carbon::parse($punchAllowed)->format('H:i:s') : null,
-                    'shift_start_time' => $shiftStart ? Carbon::parse($shiftStart)->format('H:i:s') : null,
-                    'late_after_time' => $lateAfter ? Carbon::parse($lateAfter)->format('H:i:s') : null,
-                    'half_day_after_time' => $halfDayAfter ? Carbon::parse($halfDayAfter)->format('H:i:s') : null,
-                    'block_after_time' => $blockAfter ? Carbon::parse($blockAfter)->format('H:i:s') : null,
-                    'shift_end_time' => $shiftEnd ? Carbon::parse($shiftEnd)->format('H:i:s') : null,
-                    'required_work_minutes' => $reqMinutes,
-                    'lunch_minutes' => $lunchMinutes,
-                    'effective_from' => $lifecyclePayload['joining_date'] ?: Carbon::now('Asia/Kolkata')->toDateString(),
-                    'is_active' => 1,
-                    'created_by' => Auth::id() ?: 1,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                $this->shiftAssignmentService->assignShift(
+                    (int) $employeeId,
+                    [
+                        'attendance_time_id' => $shift->id,
+                        'attendance_policy_rule_id' => $request->attendance_policy_rule_id ?? $request->attendance_policy_id ?? DB::table('employees_new')->where('id', $employeeId)->value('attendance_policy_rule_id'),
+                        'work_schedule_type' => $request->work_schedule_type,
+                        'punch_allowed_from' => $request->punch_allowed_from,
+                        'shift_start_time' => $request->shift_start_time,
+                        'late_after_time' => $request->late_after_time,
+                        'half_day_after_time' => $request->half_day_after_time,
+                        'block_after_time' => $request->block_after_time,
+                        'shift_end_time' => $request->shift_end_time,
+                        'required_work_minutes' => $request->required_work_minutes,
+                        'lunch_minutes' => $request->lunch_minutes,
+                        'effective_from' => $lifecyclePayload['joining_date'] ?: Carbon::now('Asia/Kolkata')->toDateString(),
+                        'is_active' => 1,
+                    ],
+                    Auth::id() ?: 1
+                );
             }
 
             $this->salaryHistoryService->syncSalary(
@@ -1160,10 +1156,11 @@ class EmployeeC extends Controller
                             ->where('id', $assignment->id)
                             ->delete();
                     } else {
-                        // Ends yesterday
+                        // Ends yesterday and deactivated
                         DB::table('employee_policy_assignments')
                             ->where('id', $assignment->id)
                             ->update([
+                                'is_active' => 0,
                                 'effective_to' => $yesterday,
                                 'updated_at' => now(),
                             ]);
@@ -1184,167 +1181,28 @@ class EmployeeC extends Controller
             }
 
             if ($newShift) {
-                $isFlexible = $request->work_schedule_type === 'flexible_part_time';
-                $isDynamicHours = strtolower($newShift->shift_type ?? '') === 'dynamic_hours' || $request->work_schedule_type === 'dynamic_hours';
+                $shiftResult = $this->shiftAssignmentService->assignShift(
+                    (int) $employee,
+                    [
+                        'attendance_time_id' => $newShift->id,
+                        'attendance_policy_rule_id' => $request->attendance_policy_rule_id ?? $request->attendance_policy_id ?? DB::table('employees_new')->where('id', $employee)->value('attendance_policy_rule_id'),
+                        'work_schedule_type' => $request->work_schedule_type,
+                        'punch_allowed_from' => $request->punch_allowed_from,
+                        'shift_start_time' => $request->shift_start_time,
+                        'late_after_time' => $request->late_after_time,
+                        'half_day_after_time' => $request->half_day_after_time,
+                        'block_after_time' => $request->block_after_time,
+                        'shift_end_time' => $request->shift_end_time,
+                        'required_work_minutes' => $request->required_work_minutes,
+                        'lunch_minutes' => $request->lunch_minutes,
+                        'effective_from' => $request->shift_effective_from,
+                        'is_active' => 1,
+                    ],
+                    Auth::id() ?: 1
+                );
 
-                if ($isDynamicHours) {
-                    $punchAllowed = null;
-                    $shiftStart   = null;
-                    $lateAfter    = null;
-                    $halfDayAfter = null;
-                    $blockAfter   = null;
-                    $shiftEnd     = null;
-                    $reqMinutes   = $request->filled('required_work_minutes') ? (int) $request->required_work_minutes : $newShift->required_work_minutes;
-                    $lunchMinutes = $request->filled('lunch_minutes') ? (int) $request->lunch_minutes : ($newShift->lunch_break_minutes ?? 0);
-                } else {
-                    $punchAllowed = $isFlexible ? ($request->punch_allowed_from ? Carbon::parse($request->punch_allowed_from)->format('H:i:s') : null) : $newShift->punch_allowed_from;
-                    $shiftStart = $isFlexible ? ($request->shift_start_time ? Carbon::parse($request->shift_start_time)->format('H:i:s') : null) : $newShift->shift_start_time;
-                    $lateAfter = $isFlexible ? ($request->late_after_time ? Carbon::parse($request->late_after_time)->format('H:i:s') : null) : $newShift->late_after_time;
-                    $halfDayAfter = $isFlexible ? ($request->half_day_after_time ? Carbon::parse($request->half_day_after_time)->format('H:i:s') : null) : $newShift->half_day_after_time;
-                    $blockAfter = $isFlexible ? ($request->block_after_time ? Carbon::parse($request->block_after_time)->format('H:i:s') : null) : $newShift->block_after_time;
-                    $shiftEnd = $isFlexible ? ($request->shift_end_time ? Carbon::parse($request->shift_end_time)->format('H:i:s') : null) : $newShift->shift_end_time;
-                    $reqMinutes = $isFlexible ? ($request->required_work_minutes !== null ? (int) $request->required_work_minutes : null) : $newShift->required_work_minutes;
-                    $lunchMinutes = $isFlexible ? ($request->lunch_minutes !== null ? (int) $request->lunch_minutes : null) : $newShift->lunch_break_minutes;
-                }
-
-                $activeTiming = DB::table('employee_shift_timings')
-                    ->where('employee_id', $employee)
-                    ->where('is_active', 1)
-                    ->first();
-
-                // Format values for active timing comparison
-                $activePunchAllowed = $activeTiming ? ($activeTiming->punch_allowed_from ? Carbon::parse($activeTiming->punch_allowed_from)->format('H:i:s') : null) : null;
-                $activeShiftStart = $activeTiming ? ($activeTiming->shift_start_time ? Carbon::parse($activeTiming->shift_start_time)->format('H:i:s') : null) : null;
-                $activeLateAfter = $activeTiming ? ($activeTiming->late_after_time ? Carbon::parse($activeTiming->late_after_time)->format('H:i:s') : null) : null;
-                $activeHalfDayAfter = $activeTiming ? ($activeTiming->half_day_after_time ? Carbon::parse($activeTiming->half_day_after_time)->format('H:i:s') : null) : null;
-                $activeBlockAfter = $activeTiming ? ($activeTiming->block_after_time ? Carbon::parse($activeTiming->block_after_time)->format('H:i:s') : null) : null;
-                $activeShiftEnd = $activeTiming ? ($activeTiming->shift_end_time ? Carbon::parse($activeTiming->shift_end_time)->format('H:i:s') : null) : null;
-
-                $hasChanges = !$activeTiming
-                    || (int)$activeTiming->attendance_time_id !== (int)$newShift->id
-                    || $activePunchAllowed !== $punchAllowed
-                    || $activeShiftStart !== $shiftStart
-                    || $activeLateAfter !== $lateAfter
-                    || $activeHalfDayAfter !== $halfDayAfter
-                    || $activeBlockAfter !== $blockAfter
-                    || $activeShiftEnd !== $shiftEnd
-                    || (int)$activeTiming->required_work_minutes !== $reqMinutes
-                    || (int)$activeTiming->lunch_minutes !== $lunchMinutes;
-
-                if ($hasChanges) {
-                    $targetEffectiveFrom = $request->shift_effective_from ?: Carbon::now('Asia/Kolkata')->toDateString();
-
-                    $hasPunchedIn = DB::table('attendances')
-                        ->where('employee_id', $employee)
-                        ->whereDate('attendance_date', $targetEffectiveFrom)
-                        ->whereNotNull('punch_in_time')
-                        ->exists();
-
-                    if ($hasPunchedIn) {
-                        $newEffectiveFrom = Carbon::parse($targetEffectiveFrom)->addDay()->toDateString();
-
-                        if ($activeTiming) {
-                            if ($activeTiming->effective_from && Carbon::parse($activeTiming->effective_from)->gt(Carbon::parse($targetEffectiveFrom))) {
-                                DB::table('employee_shift_timings')
-                                    ->where('id', $activeTiming->id)
-                                    ->delete();
-                            } else {
-                                DB::table('employee_shift_timings')
-                                    ->where('id', $activeTiming->id)
-                                    ->update([
-                                        'is_active' => 1,
-                                        'effective_to' => $targetEffectiveFrom,
-                                        'updated_at' => now(),
-                                    ]);
-                            }
-                        }
-
-                        DB::table('employee_shift_timings')->insert([
-                            'employee_id' => $employee,
-                            'attendance_time_id' => $newShift->id,
-                            'attendance_policy_rule_id' => $request->attendance_policy_rule_id ?? $request->attendance_policy_id ?? DB::table('employees_new')->where('id', $employee)->value('attendance_policy_rule_id'),
-                            'punch_allowed_from' => $punchAllowed,
-                            'shift_start_time' => $shiftStart,
-                            'late_after_time' => $lateAfter,
-                            'half_day_after_time' => $halfDayAfter,
-                            'block_after_time' => $blockAfter,
-                            'shift_end_time' => $shiftEnd,
-                            'required_work_minutes' => $reqMinutes,
-                            'lunch_minutes' => $lunchMinutes,
-                            'effective_from' => $newEffectiveFrom,
-                            'is_active' => 1,
-                            'created_by' => Auth::id() ?: 1,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-
-                        session()->flash('warning', "The employee has already punched in today. The current day's attendance will remain on the existing shift. The new shift will automatically become effective from tomorrow.");
-                    } else {
-                        $newEffectiveFrom = $targetEffectiveFrom;
-                        $yesterday = Carbon::parse($targetEffectiveFrom)->subDay()->toDateString();
-
-                        $isFlexibleNew = $request->work_schedule_type === 'flexible_part_time';
-                        $isFlexibleOld = false;
-                        if ($activeTiming) {
-                            $oldShiftType = DB::table('attendance_times')->where('id', $activeTiming->attendance_time_id)->value('shift_type');
-                            $isFlexibleOld = ($oldShiftType === 'flexible_part_time');
-                        }
-
-                        if ($activeTiming && $isFlexibleOld && $isFlexibleNew && ($activeTiming->effective_from && Carbon::parse($activeTiming->effective_from)->eq(Carbon::parse($newEffectiveFrom)))) {
-                            // CASE 4: Flexible -> Flexible. Update timing fields of current active Flexible assignment in place.
-                            DB::table('employee_shift_timings')
-                                ->where('id', $activeTiming->id)
-                                ->update([
-                                    'punch_allowed_from' => $punchAllowed,
-                                    'shift_start_time' => $shiftStart,
-                                    'late_after_time' => $lateAfter,
-                                    'half_day_after_time' => $halfDayAfter,
-                                    'block_after_time' => $blockAfter,
-                                    'shift_end_time' => $shiftEnd,
-                                    'required_work_minutes' => $reqMinutes,
-                                    'lunch_minutes' => $lunchMinutes,
-                                    'updated_at' => now(),
-                                ]);
-                        } else {
-                            if ($activeTiming) {
-                                if ($activeTiming->effective_from && Carbon::parse($activeTiming->effective_from)->gte(Carbon::parse($newEffectiveFrom))) {
-                                    // Overwriting timing changed today/future - delete old row to avoid date overlap
-                                    DB::table('employee_shift_timings')
-                                        ->where('id', $activeTiming->id)
-                                        ->delete();
-                                } else {
-                                    // Deactivate old row: is_active = 0, effective_to = yesterday
-                                    DB::table('employee_shift_timings')
-                                        ->where('id', $activeTiming->id)
-                                        ->update([
-                                            'is_active' => 0,
-                                            'effective_to' => $yesterday,
-                                            'updated_at' => now(),
-                                        ]);
-                                }
-                            }
-
-                            // Insert new row: is_active = 1, effective_from = newEffectiveFrom, effective_to = null
-                            DB::table('employee_shift_timings')->insert([
-                                'employee_id' => $employee,
-                                'attendance_time_id' => $newShift->id,
-                                'attendance_policy_rule_id' => $request->attendance_policy_rule_id ?? $request->attendance_policy_id ?? DB::table('employees_new')->where('id', $employee)->value('attendance_policy_rule_id'),
-                                'punch_allowed_from' => $punchAllowed,
-                                'shift_start_time' => $shiftStart,
-                                'late_after_time' => $lateAfter,
-                                'half_day_after_time' => $halfDayAfter,
-                                'block_after_time' => $blockAfter,
-                                'shift_end_time' => $shiftEnd,
-                                'required_work_minutes' => $reqMinutes,
-                                'lunch_minutes' => $lunchMinutes,
-                                'effective_from' => $newEffectiveFrom,
-                                'is_active' => 1,
-                                'created_by' => Auth::id() ?: 1,
-                                'created_at' => now(),
-                                'updated_at' => now(),
-                            ]);
-                        }
-                    }
+                if (!empty($shiftResult['warning'])) {
+                    session()->flash('warning', $shiftResult['warning']);
                 }
             }
 

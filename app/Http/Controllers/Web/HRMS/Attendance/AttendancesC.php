@@ -13,6 +13,7 @@ use App\Models\HRMS\Department\DepartmentM;
 use App\Models\HRMS\Employee\EmployeeM;
 use App\Models\HRMS\Employee\EmployeeShiftTimingM;
 use App\Services\HRMS\Attendance\AttendanceS;
+use App\Services\HRMS\Employee\EmployeeShiftAssignmentService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -1074,15 +1075,13 @@ class AttendancesC extends Controller
             'is_active' => 'boolean',
         ]);
         $data['is_active'] = $request->boolean('is_active', true);
-        $data['created_by'] = auth()->id();
 
-        if ($data['is_active']) {
-            EmployeeShiftTimingM::where('employee_id', $data['employee_id'])
-                ->where('is_active', true)
-                ->update(['is_active' => false]);
+        $shiftService = app(EmployeeShiftAssignmentService::class);
+        $result = $shiftService->assignShift((int) $data['employee_id'], $data, auth()->id());
+
+        if (!empty($result['warning'])) {
+            session()->flash('warning', $result['warning']);
         }
-
-        EmployeeShiftTimingM::create($data);
 
         return back()->with('status', 'Employee shift timing assigned successfully.');
     }
@@ -1104,10 +1103,10 @@ class AttendancesC extends Controller
             'lunch_minutes' => 'nullable|integer',
             'is_active' => 'boolean',
         ]);
-        $data['is_active'] = $request->boolean('is_active');
-        $data['updated_by'] = auth()->id();
+        $data['is_active'] = $request->boolean('is_active', true);
 
-        $employeeShiftTiming->update($data);
+        $shiftService = app(EmployeeShiftAssignmentService::class);
+        $shiftService->updateShiftAssignment((int) $employeeShiftTiming->id, $data, auth()->id());
 
         return back()->with('status', 'Employee shift timing updated successfully.');
     }

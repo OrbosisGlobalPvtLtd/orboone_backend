@@ -1,3 +1,28 @@
+@php
+$formattedShiftDefaultTimings = [];
+foreach ($attendanceTimes ?? [] as $shiftItem) {
+    if (!empty($shiftItem->code)) {
+        $formattedShiftDefaultTimings[$shiftItem->code] = [
+            'punch_allowed_from' => $shiftItem->punch_allowed_from ? \Carbon\Carbon::parse($shiftItem->punch_allowed_from)->format('H:i') : '',
+            'shift_start_time' => $shiftItem->shift_start_time ? \Carbon\Carbon::parse($shiftItem->shift_start_time)->format('H:i') : '',
+            'late_after_time' => $shiftItem->late_after_time ? \Carbon\Carbon::parse($shiftItem->late_after_time)->format('H:i') : '',
+            'half_day_after_time' => $shiftItem->half_day_after_time ? \Carbon\Carbon::parse($shiftItem->half_day_after_time)->format('H:i') : '',
+            'block_after_time' => $shiftItem->block_after_time ? \Carbon\Carbon::parse($shiftItem->block_after_time)->format('H:i') : '',
+            'shift_end_time' => $shiftItem->shift_end_time ? \Carbon\Carbon::parse($shiftItem->shift_end_time)->format('H:i') : '',
+            'required_work_minutes' => (string) ($shiftItem->required_work_minutes ?? ''),
+            'lunch_minutes' => (string) ($shiftItem->lunch_break_minutes ?? ''),
+        ];
+    }
+}
+@endphp
+
+<script type="application/json" id="manage-shift-default-timings">
+    {!! json_encode($formattedShiftDefaultTimings, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!}
+</script>
+<script type="application/json" id="manage-form-errors">
+    {!! json_encode((bool) $errors->any()) !!}
+</script>
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Toast Alert System Helper
@@ -570,20 +595,8 @@
             }
         }
 
-        const shiftDefaultTimings = {
-            @foreach($attendanceTimes as $shiftItem)
-            '{{ $shiftItem->code }}': {
-                'punch_allowed_from': '{{ $shiftItem->punch_allowed_from ? \Carbon\Carbon::parse($shiftItem->punch_allowed_from)->format('H:i') : '' }}',
-                'shift_start_time': '{{ $shiftItem->shift_start_time ? \Carbon\Carbon::parse($shiftItem->shift_start_time)->format('H:i') : '' }}',
-                'late_after_time': '{{ $shiftItem->late_after_time ? \Carbon\Carbon::parse($shiftItem->late_after_time)->format('H:i') : '' }}',
-                'half_day_after_time': '{{ $shiftItem->half_day_after_time ? \Carbon\Carbon::parse($shiftItem->half_day_after_time)->format('H:i') : '' }}',
-                'block_after_time': '{{ $shiftItem->block_after_time ? \Carbon\Carbon::parse($shiftItem->block_after_time)->format('H:i') : '' }}',
-                'shift_end_time': '{{ $shiftItem->shift_end_time ? \Carbon\Carbon::parse($shiftItem->shift_end_time)->format('H:i') : '' }}',
-                'required_work_minutes': '{{ $shiftItem->required_work_minutes ?? '' }}',
-                'lunch_minutes': '{{ $shiftItem->lunch_break_minutes ?? '' }}'
-            },
-            @endforeach
-        };
+        const shiftDefaultTimingsEl = document.getElementById('manage-shift-default-timings');
+        const shiftDefaultTimings = shiftDefaultTimingsEl ? JSON.parse(shiftDefaultTimingsEl.textContent || '{}') : {};
 
         function formatTimeTo12Hour(timeStr) {
             if (!timeStr) return '--:--';
@@ -829,12 +842,14 @@
         handleScheduleChange(true);
 
         // Handle Laravel validation redirect fallbacks (if any non-ajax errors exist)
-        @if($errors->any())
-        const cardA = document.getElementById('cardA');
-        if (cardA) {
-            const editBtn = cardA.querySelector('.edit-sec-btn');
-            if (editBtn) editBtn.click();
+        const formErrorsEl = document.getElementById('manage-form-errors');
+        const hasFormErrors = formErrorsEl ? JSON.parse(formErrorsEl.textContent || 'false') : false;
+        if (hasFormErrors) {
+            const cardA = document.getElementById('cardA');
+            if (cardA) {
+                const editBtn = cardA.querySelector('.edit-sec-btn');
+                if (editBtn) editBtn.click();
+            }
         }
-        @endif
     });
 </script>

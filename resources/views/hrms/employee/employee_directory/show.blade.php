@@ -16,21 +16,22 @@
 
 .ev-page {
     min-height: calc(100vh - 90px) !important;
-    padding: 24px 24px 30px !important;
+    padding: 24px !important;
     background: var(--orb-bg) !important;
 }
 
 .ev-container {
     max-width: 1280px !important;
     margin: 0 auto !important;
+    width: 100% !important;
 }
 
 .ev-header {
-    background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary)) !important;
+    background: linear-gradient(135deg, var(--orb-primary, #6366F1), var(--orb-secondary, #8B5CF6)) !important;
     color: #ffffff !important;
     border: 0 !important;
     border-radius: 26px !important;
-    box-shadow: var(--orb-shadow) !important;
+    box-shadow: var(--orb-shadow, 0 14px 35px rgba(16, 24, 40, 0.07)) !important;
     padding: 24px 28px !important;
     display: flex !important;
     justify-content: space-between !important;
@@ -42,30 +43,42 @@
 .ev-user {
     display: flex !important;
     align-items: center !important;
-    gap: 16px !important;
+    gap: 18px !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
 }
 
-.ev-avatar {
+.ev-avatar-wrap {
+    flex-shrink: 0 !important;
+}
+
+.ev-header .hrms-emp-avatar {
     width: 74px !important;
     height: 74px !important;
-    border-radius: 50% !important;
-    background: rgba(255, 255, 255, 0.15) !important;
+    min-width: 74px !important;
+    border-radius: 20px !important;
+    background: rgba(255, 255, 255, 0.18) !important;
     color: #ffffff !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    font-size: 28px !important;
+    font-size: 26px !important;
     font-weight: 900 !important;
     overflow: hidden !important;
-    border: 3px solid rgba(255, 255, 255, 0.25) !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+    border: 2.5px solid rgba(255, 255, 255, 0.35) !important;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08) !important;
 }
 
-.ev-avatar img {
+.ev-header .hrms-emp-avatar-img {
     width: 100% !important;
     height: 100% !important;
     object-fit: cover !important;
     display: block !important;
+}
+
+.ev-user-details {
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
 }
 
 .ev-title {
@@ -73,13 +86,33 @@
     color: #ffffff !important;
     font-size: 24px !important;
     font-weight: 900 !important;
+    line-height: 1.25 !important;
+    word-break: break-word !important;
 }
 
 .ev-sub {
     margin: 6px 0 0 !important;
-    color: rgba(255, 255, 255, 0.8) !important;
+    color: rgba(255, 255, 255, 0.85) !important;
     font-size: 13px !important;
-    font-weight: 500 !important;
+    font-weight: 550 !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 6px !important;
+    line-height: 1.4 !important;
+}
+
+.ev-sub-dot {
+    opacity: 0.6 !important;
+}
+
+.ev-pills-wrap {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    align-items: center !important;
+    margin-top: 10px !important;
+    width: 100% !important;
 }
 
 .ev-actions {
@@ -87,14 +120,17 @@
     gap: 10px !important;
     flex-wrap: wrap !important;
     align-items: center !important;
+    flex-shrink: 0 !important;
 }
 
 /* Header action buttons */
-.ev-btn-back {
+.ev-btn-back,
+.ev-btn-edit,
+.ev-btn-profile {
     height: 40px !important;
     min-height: 40px !important;
     border-radius: 50px !important;
-    padding: 0 20px !important;
+    padding: 0 18px !important;
     font-size: 13px !important;
     font-weight: 800 !important;
     display: inline-flex !important;
@@ -102,10 +138,15 @@
     justify-content: center !important;
     gap: 8px !important;
     text-decoration: none !important;
+    transition: all 0.2s ease-in-out !important;
+    cursor: pointer !important;
+    white-space: nowrap !important;
+}
+
+.ev-btn-back {
     background: rgba(255, 255, 255, 0.12) !important;
     color: #ffffff !important;
     border: 1px solid rgba(255, 255, 255, 0.2) !important;
-    transition: all 0.2s ease-in-out !important;
 }
 
 .ev-btn-back:hover {
@@ -117,53 +158,31 @@
 }
 
 .ev-btn-edit {
-    height: 40px !important;
-    min-height: 40px !important;
-    border-radius: 50px !important;
-    padding: 0 20px !important;
-    font-size: 13px !important;
-    font-weight: 800 !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 8px !important;
-    text-decoration: none !important;
-    background: #ffffff !important;
-    color: var(--orb-primary) !important;
-    border: 0 !important;
-    box-shadow: 0 4px 14px rgba(75, 0, 232, 0.2) !important;
-    transition: all 0.2s ease-in-out !important;
+    background: rgba(255, 255, 255, 0.15) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.25) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
 }
 
 .ev-btn-edit:hover {
-    background: #F4F2FF !important;
-    color: var(--orb-primary) !important;
+    background: rgba(255, 255, 255, 0.28) !important;
+    border-color: rgba(255, 255, 255, 0.45) !important;
+    color: #ffffff !important;
     transform: translateY(-1px) !important;
-    box-shadow: 0 6px 18px rgba(75, 0, 232, 0.3) !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1) !important;
     text-decoration: none !important;
 }
 
 .ev-btn-profile {
-    height: 40px !important;
-    min-height: 40px !important;
-    border-radius: 50px !important;
-    padding: 0 20px !important;
-    font-size: 13px !important;
-    font-weight: 800 !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 8px !important;
-    text-decoration: none !important;
-    background: rgba(255, 255, 255, 0.12) !important;
+    background: rgba(255, 255, 255, 0.15) !important;
     color: #ffffff !important;
-    border: 1px solid rgba(255, 255, 255, 0.2) !important;
-    transition: all 0.2s ease-in-out !important;
+    border: 1px solid rgba(255, 255, 255, 0.25) !important;
 }
 
 .ev-btn-profile:hover {
-    background: rgba(255, 255, 255, 0.25) !important;
-    border-color: rgba(255, 255, 255, 0.4) !important;
+    background: rgba(255, 255, 255, 0.28) !important;
+    border-color: rgba(255, 255, 255, 0.45) !important;
     color: #ffffff !important;
     transform: translateY(-1px) !important;
     text-decoration: none !important;
@@ -174,6 +193,15 @@
     background: rgba(255, 255, 255, 0.15) !important;
     color: #ffffff !important;
     border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    padding: 5px 12px !important;
+    border-radius: 999px !important;
+    font-size: 11px !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.3px !important;
 }
 
 .ev-header .ev-pill-active { background: rgba(22, 163, 74, 0.3) !important; border-color: rgba(22, 163, 74, 0.4) !important; }
@@ -488,43 +516,163 @@
 @media (max-width: 991px) {
     .ev-header {
         flex-direction: column !important;
-        align-items: flex-start !important;
-        padding: 20px !important;
+        align-items: stretch !important;
+        padding: 20px 22px !important;
+        border-radius: 22px !important;
+        gap: 16px !important;
     }
     .ev-grid {
         grid-template-columns: 1fr !important;
         gap: 16px !important;
     }
     .ev-actions {
+        order: -1 !important;
         width: 100% !important;
-        margin-top: 12px !important;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        margin-bottom: 2px !important;
     }
-    .ev-actions .ev-btn {
-        flex: 1 1 auto !important;
+    .ev-btn-back,
+    .ev-btn-edit,
+    .ev-btn-profile {
+        height: 36px !important;
+        min-height: 36px !important;
+        padding: 0 16px !important;
+        font-size: 12.5px !important;
+    }
+    .ev-user {
+        width: 100% !important;
+        align-items: flex-start !important;
+        gap: 14px !important;
+    }
+    .ev-header .hrms-emp-avatar {
+        width: 64px !important;
+        height: 64px !important;
+        min-width: 64px !important;
+        font-size: 22px !important;
+        border-radius: 16px !important;
+    }
+    .ev-title {
+        font-size: 21px !important;
+    }
+    .ev-sub {
+        font-size: 12.5px !important;
+    }
+    .ev-pills-wrap {
+        gap: 6px !important;
+        margin-top: 8px !important;
+    }
+    .ev-header .ev-pill {
+        padding: 4px 10px !important;
+        font-size: 10.5px !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .ev-page {
+        padding: 16px 12px 24px !important;
+    }
+    .ev-header {
+        padding: 18px 16px !important;
+        border-radius: 20px !important;
+        gap: 14px !important;
+    }
+    .ev-title {
+        font-size: 19px !important;
+    }
+    .ev-info-grid {
+        grid-template-columns: 1fr !important;
+        gap: 8px !important;
     }
 }
 
 @media (max-width: 575px) {
     .ev-page {
-        padding: 12px 12px 24px !important;
+        padding: 10px 8px 20px !important;
+    }
+    .ev-header {
+        padding: 16px 12px !important;
+        border-radius: 18px !important;
+        gap: 12px !important;
+    }
+    .ev-actions {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        gap: 6px !important;
+        width: 100% !important;
+    }
+    .ev-btn-back,
+    .ev-btn-edit,
+    .ev-btn-profile {
+        flex: 1 1 auto !important;
+        padding: 0 8px !important;
+        font-size: 11.5px !important;
+        height: 34px !important;
+        min-height: 34px !important;
+        justify-content: center !important;
     }
     .ev-user {
         flex-direction: column !important;
-        align-items: flex-start !important;
-        gap: 12px !important;
+        align-items: center !important;
+        text-align: center !important;
+        gap: 10px !important;
     }
-    .ev-avatar {
-        width: 70px !important;
-        height: 70px !important;
+    .ev-avatar-wrap {
+        margin: 0 auto !important;
     }
-    .ev-info-grid {
-        grid-template-columns: 1fr !important;
+    .ev-header .hrms-emp-avatar {
+        width: 60px !important;
+        height: 60px !important;
+        min-width: 60px !important;
+        font-size: 20px !important;
+        border-radius: 16px !important;
     }
-    .ev-actions {
-        flex-direction: column !important;
-    }
-    .ev-actions .ev-btn {
+    .ev-user-details {
         width: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+    }
+    .ev-title {
+        font-size: 18px !important;
+    }
+    .ev-sub {
+        font-size: 12px !important;
+        justify-content: center !important;
+        gap: 4px !important;
+    }
+    .ev-pills-wrap {
+        justify-content: center !important;
+        gap: 5px !important;
+        margin-top: 8px !important;
+    }
+    .ev-header .ev-pill {
+        font-size: 10px !important;
+        padding: 3.5px 8px !important;
+    }
+    .ev-card {
+        border-radius: 16px !important;
+    }
+    .ev-card-head {
+        padding: 12px 14px !important;
+    }
+    .ev-card-body {
+        padding: 12px 10px !important;
+    }
+    .ev-item {
+        padding: 10px 12px !important;
+        min-height: auto !important;
+        border-radius: 10px !important;
+    }
+    .ev-label {
+        font-size: 9.5px !important;
+        margin-bottom: 2px !important;
+    }
+    .ev-value {
+        font-size: 12.5px !important;
     }
 }
 </style>
@@ -602,41 +750,45 @@
                     $employeeInitial = $initial;
                     $employeeName = $employeeData->name ?? 'Employee';
                 @endphp
-                <span class="hrms-emp-avatar mr-3">
-                    @if($passportPhotoUrl)
-                        <img
-                            src="{{ $passportPhotoUrl }}"
-                            alt="{{ $employeeName }}"
-                            class="hrms-emp-avatar-img"
-                            onerror="this.style.display='none'; this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.remove('is-hidden'); this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.add('is-visible');"
-                        >
-                        <span class="hrms-emp-avatar-fallback is-hidden">
-                            {{ $employeeInitial }}
-                        </span>
-                    @else
-                        <span class="hrms-emp-avatar-fallback is-visible">
-                            {{ $employeeInitial }}
-                        </span>
-                    @endif
-                </span>
+                <div class="ev-avatar-wrap">
+                    <span class="hrms-emp-avatar">
+                        @if($passportPhotoUrl)
+                            <img
+                                src="{{ $passportPhotoUrl }}"
+                                alt="{{ $employeeName }}"
+                                class="hrms-emp-avatar-img"
+                                onerror="this.style.display='none'; this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.remove('is-hidden'); this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.add('is-visible');"
+                            >
+                            <span class="hrms-emp-avatar-fallback is-hidden">
+                                {{ $employeeInitial }}
+                            </span>
+                        @else
+                            <span class="hrms-emp-avatar-fallback is-visible">
+                                {{ $employeeInitial }}
+                            </span>
+                        @endif
+                    </span>
+                </div>
 
-                <div>
+                <div class="ev-user-details">
                     <h1 class="ev-title">{{ $employeeData->name ?? '-' }}</h1>
                     <p class="ev-sub">
-                        {{ $employeeData->employee_code ?? '-' }}
-                        · {{ $employeeData->designation_name ?? 'No Designation' }}
-                        · {{ $employeeData->department_name ?? 'No Department' }}
+                        <span>{{ $employeeData->employee_code ?? '-' }}</span>
+                        <span class="ev-sub-dot">·</span>
+                        <span>{{ $employeeData->designation_name ?? 'No Designation' }}</span>
+                        <span class="ev-sub-dot">·</span>
+                        <span>{{ $employeeData->department_name ?? 'No Department' }}</span>
                     </p>
-                    <div class="mt-2 d-flex flex-wrap gap-2 align-items-center">
+                    <div class="ev-pills-wrap">
                         <span class="ev-pill {{ $isActive ? 'ev-pill-active' : 'ev-pill-inactive' }}">
-                            {{ $isActive ? 'Active' : 'Inactive' }}
+                            <i class="fas fa-circle mr-1" style="font-size: 7px;"></i> {{ $isActive ? 'Active' : 'Inactive' }}
                         </span>
                         <span class="ev-pill {{ $profileStatusClass }}">
-                            {{ $isCompleted ? 'Profile Completed' : ucfirst($profileStatus) }}
+                            <i class="fas fa-id-card mr-1"></i> {{ $isCompleted ? 'Profile Completed' : ucfirst($profileStatus) }}
                         </span>
                         @if(!empty($employeeData->employee_stage))
                             <span class="ev-pill ev-pill-default">
-                                {{ ucfirst(str_replace('_', ' ', $employeeData->employee_stage)) }}
+                                <i class="fas fa-layer-group mr-1"></i> {{ ucfirst(str_replace('_', ' ', $employeeData->employee_stage)) }}
                             </span>
                         @endif
                     </div>
@@ -645,18 +797,18 @@
 
             <div class="ev-actions">
                 <a href="{{ route('hrms.employees.index') }}" class="ev-btn-back">
-                    <i class="fas fa-arrow-left"></i> Back
+                    <i class="fas fa-arrow-left mr-1"></i> <span>Back</span>
                 </a>
 
                 @if(Route::has('hrms.employees.edit'))
                     <a href="{{ route('hrms.employees.edit', $employeeData->employee_id ?? $employeeData->id) }}" class="ev-btn-edit">
-                        <i class="fas fa-edit"></i> Edit
+                        <i class="fas fa-edit mr-1"></i> <span>Edit</span>
                     </a>
                 @endif
 
                 @if(Route::has('hrms.employees.profile.view'))
                     <a href="{{ route('hrms.employees.profile.view', $employeeData->employee_id ?? $employeeData->id) }}" class="ev-btn-profile">
-                        <i class="fas fa-id-card"></i> HRMS Profile
+                        <i class="fas fa-id-card mr-1"></i> <span>HRMS Profile</span>
                     </a>
                 @endif
             </div>

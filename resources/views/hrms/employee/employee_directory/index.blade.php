@@ -78,45 +78,88 @@
         }
     }
 
-    /* 2. Reset Button Custom Styling */
-    #resetFilter {
-        background: #fff !important;
-        border: 1px solid #E7EAF3 !important;
-        color: var(--orb-primary) !important;
-        box-shadow: 0 8px 18px rgba(16, 24, 40, .06) !important;
+    /* 2. Filter Action Buttons Styling */
+    .eo-filter-actions-col {
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: flex-end !important;
+    }
+
+    .eo-filter-actions-wrap {
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        width: 100% !important;
+    }
+
+    #btnEmpFilterSubmit {
+        height: 38px !important;
+        border-radius: 12px !important;
+        background: linear-gradient(135deg, var(--orb-primary, #6366F1), var(--orb-secondary, #8B5CF6)) !important;
+        color: #ffffff !important;
+        border: none !important;
+        padding: 0 16px !important;
         display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
         gap: 6px !important;
-        font-weight: 800 !important;
         font-size: 13px !important;
-        height: 38px !important;
-        padding: 0 16px !important;
-        border-radius: 12px !important;
-        transition: all .2s ease !important;
+        font-weight: 700 !important;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.22) !important;
+        transition: all 0.2s ease !important;
         cursor: pointer !important;
+        white-space: nowrap !important;
+        flex: 1 1 auto !important;
+    }
+
+    #btnEmpFilterSubmit:hover {
+        opacity: 0.94 !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 6px 16px rgba(99, 102, 241, 0.32) !important;
+        color: #ffffff !important;
+    }
+
+    #resetFilter {
+        height: 38px !important;
+        border-radius: 12px !important;
+        background: #F8FAFC !important;
+        border: 1px solid #E2E8F0 !important;
+        color: #475569 !important;
+        padding: 0 14px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 6px !important;
+        font-size: 13px !important;
+        font-weight: 700 !important;
+        box-shadow: 0 2px 6px rgba(16, 24, 40, .04) !important;
+        transition: all 0.2s ease !important;
+        cursor: pointer !important;
+        white-space: nowrap !important;
+        flex: 1 1 auto !important;
     }
 
     #resetFilter:hover {
-        background: #F4F2FF !important; /* Hover stays soft purple/gray */
-        color: var(--orb-primary) !important;
-        border-color: rgba(75, 0, 232, 0.2) !important;
+        background: #F1F5F9 !important;
+        color: var(--orb-primary, #6366F1) !important;
+        border-color: #CBD5E1 !important;
         transform: translateY(-1px) !important;
     }
 
     .eo-filter-grid {
         display: grid !important;
-        grid-template-columns: repeat(5, 1fr) !important;
+        grid-template-columns: 1.4fr 1.2fr 0.9fr 1fr 1fr auto !important;
         gap: 12px !important;
+        align-items: flex-end !important;
     }
 
-    @media (max-width: 1200px) {
+    @media (max-width: 1400px) {
         .eo-filter-grid {
             grid-template-columns: repeat(3, 1fr) !important;
         }
     }
 
-    @media (max-width: 768px) {
+    @media (max-width: 991px) {
         .eo-filter-grid {
             grid-template-columns: repeat(2, 1fr) !important;
         }
@@ -132,6 +175,7 @@
         display: flex !important;
         flex-direction: column !important;
         gap: 6px !important;
+        min-width: 0 !important;
     }
 
     .eo-field label {
@@ -141,6 +185,9 @@
         color: var(--orb-muted, #667085) !important;
         margin: 0 !important;
         letter-spacing: .4px !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
     }
 
     .eo-control {
@@ -167,6 +214,37 @@
         padding-right: 28px !important;
         appearance: none !important;
         background: url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5 7.5L10 12.5L15 7.5' stroke='%23667085' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 12px center #fff !important;
+    }
+
+    /* Select2 compatibility within filter fields */
+    .eo-field .select2-container {
+        width: 100% !important;
+    }
+    .eo-field .select2-container .select2-selection--single {
+        height: 38px !important;
+        border: 1px solid #DDE3EE !important;
+        border-radius: 12px !important;
+        display: flex !important;
+        align-items: center !important;
+        background: #fff !important;
+        padding: 0 8px !important;
+        transition: all .2s ease !important;
+    }
+    .eo-field .select2-container--default.select2-container--focus .select2-selection--single,
+    .eo-field .select2-container--default.select2-container--open .select2-selection--single {
+        border-color: var(--orb-secondary, #8600EE) !important;
+        box-shadow: 0 0 0 4px rgba(134, 0, 238, .08) !important;
+    }
+    .eo-field .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 36px !important;
+        font-size: 13px !important;
+        font-weight: 650 !important;
+        color: var(--orb-text, #101828) !important;
+        padding-left: 4px !important;
+    }
+    .eo-field .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 36px !important;
+        right: 8px !important;
     }
 
     .orb-table-card {
@@ -825,15 +903,6 @@
                         <p>Manage active employees, verification status, work mode, and HR lifecycle.</p>
                     </div>
                 </div>
-                <!-- RIGHT: Search & Reset buttons -->
-                <div class="d-flex align-items-center" style="gap: 12px !important;">
-                    <button type="button" id="btnEmpFilterSubmit" class="btn text-white font-weight-bold shadow-sm" style="height: 38px; border-radius: 12px; background: linear-gradient(135deg, var(--orb-primary, #6366F1), var(--orb-secondary, #8B5CF6)); border: none; padding: 0 20px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; margin-right: 8px;">
-                        <i class="fas fa-search mr-1"></i> Search
-                    </button>
-                    <button type="button" id="resetFilter" class="orb-btn-light py-2 px-3" style="height: 38px !important; display: inline-flex; align-items: center; gap: 6px;">
-                        <i class="fas fa-undo mr-1"></i> Reset
-                    </button>
-                </div>
             </div>
 
             <!-- 3. Filters: attached under table header -->
@@ -885,6 +954,18 @@
                             <option value="notice">Notice</option>
                             <option value="inactive">Inactive</option>
                         </select>
+                    </div>
+
+                    <div class="eo-field eo-filter-actions-col">
+                        <label class="d-none d-sm-block">&nbsp;</label>
+                        <div class="eo-filter-actions-wrap">
+                            <button type="button" id="btnEmpFilterSubmit" title="Search / Apply Filter">
+                                <i class="fas fa-search mr-1"></i> Search
+                            </button>
+                            <button type="button" id="resetFilter" title="Reset Filters">
+                                <i class="fas fa-undo mr-1"></i> Reset
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

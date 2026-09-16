@@ -19,14 +19,15 @@
     .em-container {
         max-width: 1280px !important;
         margin: 0 auto !important;
+        width: 100% !important;
     }
 
     .ev-header {
-        background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary)) !important;
+        background: linear-gradient(135deg, var(--orb-primary, #6366F1), var(--orb-secondary, #8B5CF6)) !important;
         color: #ffffff !important;
         border: 0 !important;
         border-radius: 26px !important;
-        box-shadow: var(--orb-shadow) !important;
+        box-shadow: var(--orb-shadow, 0 14px 35px rgba(16, 24, 40, 0.07)) !important;
         padding: 24px 28px !important;
         display: flex !important;
         justify-content: space-between !important;
@@ -38,30 +39,42 @@
     .ev-user {
         display: flex !important;
         align-items: center !important;
-        gap: 16px !important;
+        gap: 18px !important;
+        min-width: 0 !important;
+        flex: 1 1 auto !important;
     }
 
-    .ev-avatar {
+    .ev-avatar-wrap {
+        flex-shrink: 0 !important;
+    }
+
+    .ev-header .hrms-emp-avatar {
         width: 74px !important;
         height: 74px !important;
-        border-radius: 50% !important;
-        background: rgba(255, 255, 255, 0.15) !important;
+        min-width: 74px !important;
+        border-radius: 20px !important;
+        background: rgba(255, 255, 255, 0.18) !important;
         color: #ffffff !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        font-size: 28px !important;
+        font-size: 26px !important;
         font-weight: 900 !important;
         overflow: hidden !important;
-        border: 3px solid rgba(255, 255, 255, 0.25) !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+        border: 2.5px solid rgba(255, 255, 255, 0.35) !important;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08) !important;
     }
 
-    .ev-avatar img {
+    .ev-header .hrms-emp-avatar-img {
         width: 100% !important;
         height: 100% !important;
         object-fit: cover !important;
         display: block !important;
+    }
+
+    .ev-user-details {
+        min-width: 0 !important;
+        flex: 1 1 auto !important;
     }
 
     .ev-title {
@@ -69,13 +82,33 @@
         color: #ffffff !important;
         font-size: 24px !important;
         font-weight: 900 !important;
+        line-height: 1.25 !important;
+        word-break: break-word !important;
     }
 
     .ev-sub {
         margin: 6px 0 0 !important;
-        color: rgba(255, 255, 255, 0.8) !important;
+        color: rgba(255, 255, 255, 0.85) !important;
         font-size: 13px !important;
-        font-weight: 500 !important;
+        font-weight: 550 !important;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        align-items: center !important;
+        gap: 6px !important;
+        line-height: 1.4 !important;
+    }
+
+    .ev-sub-dot {
+        opacity: 0.6 !important;
+    }
+
+    .ev-pills-wrap {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+        align-items: center !important;
+        margin-top: 10px !important;
+        width: 100% !important;
     }
 
     .ev-actions {
@@ -83,6 +116,7 @@
         gap: 10px !important;
         flex-wrap: wrap !important;
         align-items: center !important;
+        flex-shrink: 0 !important;
     }
 
     /* Header action buttons */
@@ -119,17 +153,19 @@
     }
 
     .ev-btn-edit {
-        background: #ffffff !important;
-        color: var(--orb-primary) !important;
-        border: 0 !important;
-        box-shadow: 0 4px 14px rgba(75, 0, 232, 0.2) !important;
+        background: rgba(255, 255, 255, 0.15) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255, 255, 255, 0.25) !important;
+        backdrop-filter: blur(8px) !important;
+        -webkit-backdrop-filter: blur(8px) !important;
     }
 
     .ev-btn-edit:hover {
-        background: #F4F2FF !important;
-        color: var(--orb-primary) !important;
+        background: rgba(255, 255, 255, 0.28) !important;
+        border-color: rgba(255, 255, 255, 0.45) !important;
+        color: #ffffff !important;
         transform: translateY(-1px) !important;
-        box-shadow: 0 6px 18px rgba(75, 0, 232, 0.3) !important;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1) !important;
         text-decoration: none !important;
     }
 
@@ -678,44 +714,214 @@
         font-weight: 800;
     }
 
-    @media(max-width:1100px) {
-        .em-layout {
-            grid-template-columns: 1fr;
+    @media(max-width:1199px) {
+        .em-form-grid-3 {
+            grid-template-columns: repeat(2, 1fr) !important;
+        }
+    }
+
+    @media(max-width:991px) {
+        .ev-header {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            padding: 20px 22px !important;
+            border-radius: 22px !important;
+            gap: 16px !important;
         }
 
-        .em-form-grid-3 {
-            grid-template-columns: repeat(2, 1fr);
+        .ev-actions {
+            order: -1 !important;
+            width: 100% !important;
+            display: flex !important;
+            justify-content: flex-start !important;
+            margin-bottom: 2px !important;
+        }
+
+        .ev-btn-back {
+            height: 36px !important;
+            min-height: 36px !important;
+            padding: 0 16px !important;
+            font-size: 12.5px !important;
+        }
+
+        .ev-user {
+            width: 100% !important;
+            align-items: flex-start !important;
+            gap: 14px !important;
+        }
+
+        .ev-header .hrms-emp-avatar {
+            width: 64px !important;
+            height: 64px !important;
+            min-width: 64px !important;
+            font-size: 22px !important;
+            border-radius: 16px !important;
+        }
+
+        .ev-title {
+            font-size: 21px !important;
+        }
+
+        .ev-sub {
+            font-size: 12.5px !important;
+        }
+
+        .ev-pills-wrap {
+            gap: 6px !important;
+            margin-top: 8px !important;
+        }
+
+        .ev-header .ev-pill {
+            padding: 4px 10px !important;
+            font-size: 10.5px !important;
+        }
+
+        .em-card-head {
+            padding: 14px 16px !important;
         }
     }
 
     @media(max-width:768px) {
-        .em-hero {
-            flex-direction: column;
-            align-items: flex-start;
+        .em-page {
+            padding: 16px 12px 24px !important;
+        }
+
+        .ev-header {
+            padding: 18px 16px !important;
+            border-radius: 20px !important;
+            gap: 14px !important;
+        }
+
+        .ev-title {
+            font-size: 19px !important;
         }
 
         .em-form-grid,
         .em-form-grid-3 {
-            grid-template-columns: 1fr;
+            grid-template-columns: 1fr !important;
+            gap: 10px !important;
         }
 
-        .em-actions,
-        .em-btn {
-            width: 100%;
+        .em-card-head {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 12px !important;
+        }
+
+        .card-header-actions {
+            width: 100% !important;
+            display: flex !important;
+            justify-content: flex-end !important;
+            gap: 8px !important;
+        }
+
+        .card-header-actions .btn {
+            flex: 1 1 auto !important;
+            text-align: center !important;
+            justify-content: center !important;
+        }
+
+        .em-section {
+            padding: 12px 10px !important;
+            border-radius: 14px !important;
+        }
+
+        .em-doc-grid {
+            grid-template-columns: 1fr !important;
         }
     }
 
     @media(max-width:575px) {
         .em-page {
-            padding: 10px 8px 24px;
+            padding: 10px 8px 20px !important;
         }
 
-        .em-user {
-            align-items: flex-start;
+        .ev-header {
+            padding: 16px 12px !important;
+            border-radius: 18px !important;
+            gap: 12px !important;
         }
 
-        .em-title {
-            font-size: 21px;
+        .ev-user {
+            flex-direction: column !important;
+            align-items: center !important;
+            text-align: center !important;
+            gap: 10px !important;
+        }
+
+        .ev-avatar-wrap {
+            margin: 0 auto !important;
+        }
+
+        .ev-header .hrms-emp-avatar {
+            width: 60px !important;
+            height: 60px !important;
+            min-width: 60px !important;
+            font-size: 20px !important;
+            border-radius: 16px !important;
+        }
+
+        .ev-user-details {
+            width: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+        }
+
+        .ev-title {
+            font-size: 18px !important;
+        }
+
+        .ev-sub {
+            font-size: 12px !important;
+            justify-content: center !important;
+            gap: 4px !important;
+        }
+
+        .ev-pills-wrap {
+            justify-content: center !important;
+            gap: 5px !important;
+            margin-top: 8px !important;
+        }
+
+        .ev-header .ev-pill {
+            font-size: 10px !important;
+            padding: 3.5px 8px !important;
+        }
+
+        .em-card {
+            border-radius: 16px !important;
+        }
+
+        .em-card-body {
+            padding: 12px 8px !important;
+        }
+
+        .em-section-title {
+            font-size: 12px !important;
+        }
+
+        .em-section-title i {
+            width: 26px !important;
+            height: 26px !important;
+            font-size: 12px !important;
+        }
+
+        .em-control {
+            font-size: 12.5px !important;
+            min-height: 38px !important;
+            padding: 6px 10px !important;
+            border-radius: 10px !important;
+        }
+
+        .card-header-actions .btn {
+            font-size: 12px !important;
+            padding: 6px 10px !important;
+            height: 34px !important;
+        }
+
+        .em-doc-item-card {
+            padding: 14px 12px !important;
         }
     }
 

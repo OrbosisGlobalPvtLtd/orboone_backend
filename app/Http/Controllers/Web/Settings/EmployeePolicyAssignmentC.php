@@ -21,13 +21,31 @@ class EmployeePolicyAssignmentC extends Controller
     public function store(Request $request)
     {
         $data = $this->validated($request);
-        DB::table('employee_policy_assignments')->updateOrInsert(['employee_id' => $data['employee_id'], 'policy_type' => $data['policy_type'], 'policy_id' => $data['policy_id'], 'effective_from' => $data['effective_from'] ?? null], array_merge($data, ['assigned_by_user_id' => $this->actorId(), 'is_active' => $request->boolean('is_active'), 'updated_at' => now(), 'created_at' => DB::raw('COALESCE(created_at, NOW())')]));
+        $isActive = $request->boolean('is_active');
+        if ($isActive) {
+            DB::table('employee_policy_assignments')
+                ->where('employee_id', $data['employee_id'])
+                ->where('policy_type', $data['policy_type'])
+                ->where('is_active', 1)
+                ->update(['is_active' => 0, 'updated_at' => now()]);
+        }
+        DB::table('employee_policy_assignments')->updateOrInsert(['employee_id' => $data['employee_id'], 'policy_type' => $data['policy_type'], 'policy_id' => $data['policy_id'], 'effective_from' => $data['effective_from'] ?? null], array_merge($data, ['assigned_by_user_id' => $this->actorId(), 'is_active' => $isActive, 'updated_at' => now(), 'created_at' => DB::raw('COALESCE(created_at, NOW())')]));
         return back()->with('success', 'Employee policy assignment saved.');
     }
 
     public function update(Request $request, $id)
     {
-        DB::table('employee_policy_assignments')->where('id', $id)->update(array_merge($this->validated($request), ['is_active' => $request->boolean('is_active'), 'updated_at' => now()]));
+        $data = $this->validated($request);
+        $isActive = $request->boolean('is_active');
+        if ($isActive) {
+            DB::table('employee_policy_assignments')
+                ->where('employee_id', $data['employee_id'])
+                ->where('policy_type', $data['policy_type'])
+                ->where('id', '!=', $id)
+                ->where('is_active', 1)
+                ->update(['is_active' => 0, 'updated_at' => now()]);
+        }
+        DB::table('employee_policy_assignments')->where('id', $id)->update(array_merge($data, ['is_active' => $isActive, 'updated_at' => now()]));
         return back()->with('success', 'Employee policy assignment updated.');
     }
 

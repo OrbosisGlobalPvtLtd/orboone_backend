@@ -23,7 +23,7 @@ class LeaveHistoryC extends Controller
         $ownEmp = $user->employee ?? $this->currentEmployee();
 
         // Auto-expire past pending leaves
-        app(\App\Services\HRMS\Leave\AutoExpireLeaveService::class)->expirePastPendingRequests();
+        // app(\App\Services\HRMS\Leave\AutoExpireLeaveService::class)->expirePastPendingRequests();
 
         $query = LeaveRequestM::with(['employee.user', 'employee.department', 'employee.designation', 'leaveType', 'dates', 'approver']);
 

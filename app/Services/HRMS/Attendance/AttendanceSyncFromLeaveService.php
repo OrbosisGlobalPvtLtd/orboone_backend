@@ -108,8 +108,8 @@ class AttendanceSyncFromLeaveService
         $attendances = AttendanceM::where('leave_request_id', $leaveRequest->id)->get();
 
         foreach ($attendances as $attendance) {
-            if ($attendance->is_locked || $attendance->payroll_processed) {
-                throw new \RuntimeException('Attendance is locked or payroll processed for ' . Carbon::parse($attendance->attendance_date)->toDateString());
+            if ($attendance->payroll_processed) {
+                throw new \RuntimeException('Payroll has already been processed for ' . Carbon::parse($attendance->attendance_date)->toDateString() . '. Please unlock payroll before voiding leave.');
             }
 
             $oldStatus = $attendance->attendance_status;
@@ -121,6 +121,7 @@ class AttendanceSyncFromLeaveService
             $attendance->attendance_type_id = null;
             $attendance->attendance_status = $newStatus;
             $attendance->attendance_source = $newSource;
+            $attendance->is_locked = false;
             $attendance->is_lwp = false;
             $attendance->lwp_reason = null;
             $attendance->is_half_day = false;

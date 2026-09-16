@@ -35,7 +35,7 @@ class LeaveApprovalC extends Controller
             403
         );
 
-        app(\App\Services\HRMS\Leave\AutoExpireLeaveService::class)->expirePastPendingRequests();
+        // app(\App\Services\HRMS\Leave\AutoExpireLeaveService::class)->expirePastPendingRequests();
 
         $supervisorEmpId = $this->scopeS->getOwnEmployeeId();
         $supervisedEmpIds = $this->scopeS->getActiveSupervisedEmployeeIds($supervisorEmpId);
@@ -50,7 +50,11 @@ class LeaveApprovalC extends Controller
             ->leftJoin('users as hru', 'hru.id', '=', 'leave_requests.hr_approved_by')
             ->leftJoin('employees_new as rm', 'rm.id', '=', 'e.reporting_manager_employee_id')
             ->leftJoin('users as rmu', 'rmu.id', '=', 'rm.user_id')
-            ->leftJoin('users as reju', 'reju.id', '=', 'leave_requests.approved_by_user_id');
+            ->leftJoin('users as reju', 'reju.id', '=', 'leave_requests.approved_by_user_id')
+            ->leftJoin('leave_allocations as la', function ($join) {
+                $join->on('la.employee_id', '=', 'leave_requests.employee_id')
+                    ->whereRaw('la.year = YEAR(leave_requests.start_date)');
+            });
 
         $query = $this->scopeS->scopeLeaveQuery($query, $supervisorEmpId);
 
@@ -117,42 +121,60 @@ class LeaveApprovalC extends Controller
             'mu.name as manager_approver_name',
             'hru.name as hr_approver_name',
             'rmu.name as reporting_manager_name',
-            'reju.name as rejected_by_name'
+            'reju.name as rejected_by_name',
+            'la.paid_allocated',
+            'la.paid_remaining',
+            'la.paid_used',
+            'la.sick_allocated',
+            'la.sick_remaining',
+            'la.sick_used',
+            'la.comp_off_allocated',
+            'la.comp_off_remaining',
+            'la.comp_off_used',
+            'la.lwp_used as total_lwp_used',
+            'la.total_allocated',
+            'la.total_remaining',
+            'la.total_used',
+            'la.monthly_quota',
+            'la.monthly_used_this_month',
+            'la.monthly_carry_forward',
+            'la.total_monthly_remaining_paid'
         )
             ->orderByDesc('leave_requests.id')
             ->paginate(20)
             ->appends($request->query());
 
-        // Base query for summary counts
+        // High-performance single aggregated query for summary metric counts
         $baseCountQuery = DB::table('leave_requests')
             ->join('employees_new as e', 'e.id', '=', 'leave_requests.employee_id');
         $baseCountQuery = $this->scopeS->scopeLeaveQuery($baseCountQuery, $supervisorEmpId);
 
-        $totalAllCount = (clone $baseCountQuery)->count();
-        $totalPendingCount = (clone $baseCountQuery)->where('leave_requests.status', 'pending')->count();
-        $managerPendingCount = (clone $baseCountQuery)
-            ->where('leave_requests.status', 'pending')
-            ->whereNotNull('e.reporting_manager_employee_id')
-            ->whereNull('leave_requests.manager_approved_at')
-            ->count();
-        $hrPendingCount = (clone $baseCountQuery)
-            ->where('leave_requests.status', 'pending')
-            ->where(function ($q) {
-                $q->whereNull('e.reporting_manager_employee_id')
-                    ->orWhereNotNull('leave_requests.manager_approved_at')
-                    ->orWhere('leave_requests.approval_level', 'manager_approved');
-            })
-            ->count();
-        $approvedLeaveCount = (clone $baseCountQuery)->where('leave_requests.status', 'approved')->count();
-        $rejectedLeaveCount = (clone $baseCountQuery)->where('leave_requests.status', 'rejected')->count();
+        $counts = (clone $baseCountQuery)->selectRaw("
+            COUNT(*) as total_all,
+            SUM(CASE WHEN leave_requests.status = 'pending' THEN 1 ELSE 0 END) as total_pending,
+            SUM(CASE WHEN leave_requests.status = 'pending' AND e.reporting_manager_employee_id IS NOT NULL AND leave_requests.manager_approved_at IS NULL THEN 1 ELSE 0 END) as manager_pending,
+            SUM(CASE WHEN leave_requests.status = 'pending' AND (e.reporting_manager_employee_id IS NULL OR leave_requests.manager_approved_at IS NOT NULL OR leave_requests.approval_level = 'manager_approved') THEN 1 ELSE 0 END) as hr_pending,
+            SUM(CASE WHEN leave_requests.status = 'approved' THEN 1 ELSE 0 END) as approved_count,
+            SUM(CASE WHEN leave_requests.status = 'rejected' THEN 1 ELSE 0 END) as rejected_count
+        ")->first();
+
+        $totalAllCount = (int) ($counts->total_all ?? 0);
+        $totalPendingCount = (int) ($counts->total_pending ?? 0);
+        $managerPendingCount = (int) ($counts->manager_pending ?? 0);
+        $hrPendingCount = (int) ($counts->hr_pending ?? 0);
+        $approvedLeaveCount = (int) ($counts->approved_count ?? 0);
+        $rejectedLeaveCount = (int) ($counts->rejected_count ?? 0);
 
         $user = auth()->user();
-        $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
+        $userRoleId = (int) ($user->system_role_id ?? $user->role_id ?? 0);
+        $userRoleName = strtolower($user->role->name ?? '');
+        $isSuperAdmin = method_exists($user, 'isSuperAdmin') ? $user->isSuperAdmin() : in_array($userRoleId, [1, 2], true);
         $isHrOrAdmin = $isSuperAdmin
             || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin())
-            || (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin', 'manager']))
+            || (method_exists($user, 'isAdmin') && $user->isAdmin())
+            || in_array($userRoleId, [1, 2, 3], true)
+            || in_array($userRoleName, ['admin', 'super_admin', 'hr_admin', 'hr admin', 'hr'], true)
             || $this->userHasPermission('leave.approvals.view_all')
-            || $this->userHasPermission('leave.approvals.view')
             || $this->userHasPermission('leave.approvals.approve');
 
         if ($isHrOrAdmin || $isSuperAdmin) {
@@ -166,6 +188,11 @@ class LeaveApprovalC extends Controller
             $q->select('reporting_manager_employee_id')->from('employees_new')->whereNotNull('reporting_manager_employee_id');
         })->with(['user'])->get();
 
+        $authEmpId = $supervisorEmpId ?: EmployeeM::where('user_id', $user->id)->value('id');
+        $canApprovePermission = $this->userHasPermission('leave.approvals.approve');
+        $canRejectPermission = $this->userHasPermission('leave.approvals.reject');
+        $canViewTeamPermission = $this->userHasPermission('leave.approvals.view_team');
+
         return view('hrms.leave.approvals.index', compact(
             'leaveRequests',
             'totalAllCount',
@@ -178,8 +205,12 @@ class LeaveApprovalC extends Controller
             'leaveTypes',
             'reportingManagers',
             'supervisorEmpId',
+            'authEmpId',
             'isHrOrAdmin',
-            'isSuperAdmin'
+            'isSuperAdmin',
+            'canApprovePermission',
+            'canRejectPermission',
+            'canViewTeamPermission'
         ));
     }
 
@@ -294,11 +325,14 @@ class LeaveApprovalC extends Controller
         $referer = $request->header('referer') ?: route('leave-approvals.index');
         $user = auth()->user();
         $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
+        $userRoleName = strtolower($user->role->name ?? '');
         $isHrOrAdmin = $isSuperAdmin
             || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin())
             || (method_exists($user, 'isAdmin') && $user->isAdmin())
             || (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin']))
             || in_array((int) ($user->system_role_id ?? $user->role_id ?? 0), [1, 2, 3], true)
+            || in_array($userRoleName, ['admin', 'super_admin', 'hr_admin', 'hr admin', 'hr'], true)
+            || $this->userHasPermission('leave.approvals.view_all')
             || $this->userHasPermission('leave.approvals.approve');
 
         abort_unless($isSuperAdmin || $isHrOrAdmin, 403, 'Only HR Administrators or Super Admins can make approved leaves Null & Void.');

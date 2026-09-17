@@ -111,6 +111,11 @@ class EmployeeM extends Model
 
     public function getDisplayNameAttribute()
     {
+        $fullName = trim(($this->first_name ?? '') . ' ' . ($this->last_name ?? ''));
+        if (!empty($fullName)) {
+            return $fullName;
+        }
+
         return $this->user_name
             ?? optional($this->user)->name
             ?? $this->employee_name

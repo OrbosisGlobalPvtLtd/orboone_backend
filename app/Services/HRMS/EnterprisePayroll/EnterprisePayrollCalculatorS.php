@@ -37,8 +37,8 @@ class EnterprisePayrollCalculatorS
 
         $eligibilityService = app(\App\Services\HRMS\Employee\EmployeeEligibilityS::class);
         foreach ($employees as $employee) {
-            if (!$eligibilityService->canUsePayroll($employee)) {
-                \Illuminate\Support\Facades\Log::info("Payroll generation skipped for employee #{$employee->id} ({$employee->display_name}): Profile pending, exit completed, or terminated.");
+            if (!$eligibilityService->canUsePayroll($employee, $month, $year)) {
+                \Illuminate\Support\Facades\Log::info("Payroll generation skipped for employee #{$employee->id} ({$employee->display_name}): Profile pending, exit completed, terminated, unpaid intern, or not onboarded in {$month}/{$year}.");
                 continue;
             }
             try {
@@ -119,8 +119,8 @@ class EnterprisePayrollCalculatorS
             $runErrors = [];
             $eligibilityService = app(\App\Services\HRMS\Employee\EmployeeEligibilityS::class);
             foreach ($employees as $employee) {
-                if (!$eligibilityService->canUsePayroll($employee)) {
-                    \Illuminate\Support\Facades\Log::info("Payroll generation skipped for employee #{$employee->id} ({$employee->display_name}): Profile pending, exit completed, or terminated.");
+                if (!$eligibilityService->canUsePayroll($employee, $month, $year)) {
+                    \Illuminate\Support\Facades\Log::info("Payroll generation skipped for employee #{$employee->id} ({$employee->display_name}): Profile pending, exit completed, terminated, unpaid intern, or not onboarded in {$month}/{$year}.");
                     continue;
                 }
                 try {
@@ -383,6 +383,11 @@ class EnterprisePayrollCalculatorS
         return [
             'employee_id' => $employee->id,
             'employee_name' => $employee->display_name,
+            'employee_code' => $employee->employee_code,
+            'department_name' => optional($employee->department)->name,
+            'designation_name' => optional($employee->designation)->name,
+            'bank_account_no' => optional($employee->profile)->bank_account_no,
+            'bank_ifsc' => optional($employee->profile)->ifsc_code,
             'salary_structure_id' => $salary->id,
             'attendance' => $attendance,
             'annual_ctc' => (float) $salary->annual_ctc,
@@ -482,15 +487,25 @@ class EnterprisePayrollCalculatorS
         $start = Carbon::create($year, $month, 1)->startOfMonth()->toDateString();
         $end = Carbon::create($year, $month, 1)->endOfMonth()->toDateString();
 
+        // 1. Find structure effective within the payroll period (e.g. historical structures)
         $salary = EnterpriseSalaryStructureM::query()
             ->where('employee_id', $employee->id)
-            ->where('status', 'active')
             ->whereDate('effective_from', '<=', $end)
             ->where(function ($query) use ($start) {
                 $query->whereNull('effective_to')->orWhereDate('effective_to', '>=', $start);
             })
             ->orderByDesc('effective_from')
+            ->orderByDesc('id')
             ->first();
+
+        // 2. Fallback: currently active structure
+        if (! $salary) {
+            $salary = EnterpriseSalaryStructureM::query()
+                ->where('employee_id', $employee->id)
+                ->where('status', 'active')
+                ->orderByDesc('effective_from')
+                ->first();
+        }
 
         if (! $salary) {
             throw ValidationException::withMessages([

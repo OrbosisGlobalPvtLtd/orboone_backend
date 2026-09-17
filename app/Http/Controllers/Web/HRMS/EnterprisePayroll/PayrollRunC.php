@@ -34,7 +34,14 @@ class PayrollRunC extends Controller
         }
 
         $runs = $query->latest()->get();
-        $employees = \App\Models\HRMS\Employee\EmployeeM::query()->active()->with('user')->orderBy('id')->get();
+        $eligibilityService = app(\App\Services\HRMS\Employee\EmployeeEligibilityS::class);
+        $employees = \App\Models\HRMS\Employee\EmployeeM::query()
+            ->active()
+            ->with(['user', 'profile'])
+            ->orderBy('id')
+            ->get()
+            ->filter(fn ($emp) => $eligibilityService->canUsePayroll($emp))
+            ->values();
 
         return view('hrms.enterprise-payroll.runs.index', [
             'accesses' => $this->accesses(),
@@ -46,21 +53,17 @@ class PayrollRunC extends Controller
 
     public function preview(Request $request)
     {
-        $data = $request->validate([
-            'month' => ['required', 'integer', 'between:1,12'],
-            'year' => ['required', 'integer', 'min:2020'],
-            'employee_id' => ['nullable', 'integer', 'exists:employees_new,id'],
-        ]);
+        $month = (int) $request->input('month', now('Asia/Kolkata')->month);
+        $year = (int) $request->input('year', now('Asia/Kolkata')->year);
+        $employeeId = $request->filled('employee_id') ? (int) $request->input('employee_id') : null;
 
-        $employeeId = isset($data['employee_id']) ? (int)$data['employee_id'] : null;
-
-        $preview = $this->calculator->preview((int) $data['month'], (int) $data['year'], $employeeId);
+        $preview = $this->calculator->preview($month, $year, $employeeId);
 
         return view('hrms.enterprise-payroll.runs.preview', [
             'accesses' => $this->accesses(),
             'active' => 'enterprise_payroll',
-            'month' => (int) $data['month'],
-            'year' => (int) $data['year'],
+            'month' => $month,
+            'year' => $year,
             'employee_id' => $employeeId,
             'rows' => $preview['rows'],
             'payrollErrors' => $preview['errors'],

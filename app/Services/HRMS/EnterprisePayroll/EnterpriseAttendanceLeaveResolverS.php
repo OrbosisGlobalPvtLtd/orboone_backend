@@ -21,20 +21,24 @@ class EnterpriseAttendanceLeaveResolverS
             ->first();
 
         if ($summary) {
-            return $this->fromMonthlySummary($summary);
+            return $this->fromMonthlySummary($summary, $employee);
         }
 
         return $this->fromAttendancesAndApprovedLeaves($employee, $month, $year);
     }
 
-    private function fromMonthlySummary(MonthlyAttendanceSummaryM $summary): array
+    private function fromMonthlySummary(MonthlyAttendanceSummaryM $summary, ?EmployeeM $employee = null): array
     {
+        $employee = $employee ?: EmployeeM::find($summary->employee_id);
+        $tableHolidays = $employee ? $this->activeHolidayDays($employee, (int) $summary->month, (int) $summary->year) : 0.0;
+        $holidayDays = max((float) $summary->holiday_days, $tableHolidays);
+
         $days = [
             'present_days' => (float) $summary->present_days,
             'paid_leave_days' => (float) $summary->paid_leave_days,
             'sick_leave_days' => (float) $summary->sick_leave_days,
             'comp_off_days' => (float) $summary->comp_off_days,
-            'holiday_days' => (float) $summary->holiday_days,
+            'holiday_days' => $holidayDays,
             'week_off_days' => (float) $summary->week_off_days,
             'half_days' => (float) $summary->half_days,
             'lwp_days' => (float) $summary->lwp_days,
@@ -117,6 +121,8 @@ class EnterpriseAttendanceLeaveResolverS
                 $days['holiday_days'] += 1;
             } elseif (str_contains($label, 'week')) {
                 $days['week_off_days'] += 1;
+            } elseif (str_contains($label, 'leave') || $attendance->leave_request_id) {
+                // Synced leave records are accounted for accurately via approvedLeaveDays() below
             } else {
                 $days['present_days'] += 1;
             }
@@ -126,6 +132,9 @@ class EnterpriseAttendanceLeaveResolverS
         foreach (['paid_leave_days', 'sick_leave_days', 'comp_off_days', 'lwp_days'] as $key) {
             $days[$key] += (float) $leaveDays[$key];
         }
+
+        $tableHolidays = $this->activeHolidayDays($employee, $month, $year);
+        $days['holiday_days'] = max((float) $days['holiday_days'], $tableHolidays);
 
         $totalWorkingDays = $this->totalWorkingDays($days);
         $this->guardWorkingDays($totalWorkingDays);
@@ -138,6 +147,23 @@ class EnterpriseAttendanceLeaveResolverS
             'calendar_days' => $calendarDays,
             'source' => 'attendances_and_approved_leaves',
         ];
+    }
+
+    private function activeHolidayDays(EmployeeM $employee, int $month, int $year): float
+    {
+        if (! Schema::hasTable('holidays')) {
+            return 0.0;
+        }
+
+        $query = DB::table('holidays')
+            ->whereMonth('holiday_date', $month)
+            ->whereYear('holiday_date', $year);
+
+        if (Schema::hasColumn('holidays', 'is_active')) {
+            $query->where('is_active', 1);
+        }
+
+        return (float) $query->count();
     }
 
     private function approvedLeaveDays(EmployeeM $employee, int $month, int $year): array

@@ -7,6 +7,7 @@ use App\Models\HRMS\Attendance\MonthlyAttendanceSummaryM;
 use App\Models\HRMS\Employee\EmployeeM;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class PayrollAttendanceSummaryService
@@ -24,8 +25,12 @@ class PayrollAttendanceSummaryService
             })
             ->get();
 
+        $eligibilityService = app(\App\Services\HRMS\Employee\EmployeeEligibilityS::class);
         $count = 0;
         foreach ($employees as $employee) {
+            if (!$eligibilityService->canUsePayroll($employee, $month, $year)) {
+                continue;
+            }
             $this->generateForEmployee($employee, $month, $year);
             $count++;
         }
@@ -61,13 +66,21 @@ class PayrollAttendanceSummaryService
             ->first();
 
         $present = $attendances->filter(fn ($attendance) => optional($attendance->attendanceType)->code === 'present')->count();
-        $holiday = $attendances->filter(fn ($attendance) => optional($attendance->attendanceType)->code === 'holiday')->count();
+        $holidayFromAtt = (float) $attendances->filter(fn ($attendance) => optional($attendance->attendanceType)->code === 'holiday')->count();
+        $tableHolidays = $this->activeHolidayDays($employee, $month, $year);
+        $finalHolidays = max($holidayFromAtt, $tableHolidays);
+        $missingHolidayDays = max(0.0, $finalHolidays - $holidayFromAtt);
+
         $weekOff = $attendances->filter(fn ($attendance) => optional($attendance->attendanceType)->code === 'week_off')->count();
         $absent = $attendances->filter(fn ($attendance) => optional($attendance->attendanceType)->code === 'absent')->count();
         $halfDays = $attendances->where('is_half_day', true)->count();
         $lwp = (float) ($leaveRows->lwp ?? 0) + (float) $attendances->where('is_lwp', true)->count();
 
-        $attendancePayableDays = $attendances->sum(function (AttendanceM $attendance) {
+        $attendancePayableDays = $attendances->filter(function (AttendanceM $attendance) {
+            $code = strtolower((string) optional($attendance->attendanceType)->code);
+            $status = strtolower((string) ($attendance->attendance_status ?? ''));
+            return !in_array($code, ['leave'], true) && !in_array($status, ['leave'], true) && empty($attendance->leave_request_id);
+        })->sum(function (AttendanceM $attendance) {
             return (float) $this->payableDayResolver->resolve($attendance)['payable_day'];
         });
         $summary->fill([
@@ -75,7 +88,7 @@ class PayrollAttendanceSummaryService
             'paid_leave_days' => (float) ($leaveRows->paid ?? 0),
             'sick_leave_days' => (float) ($leaveRows->sick ?? 0),
             'comp_off_days' => (float) ($leaveRows->comp ?? 0),
-            'holiday_days' => $holiday,
+            'holiday_days' => $finalHolidays,
             'week_off_days' => $weekOff,
             'half_days' => $halfDays,
             'lwp_days' => $lwp,
@@ -86,6 +99,7 @@ class PayrollAttendanceSummaryService
             'total_work_minutes' => $attendances->sum('total_work_minutes'),
             'payable_days' => max(0, round(
                 $attendancePayableDays
+                + $missingHolidayDays
                 + (float) ($leaveRows->paid ?? 0)
                 + (float) ($leaveRows->sick ?? 0)
                 + (float) ($leaveRows->comp ?? 0),
@@ -95,6 +109,23 @@ class PayrollAttendanceSummaryService
         $summary->save();
 
         return $summary;
+    }
+
+    private function activeHolidayDays(EmployeeM $employee, int $month, int $year): float
+    {
+        if (! Schema::hasTable('holidays')) {
+            return 0.0;
+        }
+
+        $query = DB::table('holidays')
+            ->whereMonth('holiday_date', $month)
+            ->whereYear('holiday_date', $year);
+
+        if (Schema::hasColumn('holidays', 'is_active')) {
+            $query->where('is_active', 1);
+        }
+
+        return (float) $query->count();
     }
 
     public function lock(int $month, int $year, int $userId, ?int $employeeId = null): int

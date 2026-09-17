@@ -4,6 +4,7 @@ namespace App\Services\HRMS\Employee;
 
 use App\Models\HRMS\Employee\EmployeeM;
 use App\Models\Core\UserM;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -151,7 +152,6 @@ class EmployeeEligibilityS
     {
         $employee = null;
         $user = null;
-
         if ($userOrEmployee instanceof UserM) {
             $user = $userOrEmployee;
             $employee = EmployeeM::where('user_id', $user->id)->first();
@@ -206,11 +206,45 @@ class EmployeeEligibilityS
     }
 
     /**
-     * Payroll Eligibility: Skips Profile Pending, Exit Completed, Terminated.
+     * Payroll Eligibility: Skips Profile Pending, Exit Completed, Terminated, Unpaid Interns,
+     * and employees whose onboarding/hire date is after the specified payroll period.
      */
-    public function canUsePayroll($employee): bool
+    public function canUsePayroll($employee, ?int $month = null, ?int $year = null): bool
     {
-        return $this->isEligible($employee);
+        if (! $this->isEligible($employee)) {
+            return false;
+        }
+
+        if (is_object($employee)) {
+            $stage = strtolower(trim((string) ($employee->employee_stage ?? '')));
+            $isPaidIntern = (int) ($employee->is_paid_intern ?? 1);
+            $actualSalary = (float) ($employee->actual_salary ?? 0);
+
+            if ($stage === 'internship' && ($isPaidIntern === 0 || $actualSalary <= 0)) {
+                return false;
+            }
+
+            if ($month !== null && $year !== null) {
+                $periodEnd = Carbon::create($year, $month, 1)->endOfMonth()->toDateString();
+                $periodStart = Carbon::create($year, $month, 1)->startOfMonth()->toDateString();
+
+                $effectiveStartDate = $employee->internship_start_date 
+                    ?? $employee->joining_date 
+                    ?? ($employee->created_at ? Carbon::parse($employee->created_at)->toDateString() : null);
+
+                // If the employee onboarded/joined after the payroll month, skip them
+                if ($effectiveStartDate && $effectiveStartDate > $periodEnd) {
+                    return false;
+                }
+
+                // If the employee was relieved/exited before the payroll month, skip them
+                if (!empty($employee->relieving_date) && $employee->relieving_date < $periodStart) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     /**

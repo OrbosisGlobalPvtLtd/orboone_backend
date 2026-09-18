@@ -9,7 +9,6 @@
 <style>
     /* Compliance Command Center Premium Custom Styles */
     :root {
-
         --orb-bg: #F6F7FB;
         --orb-card: #FFFFFF;
         --orb-border: #E7EAF3;
@@ -26,50 +25,160 @@
         --color-danger-light: #FEF3F2;
         --color-info: #0ea5e9;
         --color-info-light: #F0F9FF;
-        --color-purple: var(--orb-secondary);
+        --color-purple: var(--orb-secondary, #FF5252);
         --color-purple-light: #F4F2FF;
     }
 
+    .compliance-page {
+        padding: 20px 16px 40px !important;
+        background: var(--orb-bg) !important;
+        min-height: calc(100vh - 90px) !important;
+        font-family: 'Outfit', 'Inter', sans-serif !important;
+        max-width: 1600px !important;
+        margin: 0 auto !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    @media (max-width: 768px) {
+        .compliance-page {
+            padding: 12px 10px 30px !important;
+        }
+    }
+
+    /* HERO */
     .compliance-hero {
-        background: linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%) !important;
-        border-radius: 20px !important;
-        padding: 32px 40px !important;
+        background: linear-gradient(135deg, var(--orb-primary, #4B00E8) 0%, var(--orb-secondary, #FF5252) 100%) !important;
+        border-radius: 22px !important;
+        padding: 28px 32px !important;
         color: #fff !important;
-        box-shadow: 0 12px 35px rgba(75, 0, 232, 0.12) !important;
-        margin-bottom: 24px !important;
+        box-shadow: 0 16px 40px rgba(75, 0, 232, 0.16) !important;
+        margin-bottom: 20px !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        flex-wrap: wrap !important;
+        gap: 20px !important;
+        position: relative !important;
+        overflow: hidden !important;
+    }
+
+    .compliance-hero::before {
+        content: "" !important;
+        position: absolute !important;
+        right: -60px !important;
+        top: -90px !important;
+        width: 320px !important;
+        height: 320px !important;
+        border-radius: 50% !important;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 70%) !important;
+        pointer-events: none !important;
+    }
+
+    .compliance-hero-title {
+        position: relative !important;
+        z-index: 2 !important;
+        max-width: 650px !important;
     }
 
     .compliance-hero-title h1 {
-        font-size: 30px !important;
+        font-size: clamp(22px, 3vw, 28px) !important;
         font-weight: 900 !important;
-        margin: 0 !important;
+        margin: 0 0 6px 0 !important;
         color: #fff !important;
         letter-spacing: -0.02em !important;
+        text-transform: uppercase !important;
+        line-height: 1.2 !important;
     }
 
     .compliance-hero-title p {
-        font-size: 14px !important;
-        color: rgba(255, 255, 255, 0.85) !important;
-        margin: 8px 0 0 0 !important;
+        font-size: clamp(12.5px, 1.3vw, 14px) !important;
+        color: #F3E8FF !important;
+        margin: 0 !important;
         font-weight: 500 !important;
+        line-height: 1.45 !important;
     }
 
-    /* Helper Utilities */
-    .gap-1 {
+    .compliance-hero-widget {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 0 !important;
+        background: rgba(255, 255, 255, 0.16) !important;
+        border: 1px solid rgba(255, 255, 255, 0.28) !important;
+        backdrop-filter: blur(12px) !important;
+        padding: 6px 10px !important;
+        border-radius: 18px !important;
+        position: relative !important;
+        z-index: 2 !important;
+        flex-shrink: 0 !important;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08) !important;
+    }
+
+    .hero-stat-item {
+        padding: 6px 18px !important;
+        text-align: center !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    .hero-stat-val {
+        font-size: 26px !important;
+        line-height: 1.1 !important;
+        font-weight: 950 !important;
+        color: #FFFFFF !important;
+        letter-spacing: -0.02em !important;
+        display: inline-flex !important;
+        align-items: baseline !important;
         gap: 4px !important;
     }
 
-    .gap-2 {
-        gap: 8px !important;
+    .hero-stat-total {
+        font-size: 14px !important;
+        font-weight: 700 !important;
+        opacity: 0.8 !important;
+        color: #F3E8FF !important;
     }
 
-    .gap-3 {
-        gap: 16px !important;
+    .hero-stat-lbl {
+        font-size: 9.5px !important;
+        font-weight: 800 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.06em !important;
+        color: #F3E8FF !important;
+        margin-top: 3px !important;
+        white-space: nowrap !important;
     }
 
-    .gap-4 {
-        gap: 24px !important;
+    .hero-stat-divider {
+        width: 1px !important;
+        height: 36px !important;
+        background: rgba(255, 255, 255, 0.25) !important;
     }
+
+    @media (max-width: 900px) {
+        .compliance-hero {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            padding: 22px 20px !important;
+        }
+        .compliance-hero-widget {
+            width: 100% !important;
+            justify-content: space-around !important;
+            padding: 8px 6px !important;
+        }
+        .hero-stat-item {
+            flex: 1 !important;
+            padding: 6px 8px !important;
+        }
+    }
+
+    /* Helper Utilities */
+    .gap-1 { gap: 4px !important; }
+    .gap-2 { gap: 8px !important; }
+    .gap-3 { gap: 16px !important; }
+    .gap-4 { gap: 24px !important; }
 
     .transition-all {
         transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
@@ -83,79 +192,44 @@
         .border-right-lg {
             border-right: none !important;
             border-bottom: 1px solid var(--orb-border);
-            padding-bottom: 24px;
-            margin-bottom: 24px;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
         }
     }
 
     /* Colors and Backgrounds */
-    .bg-success-light {
-        background-color: var(--color-success-light) !important;
-    }
+    .bg-success-light { background-color: var(--color-success-light) !important; }
+    .bg-purple-light { background-color: var(--color-purple-light) !important; }
+    .bg-warning-light { background-color: var(--color-warning-light) !important; }
+    .bg-danger-light { background-color: var(--color-danger-light) !important; }
+    .bg-info-light { background-color: var(--color-info-light) !important; }
 
-    .bg-purple-light {
-        background-color: var(--color-purple-light) !important;
-    }
-
-    .bg-warning-light {
-        background-color: var(--color-warning-light) !important;
-    }
-
-    .bg-danger-light {
-        background-color: var(--color-danger-light) !important;
-    }
-
-    .bg-info-light {
-        background-color: var(--color-info-light) !important;
-    }
-
-    .text-purple {
-        color: var(--color-purple) !important;
-    }
-
-    .bg-purple {
-        background-color: var(--color-purple) !important;
-    }
+    .text-purple { color: var(--color-purple) !important; }
+    .bg-purple { background-color: var(--color-purple) !important; }
 
     /* Cards */
     .compliance-profile-card {
         background: #fff !important;
         border: 1px solid var(--orb-border) !important;
-        border-radius: 16px !important;
+        border-radius: 18px !important;
         box-shadow: var(--orb-shadow) !important;
         transition: transform 0.2s ease, box-shadow 0.2s ease !important;
     }
 
     .compliance-profile-card:hover {
-        transform: translateY(-4px) !important;
-        box-shadow: 0 16px 36px rgba(16, 24, 40, 0.12) !important;
-    }
-
-    /* Custom Ledger Collapsible styling */
-    #ledgerCollapse {
-        transition: all 0.3s ease;
+        transform: translateY(-3px) !important;
+        box-shadow: 0 16px 36px rgba(16, 24, 40, 0.10) !important;
     }
 
     /* Font weight helpers */
-    .font-weight-black {
-        font-weight: 900 !important;
-    }
-
-    .font-weight-bold {
-        font-weight: 700 !important;
-    }
-
-    .font-weight-semibold {
-        font-weight: 600 !important;
-    }
-
-    .font-weight-medium {
-        font-weight: 500 !important;
-    }
+    .font-weight-black { font-weight: 900 !important; }
+    .font-weight-bold { font-weight: 700 !important; }
+    .font-weight-semibold { font-weight: 600 !important; }
+    .font-weight-medium { font-weight: 500 !important; }
 
     /* Action Pill buttons styling overrides */
     .dm-action-btn-pill {
-        border-radius: 99px !important;
+        border-radius: 999px !important;
         padding: 4px 12px !important;
         font-weight: 700 !important;
         font-size: 11px !important;
@@ -166,7 +240,6 @@
         transition: all 0.2s ease !important;
     }
 
-    /* DataTable toolbar styles */
     /* DataTable toolbar & Export Buttons styles */
     .dm-table-toolbar-row {
         background: #FAFBFC !important;
@@ -182,14 +255,15 @@
         display: flex !important;
         align-items: center !important;
         gap: 6px !important;
+        flex-wrap: wrap !important;
     }
 
     #employeeExportButtons .dt-button,
     #employeeExportButtons .btn {
         border-radius: 8px !important;
-        font-weight: 700 !important;
-        font-size: 11px !important;
-        padding: 6px 14px !important;
+        font-weight: 800 !important;
+        font-size: 11.5px !important;
+        padding: 6px 12px !important;
         display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
@@ -227,6 +301,7 @@
     #employeeExportButtons .btn:hover {
         opacity: 0.9 !important;
         color: #FFFFFF !important;
+        transform: translateY(-1px) !important;
     }
 
     /* Table Responsive Wrapper & Specific Column Width Rules */
@@ -240,7 +315,7 @@
 
     #employeeDocDirectoryTable {
         width: 100% !important;
-        min-width: 1750px !important;
+        min-width: 1600px !important;
         table-layout: fixed !important;
         border-collapse: separate !important;
         border-spacing: 0 !important;
@@ -251,15 +326,14 @@
         background: #F8FAFC !important;
         color: var(--orb-muted, #667085) !important;
         font-size: 11px !important;
-        font-weight: 700 !important;
+        font-weight: 800 !important;
         text-transform: uppercase !important;
-        letter-spacing: 0.3px !important;
+        letter-spacing: 0.04em !important;
         padding: 12px 10px !important;
         border-top: none !important;
         border-bottom: 1px solid var(--orb-border, #E7EAF3) !important;
         vertical-align: middle !important;
-        white-space: normal !important;
-        line-height: 1.25 !important;
+        white-space: nowrap !important;
     }
 
     #employeeDocDirectoryTable tbody td {
@@ -269,55 +343,67 @@
         color: var(--orb-text, #101828) !important;
         border-bottom: 1px solid var(--orb-border, #E7EAF3) !important;
         vertical-align: middle !important;
-        min-height: 60px !important;
     }
 
     #employeeDocDirectoryTable tbody tr:hover td {
-        background-color: #F8FAFC !important;
+        background-color: #FDFDFF !important;
     }
 
     /* Column Specific Widths & Alignments */
     .col-sno { width: 55px !important; min-width: 55px !important; text-align: center !important; }
-    .col-emp { width: 240px !important; min-width: 240px !important; text-align: left !important; }
-    .col-code { width: 130px !important; min-width: 130px !important; text-align: left !important; }
-    .col-dept { width: 170px !important; min-width: 170px !important; text-align: left !important; }
-    .col-stage { width: 110px !important; min-width: 110px !important; text-align: center !important; }
-    .col-prof-status { width: 140px !important; min-width: 140px !important; text-align: center !important; }
-    .col-num { width: 75px !important; min-width: 75px !important; text-align: center !important; }
+    .col-emp { width: 230px !important; min-width: 230px !important; text-align: left !important; }
+    .col-code { width: 120px !important; min-width: 120px !important; text-align: left !important; }
+    .col-dept { width: 160px !important; min-width: 160px !important; text-align: left !important; }
+    .col-stage { width: 100px !important; min-width: 100px !important; text-align: center !important; }
+    .col-prof-status { width: 130px !important; min-width: 130px !important; text-align: center !important; }
+    .col-num { width: 70px !important; min-width: 70px !important; text-align: center !important; }
     .col-comp-pct { width: 110px !important; min-width: 110px !important; text-align: center !important; }
     .col-comp-status { width: 160px !important; min-width: 160px !important; text-align: center !important; }
-    .col-last-ver { width: 140px !important; min-width: 140px !important; text-align: center !important; }
-    .col-action { width: 230px !important; min-width: 230px !important; text-align: center !important; }
+    .col-last-ver { width: 130px !important; min-width: 130px !important; text-align: center !important; }
+    .col-action { width: 220px !important; min-width: 220px !important; text-align: center !important; }
+
+    /* Responsive Filter Grid */
+    .compliance-filter-grid {
+        display: grid !important;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) !important;
+        gap: 12px !important;
+        align-items: flex-end !important;
+    }
+
+    @media (max-width: 576px) {
+        .compliance-filter-grid {
+            grid-template-columns: 1fr !important;
+        }
+    }
 </style>
 @endsection
 
 @section('_content')
-<div class="container-fluid py-4" style="background-color: var(--orb-bg); min-height: 100vh;">
+<div class="compliance-page">
 
     <!-- ==========================================
          SECTION 1 — HERO SECTION
          ========================================== -->
-    <div class="compliance-hero d-flex flex-wrap align-items-center justify-content-between gap-4">
+    <div class="compliance-hero">
         <div class="compliance-hero-title">
-            <div class="d-flex align-items-center gap-2 mb-2" style="color: rgba(255,255,255,0.85); font-size: 11px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase;">
+            <div class="d-flex align-items-center gap-2 mb-2" style="color: #E0E7FF; font-size: 11px; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase;">
                 <i class="fas fa-shield-alt"></i> COMPLIANCE COMMAND CENTER
             </div>
             <h1>Compliance Management</h1>
             <p>Monitor verified employee records, missing documents, compliance risk, and HR readiness.</p>
         </div>
 
-        <div class="d-flex align-items-center gap-3 bg-white-10 p-3 rounded-lg border border-white-20 shadow-sm" style="background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.18);">
-            <div class="text-center px-3 border-right border-white-20">
-                <span class="d-block font-weight-black text-white" style="font-size: 28px; line-height: 1;">{{ $summary['compliance_rate'] }}%</span>
-                <span class="text-white font-weight-bold text-uppercase" style="font-size: 9px; opacity: 0.8; letter-spacing: 0.05em;">Overall Compliance</span>
+        <div class="compliance-hero-widget shadow-sm">
+            <div class="hero-stat-item">
+                <span class="hero-stat-val">{{ $summary['compliance_rate'] }}%</span>
+                <span class="hero-stat-lbl">Overall Compliance</span>
             </div>
-            <div class="text-center px-2">
-                <span class="d-block font-weight-black text-white" style="font-size: 20px; line-height: 1;">{{ $summary['fully_compliant'] }}</span>
-                <span class="text-white font-weight-bold text-uppercase" style="font-size: 9px; opacity: 0.8; letter-spacing: 0.05em;">Fully Compliant</span>
-            </div>
-            <div class="text-center px-2">
-                <span class="d-block font-weight-bold text-white-50" style="font-size: 13px;">/ {{ $summary['total_employees'] }}</span>
-                <span class="text-white font-weight-bold text-uppercase" style="font-size: 9px; opacity: 0.8; letter-spacing: 0.05em;">Employees</span>
+            <div class="hero-stat-divider"></div>
+            <div class="hero-stat-item">
+                <span class="hero-stat-val">
+                    {{ $summary['fully_compliant'] }}<span class="hero-stat-total">/ {{ $summary['total_employees'] }}</span>
+                </span>
+                <span class="hero-stat-lbl">Fully Compliant</span>
             </div>
         </div>
     </div>
@@ -326,12 +412,12 @@
     <!-- ==========================================
          SECTION 2 — SCORE RING / BIG VISUAL BLOCK
          ========================================== -->
-    <div class="card border-0 shadow-sm rounded-lg mb-4 bg-white overflow-hidden">
-        <div class="row align-items-center p-4">
+    <div class="card border-0 shadow-sm rounded-lg mb-4 bg-white overflow-hidden" style="border-radius: 20px !important;">
+        <div class="row align-items-center p-3 p-md-4">
             <div class="col-lg-4 text-center border-right-lg">
                 <!-- Circular Ring SVG -->
                 <div class="position-relative d-inline-block">
-                    <svg width="170" height="170" viewBox="0 0 170 170">
+                    <svg width="150" height="150" viewBox="0 0 170 170" style="max-width: 100%; height: auto;">
                         <!-- Background circle -->
                         <circle cx="85" cy="85" r="70" fill="none" stroke="#E4E7EC" stroke-width="12" />
                         <!-- Foreground circle with progress -->
@@ -341,45 +427,46 @@
                         <!-- Definitions for Gradient -->
                         <defs>
                             <linearGradient id="gradientStroke" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" stop-color="var(--orb-primary)" />
-                                <stop offset="100%" stop-color="var(--orb-secondary)" />
+                                <stop offset="0%" stop-color="var(--orb-primary, #4B00E8)" />
+                                <stop offset="100%" stop-color="var(--orb-secondary, #FF5252)" />
                             </linearGradient>
                         </defs>
                     </svg>
                     <!-- Centered text -->
                     <div class="position-absolute" style="top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
-                        <span class="d-block font-weight-black text-dark" style="font-size: 34px; line-height: 1;">{{ $summary['compliance_rate'] }}%</span>
-                        <span class="text-muted font-weight-bold" style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em;">Compliance Rate</span>
+                        <span class="d-block font-weight-black text-dark" style="font-size: 30px; line-height: 1;">{{ $summary['compliance_rate'] }}%</span>
+                        <span class="text-muted font-weight-bold" style="font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.05em;">Compliance</span>
                     </div>
                 </div>
             </div>
 
-            <div class="col-lg-8 pl-lg-5 mt-4 mt-lg-0">
-                <div class="d-flex align-items-center gap-2 mb-2">
+            <div class="col-lg-8 pl-lg-4 mt-3 mt-lg-0">
+                <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
                     <span class="badge badge-success px-2 py-1 font-weight-bold" style="font-size: 10px; border-radius: 6px;">Live Metrics</span>
-                    <h4 class="font-weight-black text-dark mb-0" style="font-size: 20px;">Radial Compliance Engine</h4>
+                    <h4 class="font-weight-black text-dark mb-0" style="font-size: 18px;">Radial Compliance Engine</h4>
                 </div>
-                <p class="text-muted font-weight-medium mb-4" style="font-size: 13px; line-height: 1.5;">This real-time system tracks mandatory verification progress across your organization. Meet audit parameters and onboarding stages with continuous document validation.</p>
+                <p class="text-muted font-weight-medium mb-3" style="font-size: 13px; line-height: 1.5;">This real-time system tracks mandatory verification progress across your organization. Meet audit parameters and onboarding stages with continuous document validation.</p>
+                
                 <div class="row mb-3">
-                    <div class="col-sm-6 mb-3">
+                    <div class="col-6 col-sm-6 mb-2">
                         <div class="d-flex align-items-center gap-2">
-                            <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center" style="width: 24px; height: 24px; font-size: 11px;">
+                            <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center" style="width: 26px; height: 26px; font-size: 11px; flex-shrink: 0;">
                                 <i class="fas fa-check"></i>
                             </div>
-                            <div>
-                                <span class="d-block text-dark font-weight-bold mb-0" style="font-size: 14px;">{{ $summary['fully_compliant'] }} Employees</span>
-                                <span class="text-muted font-weight-bold" style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em;">Compliant (Zero Risks)</span>
+                            <div style="min-width: 0;">
+                                <span class="d-block text-dark font-weight-bold mb-0 text-truncate" style="font-size: 13px;">{{ $summary['fully_compliant'] }} Employees</span>
+                                <span class="text-muted font-weight-bold d-block text-truncate" style="font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.04em;">Compliant</span>
                             </div>
                         </div>
                     </div>
-                    <div class="col-sm-6 mb-3">
+                    <div class="col-6 col-sm-6 mb-2">
                         <div class="d-flex align-items-center gap-2">
-                            <div class="rounded-circle bg-danger text-white d-flex align-items-center justify-content-center" style="width: 24px; height: 24px; font-size: 11px;">
+                            <div class="rounded-circle bg-danger text-white d-flex align-items-center justify-content-center" style="width: 26px; height: 26px; font-size: 11px; flex-shrink: 0;">
                                 <i class="fas fa-exclamation-triangle"></i>
                             </div>
-                            <div>
-                                <span class="d-block text-dark font-weight-bold mb-0" style="font-size: 14px;">{{ $summary['non_compliant'] }} Employees</span>
-                                <span class="text-muted font-weight-bold" style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em;">Non-Compliant (At Risk)</span>
+                            <div style="min-width: 0;">
+                                <span class="d-block text-dark font-weight-bold mb-0 text-truncate" style="font-size: 13px;">{{ $summary['non_compliant'] }} Employees</span>
+                                <span class="text-muted font-weight-bold d-block text-truncate" style="font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.04em;">At Risk</span>
                             </div>
                         </div>
                     </div>
@@ -389,7 +476,7 @@
                 <div>
                     <div class="d-flex justify-content-between font-weight-bold text-muted mb-1" style="font-size: 11px; letter-spacing: 0.02em;">
                         <span>ORGANIZATIONAL PROGRESS</span>
-                        <span>{{ $summary['fully_compliant'] }} / {{ $summary['total_employees'] }} Employees Verified</span>
+                        <span>{{ $summary['fully_compliant'] }} / {{ $summary['total_employees'] }} Verified</span>
                     </div>
                     <div class="progress" style="height: 8px; border-radius: 99px; background-color: #E4E7EC;">
                         <div class="progress-bar bg-success" role="progressbar" style="width: {{ $summary['compliance_rate'] }}%; border-radius: 99px;" aria-valuenow="{{ $summary['compliance_rate'] }}" aria-valuemin="0" aria-valuemax="100"></div>
@@ -405,15 +492,15 @@
          ========================================== -->
     <div class="row mb-4">
         <!-- Tile 1: Fully Compliant -->
-        <div class="col-xl-3 col-md-6 mb-3">
+        <div class="col-6 col-xl-3 col-md-6 mb-3">
             <div class="card border-0 shadow-sm rounded-lg h-100 overflow-hidden transition-all compliance-profile-card" style="border-left: 5px solid var(--color-success) !important;">
                 <div class="card-body p-3 d-flex align-items-center justify-content-between">
                     <div>
-                        <span class="d-block text-muted font-weight-bold text-uppercase" style="font-size: 10px; letter-spacing: 0.05em;">Fully Compliant</span>
-                        <span class="d-block text-dark font-weight-black my-1" style="font-size: 28px; line-height: 1;">{{ $summary['fully_compliant'] }}</span>
-                        <span class="text-muted font-weight-medium" style="font-size: 11px;">Zero risk detected</span>
+                        <span class="d-block text-muted font-weight-bold text-uppercase" style="font-size: 9.5px; letter-spacing: 0.05em;">Fully Compliant</span>
+                        <span class="d-block text-dark font-weight-black my-1" style="font-size: 24px; line-height: 1;">{{ $summary['fully_compliant'] }}</span>
+                        <span class="text-muted font-weight-medium d-none d-sm-block" style="font-size: 11px;">Zero risk detected</span>
                     </div>
-                    <div class="rounded-circle bg-success-light text-success d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; font-size: 20px;">
+                    <div class="rounded-circle bg-success-light text-success d-flex align-items-center justify-content-center" style="width: 42px; height: 42px; font-size: 18px; flex-shrink: 0;">
                         <i class="fas fa-check-circle"></i>
                     </div>
                 </div>
@@ -424,15 +511,15 @@
         </div>
 
         <!-- Tile 2: Pending Verification -->
-        <div class="col-xl-3 col-md-6 mb-3">
+        <div class="col-6 col-xl-3 col-md-6 mb-3">
             <div class="card border-0 shadow-sm rounded-lg h-100 overflow-hidden transition-all compliance-profile-card" style="border-left: 5px solid var(--color-purple) !important;">
                 <div class="card-body p-3 d-flex align-items-center justify-content-between">
                     <div>
-                        <span class="d-block text-muted font-weight-bold text-uppercase" style="font-size: 10px; letter-spacing: 0.05em;">Pending Verification</span>
-                        <span class="d-block text-dark font-weight-black my-1" style="font-size: 28px; line-height: 1;">{{ $summary['pending_verification'] }}</span>
-                        <span class="text-muted font-weight-medium" style="font-size: 11px;">Awaiting HR review</span>
+                        <span class="d-block text-muted font-weight-bold text-uppercase" style="font-size: 9.5px; letter-spacing: 0.05em;">Pending Review</span>
+                        <span class="d-block text-dark font-weight-black my-1" style="font-size: 24px; line-height: 1;">{{ $summary['pending_verification'] }}</span>
+                        <span class="text-muted font-weight-medium d-none d-sm-block" style="font-size: 11px;">Awaiting HR review</span>
                     </div>
-                    <div class="rounded-circle bg-purple-light text-purple d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; font-size: 20px;">
+                    <div class="rounded-circle bg-purple-light text-purple d-flex align-items-center justify-content-center" style="width: 42px; height: 42px; font-size: 18px; flex-shrink: 0;">
                         <i class="fas fa-clock"></i>
                     </div>
                 </div>
@@ -443,15 +530,15 @@
         </div>
 
         <!-- Tile 3: Missing Documents -->
-        <div class="col-xl-3 col-md-6 mb-3">
+        <div class="col-6 col-xl-3 col-md-6 mb-3">
             <div class="card border-0 shadow-sm rounded-lg h-100 overflow-hidden transition-all compliance-profile-card" style="border-left: 5px solid var(--color-warning) !important;">
                 <div class="card-body p-3 d-flex align-items-center justify-content-between">
                     <div>
-                        <span class="d-block text-muted font-weight-bold text-uppercase" style="font-size: 10px; letter-spacing: 0.05em;">Missing Documents</span>
-                        <span class="d-block text-dark font-weight-black my-1" style="font-size: 28px; line-height: 1;">{{ $summary['missing_documents'] }}</span>
-                        <span class="text-muted font-weight-medium" style="font-size: 11px;">Mandatory files missing</span>
+                        <span class="d-block text-muted font-weight-bold text-uppercase" style="font-size: 9.5px; letter-spacing: 0.05em;">Missing Docs</span>
+                        <span class="d-block text-dark font-weight-black my-1" style="font-size: 24px; line-height: 1;">{{ $summary['missing_documents'] }}</span>
+                        <span class="text-muted font-weight-medium d-none d-sm-block" style="font-size: 11px;">Mandatory files</span>
                     </div>
-                    <div class="rounded-circle bg-warning-light text-warning d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; font-size: 20px;">
+                    <div class="rounded-circle bg-warning-light text-warning d-flex align-items-center justify-content-center" style="width: 42px; height: 42px; font-size: 18px; flex-shrink: 0;">
                         <i class="fas fa-file-excel"></i>
                     </div>
                 </div>
@@ -462,15 +549,15 @@
         </div>
 
         <!-- Tile 4: Rejected / Expired Risk -->
-        <div class="col-xl-3 col-md-6 mb-3">
+        <div class="col-6 col-xl-3 col-md-6 mb-3">
             <div class="card border-0 shadow-sm rounded-lg h-100 overflow-hidden transition-all compliance-profile-card" style="border-left: 5px solid var(--color-danger) !important;">
                 <div class="card-body p-3 d-flex align-items-center justify-content-between">
                     <div>
-                        <span class="d-block text-muted font-weight-bold text-uppercase" style="font-size: 10px; letter-spacing: 0.05em;">Rejected / Expired Risk</span>
-                        <span class="d-block text-dark font-weight-black my-1" style="font-size: 28px; line-height: 1;">{{ $summary['rejected_documents'] + $summary['expired_documents'] }}</span>
-                        <span class="text-muted font-weight-medium" style="font-size: 11px;">Requires urgent action</span>
+                        <span class="d-block text-muted font-weight-bold text-uppercase" style="font-size: 9.5px; letter-spacing: 0.05em;">Rejected / Expired</span>
+                        <span class="d-block text-dark font-weight-black my-1" style="font-size: 24px; line-height: 1;">{{ $summary['rejected_documents'] + $summary['expired_documents'] }}</span>
+                        <span class="text-muted font-weight-medium d-none d-sm-block" style="font-size: 11px;">Action required</span>
                     </div>
-                    <div class="rounded-circle bg-danger-light text-danger d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; font-size: 20px;">
+                    <div class="rounded-circle bg-danger-light text-danger d-flex align-items-center justify-content-center" style="width: 42px; height: 42px; font-size: 18px; flex-shrink: 0;">
                         <i class="fas fa-exclamation-circle"></i>
                     </div>
                 </div>
@@ -501,15 +588,15 @@
                         <p class="text-muted font-weight-medium mb-3" style="font-size: 11px; line-height: 1.3;">Employees with multiple missing, rejected, or expired documents.</p>
 
                         <div class="mb-3">
-                            <span class="d-block text-muted font-weight-bold mb-2 text-uppercase" style="font-size: 8px; letter-spacing: 0.05em;">Top Risk Cases:</span>
+                            <span class="d-block text-muted font-weight-bold mb-2 text-uppercase" style="font-size: 8.5px; letter-spacing: 0.05em;">Top Risk Cases:</span>
                             @forelse($riskPanels['high_risk']['employees'] as $emp)
                             <div class="d-flex align-items-center mb-2 gap-2">
-                                <div class="rounded-circle bg-danger-light text-danger d-flex align-items-center justify-content-center font-weight-bold" style="width: 22px; height: 22px; font-size: 9px;">
+                                <div class="rounded-circle bg-danger-light text-danger d-flex align-items-center justify-content-center font-weight-bold" style="width: 24px; height: 24px; font-size: 9.5px; flex-shrink: 0;">
                                     {{ strtoupper(substr($emp->name, 0, 1)) }}
                                 </div>
                                 <div style="min-width: 0; flex: 1;">
-                                    <span class="d-block text-dark font-weight-bold text-truncate" style="font-size: 11px; line-height: 1.1;">{{ $emp->name }}</span>
-                                    <span class="text-muted font-weight-bold" style="font-size: 8px;">{{ $emp->code }}</span>
+                                    <span class="d-block text-dark font-weight-bold text-truncate" style="font-size: 11.5px; line-height: 1.1;">{{ $emp->name }}</span>
+                                    <span class="text-muted font-weight-bold" style="font-size: 8.5px;">{{ $emp->code }}</span>
                                 </div>
                             </div>
                             @empty
@@ -518,7 +605,7 @@
                         </div>
                     </div>
 
-                    <button type="button" class="btn btn-sm btn-outline-danger btn-block font-weight-bold mt-2" onclick="applyRiskFilter('high_risk')" style="font-size: 10px; border-radius: 6px;">
+                    <button type="button" class="btn btn-sm btn-outline-danger btn-block font-weight-bold mt-2" onclick="applyRiskFilter('high_risk')" style="font-size: 11px; border-radius: 8px;">
                         View filtered employees
                     </button>
                 </div>
@@ -537,15 +624,15 @@
                         <p class="text-muted font-weight-medium mb-3" style="font-size: 11px; line-height: 1.3;">Employees with required mandatory files missing from their files.</p>
 
                         <div class="mb-3">
-                            <span class="d-block text-muted font-weight-bold mb-2 text-uppercase" style="font-size: 8px; letter-spacing: 0.05em;">Top Missing Cases:</span>
+                            <span class="d-block text-muted font-weight-bold mb-2 text-uppercase" style="font-size: 8.5px; letter-spacing: 0.05em;">Top Missing Cases:</span>
                             @forelse($riskPanels['missing_mandatory']['employees'] as $emp)
                             <div class="d-flex align-items-center mb-2 gap-2">
-                                <div class="rounded-circle bg-warning-light text-warning d-flex align-items-center justify-content-center font-weight-bold" style="width: 22px; height: 22px; font-size: 9px;">
+                                <div class="rounded-circle bg-warning-light text-warning d-flex align-items-center justify-content-center font-weight-bold" style="width: 24px; height: 24px; font-size: 9.5px; flex-shrink: 0;">
                                     {{ strtoupper(substr($emp->name, 0, 1)) }}
                                 </div>
                                 <div style="min-width: 0; flex: 1;">
-                                    <span class="d-block text-dark font-weight-bold text-truncate" style="font-size: 11px; line-height: 1.1;">{{ $emp->name }}</span>
-                                    <span class="text-muted font-weight-bold" style="font-size: 8px;">{{ $emp->code }} &bull; {{ $emp->missing_docs }} missing</span>
+                                    <span class="d-block text-dark font-weight-bold text-truncate" style="font-size: 11.5px; line-height: 1.1;">{{ $emp->name }}</span>
+                                    <span class="text-muted font-weight-bold" style="font-size: 8.5px;">{{ $emp->code }} &bull; {{ $emp->missing_docs }} missing</span>
                                 </div>
                             </div>
                             @empty
@@ -554,7 +641,7 @@
                         </div>
                     </div>
 
-                    <button type="button" class="btn btn-sm btn-outline-warning btn-block font-weight-bold text-warning mt-2" onclick="applyRiskFilter('missing_mandatory')" style="font-size: 10px; border-radius: 6px;">
+                    <button type="button" class="btn btn-sm btn-outline-warning btn-block font-weight-bold text-warning mt-2" onclick="applyRiskFilter('missing_mandatory')" style="font-size: 11px; border-radius: 8px;">
                         View filtered employees
                     </button>
                 </div>
@@ -573,15 +660,15 @@
                         <p class="text-muted font-weight-medium mb-3" style="font-size: 11px; line-height: 1.3;">Employees with files rejected by HR during verification check.</p>
 
                         <div class="mb-3">
-                            <span class="d-block text-muted font-weight-bold mb-2 text-uppercase" style="font-size: 8px; letter-spacing: 0.05em;">Top Rejected Cases:</span>
+                            <span class="d-block text-muted font-weight-bold mb-2 text-uppercase" style="font-size: 8.5px; letter-spacing: 0.05em;">Top Rejected Cases:</span>
                             @forelse($riskPanels['rejected']['employees'] as $emp)
                             <div class="d-flex align-items-center mb-2 gap-2">
-                                <div class="rounded-circle bg-danger-light text-danger d-flex align-items-center justify-content-center font-weight-bold" style="width: 22px; height: 22px; font-size: 9px;">
+                                <div class="rounded-circle bg-danger-light text-danger d-flex align-items-center justify-content-center font-weight-bold" style="width: 24px; height: 24px; font-size: 9.5px; flex-shrink: 0;">
                                     {{ strtoupper(substr($emp->name, 0, 1)) }}
                                 </div>
                                 <div style="min-width: 0; flex: 1;">
-                                    <span class="d-block text-dark font-weight-bold text-truncate" style="font-size: 11px; line-height: 1.1;">{{ $emp->name }}</span>
-                                    <span class="text-muted font-weight-bold" style="font-size: 8px;">{{ $emp->code }} &bull; {{ $emp->rejected_docs }} rejected</span>
+                                    <span class="d-block text-dark font-weight-bold text-truncate" style="font-size: 11.5px; line-height: 1.1;">{{ $emp->name }}</span>
+                                    <span class="text-muted font-weight-bold" style="font-size: 8.5px;">{{ $emp->code }} &bull; {{ $emp->rejected_docs }} rejected</span>
                                 </div>
                             </div>
                             @empty
@@ -590,7 +677,7 @@
                         </div>
                     </div>
 
-                    <button type="button" class="btn btn-sm btn-outline-danger btn-block font-weight-bold mt-2" onclick="applyRiskFilter('rejected')" style="font-size: 10px; border-radius: 6px;">
+                    <button type="button" class="btn btn-sm btn-outline-danger btn-block font-weight-bold mt-2" onclick="applyRiskFilter('rejected')" style="font-size: 11px; border-radius: 8px;">
                         View filtered employees
                     </button>
                 </div>
@@ -609,15 +696,15 @@
                         <p class="text-muted font-weight-medium mb-3" style="font-size: 11px; line-height: 1.3;">Employees with files that have already expired or are near expiry.</p>
 
                         <div class="mb-3">
-                            <span class="d-block text-muted font-weight-bold mb-2 text-uppercase" style="font-size: 8px; letter-spacing: 0.05em;">Top Expired Cases:</span>
+                            <span class="d-block text-muted font-weight-bold mb-2 text-uppercase" style="font-size: 8.5px; letter-spacing: 0.05em;">Top Expired Cases:</span>
                             @forelse($riskPanels['expired']['employees'] as $emp)
                             <div class="d-flex align-items-center mb-2 gap-2">
-                                <div class="rounded-circle bg-info-light text-info d-flex align-items-center justify-content-center font-weight-bold" style="width: 22px; height: 22px; font-size: 9px;">
+                                <div class="rounded-circle bg-info-light text-info d-flex align-items-center justify-content-center font-weight-bold" style="width: 24px; height: 24px; font-size: 9.5px; flex-shrink: 0;">
                                     {{ strtoupper(substr($emp->name, 0, 1)) }}
                                 </div>
                                 <div style="min-width: 0; flex: 1;">
-                                    <span class="d-block text-dark font-weight-bold text-truncate" style="font-size: 11px; line-height: 1.1;">{{ $emp->name }}</span>
-                                    <span class="text-muted font-weight-bold" style="font-size: 8px;">{{ $emp->code }} &bull; {{ $emp->expired_docs }} expired</span>
+                                    <span class="d-block text-dark font-weight-bold text-truncate" style="font-size: 11.5px; line-height: 1.1;">{{ $emp->name }}</span>
+                                    <span class="text-muted font-weight-bold" style="font-size: 8.5px;">{{ $emp->code }} &bull; {{ $emp->expired_docs }} expired</span>
                                 </div>
                             </div>
                             @empty
@@ -626,7 +713,7 @@
                         </div>
                     </div>
 
-                    <button type="button" class="btn btn-sm btn-outline-info btn-block font-weight-bold mt-2" onclick="applyRiskFilter('expired')" style="font-size: 10px; border-radius: 6px;">
+                    <button type="button" class="btn btn-sm btn-outline-info btn-block font-weight-bold mt-2" onclick="applyRiskFilter('expired')" style="font-size: 11px; border-radius: 8px;">
                         View filtered employees
                     </button>
                 </div>
@@ -638,16 +725,16 @@
     <!-- ==========================================
          SECTION 7 — COMPLIANCE LEDGER TABLE WITH ATTACHED FILTERS
          ========================================== -->
-    <div class="card border-0 shadow-sm rounded-lg mb-5 bg-white overflow-hidden">
+    <div class="card border-0 shadow-sm rounded-lg mb-5 bg-white overflow-hidden" style="border-radius: 20px !important;">
         <!-- Card Header: Title -->
         <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
             <div class="d-flex align-items-center gap-3">
-                <div class="rounded-circle bg-light text-primary d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-size: 16px;">
+                <div class="rounded-circle bg-light text-primary d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-size: 16px; flex-shrink: 0;">
                     <i class="fas fa-list-alt"></i>
                 </div>
                 <div>
-                    <h5 class="mb-0 font-weight-black text-dark" style="font-size: 15px;">Compliance Ledger</h5>
-                    <p class="text-muted mb-0 font-weight-medium" style="font-size: 11px; opacity: 0.8;">Detailed compliance directory, status tracking & document exporting system.</p>
+                    <h5 class="mb-0 font-weight-black text-dark" style="font-size: 16px;">Compliance Ledger</h5>
+                    <p class="text-muted mb-0 font-weight-medium" style="font-size: 11.5px; opacity: 0.85;">Detailed compliance directory, status tracking & document exporting system.</p>
                 </div>
             </div>
         </div>
@@ -658,20 +745,20 @@
                 <!-- Hidden input to maintain risk cohort filter -->
                 <input type="hidden" name="risk_type" id="filterRiskType" value="{{ request('risk_type') }}">
 
-                <div class="row align-items-end">
-                    <div class="col-lg-3 col-md-6 mb-2 mb-lg-0">
+                <div class="compliance-filter-grid">
+                    <div>
                         <label class="font-weight-bold text-muted mb-1" style="font-size: 11px;">Search Employee</label>
                         <div class="input-group">
                             <div class="input-group-prepend">
-                                <span class="input-group-text bg-white border-right-0" style="border-radius: 6px 0 0 6px;"><i class="fas fa-search text-muted"></i></span>
+                                <span class="input-group-text bg-white border-right-0" style="border-radius: 8px 0 0 8px;"><i class="fas fa-search text-muted"></i></span>
                             </div>
-                            <input type="text" name="employee" id="filterSearch" value="{{ request('employee', request('search')) }}" class="form-control bg-white border-left-0" style="font-size: 13px; height: 38px; border-radius: 0 6px 6px 0;" placeholder="Search name, code, email...">
+                            <input type="text" name="employee" id="filterSearch" value="{{ request('employee', request('search')) }}" class="form-control bg-white border-left-0" style="font-size: 13px; height: 38px; border-radius: 0 8px 8px 0;" placeholder="Search name, code, email...">
                         </div>
                     </div>
 
-                    <div class="col-lg-2 col-md-6 mb-2 mb-lg-0">
+                    <div>
                         <label class="font-weight-bold text-muted mb-1" style="font-size: 11px;">Department</label>
-                        <select name="department_id" id="filterDepartment" class="form-control bg-white" style="font-size: 13px; height: 38px; border-radius: 6px;">
+                        <select name="department_id" id="filterDepartment" class="form-control bg-white" style="font-size: 13px; height: 38px; border-radius: 8px;">
                             <option value="">All Departments</option>
                             @foreach($departments as $dept)
                             <option value="{{ $dept->id }}" {{ (string) request('department_id') === (string) $dept->id ? 'selected' : '' }}>{{ $dept->name }}</option>
@@ -679,9 +766,9 @@
                         </select>
                     </div>
 
-                    <div class="col-lg-2 col-md-4 mb-2 mb-lg-0">
+                    <div>
                         <label class="font-weight-bold text-muted mb-1" style="font-size: 11px;">Stage</label>
-                        <select name="employee_stage" id="filterEmployeeStage" class="form-control bg-white" style="font-size: 13px; height: 38px; border-radius: 6px;">
+                        <select name="employee_stage" id="filterEmployeeStage" class="form-control bg-white" style="font-size: 13px; height: 38px; border-radius: 8px;">
                             <option value="">All Stages</option>
                             <option value="internship" {{ request('employee_stage') == 'internship' ? 'selected' : '' }}>Internship</option>
                             <option value="probation" {{ request('employee_stage') == 'probation' ? 'selected' : '' }}>Probation</option>
@@ -690,9 +777,9 @@
                         </select>
                     </div>
 
-                    <div class="col-lg-2 col-md-4 mb-2 mb-lg-0">
+                    <div>
                         <label class="font-weight-bold text-muted mb-1" style="font-size: 11px;">Profile Status</label>
-                        <select name="profile_status" id="filterProfileStatus" class="form-control bg-white" style="font-size: 13px; height: 38px; border-radius: 6px;">
+                        <select name="profile_status" id="filterProfileStatus" class="form-control bg-white" style="font-size: 13px; height: 38px; border-radius: 8px;">
                             <option value="">All Profiles</option>
                             <option value="pending" {{ request('profile_status') == 'pending' ? 'selected' : '' }}>Pending</option>
                             <option value="submitted" {{ request('profile_status') == 'submitted' ? 'selected' : '' }}>Submitted</option>
@@ -701,9 +788,9 @@
                         </select>
                     </div>
 
-                    <div class="col-lg-2 col-md-4 mb-2 mb-lg-0">
+                    <div>
                         <label class="font-weight-bold text-muted mb-1" style="font-size: 11px;">Compliance Status</label>
-                        <select name="compliance_status" id="filterStatus" class="form-control bg-white" style="font-size: 13px; height: 38px; border-radius: 6px;">
+                        <select name="compliance_status" id="filterStatus" class="form-control bg-white" style="font-size: 13px; height: 38px; border-radius: 8px;">
                             <option value="">All Statuses</option>
                             <option value="compliant" {{ request('compliance_status') == 'compliant' ? 'selected' : '' }}>Fully Compliant</option>
                             <option value="non_compliant" {{ request('compliance_status') == 'non_compliant' ? 'selected' : '' }}>Non-Compliant</option>
@@ -714,11 +801,11 @@
                         </select>
                     </div>
 
-                    <div class="col-lg-2 col-md-12 text-lg-right text-left mt-2 mt-lg-0 d-flex align-items-center" style="gap: 6px;">
-                        <button type="submit" class="btn text-white font-weight-bold shadow-sm" style="font-size: 12px; height: 38px; border-radius: 6px; background: var(--orb-primary); border: none; flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 4px;">
+                    <div class="d-flex align-items-center" style="gap: 6px;">
+                        <button type="submit" class="btn text-white font-weight-bold shadow-sm" style="font-size: 12px; height: 38px; border-radius: 8px; background: linear-gradient(135deg, var(--orb-primary, #4B00E8) 0%, var(--orb-secondary, #FF5252) 100%); border: none; flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 4px;">
                             <i class="fas fa-search"></i> Search
                         </button>
-                        <a href="{{ route('documents.compliance.index') }}" class="btn btn-dark font-weight-bold d-flex align-items-center justify-content-center transition-all" style="font-size: 12px; height: 38px; width: 38px; border-radius: 6px; flex-shrink: 0;" title="Reset Filters">
+                        <a href="{{ route('documents.compliance.index') }}" class="btn btn-dark font-weight-bold d-flex align-items-center justify-content-center transition-all" style="font-size: 12px; height: 38px; width: 38px; border-radius: 8px; flex-shrink: 0;" title="Reset Filters">
                             <i class="fas fa-undo"></i>
                         </a>
                     </div>
@@ -733,9 +820,9 @@
                     <span class="text-muted font-weight-bold" style="font-size: 12px;">Show</span>
                     <select name="per_page" id="filterPerPage" form="complianceFilterForm" class="form-control form-control-sm bg-light" style="width: 80px; font-size: 12px; height: 32px; border-radius: 6px;">
                         <option value="10" {{ (string)request('per_page', 10) === '10' ? 'selected' : '' }}>10</option>
-                        <option value="25" {{ (string)request('per_page') === '25' ? 'selected' : '' }}>25</option>
-                        <option value="50" {{ (string)request('per_page') === '50' ? 'selected' : '' }}>50</option>
-                        <option value="100" {{ (string)request('per_page') === '100' ? 'selected' : '' }}>100</option>
+                        <option value="25" {{ (string)request('per_page', 25) === '25' ? 'selected' : '' }}>25</option>
+                        <option value="50" {{ (string)request('per_page', 50) === '50' ? 'selected' : '' }}>50</option>
+                        <option value="100" {{ (string)request('per_page', 100) === '100' ? 'selected' : '' }}>100</option>
                         <option value="all" {{ request('per_page') === 'all' ? 'selected' : '' }}>All</option>
                     </select>
                     <span class="text-muted font-weight-bold" style="font-size: 12px;">entries</span>
@@ -743,119 +830,118 @@
                 <div id="employeeExportButtons"></div>
             </div>
 
-                <!-- 17-Column Table Listing -->
-                <div class="dm-compliance-table-wrap">
-                    <table id="employeeDocDirectoryTable" class="table dm-table table-hover">
-                        <thead>
-                            <tr>
-                                <th class="col-sno text-center">S.No.</th>
-                                <th class="col-emp text-left">Employee</th>
-                                <th class="col-code text-left">Code</th>
-                                <th class="col-dept text-left">Department</th>
-                                <th class="col-stage text-center">Stage</th>
-                                <th class="col-prof-status text-center">Profile Status</th>
-                                <th class="col-num text-center">Required</th>
-                                <th class="col-num text-center">Uploaded</th>
-                                <th class="col-num text-center">Verified</th>
-                                <th class="col-num text-center">Missing</th>
-                                <th class="col-num text-center">Pending</th>
-                                <th class="col-num text-center">Rejected</th>
-                                <th class="col-num text-center">Expired</th>
-                                <th class="col-comp-pct text-center">Compliance %</th>
-                                <th class="col-comp-status text-center">Compliance Status</th>
-                                <th class="col-last-ver text-center">Last Verified</th>
-                                <th class="col-action text-center">Action</th>
-                            </tr>
-                        </thead>
+            <!-- 17-Column Table Listing -->
+            <div class="dm-compliance-table-wrap">
+                <table id="employeeDocDirectoryTable" class="table dm-table table-hover">
+                    <thead>
+                        <tr>
+                            <th class="col-sno text-center">S.No.</th>
+                            <th class="col-emp text-left">Employee</th>
+                            <th class="col-code text-left">Code</th>
+                            <th class="col-dept text-left">Department</th>
+                            <th class="col-stage text-center">Stage</th>
+                            <th class="col-prof-status text-center">Profile Status</th>
+                            <th class="col-num text-center">Required</th>
+                            <th class="col-num text-center">Uploaded</th>
+                            <th class="col-num text-center">Verified</th>
+                            <th class="col-num text-center">Missing</th>
+                            <th class="col-num text-center">Pending</th>
+                            <th class="col-num text-center">Rejected</th>
+                            <th class="col-num text-center">Expired</th>
+                            <th class="col-comp-pct text-center">Compliance %</th>
+                            <th class="col-comp-status text-center">Compliance Status</th>
+                            <th class="col-last-ver text-center">Last Verified</th>
+                            <th class="col-action text-center">Action</th>
+                        </tr>
+                    </thead>
 
-                        <tbody>
-                            @forelse($employees as $emp)
-                            <tr>
-                                <td class="col-sno text-center" style="font-weight: 700; font-size: 12px; color: var(--orb-muted);">
-                                    {{ ($employees->currentPage() - 1) * $employees->perPage() + $loop->iteration }}
-                                </td>
+                    <tbody>
+                        @forelse($employees as $emp)
+                        <tr>
+                            <td class="col-sno text-center" style="font-weight: 700; font-size: 12px; color: var(--orb-muted);">
+                                {{ ($employees->currentPage() - 1) * $employees->perPage() + $loop->iteration }}
+                            </td>
 
-                                <td class="col-emp text-left">
-                                    <div style="min-width: 0; overflow: hidden;">
-                                        <div style="font-weight: 800; color: var(--orb-text); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ $emp->name }}">{{ $emp->name }}</div>
-                                        <div style="font-size: 10px; color: var(--orb-muted); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ $emp->email }}">{{ $emp->email }}</div>
-                                    </div>
-                                </td>
+                            <td class="col-emp text-left">
+                                <div style="min-width: 0; overflow: hidden;">
+                                    <div style="font-weight: 800; color: var(--orb-text); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ $emp->name }}">{{ $emp->name }}</div>
+                                    <div style="font-size: 10.5px; color: var(--orb-muted); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ $emp->email }}">{{ $emp->email }}</div>
+                                </div>
+                            </td>
 
-                                <td class="col-code text-left" style="font-weight: 700; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ $emp->code ?? '-' }}</td>
-                                <td class="col-dept text-left" style="white-space: normal; line-height: 1.25; word-wrap: break-word; font-size: 12px;" title="{{ $emp->department_name ?: '-' }}">{{ $emp->department_name ?: '-' }}</td>
-                                <td class="col-stage text-center"><span style="font-weight: 700; text-transform: uppercase; font-size: 9px; color: var(--orb-muted);">{{ $emp->stage ?: '-' }}</span></td>
-                                <td class="col-prof-status text-center">
-                                    @php
-                                    $profileBadgeClass = match($emp->profile_status) {
+                            <td class="col-code text-left" style="font-weight: 700; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ $emp->code ?? '-' }}</td>
+                            <td class="col-dept text-left" style="white-space: normal; line-height: 1.25; word-wrap: break-word; font-size: 12px;" title="{{ $emp->department_name ?: '-' }}">{{ $emp->department_name ?: '-' }}</td>
+                            <td class="col-stage text-center"><span style="font-weight: 700; text-transform: uppercase; font-size: 9.5px; color: var(--orb-muted);">{{ $emp->stage ?: '-' }}</span></td>
+                            <td class="col-prof-status text-center">
+                                @php
+                                $profileBadgeClass = match($emp->profile_status) {
                                     'approved' => 'dm-badge-success',
                                     'rejected' => 'dm-badge-danger',
                                     'submitted' => 'dm-badge-purple',
                                     default => 'dm-badge-secondary',
-                                    };
-                                    @endphp
-                                    <span class="dm-badge {{ $profileBadgeClass }}" style="padding: 4px 10px; font-size: 10px; font-weight: 800; border-radius: 50px;">{{ ucfirst($emp->profile_status ?? 'pending') }}</span>
-                                </td>
+                                };
+                                @endphp
+                                <span class="dm-badge {{ $profileBadgeClass }}" style="padding: 4px 10px; font-size: 10px; font-weight: 800; border-radius: 50px;">{{ ucfirst($emp->profile_status ?? 'pending') }}</span>
+                            </td>
 
-                                <td class="col-num text-center" style="font-weight: 700; font-size: 13px;">{{ $emp->total_required_docs }}</td>
-                                <td class="col-num text-center" style="font-weight: 700; font-size: 13px;">{{ $emp->uploaded_docs }}</td>
-                                <td class="col-num text-center" style="font-weight: 700; font-size: 13px;">{{ $emp->verified_docs }}</td>
-                                <td class="col-num text-center" style="font-weight: 700; font-size: 13px;">{{ $emp->missing_docs }}</td>
-                                <td class="col-num text-center" style="font-weight: 700; font-size: 13px;">{{ $emp->pending_docs }}</td>
-                                <td class="col-num text-center" style="font-weight: 700; font-size: 13px;">{{ $emp->rejected_docs }}</td>
-                                <td class="col-num text-center" style="font-weight: 700; font-size: 13px;">{{ $emp->expired_docs }}</td>
-                                <td class="col-comp-pct text-center">
-                                    <div class="d-inline-flex align-items-center justify-content-center gap-1">
-                                        <span style="font-weight: 800; font-size: 11px; color: var(--orb-text);">{{ $emp->compliance_percentage }}%</span>
-                                        <div class="progress" style="width: 35px; height: 5px; border-radius: 99px; flex-shrink: 0;">
-                                            <div class="progress-bar {{ $emp->compliance_percentage === 100 ? 'bg-success' : 'bg-warning' }}" style="width: {{ $emp->compliance_percentage }}%;"></div>
-                                        </div>
+                            <td class="col-num text-center" style="font-weight: 700; font-size: 13px;">{{ $emp->total_required_docs }}</td>
+                            <td class="col-num text-center" style="font-weight: 700; font-size: 13px;">{{ $emp->uploaded_docs }}</td>
+                            <td class="col-num text-center" style="font-weight: 700; font-size: 13px;">{{ $emp->verified_docs }}</td>
+                            <td class="col-num text-center" style="font-weight: 700; font-size: 13px;">{{ $emp->missing_docs }}</td>
+                            <td class="col-num text-center" style="font-weight: 700; font-size: 13px;">{{ $emp->pending_docs }}</td>
+                            <td class="col-num text-center" style="font-weight: 700; font-size: 13px;">{{ $emp->rejected_docs }}</td>
+                            <td class="col-num text-center" style="font-weight: 700; font-size: 13px;">{{ $emp->expired_docs }}</td>
+                            <td class="col-comp-pct text-center">
+                                <div class="d-inline-flex align-items-center justify-content-center gap-1">
+                                    <span style="font-weight: 800; font-size: 11px; color: var(--orb-text);">{{ $emp->compliance_percentage }}%</span>
+                                    <div class="progress" style="width: 35px; height: 5px; border-radius: 99px; flex-shrink: 0;">
+                                        <div class="progress-bar {{ $emp->compliance_percentage === 100 ? 'bg-success' : 'bg-warning' }}" style="width: {{ $emp->compliance_percentage }}%;"></div>
                                     </div>
-                                </td>
+                                </div>
+                            </td>
 
-                                <td class="col-comp-status text-center">
-                                    @if($emp->compliance_status === 'compliant')
-                                    <span class="dm-badge dm-badge-success" style="padding: 4px 10px; font-size: 9px; white-space: nowrap;"><i class="fas fa-check-circle mr-1"></i> Fully Compliant</span>
-                                    @elseif($emp->compliance_status === 'rejected')
-                                    <span class="dm-badge dm-badge-danger" style="padding: 4px 10px; font-size: 9px; white-space: nowrap;"><i class="fas fa-times-circle mr-1"></i> Rejected Docs</span>
-                                    @elseif($emp->compliance_status === 'missing')
-                                    <span class="dm-badge dm-badge-warning" style="padding: 4px 10px; font-size: 9px; white-space: nowrap;"><i class="fas fa-exclamation-circle mr-1"></i> Missing Docs</span>
-                                    @elseif($emp->compliance_status === 'expired')
-                                    <span class="dm-badge dm-badge-warning text-white" style="padding: 4px 10px; font-size: 9px; white-space: nowrap; background: var(--color-warning);"><i class="fas fa-calendar-times mr-1"></i> Expired Docs</span>
-                                    @else
-                                    <span class="dm-badge dm-badge-purple" style="padding: 4px 10px; font-size: 9px; white-space: nowrap;"><i class="fas fa-clock mr-1"></i> Pending Verification</span>
-                                    @endif
-                                </td>
-                                <td class="col-last-ver text-center" style="font-size: 11px; color: var(--orb-muted); white-space: nowrap;">{{ $emp->last_verified_at ? \Carbon\Carbon::parse($emp->last_verified_at)->format('d M Y h:i A') : '-' }}</td>
+                            <td class="col-comp-status text-center">
+                                @if($emp->compliance_status === 'compliant')
+                                <span class="dm-badge dm-badge-success" style="padding: 4px 10px; font-size: 9.5px; white-space: nowrap;"><i class="fas fa-check-circle mr-1"></i> Fully Compliant</span>
+                                @elseif($emp->compliance_status === 'rejected')
+                                <span class="dm-badge dm-badge-danger" style="padding: 4px 10px; font-size: 9.5px; white-space: nowrap;"><i class="fas fa-times-circle mr-1"></i> Rejected Docs</span>
+                                @elseif($emp->compliance_status === 'missing')
+                                <span class="dm-badge dm-badge-warning" style="padding: 4px 10px; font-size: 9.5px; white-space: nowrap;"><i class="fas fa-exclamation-circle mr-1"></i> Missing Docs</span>
+                                @elseif($emp->compliance_status === 'expired')
+                                <span class="dm-badge dm-badge-warning text-white" style="padding: 4px 10px; font-size: 9.5px; white-space: nowrap; background: var(--color-warning);"><i class="fas fa-calendar-times mr-1"></i> Expired Docs</span>
+                                @else
+                                <span class="dm-badge dm-badge-purple" style="padding: 4px 10px; font-size: 9.5px; white-space: nowrap;"><i class="fas fa-clock mr-1"></i> Pending Verification</span>
+                                @endif
+                            </td>
+                            <td class="col-last-ver text-center" style="font-size: 11px; color: var(--orb-muted); white-space: nowrap;">{{ $emp->last_verified_at ? \Carbon\Carbon::parse($emp->last_verified_at)->format('d M Y h:i A') : '-' }}</td>
 
-                                <td class="col-action text-center">
-                                    <div class="d-flex align-items-center justify-content-center gap-1" style="white-space: nowrap;">
-                                        <a href="{{ route('documents.employee.show', $emp->id) }}" class="dm-action-btn-pill dm-action-btn-primary" style="height: 32px; padding: 0 10px; font-size: 11px; font-weight: 700; border-radius: 50px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;">
-                                            <i class="fas fa-folder-open"></i> View Documents
-                                        </a>
-                                        <a href="{{ route('hrms.employees.profile.view', $emp->id) }}" target="_blank" class="dm-action-btn-pill dm-action-btn-light" style="height: 32px; padding: 0 10px; font-size: 11px; font-weight: 700; border-radius: 50px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;">
-                                            <i class="fas fa-external-link-alt"></i> Open Profile
-                                        </a>
-                                    </div>
-                                </td>
-                            </tr>
-                            @empty
-                            <tr>
-                                <td colspan="17" class="text-center text-muted py-4" style="font-weight: 700; color: var(--orb-muted);">No compliance records found.</td>
-                            </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
+                            <td class="col-action text-center">
+                                <div class="d-flex align-items-center justify-content-center gap-1" style="white-space: nowrap;">
+                                    <a href="{{ route('documents.employee.show', $emp->id) }}" class="dm-action-btn-pill dm-action-btn-primary" style="height: 30px; padding: 0 10px; font-size: 11px; font-weight: 700; border-radius: 50px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;">
+                                        <i class="fas fa-folder-open"></i> View Docs
+                                    </a>
+                                    <a href="{{ route('hrms.employees.profile.view', $emp->id) }}" target="_blank" class="dm-action-btn-pill dm-action-btn-light" style="height: 30px; padding: 0 10px; font-size: 11px; font-weight: 700; border-radius: 50px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;">
+                                        <i class="fas fa-external-link-alt"></i> Profile
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="17" class="text-center text-muted py-4" style="font-weight: 700; color: var(--orb-muted);">No compliance records found.</td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Footer with Info & Pagination -->
+            <div class="dm-table-footer-row px-4 py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div class="text-muted font-weight-medium" style="font-size: 12px;">
+                    Showing {{ $employees->firstItem() ?? 0 }} to {{ $employees->lastItem() ?? 0 }} of {{ $employees->total() }} entries
                 </div>
-
-                <!-- Footer with Info & Pagination -->
-                <div class="dm-table-footer-row px-4 py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
-                    <div class="text-muted font-weight-medium" style="font-size: 12px;">
-                        Showing {{ $employees->firstItem() ?? 0 }} to {{ $employees->lastItem() ?? 0 }} of {{ $employees->total() }} entries
-                    </div>
-                    <div>
-                        {{ $employees->links() }}
-                    </div>
+                <div>
+                    {{ $employees->links() }}
                 </div>
             </div>
         </div>
@@ -881,13 +967,6 @@
     }
 
     $(document).ready(function() {
-        // Toggle chevron direction on ledger collapse
-        $('#ledgerCollapse').on('show.bs.collapse', function() {
-            $('#ledgerChevron').addClass('fa-rotate-180');
-        }).on('hide.bs.collapse', function() {
-            $('#ledgerChevron').removeClass('fa-rotate-180');
-        });
-
         function cleanExportText(data, row, column, node) {
             if (!data) return '';
             let $temp = $('<div>').html(data);

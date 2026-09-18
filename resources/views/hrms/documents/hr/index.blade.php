@@ -7,12 +7,487 @@
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap4.min.css">
 @include('hrms.documents.partials.styles')
 <style>
-    /* DataTable Toolbar layout inside the table card */
+    /* PAGE CONTAINER */
+    .dm-page {
+        padding: 20px 16px 40px !important;
+        background: #F6F7FB !important;
+        min-height: calc(100vh - 90px) !important;
+        font-family: 'Outfit', 'Inter', sans-serif !important;
+        max-width: 1600px !important;
+        margin: 0 auto !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    /* PREMIUM GRADIENT HERO */
+    .dm-hero {
+        background: linear-gradient(135deg, var(--orb-primary, #4B00E8) 0%, var(--orb-secondary, #FF5252) 100%) !important;
+        border-radius: 24px !important;
+        padding: 28px 32px !important;
+        color: #fff !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        gap: 20px !important;
+        box-shadow: 0 16px 40px rgba(75, 0, 232, 0.18) !important;
+        position: relative !important;
+        overflow: hidden !important;
+        margin-bottom: 20px !important;
+    }
+
+    .dm-hero::before {
+        content: "" !important;
+        position: absolute !important;
+        right: -60px !important;
+        top: -90px !important;
+        width: 320px !important;
+        height: 320px !important;
+        border-radius: 50% !important;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 70%) !important;
+        pointer-events: none !important;
+    }
+
+    .dm-hero-left {
+        position: relative !important;
+        z-index: 2 !important;
+        max-width: 700px !important;
+    }
+
+    .dm-hero .dm-kicker {
+        font-size: 11px !important;
+        font-weight: 800 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.14em !important;
+        color: #E0E7FF !important;
+        margin-bottom: 8px !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+    }
+
+    .dm-hero h1 {
+        font-size: clamp(22px, 3vw, 28px) !important;
+        font-weight: 900 !important;
+        margin: 0 0 6px 0 !important;
+        color: #fff !important;
+        letter-spacing: -0.02em !important;
+        text-transform: uppercase !important;
+        line-height: 1.2 !important;
+    }
+
+    .dm-hero p {
+        font-size: clamp(12.5px, 1.3vw, 14px) !important;
+        color: #F3E8FF !important;
+        margin: 0 !important;
+        font-weight: 500 !important;
+        line-height: 1.45 !important;
+    }
+
+    .dm-hero-actions {
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        flex-wrap: wrap !important;
+        position: relative !important;
+        z-index: 2 !important;
+        flex-shrink: 0 !important;
+    }
+
+    @media (max-width: 900px) {
+        .dm-hero {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            padding: 22px 24px !important;
+        }
+        .dm-hero-actions {
+            width: 100% !important;
+        }
+        .dm-hero-actions .btn-pill {
+            flex: 1 1 auto !important;
+            justify-content: center !important;
+        }
+    }
+
+    /* PILL BUTTONS */
+    .btn-pill {
+        height: 40px !important;
+        padding: 0 18px !important;
+        border-radius: 999px !important;
+        font-size: 12.5px !important;
+        font-weight: 800 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 7px !important;
+        border: none !important;
+        cursor: pointer !important;
+        text-decoration: none !important;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        white-space: nowrap !important;
+    }
+
+    .btn-pill-white {
+        background: #FFFFFF !important;
+        color: var(--dm-primary, #4B00E8) !important;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .btn-pill-white:hover {
+        background: #F8FAFC !important;
+        color: var(--dm-primary, #4B00E8) !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14) !important;
+    }
+
+    .btn-pill-glass {
+        background: rgba(255, 255, 255, 0.18) !important;
+        color: #FFFFFF !important;
+        border: 1px solid rgba(255, 255, 255, 0.32) !important;
+        backdrop-filter: blur(8px) !important;
+    }
+
+    .btn-pill-glass:hover {
+        background: rgba(255, 255, 255, 0.28) !important;
+        color: #FFFFFF !important;
+        border-color: rgba(255, 255, 255, 0.45) !important;
+        transform: translateY(-2px) !important;
+    }
+
+    .btn-pill-light {
+        height: 36px !important;
+        padding: 0 14px !important;
+        border-radius: 999px !important;
+        font-size: 12px !important;
+        font-weight: 800 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        background: #fff !important;
+        border: 1px solid var(--dm-border) !important;
+        color: var(--dm-muted) !important;
+        text-decoration: none !important;
+        transition: all 0.2s ease !important;
+        cursor: pointer !important;
+    }
+
+    .btn-pill-light:hover {
+        background: var(--dm-soft) !important;
+        color: var(--dm-primary) !important;
+        border-color: var(--dm-primary) !important;
+        text-decoration: none !important;
+        transform: translateY(-1px) !important;
+    }
+
+    /* KPI STAT CARDS */
+    .dm-kpi-grid {
+        display: grid !important;
+        grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+        gap: 12px !important;
+        margin-bottom: 20px !important;
+    }
+
+    .dm-kpi {
+        min-height: 94px !important;
+        padding: 16px 18px 14px !important;
+        border-radius: 20px !important;
+        border: 1px solid var(--dm-border) !important;
+        background: #fff !important;
+        box-shadow: 0 10px 24px rgba(16, 24, 40, .045) !important;
+        position: relative !important;
+        overflow: hidden !important;
+        transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
+    }
+
+    .dm-kpi:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 16px 34px rgba(16, 24, 40, .08) !important;
+    }
+
+    .dm-kpi-top {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 10px !important;
+        position: relative !important;
+        z-index: 1 !important;
+    }
+
+    .dm-kpi-icon {
+        width: 38px !important;
+        height: 38px !important;
+        border-radius: 12px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: var(--tone-soft) !important;
+        color: var(--tone) !important;
+        font-size: 15px !important;
+        flex-shrink: 0 !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+    }
+
+    .dm-kpi-value {
+        font-size: 26px !important;
+        line-height: 1 !important;
+        font-weight: 950 !important;
+        color: var(--dm-text) !important;
+    }
+
+    .dm-kpi-label {
+        margin-top: 8px !important;
+        font-size: 11px !important;
+        color: var(--dm-muted) !important;
+        font-weight: 800 !important;
+        text-transform: uppercase !important;
+        letter-spacing: .04em !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        position: relative !important;
+        z-index: 1 !important;
+    }
+
+    .dm-kpi-line {
+        position: absolute !important;
+        left: 14px !important;
+        right: 14px !important;
+        bottom: 8px !important;
+        height: 3px !important;
+        border-radius: 999px !important;
+        background: linear-gradient(90deg, var(--tone), transparent) !important;
+    }
+
+    .tone-success { --tone: #12B76A; --tone-soft: rgba(18, 183, 106, .12); }
+    .tone-danger  { --tone: #F04438; --tone-soft: rgba(240, 68, 56, .12); }
+    .tone-warning { --tone: #F79009; --tone-soft: rgba(247, 144, 9, .14); }
+    .tone-purple  { --tone: #7A5AF8; --tone-soft: rgba(122, 90, 248, .13); }
+    .tone-info    { --tone: #0EA5E9; --tone-soft: rgba(14, 165, 233, .13); }
+    .tone-orange  { --tone: #EA580C; --tone-soft: rgba(234, 88, 12, .13); }
+
+    @media(max-width: 1300px) {
+        .dm-kpi-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        }
+    }
+
+    @media(max-width: 768px) {
+        .dm-kpi-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        }
+    }
+
+    @media(max-width: 480px) {
+        .dm-kpi-grid {
+            grid-template-columns: 1fr !important;
+        }
+    }
+
+    /* MAIN TABLE CARD */
+    .dm-card {
+        background: #fff !important;
+        border: 1px solid var(--dm-border) !important;
+        border-radius: 22px !important;
+        box-shadow: 0 14px 35px rgba(16, 24, 40, .06) !important;
+        overflow: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+    }
+
+    .dm-table-header {
+        padding: 18px 24px !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        flex-wrap: wrap !important;
+        gap: 14px !important;
+    }
+
+    .dm-table-head-left {
+        display: flex !important;
+        align-items: center !important;
+        gap: 14px !important;
+    }
+
+    .dm-table-head-left .dm-icon-box {
+        width: 44px !important;
+        height: 44px !important;
+        border-radius: 14px !important;
+        background: var(--dm-soft) !important;
+        color: var(--dm-primary) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 18px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .dm-table-title {
+        font-size: 16px !important;
+        font-weight: 900 !important;
+        color: var(--dm-text) !important;
+        margin: 0 !important;
+    }
+
+    .dm-table-subtitle {
+        font-size: 12px !important;
+        color: var(--dm-muted) !important;
+        margin: 2px 0 0 0 !important;
+        font-weight: 500 !important;
+    }
+
+    /* FILTER GRID */
+    .dm-filter-wrapper {
+        padding: 16px 24px !important;
+        border-top: 1px solid var(--dm-border) !important;
+        border-bottom: 1px solid var(--dm-border) !important;
+        background: #F8FAFC !important;
+    }
+
+    .dm-filter-grid {
+        display: grid !important;
+        grid-template-columns: 1.4fr 1.2fr 1fr 1fr auto !important;
+        gap: 12px !important;
+        align-items: flex-end !important;
+    }
+
+    .dm-filter-item {
+        display: flex !important;
+        flex-direction: column !important;
+        min-width: 0 !important;
+    }
+
+    .dm-filter-label {
+        font-size: 11px !important;
+        font-weight: 800 !important;
+        color: var(--dm-muted) !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05em !important;
+        margin-bottom: 6px !important;
+        display: block !important;
+    }
+
+    .dm-input-icon-wrap {
+        position: relative !important;
+        width: 100% !important;
+    }
+
+    .dm-input-icon {
+        position: absolute !important;
+        left: 12px !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        color: var(--dm-muted) !important;
+        font-size: 13px !important;
+        pointer-events: none !important;
+    }
+
+    .dm-filter-control {
+        height: 38px !important;
+        border-radius: 9px !important;
+        border: 1px solid var(--dm-border) !important;
+        background: #fff !important;
+        padding: 0 12px !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        color: var(--dm-text) !important;
+        width: 100% !important;
+        outline: none !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .dm-filter-control.with-icon {
+        padding-left: 34px !important;
+    }
+
+    .dm-filter-control:focus {
+        border-color: var(--dm-primary) !important;
+        box-shadow: 0 0 0 3px rgba(75, 0, 232, 0.08) !important;
+    }
+
+    .dm-filter-actions {
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+    }
+
+    .btn-filter-search {
+        height: 38px !important;
+        border-radius: 9px !important;
+        background: linear-gradient(135deg, var(--orb-primary, #4B00E8) 0%, var(--orb-secondary, #FF5252) 100%) !important;
+        color: #fff !important;
+        border: none !important;
+        font-weight: 800 !important;
+        font-size: 12.5px !important;
+        padding: 0 16px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 6px !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+        box-shadow: 0 4px 12px rgba(75, 0, 232, 0.18) !important;
+        white-space: nowrap !important;
+    }
+
+    .btn-filter-search:hover {
+        transform: translateY(-1px) !important;
+        box-shadow: 0 6px 16px rgba(75, 0, 232, 0.28) !important;
+        color: #fff !important;
+    }
+
+    .btn-filter-reset {
+        height: 38px !important;
+        width: 38px !important;
+        border-radius: 9px !important;
+        background: #fff !important;
+        border: 1px solid var(--dm-border) !important;
+        color: var(--dm-muted) !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+        text-decoration: none !important;
+        flex-shrink: 0 !important;
+    }
+
+    .btn-filter-reset:hover {
+        background: var(--dm-soft) !important;
+        color: var(--dm-primary) !important;
+        border-color: var(--dm-primary) !important;
+    }
+
+    @media (max-width: 1080px) {
+        .dm-filter-grid {
+            grid-template-columns: 1fr 1fr !important;
+        }
+        .dm-filter-actions {
+            grid-column: span 2 !important;
+            justify-content: flex-end !important;
+        }
+    }
+
+    @media (max-width: 580px) {
+        .dm-filter-grid {
+            grid-template-columns: 1fr !important;
+        }
+        .dm-filter-actions {
+            grid-column: span 1 !important;
+        }
+        .dm-filter-actions .btn-filter-search {
+            flex: 1 !important;
+        }
+    }
+
+    /* DATA TABLE TOOLBAR */
     .dm-table-toolbar-row {
         display: flex !important;
         justify-content: space-between !important;
         align-items: center !important;
-        padding: 16px 24px !important;
+        padding: 14px 24px !important;
         border-bottom: 1px solid var(--dm-border) !important;
         background: #fff !important;
         flex-wrap: wrap !important;
@@ -40,25 +515,25 @@
         font-weight: 700 !important;
     }
 
-    /* DataTable buttons styling */
     .dt-buttons {
         display: flex !important;
         gap: 6px !important;
+        flex-wrap: wrap !important;
     }
 
     .dt-buttons .btn {
-        height: 32px !important;
-        padding: 0 12px !important;
+        height: 34px !important;
+        padding: 0 14px !important;
         font-size: 12px !important;
         font-weight: 800 !important;
-        border-radius: 9px !important;
+        border-radius: 8px !important;
         border: 1px solid var(--dm-border) !important;
         background: #fff !important;
         color: var(--dm-muted) !important;
         display: inline-flex !important;
         align-items: center !important;
         gap: 6px !important;
-        box-shadow: none !important;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03) !important;
         transition: all 0.2s ease !important;
     }
 
@@ -66,11 +541,135 @@
         background: var(--dm-soft) !important;
         color: var(--dm-primary) !important;
         border-color: var(--dm-primary) !important;
+        transform: translateY(-1px) !important;
     }
 
-    /* Pagination design styling */
-    .dataTables_paginate {
-        margin: 0 !important;
+    /* TABLE */
+    .dm-table-wrap {
+        width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+
+    .dm-table {
+        width: 100% !important;
+        margin-bottom: 0 !important;
+        border-collapse: separate !important;
+        border-spacing: 0 !important;
+    }
+
+    .dm-table thead th {
+        background: #F8FAFC !important;
+        color: var(--dm-muted) !important;
+        font-size: 11px !important;
+        font-weight: 800 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05em !important;
+        padding: 13px 18px !important;
+        border-top: none !important;
+        border-bottom: 1px solid var(--dm-border) !important;
+        white-space: nowrap !important;
+    }
+
+    .dm-table tbody td {
+        padding: 14px 18px !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        color: var(--dm-text) !important;
+        border-bottom: 1px solid var(--dm-border) !important;
+        vertical-align: middle !important;
+    }
+
+    .dm-table tbody tr:hover td {
+        background: #FDFDFF !important;
+    }
+
+    /* AVATAR */
+    .dm-avatar-wrapper {
+        width: 38px !important;
+        height: 38px !important;
+        border-radius: 12px !important;
+        background: var(--dm-soft) !important;
+        color: var(--dm-primary) !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-weight: 900 !important;
+        font-size: 13px !important;
+        border: 1px solid rgba(75, 0, 232, 0.15) !important;
+        flex-shrink: 0 !important;
+    }
+
+    /* BADGES */
+    .dm-num-badge {
+        font-size: 11.5px !important;
+        font-weight: 800 !important;
+        padding: 5px 10px !important;
+        border-radius: 8px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        min-width: 32px !important;
+    }
+
+    /* ACTION BUTTONS */
+    .dm-action-btn {
+        height: 32px !important;
+        padding: 0 12px !important;
+        border-radius: 999px !important;
+        font-size: 11.5px !important;
+        font-weight: 700 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 5px !important;
+        white-space: nowrap !important;
+        text-decoration: none !important;
+        transition: all 0.2s ease !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+    }
+
+    .dm-action-primary {
+        background: var(--dm-soft, #F4F2FF) !important;
+        border: 1px solid rgba(75, 0, 232, 0.18) !important;
+        color: var(--dm-primary, #4B00E8) !important;
+    }
+
+    .dm-action-primary:hover {
+        background: var(--dm-primary, #4B00E8) !important;
+        color: #fff !important;
+        transform: translateY(-1px) !important;
+        text-decoration: none !important;
+    }
+
+    .dm-action-secondary {
+        background: #F1F5F9 !important;
+        border: 1px solid #CBD5E1 !important;
+        color: #475569 !important;
+    }
+
+    .dm-action-secondary:hover {
+        background: #E2E8F0 !important;
+        color: #1E293B !important;
+        transform: translateY(-1px) !important;
+        text-decoration: none !important;
+    }
+
+    /* FOOTER & PAGINATION */
+    .dm-table-footer-row {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding: 14px 24px !important;
+        border-top: 1px solid var(--dm-border) !important;
+        background: #fff !important;
+        flex-wrap: wrap !important;
+        gap: 12px !important;
+    }
+
+    #employeeInfoBox {
+        font-size: 12px !important;
+        font-weight: 700 !important;
+        color: var(--dm-muted) !important;
     }
 
     .pagination {
@@ -83,7 +682,7 @@
     .page-item .page-link {
         height: 32px !important;
         padding: 0 12px !important;
-        border-radius: 9px !important;
+        border-radius: 8px !important;
         display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
@@ -98,7 +697,7 @@
     .page-item:hover .page-link {
         background: var(--dm-soft) !important;
         color: var(--dm-primary) !important;
-        text-decoration: none !important;
+        border-color: var(--dm-primary) !important;
     }
 
     .page-item.active .page-link {
@@ -112,44 +711,12 @@
         pointer-events: none !important;
     }
 
-    /* Card avatar alignment */
-    .dm-avatar-wrapper {
-        width: 36px !important;
-        height: 36px !important;
-        border-radius: 10px !important;
-        background: var(--dm-soft) !important;
-        color: var(--dm-primary) !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        font-weight: 900 !important;
-        font-size: 13px !important;
-        border: 1px solid rgba(75, 0, 232, 0.15) !important;
-    }
-
-    .dm-table-footer-row {
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        padding: 16px 24px !important;
-        border-top: 1px solid var(--dm-border) !important;
-        background: #fff !important;
-        flex-wrap: wrap !important;
-        gap: 12px !important;
-    }
-
-    #employeeInfoBox {
-        font-size: 12px !important;
-        font-weight: 700 !important;
-        color: var(--dm-muted) !important;
-    }
-
-    /* Toggle Switch Custom styling */
+    /* TOGGLE SWITCH */
     .verify-switch {
         position: relative;
         display: inline-block;
-        width: 52px;
-        height: 28px;
+        width: 44px;
+        height: 24px;
         margin: 0;
     }
 
@@ -174,14 +741,14 @@
     .verify-slider:before {
         position: absolute;
         content: "";
-        height: 22px;
-        width: 22px;
+        height: 18px;
+        width: 18px;
         left: 3px;
         bottom: 3px;
         background: #fff;
         border-radius: 50%;
         transition: .2s;
-        box-shadow: 0 3px 8px rgba(16, 24, 40, .18);
+        box-shadow: 0 2px 5px rgba(16, 24, 40, .18);
     }
 
     .verify-switch input:checked+.verify-slider {
@@ -189,227 +756,43 @@
     }
 
     .verify-switch input:checked+.verify-slider:before {
-        transform: translateX(24px);
-    }
-
-    /* Health Strip Segment Separators */
-    .dm-health-segment {
-        position: relative;
-        padding: 16px;
-    }
-
-    @media (min-width: 992px) {
-        .dm-health-segment:not(:last-child)::after {
-            content: '';
-            position: absolute;
-            top: 20%;
-            right: 0;
-            height: 60%;
-            width: 1px;
-            background: var(--dm-border);
-        }
-    }
-
-    @media (min-width: 768px) and (max-width: 991px) {
-        .dm-health-segment:nth-child(odd)::after {
-            content: '';
-            position: absolute;
-            top: 20%;
-            right: 0;
-            height: 60%;
-            width: 1px;
-            background: var(--dm-border);
-        }
-
-        .dm-health-segment:nth-child(1)::before,
-        .dm-health-segment:nth-child(2)::before {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 10%;
-            height: 1px;
-            width: 80%;
-            background: var(--dm-border);
-        }
-    }
-
-    @media (max-width: 767px) {
-        .dm-health-segment:not(:last-child)::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 10%;
-            height: 1px;
-            width: 80%;
-            background: var(--dm-border);
-        }
-    }
-
-    .dm-kpi-grid {
-        display: grid;
-        grid-template-columns: repeat(6, minmax(0, 1fr));
-        gap: 10px;
-        margin-bottom: 16px;
-    }
-
-    .dm-kpi {
-        min-height: 88px;
-        padding: 12px;
-        border-radius: 18px;
-        border: 1px solid var(--dm-border);
-        background: #fff;
-        box-shadow: 0 10px 24px rgba(16, 24, 40, .045);
-        position: relative;
-        overflow: hidden;
-        transition: .18s ease;
-    }
-
-    .dm-kpi:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 16px 34px rgba(16, 24, 40, .08);
-    }
-
-    .dm-kpi:after {
-        content: "";
-        position: absolute;
-        right: -32px;
-        top: -34px;
-        width: 88px;
-        height: 88px;
-        border-radius: 50%;
-        background: var(--tone-soft);
-    }
-
-    .dm-kpi-top {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-        position: relative;
-        z-index: 1;
-    }
-
-    .dm-kpi-icon {
-        width: 34px;
-        height: 34px;
-        border-radius: 13px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: var(--tone-soft);
-        color: var(--tone);
-        font-size: 14px;
-    }
-
-    .dm-kpi-value {
-        font-size: 25px;
-        line-height: 1;
-        font-weight: 950;
-        color: var(--dm-text);
-    }
-
-    .dm-kpi-label {
-        margin-top: 10px;
-        font-size: 10px;
-        color: var(--dm-muted);
-        font-weight: 950;
-        text-transform: uppercase;
-        letter-spacing: .035em;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        position: relative;
-        z-index: 1;
-    }
-
-    .dm-kpi-line {
-        position: absolute;
-        left: 12px;
-        right: 12px;
-        bottom: 9px;
-        height: 3px;
-        border-radius: 999px;
-        background: linear-gradient(90deg, var(--tone), transparent);
-    }
-
-    .tone-success {
-        --tone: #12B76A;
-        --tone-soft: rgba(18, 183, 106, .12);
-    }
-
-    .tone-danger {
-        --tone: #F04438;
-        --tone-soft: rgba(240, 68, 56, .12);
-    }
-
-    .tone-warning {
-        --tone: #F79009;
-        --tone-soft: rgba(247, 144, 9, .14);
-    }
-
-    .tone-purple {
-        --tone: #7A5AF8;
-        --tone-soft: rgba(122, 90, 248, .13);
-    }
-
-    .tone-info {
-        --tone: #0EA5E9;
-        --tone-soft: rgba(14, 165, 233, .13);
-    }
-
-    .tone-orange {
-        --tone: #EA580C;
-        --tone-soft: rgba(234, 88, 12, .13);
-    }
-
-    @media(max-width:1280px) {
-        .dm-kpi-grid {
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-        }
-    }
-
-    @media(max-width:768px) {
-        .dm-kpi-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
+        transform: translateX(20px);
     }
 </style>
-
-
 @endsection
 
 @section('_content')
 <div class="dm-page">
     <!-- Premium Purple Gradient Hero -->
-    <div class="dm-hero" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px; padding: 24px; border-radius: 16px; margin-bottom: 24px;">
-        <div style="max-width: 600px;">
-            <div class="dm-kicker" style="margin-bottom: 8px; font-size: 11px; font-weight: 800; letter-spacing: 1px; color: rgba(255,255,255,0.9);">
-                <i class="fas fa-file-signature mr-1"></i> HRMS &bull; DOCUMENT VERIFICATION
+    <div class="dm-hero">
+        <div class="dm-hero-left">
+            <div class="dm-kicker">
+                <i class="fas fa-file-signature"></i> HRMS &bull; DOCUMENT VERIFICATION
             </div>
-            <h1 style="margin-bottom: 8px; font-size: 24px; font-weight: 800; color: #fff; text-transform: uppercase;">HR Document Review</h1>
-            <p style="margin-bottom: 0; font-size: 13px; color: rgba(255,255,255,0.8); line-height: 1.5;">Manage employee KYC, mandatory documents, verification lifecycle and compliance tracking.</p>
+            <h1>HR Document Review</h1>
+            <p>Manage employee KYC, mandatory documents, verification lifecycle and compliance tracking.</p>
         </div>
-        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <a href="{{ route('documents.types.index') }}" class="btn btn-sm" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: #fff; font-weight: 700; border-radius: 8px; padding: 6px 16px; backdrop-filter: blur(4px);">
-                <i class="fas fa-file-alt mr-1"></i> Document Types
+        <div class="dm-hero-actions">
+            <a href="{{ route('documents.types.index') }}" class="btn-pill btn-pill-glass">
+                <i class="fas fa-file-alt"></i> Document Types
             </a>
-            <a href="{{ route('documents.policies.index') }}" class="btn btn-sm" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: #fff; font-weight: 700; border-radius: 8px; padding: 6px 16px; backdrop-filter: blur(4px);">
-                <i class="fas fa-folder-open mr-1"></i> Company Documents & Policies
+            <a href="{{ route('documents.policies.index') }}" class="btn-pill btn-pill-glass">
+                <i class="fas fa-folder-open"></i> Company Documents & Policies
             </a>
-            <button onclick="$('.buttons-excel').click()" class="btn btn-sm shadow-sm" style="background: #fff; color: var(--dm-primary); font-weight: 800; border-radius: 8px; padding: 6px 16px;">
-                <i class="fas fa-file-export mr-1"></i> Export Report
-            </button>
+            {{-- <button type="button" onclick="$('.buttons-excel').click()" class="btn-pill btn-pill-white">
+                <i class="fas fa-file-export"></i> Export Report
+            </button> --}}
         </div>
     </div>
 
     @if(session('success'))
-    <div class="alert alert-success border-0 shadow-sm" style="border-radius: 14px; font-weight: 700; font-size: 13px;">
+    <div class="alert alert-success border-0 shadow-sm mb-3" style="border-radius: 14px; font-weight: 700; font-size: 13px;">
         <i class="fas fa-check-circle mr-2"></i>{{ session('success') }}
     </div>
     @endif
 
     @if(session('error'))
-    <div class="alert alert-danger border-0 shadow-sm" style="border-radius: 14px; font-weight: 700; font-size: 13px;">
+    <div class="alert alert-danger border-0 shadow-sm mb-3" style="border-radius: 14px; font-weight: 700; font-size: 13px;">
         <i class="fas fa-exclamation-circle mr-2"></i>{{ session('error') }}
     </div>
     @endif
@@ -422,12 +805,12 @@
     $statsMissing = 0;
     $statsExpiring = 0;
     if(isset($employees) && count($employees) > 0) {
-    $statsTotalDocs = collect($employees->items())->sum('doc_required');
-    $statsVerified = collect($employees->items())->sum('doc_verified');
-    $statsPending = collect($employees->items())->sum('doc_pending');
-    $statsRejected = collect($employees->items())->sum('doc_rejected');
-    $statsMissing = collect($employees->items())->sum('doc_missing');
-    $statsExpiring = collect($employees->items())->sum('doc_expiring');
+        $statsTotalDocs = collect($employees->items())->sum('doc_required');
+        $statsVerified = collect($employees->items())->sum('doc_verified');
+        $statsPending = collect($employees->items())->sum('doc_pending');
+        $statsRejected = collect($employees->items())->sum('doc_rejected');
+        $statsMissing = collect($employees->items())->sum('doc_missing');
+        $statsExpiring = collect($employees->items())->sum('doc_expiring');
     }
     @endphp
 
@@ -546,34 +929,37 @@
     <!-- Main Card -->
     <div class="dm-card shadow-sm">
         <!-- Card Header with circular icon -->
-        <div class="dm-table-header d-flex justify-content-between align-items-center flex-wrap" style="padding: 16px 24px;">
-            <div class="dm-table-head-left d-flex align-items-center gap-3">
-                <div class="dm-icon-box"><i class="fas fa-list-ul"></i></div>
+        <div class="dm-table-header">
+            <div class="dm-table-head-left">
+                <div class="dm-icon-box"><i class="fas fa-tasks"></i></div>
                 <div>
-                    <h5 class="dm-table-title mb-0">Compliance Matrix</h5>
-                    <p class="dm-table-subtitle mb-0">Manage document verifications, statuses, and compliance tracking.</p>
+                    <h5 class="dm-table-title">Compliance Matrix</h5>
+                    <p class="dm-table-subtitle">Manage employee document verifications, statuses, and compliance tracking.</p>
                 </div>
             </div>
-            <div class="dm-table-head-right mt-2 mt-md-0">
-                <a href="{{ route('documents.hr.index') }}" class="btn btn-sm shadow-sm" style="border-radius: 8px; border: 1px solid var(--dm-border); background: #fff; color: var(--dm-text); font-weight: 700;">
-                    <i class="fas fa-undo mr-1"></i> Reset Filters
+            {{-- <div class="dm-table-head-right">
+                <a href="{{ route('documents.hr.index') }}" class="btn-pill-light">
+                    <i class="fas fa-undo"></i> Reset Filters
                 </a>
-            </div>
+            </div> --}}
         </div>
 
-        <!-- Filter Row Attached inside card -->
+        <!-- Filter Grid Attached inside card -->
         <form method="GET" action="{{ route('documents.hr.index') }}" id="docFilterForm">
-            <div class="dm-filter-wrapper" style="padding: 16px 24px; border-top: 1px solid var(--dm-border); border-bottom: 1px solid var(--dm-border); background: #fafafa;">
-                <div class="row mx-0" style="gap: 12px 0;">
-                    <div class="col-12 col-md-3 px-2">
-                        <label class="dm-filter-label" style="font-size: 11px; font-weight: 700; color: var(--dm-muted); text-transform: uppercase; margin-bottom: 6px; display: block;">Search Employee</label>
-                        <input type="text" name="employee" id="filterSearch" value="{{ request('employee') }}" class="dm-filter-control w-100" style="border-radius: 8px; height: 38px; border: 1px solid var(--dm-border); padding: 0 12px; outline: none; font-weight: 600; font-size: 13px;" placeholder="Name, code, email...">
+            <div class="dm-filter-wrapper">
+                <div class="dm-filter-grid">
+                    <div class="dm-filter-item">
+                        <label class="dm-filter-label">Search Employee</label>
+                        <div class="dm-input-icon-wrap">
+                            <i class="fas fa-search dm-input-icon"></i>
+                            <input type="text" name="employee" id="filterSearch" value="{{ request('employee') }}" class="dm-filter-control with-icon" placeholder="Search name, code, email...">
+                        </div>
                     </div>
 
-                    <div class="col-12 col-md-3 px-2">
-                        <label class="dm-filter-label" style="font-size: 11px; font-weight: 700; color: var(--dm-muted); text-transform: uppercase; margin-bottom: 6px; display: block;">Department</label>
-                        <select name="department_id" id="filterDepartment" class="dm-filter-control w-100 select2-searchable" style="border-radius: 8px; height: 38px; border: 1px solid var(--dm-border); padding: 0 12px; outline: none; font-weight: 600; font-size: 13px;">
-                            <option value="">All Depts</option>
+                    <div class="dm-filter-item">
+                        <label class="dm-filter-label">Department</label>
+                        <select name="department_id" id="filterDepartment" class="dm-filter-control">
+                            <option value="">All Departments</option>
                             @if(isset($departments) && count($departments) > 0)
                             @foreach($departments as $dept)
                             <option value="{{ $dept->id }}" {{ request('department_id') == $dept->id ? 'selected' : '' }}>{{ $dept->name }}</option>
@@ -582,9 +968,9 @@
                         </select>
                     </div>
 
-                    <div class="col-12 col-md-2 px-2">
-                        <label class="dm-filter-label" style="font-size: 11px; font-weight: 700; color: var(--dm-muted); text-transform: uppercase; margin-bottom: 6px; display: block;">Doc Type</label>
-                        <select name="document_type_id" id="filterDocumentType" class="dm-filter-control w-100" style="border-radius: 8px; height: 38px; border: 1px solid var(--dm-border); padding: 0 12px; outline: none; font-weight: 600; font-size: 13px;">
+                    <div class="dm-filter-item">
+                        <label class="dm-filter-label">Doc Type</label>
+                        <select name="document_type_id" id="filterDocumentType" class="dm-filter-control">
                             <option value="">All Types</option>
                             @if(isset($documentTypes) && count($documentTypes) > 0)
                             @foreach($documentTypes as $type)
@@ -596,9 +982,9 @@
                         </select>
                     </div>
 
-                    <div class="col-12 col-md-2 px-2">
-                        <label class="dm-filter-label" style="font-size: 11px; font-weight: 700; color: var(--dm-muted); text-transform: uppercase; margin-bottom: 6px; display: block;">Status</label>
-                        <select name="status" id="filterStatus" class="dm-filter-control w-100" style="border-radius: 8px; height: 38px; border: 1px solid var(--dm-border); padding: 0 12px; outline: none; font-weight: 600; font-size: 13px;">
+                    <div class="dm-filter-item">
+                        <label class="dm-filter-label">Status</label>
+                        <select name="status" id="filterStatus" class="dm-filter-control">
                             <option value="">Pending Only</option>
                             <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending Docs</option>
                             <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
@@ -606,11 +992,11 @@
                         </select>
                     </div>
 
-                    <div class="col-12 col-md-2 px-2 d-flex align-items-end" style="gap: 6px;">
-                        <button type="submit" class="btn text-white font-weight-bold shadow-sm" style="height: 38px; border-radius: 8px; background: var(--orb-primary); border: none; flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 4px; font-size: 12px;">
+                    <div class="dm-filter-actions">
+                        <button type="submit" class="btn-filter-search">
                             <i class="fas fa-search"></i> Search
                         </button>
-                        <a href="{{ route('documents.hr.index') }}" class="btn btn-light border text-secondary font-weight-bold" style="height: 38px; width: 38px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Reset Filters">
+                        <a href="{{ route('documents.hr.index') }}" class="btn-filter-reset" title="Reset Filters">
                             <i class="fas fa-undo"></i>
                         </a>
                     </div>
@@ -624,107 +1010,116 @@
             <div id="employeeExportButtons"></div>
         </div>
 
-        <div class="dm-table-wrap table-responsive" style="border-bottom: 1px solid var(--dm-border);">
-            <table id="employeeDocTable" class="table dm-table mb-0" style="min-width: 1400px;">
+        <div class="dm-table-wrap table-responsive">
+            <table id="employeeDocTable" class="table dm-table mb-0" style="min-width: 1250px;">
                 <thead>
                     <tr>
-                        <th style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--dm-muted); letter-spacing: 0.5px; white-space: nowrap; padding: 12px 24px;">Employee</th>
-                        <th style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--dm-muted); letter-spacing: 0.5px; white-space: nowrap; padding: 12px 16px;">Required Docs</th>
-                        <th style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--dm-muted); letter-spacing: 0.5px; white-space: nowrap; padding: 12px 16px;">Pending</th>
-                        <th style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--dm-muted); letter-spacing: 0.5px; white-space: nowrap; padding: 12px 16px;">Verified</th>
-                        <th style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--dm-muted); letter-spacing: 0.5px; white-space: nowrap; padding: 12px 16px;">Rejected</th>
-                        <th style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--dm-muted); letter-spacing: 0.5px; white-space: nowrap; padding: 12px 16px;">Missing</th>
-                        <th style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--dm-muted); letter-spacing: 0.5px; white-space: nowrap; padding: 12px 16px;">Expiring</th>
-                        <th style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--dm-muted); letter-spacing: 0.5px; white-space: nowrap; padding: 12px 16px;">Profile Status</th>
-                        <!-- <th style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--dm-muted); letter-spacing: 0.5px; white-space: nowrap; padding: 12px 16px;">Last Updated</th> -->
-                        <th class="text-center" style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--dm-muted); letter-spacing: 0.5px; white-space: nowrap; padding: 12px 16px;">Verify All</th>
-                        <th class="text-center" style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--dm-muted); letter-spacing: 0.5px; white-space: nowrap; padding: 12px 16px; width: 230px; min-width: 230px;">Actions</th>
+                        <th style="padding-left: 24px;">Employee</th>
+                        <th class="text-center">Required Docs</th>
+                        <th class="text-center">Pending</th>
+                        <th class="text-center">Verified</th>
+                        <th class="text-center">Rejected</th>
+                        <th class="text-center">Missing</th>
+                        <th class="text-center">Expiring</th>
+                        <th class="text-center">Profile Status</th>
+                        <th class="text-center">Verify All</th>
+                        <th class="text-center" style="width: 220px; min-width: 220px; padding-right: 24px;">Actions</th>
                     </tr>
                 </thead>
 
                 <tbody>
                     @forelse($employees as $employee)
                     <tr>
-                        <td style="padding: 12px 24px; vertical-align: middle;">
+                        <td style="padding-left: 24px;">
                             <div class="d-flex align-items-center gap-3">
-                                <!-- <div class="dm-avatar-wrapper shadow-sm">
+                                <div class="dm-avatar-wrapper shadow-sm">
                                     {{ strtoupper(substr($employee->user->name ?? 'E', 0, 1)) }}
-                                </div> -->
-                                <div style="line-height: 1.4;">
-                                    <div style="font-weight: 800; color: var(--dm-text); font-size: 13px; max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ $employee->user->name ?? '-' }}">{{ $employee->user->name ?? '-' }}</div>
-                                    <div style="font-size: 11px; color: var(--dm-muted); font-weight: 700;">
-                                        {{ $employee->employee_code ?? '-' }} &bull; {{ $employee->designation->name ?? 'N/A' }}
+                                </div>
+                                <div style="line-height: 1.35;">
+                                    <div style="font-weight: 800; color: var(--dm-text); font-size: 13.5px; white-space: nowrap;" title="{{ $employee->user->name ?? '-' }}">
+                                        {{ $employee->user->name ?? '-' }}
+                                    </div>
+                                    <div style="font-size: 11px; color: var(--dm-muted); font-weight: 700; margin-top: 2px;">
+                                        <span style="color: var(--dm-primary); font-weight: 800;">{{ $employee->employee_code ?? '-' }}</span> &bull; {{ $employee->designation->name ?? 'N/A' }}
                                     </div>
                                 </div>
                             </div>
                         </td>
 
-                        <td style="padding: 12px 16px; vertical-align: middle;">
-                            <span class="badge" style="background: var(--dm-soft); color: var(--dm-primary); font-size: 11px; font-weight: 800; padding: 6px 10px; border-radius: 6px;">{{ $employee->doc_required }}</span>
+                        <td class="text-center">
+                            <span class="dm-num-badge" style="background: var(--dm-soft); color: var(--dm-primary);">
+                                {{ $employee->doc_required }}
+                            </span>
                         </td>
-                        <td style="padding: 12px 16px; vertical-align: middle;">
-                            <span class="badge" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b; font-size: 11px; font-weight: 800; padding: 6px 10px; border-radius: 6px;">{{ $employee->doc_pending }}</span>
+                        <td class="text-center">
+                            <span class="dm-num-badge" style="background: rgba(245, 158, 11, 0.12); color: #d97706;">
+                                {{ $employee->doc_pending }}
+                            </span>
                         </td>
-                        <td style="padding: 12px 16px; vertical-align: middle;">
-                            <span class="badge" style="background: rgba(16, 185, 129, 0.1); color: #10b981; font-size: 11px; font-weight: 800; padding: 6px 10px; border-radius: 6px;">{{ $employee->doc_verified }}</span>
+                        <td class="text-center">
+                            <span class="dm-num-badge" style="background: rgba(16, 185, 129, 0.12); color: #059669;">
+                                {{ $employee->doc_verified }}
+                            </span>
                         </td>
-                        <td style="padding: 12px 16px; vertical-align: middle;">
-                            <span class="badge" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; font-size: 11px; font-weight: 800; padding: 6px 10px; border-radius: 6px;">{{ $employee->doc_rejected }}</span>
+                        <td class="text-center">
+                            <span class="dm-num-badge" style="background: rgba(239, 68, 68, 0.12); color: #dc2626;">
+                                {{ $employee->doc_rejected }}
+                            </span>
                         </td>
-                        <td style="padding: 12px 16px; vertical-align: middle;">
-                            <span class="badge" style="background: rgba(99, 102, 241, 0.1); color: #6366f1; font-size: 11px; font-weight: 800; padding: 6px 10px; border-radius: 6px;">{{ $employee->doc_missing }}</span>
+                        <td class="text-center">
+                            <span class="dm-num-badge" style="background: rgba(99, 102, 241, 0.12); color: #4f46e5;">
+                                {{ $employee->doc_missing }}
+                            </span>
                         </td>
-                        <td style="padding: 12px 16px; vertical-align: middle;">
-                            <span class="badge" style="background: rgba(249, 115, 22, 0.1); color: #f97316; font-size: 11px; font-weight: 800; padding: 6px 10px; border-radius: 6px;">{{ $employee->doc_expiring }}</span>
+                        <td class="text-center">
+                            <span class="dm-num-badge" style="background: rgba(249, 115, 22, 0.12); color: #ea580c;">
+                                {{ $employee->doc_expiring }}
+                            </span>
                         </td>
 
-                        <td style="padding: 12px 16px; vertical-align: middle;">
+                        <td class="text-center">
                             @php
                             $profStatus = $employee->profile->profile_status ?? 'pending';
-                            $profStatusColor = 'rgba(245, 158, 11, 0.1)';
-                            $profStatusText = '#f59e0b';
+                            $profStatusBg = 'rgba(245, 158, 11, 0.12)';
+                            $profStatusText = '#d97706';
                             if($profStatus === 'approved') {
-                            $profStatusColor = 'rgba(16, 185, 129, 0.1)';
-                            $profStatusText = '#10b981';
+                                $profStatusBg = 'rgba(16, 185, 129, 0.12)';
+                                $profStatusText = '#059669';
                             } elseif($profStatus === 'rejected') {
-                            $profStatusColor = 'rgba(239, 68, 68, 0.1)';
-                            $profStatusText = '#ef4444';
+                                $profStatusBg = 'rgba(239, 68, 68, 0.12)';
+                                $profStatusText = '#dc2626';
                             }
                             @endphp
-                            <span class="badge" style="background: {{ $profStatusColor }}; color: {{ $profStatusText }}; font-size: 11px; font-weight: 800; padding: 6px 10px; border-radius: 6px; text-transform: capitalize;">
+                            <span class="badge" style="background: {{ $profStatusBg }}; color: {{ $profStatusText }}; font-size: 11px; font-weight: 800; padding: 5px 10px; border-radius: 6px; text-transform: capitalize;">
                                 {{ $profStatus }}
                             </span>
                         </td>
 
-                        <!-- <td style="padding: 12px 16px; vertical-align: middle;">
-                            <div style="font-size: 11px; font-weight: 700; color: var(--dm-muted); white-space: nowrap;">{{ $employee->updated_at ? $employee->updated_at->format('d M Y') : '-' }}</div>
-                        </td> -->
-
-                        <td style="padding: 12px 16px; vertical-align: middle;" class="text-center">
+                        <td class="text-center">
                             @if($employee->doc_status !== 'verified')
                             <form action="{{ route('documents.hr.verify_employee', $employee->id) }}"
                                 method="POST"
                                 class="verify-all-form mb-0 d-flex justify-content-center">
                                 @csrf
-                                <label class="verify-switch mb-0" title="Verify all documents" style="transform: scale(0.8);">
+                                <label class="verify-switch mb-0" title="Verify all documents">
                                     <input type="checkbox" class="verify-all-toggle">
                                     <span class="verify-slider"></span>
                                 </label>
                             </form>
                             @else
-                            <span class="badge shadow-sm w-100 text-center" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); color: #10b981; font-size: 10px; font-weight: 800; padding: 6px 8px; border-radius: 6px;"><i class="fas fa-check-double mr-1"></i> Verified</span>
+                            <span class="badge shadow-sm" style="background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); color: #059669; font-size: 10.5px; font-weight: 800; padding: 5px 10px; border-radius: 6px;">
+                                <i class="fas fa-check-double mr-1"></i> Verified
+                            </span>
                             @endif
                         </td>
 
-                        <td style="padding: 12px 16px; vertical-align: middle; width: 230px; min-width: 230px;" class="text-center">
+                        <td class="text-center" style="padding-right: 24px;">
                             <div class="d-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;">
-                                <a href="{{ route('documents.hr.show', $employee->user_id) }}"
-                                    class="btn btn-sm shadow-sm" style="background: var(--dm-soft, #F4F2FF); border: 1px solid rgba(75, 0, 232, 0.15); color: var(--dm-primary, #4B00E8); font-size: 11px; font-weight: 700; border-radius: 50px; padding: 0 12px; height: 32px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;">
-                                    <i class="fas fa-folder-open"></i> View Documents
+                                <a href="{{ route('documents.hr.show', $employee->user_id) }}" class="dm-action-btn dm-action-primary">
+                                    <i class="fas fa-folder-open"></i> View Docs
                                 </a>
-                                <a href="{{ route('hrms.employees.profile.view', $employee->id) }}"
-                                    class="btn btn-sm shadow-sm" style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569; font-size: 11px; font-weight: 700; border-radius: 50px; padding: 0 12px; height: 32px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;">
-                                    <i class="fas fa-external-link-alt"></i> View Profile
+                                <a href="{{ route('hrms.employees.profile.view', $employee->id) }}" class="dm-action-btn dm-action-secondary">
+                                    <i class="fas fa-external-link-alt"></i> Profile
                                 </a>
                             </div>
                         </td>
@@ -779,7 +1174,7 @@
                     title: 'Employee Document Verifications',
                     className: 'btn btn-sm',
                     exportOptions: {
-                        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8],
+                        columns: [0, 1, 2, 3, 4, 5, 6, 7],
                         format: {
                             body: function(data) {
                                 return cleanExportText(data);
@@ -793,7 +1188,7 @@
                     title: 'Employee Document Verifications',
                     className: 'btn btn-sm',
                     exportOptions: {
-                        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8],
+                        columns: [0, 1, 2, 3, 4, 5, 6, 7],
                         format: {
                             body: function(data) {
                                 return cleanExportText(data);
@@ -807,7 +1202,7 @@
                     title: 'Employee Document Verifications',
                     className: 'btn btn-sm',
                     exportOptions: {
-                        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8],
+                        columns: [0, 1, 2, 3, 4, 5, 6, 7],
                         format: {
                             body: function(data) {
                                 return cleanExportText(data);
@@ -823,7 +1218,7 @@
                     orientation: 'landscape',
                     pageSize: 'A4',
                     exportOptions: {
-                        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8],
+                        columns: [0, 1, 2, 3, 4, 5, 6, 7],
                         format: {
                             body: function(data) {
                                 return cleanExportText(data);

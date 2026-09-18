@@ -25,7 +25,7 @@
                 <p class="set-subtitle">Published on {{ $policy->created_at->format('d M, Y') }}</p>
             </div>
             <div>
-                <a href="{{ route('policies.index') }}" class="set-btn set-btn-soft">
+                <a href="{{ route('documents.policies.index') }}" class="set-btn set-btn-soft" style="height: 40px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center;">
                     <i class="fas fa-arrow-left mr-2"></i> Back to Repository
                 </a>
             </div>

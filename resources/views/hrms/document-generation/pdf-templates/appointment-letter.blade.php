@@ -274,12 +274,12 @@
             @if(!empty($signature_image) && !empty($seal_image))
                 <div style="display: inline-block; vertical-align: middle;">
                     <img src="{{ $signature_image }}" style="height: 48px; width: auto; max-width: 140px; vertical-align: middle;" alt="Signature">
-                    <img src="{{ $seal_image }}" style="height: 52px; width: auto; max-width: 100px; vertical-align: middle; margin-left: 15px;" alt="Seal">
+                    {{-- <img src="{{ $seal_image }}" style="height: 52px; width: auto; max-width: 100px; vertical-align: middle; margin-left: 15px;" alt="Seal"> --}}
                 </div>
             @elseif(!empty($signature_image))
                 <img src="{{ $signature_image }}" style="height: 48px; width: auto; max-width: 150px; vertical-align: middle;" alt="Signature">
-            @elseif(!empty($seal_image))
-                <img src="{{ $seal_image }}" style="height: 52px; width: auto; max-width: 100px; vertical-align: middle; display: block;" alt="Seal">
+            {{-- @elseif(!empty($seal_image))
+                <img src="{{ $seal_image }}" style="height: 52px; width: auto; max-width: 100px; vertical-align: middle; display: block;" alt="Seal"> --}}
             @else
                 <div style="height: 35px;"></div>
             @endif

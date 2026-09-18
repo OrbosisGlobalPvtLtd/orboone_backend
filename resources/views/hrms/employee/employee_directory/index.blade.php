@@ -459,6 +459,10 @@
         white-space: nowrap;
     }
 
+    .eo-action-menu {
+        position: relative !important;
+    }
+
     .eo-action-menu .dropdown-toggle {
         width: 36px;
         height: 36px;
@@ -475,23 +479,61 @@
         display: none !important;
     }
 
-    .eo-action-menu .dropdown-menu {
-        border: 1px solid var(--orb-border);
-        box-shadow: 0 18px 40px rgba(16, 24, 40, .12);
-        border-radius: 14px;
-        padding: 8px;
+    .eo-action-menu .dropdown-menu,
+    .eo-action-floating-menu {
+        background: #ffffff !important;
+        border: 1px solid var(--orb-border, #E7EAF3) !important;
+        box-shadow: 0 20px 45px rgba(16, 24, 40, .16), 0 4px 12px rgba(16, 24, 40, .05) !important;
+        border-radius: 16px !important;
+        padding: 8px !important;
+        min-width: 195px !important;
+        z-index: 99999 !important;
     }
 
-    .eo-action-menu .dropdown-item {
-        border-radius: 10px;
-        font-size: 13px;
-        font-weight: 800;
-        padding: 8px 10px;
+    .eo-action-menu.dropup .dropdown-menu {
+        top: auto !important;
+        bottom: 100% !important;
+        margin-bottom: 6px !important;
+        transform: none !important;
     }
 
-    .eo-action-menu .dropdown-item i {
-        width: 18px;
-        color: var(--orb-primary);
+    .eo-action-menu .dropdown-item,
+    .eo-action-floating-menu .dropdown-item {
+        border-radius: 10px !important;
+        font-size: 13px !important;
+        font-weight: 800 !important;
+        padding: 8px 12px !important;
+        color: var(--orb-text, #101828) !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        transition: all 0.15s ease !important;
+    }
+
+    .eo-action-menu .dropdown-item:hover,
+    .eo-action-floating-menu .dropdown-item:hover {
+        background: #F4F2FF !important;
+        color: var(--orb-primary, #6366F1) !important;
+    }
+
+    .eo-action-menu .dropdown-item i,
+    .eo-action-floating-menu .dropdown-item i {
+        width: 20px !important;
+        font-size: 14px !important;
+        color: var(--orb-primary, #6366F1) !important;
+        text-align: center !important;
+        flex-shrink: 0 !important;
+        display: inline-block !important;
+    }
+
+    .eo-action-menu .dropdown-item.text-warning i,
+    .eo-action-floating-menu .dropdown-item.text-warning i {
+        color: #F59E0B !important;
+    }
+
+    .eo-action-menu .dropdown-item.text-danger i,
+    .eo-action-floating-menu .dropdown-item.text-danger i {
+        color: #EF4444 !important;
     }
 
     .dataTables_filter {
@@ -1312,6 +1354,64 @@
 
             table.search('');
             table.ajax.reload();
+        });
+
+        // Production-grade floating action dropdown (immune to table-responsive overflow clipping)
+        $(document).on('show.bs.dropdown', '.eo-action-menu', function() {
+            const $parent = $(this);
+            const $toggle = $parent.find('.dropdown-toggle');
+            const $menu = $parent.find('.dropdown-menu');
+            if ($toggle.length === 0 || $menu.length === 0) return;
+
+            $menu.addClass('eo-action-floating-menu');
+            $menu.data('parent-cell', $parent);
+            $('body').append($menu.detach());
+
+            function positionDropdown() {
+                const rect = $toggle[0].getBoundingClientRect();
+                const menuWidth = $menu.outerWidth() || 195;
+                const menuHeight = $menu.outerHeight() || 220;
+                const windowHeight = $(window).height();
+                const windowWidth = $(window).width();
+
+                let top = rect.bottom + 4;
+                let left = rect.right - menuWidth;
+
+                if (left < 10) left = 10;
+                if (left + menuWidth > windowWidth - 10) left = windowWidth - menuWidth - 10;
+
+                if (top + menuHeight > windowHeight - 10) {
+                    top = Math.max(10, rect.top - menuHeight - 4);
+                }
+
+                $menu.css({
+                    position: 'fixed',
+                    top: top + 'px',
+                    left: left + 'px',
+                    margin: '0',
+                    zIndex: 99999,
+                    display: 'block'
+                });
+            }
+
+            positionDropdown();
+        });
+
+        $(document).on('hide.bs.dropdown', '.eo-action-menu', function() {
+            const $parent = $(this);
+            $('body > .dropdown-menu.eo-action-floating-menu').each(function() {
+                const $menu = $(this);
+                if ($menu.data('parent-cell') && $menu.data('parent-cell')[0] === $parent[0]) {
+                    $menu.removeClass('eo-action-floating-menu');
+                    $menu.css({ display: '', position: '', top: '', left: '', zIndex: '', margin: '' });
+                    $parent.append($menu.detach());
+                }
+            });
+        });
+
+        // Close open floating dropdown on page or table scroll
+        $(window).add('.orb-table-wrap').on('scroll', function() {
+            $('.eo-action-menu.show .dropdown-toggle').dropdown('hide');
         });
 
         // Open Initiate Exit Modal dynamically

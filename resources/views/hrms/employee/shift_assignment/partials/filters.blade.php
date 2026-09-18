@@ -30,11 +30,16 @@
                 <input type="text" name="search" class="form-control" placeholder="Search code or name..." value="{{ request('search') }}">
             </div>
 
-            <div>
-                <label>&nbsp;</label>
-                <button type="submit" class="btn btn-primary btn-block rounded-12 font-weight-bold" style="height: 44px; background: var(--orb-primary); border: none;">
-                    <i class="fas fa-search mr-1"></i> Search
-                </button>
+            <div class="shift-filter-actions-col">
+                <label class="d-none d-sm-block">&nbsp;</label>
+                <div class="shift-filter-actions-wrap">
+                    <button type="submit" class="btn-shift-search" title="Search / Apply Filter">
+                        <i class="fas fa-search mr-1"></i> Search
+                    </button>
+                    <a href="{{ route('employee.shift-assignment.index') }}" class="btn-shift-reset" title="Reset Filters">
+                        <i class="fas fa-undo mr-1"></i> Reset
+                    </a>
+                </div>
             </div>
 
         </div>

@@ -61,11 +61,6 @@
                         <p style="margin: 3px 0 0 0; font-size: 12.5px; color: #667085;">View and manage assigned shift timings, custom flexible windows, and effective ranges.</p>
                     </div>
                 </div>
-
-                <!-- Reset Filters Button in Card Header -->
-                <a href="{{ route('employee.shift-assignment.index') }}" class="btn btn-undo btn-outline-secondary btn-sm d-flex align-items-center" style="height: 38px !important; border-radius: 10px !important; padding: 0 16px !important; font-size: 12.5px !important; font-weight: 700 !important; border: 1px solid #e2e8f0 !important; color: #475467 !important; background: #fff !important; transition: all 0.2s ease !important; text-decoration: none;">
-                    <i class="fas fa-undo mr-2" style="font-size: 11px;"></i> Reset Filters
-                </a>
             </div>
 
             <!-- Auto-Submitting Filter Grid Bar -->

@@ -26,36 +26,65 @@ class EmployeeShiftAssignmentC extends Controller
         $departmentId = $request->input('department_id');
         $employeeId = $request->input('employee_id');
 
-        $query = EmployeeM::active()->with(['user', 'department', 'designation', 'currentShiftTiming.attendanceTime']);
+        $query = EmployeeM::query()
+            ->select('employees_new.*')
+            ->join('users', 'users.id', '=', 'employees_new.user_id')
+            ->join('employee_profiles', 'employee_profiles.employee_id', '=', 'employees_new.id')
+            ->leftJoin('departments', 'departments.id', '=', 'employees_new.department_id')
+            ->leftJoin('designations', 'designations.id', '=', 'employees_new.designation_id')
+            ->where('employees_new.employment_status', 'active')
+            ->where(function ($q) {
+                $q->where('employees_new.is_active', 1)
+                  ->orWhereNull('employees_new.is_active');
+            })
+            ->where(function ($q) {
+                $q->whereNull('employees_new.employee_stage')
+                  ->orWhereNotIn('employees_new.employee_stage', ['exited', 'resigned']);
+            })
+            ->where('employee_profiles.is_profile_completed', 1)
+            ->where('employee_profiles.profile_status', 'approved')
+            ->with(['user', 'department', 'designation', 'currentShiftTiming.attendanceTime', 'profile']);
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
-                $q->where('employee_code', 'like', "%{$search}%")
-                    ->orWhereHas('user', function ($u) use ($search) {
-                        $u->where('name', 'like', "%{$search}%")
-                            ->orWhere('email', 'like', "%{$search}%");
-                    });
+                $q->where('employees_new.employee_code', 'like', "%{$search}%")
+                    ->orWhere('users.name', 'like', "%{$search}%")
+                    ->orWhere('users.email', 'like', "%{$search}%")
+                    ->orWhere('departments.name', 'like', "%{$search}%")
+                    ->orWhere('designations.name', 'like', "%{$search}%");
             });
         }
 
         if (!empty($departmentId)) {
-            $query->where('department_id', $departmentId);
+            $query->where('employees_new.department_id', $departmentId);
         }
 
         if (!empty($employeeId)) {
-            $query->where('id', $employeeId);
+            $query->where('employees_new.id', $employeeId);
         }
 
-        $employees = $query->orderBy('id', 'desc')->paginate(15)->withQueryString();
+        $employees = $query->orderBy('employees_new.id', 'desc')->paginate(15)->withQueryString();
 
-        $allEmployeesList = EmployeeM::active()->with('user')->orderBy('id', 'desc')->get();
+        $allEmployeesList = EmployeeM::query()
+            ->select('employees_new.*')
+            ->join('users', 'users.id', '=', 'employees_new.user_id')
+            ->join('employee_profiles', 'employee_profiles.employee_id', '=', 'employees_new.id')
+            ->where('employees_new.employment_status', 'active')
+            ->where('employee_profiles.is_profile_completed', 1)
+            ->where('employee_profiles.profile_status', 'approved')
+            ->with('user')
+            ->orderBy('employees_new.id', 'desc')
+            ->get();
         $attendanceTimes = AttendanceTimeM::where('is_active', 1)->orderBy('name')->get();
         $departments = DepartmentM::orderBy('name')->get();
 
         $defaultShift = AttendanceTimeM::where('is_default', 1)->first() ?? AttendanceTimeM::first();
 
         $allShiftAssignments = EmployeeShiftTimingM::whereHas('employee', function ($q) {
-                $q->active();
+                $q->join('employee_profiles', 'employee_profiles.employee_id', '=', 'employees_new.id')
+                  ->where('employees_new.employment_status', 'active')
+                  ->where('employee_profiles.is_profile_completed', 1)
+                  ->where('employee_profiles.profile_status', 'approved');
             })
             ->with(['employee.user', 'attendanceTime'])
             ->orderByDesc('id')

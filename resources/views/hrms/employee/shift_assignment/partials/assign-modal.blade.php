@@ -57,42 +57,42 @@
                 <div class="card border-0 rounded-16 shadow-2xs p-4 mb-3 bg-white" id="assignFlexibleSection">
                     <h6 class="shift-modal-card-title"><i class="fas fa-clock mr-1 text-primary"></i> Shift Timing Customisation</h6>
                     <div class="row">
-                        <div class="col-xl-3 col-lg-4 col-md-6 form-group mb-3">
+                        <div class="col-xl-3 col-lg-4 col-md-6 form-group mb-3 clock-time-field">
                             <label class="shift-modal-label">Punch Allowed <span class="text-danger">*</span></label>
                             <div class="time-picker-container">
                                 <input type="time" name="punch_allowed_from" id="assign_punch_allowed_from" class="form-control native-time-input rounded-12 border-light bg-light" style="height: 42px; font-size: 13px;">
                                 <span class="time-display-val">--:--</span>
                             </div>
                         </div>
-                        <div class="col-xl-3 col-lg-4 col-md-6 form-group mb-3">
+                        <div class="col-xl-3 col-lg-4 col-md-6 form-group mb-3 clock-time-field">
                             <label class="shift-modal-label">Shift Start <span class="text-danger">*</span></label>
                             <div class="time-picker-container">
                                 <input type="time" name="shift_start_time" id="assign_shift_start_time" class="form-control native-time-input rounded-12 border-light bg-light" style="height: 42px; font-size: 13px;">
                                 <span class="time-display-val">--:--</span>
                             </div>
                         </div>
-                        <div class="col-xl-3 col-lg-4 col-md-6 form-group mb-3">
+                        <div class="col-xl-3 col-lg-4 col-md-6 form-group mb-3 clock-time-field">
                             <label class="shift-modal-label">Late After <span class="text-danger">*</span></label>
                             <div class="time-picker-container">
                                 <input type="time" name="late_after_time" id="assign_late_after_time" class="form-control native-time-input rounded-12 border-light bg-light" style="height: 42px; font-size: 13px;">
                                 <span class="time-display-val">--:--</span>
                             </div>
                         </div>
-                        <div class="col-xl-3 col-lg-4 col-md-6 form-group mb-3">
+                        <div class="col-xl-3 col-lg-4 col-md-6 form-group mb-3 clock-time-field">
                             <label class="shift-modal-label">Blocked Punch <span class="text-danger">*</span></label>
                             <div class="time-picker-container">
                                 <input type="time" name="block_after_time" id="assign_block_after_time" class="form-control native-time-input rounded-12 border-light bg-light" style="height: 42px; font-size: 13px;">
                                 <span class="time-display-val">--:--</span>
                             </div>
                         </div>
-                        <div class="col-xl-3 col-lg-4 col-md-6 form-group mb-3">
+                        <div class="col-xl-3 col-lg-4 col-md-6 form-group mb-3 clock-time-field">
                             <label class="shift-modal-label">Half Day After <span class="text-danger">*</span></label>
                             <div class="time-picker-container">
                                 <input type="time" name="half_day_after_time" id="assign_half_day_after_time" class="form-control native-time-input rounded-12 border-light bg-light" style="height: 42px; font-size: 13px;">
                                 <span class="time-display-val">--:--</span>
                             </div>
                         </div>
-                        <div class="col-xl-3 col-lg-4 col-md-6 form-group mb-3">
+                        <div class="col-xl-3 col-lg-4 col-md-6 form-group mb-3 clock-time-field">
                             <label class="shift-modal-label">Shift End <span class="text-danger">*</span></label>
                             <div class="time-picker-container">
                                 <input type="time" name="shift_end_time" id="assign_shift_end_time" class="form-control native-time-input rounded-12 border-light bg-light" style="height: 42px; font-size: 13px;">

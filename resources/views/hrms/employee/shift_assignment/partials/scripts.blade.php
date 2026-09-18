@@ -28,6 +28,7 @@
         const reqMins = selectedOption.getAttribute('data-req-mins') || '480';
         const lunchMins = selectedOption.getAttribute('data-lunch-mins') || '60';
 
+        const clockTimeFields = panel.querySelectorAll('.clock-time-field');
         const punchInput = panel.querySelector('input[name="punch_allowed_from"]');
         const startInput = panel.querySelector('input[name="shift_start_time"]');
         const lateInput = panel.querySelector('input[name="late_after_time"]');
@@ -38,6 +39,9 @@
         const lunchInput = panel.querySelector('input[name="lunch_minutes"]');
 
         if (shiftType === 'dynamic_hours') {
+            clockTimeFields.forEach(f => {
+                f.style.display = 'none';
+            });
             if (punchInput) punchInput.value = '';
             if (startInput) startInput.value = '';
             if (lateInput) lateInput.value = '';
@@ -45,16 +49,19 @@
             if (halfDayInput) halfDayInput.value = '';
             if (endInput) endInput.value = '';
         } else {
-            if (punchInput) punchInput.value = punchFrom;
-            if (startInput) startInput.value = shiftStart;
-            if (lateInput) lateInput.value = lateAfter;
-            if (blockInput) blockInput.value = blockAfter;
-            if (halfDayInput) halfDayInput.value = halfDayAfter;
-            if (endInput) endInput.value = shiftEnd;
+            clockTimeFields.forEach(f => {
+                f.style.display = '';
+            });
+            if (punchInput && punchFrom) punchInput.value = punchFrom;
+            if (startInput && shiftStart) startInput.value = shiftStart;
+            if (lateInput && lateAfter) lateInput.value = lateAfter;
+            if (blockInput && blockAfter) blockInput.value = blockAfter;
+            if (halfDayInput && halfDayAfter) halfDayInput.value = halfDayAfter;
+            if (endInput && shiftEnd) endInput.value = shiftEnd;
         }
 
-        if (reqInput) reqInput.value = reqMins;
-        if (lunchInput) lunchInput.value = lunchMins;
+        if (reqInput && reqMins) reqInput.value = reqMins;
+        if (lunchInput && lunchMins !== null && lunchMins !== undefined) lunchInput.value = lunchMins;
 
         updateAllTimeDisplaysInScope(panel);
     }
@@ -148,7 +155,41 @@
         updateAllTimeDisplaysInScope(scopeEl);
     }
 
+    function syncAllShiftTemplateVisibilities() {
+        document.querySelectorAll('#assignShiftSelect, select[id^="editShiftSelect"]').forEach(selectEl => {
+            const selectedOption = selectEl.options[selectEl.selectedIndex];
+            if (!selectedOption) return;
+
+            let panel;
+            if (selectEl.id === 'assignShiftSelect') {
+                panel = document.getElementById('assignFlexibleSection');
+            } else if (selectEl.id && selectEl.id.startsWith('editShiftSelect')) {
+                const id = selectEl.id.replace('editShiftSelect', '');
+                panel = document.getElementById('editFlexibleSection' + id);
+            }
+            if (!panel) return;
+
+            const shiftType = selectedOption.getAttribute('data-shift-type') || '';
+            const clockTimeFields = panel.querySelectorAll('.clock-time-field');
+            if (shiftType === 'dynamic_hours') {
+                clockTimeFields.forEach(f => f.style.display = 'none');
+            } else {
+                clockTimeFields.forEach(f => f.style.display = '');
+            }
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
+        // Initialize template visibility states
+        syncAllShiftTemplateVisibilities();
+
+        // Listen for any modal opened via Bootstrap to re-sync
+        if (window.jQuery) {
+            window.jQuery('.modal').on('show.bs.modal shown.bs.modal', function() {
+                syncAllShiftTemplateVisibilities();
+            });
+        }
+
         // Initialize time overlays for all card sections
         document.querySelectorAll('.card').forEach(panel => {
             updateAllTimeDisplaysInScope(panel);

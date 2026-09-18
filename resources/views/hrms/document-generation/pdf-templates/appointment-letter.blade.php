@@ -2,11 +2,50 @@
 
 @section('title', 'Appointment Letter')
 
+@section('styles')
+<style>
+    .letter-body {
+        font-size: 11px;
+        line-height: 1.36;
+        color: #111827;
+    }
+    .letter-body p {
+        margin: 0 0 5px 0;
+    }
+    .letter-body h2 {
+        margin: 0 0 8px 0;
+        font-size: 16px;
+    }
+    .letter-body h4 {
+        margin: 0 0 4px 0;
+        font-size: 12px;
+    }
+    .salary-table {
+        width: 70%;
+        border-collapse: collapse;
+        margin: 4px 0 6px 0;
+    }
+    .salary-table th,
+    .salary-table td {
+        border: 1px solid #222;
+        padding: 3px 6px;
+    }
+    .closing-sign-section {
+        margin-top: 14px;
+        page-break-inside: avoid;
+    }
+    .ack-section {
+        margin-top: 14px;
+        page-break-inside: avoid;
+    }
+</style>
+@endsection
+
 @section('content')
 <div class="letter-body">
 
-    <div class="text-center mb-4">
-        <h2 style="letter-spacing:1px; color:#1e3a8a; margin-bottom:18px;">
+    <div class="text-center" style="margin-bottom: 8px;">
+        <h2 style="letter-spacing:1px; color:#1e3a8a; margin-bottom:8px;">
             APPOINTMENT LETTER
         </h2>
     </div>
@@ -39,8 +78,8 @@
         <strong>1. Position & Reporting</strong><br>
         You will be appointed to the position of
         <strong>{{ $designation ?? 'Full Stack Developer' }}</strong> and will report directly to
-        <strong>{{ $reporting_manager_name ?? 'Prabhat Agarwal (CEO)' }}</strong> &
-        <strong>{{ $project_manager_name ?? 'Sourabh Parihar (Project Manager)' }}</strong>
+        <strong>{{ !empty($reporting_manager_name) ? $reporting_manager_name : 'Prabhat Agarwal (CEO)' }}</strong> &
+        <strong>{{ !empty($project_manager_name) ? $project_manager_name : 'Sourabh Parihar (Project Manager)' }}</strong>
         or any other person designated by the Company from time to time.
     </p>
 
@@ -50,37 +89,42 @@
         within India as per business requirements.
     </p>
 
+    @php
+        $monthlyGross = (float)($monthly_salary ?? $monthly_gross_salary ?? $salary ?? $salary_monthly ?? 0);
+        $basicAmount = isset($basic_salary) && is_numeric($basic_salary) ? (float)$basic_salary : ($monthlyGross * 0.50);
+        $hraAmount = isset($hra) && is_numeric($hra) ? (float)$hra : ($monthlyGross * 0.20);
+        $allowanceAmount = isset($allowances) && is_numeric($allowances) 
+            ? (float)$allowances 
+            : max(0, $monthlyGross - $basicAmount - $hraAmount);
+    @endphp
+
     <p class="text-justify">
         <strong>2. Compensation & Benefits</strong><br>
         Your total monthly remuneration will be
-        <strong>₹{{ number_format((float)($monthly_salary ?? $salary ?? 0), 0) }}</strong>
+        <strong>₹{{ number_format($monthlyGross, 0) }}</strong>
         (Rupees {{ $salary_in_words ?? 'As Agreed' }}).
     </p>
 
-    <table style="width:70%; border-collapse:collapse; margin:8px 0 12px 0;">
+    <table class="salary-table">
         <tr>
-            <th style="border:1px solid #222; padding:6px;">Component</th>
-            <th style="border:1px solid #222; padding:6px;">Amount (₹)</th>
+            <th>Component</th>
+            <th>Amount (₹)</th>
         </tr>
         <tr>
-            <td style="border:1px solid #222; padding:6px;">Basic Salary</td>
-            <td style="border:1px solid #222; padding:6px;">{{ number_format((float)($basic_salary ?? 0), 0) }}</td>
+            <td>Basic Salary</td>
+            <td>{{ number_format($basicAmount, 0) }}</td>
         </tr>
         <tr>
-            <td style="border:1px solid #222; padding:6px;">HRA</td>
-            <td style="border:1px solid #222; padding:6px;">{{ number_format((float)($hra ?? 0), 0) }}</td>
+            <td>HRA</td>
+            <td>{{ number_format($hraAmount, 0) }}</td>
         </tr>
         <tr>
-            <td style="border:1px solid #222; padding:6px;">Conveyance</td>
-            <td style="border:1px solid #222; padding:6px;">{{ number_format((float)($conveyance ?? 0), 0) }}</td>
+            <td>Allowances</td>
+            <td>{{ number_format($allowanceAmount, 0) }}</td>
         </tr>
         <tr>
-            <td style="border:1px solid #222; padding:6px;">Allowances</td>
-            <td style="border:1px solid #222; padding:6px;">{{ number_format((float)($allowances ?? 0), 0) }}</td>
-        </tr>
-        <tr>
-            <td style="border:1px solid #222; padding:6px;"><strong>Total Gross Salary</strong></td>
-            <td style="border:1px solid #222; padding:6px;"><strong>{{ number_format((float)($monthly_salary ?? $salary ?? 0), 0) }}</strong></td>
+            <td><strong>Total Gross Salary</strong></td>
+            <td><strong>{{ number_format($monthlyGross, 0) }}</strong></td>
         </tr>
     </table>
 
@@ -133,7 +177,7 @@
         leaves will be limited as per policy, and extra leaves will be treated as LWP.
         Your notice period during probation will be
         <strong>{{ $notice_period_probation ?? '15 Days' }}</strong>. After confirmation,
-        your notice period will be <strong>{{ $notice_period_confirmed ?? '30 Days' }}</strong>.
+        your notice period will be <strong>{{ $notice_period_confirmed ?? '2 Months' }}</strong>.
     </p>
 
     <p class="text-justify">
@@ -186,8 +230,8 @@
 
     <p class="text-justify">
         <strong>12. Termination of Employment</strong><br>
-        Either party may terminate this employment by giving 30 days’ written notice or salary
-        in lieu of notice after confirmation. During probation, 15 days’ notice or salary in lieu
+        Either party may terminate this employment by giving {{ $notice_period_confirmed ?? '2 Months' }} written notice or salary
+        in lieu of notice after confirmation. During probation, {{ $notice_period_probation ?? '15 Days' }} notice or salary in lieu
         applies. The company reserves the right to terminate employment without notice for
         misconduct, violation of company policy, breach of confidentiality, or underperformance
         after due warning.
@@ -223,29 +267,30 @@
         and look forward to a long and mutually rewarding association.
     </p>
 
-    <div style="page-break-inside: avoid; margin-top:35px;">
+    <div class="closing-sign-section">
         Warm Regards,<br>
         <strong>For {{ $company_name ?? branding_name() }}</strong>
-        <div style="min-height: 65px; margin-top: 5px; margin-bottom: 5px;">
+        <div style="min-height: 50px; margin-top: 4px; margin-bottom: 4px;">
             @if(!empty($signature_image) && !empty($seal_image))
                 <div style="display: inline-block; vertical-align: middle;">
-                    <img src="{{ $signature_image }}" style="height: 55px; width: auto; max-width: 160px; vertical-align: middle;" alt="Signature">
-                    <img src="{{ $seal_image }}" style="height: 65px; width: auto; max-width: 120px; vertical-align: middle; margin-left: 15px;" alt="Seal">
+                    <img src="{{ $signature_image }}" style="height: 48px; width: auto; max-width: 140px; vertical-align: middle;" alt="Signature">
+                    <img src="{{ $seal_image }}" style="height: 52px; width: auto; max-width: 100px; vertical-align: middle; margin-left: 15px;" alt="Seal">
                 </div>
             @elseif(!empty($signature_image))
-                <img src="{{ $signature_image }}" style="height: 55px; width: auto; max-width: 180px; vertical-align: middle;" alt="Signature">
+                <img src="{{ $signature_image }}" style="height: 48px; width: auto; max-width: 150px; vertical-align: middle;" alt="Signature">
             @elseif(!empty($seal_image))
-                <img src="{{ $seal_image }}" style="height: 65px; width: auto; max-width: 120px; vertical-align: middle; display: block;" alt="Seal">
+                <img src="{{ $seal_image }}" style="height: 52px; width: auto; max-width: 100px; vertical-align: middle; display: block;" alt="Seal">
             @else
-                <div style="height: 45px;"></div>
+                <div style="height: 35px;"></div>
             @endif
         </div>
-        <strong>{{ $hr_manager_name ?? $authorized_signatory ?? 'HR Manager' }}</strong><br>
-        {{ $signatory_designation ?? 'Human Resource Manager' }}
+        <strong>{{ $hr_manager_name ?? $authorized_signatory ?? 'HR Admin' }}</strong><br>
+        {{ !empty($signatory_designation) ? $signatory_designation : 'Human Resource Manager' }}
+
     </div>
 
-    <div style="page-break-inside: avoid; margin-top:45px;">
-        <h4 style="color:#1e3a8a; margin-bottom:10px;">Employee Acknowledgment</h4>
+    <div class="ack-section">
+        <h4 style="color:#1e3a8a; margin-bottom:6px;">Employee Acknowledgment</h4>
 
         <p class="text-justify">
             I, <strong>{{ $employee_name ?? 'Employee Name' }}</strong>, accept the terms and

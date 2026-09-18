@@ -17,10 +17,10 @@ use Illuminate\Support\Facades\Storage;
 
 class GeneratedDocumentC extends Controller
 {
-    protected $generationService;
-    protected $pdfService;
-    protected $emailService;
-    protected $htmlGenerationService;
+    protected DocumentGenerationS $generationService;
+    protected DocumentPdfS $pdfService;
+    protected DocumentEmailS $emailService;
+    protected HtmlDocumentGenerationS $htmlGenerationService;
 
     public function __construct(
         DocumentGenerationS $generationService,
@@ -43,7 +43,7 @@ class GeneratedDocumentC extends Controller
         $sentDocuments = GeneratedDocument::where('status', 'sent')->count();
         $draftDocuments = GeneratedDocument::where('status', 'draft')->count();
 
-        $recentDocuments = GeneratedDocument::with(['template', 'employee'])->latest()->take(5)->get();
+        $recentDocuments = GeneratedDocument::with(['template', 'employee'])->latest()->take(10)->get();
 
         return view('hrms.document-generation.dashboard', compact(
             'totalTemplates', 'activeTemplates', 'generatedDocuments', 
@@ -188,7 +188,7 @@ class GeneratedDocumentC extends Controller
         return response()->json(['html' => $html]);
     }
 
-    public function employeeDocumentData(Request $request, $employeeId)
+    public function employeeDocumentData(Request $request, int|string $employeeId)
     {
         $employee = EmployeeM::with(['user', 'department', 'designation', 'reportingManager', 'profile'])->findOrFail($employeeId);
         
@@ -279,10 +279,10 @@ class GeneratedDocumentC extends Controller
                 $request->validate($rules);
             }
 
-            // Validate uploads if provided
+            
             $request->validate([
-                'signature_image_file' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
-                'seal_image_file' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+                'signature_image_file' => 'nullable|image|max:2048',
+                'seal_image_file' => 'nullable|image|max:2048',
             ]);
 
             if ($request->hasFile('signature_image_file')) {
@@ -480,7 +480,7 @@ class GeneratedDocumentC extends Controller
             ->with('success', "Document generated successfully{$messageSuffix} Email was not sent.");
     }
 
-    protected function resolveEmailTemplate($documentType, $employeeName, $companyName)
+    protected function resolveEmailTemplate(string $documentType, string $employeeName, string $companyName): array
     {
         $docTypeLabel = ucwords(str_replace('_', ' ', $documentType));
         
@@ -539,7 +539,7 @@ class GeneratedDocumentC extends Controller
         }
     }
 
-    protected function parseEmailTemplates($subject, $body, $employeeName, $companyName)
+    protected function parseEmailTemplates(string $subject, string $body, string $employeeName, string $companyName): array
     {
         $employeeFirstName = !empty($employeeName) ? (explode(' ', trim($employeeName))[0] ?: 'Candidate') : 'Candidate';
         $replace = [
@@ -558,12 +558,12 @@ class GeneratedDocumentC extends Controller
         return ['subject' => $subject, 'body' => $body];
     }
 
-    public function show($id)
+    public function show(int|string $id)
     {
         return $this->streamPdf($id);
     }
 
-    public function download($id)
+    public function download(int|string $id)
     {
         $document = GeneratedDocument::findOrFail($id);
 
@@ -578,7 +578,7 @@ class GeneratedDocumentC extends Controller
         abort(404, 'PDF is not available for this document.');
     }
     
-    public function streamPdf($id)
+    public function streamPdf(int|string $id)
     {
         $document = GeneratedDocument::findOrFail($id);
         $path = $document->generated_pdf_path ?: $document->pdf_path;
@@ -588,17 +588,18 @@ class GeneratedDocumentC extends Controller
         return $this->pdfService->streamPdf($path);
     }
 
-    public function downloadDocx($id)
+    public function downloadDocx(int|string $id)
     {
         $document = GeneratedDocument::findOrFail($id);
         if (!$document->generated_docx_path || !Storage::disk('private')->exists($document->generated_docx_path)) {
             abort(404, 'DOCX is not available for this document.');
         }
 
-        return Storage::disk('private')->download($document->generated_docx_path, basename($document->generated_docx_path));
+        $fullPath = Storage::disk('private')->path($document->generated_docx_path);
+        return response()->download($fullPath, basename($document->generated_docx_path));
     }
 
-    public function email(Request $request, $id)
+    public function email(Request $request, int|string $id)
     {
         $document = GeneratedDocument::findOrFail($id);
         
@@ -613,7 +614,7 @@ class GeneratedDocumentC extends Controller
         return redirect()->back()->with('success', 'Document sent successfully.');
     }
 
-    public function review(Request $request, $id)
+    public function review(Request $request, int|string $id)
     {
         $document = GeneratedDocument::findOrFail($id);
         $document->update([
@@ -628,7 +629,7 @@ class GeneratedDocumentC extends Controller
         return redirect()->back()->with('success', 'Document reviewed successfully.');
     }
 
-    public function cancel(Request $request, $id)
+    public function cancel(Request $request, int|string $id)
     {
         $document = GeneratedDocument::findOrFail($id);
         $document->update(['status' => 'cancelled']);
@@ -648,7 +649,7 @@ class GeneratedDocumentC extends Controller
         return view('hrms.document-generation.self.index', compact('documents'));
     }
 
-    public function selfDownload($id)
+    public function selfDownload(int|string $id)
     {
         $document = GeneratedDocument::where('employee_id', Auth::user()->employee->id ?? 0)
             ->findOrFail($id);
@@ -662,13 +663,14 @@ class GeneratedDocumentC extends Controller
         }
 
         if ($document->generated_docx_path && Storage::disk('private')->exists($document->generated_docx_path)) {
-            return Storage::disk('private')->download($document->generated_docx_path, basename($document->generated_docx_path));
+            $fullPath = Storage::disk('private')->path($document->generated_docx_path);
+            return response()->download($fullPath, basename($document->generated_docx_path));
         }
 
         abort(404, 'No downloadable file is available for this document.');
     }
 
-    public function selfView($id)
+    public function selfView(int|string $id)
     {
         $document = GeneratedDocument::where('employee_id', Auth::user()->employee->id ?? 0)
             ->findOrFail($id);
@@ -681,7 +683,7 @@ class GeneratedDocumentC extends Controller
         return $this->pdfService->streamPdf($path);
     }
 
-    public function regenerate($id)
+    public function regenerate(int|string $id)
     {
         $document = GeneratedDocument::findOrFail($id);
         
@@ -715,7 +717,7 @@ class GeneratedDocumentC extends Controller
         return redirect()->back()->with('error', 'Only HTML templates can be automatically regenerated.');
     }
 
-    public function destroy($id)
+    public function destroy(int|string $id)
     {
         $document = GeneratedDocument::findOrFail($id);
 

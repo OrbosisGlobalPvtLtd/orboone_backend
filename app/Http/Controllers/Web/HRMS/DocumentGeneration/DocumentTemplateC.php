@@ -7,14 +7,15 @@ use App\Models\HRMS\DocumentGeneration\DocumentTemplate;
 use App\Services\HRMS\DocumentGeneration\DocumentTemplateS;
 use App\Services\HRMS\Storage\HrmsFileResolverS;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class DocumentTemplateC extends Controller
 {
-    protected $templateService;
-    protected $fileResolver;
+    protected DocumentTemplateS $templateService;
+    protected HrmsFileResolverS $fileResolver;
 
     public function __construct(
         DocumentTemplateS $templateService,
@@ -116,7 +117,7 @@ class DocumentTemplateC extends Controller
             ->with('success', 'Template created successfully.');
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, int|string $id)
     {
         $template = DocumentTemplate::findOrFail($id);
 
@@ -180,7 +181,7 @@ class DocumentTemplateC extends Controller
             ->with('success', 'Template updated successfully.');
     }
 
-    public function destroy($id)
+    public function destroy(int|string $id)
     {
         $template = DocumentTemplate::findOrFail($id);
         $this->templateService->deleteTemplate($template);
@@ -189,7 +190,7 @@ class DocumentTemplateC extends Controller
             ->with('success', 'Template deleted successfully.');
     }
 
-    public function toggleArchive($id)
+    public function toggleArchive(int|string $id)
     {
         if (!Schema::hasColumn('document_templates', 'is_archived')) {
             return redirect()->back()->with('error', 'Archive support requires latest document generation migration.');
@@ -198,7 +199,7 @@ class DocumentTemplateC extends Controller
         $template = DocumentTemplate::findOrFail($id);
         $template->update([
             'is_archived' => !$template->is_archived,
-            'updated_by_user_id' => auth()->id() ?? $template->updated_by_user_id,
+            'updated_by_user_id' => Auth::id() ?? $template->updated_by_user_id,
         ]);
 
         return redirect()->back()->with(
@@ -207,7 +208,7 @@ class DocumentTemplateC extends Controller
         );
     }
 
-    public function clone($id)
+    public function clone(int|string $id)
     {
         $original = DocumentTemplate::findOrFail($id);
         $clone = $original->replicate();
@@ -229,8 +230,8 @@ class DocumentTemplateC extends Controller
             $suffix++;
         }
         $clone->slug = $slug;
-        $clone->created_by_user_id = auth()->id();
-        $clone->updated_by_user_id = auth()->id();
+        $clone->created_by_user_id = Auth::id();
+        $clone->updated_by_user_id = Auth::id();
         $clone->save();
 
         // Duplicate the fields

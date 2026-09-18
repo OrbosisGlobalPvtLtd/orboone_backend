@@ -23,13 +23,14 @@
         .att-container {
             max-width: 1600px;
             margin: 0 auto;
+            width: 100%;
         }
 
         /* PREMIUM HERO HEADER */
         .att-hero {
             background: linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%);
-            border-radius: 30px;
-            padding: 30px;
+            border-radius: 24px;
+            padding: 28px 30px;
             margin-bottom: 18px;
             box-shadow: 0 18px 45px rgba(75, 0, 232, .20);
             display: flex;
@@ -56,6 +57,7 @@
         .att-hero-content {
             position: relative;
             z-index: 2;
+            min-width: 0;
         }
 
         .att-kicker {
@@ -72,21 +74,22 @@
         }
 
         .att-title {
-            font-size: 30px;
+            font-size: clamp(22px, 3.5vw, 30px);
             font-weight: 900;
             margin: 0;
-            line-height: 1.15;
+            line-height: 1.18;
             color: #fff;
             letter-spacing: -0.02em;
         }
 
         .att-subtitle {
-            font-size: 14px;
+            font-size: clamp(12.5px, 1.5vw, 14px);
             font-weight: 500;
             margin-top: 8px;
             opacity: .92;
             max-width: 800px;
             color: #F3E8FF;
+            line-height: 1.4;
         }
 
         .att-hero-actions {
@@ -100,7 +103,7 @@
         .btn-action {
             border: 0;
             border-radius: 12px;
-            padding: 11px 18px;
+            padding: 10px 18px;
             font-weight: 700;
             font-size: 13px;
             display: inline-flex;
@@ -113,16 +116,21 @@
             cursor: pointer;
         }
 
-        .btn-action-primary {
-            background: #fff;
-            color: #4F46E5 !important;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, .12);
+        .btn-action-primary,
+        .btn-create-doc {
+            background: linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%) !important;
+            color: #fff !important;
+            box-shadow: 0 4px 14px rgba(75, 0, 232, 0.25);
+            border: none;
+            border-radius: 10px;
         }
 
-        .btn-action-primary:hover {
-            background: #F5F3FF;
+        .btn-action-primary:hover,
+        .btn-create-doc:hover {
+            opacity: 0.95;
             transform: translateY(-2px);
-            box-shadow: 0 12px 24px rgba(0, 0, 0, .16);
+            box-shadow: 0 8px 22px rgba(75, 0, 232, 0.35);
+            color: #fff !important;
         }
 
         .btn-action-outline {
@@ -142,29 +150,32 @@
         .document-metric-grid {
             display: grid;
             grid-template-columns: repeat(5, minmax(0, 1fr));
-            gap: 14px;
-            margin-bottom: 22px;
+            gap: 12px;
+            margin-bottom: 20px;
         }
 
-        .att-metric {
-            background: #fff;
+        .dm-kpi {
+            min-height: 94px;
+            padding: 16px 18px 14px;
+            border-radius: 18px;
             border: 1px solid var(--orb-border);
-            border-radius: 20px;
-            padding: 16px;
-            box-shadow: 0 4px 16px rgba(15, 23, 42, .04);
+            background: #fff;
+            box-shadow: 0 4px 16px rgba(16, 24, 40, .04);
             position: relative;
             overflow: hidden;
-            min-height: 96px;
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all .2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
 
-        .att-metric:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 28px rgba(15, 23, 42, .08);
+        .dm-kpi:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 28px rgba(16, 24, 40, .08);
             border-color: #CBD5E1;
         }
 
-        .att-metric-top {
+        .dm-kpi-top {
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -173,50 +184,92 @@
             z-index: 1;
         }
 
-        .att-metric-value {
-            font-size: 26px;
-            font-weight: 900;
-            color: #0F172A;
+        .dm-kpi-value {
+            font-size: clamp(22px, 2.8vw, 26px);
             line-height: 1;
+            font-weight: 950;
+            color: var(--orb-text);
             letter-spacing: -0.02em;
         }
 
-        .att-metric-icon {
-            width: 40px;
-            height: 40px;
+        .dm-kpi-icon {
+            width: 38px;
+            height: 38px;
             border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 16px;
+            background: var(--tone-soft) !important;
+            color: var(--tone) !important;
+            font-size: 15px;
             flex-shrink: 0;
         }
 
-        .att-metric-label {
-            font-size: 11.5px;
+        .dm-kpi-label {
+            margin-top: 12px;
+            font-size: 11px;
+            color: var(--orb-muted);
             font-weight: 800;
-            color: #64748B;
             text-transform: uppercase;
-            margin-top: 14px;
-            position: relative;
-            z-index: 1;
-            letter-spacing: 0.04em;
+            letter-spacing: .04em;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            position: relative;
+            z-index: 1;
+        }
+
+        .dm-kpi-line {
+            position: absolute;
+            left: 16px;
+            right: 16px;
+            bottom: 0;
+            height: 3px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, var(--tone), transparent);
+        }
+
+        .tone-purple {
+            --tone: #7A5AF8;
+            --tone-soft: rgba(122, 90, 248, .13);
+        }
+
+        .tone-warning {
+            --tone: #F79009;
+            --tone-soft: rgba(247, 144, 9, .14);
+        }
+
+        .tone-success {
+            --tone: #12B76A;
+            --tone-soft: rgba(18, 183, 106, .12);
+        }
+
+        .tone-danger {
+            --tone: #F04438;
+            --tone-soft: rgba(240, 68, 56, .12);
+        }
+
+        .tone-info {
+            --tone: #0EA5E9;
+            --tone-soft: rgba(14, 165, 233, .13);
+        }
+
+        .tone-orange {
+            --tone: #EA580C;
+            --tone-soft: rgba(234, 88, 12, .13);
         }
 
         /* CARD STRUCTURE */
         .att-card {
             background: #fff;
             border: 1px solid var(--orb-border);
-            border-radius: 22px;
+            border-radius: 20px;
             box-shadow: var(--orb-shadow);
             overflow: hidden;
         }
 
         .att-section-head {
-            padding: 20px 24px;
+            padding: 18px 24px;
             border-bottom: 1px solid var(--orb-border);
             background: linear-gradient(180deg, #FFFFFF 0%, #FAFAFD 100%);
             display: flex;
@@ -226,7 +279,7 @@
         }
 
         .att-section-title {
-            font-size: 18px;
+            font-size: clamp(16px, 2vw, 18px);
             font-weight: 800;
             color: var(--orb-text);
             margin: 0;
@@ -240,7 +293,7 @@
         }
 
         .att-section-sub {
-            font-size: 13px;
+            font-size: 12.5px;
             color: var(--orb-muted);
             font-weight: 500;
             margin-top: 3px;
@@ -253,12 +306,40 @@
             align-items: center;
         }
 
+        .att-head-btn {
+            height: 38px;
+            border-radius: 10px;
+            border: 1px solid #CBD5E1;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: #475569;
+            padding: 0 14px;
+            background: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            text-decoration: none !important;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .att-head-btn:hover {
+            background: #F8FAFC;
+            color: var(--orb-text);
+            border-color: #94A3B8;
+        }
+
         .att-total-pill {
             border: 1px solid rgba(79, 70, 229, 0.2);
             background: rgba(79, 70, 229, 0.06);
             color: var(--orb-primary);
             border-radius: 10px;
-            padding: 8px 14px;
+            padding: 0 14px;
+            height: 38px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             font-size: 12.5px;
             font-weight: 800;
             white-space: nowrap;
@@ -266,14 +347,14 @@
 
         /* FILTER SECTION */
         .att-filter-panel {
-            padding: 20px 24px;
+            padding: 18px 24px;
             background: #FAFAFD;
             border-bottom: 1px solid var(--orb-border);
         }
 
         .doc-filter-grid {
             display: grid;
-            grid-template-columns: minmax(180px, 1.4fr) minmax(160px, 1.4fr) minmax(160px, 1.4fr) minmax(130px, 1.1fr) minmax(260px, 2fr) minmax(130px, 1.1fr);
+            grid-template-columns: minmax(180px, 1.4fr) minmax(160px, 1.4fr) minmax(160px, 1.4fr) minmax(130px, 1.1fr) minmax(240px, 2fr) minmax(130px, 1.1fr);
             gap: 12px;
             align-items: flex-end;
         }
@@ -281,6 +362,7 @@
         .att-filter-group {
             display: flex;
             flex-direction: column;
+            min-width: 0;
         }
 
         .att-filter-group label {
@@ -304,6 +386,8 @@
             box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
             background-color: #fff;
             transition: all 0.2s ease;
+            width: 100%;
+            min-width: 0;
         }
 
         .att-filter-group .form-control:focus,
@@ -313,55 +397,64 @@
             background-color: #fff;
         }
 
-        .filter-actions {
-            display: flex;
-            gap: 8px;
-            margin-top: 16px;
-            justify-content: flex-end;
-            padding-top: 16px;
-            border-top: 1px dashed #e2e8f0;
-        }
-
-        .btn-filter-action {
-            border-radius: 8px;
-            padding: 8px 14px;
-            font-size: 12px;
-            font-weight: 600;
+        .btn-filter-submit {
+            height: 40px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%) !important;
+            border: none;
+            color: #fff !important;
+            font-weight: 700;
+            padding: 0 16px;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            text-decoration: none !important;
-            border: 1px solid transparent;
+            justify-content: center;
+            gap: 7px;
+            font-size: 13px;
+            flex: 1;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: pointer;
+            white-space: nowrap;
+            box-shadow: 0 4px 14px rgba(75, 0, 232, 0.25);
         }
 
-        .btn-filter-reset {
-            background: #f1f5f9;
-            color: #475569 !important;
+        .btn-filter-submit:hover {
+            opacity: 0.95;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(75, 0, 232, 0.35);
+            color: #fff !important;
         }
 
-        .btn-filter-reset:hover {
-            background: #e2e8f0;
-        }
-
-        .btn-filter-export {
+        .btn-filter-reset-icon {
+            height: 40px;
+            width: 40px;
+            border-radius: 10px;
+            border: 1px solid #CBD5E1;
             background: #fff;
-            color: #334155 !important;
-            border-color: #cbd5e1;
+            color: #64748B;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            text-decoration: none !important;
+            transition: all 0.2s ease;
         }
 
-        .btn-filter-export:hover {
-            background: #f8fafc;
-            border-color: #94a3b8;
+        .btn-filter-reset-icon:hover {
+            background: #F1F5F9;
+            color: var(--orb-text);
         }
 
         /* TABLE LAYOUT */
         .att-table-wrap {
             padding: 0;
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         .att-table {
             width: 100% !important;
+            min-width: 820px;
             border-collapse: separate !important;
             border-spacing: 0;
             margin: 0 !important;
@@ -373,10 +466,11 @@
             font-size: 11px !important;
             font-weight: 700 !important;
             text-transform: uppercase;
-            padding: 14px 20px !important;
+            padding: 14px 18px !important;
             border-bottom: 1px solid #e2e8f0 !important;
             letter-spacing: 0.05em;
             vertical-align: middle !important;
+            white-space: nowrap;
         }
 
         .att-table tbody tr {
@@ -390,17 +484,18 @@
         .att-table tbody td {
             background: #fff;
             border-bottom: 1px solid #f1f5f9 !important;
-            padding: 16px 20px !important;
+            padding: 14px 18px !important;
             vertical-align: middle !important;
             color: var(--orb-text);
         }
 
         /* TYPOGRAPHY */
         .doc-name {
-            font-size: 14px;
+            font-size: 13.5px;
             font-weight: 700;
             color: var(--orb-text);
             text-decoration: none !important;
+            display: inline-block;
         }
 
         .doc-name:hover {
@@ -430,17 +525,18 @@
         .recipient-block {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
+            min-width: 0;
         }
 
         .recipient-avatar {
-            width: 38px;
-            height: 38px;
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
             background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
             color: #4f46e5;
             font-weight: 700;
-            font-size: 13px;
+            font-size: 12.5px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -451,14 +547,16 @@
 
         .recipient-name {
             font-weight: 700;
-            font-size: 13.5px;
+            font-size: 13px;
             color: var(--orb-text);
+            white-space: nowrap;
         }
 
         .recipient-meta {
             font-size: 11px;
             color: var(--orb-muted);
             margin-top: 2px;
+            white-space: nowrap;
         }
 
         /* PREMIUM BADGES */
@@ -466,10 +564,11 @@
             display: inline-flex;
             align-items: center;
             gap: 5px;
-            padding: 4px 10px;
+            padding: 4px 9px;
             border-radius: 6px;
             font-size: 11px;
             font-weight: 600;
+            white-space: nowrap;
         }
 
         .badge-employee-doc {
@@ -487,11 +586,12 @@
         .badge-status {
             display: inline-flex;
             align-items: center;
-            padding: 5px 10px;
+            padding: 4px 10px;
             border-radius: 9999px;
             font-size: 11px;
             font-weight: 700;
             text-transform: capitalize;
+            white-space: nowrap;
         }
 
         .status-generated {
@@ -531,15 +631,17 @@
 
         /* ROW DATE */
         .date-main {
-            font-size: 13px;
+            font-size: 12.5px;
             font-weight: 600;
             color: var(--orb-text);
+            white-space: nowrap;
         }
 
         .date-sub {
             font-size: 11px;
             color: var(--orb-muted);
             margin-top: 2px;
+            white-space: nowrap;
         }
 
         /* ACTIONS & BUTTONS */
@@ -555,7 +657,8 @@
             justify-content: center;
             text-decoration: none !important;
             transition: all 0.2s ease;
-            font-size: 13px;
+            font-size: 12.5px;
+            flex-shrink: 0;
         }
 
         .btn-action-icon:hover {
@@ -593,6 +696,7 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
+            flex-shrink: 0;
         }
 
         .btn-more-menu:hover {
@@ -632,37 +736,37 @@
 
         /* EMPTY STATE */
         .empty-state-container {
-            padding: 80px 40px;
+            padding: 60px 20px;
             text-align: center;
         }
 
         .empty-state-icon {
-            width: 80px;
-            height: 80px;
+            width: 72px;
+            height: 72px;
             border-radius: 50%;
             background: #f1f5f9;
             color: #94a3b8;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            font-size: 32px;
-            margin-bottom: 24px;
+            font-size: 28px;
+            margin-bottom: 20px;
             border: 4px solid #fff;
             box-shadow: 0 0 0 4px #f1f5f9;
         }
 
         .empty-state-title {
-            font-size: 18px;
+            font-size: 17px;
             font-weight: 700;
             color: var(--orb-text);
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
 
         .empty-state-text {
-            font-size: 14px;
+            font-size: 13.5px;
             color: var(--orb-muted);
             max-width: 360px;
-            margin: 0 auto 24px;
+            margin: 0 auto 20px;
         }
 
         /* AUDIT TIMELINE */
@@ -685,48 +789,248 @@
             background: #E2E8F0;
         }
 
-        /* RESPONSIVE LAYOUTS */
+        .no-caret::after {
+            display: none !important;
+        }
+
+        /* ==========================================================================
+           RESPONSIVE BREAKPOINTS & MOBILE OPTIMIZATIONS
+           ========================================================================== */
+
         @media(max-width: 1400px) {
             .document-metric-grid {
                 grid-template-columns: repeat(3, minmax(0, 1fr));
             }
-        }
-
-        @media(max-width: 1200px) {
             .doc-filter-grid {
                 grid-template-columns: repeat(3, minmax(0, 1fr));
             }
         }
 
-        @media(max-width: 992px) {
-            .document-metric-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
+        @media(max-width: 991.98px) {
+            .att-page {
+                padding: 16px 12px 36px;
             }
-        }
 
-        @media(max-width: 768px) {
             .att-hero {
                 flex-direction: column;
                 align-items: flex-start;
-                padding: 24px 30px;
-                border-radius: 16px;
+                padding: 22px 20px;
+                border-radius: 18px;
+                gap: 16px;
+            }
+
+            .att-hero-actions {
+                width: 100%;
+            }
+
+            .btn-action {
+                flex: 1 1 auto;
             }
 
             .document-metric-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 10px;
+                margin-bottom: 16px;
+            }
+
+            .doc-filter-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+            }
+
+            .att-section-head {
+                padding: 16px 20px;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 14px;
+            }
+
+            .att-head-badges {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            .att-filter-panel {
+                padding: 16px 20px;
+            }
+        }
+
+        @media(max-width: 767.98px) {
+            .att-page {
+                padding: 12px 8px 30px;
+            }
+
+            .att-hero {
+                padding: 18px 16px;
+                border-radius: 16px;
+                margin-bottom: 14px;
+            }
+
+            .att-hero-actions {
+                display: flex;
+                gap: 8px;
+                flex-wrap: wrap;
+                width: 100%;
+            }
+
+            .btn-action {
+                flex: 1 1 calc(50% - 6px);
+                padding: 9px 12px;
+                font-size: 12px;
+            }
+
+            .document-metric-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 8px;
+                margin-bottom: 14px;
+            }
+
+            .att-metric {
+                padding: 12px 14px;
+                border-radius: 14px;
+                min-height: auto;
+            }
+
+            .att-metric-value {
+                font-size: 20px;
+            }
+
+            .att-metric-icon {
+                width: 32px;
+                height: 32px;
+                font-size: 13px;
+                border-radius: 10px;
+            }
+
+            .att-metric-bottom {
+                margin-top: 8px;
+            }
+
+            .att-metric-label {
+                font-size: 10.5px;
+                letter-spacing: 0.02em;
+            }
+
+            .att-metric-subtext {
+                font-size: 10px;
+            }
+
+            .att-card {
+                border-radius: 16px;
+            }
+
+            .att-section-head {
+                padding: 14px 16px;
+                gap: 12px;
+            }
+
+            .att-head-badges {
+                display: flex;
+                gap: 6px;
+                flex-wrap: wrap;
+                width: 100%;
+            }
+
+            .att-head-btn,
+            .att-total-pill {
+                flex: 1 1 calc(50% - 4px);
+                height: 36px;
+                font-size: 12px;
+                padding: 0 10px;
+                margin: 0 !important;
+            }
+
+            .att-filter-panel {
+                padding: 14px 16px 18px;
             }
 
             .doc-filter-grid {
                 grid-template-columns: 1fr;
+                gap: 10px;
             }
 
-            .att-title {
-                font-size: 26px;
+            .att-filter-group .form-control,
+            .att-filter-group .form-select {
+                height: 38px;
+                font-size: 12.5px;
+            }
+
+            .att-table thead th {
+                padding: 10px 14px !important;
+                font-size: 10.5px !important;
+            }
+
+            .att-table tbody td {
+                padding: 12px 14px !important;
+                font-size: 12.5px;
+            }
+
+            .card-footer {
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: center !important;
+                text-align: center;
+                gap: 10px !important;
+                padding: 12px 16px !important;
             }
         }
 
-        .no-caret::after {
-            display: none !important;
+        @media(max-width: 480px) {
+            .att-page {
+                padding: 8px 6px 24px;
+            }
+
+            .att-hero {
+                padding: 14px 12px;
+                border-radius: 14px;
+            }
+
+            .att-kicker {
+                font-size: 10.5px;
+            }
+
+            .att-title {
+                font-size: 20px;
+            }
+
+            .att-subtitle {
+                font-size: 12px;
+                margin-top: 4px;
+            }
+
+            .btn-action {
+                flex: 1 1 100%;
+                padding: 9px 12px;
+                font-size: 12px;
+            }
+
+            .att-head-btn,
+            .att-total-pill {
+                flex: 1 1 100%;
+            }
+
+            .modal-dialog {
+                margin: 10px auto;
+                max-width: calc(100% - 16px);
+            }
+
+            .modal-header {
+                padding: 16px 18px !important;
+            }
+
+            .modal-body {
+                padding: 16px 18px !important;
+            }
+
+            .modal-footer {
+                padding: 12px 18px 18px !important;
+            }
+        }
+
+        @media(max-width: 340px) {
+            .document-metric-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
     @endsection
@@ -747,70 +1051,70 @@
                     </div>
                 </div>
                 <div class="att-hero-actions">
-                    <button type="button" onclick="exportTableToCSV('generated_documents_export.csv')" class="btn-action btn-action-outline">
+                    {{-- <button type="button" onclick="exportTableToCSV('generated_documents_export.csv')" class="btn-action btn-action-outline">
                         <i class="fas fa-file-export"></i> Export Documents
-                    </button>
+                    </button> --}}
                     <button type="button" onclick="window.location.reload();" class="btn-action btn-action-outline">
                         <i class="fas fa-sync-alt"></i> Refresh
                     </button>
-                    @if(Route::has('hrms.document-generation.generated.create'))
+                    {{-- @if(Route::has('hrms.document-generation.generated.create'))
                     <a href="{{ route('hrms.document-generation.generated.create') }}" class="btn-action btn-action-primary">
                         <i class="fas fa-plus-circle"></i> Create Document
                     </a>
-                    @endif
+                    @endif --}}
                 </div>
             </div>
 
-            <!-- TOP STATISTICS CARDS -->
+            <!-- TOP STATISTICS CARDS (DOCUMENT VERIFICATION KPI DESIGN) -->
             <div class="document-metric-grid">
                 <!-- Total Documents -->
-                <div class="att-metric">
-                    <div class="att-metric-top">
-                        <div class="att-metric-value">{{ $totalDocuments ?? 0 }}</div>
-                        <div class="att-metric-icon" style="background: #eef2ff; color: #4f46e5;"><i class="fas fa-file-alt"></i></div>
+                <div class="dm-kpi tone-purple">
+                    <div class="dm-kpi-top">
+                        <div class="dm-kpi-value">{{ $totalDocuments ?? 0 }}</div>
+                        <div class="dm-kpi-icon"><i class="fas fa-file-alt"></i></div>
                     </div>
-                    <div class="att-metric-label">Total Documents</div>
-                    <div class="att-metric-subtext">All generated items</div>
+                    <div class="dm-kpi-label">Total Documents</div>
+                    <div class="dm-kpi-line"></div>
                 </div>
 
                 <!-- Generated Today -->
-                <div class="att-metric">
-                    <div class="att-metric-top">
-                        <div class="att-metric-value">{{ $generatedToday ?? 0 }}</div>
-                        <div class="att-metric-icon" style="background: #ecfdf5; color: #059669;"><i class="fas fa-calendar-day"></i></div>
+                <div class="dm-kpi tone-success">
+                    <div class="dm-kpi-top">
+                        <div class="dm-kpi-value">{{ $generatedToday ?? 0 }}</div>
+                        <div class="dm-kpi-icon"><i class="fas fa-calendar-day"></i></div>
                     </div>
-                    <div class="att-metric-label">Generated Today</div>
-                    <div class="att-metric-subtext">Created in the last 24h</div>
+                    <div class="dm-kpi-label">Generated Today</div>
+                    <div class="dm-kpi-line"></div>
                 </div>
 
                 <!-- Employee Documents -->
-                <div class="att-metric">
-                    <div class="att-metric-top">
-                        <div class="att-metric-value">{{ $employeeDocuments ?? 0 }}</div>
-                        <div class="att-metric-icon" style="background: #f0fdf4; color: #16a34a;"><i class="fas fa-user-tie"></i></div>
+                <div class="dm-kpi tone-info">
+                    <div class="dm-kpi-top">
+                        <div class="dm-kpi-value">{{ $employeeDocuments ?? 0 }}</div>
+                        <div class="dm-kpi-icon"><i class="fas fa-user-tie"></i></div>
                     </div>
-                    <div class="att-metric-label">Employee Documents</div>
-                    <div class="att-metric-subtext">Linked to staff profiles</div>
+                    <div class="dm-kpi-label">Employee Documents</div>
+                    <div class="dm-kpi-line"></div>
                 </div>
 
                 <!-- Manual Documents -->
-                <div class="att-metric">
-                    <div class="att-metric-top">
-                        <div class="att-metric-value">{{ $manualDocuments ?? 0 }}</div>
-                        <div class="att-metric-icon" style="background: #fffbeb; color: #d97706;"><i class="fas fa-file-signature"></i></div>
+                <div class="dm-kpi tone-warning">
+                    <div class="dm-kpi-top">
+                        <div class="dm-kpi-value">{{ $manualDocuments ?? 0 }}</div>
+                        <div class="dm-kpi-icon"><i class="fas fa-file-signature"></i></div>
                     </div>
-                    <div class="att-metric-label">Manual Documents</div>
-                    <div class="att-metric-subtext">Candidate / standalone files</div>
+                    <div class="dm-kpi-label">Manual Documents</div>
+                    <div class="dm-kpi-line"></div>
                 </div>
 
                 <!-- Emailed Documents -->
-                <div class="att-metric">
-                    <div class="att-metric-top">
-                        <div class="att-metric-value">{{ $emailedDocuments ?? 0 }}</div>
-                        <div class="att-metric-icon" style="background: #fdf2f8; color: #db2777;"><i class="fas fa-paper-plane"></i></div>
+                <div class="dm-kpi tone-orange">
+                    <div class="dm-kpi-top">
+                        <div class="dm-kpi-value">{{ $emailedDocuments ?? 0 }}</div>
+                        <div class="dm-kpi-icon"><i class="fas fa-paper-plane"></i></div>
                     </div>
-                    <div class="att-metric-label">Emailed Documents</div>
-                    <div class="att-metric-subtext">Successfully sent via SMTP</div>
+                    <div class="dm-kpi-label">Emailed Documents</div>
+                    <div class="dm-kpi-line"></div>
                 </div>
             </div>
 
@@ -823,19 +1127,24 @@
                         </h3>
                         <p class="att-section-sub">Filters are attached with this table. Select criteria and click Search.</p>
                     </div>
-                    <div class="att-head-badges d-flex align-items-center" style="gap: 8px;">
-                        <a href="{{ route('hrms.document-generation.generated.index') }}" class="btn btn-light d-flex align-items-center justify-content-center gap-2" style="height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 12.5px; font-weight: 600; color: #475569; padding: 0 14px; margin-right: 6px;">
-                            <i class="fas fa-undo" style="margin-right: 6px;"></i> Reset Filters
-                        </a>
-                        <button type="button" onclick="exportTableToCSV('documents_filter_results.csv')" class="btn btn-light d-flex align-items-center justify-content-center gap-2" style="height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 12.5px; font-weight: 600; color: #475569; padding: 0 14px; margin-right: 6px;">
-                            <i class="fas fa-file-csv" style="margin-right: 6px;"></i> Export Results
+                    <div class="att-head-badges">
+                        {{-- <a href="{{ route('hrms.document-generation.generated.index') }}" class="att-head-btn">
+                            <i class="fas fa-undo"></i> Reset Filters
+                        </a> --}}
+                        {{-- <button type="button" onclick="exportTableToCSV('documents_filter_results.csv')" class="att-head-btn">
+                            <i class="fas fa-file-csv"></i> Export Results
                         </button>
-                        <span class="att-total-pill d-inline-flex align-items-center" style="height: 38px; margin: 0; padding: 0 14px;">Total: {{ $documents->total() }}</span>
+                        <span class="att-total-pill">Total: {{ $documents->total() }}</span> --}}
+                        @if(Route::has('hrms.document-generation.generated.create'))
+                    <a href="{{ route('hrms.document-generation.generated.create') }}" class="btn-action btn-action-primary">
+                        <i class="fas fa-plus-circle"></i> Create Document
+                    </a>
+                    @endif
                     </div>
                 </div>
 
                 <!-- FILTER SECTION -->
-                <div class="att-filter-panel" style="padding-bottom: 24px;">
+                <div class="att-filter-panel">
                     <form id="filterForm" method="GET" action="{{ route('hrms.document-generation.generated.index') }}">
                         <div class="doc-filter-grid">
                             <!-- Search Documents -->
@@ -893,9 +1202,9 @@
                             <div class="att-filter-group">
                                 <label>Date Range</label>
                                 <div class="d-flex align-items-center" style="gap: 6px;">
-                                    <input type="date" name="start_date" id="filterStartDate" class="form-control" value="{{ request('start_date') }}" style="font-size: 11.5px; padding: 0 6px; flex: 1;">
-                                    <span class="text-muted small font-weight-bold">to</span>
-                                    <input type="date" name="end_date" id="filterEndDate" class="form-control" value="{{ request('end_date') }}" style="font-size: 11.5px; padding: 0 6px; flex: 1;">
+                                    <input type="date" name="start_date" id="filterStartDate" class="form-control" value="{{ request('start_date') }}" style="font-size: 11.5px; padding: 0 6px; flex: 1; min-width: 0;">
+                                    <span class="text-muted small font-weight-bold" style="flex-shrink: 0;">to</span>
+                                    <input type="date" name="end_date" id="filterEndDate" class="form-control" value="{{ request('end_date') }}" style="font-size: 11.5px; padding: 0 6px; flex: 1; min-width: 0;">
                                 </div>
                             </div>
 
@@ -903,10 +1212,10 @@
                             <div class="att-filter-group">
                                 <label class="d-none d-md-block">&nbsp;</label>
                                 <div class="d-flex align-items-center" style="gap: 6px;">
-                                    <button type="submit" class="btn text-white font-weight-bold shadow-sm" style="height: 40px; border-radius: 10px; background: linear-gradient(135deg, var(--orb-primary) 0%, #6366F1 100%); border: none; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; flex: 1; transition: all 0.2s ease;">
+                                    <button type="submit" class="btn-filter-submit shadow-sm">
                                         <i class="fas fa-search"></i> Search
                                     </button>
-                                    <a href="{{ route('hrms.document-generation.generated.index') }}" class="btn btn-light border text-secondary font-weight-bold" style="height: 40px; width: 40px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Reset Filters">
+                                    <a href="{{ route('hrms.document-generation.generated.index') }}" class="btn-filter-reset-icon" title="Reset Filters">
                                         <i class="fas fa-undo"></i>
                                     </a>
                                 </div>

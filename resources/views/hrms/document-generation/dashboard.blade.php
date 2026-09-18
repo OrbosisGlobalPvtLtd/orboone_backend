@@ -160,86 +160,117 @@
         transform: translateY(-2px);
     }
 
-    /* KPI GLASS CARDS */
-    .kpi-card {
-        background: #ffffff;
+    /* DOCUMENT VERIFICATION STYLE KPI GRID & CARDS */
+    .dm-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+        margin-bottom: 24px;
+    }
+
+    .dm-kpi {
+        min-height: 94px;
+        padding: 16px 18px 14px;
+        border-radius: 18px;
         border: 1px solid var(--orb-border);
-        border-radius: 20px;
-        padding: 24px;
-        box-shadow: var(--orb-shadow);
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        background: #fff;
+        box-shadow: 0 4px 16px rgba(16, 24, 40, .04);
         position: relative;
         overflow: hidden;
-        height: 100%;
+        transition: all .2s cubic-bezier(0.4, 0, 0.2, 1);
         display: flex;
         flex-direction: column;
         justify-content: space-between;
     }
 
-    .kpi-card::after {
-        content: "";
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 4px;
-        background: transparent;
-        transition: background-color 0.3s;
+    .dm-kpi:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 28px rgba(16, 24, 40, .08);
+        border-color: #CBD5E1;
     }
 
-    .kpi-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 20px 35px rgba(106, 17, 203, 0.08);
-    }
-
-    .kpi-card-1:hover::after { background: var(--orb-primary); }
-    .kpi-card-2:hover::after { background: var(--orb-secondary); }
-    .kpi-card-3:hover::after { background: var(--orb-success); }
-    .kpi-card-4:hover::after { background: var(--orb-info); }
-
-    .kpi-top {
+    .dm-kpi-top {
         display: flex;
+        align-items: center;
         justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 20px;
+        gap: 10px;
+        position: relative;
+        z-index: 1;
     }
 
-    .kpi-title {
-        font-size: 12px;
-        font-weight: 800;
-        text-transform: uppercase;
-        color: var(--orb-muted);
-        letter-spacing: 0.5px;
-    }
-
-    .kpi-value {
-        font-size: 32px;
-        font-weight: 900;
-        color: var(--orb-text);
+    .dm-kpi-value {
+        font-size: clamp(20px, 2.4vw, 28px);
         line-height: 1;
-        margin-top: 4px;
+        font-weight: 950;
+        color: var(--orb-text);
+        letter-spacing: -0.02em;
     }
 
-    .kpi-icon-box {
-        width: 44px;
-        height: 44px;
-        border-radius: 14px;
+    .dm-kpi-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 18px;
-        transition: all 0.3s;
+        background: var(--tone-soft) !important;
+        color: var(--tone) !important;
+        font-size: 15px;
+        flex-shrink: 0;
     }
 
-    .kpi-card:hover .kpi-icon-box {
-        transform: scale(1.1) rotate(5deg);
-    }
-
-    .kpi-sub {
-        font-size: 12px;
+    .dm-kpi-label {
+        margin-top: 12px;
+        font-size: 11px;
         color: var(--orb-muted);
-        font-weight: 550;
-        margin: 0;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        position: relative;
+        z-index: 1;
+    }
+
+    .dm-kpi-line {
+        position: absolute;
+        left: 16px;
+        right: 16px;
+        bottom: 0;
+        height: 3px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, var(--tone), transparent);
+    }
+
+    .tone-purple {
+        --tone: #7A5AF8;
+        --tone-soft: rgba(122, 90, 248, .13);
+    }
+
+    .tone-warning {
+        --tone: #F79009;
+        --tone-soft: rgba(247, 144, 9, .14);
+    }
+
+    .tone-success {
+        --tone: #12B76A;
+        --tone-soft: rgba(18, 183, 106, .12);
+    }
+
+    .tone-danger {
+        --tone: #F04438;
+        --tone-soft: rgba(240, 68, 56, .12);
+    }
+
+    .tone-info {
+        --tone: #0EA5E9;
+        --tone-soft: rgba(14, 165, 233, .13);
+    }
+
+    .tone-orange {
+        --tone: #EA580C;
+        --tone-soft: rgba(234, 88, 12, .13);
     }
 
     /* QUICK ACTIONS */
@@ -251,7 +282,7 @@
         font-size: 18px;
         font-weight: 800;
         color: var(--orb-text);
-        margin-bottom: 18px;
+        margin-bottom: 16px;
         display: flex;
         align-items: center;
         gap: 8px;
@@ -263,23 +294,64 @@
 
     .action-grid {
         display: grid;
-        grid-template-columns: repeat(5, 1fr);
-        gap: 16px;
+        /* grid-template-columns: repeat(5, 1fr); */
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px;
     }
 
     .action-card {
         background: #ffffff;
         border: 1px solid var(--orb-border);
-        border-radius: 16px;
-        padding: 20px;
+        border-radius: 18px;
+        padding: 24px 18px 20px;
         text-align: center;
         text-decoration: none !important;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         display: flex;
         flex-direction: column;
         align-items: center;
+        justify-content: center;
         cursor: pointer;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.01);
+        box-shadow: 0 4px 16px rgba(16, 24, 40, 0.03);
+        height: 100%;
+        min-height: 150px;
+    }
+
+    .action-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 28px rgba(16, 24, 40, 0.08);
+        border-color: #CBD5E1;
+    }
+
+    .action-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        margin-bottom: 12px;
+        transition: all 0.25s ease;
+    }
+
+    .action-card:hover .action-icon {
+        transform: scale(1.1);
+    }
+
+    .action-title {
+        font-size: 13.5px;
+        font-weight: 800;
+        color: var(--orb-text);
+        margin-bottom: 5px;
+        line-height: 1.3;
+    }
+
+    .action-desc {
+        font-size: 11px;
+        color: var(--orb-muted);
+        margin: 0;
+        line-height: 1.4;
     }
 
     .action-card:hover {
@@ -351,6 +423,31 @@
 
     .dashboard-card-title i {
         color: var(--orb-primary);
+    }
+
+    .btn-header-action {
+        background: linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%) !important;
+        color: #fff !important;
+        border: none;
+        border-radius: 50px;
+        padding: 8px 18px;
+        font-weight: 700;
+        font-size: 12.5px;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        box-shadow: 0 4px 14px rgba(75, 0, 232, 0.25);
+        cursor: pointer;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        text-decoration: none !important;
+        white-space: nowrap;
+    }
+
+    .btn-header-action:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(75, 0, 232, 0.35);
+        color: #fff !important;
+        opacity: 0.95;
     }
 
     /* RECENT DOCUMENTS REDESIGN */
@@ -640,31 +737,126 @@
 
     /* RESPONSIVE LAYOUT */
     @media(max-width: 1400px) {
+        .dm-kpi-grid {
+            grid-template-columns: repeat(4, 1fr);
+        }
         .action-grid {
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(4, 1fr);
         }
         .analytics-grid {
             grid-template-columns: repeat(2, 1fr);
         }
     }
 
-    @media(max-width: 991px) {
+    @media(max-width: 991.98px) {
+        .document-page {
+            padding: 16px 12px 36px;
+        }
+        .orb-hero-glass {
+            padding: 22px 20px;
+            border-radius: 18px;
+            margin-bottom: 20px;
+        }
+        .dm-kpi-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
         .action-grid {
             grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
         }
         .analytics-grid {
             grid-template-columns: 1fr;
+            gap: 10px;
         }
     }
 
-    @media(max-width: 768px) {
+    @media(max-width: 767.98px) {
+        .document-page {
+            padding: 12px 8px 30px;
+        }
         .orb-hero-glass {
-            padding: 30px;
+            padding: 18px 16px;
+            border-radius: 16px;
+            margin-bottom: 16px;
         }
         .orb-hero-glass h1 {
-            font-size: 28px;
+            font-size: 22px;
+        }
+        .orb-kicker {
+            font-size: 10px;
+        }
+        .orb-hero-glass p {
+            font-size: 12.5px;
+        }
+        .dm-kpi-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .dm-kpi {
+            padding: 12px 14px;
+            border-radius: 14px;
+            min-height: auto;
+        }
+        .dm-kpi-value {
+            font-size: 19px;
+        }
+        .dm-kpi-icon {
+            width: 32px;
+            height: 32px;
+            font-size: 13px;
+            border-radius: 10px;
         }
         .action-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .action-card {
+            padding: 16px 10px;
+            border-radius: 14px;
+            min-height: 125px;
+        }
+        .action-title {
+            font-size: 12px;
+        }
+        .action-desc {
+            font-size: 10.5px;
+        }
+        .dashboard-card {
+            border-radius: 16px;
+        }
+        .dashboard-card-header {
+            padding: 14px 16px;
+        }
+        .premium-table {
+            min-width: 760px;
+        }
+    }
+
+    @media(max-width: 480px) {
+        .action-grid {
+            grid-template-columns: 1fr;
+        }
+        .action-card {
+            padding: 14px 14px;
+            min-height: auto;
+            flex-direction: row;
+            text-align: left;
+            gap: 12px;
+            align-items: center;
+        }
+        .action-icon {
+            margin-bottom: 0;
+            flex-shrink: 0;
+        }
+    }
+
+    @media(max-width: 340px) {
+        .dm-kpi-grid {
             grid-template-columns: 1fr;
         }
     }
@@ -686,66 +878,42 @@
         </div>
     </div>
 
-    <!-- SECTION 2 – KPI CARDS -->
-    <div class="row mb-4">
-        <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
-            <div class="kpi-card kpi-card-1">
-                <div class="kpi-top">
-                    <div>
-                        <div class="kpi-title">Total Documents</div>
-                        <div class="kpi-value">{{ $generatedDocuments }}</div>
-                    </div>
-                    <div class="kpi-icon-box" style="background: rgba(106, 17, 203, 0.1); color: var(--orb-primary);">
-                        <i class="fas fa-file-alt"></i>
-                    </div>
-                </div>
-                <div class="kpi-sub">Generated records</div>
+    <!-- SECTION 2 – KPI CARDS (DOCUMENT VERIFICATION DESIGN) -->
+    <div class="dm-kpi-grid">
+        <div class="dm-kpi tone-purple">
+            <div class="dm-kpi-top">
+                <div class="dm-kpi-value">{{ $generatedDocuments }}</div>
+                <div class="dm-kpi-icon"><i class="fas fa-file-alt"></i></div>
             </div>
+            <div class="dm-kpi-label">Total Documents</div>
+            <div class="dm-kpi-line"></div>
         </div>
 
-        <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
-            <div class="kpi-card kpi-card-2">
-                <div class="kpi-top">
-                    <div>
-                        <div class="kpi-title">Active Templates</div>
-                        <div class="kpi-value">{{ $activeTemplates }}</div>
-                    </div>
-                    <div class="kpi-icon-box" style="background: rgba(255, 75, 110, 0.1); color: var(--orb-secondary);">
-                        <i class="fas fa-layer-group"></i>
-                    </div>
-                </div>
-                <div class="kpi-sub">Available templates</div>
+        <div class="dm-kpi tone-warning">
+            <div class="dm-kpi-top">
+                <div class="dm-kpi-value">{{ $activeTemplates }}</div>
+                <div class="dm-kpi-icon"><i class="fas fa-layer-group"></i></div>
             </div>
+            <div class="dm-kpi-label">Active Templates</div>
+            <div class="dm-kpi-line"></div>
         </div>
 
-        <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
-            <div class="kpi-card kpi-card-3">
-                <div class="kpi-top">
-                    <div>
-                        <div class="kpi-title">Emails Delivered</div>
-                        <div class="kpi-value">{{ $sentDocuments }}</div>
-                    </div>
-                    <div class="kpi-icon-box" style="background: rgba(0, 200, 150, 0.1); color: var(--orb-success);">
-                        <i class="fas fa-paper-plane"></i>
-                    </div>
-                </div>
-                <div class="kpi-sub">Successfully sent</div>
+        <div class="dm-kpi tone-success">
+            <div class="dm-kpi-top">
+                <div class="dm-kpi-value">{{ $sentDocuments }}</div>
+                <div class="dm-kpi-icon"><i class="fas fa-paper-plane"></i></div>
             </div>
+            <div class="dm-kpi-label">Emails Delivered</div>
+            <div class="dm-kpi-line"></div>
         </div>
 
-        <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
-            <div class="kpi-card kpi-card-4">
-                <div class="kpi-top">
-                    <div>
-                        <div class="kpi-title">Recent Activity</div>
-                        <div class="kpi-value">Last 7 Days</div>
-                    </div>
-                    <div class="kpi-icon-box" style="background: rgba(59, 130, 246, 0.1); color: var(--orb-info);">
-                        <i class="fas fa-chart-line"></i>
-                    </div>
-                </div>
-                <div class="kpi-sub">Document operations</div>
+        <div class="dm-kpi tone-info">
+            <div class="dm-kpi-top">
+                <div class="dm-kpi-value" style="font-size: 20px;">Last 7 Days</div>
+                <div class="dm-kpi-icon"><i class="fas fa-chart-line"></i></div>
             </div>
+            <div class="dm-kpi-label">Recent Activity</div>
+            <div class="dm-kpi-line"></div>
         </div>
     </div>
 
@@ -773,7 +941,7 @@
             </a>
             @endif
 
-            @if(Route::has('hrms.document-generation.templates.index'))
+            {{-- @if(Route::has('hrms.document-generation.templates.index'))
             <a href="{{ route('hrms.document-generation.templates.index') }}" class="action-card">
                 <div class="action-icon" style="background: rgba(0, 200, 150, 0.08); color: var(--orb-success);">
                     <i class="fas fa-layer-group"></i>
@@ -781,7 +949,7 @@
                 <div class="action-title">Manage Templates</div>
                 <div class="action-desc">Design and update HTML document blueprints.</div>
             </a>
-            @endif
+            @endif --}}
 
             @if(Route::has('hrms.document-generation.generated.index'))
             <a href="{{ route('hrms.document-generation.generated.index') }}?status=sent" class="action-card">
@@ -812,7 +980,9 @@
                     <h5 class="dashboard-card-title"><i class="fas fa-clock"></i> Recent Generated Documents</h5>
                     <div>
                         @if(Route::has('hrms.document-generation.generated.index'))
-                        <a href="{{ route('hrms.document-generation.generated.index') }}" class="btn btn-sm btn-light rounded-pill px-3 border fw-bold">View All History</a>
+                        <a href="{{ route('hrms.document-generation.generated.index') }}" class="btn-header-action">
+                            <i class="fas fa-history"></i> View All History
+                        </a>
                         @endif
                     </div>
                 </div>

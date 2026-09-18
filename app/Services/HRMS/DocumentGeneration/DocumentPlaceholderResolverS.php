@@ -29,11 +29,23 @@ class DocumentPlaceholderResolverS
         $branding = BrandingSettingsS::get();
 
         // 1. Resolve Employee Info
+        $defaultNames = ['Employee Name', 'Intern Name', 'Candidate Name', ''];
+        $manualName = null;
+        if (!empty($manualFields['candidate_name']) && !in_array(trim($manualFields['candidate_name']), $defaultNames, true)) {
+            $manualName = trim($manualFields['candidate_name']);
+        } elseif (!empty($manualFields['employee_name']) && !in_array(trim($manualFields['employee_name']), $defaultNames, true)) {
+            $manualName = trim($manualFields['employee_name']);
+        } elseif (!empty($manualFields['intern_name']) && !in_array(trim($manualFields['intern_name']), $defaultNames, true)) {
+            $manualName = trim($manualFields['intern_name']);
+        }
+
         $employeeName = $employee?->employee_name
             ?: $employee?->full_name
             ?: $employee?->display_name
+            ?: $manualName
             ?: ($manualFields['employee_name'] ?? '')
             ?: ($manualFields['candidate_name'] ?? '')
+            ?: ($manualFields['intern_name'] ?? '')
             ?: '';
 
         $firstName = null;
@@ -41,6 +53,8 @@ class DocumentPlaceholderResolverS
             $firstName = $manualFields['employee_first_name'];
         } elseif (!empty($manualFields['candidate_first_name'])) {
             $firstName = $manualFields['candidate_first_name'];
+        } elseif (!empty($manualFields['intern_first_name'])) {
+            $firstName = $manualFields['intern_first_name'];
         } elseif ($employeeName) {
             $parts = explode(' ', trim($employeeName));
             $firstName = !empty($parts[0]) ? $parts[0] : null;
@@ -103,7 +117,7 @@ class DocumentPlaceholderResolverS
 
         $probationPeriod = (string) ($employee?->probation_period ?? '3 Months');
         $noticePeriodProbation = '15 Days';
-        $noticePeriodConfirmed = '30 Days';
+        $noticePeriodConfirmed = '2 Months';
 
         // 2. Resolve Company Details
         $companyName = (string) ($company?->company_name ?: (function_exists('branding_name') ? branding_name() : 'Orbosis Global Pvt. Ltd.'));
@@ -119,16 +133,18 @@ class DocumentPlaceholderResolverS
 
         // 3. Resolve Authority Settings
         $authorizedSignatory = (string) ($generatedBy?->name ?? 'Authorized Signatory');
-        $hrManagerName = 'HR';
-        $ceoName = 'HR';
-        $projectManagerName = 'HR';
+        $hrManagerName = 'HR Admin';
+        $ceoName = 'Prabhat Agarwal (CEO)';
+        $projectManagerName = '';
 
         // 4. Resolve Salary details
         $monthlyGross = 0.0;
         if ($employee) {
             $monthlyGross = (float) ($employee->salaryStructure?->gross_salary ?? $employee->actual_salary ?? $employee->gross_salary ?? 0);
         }
-        if (isset($manualFields['salary_monthly']) && is_numeric($manualFields['salary_monthly'])) {
+        if (isset($manualFields['monthly_salary']) && is_numeric($manualFields['monthly_salary'])) {
+            $monthlyGross = (float) $manualFields['monthly_salary'];
+        } elseif (isset($manualFields['salary_monthly']) && is_numeric($manualFields['salary_monthly'])) {
             $monthlyGross = (float) $manualFields['salary_monthly'];
         } elseif (isset($manualFields['salary']) && is_numeric($manualFields['salary'])) {
             $monthlyGross = (float) $manualFields['salary'];
@@ -138,20 +154,26 @@ class DocumentPlaceholderResolverS
 
         $annualGross = $monthlyGross * 12;
         $basicMonthly = $monthlyGross * 0.50;
-        if (isset($manualFields['basic_monthly']) && is_numeric($manualFields['basic_monthly'])) {
+        if (isset($manualFields['basic_salary']) && is_numeric($manualFields['basic_salary'])) {
+            $basicMonthly = (float) $manualFields['basic_salary'];
+        } elseif (isset($manualFields['basic_monthly']) && is_numeric($manualFields['basic_monthly'])) {
             $basicMonthly = (float) $manualFields['basic_monthly'];
         }
         $basicAnnual = $basicMonthly * 12;
 
         $hraMonthly = $monthlyGross * 0.20;
-        if (isset($manualFields['hra_monthly']) && is_numeric($manualFields['hra_monthly'])) {
+        if (isset($manualFields['hra']) && is_numeric($manualFields['hra'])) {
+            $hraMonthly = (float) $manualFields['hra'];
+        } elseif (isset($manualFields['hra_monthly']) && is_numeric($manualFields['hra_monthly'])) {
             $hraMonthly = (float) $manualFields['hra_monthly'];
         }
         $hraAnnual = $hraMonthly * 12;
 
-        $conveyanceMonthly = $monthlyGross > 0 ? 1600.0 : 0.0;
+        $conveyanceMonthly = 0.0;
         if (isset($manualFields['conveyance_monthly']) && is_numeric($manualFields['conveyance_monthly'])) {
             $conveyanceMonthly = (float) $manualFields['conveyance_monthly'];
+        } elseif (isset($manualFields['conveyance']) && is_numeric($manualFields['conveyance'])) {
+            $conveyanceMonthly = (float) $manualFields['conveyance'];
         }
         $conveyanceAnnual = $conveyanceMonthly * 12;
 
@@ -160,11 +182,14 @@ class DocumentPlaceholderResolverS
             $ptaxMonthly = (float) $manualFields['professional_tax_monthly'];
         }
 
-        // Conveyance is not a component of the Offer Letter salary structure.
-        // Therefore, Special Allowance must equal Gross Salary - (Basic + HRA).
-        $specialAllowanceMonthly = $monthlyGross - ($basicMonthly + $hraMonthly);
-        if ($specialAllowanceMonthly < 0) {
-            $specialAllowanceMonthly = 0.0;
+        // Allowances = Gross Salary - (Basic + HRA + Conveyance)
+        $specialAllowanceMonthly = max(0.0, $monthlyGross - ($basicMonthly + $hraMonthly + $conveyanceMonthly));
+        if (isset($manualFields['allowances']) && is_numeric($manualFields['allowances'])) {
+            $specialAllowanceMonthly = (float) $manualFields['allowances'];
+        } elseif (isset($manualFields['allowance_monthly']) && is_numeric($manualFields['allowance_monthly'])) {
+            $specialAllowanceMonthly = (float) $manualFields['allowance_monthly'];
+        } elseif (isset($manualFields['special_allowance_monthly']) && is_numeric($manualFields['special_allowance_monthly'])) {
+            $specialAllowanceMonthly = (float) $manualFields['special_allowance_monthly'];
         }
         $specialAllowanceAnnual = $specialAllowanceMonthly * 12;
         $netPayMonthly = $monthlyGross - $ptaxMonthly;
@@ -208,7 +233,11 @@ class DocumentPlaceholderResolverS
         // 5. Build full resolved placeholder library
         $data = [
             'employee_name' => $employeeName,
+            'candidate_name' => $employeeName,
+            'intern_name' => $employeeName,
             'employee_first_name' => $firstName,
+            'candidate_first_name' => $firstName,
+            'intern_first_name' => $firstName,
             'employee_address' => $employeeAddress,
             'employee_city' => $employeeCity,
             'employee_prefix' => $genderTitle,
@@ -243,13 +272,18 @@ class DocumentPlaceholderResolverS
             'offer_valid_till' => $now->addDays(7)->format('d M, Y'),
             'document_title' => '',
 
+            'monthly_salary' => $monthlyGross > 0 ? number_format($monthlyGross, 2, '.', '') : '',
             'monthly_gross_salary' => $monthlyGross > 0 ? number_format($monthlyGross, 2, '.', '') : '',
             'annual_gross_salary' => $annualGross > 0 ? number_format($annualGross, 2, '.', '') : '',
+            'basic_salary' => $basicMonthly > 0 ? number_format($basicMonthly, 2, '.', '') : '',
             'basic_monthly' => $basicMonthly > 0 ? number_format($basicMonthly, 2, '.', '') : '',
             'basic_annual' => $basicAnnual > 0 ? number_format($basicAnnual, 2, '.', '') : '',
+            'hra' => $hraMonthly > 0 ? number_format($hraMonthly, 2, '.', '') : '',
             'hra_monthly' => $hraMonthly > 0 ? number_format($hraMonthly, 2, '.', '') : '',
             'hra_annual' => $hraAnnual > 0 ? number_format($hraAnnual, 2, '.', '') : '',
+            'conveyance' => $conveyanceMonthly > 0 ? number_format($conveyanceMonthly, 2, '.', '') : '',
             'conveyance_monthly' => $conveyanceMonthly > 0 ? number_format($conveyanceMonthly, 2, '.', '') : '',
+            'allowances' => $specialAllowanceMonthly > 0 ? number_format($specialAllowanceMonthly, 2, '.', '') : '',
             'allowance_monthly' => $specialAllowanceMonthly > 0 ? number_format($specialAllowanceMonthly, 2, '.', '') : '',
             'special_allowance_monthly' => $specialAllowanceMonthly > 0 ? number_format($specialAllowanceMonthly, 2, '.', '') : '',
             'special_allowance_annual' => $specialAllowanceAnnual > 0 ? number_format($specialAllowanceAnnual, 2, '.', '') : '',

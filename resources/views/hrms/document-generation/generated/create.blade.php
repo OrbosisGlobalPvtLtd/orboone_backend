@@ -3,25 +3,133 @@
 @section('page_title', 'Generate HR Document')
 
 @section('_head')
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <style>
+    /* Select2 Theme Customization */
+    .select2-container--default .select2-selection--single {
+        height: 48px !important;
+        border-radius: 12px !important;
+        border: 1.5px solid #E2E8F0 !important;
+        background-color: #FFFFFF !important;
+        display: flex !important;
+        align-items: center !important;
+        transition: all 0.2s ease-in-out !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        color: #1E293B !important;
+        font-weight: 600 !important;
+        font-size: 13.5px !important;
+        padding-left: 16px !important;
+        padding-right: 36px !important;
+        line-height: 46px !important;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__placeholder {
+        color: #94A3B8 !important;
+        font-weight: 500 !important;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 46px !important;
+        right: 14px !important;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__arrow b {
+        border-color: #64748B transparent transparent transparent !important;
+        border-width: 6px 5px 0 5px !important;
+    }
+
+    .select2-container--default.select2-container--open .select2-selection--single .select2-selection__arrow b {
+        border-color: transparent transparent #64748B transparent !important;
+        border-width: 0 5px 6px 5px !important;
+    }
+
+    .select2-container--default.select2-container--focus .select2-selection--single,
+    .select2-container--default.select2-container--open .select2-selection--single {
+        border-color: var(--orb-primary, #4B00E8) !important;
+        box-shadow: 0 0 0 3px rgba(75, 0, 232, 0.12) !important;
+        outline: none !important;
+    }
+
+    .select2-dropdown {
+        border: 1.5px solid #E2E8F0 !important;
+        border-radius: 12px !important;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1) !important;
+        overflow: hidden !important;
+        z-index: 1060 !important;
+    }
+
+    .select2-search--dropdown {
+        padding: 8px 10px !important;
+        background: #F8FAFC !important;
+    }
+
+    .select2-search--dropdown .select2-search__field {
+        border: 1.5px solid #CBD5E1 !important;
+        border-radius: 8px !important;
+        padding: 8px 12px !important;
+        font-size: 13px !important;
+        outline: none !important;
+        box-sizing: border-box !important;
+        width: 100% !important;
+    }
+
+    .select2-search--dropdown .select2-search__field:focus {
+        border-color: var(--orb-primary, #4B00E8) !important;
+        box-shadow: 0 0 0 2px rgba(75, 0, 232, 0.1) !important;
+    }
+
+    .select2-results__option {
+        padding: 10px 14px !important;
+        font-size: 13px !important;
+        font-weight: 500 !important;
+        color: #334155 !important;
+    }
+
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        background-color: var(--orb-primary, #4B00E8) !important;
+        color: #FFFFFF !important;
+    }
+
+    .select2-container--default .select2-results__option[aria-selected=true] {
+        background-color: #EDE9FE !important;
+        color: var(--orb-primary, #4B00E8) !important;
+        font-weight: 700 !important;
+    }
+
     .document-page {
         background: #F8FAFC;
         padding: 24px;
         min-height: calc(100vh - 80px);
+        box-sizing: border-box;
+        width: 100%;
+        overflow-x: hidden;
     }
 
     .premium-hero {
         background: linear-gradient(135deg, var(--orb-primary, #4B00E8) 0%, var(--orb-secondary, #FF5252) 100%);
         border-radius: 20px;
-        padding: 30px;
+        padding: 26px 30px;
         color: white;
         margin-bottom: 24px;
         box-shadow: 0 8px 30px rgba(75, 0, 232, 0.12);
+        box-sizing: border-box;
     }
 
     .premium-hero h2 {
         font-weight: 800;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
+        font-size: clamp(1.2rem, 3.5vw, 1.75rem);
+        line-height: 1.25;
+        word-break: break-word;
+    }
+
+    .premium-hero p {
+        font-size: clamp(0.8rem, 2vw, 0.92rem);
+        line-height: 1.4;
+        opacity: 0.9;
     }
 
     .orb-card {
@@ -31,24 +139,30 @@
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.02);
         overflow: hidden;
         margin-bottom: 24px;
+        box-sizing: border-box;
     }
 
     .orb-card-header {
         background: #F8FAFC;
-        padding: 20px 24px;
+        padding: 16px 22px;
         border-bottom: 1px solid #E2E8F0;
     }
 
     .orb-card-header h4 {
         margin: 0;
-        font-size: 16px;
+        font-size: clamp(13px, 2.5vw, 16px);
         font-weight: 700;
         color: #1e293b;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 6px;
     }
 
     .step-number {
-        width: 28px;
-        height: 28px;
+        width: 26px;
+        height: 26px;
+        min-width: 26px;
         border-radius: 50%;
         background: #E2E8F0;
         color: #64748b;
@@ -56,8 +170,8 @@
         align-items: center;
         justify-content: center;
         font-weight: 700;
-        font-size: 13px;
-        margin-right: 8px;
+        font-size: 12px;
+        margin-right: 6px;
     }
 
     .step-active .step-number {
@@ -76,10 +190,10 @@
 
     .form-control,
     .form-select {
-        height: 42px;
+        height: 44px;
         border-radius: 10px;
         border: 1px solid #CBD5E1;
-        font-size: 13px;
+        font-size: 13.5px;
         background-color: #fff;
     }
 
@@ -98,11 +212,14 @@
         color: white;
         border: none;
         border-radius: 50px;
-        padding: 12px 28px;
+        padding: 11px 26px;
         font-weight: 700;
         font-size: 14px;
         transition: all 0.3s ease;
         box-shadow: 0 4px 15px rgba(75, 0, 232, 0.2);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .btn-orb-primary:hover {
@@ -117,10 +234,13 @@
         color: var(--orb-primary, #4B00E8);
         border: 1px solid var(--border, #E7EAF3);
         border-radius: 50px;
-        padding: 12px 28px;
+        padding: 11px 26px;
         font-weight: 700;
         font-size: 14px;
         transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .btn-orb-soft:hover {
@@ -165,27 +285,32 @@
         background: #FCFDFE;
         border: 1px solid #F1F5F9;
         border-radius: 12px;
-        padding: 20px;
-        margin-bottom: 20px;
+        padding: 18px;
+        margin-bottom: 18px;
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.01);
+        box-sizing: border-box;
     }
     
     .form-group-section-title {
-        font-size: 13px;
+        font-size: 12.5px;
         font-weight: 800;
         color: var(--orb-primary, #4B00E8);
-        margin-bottom: 15px;
+        margin-bottom: 14px;
         border-bottom: 1px solid #F1F5F9;
-        padding-bottom: 8px;
+        padding-bottom: 6px;
         text-transform: uppercase;
         letter-spacing: 0.5px;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 6px;
     }
 
     /* Premium Smart Form styles */
     .smart-form-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
-        gap: 20px;
+        gap: 16px;
     }
 
     .smart-form-grid.two-col {
@@ -195,12 +320,13 @@
     .smart-form-grid-stacked {
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: 14px;
     }
 
     .smart-form-field {
         display: flex;
         flex-direction: column;
+        min-width: 0;
     }
 
     .smart-form-label {
@@ -209,25 +335,27 @@
         color: #475569;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
         display: inline-flex;
         align-items: center;
-        user-select: none; /* Fix text selection/highlight styling issue on label */
+        user-select: none;
+        word-break: break-word;
     }
 
     .smart-form-control,
     .smart-select {
-        height: 48px;
+        height: 46px;
         border-radius: 12px;
         border: 1.5px solid #E2E8F0;
-        font-size: 14px;
-        padding: 0 16px;
+        font-size: 13.5px;
+        padding: 0 14px;
         background-color: #FFFFFF;
         color: #1E293B;
         font-weight: 600;
         transition: all 0.2s ease-in-out;
         width: 100%;
         box-sizing: border-box;
+        max-width: 100%;
     }
 
     /* select wrapper for custom premium icons and arrows */
@@ -238,32 +366,35 @@
     }
 
     .smart-select-wrapper .smart-select {
-        padding-left: 52px !important;
-        padding-right: 48px !important;
-        height: 52px !important;
-        line-height: 52px !important;
+        padding-left: 48px !important;
+        padding-right: 40px !important;
+        height: 48px !important;
+        line-height: 48px !important;
         appearance: none !important;
         background-image: none !important;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
     }
 
     .smart-select-icon {
         position: absolute;
-        left: 18px;
+        left: 16px;
         top: 50%;
         transform: translateY(-50%);
         color: var(--orb-primary, #4B00E8);
-        font-size: 16px;
+        font-size: 15px;
         pointer-events: none;
         z-index: 10;
     }
 
     .smart-select-arrow {
         position: absolute;
-        right: 18px;
+        right: 16px;
         top: 50%;
         transform: translateY(-50%);
         color: #475569;
-        font-size: 14px;
+        font-size: 13px;
         pointer-events: none;
         z-index: 10;
     }
@@ -272,39 +403,40 @@
         appearance: none;
         background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23475569' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
         background-repeat: no-repeat;
-        background-position: right 16px center;
+        background-position: right 14px center;
         background-size: 12px 12px;
-        padding-right: 40px;
+        padding-right: 36px;
     }
 
     .smart-form-control:focus,
     .smart-select:focus {
         border-color: var(--orb-primary, #4B00E8);
-        box-shadow: 0 0 0 4px rgba(75, 0, 232, 0.1);
+        box-shadow: 0 0 0 3px rgba(75, 0, 232, 0.12);
         outline: none;
     }
 
     textarea.smart-form-control {
         height: auto;
-        padding: 12px 16px;
+        padding: 10px 14px;
         line-height: 1.5;
+        min-height: 80px;
     }
 
     .grid-col-span-2 {
         grid-column: span 2;
     }
 
-    @media (max-width: 768px) {
-        .smart-form-grid,
-        .smart-form-grid.two-col {
-            grid-template-columns: 1fr !important;
-            gap: 16px;
-        }
-        .grid-col-span-2 {
-            grid-column: span 1;
-        }
+    .card-footer {
+        background: #F8FAFC !important;
+        padding: 16px 22px;
+        border-top: 1px solid #E2E8F0;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 12px;
     }
 
+    /* Desktop View: dual-pane split workspace */
     @media (min-width: 992px) {
         .workspace-row {
             height: calc(100vh - 120px);
@@ -325,6 +457,7 @@
             overflow-y: auto;
             overflow-x: hidden;
             min-height: 0;
+            -webkit-overflow-scrolling: touch;
         }
         .workspace-card-body-scroll::-webkit-scrollbar {
             width: 6px;
@@ -344,6 +477,178 @@
             height: 100% !important;
             flex-grow: 1;
             min-height: 0;
+        }
+    }
+
+    /* Tablet & Mobile Layout (< 992px) */
+    @media (max-width: 991.98px) {
+        .document-page {
+            padding: 16px 12px;
+            min-height: auto;
+        }
+        .workspace-row {
+            height: auto !important;
+            min-height: 0 !important;
+        }
+        .workspace-col {
+            height: auto !important;
+            margin-bottom: 20px !important;
+        }
+        .workspace-card {
+            height: auto !important;
+            border-radius: 16px;
+        }
+        .workspace-card-body-scroll {
+            overflow: visible !important;
+            height: auto !important;
+            min-height: 0 !important;
+        }
+        .workspace-preview-body {
+            aspect-ratio: unset !important;
+            height: 580px !important;
+            min-height: 420px;
+        }
+    }
+
+    /* Mobile screens (<= 768px) */
+    @media (max-width: 767.98px) {
+        .premium-hero {
+            padding: 18px 16px;
+            border-radius: 14px;
+            margin-bottom: 16px;
+        }
+        .premium-hero .btn {
+            width: 100%;
+            margin-top: 6px;
+            padding: 9px 16px;
+            font-size: 13px;
+            text-align: center;
+            justify-content: center;
+        }
+        .orb-card {
+            border-radius: 14px;
+            margin-bottom: 16px;
+        }
+        .orb-card-header {
+            padding: 12px 14px;
+        }
+        .orb-card .card-body.p-4 {
+            padding: 14px 12px !important;
+        }
+        .form-group-section {
+            padding: 12px 10px;
+            border-radius: 10px;
+            margin-bottom: 12px;
+        }
+        .form-group-section-title {
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+        .smart-form-grid,
+        .smart-form-grid.two-col {
+            grid-template-columns: 1fr !important;
+            gap: 12px;
+        }
+        .grid-col-span-2 {
+            grid-column: span 1 !important;
+        }
+        .card-footer {
+            padding: 12px !important;
+            flex-direction: column-reverse !important;
+            gap: 8px !important;
+        }
+        .btn-orb-primary,
+        .btn-orb-soft {
+            width: 100% !important;
+            padding: 10px 16px !important;
+            font-size: 13px !important;
+            justify-content: center !important;
+            text-align: center !important;
+        }
+    }
+
+    /* Small Mobile screens (<= 576px) */
+    @media (max-width: 575.98px) {
+        .document-page {
+            padding: 10px 6px;
+        }
+        .orb-card {
+            border-radius: 12px;
+        }
+        .orb-card-header {
+            padding: 10px 12px;
+        }
+        .orb-card .card-body.p-4 {
+            padding: 10px 8px !important;
+        }
+        .smart-form-control,
+        .smart-select {
+            height: 42px;
+            border-radius: 10px;
+            font-size: 13px;
+            padding: 0 12px;
+        }
+        .smart-select-wrapper .smart-select {
+            padding-left: 36px !important;
+            padding-right: 32px !important;
+            height: 42px !important;
+            line-height: 42px !important;
+            font-size: 12.5px !important;
+        }
+        .smart-select-icon {
+            left: 12px;
+            font-size: 13px;
+        }
+        .smart-select-arrow {
+            right: 12px;
+            font-size: 11px;
+        }
+        .workspace-preview-body {
+            height: 480px !important;
+            min-height: 360px;
+        }
+    }
+
+    /* Extra Small Devices (<= 360px, e.g. 295px - 320px) */
+    @media (max-width: 359.98px) {
+        .document-page {
+            padding: 6px 4px;
+        }
+        .orb-card-header h4 {
+            font-size: 12.5px;
+        }
+        .step-number {
+            width: 22px;
+            height: 22px;
+            min-width: 22px;
+            font-size: 11px;
+        }
+        .smart-form-control,
+        .smart-select {
+            height: 38px;
+            font-size: 12px;
+            padding: 0 10px;
+            border-radius: 8px;
+        }
+        .smart-select-wrapper .smart-select {
+            padding-left: 30px !important;
+            padding-right: 26px !important;
+            height: 38px !important;
+            line-height: 38px !important;
+            font-size: 11.5px !important;
+        }
+        .smart-select-icon {
+            left: 10px;
+            font-size: 12px;
+        }
+        .smart-select-arrow {
+            right: 10px;
+            font-size: 10px;
+        }
+        .btn-orb-primary,
+        .btn-orb-soft {
+            padding: 9px 12px !important;
+            font-size: 12px !important;
         }
     }
 </style>
@@ -475,7 +780,7 @@
                     </div>
 
                     <!-- Actions Toolbar -->
-                    <div class="card-footer bg-light p-4 d-flex justify-content-end gap-3 border-top">
+                    <div class="card-footer">
                         <button type="button" class="btn-orb-soft" onclick="openPreviewInNewTab()">
                             <i class="fas fa-external-link-alt me-2"></i> Preview Document
                         </button>
@@ -491,13 +796,13 @@
         <!-- Live Preview IFrame Side -->
         <div class="col-lg-6 mb-4 sticky-lg-top workspace-col" style="z-index: 10;">
             <div class="orb-card d-flex flex-column workspace-card">
-                <div class="orb-card-header d-flex justify-content-between align-items-center">
-                    <h4><i class="fas fa-file-pdf text-danger me-2"></i> Live Document Preview</h4>
-                    <div class="d-flex align-items-center gap-2">
+                <div class="orb-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <h4 class="mb-0"><i class="fas fa-file-pdf text-danger me-2"></i> Live Document Preview</h4>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
                         <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="openPreviewInNewTab()">
                             <i class="fas fa-external-link-alt me-1"></i> Open in New Tab
                         </button>
-                        <span class="badge bg-primary rounded-pill" id="preview_doc_type_badge">Offer Letter</span>
+                        <span class="badge bg-primary rounded-pill px-2.5 py-1.5" id="preview_doc_type_badge">Offer Letter</span>
                     </div>
                 </div>
                 <div class="card-body p-0 position-relative workspace-preview-body" style="background: #f1f5f9; width: 100%; aspect-ratio: 1 / 1.414; overflow: hidden; box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.05);">
@@ -525,6 +830,7 @@
 @endsection
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
     // Templates configuration map
     const TEMPLATE_CONFIGS = @json(\App\Services\HRMS\DocumentGeneration\DocumentFieldConfigS::getTemplates());
@@ -724,7 +1030,12 @@
 
                 // Calculate default value
                 let val = '';
-                if (field.default === 'today') val = todayDate;
+                const candidateNameInput = document.getElementById('candidate_name');
+                const existingCandidateName = candidateNameInput ? candidateNameInput.value.trim() : '';
+
+                if ((field.autofill === 'name' || ['employee_name', 'candidate_name', 'intern_name'].includes(field.name)) && existingCandidateName !== '') {
+                    val = existingCandidateName;
+                } else if (field.default === 'today') val = todayDate;
                 else if (field.default === 'yesterday') val = yesterdayDate;
                 else if (field.default === 'today+7') val = validTillDate;
                 else if (field.default === 'company_name') val = COMPANY_NAME_DEFAULT;
@@ -1057,17 +1368,17 @@
                 if (!salaryInput) return;
                 const gross = parseFloat(salaryInput.value) || 0;
                 const inWords = numberToWords(Math.floor(gross));
-                document.getElementById('field_salary_in_words').value = inWords ? inWords + ' Rupees Only' : 'Zero Rupees Only';
+                if (document.getElementById('field_salary_in_words')) {
+                    document.getElementById('field_salary_in_words').value = inWords ? inWords + ' Rupees Only' : 'Zero Rupees Only';
+                }
                 
-                // Set default components
+                // Set default components (50% basic, 20% hra, remaining into allowances)
                 const basic = gross * 0.50;
                 const hra = gross * 0.20;
-                const conveyance = gross > 0 ? 1600.0 : 0.0;
-                const allowances = gross - basic - hra - conveyance;
+                const allowances = gross - basic - hra;
 
                 if (document.getElementById('field_basic_salary')) document.getElementById('field_basic_salary').value = basic.toFixed(2);
                 if (document.getElementById('field_hra')) document.getElementById('field_hra').value = hra.toFixed(2);
-                if (document.getElementById('field_conveyance')) document.getElementById('field_conveyance').value = conveyance.toFixed(2);
                 if (document.getElementById('field_allowances')) document.getElementById('field_allowances').value = Math.max(0, allowances).toFixed(2);
             };
             if (salaryInput) {
@@ -1309,9 +1620,6 @@
         buildDynamicForm(selectedType);
     });
 
-    // Employee dropdown change listener for smart pre-fills
-    document.getElementById('employee_select').addEventListener('change', handleEmployeeAutofill);
-
     // Open Full Document Preview in a New Tab
     function openPreviewInNewTab() {
         const form = document.getElementById('generationForm');
@@ -1347,7 +1655,7 @@
             newWin.document.close();
         }
 
-        const formData = new FormData(form);
+        const formData = buildPreviewFormData(form);
 
         fetch("{{ route('hrms.document-generation.generated.preview') }}", {
             method: 'POST',
@@ -1403,10 +1711,19 @@
         });
     }
 
+    let activePreviewRequest = null;
+    let previewRequestVersion = 0;
+
     // Live preview renderer using iframe
     function triggerLivePreview() {
         const form = document.getElementById('generationForm');
-        const formData = new FormData(form);
+        const formData = buildPreviewFormData(form);
+        const requestVersion = ++previewRequestVersion;
+
+        if (activePreviewRequest) {
+            activePreviewRequest.abort();
+        }
+        activePreviewRequest = new AbortController();
 
         const loader = document.getElementById('previewLoader');
         const splash = document.getElementById('noPreviewSplash');
@@ -1420,7 +1737,8 @@
                 body: formData,
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest'
-                }
+                },
+                signal: activePreviewRequest.signal
             })
             .then(response => {
                 if (!response.ok) {
@@ -1433,6 +1751,8 @@
                 return response.json();
             })
             .then(data => {
+                if (requestVersion !== previewRequestVersion) return;
+
                 splash.classList.add('d-none');
                 iframe.classList.remove('d-none');
 
@@ -1443,6 +1763,8 @@
                 doc.close();
             })
             .catch(error => {
+                if (error.name === 'AbortError' || requestVersion !== previewRequestVersion) return;
+
                 splash.classList.add('d-none');
                 iframe.classList.remove('d-none');
 
@@ -1492,9 +1814,23 @@
                 console.warn("Live Preview Render Notice: ", error.message);
             })
             .finally(() => {
+                if (requestVersion !== previewRequestVersion) return;
+
+                activePreviewRequest = null;
                 loader.classList.add('d-none');
                 loader.classList.remove('d-flex');
             });
+    }
+
+    // Preview rendering uses the existing Base64 values for signature/seal images.
+    // The original file inputs are retained for final submission only, so they are
+    // not uploaded again on every preview request.
+    function buildPreviewFormData(form) {
+        const formData = new FormData(form);
+        formData.delete('signature_image_file');
+        formData.delete('seal_image_file');
+
+        return formData;
     }
 
     // Debounce helper to avoid heavy server requests on each keystroke
@@ -1508,6 +1844,19 @@
 
     // Register dynamic realtime listener on all inputs, select lists, and textareas
     document.addEventListener('DOMContentLoaded', function() {
+        // Initialize Select2 searchable dropdown on employee selector
+        if (typeof window.jQuery !== 'undefined' && typeof window.jQuery.fn.select2 !== 'undefined') {
+            $('#employee_select').select2({
+                placeholder: '-- Candidate / Manual Entry --',
+                allowClear: true,
+                width: '100%'
+            }).on('change', function(e) {
+                handleEmployeeAutofill();
+            });
+        } else {
+            document.getElementById('employee_select').addEventListener('change', handleEmployeeAutofill);
+        }
+
         // Trigger initial select logic
         const docTypeSelect = document.getElementById('document_type_select');
         document.getElementById('document_type_input').value = docTypeSelect.value;
@@ -1518,12 +1867,37 @@
         if (form) {
             form.addEventListener('input', function(e) {
                 if (e.target && e.target.matches('input, textarea')) {
+                    // Bi-directional synchronization for manual recipient name
+                    if (e.target.id === 'candidate_name') {
+                        const val = e.target.value;
+                        ['field_employee_name', 'field_candidate_name', 'field_intern_name'].forEach(id => {
+                            const field = document.getElementById(id);
+                            if (field && field !== e.target) field.value = val;
+                        });
+                    } else if (['field_employee_name', 'field_candidate_name', 'field_intern_name'].includes(e.target.id)) {
+                        const val = e.target.value;
+                        const candInput = document.getElementById('candidate_name');
+                        if (candInput && candInput !== e.target) candInput.value = val;
+                    }
+
                     updateParagraphsWithPlaceholders();
                     debouncedPreview();
                 }
             });
             form.addEventListener('change', function(e) {
                 if (e.target && e.target.matches('select, input, textarea')) {
+                    if (e.target.id === 'candidate_name') {
+                        const val = e.target.value;
+                        ['field_employee_name', 'field_candidate_name', 'field_intern_name'].forEach(id => {
+                            const field = document.getElementById(id);
+                            if (field && field !== e.target) field.value = val;
+                        });
+                    } else if (['field_employee_name', 'field_candidate_name', 'field_intern_name'].includes(e.target.id)) {
+                        const val = e.target.value;
+                        const candInput = document.getElementById('candidate_name');
+                        if (candInput && candInput !== e.target) candInput.value = val;
+                    }
+
                     evaluateConditionalVisibility();
                     updateParagraphsWithPlaceholders();
                     debouncedPreview();

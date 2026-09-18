@@ -4,7 +4,6 @@
 
 @section('_head')
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
-<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
 <style>
     :root {
         --orb-bg: #F6F7FB;
@@ -60,118 +59,174 @@
 
     .orb-hero-actions {
         display: flex;
-        gap: 10px;
+        gap: 12px;
         flex-wrap: wrap;
+        align-items: center;
     }
 
-    .orb-btn-light {
-        background: rgba(255, 255, 255, 0.15);
-        color: white;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        padding: 10px 20px;
-        border-radius: 12px;
+    /* MODERN PILL BUTTONS */
+    .btn-pill {
+        border-radius: 50px;
+        padding: 10px 22px;
         font-weight: 700;
         font-size: 13px;
-        text-decoration: none;
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        transition: all 0.2s ease;
-        backdrop-filter: blur(10px);
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        text-decoration: none !important;
+        cursor: pointer;
+        white-space: nowrap;
+        border: 1px solid transparent;
     }
 
-    .orb-btn-light:hover {
-        background: white;
-        color: var(--orb-primary);
+    .btn-pill-white {
+        background: #ffffff;
+        color: var(--orb-primary) !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.8);
     }
 
-    .orb-btn-white {
-        background: white;
-        color: var(--orb-primary);
-        border: none;
-        padding: 10px 20px;
-        border-radius: 12px;
-        font-weight: 800;
-        font-size: 13px;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        transition: all 0.2s ease;
-        text-decoration: none;
-    }
-
-    .orb-btn-white:hover {
+    .btn-pill-white:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        background: #f8f9fa;
+        color: var(--orb-primary) !important;
     }
 
-    /* Summary Cards */
-    .orb-stat-grid {
+    .btn-pill-trans {
+        background: rgba(255, 255, 255, 0.15);
+        color: #ffffff !important;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+    }
+
+    .btn-pill-trans:hover {
+        background: rgba(255, 255, 255, 0.25);
+        border-color: rgba(255, 255, 255, 0.4);
+        transform: translateY(-2px);
+        color: #ffffff !important;
+    }
+
+    /* DOCUMENT VERIFICATION STYLE KPI GRID & CARDS */
+    .dm-kpi-grid {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 16px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
         margin-bottom: 24px;
     }
 
-    @media (max-width: 1200px) { .orb-stat-grid { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 575px) { .orb-stat-grid { grid-template-columns: 1fr; } }
-
-    .orb-stat-card {
-        background: white;
+    .dm-kpi {
+        min-height: 94px;
+        padding: 16px 18px 14px;
         border-radius: 18px;
-        padding: 20px;
-        box-shadow: 0 4px 15px rgba(16, 24, 40, 0.04);
-        display: flex;
-        align-items: center;
-        gap: 16px;
+        border: 1px solid var(--orb-border);
+        background: #fff;
+        box-shadow: 0 4px 16px rgba(16, 24, 40, .04);
         position: relative;
         overflow: hidden;
+        transition: all .2s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
     }
 
-    .orb-stat-card::after {
-        content: '';
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        width: 100%;
-        height: 4px;
+    .dm-kpi:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 28px rgba(16, 24, 40, .08);
+        border-color: #CBD5E1;
     }
 
-    .orb-stat-card.primary::after { background: var(--orb-primary); }
-    .orb-stat-card.success::after { background: #12B76A; }
-    .orb-stat-card.warning::after { background: #F79009; }
-    .orb-stat-card.danger::after { background: var(--orb-secondary); }
+    .dm-kpi-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        position: relative;
+        z-index: 1;
+    }
 
-    .orb-stat-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: 14px;
+    .dm-kpi-value {
+        font-size: clamp(20px, 2.4vw, 28px);
+        line-height: 1;
+        font-weight: 950;
+        color: var(--orb-text);
+        letter-spacing: -0.02em;
+    }
+
+    .dm-kpi-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 20px;
+        background: var(--tone-soft) !important;
+        color: var(--tone) !important;
+        font-size: 15px;
         flex-shrink: 0;
     }
 
-    .orb-stat-icon.primary { background: rgba(75,0,232,0.05); color: var(--orb-primary); }
-    .orb-stat-icon.success { background: rgba(18,183,106,0.1); color: #12B76A; }
-    .orb-stat-icon.warning { background: rgba(247,144,9,0.1); color: #F79009; }
-    .orb-stat-icon.danger { background: rgba(239,83,80,0.05); color: var(--orb-secondary); }
-
-    .orb-stat-info h4 {
-        margin: 0;
-        font-size: 22px;
+    .dm-kpi-label {
+        margin-top: 12px;
+        font-size: 11px;
+        color: var(--orb-muted);
         font-weight: 800;
-        color: var(--orb-text);
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        position: relative;
+        z-index: 1;
     }
 
-    .orb-stat-info p {
-        margin: 0;
-        font-size: 11px;
-        font-weight: 700;
-        text-transform: uppercase;
-        color: var(--orb-muted);
-        letter-spacing: 0.5px;
+    .dm-kpi-line {
+        position: absolute;
+        left: 16px;
+        right: 16px;
+        bottom: 0;
+        height: 3px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, var(--tone), transparent);
+    }
+
+    .tone-purple {
+        --tone: #7A5AF8;
+        --tone-soft: rgba(122, 90, 248, .13);
+    }
+
+    .tone-warning {
+        --tone: #F79009;
+        --tone-soft: rgba(247, 144, 9, .14);
+    }
+
+    .tone-success {
+        --tone: #12B76A;
+        --tone-soft: rgba(18, 183, 106, .12);
+    }
+
+    .tone-danger {
+        --tone: #F04438;
+        --tone-soft: rgba(240, 68, 56, .12);
+    }
+
+    .tone-info {
+        --tone: #0EA5E9;
+        --tone-soft: rgba(14, 165, 233, .13);
+    }
+
+    .tone-orange {
+        --tone: #EA580C;
+        --tone-soft: rgba(234, 88, 12, .13);
+    }
+
+    @media (max-width: 1200px) {
+        .dm-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    }
+    @media (max-width: 575px) {
+        .dm-kpi-grid { grid-template-columns: 1fr; gap: 10px; }
     }
 
     /* Table Card */
@@ -225,68 +280,146 @@
         font-weight: 500;
     }
 
-    /* Filters inside Table Card */
-    .orb-filter-row {
-        padding: 16px 24px;
-        background: #FDFDFF;
-        border-bottom: 1px solid var(--orb-border);
-        display: grid;
-        grid-template-columns: repeat(5, 1fr);
-        gap: 12px;
+    .btn-table-primary {
+        background: linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%) !important;
+        color: #fff !important;
+        border: none;
+        border-radius: 12px;
+        padding: 9px 18px;
+        font-weight: 700;
+        font-size: 13px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 4px 14px rgba(75, 0, 232, 0.25);
+        cursor: pointer;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        text-decoration: none !important;
+        white-space: nowrap;
     }
 
-    @media (max-width: 1200px) { .orb-filter-row { grid-template-columns: repeat(3, 1fr); } }
-    @media (max-width: 768px) { .orb-filter-row { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 575px) { .orb-filter-row { grid-template-columns: 1fr; } }
+    .btn-table-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 22px rgba(75, 0, 232, 0.35);
+        color: #fff !important;
+        opacity: 0.95;
+    }
+
+    /* Filters inside Table Card */
+    .orb-filter-row {
+        padding: 18px 24px;
+        background: #FAFAFD;
+        border-bottom: 1px solid var(--orb-border);
+        display: grid;
+        grid-template-columns: minmax(180px, 1.4fr) minmax(150px, 1.2fr) minmax(130px, 1fr) minmax(110px, 0.9fr) auto;
+        gap: 12px;
+        align-items: flex-end;
+    }
+
+    @media (max-width: 1200px) {
+        .orb-filter-row { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 575px) {
+        .orb-filter-row { grid-template-columns: 1fr; gap: 10px; }
+    }
+
+    .orb-filter-group {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        text-align: left;
+        min-width: 0;
+    }
 
     .orb-filter-group label {
         font-size: 11px;
         font-weight: 800;
         text-transform: uppercase;
-        color: var(--orb-muted);
-        margin-bottom: 6px;
+        color: #64748B;
+        /* margin-bottom: 2px; */
+        letter-spacing: 0.05em;
         display: block;
+        text-align: left !important;
+        align-self: flex-start;
+        padding-left: 2px;
+        width: 100%;
+    }
+
+    .orb-filter-actions {
+        display: flex;
+        flex-direction: row !important;
+        align-items: center;
+        gap: 4px;
     }
 
     .orb-filter-control {
         width: 100%;
         height: 40px;
-        border: 1px solid #DDE3EE;
+        border: 1px solid #CBD5E1;
         border-radius: 10px;
         padding: 0 12px;
         font-size: 13px;
         font-weight: 600;
+        color: var(--orb-text);
         background: white;
         outline: none;
-        transition: all 0.2s;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        transition: all 0.2s ease;
     }
 
     .orb-filter-control:focus {
         border-color: var(--orb-primary);
-        box-shadow: 0 0 0 3px rgba(75,0,232,0.1);
+        box-shadow: 0 0 0 3.5px rgba(79, 70, 229, 0.12) !important;
+        background: white;
     }
 
-    .orb-btn-reset {
+    .btn-filter-submit {
         height: 40px;
-        border: 1px solid #DDE3EE;
-        background: white;
-        color: var(--orb-text);
         border-radius: 10px;
+        background: linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%) !important;
+        border: none;
+        color: #fff !important;
         font-weight: 700;
-        font-size: 13px;
+        padding: 0 20px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 6px;
-        width: 100%;
+        gap: 7px;
+        font-size: 13px;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         cursor: pointer;
-        transition: all 0.2s;
+        white-space: nowrap;
+        box-shadow: 0 4px 14px rgba(75, 0, 232, 0.25);
     }
 
-    .orb-btn-reset:hover {
-        background: #F4F2FF;
-        color: var(--orb-primary);
-        border-color: var(--orb-primary);
+    .btn-filter-submit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(75, 0, 232, 0.35);
+        color: #fff !important;
+        opacity: 0.95;
+    }
+
+    .btn-filter-reset {
+        height: 40px;
+        width: 40px;
+        border-radius: 10px;
+        border: 1px solid #CBD5E1;
+        background: #fff;
+        color: #64748B;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: all 0.2s ease;
+        text-decoration: none !important;
+    }
+
+    .btn-filter-reset:hover {
+        background: #F1F5F9;
+        color: var(--orb-text);
+        border-color: #94A3B8;
     }
 
     /* DataTable Overrides */
@@ -347,22 +480,6 @@
         height: 32px;
         font-size: 12px;
         outline: none;
-    }
-
-    .dt-buttons .btn {
-        background: white;
-        border: 1px solid var(--orb-border);
-        color: var(--orb-text);
-        border-radius: 8px;
-        font-size: 12px;
-        font-weight: 700;
-        padding: 6px 12px;
-        transition: all 0.2s;
-    }
-    .dt-buttons .btn:hover {
-        background: #F4F2FF;
-        color: var(--orb-primary);
-        border-color: rgba(75,0,232,0.2);
     }
 
     .dataTables_info {
@@ -570,50 +687,55 @@
         </div>
         <div class="orb-hero-actions">
             @if(Route::has('hrms.document-generation.generated.index'))
-            <a href="{{ route('hrms.document-generation.generated.index') }}" class="orb-btn-light">
+            <a href="{{ route('hrms.document-generation.generated.index') }}" class="btn-pill btn-pill-trans">
                 <i class="fas fa-history"></i> Generated Documents
             </a>
             @endif
             @if(Route::has('hrms.document-generation.generated.create'))
-            <a href="{{ route('hrms.document-generation.generated.create') }}" class="orb-btn-light">
+            <a href="{{ route('hrms.document-generation.generated.create') }}" class="btn-pill btn-pill-trans">
                 <i class="fas fa-file-invoice"></i> Generate Document
             </a>
             @endif
-            <button type="button" class="orb-btn-white" data-toggle="modal" data-target="#createTemplateModal">
-                <i class="fas fa-plus"></i> Create Template
-            </button>
+            
         </div>
     </div>
 
-    <!-- Summary Cards -->
-    <div class="orb-stat-grid">
-        <div class="orb-stat-card primary">
-            <div class="orb-stat-icon primary"><i class="fas fa-file-alt"></i></div>
-            <div class="orb-stat-info">
-                <h4>{{ $totalTemplates ?? 0 }}</h4>
-                <p>Total Templates</p>
+    <!-- Summary Cards (Document Verification KPI Design) -->
+    <div class="dm-kpi-grid">
+        <div class="dm-kpi tone-purple">
+            <div class="dm-kpi-top">
+                <div class="dm-kpi-value">{{ $totalTemplates ?? 0 }}</div>
+                <div class="dm-kpi-icon"><i class="fas fa-layer-group"></i></div>
             </div>
+            <div class="dm-kpi-label">Total Templates</div>
+            <div class="dm-kpi-line"></div>
         </div>
-        <div class="orb-stat-card success">
-            <div class="orb-stat-icon success"><i class="fas fa-check-circle"></i></div>
-            <div class="orb-stat-info">
-                <h4>{{ $activeTemplates ?? 0 }}</h4>
-                <p>Active Templates</p>
+
+        <div class="dm-kpi tone-success">
+            <div class="dm-kpi-top">
+                <div class="dm-kpi-value">{{ $activeTemplates ?? 0 }}</div>
+                <div class="dm-kpi-icon"><i class="fas fa-check-circle"></i></div>
             </div>
+            <div class="dm-kpi-label">Active Templates</div>
+            <div class="dm-kpi-line"></div>
         </div>
-        <div class="orb-stat-card warning">
-            <div class="orb-stat-icon warning"><i class="fas fa-file-code"></i></div>
-            <div class="orb-stat-info">
-                <h4>{{ $totalTemplates ?? 0 }}</h4>
-                <p>HTML Templates</p>
+
+        <div class="dm-kpi tone-warning">
+            <div class="dm-kpi-top">
+                <div class="dm-kpi-value">{{ max(0, ($totalTemplates ?? 0) - ($activeTemplates ?? 0)) + ($archivedCount ?? 0) }}</div>
+                <div class="dm-kpi-icon"><i class="fas fa-archive"></i></div>
             </div>
+            <div class="dm-kpi-label">Draft / Archived</div>
+            <div class="dm-kpi-line"></div>
         </div>
-        <div class="orb-stat-card danger">
-            <div class="orb-stat-icon danger"><i class="fas fa-tasks"></i></div>
-            <div class="orb-stat-info">
-                <h4>{{ $generatedCount ?? 0 }}</h4>
-                <p>Generated Documents</p>
+
+        <div class="dm-kpi tone-orange">
+            <div class="dm-kpi-top">
+                <div class="dm-kpi-value">{{ $generatedCount ?? 0 }}</div>
+                <div class="dm-kpi-icon"><i class="fas fa-file-signature"></i></div>
             </div>
+            <div class="dm-kpi-label">Generated Documents</div>
+            <div class="dm-kpi-line"></div>
         </div>
     </div>
 
@@ -628,8 +750,8 @@
                 </div>
             </div>
             <div>
-                <button type="button" class="orb-btn-white border" style="color:var(--orb-text);" data-toggle="modal" data-target="#createTemplateModal">
-                    <i class="fas fa-plus text-primary"></i> Create Template
+                <button type="button" class="btn-table-primary" data-toggle="modal" data-target="#createTemplateModal">
+                    <i class="fas fa-plus"></i> Create Template
                 </button>
             </div>
         </div>
@@ -669,101 +791,93 @@
                     <option value="Live">Live</option>
                 </select>
             </div>
-            <div class="orb-filter-group" style="display: flex; align-items: flex-end; gap: 8px;">
-                <button type="button" id="dtSearchBtn" class="btn text-white font-weight-bold shadow-sm" style="height: 42px; border-radius: 12px; background: var(--orb-primary); border: none; padding: 0 16px; display: inline-flex; align-items: center; gap: 6px; font-size: 13px;">
+            <div class="orb-filter-group orb-filter-actions">
+                <button type="button" id="dtSearchBtn" class="btn-filter-submit">
                     <i class="fas fa-search"></i> Search
                 </button>
-                <button type="button" id="dtReset" class="orb-btn-reset" style="height: 42px;">
-                    <i class="fas fa-undo"></i> Reset
+                <button type="button" id="dtReset" class="btn-filter-reset" title="Reset Filters">
+                    <i class="fas fa-undo"></i>
                 </button>
             </div>
         </div>
 
         <div class="orb-dt-toolbar">
             <div id="dtLength"></div>
-            <div id="dtButtons"></div>
         </div>
 
-        <div class="orb-table-scroll">
-            <table id="templatesTable" class="table">
-                <thead>
-                    <tr>
-                        <th width="50">S.No.</th>
-                        <th>Template Name</th>
-                        <th>Category</th>
-                        <th>Document Type</th>
-                        <th>Version</th>
-                        <th>Status</th>
-                        <th>Uploaded By</th>
-                        <th>Last Updated</th>
-                        <th width="150" class="text-center">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($templates as $index => $template)
-                    <tr>
-                        <td>{{ $templates->firstItem() + $index }}</td>
-                        <td class="fw-bold">{{ $template->name }}</td>
-                        <td>{{ $template->category ?: '-' }}</td>
-                        <td>{{ ucwords(str_replace('_', ' ', $template->document_type)) }}</td>
-                        <td>{{ $template->version ?: 'v1' }}</td>
-                        <td>
-                            @if($template->is_archived)
-                                <span class="orb-badge inactive"><span class="orb-badge-dot"></span> Archived</span>
-                            @elseif($template->is_active)
-                                <span class="orb-badge active"><span class="orb-badge-dot"></span> Active</span>
-                            @else
-                                <span class="orb-badge inactive"><span class="orb-badge-dot"></span> Inactive</span>
-                            @endif
-                        </td>
-                        <td>{{ optional($template->createdBy)->name ?: '-' }}</td>
-                        <td>{{ $template->updated_at ? $template->updated_at->format('d M Y, h:i A') : '-' }}</td>
-                        <td class="text-center">
-                            <div class="d-flex justify-content-center gap-2">
-                                <a href="{{ route('hrms.document-generation.generated.create', ['template_id' => $template->id]) }}" class="orb-action-btn" title="Preview Template">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                                <a href="{{ route('hrms.document-generation.generated.create', ['template_id' => $template->id]) }}" class="orb-action-btn" title="Generate">
-                                    <i class="fas fa-magic"></i>
-                                </a>
-                                <button type="button" class="orb-action-btn" data-toggle="modal" data-target="#editTemplateModal{{ $template->id }}" title="Edit Template">
-                                    <i class="fas fa-edit"></i>
+        <table id="templatesTable" class="table">
+            <thead>
+                <tr>
+                    <th width="50">S.No.</th>
+                    <th>Template Name</th>
+                    <th>Category</th>
+                    <th>Document Type</th>
+                    <th>Version</th>
+                    <th>Status</th>
+                    <th>Uploaded By</th>
+                    <th>Last Updated</th>
+                    <th width="150" class="text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($templates as $template)
+                <tr>
+                    <td>{{ $loop->iteration }}</td>
+                    <td class="fw-bold">{{ $template->name }}</td>
+                    <td>{{ $template->category ?: '-' }}</td>
+                    <td>{{ ucwords(str_replace('_', ' ', $template->document_type)) }}</td>
+                    <td>{{ $template->version ?: 'v1' }}</td>
+                    <td>
+                        @if($template->is_archived)
+                            <span class="orb-badge inactive"><span class="orb-badge-dot"></span> Archived</span>
+                        @elseif($template->is_active)
+                            <span class="orb-badge active"><span class="orb-badge-dot"></span> Active</span>
+                        @else
+                            <span class="orb-badge inactive"><span class="orb-badge-dot"></span> Inactive</span>
+                        @endif
+                    </td>
+                    <td>{{ optional($template->createdBy)->name ?: '-' }}</td>
+                    <td>{{ $template->updated_at ? $template->updated_at->format('d M Y, h:i A') : '-' }}</td>
+                    <td class="text-center">
+                        <div class="d-flex justify-content-center gap-2">
+                            <a href="{{ route('hrms.document-generation.generated.create', ['template_id' => $template->id]) }}" class="orb-action-btn" title="Preview Template">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="{{ route('hrms.document-generation.generated.create', ['template_id' => $template->id]) }}" class="orb-action-btn" title="Generate">
+                                <i class="fas fa-magic"></i>
+                            </a>
+                            <button type="button" class="orb-action-btn" data-toggle="modal" data-target="#editTemplateModal{{ $template->id }}" title="Edit Template">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <form action="{{ route('hrms.document-generation.templates.clone', $template->id) }}" method="POST" class="d-inline">
+                                @csrf
+                                <button type="submit" class="orb-action-btn" title="Clone Template">
+                                    <i class="fas fa-copy"></i>
                                 </button>
-                                <form action="{{ route('hrms.document-generation.templates.clone', $template->id) }}" method="POST" class="d-inline">
-                                    @csrf
-                                    <button type="submit" class="orb-action-btn" title="Clone Template">
-                                        <i class="fas fa-copy"></i>
-                                    </button>
-                                </form>
-                                <a href="{{ route('hrms.document-generation.generated.index', ['template_id' => $template->id]) }}" class="orb-action-btn" title="View Generation History">
-                                    <i class="fas fa-history"></i>
-                                </a>
-                                <form action="{{ route('hrms.document-generation.templates.toggle-archive', $template->id) }}" method="POST" class="d-inline">
-                                    @csrf
-                                    <button type="submit" class="orb-action-btn" title="{{ $template->is_archived ? 'Restore Template' : 'Archive Template' }}">
-                                        <i class="fas {{ $template->is_archived ? 'fa-box-open' : 'fa-archive' }}"></i>
-                                    </button>
-                                </form>
-                                <form action="{{ route('hrms.document-generation.templates.destroy', $template->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this template?');">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="orb-action-btn danger" title="Delete Template">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
+                            </form>
+                            <a href="{{ route('hrms.document-generation.generated.index', ['template_id' => $template->id]) }}" class="orb-action-btn" title="View Generation History">
+                                <i class="fas fa-history"></i>
+                            </a>
+                            <form action="{{ route('hrms.document-generation.templates.toggle-archive', $template->id) }}" method="POST" class="d-inline">
+                                @csrf
+                                <button type="submit" class="orb-action-btn" title="{{ $template->is_archived ? 'Restore Template' : 'Archive Template' }}">
+                                    <i class="fas {{ $template->is_archived ? 'fa-box-open' : 'fa-archive' }}"></i>
+                                </button>
+                            </form>
+                            <form action="{{ route('hrms.document-generation.templates.destroy', $template->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this template?');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="orb-action-btn danger" title="Delete Template">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
         
-        @if($templates->hasPages())
-        <div class="p-3 bg-white border-top">
-            {{ $templates->links() }}
-        </div>
-        @endif
     </div>
 </div>
 
@@ -1065,13 +1179,6 @@
 @section('_script')
 <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
 <script src="https://cdn.ckeditor.com/ckeditor5/40.0.0/classic/ckeditor.js"></script>
 
 <script>
@@ -1102,41 +1209,35 @@ $(document).ready(function() {
     let table = $('#templatesTable').DataTable({
         pageLength: 10,
         lengthMenu: [10, 25, 50, 100],
-        order: [[0, 'asc']],
-        dom: "<'d-none'lB><'row'<'col-12'tr>><'d-none'i p>",
-        buttons: [
-            {
-                extend: 'csv',
-                text: '<i class="fas fa-file-csv"></i> CSV',
-                className: 'btn btn-sm',
-                exportOptions: { columns: [0,1,2,3,4,5,6,7] }
-            },
-            {
-                extend: 'excel',
-                text: '<i class="fas fa-file-excel"></i> Excel',
-                className: 'btn btn-sm',
-                exportOptions: { columns: [0,1,2,3,4,5,6,7] }
-            },
-            {
-                extend: 'pdf',
-                text: '<i class="fas fa-file-pdf"></i> PDF',
-                className: 'btn btn-sm',
-                exportOptions: { columns: [0,1,2,3,4,5,6,7] }
-            },
-            {
-                extend: 'print',
-                text: '<i class="fas fa-print"></i> Print',
-                className: 'btn btn-sm',
-                exportOptions: { columns: [0,1,2,3,4,5,6,7] }
-            }
-        ],
+        dom: "<'orb-table-scroll't><'d-flex flex-wrap justify-content-between align-items-center px-4 py-3 bg-white border-top'ip>",
         language: {
             emptyTable: 'No templates found',
-            zeroRecords: 'No matching templates found'
+            zeroRecords: 'No matching templates found',
+            info: 'Showing _START_ to _END_ of _TOTAL_ templates',
+            infoEmpty: 'Showing 0 to 0 of 0 templates',
+            paginate: {
+                previous: '<i class="fas fa-chevron-left"></i>',
+                next: '<i class="fas fa-chevron-right"></i>'
+            }
         },
         initComplete: function() {
-            $('.dataTables_length').appendTo('#dtLength');
-            $('.dt-buttons').appendTo('#dtButtons');
+            // Setup responsive length dropdown if needed
+            let lengthSelect = $(`
+                <div class="d-flex align-items-center gap-2">
+                    <span style="font-size: 13px; font-weight: 700; color: var(--orb-muted);">Show</span>
+                    <select class="form-select form-select-sm" style="width: 75px; height: 36px; border-radius: 8px; font-weight: 700; font-size: 13px;">
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    <span style="font-size: 13px; font-weight: 700; color: var(--orb-muted);">entries</span>
+                </div>
+            `);
+            lengthSelect.find('select').on('change', function() {
+                table.page.len($(this).val()).draw();
+            });
+            $('#dtLength').empty().append(lengthSelect);
         }
     });
 

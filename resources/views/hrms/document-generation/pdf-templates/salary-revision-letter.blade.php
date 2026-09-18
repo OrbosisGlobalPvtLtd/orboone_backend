@@ -26,7 +26,7 @@
             </tr>
             <tr>
                 <td style="font-weight: bold; padding: 1px 0;">Employee ID:</td>
-                <td style="padding: 1px 0;">{{ $employee_code ?? 'EMP001' }}</td>
+                <td style="padding: 1px 0;">{{ $employee_code ?? 'OG-EMP-000' }}</td>
             </tr>
             <tr>
                 <td style="font-weight: bold; padding: 1px 0;">Designation:</td>

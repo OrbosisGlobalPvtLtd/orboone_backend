@@ -1947,28 +1947,36 @@ class EmployeeC extends Controller
             ->orderByDesc($this->employeeTable . '.id')
             ->get();
 
+        $exitProcessIds = $employees->pluck('exit_process_id')->filter()->unique()->values()->all();
+        $employeeIds = $employees->pluck('id')->filter()->unique()->values()->all();
+
+       
+        $allClearances = DB::table('employee_exit_clearances')
+            ->whereIn('exit_process_id', $exitProcessIds)
+            ->get()
+            ->groupBy('exit_process_id');
+
+       
+        $exitRecordsByEmpId = $employees->keyBy('id')->all();
+        $allSummaries = $this->exitProcessService->getModuleSummaryBatch($employeeIds, $exitRecordsByEmpId);
+
         foreach ($employees as $emp) {
             if ($emp->exit_process_id) {
-                // Fetch clearance list
-                $clearanceList = DB::table('employee_exit_clearances')
-                    ->where('exit_process_id', $emp->exit_process_id)
-                    ->get();
+                $empClearances = $allClearances->get($emp->exit_process_id) ?? collect();
 
-                // If it's empty, initialize them dynamically for safety
-                if ($clearanceList->isEmpty()) {
+                
+                if ($empClearances->isEmpty()) {
                     $this->exitProcessService->initializeClearances($emp->exit_process_id);
-                    $clearanceList = DB::table('employee_exit_clearances')
+                    $empClearances = DB::table('employee_exit_clearances')
                         ->where('exit_process_id', $emp->exit_process_id)
                         ->get();
                 }
 
-                $emp->clearances = $clearanceList->keyBy('department_key');
-
-                // Fetch module summary for auto verification display
-                $emp->module_summary = $this->exitProcessService->getModuleSummary($emp->id, $emp);
+                $emp->clearances = $empClearances->keyBy('department_key');
+                $emp->module_summary = $allSummaries[$emp->id] ?? $this->exitProcessService->getModuleSummary($emp->id, $emp);
             } else {
                 $emp->clearances = collect();
-                $emp->module_summary = [];
+                $emp->module_summary = $allSummaries[$emp->id] ?? [];
             }
         }
 
@@ -2486,9 +2494,10 @@ class EmployeeC extends Controller
         // Check Permissions
         $isSuperAdmin = method_exists($actor, 'isSuperAdmin') && $actor->isSuperAdmin();
         $isHrAdmin = method_exists($actor, 'isHrAdmin') ? $actor->isHrAdmin() : (method_exists($actor, 'hasRole') && $actor->hasRole(['super_admin', 'admin', 'hr_admin', 'hr', 'human resources']));
+        $hasExitPerm = method_exists($actor, 'hasPermission') && ($actor->hasPermission('employee_exit.update') || $actor->hasPermission('employees.update'));
 
         $canApprove = false;
-        if ($isSuperAdmin || $isHrAdmin) {
+        if ($isSuperAdmin || $isHrAdmin || $hasExitPerm) {
             $canApprove = true;
         } else {
             // Check dynamic reporting manager authorization
@@ -2512,7 +2521,7 @@ class EmployeeC extends Controller
                     'accounts' => 'employee_exit.clearance.accounts',
                 ];
 
-                if (isset($permissionMap[$dept]) && $actor->hasPermission($permissionMap[$dept])) {
+                if (isset($permissionMap[$dept]) && method_exists($actor, 'hasPermission') && $actor->hasPermission($permissionMap[$dept])) {
                     $canApprove = true;
                 }
             }
@@ -2547,7 +2556,7 @@ class EmployeeC extends Controller
             }
         }
 
-        $this->exitProcessService->updateDepartmentClearance(
+        $updatedProcess = $this->exitProcessService->updateDepartmentClearance(
             (int) $request->exit_process_id,
             $dept,
             $request->status,
@@ -2555,6 +2564,36 @@ class EmployeeC extends Controller
             $checklistItems,
             (int) Auth::id()
         );
+
+        if ($request->ajax() || $request->expectsJson() || $request->wantsJson()) {
+            $clearanceRecord = DB::table('employee_exit_clearances')
+                ->where('exit_process_id', $request->exit_process_id)
+                ->where('department_key', $dept)
+                ->first();
+
+            $approvedByName = null;
+            if ($clearanceRecord && $clearanceRecord->approved_by_user_id) {
+                $approvedByName = DB::table('users')->where('id', $clearanceRecord->approved_by_user_id)->value('name');
+            }
+
+            $mandatoryKeys = ['hr', 'manager', 'it', 'admin', 'finance', 'asset'];
+            $allMandatoryApproved = !DB::table('employee_exit_clearances')
+                ->where('exit_process_id', $request->exit_process_id)
+                ->whereIn('department_key', $mandatoryKeys)
+                ->where('status', '!=', 'approved')
+                ->exists();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Clearance updated for ' . strtoupper($dept) . '.',
+                'status' => $request->status,
+                'status_label' => ucfirst($request->status),
+                'approved_by' => $approvedByName,
+                'approved_at' => $clearanceRecord && $clearanceRecord->approved_at ? Carbon::parse($clearanceRecord->approved_at)->format('d M Y, h:i A') : null,
+                'process' => $updatedProcess,
+                'all_mandatory_approved' => $allMandatoryApproved,
+            ]);
+        }
 
         return back()->with('success', 'Clearance status updated for ' . strtoupper($dept) . '.');
     }
@@ -2585,7 +2624,13 @@ class EmployeeC extends Controller
     {
         $request->validate([
             'exit_process_id' => ['required', 'integer'],
-            'clearance_items' => ['required', 'array'],
+            'exit_type' => ['nullable', 'string'],
+            'asset_status' => ['nullable', 'string'],
+            'fnf_status' => ['nullable', 'string'],
+            'document_status' => ['nullable', 'string'],
+            'handover_status' => ['nullable', 'string'],
+            'remarks' => ['nullable', 'string', 'max:1000'],
+            'clearance_items' => ['nullable', 'array'],
         ]);
 
         /** @var \App\Models\Core\UserM|null $actor */
@@ -2594,14 +2639,28 @@ class EmployeeC extends Controller
 
         $isSuperAdmin = method_exists($actor, 'isSuperAdmin') && $actor->isSuperAdmin();
         $isHrAdmin = method_exists($actor, 'isHrAdmin') ? $actor->isHrAdmin() : (method_exists($actor, 'hasRole') && $actor->hasRole(['super_admin', 'admin', 'hr_admin', 'hr', 'human resources']));
+        $hasExitPerm = method_exists($actor, 'hasPermission') && ($actor->hasPermission('employee_exit.update') || $actor->hasPermission('employees.update'));
 
-        abort_if(! ($isSuperAdmin || $isHrAdmin), 403, 'Only HR or Super Admin can update clearance items.');
+        abort_if(! ($isSuperAdmin || $isHrAdmin || $hasExitPerm), 403, 'Only HR or Super Admin can update clearance items.');
 
-        $this->exitProcessService->updateClearance(
+        $payload = $request->except(['_token', 'exit_process_id']);
+        if ($request->has('clearance_items') && is_array($request->clearance_items)) {
+            $payload = array_merge($payload, $request->clearance_items);
+        }
+
+        $updatedProcess = $this->exitProcessService->updateClearance(
             (int) $request->exit_process_id,
-            $request->clearance_items,
+            $payload,
             (int) Auth::id()
         );
+
+        if ($request->ajax() || $request->expectsJson() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Exit clearance updated successfully.',
+                'process' => $updatedProcess,
+            ]);
+        }
 
         return back()->with('success', 'Exit clearance updated.');
     }

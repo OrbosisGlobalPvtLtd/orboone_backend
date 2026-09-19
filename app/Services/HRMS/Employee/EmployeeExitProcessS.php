@@ -508,7 +508,33 @@ class EmployeeExitProcessS
 
         DB::table($this->exitTable)->where('id', $exitId)->update($updates);
 
-        return $this->refreshStatus($exitId);
+        $currentExit = DB::table($this->exitTable)->where('id', $exitId)->first();
+        $assetStatus = $currentExit->asset_status;
+        $fnfStatus = $currentExit->fnf_status;
+        $documentStatus = $currentExit->document_status;
+        $handoverStatus = $currentExit->handover_status;
+
+        $overall = 'ready_for_final_approval';
+        if ($assetStatus !== 'cleared' && $assetStatus !== 'waived') {
+            $overall = 'asset_pending';
+        } elseif (! in_array($fnfStatus, ['completed', 'approved', 'paid', 'waived'], true)) {
+            $overall = 'fnf_pending';
+        } elseif (! in_array($documentStatus, ['completed', 'generated', 'sent', 'waived'], true)) {
+            $overall = 'document_pending';
+        } elseif (! in_array($handoverStatus, ['completed', 'cleared', 'waived'], true)) {
+            $overall = 'handover_pending';
+        }
+
+        if ((string) $currentExit->exit_type === 'absconding') {
+            $overall = 'absconded';
+        }
+
+        DB::table($this->exitTable)->where('id', $exitId)->update([
+            'status' => $overall,
+            'updated_at' => now(),
+        ]);
+
+        return (array) DB::table($this->exitTable)->where('id', $exitId)->first();
     }
 
     private function hasPendingAssets(int $employeeId): bool
@@ -659,7 +685,25 @@ class EmployeeExitProcessS
             ->where('exit_process_id', $exitId)
             ->where('department_key', $dept)
             ->first();
-        abort_if(! $clearance, 404, 'Clearance record not found for department.');
+
+        if (! $clearance) {
+            $this->initializeClearances($exitId);
+            $clearance = DB::table('employee_exit_clearances')
+                ->where('exit_process_id', $exitId)
+                ->where('department_key', $dept)
+                ->first();
+        }
+
+        if (! $clearance) {
+            DB::table('employee_exit_clearances')->insert([
+                'exit_process_id' => $exitId,
+                'department_key' => $dept,
+                'status' => $status,
+                'checklist' => $checklistItems ? json_encode($checklistItems) : null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
 
         $update = [
             'status' => $status,
@@ -876,5 +920,179 @@ class EmployeeExitProcessS
         }
 
         return $summary;
+    }
+
+    
+    public function getModuleSummaryBatch(array $employeeIds, array $exitRecordsByEmpId = []): array
+    {
+        if (empty($employeeIds)) {
+            return [];
+        }
+
+        $results = [];
+        $default = [
+            'attendance_pending' => 0,
+            'leave_remaining' => 0,
+            'assets_assigned' => 0,
+            'payroll_pending' => 0,
+            'documents_count' => 0,
+            'loans_pending' => 0,
+            'wfh_pending' => 0,
+            'holiday_work_pending' => 0,
+            'notice_days_remaining' => 0,
+        ];
+
+        foreach ($employeeIds as $eId) {
+            $results[$eId] = $default;
+            if (isset($exitRecordsByEmpId[$eId])) {
+                $exit = $exitRecordsByEmpId[$eId];
+                if (!empty($exit->last_working_day)) {
+                    $lastWorking = \Carbon\Carbon::parse($exit->last_working_day)->startOfDay();
+                    $today = now()->startOfDay();
+                    if ($lastWorking->isAfter($today)) {
+                        $results[$eId]['notice_days_remaining'] = (int) $today->diffInDays($lastWorking);
+                    }
+                }
+            }
+        }
+
+        // 1. Attendance Regularizations
+        if (Schema::hasTable('attendance_regularizations')) {
+            $counts = DB::table('attendance_regularizations')
+                ->select('employee_id', DB::raw('count(*) as aggregate'))
+                ->whereIn('employee_id', $employeeIds)
+                ->where('status', 'pending')
+                ->groupBy('employee_id')
+                ->pluck('aggregate', 'employee_id');
+            foreach ($counts as $eId => $cnt) {
+                if (isset($results[$eId])) $results[$eId]['attendance_pending'] += (int) $cnt;
+            }
+        }
+
+        // 2. Attendance Violations
+        if (Schema::hasTable('attendance_violations')) {
+            $counts = DB::table('attendance_violations')
+                ->select('employee_id', DB::raw('count(*) as aggregate'))
+                ->whereIn('employee_id', $employeeIds)
+                ->groupBy('employee_id')
+                ->pluck('aggregate', 'employee_id');
+            foreach ($counts as $eId => $cnt) {
+                if (isset($results[$eId])) $results[$eId]['attendance_pending'] += (int) $cnt;
+            }
+        }
+
+        // 3. Leave Allocations
+        if (Schema::hasTable('leave_allocations')) {
+            $leaves = DB::table('leave_allocations')
+                ->whereIn('employee_id', $employeeIds)
+                ->orderByDesc('year')
+                ->get()
+                ->unique('employee_id')
+                ->pluck('total_remaining', 'employee_id');
+            foreach ($leaves as $eId => $rem) {
+                if (isset($results[$eId])) $results[$eId]['leave_remaining'] = (float) $rem;
+            }
+        }
+
+        // 4. Asset Allocations
+        if (Schema::hasTable('asset_allocations')) {
+            $counts = DB::table('asset_allocations')
+                ->select('employee_id', DB::raw('count(*) as aggregate'))
+                ->whereIn('employee_id', $employeeIds)
+                ->where(function ($q) {
+                    $q->whereNull('status')->orWhere('status', '!=', 'Returned');
+                })
+                ->groupBy('employee_id')
+                ->pluck('aggregate', 'employee_id');
+            foreach ($counts as $eId => $cnt) {
+                if (isset($results[$eId])) $results[$eId]['assets_assigned'] = (int) $cnt;
+            }
+        }
+
+        // 5. Enterprise Payrolls / Payrolls
+        if (Schema::hasTable('enterprise_payrolls')) {
+            $counts = DB::table('enterprise_payrolls')
+                ->select('employee_id', DB::raw('count(*) as aggregate'))
+                ->whereIn('employee_id', $employeeIds)
+                ->whereNotIn('status', ['paid', 'approved', 'completed'])
+                ->groupBy('employee_id')
+                ->pluck('aggregate', 'employee_id');
+            foreach ($counts as $eId => $cnt) {
+                if (isset($results[$eId])) $results[$eId]['payroll_pending'] += (int) $cnt;
+            }
+        } elseif (Schema::hasTable('payrolls')) {
+            $counts = DB::table('payrolls')
+                ->select('employee_id', DB::raw('count(*) as aggregate'))
+                ->whereIn('employee_id', $employeeIds)
+                ->whereNotIn('status', ['paid', 'approved', 'completed'])
+                ->groupBy('employee_id')
+                ->pluck('aggregate', 'employee_id');
+            foreach ($counts as $eId => $cnt) {
+                if (isset($results[$eId])) $results[$eId]['payroll_pending'] += (int) $cnt;
+            }
+        }
+
+        // 6. Generated Documents
+        if (Schema::hasTable('generated_documents')) {
+            $counts = DB::table('generated_documents')
+                ->select('employee_id', DB::raw('count(*) as aggregate'))
+                ->whereIn('employee_id', $employeeIds)
+                ->groupBy('employee_id')
+                ->pluck('aggregate', 'employee_id');
+            foreach ($counts as $eId => $cnt) {
+                if (isset($results[$eId])) $results[$eId]['documents_count'] = (int) $cnt;
+            }
+        }
+
+        // 7. Loans / Adjustments
+        if (Schema::hasTable('enterprise_payroll_adjustments')) {
+            $counts = DB::table('enterprise_payroll_adjustments')
+                ->select('employee_id', DB::raw('count(*) as aggregate'))
+                ->whereIn('employee_id', $employeeIds)
+                ->where('status', 'pending')
+                ->groupBy('employee_id')
+                ->pluck('aggregate', 'employee_id');
+            foreach ($counts as $eId => $cnt) {
+                if (isset($results[$eId])) $results[$eId]['loans_pending'] += (int) $cnt;
+            }
+        } elseif (Schema::hasTable('payroll_adjustments')) {
+            $counts = DB::table('payroll_adjustments')
+                ->select('employee_id', DB::raw('count(*) as aggregate'))
+                ->whereIn('employee_id', $employeeIds)
+                ->where('status', 'pending')
+                ->groupBy('employee_id')
+                ->pluck('aggregate', 'employee_id');
+            foreach ($counts as $eId => $cnt) {
+                if (isset($results[$eId])) $results[$eId]['loans_pending'] += (int) $cnt;
+            }
+        }
+
+        // 8. WFH Requests
+        if (Schema::hasTable('wfh_requests')) {
+            $counts = DB::table('wfh_requests')
+                ->select('employee_id', DB::raw('count(*) as aggregate'))
+                ->whereIn('employee_id', $employeeIds)
+                ->where('status', 'pending')
+                ->groupBy('employee_id')
+                ->pluck('aggregate', 'employee_id');
+            foreach ($counts as $eId => $cnt) {
+                if (isset($results[$eId])) $results[$eId]['wfh_pending'] = (int) $cnt;
+            }
+        }
+
+        // 9. Holiday Work
+        if (Schema::hasTable('holiday_work_requests')) {
+            $counts = DB::table('holiday_work_requests')
+                ->select('employee_id', DB::raw('count(*) as aggregate'))
+                ->whereIn('employee_id', $employeeIds)
+                ->where('status', 'pending')
+                ->groupBy('employee_id')
+                ->pluck('aggregate', 'employee_id');
+            foreach ($counts as $eId => $cnt) {
+                if (isset($results[$eId])) $results[$eId]['holiday_work_pending'] += (int) $cnt;
+            }
+        }
+
+        return $results;
     }
 }

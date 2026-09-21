@@ -25,6 +25,7 @@ class AttendanceS
         private ?WfhRequestService $wfhRequestService = null,
         ?AttendanceContextResolverService $contextResolver = null
     ) {
+        $this->wfhRequestService = $wfhRequestService ?: app(WfhRequestService::class);
         $this->contextResolver = $contextResolver ?: new AttendanceContextResolverService($ruleResolver);
     }
 
@@ -133,14 +134,24 @@ class AttendanceS
         } else {
             // Requested WFH
             if ($employeeWorkMode !== 'wfh' && ! $isUnlocked) {
-                // Permanent WFO employee selecting WFH requires approved WFH request for today
-                $approvedWfh = $this->wfhRequestService?->approvedForDate((int) $employee->id, $today);
-                if (! $approvedWfh || $approvedWfh->status !== 'approved') {
-                    if ($enforceEmployeeRules) {
-                        return [
-                            'status' => 'error',
-                            'message' => 'No approved Work From Home request found for today. Please contact HR.',
-                        ];
+                // Check if employee has an approved Holiday / Week-off Work Request with WFH mode for today
+                $hasApprovedHolidayWfh = \App\Models\HRMS\Attendance\HolidayWorkRequestM::where('employee_id', $employee->id)
+                    ->whereDate('worked_date', $today)
+                    ->where('status', 'approved')
+                    ->where('work_mode', 'wfh')
+                    ->exists();
+
+                if (! $hasApprovedHolidayWfh) {
+                    // Permanent WFO employee selecting WFH requires approved WFH request for today
+                    $wfhService = $this->wfhRequestService ?: app(WfhRequestService::class);
+                    $approvedWfh = $wfhService->approvedForDate((int) $employee->id, $today);
+                    if (! $approvedWfh || $approvedWfh->status !== 'approved') {
+                        if ($enforceEmployeeRules) {
+                            return [
+                                'status' => 'error',
+                                'message' => 'No approved Work From Home request found for today. Please contact HR.',
+                            ];
+                        }
                     }
                 }
             }
@@ -168,10 +179,12 @@ class AttendanceS
             || $isFirstHalfLeave
             || $isSecondHalfLeave;
 
-        $isFullLeave = $existingTypeCode === 'leave' && ! $isHalfDayContext;
+        $isAutoWeekoffOrHoliday = in_array($existingTypeCode, ['week_off', 'holiday'], true) && ! $existing->punch_in_time;
 
         if ($existing && (in_array($existingTypeCode, ['absent', 'week_off', 'holiday'], true) || $isFullLeave) && ! $isUnlocked) {
-            return ['status' => 'error', 'message' => 'Attendance is already marked for today.'];
+            if (! ($isAutoWeekoffOrHoliday && $hasApprovedHolidayWork)) {
+                return ['status' => 'error', 'message' => 'Attendance is already marked for today.'];
+            }
         }
 
         if ($existing && ($existing->is_blocked || $existing->is_punch_blocked || $existing->attendance_status === 'punch_blocked') && ! $existing->is_admin_unlocked && ! $isUnlocked) {
@@ -203,6 +216,7 @@ class AttendanceS
             && ! $attendanceTypeId
             && ! $isUnlocked
             && ! $approvedLeave
+            && ! $hasApprovedHolidayWork
             && ! optional($existing)->is_late_exempted
             && ! optional($existing)->is_admin_unlocked;
 

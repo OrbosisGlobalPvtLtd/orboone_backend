@@ -20,19 +20,17 @@
         --orb-shadow: 0 14px 35px rgba(16, 24, 40, .07);
     }
 
-    html,
     body {
         background: var(--orb-bg) !important;
-        overflow-x: hidden !important;
     }
 
     .orb-page {
         width: 100%;
         max-width: 100%;
-        min-height: calc(100vh - 80px);
-        padding: 22px 24px 34px;
+        min-height: calc(100vh - 90px);
+        padding: 24px !important;
         background: var(--orb-bg);
-        overflow-x: hidden;
+        box-sizing: border-box;
     }
 
     /* HERO */
@@ -43,7 +41,7 @@
             radial-gradient(circle at top right, rgba(255, 255, 255, .24), transparent 30%),
             linear-gradient(135deg, var(--orb-primary), var(--orb-secondary));
         border-radius: 26px;
-        padding: 26px 28px;
+        padding: 24px 28px;
         color: #fff;
         box-shadow: 0 20px 45px rgba(75, 0, 232, .22);
         display: flex;
@@ -51,6 +49,8 @@
         justify-content: space-between;
         gap: 18px;
         margin: 0 0 18px;
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .orb-hero::after {
@@ -299,21 +299,68 @@
         margin: 0;
         border-bottom: 1px solid #EEF2F6;
         background: #FCFCFD;
-        padding: 12px 18px;
+        padding: 14px 18px;
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .orb-filter-form {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: 10px;
-        align-items: end;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: flex-end;
         margin: 0;
         width: 100%;
+        box-sizing: border-box;
     }
 
     .orb-filter-item {
-        min-width: 0;
+        flex: 1 1 140px;
+        min-width: 130px;
         margin: 0 !important;
+    }
+
+    .orb-filter-actions {
+        flex: 0 0 auto !important;
+        min-width: 200px !important;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .orb-btn-search {
+        min-height: 38px;
+        height: 38px;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 700;
+        padding: 0 18px;
+        min-width: 100px;
+        white-space: nowrap;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        box-shadow: 0 4px 14px rgba(75, 0, 232, 0.25);
+    }
+
+    .orb-btn-reset {
+        min-height: 38px;
+        height: 38px;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 700;
+        padding: 0 16px;
+        min-width: 90px;
+        white-space: nowrap;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+    }
+
+    .orb-filter .orb-form-group {
+        margin-bottom: 0 !important;
     }
 
     .orb-filter .form-control,
@@ -326,25 +373,61 @@
         font-weight: 700;
         color: var(--orb-text);
         box-shadow: none !important;
-        padding: 0 11px;
+        padding: 0 10px;
         background-color: #fff;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .orb-filter .select2-container--default .select2-selection--single {
+        height: 38px !important;
+        border-radius: 12px !important;
+        border: 1px solid var(--orb-border) !important;
+        padding-left: 10px !important;
+        padding-right: 28px !important;
+    }
+
+    .orb-filter .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 36px !important;
+        font-size: 12px !important;
+        font-weight: 700 !important;
+    }
+
+    .orb-filter .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 36px !important;
+        right: 8px !important;
     }
 
     .orb-filter label,
     .orb-form-label {
-        font-size: 10.5px;
+        font-size: 11px;
         text-transform: uppercase;
         color: var(--orb-muted);
-        font-weight: 900;
+        font-weight: 800;
         margin-bottom: 5px;
         letter-spacing: .04em;
         display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .orb-filter .form-control:focus,
     .orb-filter .custom-select:focus {
         border-color: rgba(75, 0, 232, .30);
         box-shadow: 0 0 0 4px rgba(75, 0, 232, .08) !important;
+    }
+
+    /* TABLE WRAP */
+    .orb-table-wrap,
+    .crud-table-responsive {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
     }
 
     /* DATATABLE TOOLBAR */
@@ -527,6 +610,16 @@
         background: #FAFAFF;
     }
 
+    .orb-table-footer-target {
+        width: 100% !important;
+        position: relative;
+        z-index: 5;
+    }
+
+    .orb-table-footer-target:empty {
+        display: none;
+    }
+
     .orb-table-footer,
     .dataTables_wrapper .row:last-child {
         display: flex !important;
@@ -537,14 +630,16 @@
         padding: 12px 18px 14px !important;
         border-top: 1px solid #EEF2F6;
         background: #fff;
+        width: 100% !important;
+        box-sizing: border-box !important;
         overflow: visible !important;
     }
 
     .dataTables_wrapper .dataTables_info {
         padding: 0 !important;
-        font-size: 12px;
-        font-weight: 700;
-        color: var(--orb-muted);
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        color: var(--orb-muted, #6B7280) !important;
         white-space: nowrap;
     }
 
@@ -555,14 +650,69 @@
         overflow-x: visible !important;
     }
 
-    .dataTables_wrapper .paginate_button {
+    .dataTables_paginate .pagination {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        list-style: none !important;
+    }
+
+    .dataTables_paginate .pagination .page-item {
+        margin: 0 !important;
+        border: none !important;
+        background: transparent !important;
+    }
+
+    .dataTables_paginate .pagination .page-item .page-link,
+    .dataTables_paginate .paginate_button {
+        height: 34px !important;
+        min-width: 34px !important;
+        padding: 0 12px !important;
         border-radius: 9px !important;
-        border: 1px solid var(--orb-border) !important;
-        background: #fff !important;
-        margin: 0 2px !important;
-        padding: 5px 10px !important;
-        font-size: 12px !important;
+        border: 1px solid transparent !important;
+        background: transparent !important;
+        color: var(--orb-primary, #4B00E8) !important;
+        font-size: 13px !important;
+        font-weight: 700 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        cursor: pointer !important;
+        transition: all 0.18s ease !important;
+        box-shadow: none !important;
+        text-decoration: none !important;
+        outline: none !important;
+    }
+
+    .dataTables_paginate .pagination .page-item:not(.active):not(.disabled) .page-link:hover,
+    .dataTables_paginate .paginate_button:hover:not(.current):not(.disabled) {
+        background: var(--orb-soft, #F3EDFF) !important;
+        color: var(--orb-primary, #4B00E8) !important;
+        border-color: transparent !important;
+    }
+
+    .dataTables_paginate .pagination .page-item.active .page-link,
+    .dataTables_paginate .paginate_button.current,
+    .dataTables_paginate .paginate_button.current:hover {
+        background: linear-gradient(135deg, var(--orb-primary, #4B00E8), var(--orb-secondary, #FF5252)) !important;
+        color: #ffffff !important;
+        border: none !important;
         font-weight: 800 !important;
+        box-shadow: 0 4px 14px rgba(75, 0, 232, 0.35) !important;
+        cursor: default !important;
+    }
+
+    .dataTables_paginate .pagination .page-item.disabled .page-link,
+    .dataTables_paginate .paginate_button.disabled,
+    .dataTables_paginate .paginate_button.disabled:hover {
+        background: transparent !important;
+        color: #94A3B8 !important;
+        border-color: transparent !important;
+        cursor: not-allowed !important;
+        box-shadow: none !important;
+        opacity: 0.6 !important;
     }
 
     /* BADGE */
@@ -691,30 +841,63 @@
     }
 
     .orb-modal .form-control,
-    .orb-modal .custom-select {
+    .orb-modal .custom-select,
+    .orb-modal select {
         border-radius: 14px;
         border: 1px solid var(--orb-border);
         min-height: 44px;
+        height: 44px;
         font-size: 13px;
+        font-weight: 600;
+        color: var(--orb-text);
+        padding: 0 14px;
+    }
+
+    .orb-modal select.form-control,
+    .orb-modal .custom-select {
+        padding-right: 36px;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right 14px center;
+        background-size: 12px 12px;
+        appearance: none;
+        -webkit-appearance: none;
     }
 
     .orb-modal .form-control:focus,
-    .orb-modal .custom-select:focus {
-        border-color: rgba(75, 0, 232, .28);
-        box-shadow: 0 0 0 4px rgba(75, 0, 232, .08) !important;
+    .orb-modal .custom-select:focus,
+    .orb-modal select:focus {
+        border-color: var(--orb-primary);
+        box-shadow: 0 0 0 4px rgba(75, 0, 232, .10) !important;
+        outline: none;
     }
 
-    @media(max-width: 1199px) {
-        .orb-page {
-            padding: 18px 18px 28px;
-        }
+    /* Select2 Option Highlighting and Text Color */
+    .select2-container--default .select2-results__option--highlighted,
+    .select2-container--default .select2-results__option--highlighted[aria-selected],
+    .select2-container--default .select2-results__option--highlighted[aria-selected="true"],
+    .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
+        background: linear-gradient(135deg, var(--orb-primary, #4B00E8), var(--orb-secondary, #FF5252)) !important;
+        color: #FFFFFF !important;
+    }
 
-        .orb-filter-form {
-            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    .select2-container--default .select2-results__option--highlighted *,
+    .select2-container--default .select2-results__option--highlighted[aria-selected] *,
+    .select2-container--default .select2-results__option--highlighted[aria-selected="true"] * {
+        color: #FFFFFF !important;
+    }
+
+    @media(max-width: 1200px) {
+        .orb-page {
+            padding: 18px 20px 28px !important;
         }
     }
 
     @media(max-width: 991px) {
+        .orb-page {
+            padding: 16px 16px 24px !important;
+        }
+
         .orb-summary-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
         }
@@ -722,26 +905,27 @@
         .orb-hero {
             align-items: flex-start;
             flex-direction: column;
+            padding: 18px 20px;
+            border-radius: 20px;
         }
 
-        .orb-hero-actions,
-        .orb-hero-actions .orb-btn {
-            width: 100%;
+        .orb-table-header {
+            gap: 12px;
         }
     }
 
     @media(max-width: 768px) {
         .orb-page {
-            padding: 14px 12px 22px;
+            padding: 14px 12px 22px !important;
         }
 
         .orb-hero {
-            padding: 18px;
-            border-radius: 20px;
+            padding: 16px;
+            border-radius: 18px;
         }
 
         .orb-hero h1 {
-            font-size: 22px;
+            font-size: 20px;
         }
 
         .orb-summary-grid {
@@ -752,10 +936,14 @@
             flex-direction: column;
             align-items: stretch;
             padding: 14px;
+            gap: 12px;
         }
 
         .orb-table-head-right {
-            justify-content: space-between;
+            width: 100%;
+        }
+
+        .orb-table-head-right .orb-btn {
             width: 100%;
         }
 
@@ -764,7 +952,25 @@
         }
 
         .orb-filter-form {
-            grid-template-columns: 1fr;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .orb-filter-item {
+            width: 100% !important;
+            flex: 1 1 100% !important;
+        }
+
+        .orb-filter-actions {
+            width: 100% !important;
+            min-width: 100% !important;
+            display: flex;
+            gap: 8px;
+        }
+
+        .orb-filter-actions .orb-btn {
+            flex: 1 1 50% !important;
+            width: 50% !important;
         }
 
         .orb-table-tools {
@@ -773,34 +979,72 @@
 
         .crud-dt-toolbar,
         .orb-dt-toolbar {
-            flex-wrap: wrap !important;
-            align-items: flex-start !important;
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 10px !important;
+            padding: 10px 14px !important;
         }
 
-        .crud-dt-toolbar .crud-dt-left,
-        .crud-dt-toolbar .crud-dt-right,
+        .crud-dt-left,
+        .crud-dt-right,
         .orb-dt-toolbar .dt-left,
         .orb-dt-toolbar .dt-right {
             width: 100% !important;
+            justify-content: space-between !important;
+            margin: 0 !important;
         }
 
         .dataTables_wrapper .dt-buttons {
-            justify-content: flex-start !important;
+            width: 100% !important;
+            justify-content: space-between !important;
             flex-wrap: wrap !important;
-            margin-top: 6px !important;
+            margin: 0 !important;
+            gap: 4px !important;
+        }
+
+        .crud-export-btn,
+        .dataTables_wrapper .dt-buttons .btn,
+        .dataTables_wrapper .dt-buttons .dt-button {
+            flex: 1 1 auto !important;
+            padding: 0 6px !important;
+            font-size: 11px !important;
         }
 
         .orb-table-footer,
         .dataTables_wrapper .row:last-child {
             flex-direction: column !important;
-            align-items: flex-start !important;
-            padding: 12px 14px 14px !important;
+            align-items: center !important;
+            gap: 10px !important;
+            padding: 12px 14px !important;
+            text-align: center;
         }
 
         .dataTables_wrapper .dataTables_paginate {
             width: 100%;
+            display: flex;
+            justify-content: center;
             overflow-x: auto !important;
             padding-bottom: 3px !important;
+        }
+    }
+
+    @media(max-width: 480px) {
+        .orb-page {
+            padding: 10px 8px 18px !important;
+        }
+
+        .orb-hero {
+            padding: 14px;
+            border-radius: 16px;
+        }
+
+        .orb-hero h1 {
+            font-size: 18px;
+        }
+
+        .orb-btn {
+            padding: 0 12px;
+            font-size: 12px;
         }
     }
 </style>
@@ -822,18 +1066,6 @@
                 {{ $pageSubtitle ?? 'Manage HRMS records with filters, audit-friendly actions, exports and premium management workflow.' }}
             </p>
         </div>
-
-        @if(!empty($canCreate))
-        <div class="orb-hero-actions">
-            <button type="button"
-                class="orb-btn orb-btn-primary"
-                data-toggle="modal"
-                data-target="#createModal">
-                <i class="fas fa-plus"></i>
-                Add New
-            </button>
-        </div>
-        @endif
     </div>
 
     @if(session('success') || session('status'))
@@ -907,17 +1139,14 @@
                 </div>
 
                 <div class="orb-table-head-right">
-                    <span class="orb-table-count">
-                        <i class="fas fa-database"></i>
-                        Total: {{ method_exists($rows, 'total') ? $rows->total() : collect($rows ?? [])->count() }}
-                    </span>
-
-                    @if(!empty($filters))
-                    <a href="{{ url()->current() }}"
-                        class="orb-btn orb-btn-light orb-btn-reset">
-                        <i class="fas fa-undo"></i>
-                        Reset
-                    </a>
+                    @if(!empty($canCreate))
+                    <button type="button"
+                        class="orb-btn orb-btn-gradient"
+                        data-toggle="modal"
+                        data-target="#createModal">
+                        <i class="fas fa-plus"></i>
+                        Add New
+                    </button>
                     @endif
                 </div>
             </div>
@@ -930,34 +1159,30 @@
 
                     <div class="orb-filter-item">
 
-                        <label>
-                            {{ $filter['label'] }}
-                        </label>
-
                         @if(($filter['type'] ?? 'text') === 'select')
 
-                        <select name="{{ $filter['name'] }}"
-                            class="form-control {{ ($filter['name'] ?? '') === 'employee_id' ? 'select2-searchable' : '' }}">
-
-                            <option value="">
-                                {{ $filter['placeholder'] ?? 'All' }}
-                            </option>
-
-                            @foreach($filter['options'] as $value => $label)
-                            <option value="{{ $value }}"
-                                {{ (string) request($filter['name']) === (string) $value ? 'selected' : '' }}>
-                                {{ $label }}
-                            </option>
-                            @endforeach
-                        </select>
+                        <x-form.select 
+                            :name="$filter['name']"
+                            :label="$filter['label']"
+                            :options="$filter['options'] ?? []"
+                            :selected="request($filter['name'])"
+                            :placeholder="$filter['placeholder'] ?? 'All'"
+                            :searchable="($filter['name'] ?? '') === 'employee_id' || count($filter['options'] ?? []) > 5"
+                            wrapper-class="mb-0"
+                        />
 
                         @else
 
-                        <input type="{{ $filter['type'] ?? 'text' }}"
-                            name="{{ $filter['name'] }}"
-                            value="{{ request($filter['name']) }}"
-                            class="form-control"
-                            placeholder="{{ $filter['placeholder'] ?? '' }}">
+                        <div class="orb-form-group mb-0">
+                            <label class="orb-form-label">
+                                {{ $filter['label'] }}
+                            </label>
+                            <input type="{{ $filter['type'] ?? 'text' }}"
+                                name="{{ $filter['name'] }}"
+                                value="{{ request($filter['name']) }}"
+                                class="form-control"
+                                placeholder="{{ $filter['placeholder'] ?? '' }}">
+                        </div>
 
                         @endif
 
@@ -965,16 +1190,34 @@
 
                     @endforeach
 
-                    <div class="orb-filter-item d-flex align-items-end" style="gap: 8px;">
-                        <button type="submit" class="btn text-white font-weight-bold shadow-sm w-100" style="height: 42px; border-radius: 12px; background: var(--orb-primary); border: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px;">
+                    <div class="orb-filter-item orb-filter-actions">
+                        <button type="submit" class="orb-btn orb-btn-gradient orb-btn-search">
                             <i class="fas fa-search"></i> Search
                         </button>
+                        <a href="{{ url()->current() }}" class="orb-btn orb-btn-light orb-btn-reset" title="Reset Filters">
+                            <i class="fas fa-undo"></i> Reset
+                        </a>
                     </div>
                 </form>
             </div>
             @endif
 
-            <div class="orb-table-tools"></div>
+            <div class="orb-table-tools">
+                <div class="crud-dt-toolbar w-100 d-flex align-items-center justify-content-between flex-wrap" style="gap: 10px; padding: 10px 18px;">
+                    <div class="crud-dt-left d-flex align-items-center" style="gap: 8px;">
+                        <label class="mb-0 d-flex align-items-center font-weight-bold text-muted" style="font-size: 13px; gap: 8px;">
+                            Show
+                            <select name="per_page" class="form-control form-control-sm custom-select" style="width: 75px; height: 34px; font-weight: 700; border-radius: 8px; padding: 0 8px;" onchange="var u = new URL(window.location.href); u.searchParams.set('per_page', this.value); u.searchParams.set('page', '1'); window.location.href = u.toString();">
+                                @foreach([10, 25, 50, 100] as $size)
+                                    <option value="{{ $size }}" {{ (int) request('per_page', 25) === $size ? 'selected' : '' }}>{{ $size }}</option>
+                                @endforeach
+                            </select>
+                            entries
+                        </label>
+                    </div>
+                    <div class="crud-dt-right d-flex align-items-center" style="gap: 8px;"></div>
+                </div>
+            </div>
 
             <div class="orb-table-wrap crud-table-responsive">
 
@@ -1018,14 +1261,15 @@
                                 @if(($column['type'] ?? '') === 'badge')
 
                                 @php
+                                $valLower = is_string($value) ? strtolower(trim($value)) : $value;
                                 $badge =
-                                in_array($value, ['approved','active','earned','processed',1,true], true)
+                                in_array($valLower, ['approved','active','earned','processed',1,true,'wfo'], true)
                                 ? 'orb-badge-success'
                                 : (
-                                in_array($value, ['pending','unprocessed'], true)
+                                in_array($valLower, ['pending','unprocessed'], true)
                                 ? 'orb-badge-warning'
                                 : (
-                                in_array($value, ['rejected','cancelled','expired','inactive',0,false], true)
+                                in_array($valLower, ['rejected','cancelled','expired','inactive',0,false], true)
                                 ? 'orb-badge-danger'
                                 : 'orb-badge-primary'
                                 )
@@ -1033,7 +1277,7 @@
                                 @endphp
 
                                 <span class="orb-badge {{ $badge }}">
-                                    {{ is_bool($value) ? ($value ? 'Active' : 'Inactive') : ucfirst((string) $value) }}
+                                    {{ is_bool($value) ? ($value ? 'Active' : 'Inactive') : (in_array($valLower, ['wfh','wfo'], true) ? strtoupper((string) $value) : ucfirst((string) $value)) }}
                                 </span>
 
                                 @elseif(($column['type'] ?? '') === 'date' && $value)
@@ -1086,21 +1330,36 @@
                                         @endif
 
                                         @foreach($rowActions ?? [] as $action)
+                                            @php
+                                                $rowStatus = strtolower((string) data_get($row, 'status', ''));
+                                                $actionLabel = strtolower((string) ($action['label'] ?? ''));
+                                                $skipAction = false;
 
-                                        <form method="POST"
-                                            action="{{ route($action['route'], data_get($row, 'id')) }}"
-                                            onsubmit="return confirm('{{ $action['confirm'] ?? 'Continue?' }}')">
+                                                if (isset($action['show_when_status'])) {
+                                                    $allowedStatuses = (array) $action['show_when_status'];
+                                                    $skipAction = !in_array($rowStatus, array_map('strtolower', $allowedStatuses), true);
+                                                } elseif (in_array($actionLabel, ['approve', 'accept'])) {
+                                                    $skipAction = ($rowStatus === 'approved' || $rowStatus === 'rejected' || $rowStatus === 'cancelled');
+                                                } elseif (in_array($actionLabel, ['reject', 'decline'])) {
+                                                    $skipAction = ($rowStatus === 'rejected' || $rowStatus === 'approved' || $rowStatus === 'cancelled');
+                                                }
+                                            @endphp
 
-                                            @csrf
+                                            @if(!$skipAction)
+                                            <form method="POST"
+                                                action="{{ route($action['route'], data_get($row, 'id')) }}"
+                                                onsubmit="return confirm('{{ $action['confirm'] ?? 'Continue?' }}')">
 
-                                            <button class="dropdown-item"
-                                                type="submit">
-                                                <i class="{{ $action['icon'] ?? 'fas fa-check' }} mr-2"></i>
-                                                {{ $action['label'] }}
-                                            </button>
+                                                @csrf
 
-                                        </form>
+                                                <button class="dropdown-item"
+                                                    type="submit">
+                                                    <i class="{{ $action['icon'] ?? 'fas fa-check' }} mr-2"></i>
+                                                    {{ $action['label'] }}
+                                                </button>
 
+                                            </form>
+                                            @endif
                                         @endforeach
 
                                         @if(!empty($canDelete))
@@ -1142,9 +1401,7 @@
             </div>
 
             @if(method_exists($rows, 'links'))
-            <div class="mt-3">
-                {{ $rows->appends(request()->query())->links() }}
-            </div>
+                {{ $rows->appends(request()->query())->links('vendor.pagination.orbo') }}
             @endif
 
         </div>
@@ -1197,15 +1454,29 @@
         $('.js-orb-datatable').each(function() {
             var $table = $(this);
 
-            var dataTable = $table.DataTable({
-                paging: true,
+                var exportOptions = {
+                    columns: function(idx, data, node) {
+                        var $th = $($table.find('thead th')[idx]);
+                        var headerText = $th.text().trim().toLowerCase();
+                        return headerText !== 'action' && !$th.hasClass('no-export');
+                    },
+                    format: {
+                        body: function (data, row, column, node) {
+                            var $node = $('<div>' + data + '</div>');
+                            $node.find('button, .dropdown-menu, .dropdown, i.fas, i.fa, i.far').remove();
+                            var text = $node.text().trim();
+                            return text.replace(/\s+/g, ' ');
+                        }
+                    }
+                };
+
+                var dataTable = $table.DataTable({
+                paging: false,
                 searching: false,
-                info: true,
-                lengthChange: true,
+                info: false,
+                lengthChange: false,
                 responsive: false,
                 autoWidth: false,
-                pageLength: 25,
-                lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
                 order: [],
 
                 language: {
@@ -1213,30 +1484,213 @@
                     zeroRecords: 'No matching records found.'
                 },
 
-                dom: '<"crud-dt-toolbar"<"crud-dt-left"l><"crud-dt-right"B>>rt<"orb-table-footer"ip>',
+                dom: '<"dt-buttons-container"B>rt',
 
                 buttons: [
-                    { extend: 'csvHtml5', text: '<i class="fas fa-file-csv text-muted"></i> CSV', className: 'crud-export-btn' },
-                    { extend: 'excelHtml5', text: '<i class="fas fa-file-excel text-success"></i> Excel', className: 'crud-export-btn' },
-                    { extend: 'pdfHtml5', text: '<i class="fas fa-file-pdf text-danger"></i> PDF', className: 'crud-export-btn' },
-                    { extend: 'print', text: '<i class="fas fa-print text-primary"></i> Print', className: 'crud-export-btn' }
+                    { 
+                        extend: 'csvHtml5', 
+                        text: '<i class="fas fa-file-csv text-muted"></i> CSV', 
+                        className: 'crud-export-btn',
+                        exportOptions: exportOptions 
+                    },
+                    { 
+                        extend: 'excelHtml5', 
+                        text: '<i class="fas fa-file-excel text-success"></i> Excel', 
+                        className: 'crud-export-btn',
+                        exportOptions: exportOptions 
+                    },
+                    { 
+                        extend: 'pdfHtml5', 
+                        text: '<i class="fas fa-file-pdf text-danger"></i> PDF', 
+                        className: 'crud-export-btn',
+                        orientation: 'landscape',
+                        pageSize: 'A4',
+                        title: '{{ $branding["company_name"] ?? "OrboOne" }} — {{ $pageTitle }}',
+                        exportOptions: exportOptions,
+                        customize: function (doc) {
+                            doc.pageOrientation = 'landscape';
+                            doc.pageSize = 'A4';
+                            doc.pageMargins = [20, 48, 20, 32];
+
+                            doc['header'] = function(currentPage, pageCount) {
+                                return {
+                                    margin: [20, 16, 20, 0],
+                                    columns: [
+                                        {
+                                            text: '{{ strtoupper($branding["company_name"] ?? "ORBOONE HRMS") }} — {{ strtoupper($pageTitle) }}',
+                                            fontSize: 9,
+                                            bold: true,
+                                            color: '{{ $branding["primary_color"] ?? "#4B00E8" }}'
+                                        },
+                                        {
+                                            text: 'Generated on: ' + (new Date()).toLocaleDateString() + '  |  Page ' + currentPage.toString() + ' of ' + pageCount,
+                                            alignment: 'right',
+                                            fontSize: 8,
+                                            color: '#64748B'
+                                        }
+                                    ]
+                                };
+                            };
+
+                            if (doc.content && doc.content[1] && doc.content[1].table) {
+                                var objLayout = {};
+                                objLayout['hLineWidth'] = function(i) { return 0.5; };
+                                objLayout['vLineWidth'] = function(i) { return 0; };
+                                objLayout['hLineColor'] = function(i) { return '#E2E8F0'; };
+                                objLayout['paddingLeft'] = function(i) { return 8; };
+                                objLayout['paddingRight'] = function(i) { return 8; };
+                                objLayout['paddingTop'] = function(i) { return 6; };
+                                objLayout['paddingBottom'] = function(i) { return 6; };
+                                doc.content[1].layout = objLayout;
+
+                                var tableBody = doc.content[1].table.body;
+                                var colCount = tableBody[0].length;
+                                
+                                for (var i = 0; i < colCount; i++) {
+                                    tableBody[0][i].fillColor = '{{ $branding["primary_color"] ?? "#4B00E8" }}';
+                                    tableBody[0][i].color = '#FFFFFF';
+                                    tableBody[0][i].fontSize = 9;
+                                    tableBody[0][i].bold = true;
+                                }
+
+                                for (var r = 1; r < tableBody.length; r++) {
+                                    var rowColor = (r % 2 === 0) ? '#F8FAFC' : '#FFFFFF';
+                                    for (var c = 0; c < colCount; c++) {
+                                        tableBody[r][c].fontSize = 8.5;
+                                        if (!tableBody[r][c].fillColor) {
+                                            tableBody[r][c].fillColor = rowColor;
+                                        }
+                                    }
+                                }
+
+                                doc.content[1].table.widths = Array(colCount).fill('*');
+                                if (colCount > 0) {
+                                    doc.content[1].table.widths[0] = '6%';
+                                }
+                            }
+                        }
+                    },
+                    { 
+                        extend: 'print', 
+                        text: '<i class="fas fa-print text-primary"></i> Print', 
+                        className: 'crud-export-btn',
+                        title: '',
+                        exportOptions: exportOptions,
+                        customize: function (win) {
+                            var body = $(win.document.body);
+
+                            $(win.document.head).append(`
+                                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+                                <style>
+                                    @media print {
+                                        @page {
+                                            size: A4 landscape;
+                                            margin: 10mm 12mm;
+                                        }
+                                    }
+                                    body {
+                                        font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+                                        color: #0F172A !important;
+                                        background: #FFFFFF !important;
+                                        padding: 15px !important;
+                                        margin: 0 !important;
+                                    }
+                                    .print-hero {
+                                        background: linear-gradient(135deg, {{ $branding['primary_color'] ?? '#4B00E8' }} 0%, {{ $branding['secondary_color'] ?? '#FF5252' }} 100%) !important;
+                                        border-radius: 12px !important;
+                                        padding: 16px 22px !important;
+                                        color: #FFFFFF !important;
+                                        margin-bottom: 20px !important;
+                                        display: flex;
+                                        align-items: center;
+                                        justify-content: space-between;
+                                    }
+                                    .print-hero h2 {
+                                        margin: 0 0 4px;
+                                        font-size: 18px;
+                                        font-weight: 800;
+                                        color: #FFFFFF;
+                                    }
+                                    .print-hero p {
+                                        margin: 0;
+                                        font-size: 11px;
+                                        opacity: 0.9;
+                                    }
+                                    .print-meta {
+                                        font-size: 11px;
+                                        opacity: 0.9;
+                                        text-align: right;
+                                    }
+                                    table.dataTable {
+                                        width: 100% !important;
+                                        border-collapse: collapse !important;
+                                        margin: 0 !important;
+                                        font-size: 11px !important;
+                                    }
+                                    table.dataTable thead th {
+                                        background: {{ $branding['primary_color'] ?? '#4B00E8' }} !important;
+                                        color: #FFFFFF !important;
+                                        font-weight: 700 !important;
+                                        padding: 9px 10px !important;
+                                        border: 1px solid #CBD5E1 !important;
+                                        text-transform: uppercase;
+                                        font-size: 10px;
+                                        letter-spacing: 0.03em;
+                                    }
+                                    table.dataTable tbody td {
+                                        padding: 8px 10px !important;
+                                        border: 1px solid #E2E8F0 !important;
+                                        color: #1E293B !important;
+                                    }
+                                    table.dataTable tbody tr:nth-child(even) td {
+                                        background-color: #F8FAFC !important;
+                                    }
+                                </style>
+                            `);
+
+                            body.prepend(`
+                                <div class="print-hero">
+                                    <div>
+                                        <h2>{{ $branding['company_name'] ?? 'OrboOne HRMS' }} — {{ $pageTitle }}</h2>
+                                        <p>{{ $pageSubtitle ?? 'Generated Report & Audit View' }}</p>
+                                    </div>
+                                    <div class="print-meta">
+                                        <div>Generated: ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+                                        <div>Total Records: ${$table.find('tbody tr').length}</div>
+                                    </div>
+                                </div>
+                            `);
+                        }
+                    }
                 ],
 
                 initComplete: function() {
                     var $wrapper = $table.closest('.dataTables_wrapper');
-                    var $toolbar = $wrapper.find('.crud-dt-toolbar').first();
-                    var $toolsTarget = $table.closest('.orb-card').find('.orb-table-tools').first();
+                    var $buttons = $wrapper.find('.dt-buttons').first();
+                    var $exportTarget = $table.closest('.orb-card').find('.crud-dt-right').first();
 
-                    if ($toolsTarget.length && $toolbar.length) {
-                        $toolsTarget.empty().append($toolbar);
+                    if ($exportTarget.length && $buttons.length) {
+                        $exportTarget.empty().append($buttons);
                     }
-
-                    console.log(
-                      'TH:', $table.find('thead tr:first th').length,
-                      'TD first row:', $table.find('tbody tr:first td').length
-                    );
                 }
             });
+        });
+
+        // Initialize Select2 in modals
+        $(document).on('shown.bs.modal', '.modal', function () {
+            if (typeof $.fn.select2 !== 'undefined') {
+                $(this).find('select.select2-searchable, select.js-searchable, select.select2-modal-searchable').each(function() {
+                    if ($(this).hasClass('select2-hidden-accessible')) {
+                        $(this).select2('destroy');
+                    }
+                    $(this).select2({
+                        dropdownParent: $(this).closest('.modal'),
+                        placeholder: $(this).data('placeholder') || $(this).attr('placeholder') || $(this).find('option:first').text() || 'Search or select...',
+                        allowClear: true,
+                        width: '100%'
+                    });
+                });
+            }
         });
 
     }

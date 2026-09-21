@@ -35,22 +35,29 @@
                                         <label class="custom-control-label font-weight-bold" for="{{ $modalId }}_{{ $name }}">{{ $field['label'] }}</label>
                                     </div>
                                 @else
+                                @if(($field['type'] ?? 'text') === 'select')
+                                    <x-form.select 
+                                        :name="$name"
+                                        :label="$field['label']"
+                                        :options="$field['options'] ?? []"
+                                        :selected="$value"
+                                        :placeholder="$field['placeholder'] ?? 'Select '.$field['label']"
+                                        searchable="true"
+                                        :required="!empty($field['required'])"
+                                    />
+                                @elseif(($field['type'] ?? 'text') === 'textarea')
                                     <label class="orb-form-label">{{ $field['label'] }}</label>
-                                    @if(($field['type'] ?? 'text') === 'select')
-                                        <select name="{{ $name }}" class="form-control">
-                                            <option value="">{{ $field['placeholder'] ?? 'Select' }}</option>
-                                            @foreach($field['options'] as $optionValue => $optionLabel)
-                                                <option value="{{ $optionValue }}" {{ (string) $value === (string) $optionValue ? 'selected' : '' }}>{{ $optionLabel }}</option>
-                                            @endforeach
-                                        </select>
-                                    @elseif(($field['type'] ?? 'text') === 'textarea')
-                                        <textarea name="{{ $name }}" class="form-control" rows="3">{{ $value }}</textarea>
-                                    @else
-                                        <input type="{{ $field['type'] ?? 'text' }}" name="{{ $name }}" value="{{ $value }}" class="form-control" placeholder="{{ $field['placeholder'] ?? '' }}">
-                                    @endif
+                                    <textarea name="{{ $name }}" class="form-control" rows="3">{{ $value }}</textarea>
                                     @error($name)
                                         <small class="text-danger d-block mt-1">{{ $message }}</small>
                                     @enderror
+                                @else
+                                    <label class="orb-form-label">{{ $field['label'] }}</label>
+                                    <input type="{{ $field['type'] ?? 'text' }}" name="{{ $name }}" value="{{ $value }}" class="form-control" placeholder="{{ $field['placeholder'] ?? '' }}">
+                                    @error($name)
+                                        <small class="text-danger d-block mt-1">{{ $message }}</small>
+                                    @enderror
+                                @endif
                                 @endif
                             </div>
                         @endforeach

@@ -17,10 +17,20 @@ class HolidayWorkRequestC extends Controller
         $query = $this->employeeJoinedQuery('holiday_work_requests')->whereNull('holiday_work_requests.deleted_at');
         $this->applyCommonFilters($query, $request, [
             'dateColumn' => 'holiday_work_requests.worked_date',
-            'filterMap' => ['employee_id' => 'holiday_work_requests.employee_id', 'status' => 'holiday_work_requests.status', 'work_type' => 'holiday_work_requests.work_type'],
+            'filterMap' => [
+                'employee_id' => 'holiday_work_requests.employee_id',
+                'status' => 'holiday_work_requests.status',
+                'work_type' => 'holiday_work_requests.work_type',
+                'work_mode' => 'holiday_work_requests.work_mode',
+            ],
         ]);
 
-        return view('hrms.attendance.holiday_work.index', $this->pageData($query->latest('holiday_work_requests.id')->paginate(50)));
+        $perPage = (int) $request->input('per_page', 25);
+        if (!in_array($perPage, [10, 25, 50, 100], true)) {
+            $perPage = 25;
+        }
+
+        return view('hrms.attendance.holiday_work.index', $this->pageData($query->latest('holiday_work_requests.id')->paginate($perPage)->withQueryString()));
     }
 
     public function store(Request $request)
@@ -29,11 +39,13 @@ class HolidayWorkRequestC extends Controller
             'employee_id' => 'required|exists:employees_new,id',
             'worked_date' => 'required|date',
             'work_type' => 'required|string|max:80',
+            'work_mode' => 'nullable|string|in:wfo,wfh,WFO,WFH',
             'reason' => 'nullable|string',
             'status' => 'nullable|in:pending,approved,rejected,cancelled'
         ]);
 
         $row = HolidayWorkRequestM::create(array_merge($data, [
+            'work_mode' => strtolower($data['work_mode'] ?? 'wfo'),
             'status' => $data['status'] ?? 'pending',
         ]));
 
@@ -78,7 +90,17 @@ class HolidayWorkRequestC extends Controller
 
     public function update(Request $request, $id)
     {
-        $data = $request->validate(['employee_id' => 'required|exists:employees_new,id', 'worked_date' => 'required|date', 'work_type' => 'required|string|max:80', 'reason' => 'nullable|string', 'status' => 'nullable|in:pending,approved,rejected,cancelled']);
+        $data = $request->validate([
+            'employee_id' => 'required|exists:employees_new,id',
+            'worked_date' => 'required|date',
+            'work_type' => 'required|string|max:80',
+            'work_mode' => 'nullable|string|in:wfo,wfh,WFO,WFH',
+            'reason' => 'nullable|string',
+            'status' => 'nullable|in:pending,approved,rejected,cancelled'
+        ]);
+        if (isset($data['work_mode'])) {
+            $data['work_mode'] = strtolower($data['work_mode']);
+        }
         DB::table('holiday_work_requests')->where('id', $id)->update(array_merge($data, ['updated_at' => now()]));
         return back()->with('success', 'Holiday work request updated.');
     }
@@ -200,13 +222,29 @@ class HolidayWorkRequestC extends Controller
             'pageSubtitle' => 'Approve holiday/weekoff work. Comp off is generated after attendance eligibility validation.',
             'rows' => $rows,
             'columns' => [
-                ['key' => 'employee_display_name', 'label' => 'Employee'], ['key' => 'employee_code', 'label' => 'Code'], ['key' => 'worked_date', 'label' => 'Worked Date', 'type' => 'date'], ['key' => 'work_type', 'label' => 'Work Type'], ['key' => 'comp_off_generated', 'label' => 'Comp Off', 'type' => 'badge'], ['key' => 'status', 'label' => 'Status', 'type' => 'badge'],
+                ['key' => 'employee_display_name', 'label' => 'Employee'],
+                ['key' => 'employee_code', 'label' => 'Code'],
+                ['key' => 'worked_date', 'label' => 'Worked Date', 'type' => 'date'],
+                ['key' => 'work_type', 'label' => 'Work Type'],
+                ['key' => 'work_mode', 'label' => 'Work Mode', 'type' => 'badge'],
+                ['key' => 'comp_off_generated', 'label' => 'Comp Off', 'type' => 'badge'],
+                ['key' => 'status', 'label' => 'Status', 'type' => 'badge'],
             ],
             'filters' => [
-                ['name' => 'employee_id', 'label' => 'Employee', 'type' => 'select', 'options' => $employees], ['name' => 'status', 'label' => 'Status', 'type' => 'select', 'options' => ['pending' => 'Pending', 'approved' => 'Approved', 'rejected' => 'Rejected', 'cancelled' => 'Cancelled']], ['name' => 'work_type', 'label' => 'Work Type', 'type' => 'select', 'options' => ['holiday_work' => 'Holiday Work', 'weekoff_work' => 'Weekoff Work']], ['name' => 'from', 'label' => 'From', 'type' => 'date'], ['name' => 'to', 'label' => 'To', 'type' => 'date'],
+                ['name' => 'employee_id', 'label' => 'Employee', 'type' => 'select', 'options' => $employees],
+                ['name' => 'status', 'label' => 'Status', 'type' => 'select', 'options' => ['pending' => 'Pending', 'approved' => 'Approved', 'rejected' => 'Rejected', 'cancelled' => 'Cancelled']],
+                ['name' => 'work_type', 'label' => 'Work Type', 'type' => 'select', 'options' => ['holiday_work' => 'Holiday Work', 'weekoff_work' => 'Weekoff Work']],
+                ['name' => 'work_mode', 'label' => 'Work Mode', 'type' => 'select', 'options' => ['wfo' => 'WFO', 'wfh' => 'WFH']],
+                ['name' => 'from', 'label' => 'From', 'type' => 'date'],
+                ['name' => 'to', 'label' => 'To', 'type' => 'date'],
             ],
             'formFields' => [
-                ['name' => 'employee_id', 'label' => 'Employee', 'type' => 'select', 'options' => $employees], ['name' => 'worked_date', 'label' => 'Worked Date', 'type' => 'date'], ['name' => 'work_type', 'label' => 'Work Type', 'type' => 'select', 'options' => ['holiday_work' => 'Holiday Work', 'weekoff_work' => 'Weekoff Work']], ['name' => 'status', 'label' => 'Status', 'type' => 'select', 'options' => ['pending' => 'Pending', 'approved' => 'Approved', 'rejected' => 'Rejected', 'cancelled' => 'Cancelled']], ['name' => 'reason', 'label' => 'Reason', 'type' => 'textarea', 'col' => 12],
+                ['name' => 'employee_id', 'label' => 'Employee', 'type' => 'select', 'options' => $employees],
+                ['name' => 'worked_date', 'label' => 'Worked Date', 'type' => 'date'],
+                ['name' => 'work_type', 'label' => 'Work Type', 'type' => 'select', 'options' => ['holiday_work' => 'Holiday Work', 'weekoff_work' => 'Weekoff Work']],
+                ['name' => 'work_mode', 'label' => 'Work Mode', 'type' => 'select', 'options' => ['wfo' => 'WFO (Office)', 'wfh' => 'WFH (Home)']],
+                ['name' => 'status', 'label' => 'Status', 'type' => 'select', 'options' => ['pending' => 'Pending', 'approved' => 'Approved', 'rejected' => 'Rejected', 'cancelled' => 'Cancelled']],
+                ['name' => 'reason', 'label' => 'Reason', 'type' => 'textarea', 'col' => 12],
             ],
             'canCreate' => true, 'canEdit' => true, 'canDelete' => true,
             'storeRoute' => 'hrms.attendance.holiday_work.store', 'updateRoute' => 'hrms.attendance.holiday_work.update', 'deleteRoute' => 'hrms.attendance.holiday_work.destroy',

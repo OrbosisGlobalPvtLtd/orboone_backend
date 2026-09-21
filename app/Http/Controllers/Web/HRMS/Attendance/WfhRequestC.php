@@ -66,7 +66,12 @@ class WfhRequestC extends Controller
 
         $statsQuery = clone $query;
 
-        $rows = $query->latest('wfh_requests.id')->paginate(50);
+        $perPage = (int) $request->input('per_page', 25);
+        if (!in_array($perPage, [10, 25, 50, 100], true)) {
+            $perPage = 25;
+        }
+
+        $rows = $query->latest('wfh_requests.id')->paginate($perPage)->withQueryString();
         $approverIds = $rows->getCollection()
             ->flatMap(fn ($row) => [(int) ($row->manager_approved_by ?? 0), (int) ($row->hr_approved_by ?? 0), (int) ($row->assigned_by ?? 0)])
             ->filter()

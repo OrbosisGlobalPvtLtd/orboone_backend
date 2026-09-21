@@ -12,7 +12,9 @@ class AttendanceMobileService
         private AttendanceS $attendanceService,
         private AttendanceRuleResolverService $resolver,
         private ?WfhRequestService $wfhRequestService = null
-    ) {}
+    ) {
+        $this->wfhRequestService = $wfhRequestService ?: app(WfhRequestService::class);
+    }
 
     public function profileStatus(int $userId): array
     {
@@ -113,9 +115,16 @@ class AttendanceMobileService
         $payload['next_action'] = $attendanceData['next_action'] ?? ($payload['ui']['next_action'] ?? 'none');
         $payload['office_location'] = $this->attendanceService->officeLocationPayload();
 
+        $wfhService = $this->wfhRequestService ?: app(WfhRequestService::class);
         $wfhApproved = false;
-        if ($employee && $this->wfhRequestService) {
-            $wfhApproved = (bool) $this->wfhRequestService->approvedForDate((int) $employee->id, Carbon::now(AttendanceRuleResolverService::TIMEZONE)->toDateString());
+        if ($employee) {
+            $approvedHolidayWfh = \App\Models\HRMS\Attendance\HolidayWorkRequestM::where('employee_id', $employee->id)
+                ->whereDate('worked_date', Carbon::now(AttendanceRuleResolverService::TIMEZONE)->toDateString())
+                ->where('status', 'approved')
+                ->where('work_mode', 'wfh')
+                ->exists();
+
+            $wfhApproved = $approvedHolidayWfh || (bool) $wfhService->approvedForDate((int) $employee->id, Carbon::now(AttendanceRuleResolverService::TIMEZONE)->toDateString());
         }
 
         $isPermanentWfh = $employee ? $employee->isPermanentWfh() : false;

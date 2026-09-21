@@ -302,6 +302,19 @@ class EmployeeM extends Model
         });
     }
 
+    public function scopeActiveApproved($query)
+    {
+        return $query->active()
+            ->whereHas('user', function ($u) {
+                $u->where(function ($sub) {
+                    $sub->where('is_active', 1)->orWhereNull('is_active');
+                });
+            })
+            ->whereHas('profile', function ($p) {
+                $p->where('profile_status', 'approved');
+            });
+    }
+
     public function scopeInterns($query)
     {
         return $query->where(function ($q) {

@@ -35,10 +35,11 @@ Route::middleware(['auth', 'check.access'])->group(function () {
     Route::get('/leave-allocations', [LeaveAllocationC::class, 'index'])->middleware('permission:leave.allocation.view_all|leave.allocation.view_own|leave.allocation.view|leave.allocation.manage')->name('leave-allocations.index');
     Route::post('/leave-allocations/process', [LeaveAllocationC::class, 'processAllocations'])->middleware('permission:leave.allocation.manage')->name('leave-allocations.process');
     Route::post('/leave-allocations/single', [LeaveAllocationC::class, 'allocateSingle'])->middleware('permission:leave.allocation.manage')->name('leave-allocations.single');
-    Route::put('/leave-allocations/{id}', [LeaveAllocationC::class, 'update'])->middleware('permission:leave.allocation.manage')->name('leave-allocations.update');
-    Route::delete('/leave-allocations/{id}', [LeaveAllocationC::class, 'destroy'])->middleware('permission:leave.allocation.manage')->name('leave-allocations.destroy');
     Route::get('/leave-allocations/balance', [LeaveAllocationC::class, 'getBalance'])->name('leave-allocations.balance');
     Route::get('/leave-allocations/calculate-quota', [LeaveAllocationC::class, 'calculateQuota'])->name('leave-allocations.calculate-quota');
+    Route::get('/leave-allocations/{id}', [LeaveAllocationC::class, 'show'])->whereNumber('id')->middleware('permission:leave.allocation.view_all|leave.allocation.view_own|leave.allocation.view|leave.allocation.manage')->name('leave-allocations.show');
+    Route::put('/leave-allocations/{id}', [LeaveAllocationC::class, 'update'])->whereNumber('id')->middleware('permission:leave.allocation.manage')->name('leave-allocations.update');
+    Route::delete('/leave-allocations/{id}', [LeaveAllocationC::class, 'destroy'])->whereNumber('id')->middleware('permission:leave.allocation.manage')->name('leave-allocations.destroy');
 
     Route::get('/leave-types', [LeaveTypeC::class, 'index'])->middleware('permission:leave.types.manage')->name('hrms.leave.types.index');
     Route::post('/leave-types', [LeaveTypeC::class, 'store'])->middleware('permission:leave.types.manage')->name('hrms.leave.types.store');

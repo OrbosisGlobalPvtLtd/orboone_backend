@@ -97,12 +97,12 @@ class LeaveApprovalService
             $allocation->sick_used = (float) $allocation->sick_used + (float) $calculation['sick_days'];
             $allocation->comp_off_used = (float) $allocation->comp_off_used + (float) $calculation['comp_off_days'];
             $allocation->lwp_used = (float) $allocation->lwp_used + (float) $calculation['lwp_days'];
+            $this->allocationService->recalculateAllocationFields($allocation);
+            $allocation->save();
 
-            if ((float) $calculation['paid_days'] > 0) {
-                app(\App\Services\HRMS\Leave\MonthlyLeaveQuotaService::class)->recordMonthlyLeaveUsage($allocation, (float) $calculation['paid_days']);
-            } else {
-                $this->allocationService->recalculateAllocationFields($allocation);
-                $allocation->save();
+            $monthlyUsedDays = (float) $calculation['paid_days'];
+            if ($monthlyUsedDays > 0) {
+                app(\App\Services\HRMS\Leave\MonthlyLeaveQuotaService::class)->recordMonthlyLeaveUsage($allocation, $monthlyUsedDays);
             }
 
             if ((float) $calculation['comp_off_days'] > 0) {
@@ -234,12 +234,12 @@ class LeaveApprovalService
             $allocation->sick_used = max(0, (float) $allocation->sick_used - (float) $leaveRequest->sick_days);
             $allocation->comp_off_used = max(0, (float) $allocation->comp_off_used - (float) $leaveRequest->comp_off_days);
             $allocation->lwp_used = max(0, (float) $allocation->lwp_used - (float) $leaveRequest->lwp_days);
+            $this->allocationService->recalculateAllocationFields($allocation);
+            $allocation->save();
 
-            if ((float) $leaveRequest->paid_days > 0) {
-                app(\App\Services\HRMS\Leave\MonthlyLeaveQuotaService::class)->refundMonthlyLeaveUsage($allocation, (float) $leaveRequest->paid_days);
-            } else {
-                $this->allocationService->recalculateAllocationFields($allocation);
-                $allocation->save();
+            $monthlyUsedDays = (float) $leaveRequest->paid_days;
+            if ($monthlyUsedDays > 0) {
+                app(\App\Services\HRMS\Leave\MonthlyLeaveQuotaService::class)->refundMonthlyLeaveUsage($allocation, $monthlyUsedDays);
             }
 
             if ((float) $leaveRequest->comp_off_days > 0) {

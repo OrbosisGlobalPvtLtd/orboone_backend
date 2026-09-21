@@ -33,9 +33,63 @@ class LeaveAllocationC extends Controller
         );
 
         $year = (int) ($request->year ?: Carbon::now('Asia/Kolkata')->year);
-        $allocations = LeaveAllocationM::with(['employee.user', 'policy'])
+        $allocationsQuery = LeaveAllocationM::with(['employee.user', 'employee.profile', 'policy'])
             ->where('year', $year)
-            ->orderBy('employee_id');
+            ->whereHas('employee', function ($q) {
+                $q->activeApproved();
+            });
+
+        // Server-side filter: Search (name, employee_code)
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $allocationsQuery->whereHas('employee', function ($q) use ($search) {
+                $q->where('employee_code', 'like', "%{$search}%")
+                    ->orWhereHas('user', function ($u) use ($search) {
+                        $u->where('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        // Server-side filter: Employment Stage
+        if ($request->filled('stage')) {
+            $allocationsQuery->where('employment_stage', strtolower(trim($request->stage)));
+        }
+
+        // Server-side filter: Leave Policy
+        if ($request->filled('policy_id')) {
+            $allocationsQuery->where('policy_id', $request->policy_id);
+        } elseif ($request->filled('policy')) {
+            $policyName = trim($request->policy);
+            $allocationsQuery->whereHas('policy', function ($p) use ($policyName) {
+                $p->where('policy_name', 'like', "%{$policyName}%");
+            });
+        }
+
+        // Server-side filter: Status
+        if ($request->filled('status')) {
+            $status = strtolower(trim($request->status));
+            $today = Carbon::today('Asia/Kolkata')->toDateString();
+            if ($status === 'active') {
+                $allocationsQuery->where(function ($q) use ($today) {
+                    $q->where(function ($sub) use ($today) {
+                        $sub->whereNull('allocation_from_date')
+                            ->orWhere('allocation_from_date', '<=', $today);
+                    })->where(function ($sub) use ($today) {
+                        $sub->whereNull('allocation_to_date')
+                            ->orWhere('allocation_to_date', '>=', $today);
+                    })->where(function ($sub) {
+                        $sub->where('is_locked', 0)->orWhereNull('is_locked');
+                    });
+                });
+            } elseif ($status === 'upcoming') {
+                $allocationsQuery->where('allocation_from_date', '>', $today);
+            } elseif ($status === 'inactive') {
+                $allocationsQuery->where(function ($q) use ($today) {
+                    $q->where('is_locked', 1)
+                        ->orWhere('allocation_to_date', '<', $today);
+                });
+            }
+        }
 
         $canManageAllocations = $this->userHasPermission('leave.allocation.manage')
             || $this->canViewAll('leave.allocation.view_all')
@@ -47,25 +101,35 @@ class LeaveAllocationC extends Controller
         if (! $canViewAllAllocations) {
             $employeeId = $this->ownEmployeeId();
             if ($employeeId) {
-                $allocations->where('employee_id', $employeeId);
+                $allocationsQuery->where('employee_id', $employeeId);
             } else {
-                $allocations->whereRaw('1 = 0');
+                $allocationsQuery->whereRaw('1 = 0');
             }
         }
 
-        $allocations = $allocations->paginate(30);
+        // Server-side Default Sorting by Employee Name (A-Z)
+        $allocationsQuery->select('leave_allocations.*')
+            ->join('employees_new', 'employees_new.id', '=', 'leave_allocations.employee_id')
+            ->leftJoin('users', 'users.id', '=', 'employees_new.user_id')
+            ->orderByRaw("COALESCE(users.name, employees_new.employee_code) ASC");
+
+        $allocations = $allocationsQuery->paginate(30)->withQueryString();
 
         if ($canViewAllAllocations) {
-            $employees = \Illuminate\Support\Facades\DB::table('employees_new')
-                ->leftJoin('users', 'users.id', '=', 'employees_new.user_id')
-                ->select(
-                    'employees_new.id',
-                    'employees_new.employee_code',
-                    \Illuminate\Support\Facades\DB::raw("COALESCE(users.name, employees_new.employee_code, 'N/A') as display_name"),
-                    \Illuminate\Support\Facades\DB::raw("COALESCE(users.name, employees_new.employee_code, 'N/A') as user_name")
-                )
-                ->orderByRaw("COALESCE(users.name, employees_new.employee_code)")
-                ->get();
+            $employees = EmployeeM::activeApproved()
+                ->with('user')
+                ->get()
+                ->map(function ($emp) {
+                    $name = $emp->user->name ?? $emp->employee_code ?? 'N/A';
+                    return (object) [
+                        'id' => $emp->id,
+                        'employee_code' => $emp->employee_code,
+                        'display_name' => $name,
+                        'user_name' => $name,
+                    ];
+                })
+                ->sortBy('display_name', SORT_NATURAL | SORT_FLAG_CASE)
+                ->values();
         } else {
             $employeeId = $this->ownEmployeeId();
             $employees = $employeeId ? $this->scopedEmployeeOptions('leave.allocation.view_all') : collect();
@@ -78,16 +142,71 @@ class LeaveAllocationC extends Controller
             ->with('active', 'leave_management');
     }
 
+    public function show($id)
+    {
+        abort_unless(
+            $this->userHasPermission('leave.allocation.view_all')
+            || $this->userHasPermission('leave.allocation.view_own')
+            || $this->userHasPermission('leave.allocation.view')
+            || $this->userHasPermission('leave.allocation.manage'),
+            403
+        );
+
+        $allocation = LeaveAllocationM::with(['employee.user', 'employee.profile', 'policy'])->findOrFail($id);
+
+        return response()->json([
+            'success' => true,
+            'allocation' => [
+                'id' => $allocation->id,
+                'employee_id' => $allocation->employee_id,
+                'employee_name' => $allocation->employee?->user?->name ?? $allocation->employee?->employee_code ?? 'N/A',
+                'employee_code' => $allocation->employee?->employee_code ?? 'N/A',
+                'policy_id' => $allocation->policy_id,
+                'policy_name' => $allocation->policy?->policy_name ?? 'Default Policy',
+                'year' => (int) $allocation->year,
+                'employment_stage' => $allocation->employment_stage,
+                'paid_allocated' => (float) $allocation->paid_allocated,
+                'sick_allocated' => (float) $allocation->sick_allocated,
+                'comp_off_allocated' => (float) ($allocation->comp_off_allocated ?? 0),
+                'total_allocated' => (float) ($allocation->total_allocated ?? ($allocation->paid_allocated + $allocation->sick_allocated)),
+                'paid_used' => (float) ($allocation->paid_used ?? 0),
+                'sick_used' => (float) ($allocation->sick_used ?? 0),
+                'comp_off_used' => (float) ($allocation->comp_off_used ?? 0),
+                'lwp_used' => (float) ($allocation->lwp_used ?? 0),
+                'monthly_quota' => (float) ($allocation->monthly_quota ?? 0),
+                'monthly_carry_forward' => (float) ($allocation->monthly_carry_forward ?? 0),
+                'monthly_used_this_month' => (float) ($allocation->monthly_used_this_month ?? 0),
+                'total_monthly_remaining_paid' => (float) ($allocation->total_monthly_remaining_paid ?? 0),
+                'allocation_from_date' => $allocation->allocation_from_date ? Carbon::parse($allocation->allocation_from_date)->format('Y-m-d') : '',
+                'allocation_to_date' => $allocation->allocation_to_date ? Carbon::parse($allocation->allocation_to_date)->format('Y-m-d') : '',
+                'allocation_reason' => $allocation->allocation_reason ?? '',
+                'is_locked' => (bool) $allocation->is_locked,
+                'is_unpaid_intern' => (function() use ($allocation) {
+                    $stg = strtolower($allocation->employment_stage ?? optional($allocation->employee)->employee_stage ?? '');
+                    if (str_contains($stg, 'intern') && $allocation->employee) {
+                        $emp = $allocation->employee;
+                        return ((int)($emp->is_paid_intern ?? 1) === 0) || ((float)($emp->actual_salary ?? 0) <= 0 && (int)($emp->is_paid_intern ?? 0) === 0);
+                    }
+                    return false;
+                })(),
+                'update_url' => route('leave-allocations.update', $allocation->id),
+            ]
+        ]);
+    }
+
     public function processAllocations(Request $request)
     {
         abort_unless($this->userHasPermission('leave.allocation.manage') || $this->canViewAll('leave.allocation.view_all'), 403);
 
         $year = (int) ($request->year ?: Carbon::now('Asia/Kolkata')->year);
         $count = 0;
+        $eligibilityService = app(\App\Services\HRMS\Employee\EmployeeEligibilityS::class);
 
-        foreach (EmployeeM::where('is_active', 1)->orWhereNull('is_active')->cursor() as $employee) {
-            $this->allocationService->generateForEmployee($employee, $year, Auth::id());
-            $count++;
+        foreach (EmployeeM::cursor() as $employee) {
+            if ($eligibilityService->isEligible($employee)) {
+                $this->allocationService->generateForEmployee($employee, $year, Auth::id());
+                $count++;
+            }
         }
 
         return redirect()->route('leave-allocations.index', ['year' => $year])
@@ -220,18 +339,30 @@ class LeaveAllocationC extends Controller
         $stage = (string) $request->get('employment_stage', 'permanent');
         $fromDateStr = $request->get('allocation_from_date');
         $toDateStr = $request->get('allocation_to_date');
+        $employeeId = $request->get('employee_id');
+        $isPaidIntern = true;
+        if ($employeeId && strtolower($stage) === 'internship') {
+            $emp = EmployeeM::find($employeeId);
+            if ($emp) {
+                $isPaidIntern = !(((int)($emp->is_paid_intern ?? 1) === 0) || ((float)($emp->actual_salary ?? 0) <= 0 && (int)($emp->is_paid_intern ?? 0) === 0));
+            }
+        }
 
         $policy = $policyId ? LeavePolicyM::find($policyId) : LeavePolicyM::where('is_active', 1)->first();
 
         $fromDate = $fromDateStr ? Carbon::parse($fromDateStr) : null;
         $toDate = $toDateStr ? Carbon::parse($toDateStr) : null;
 
-        [$total, $paid, $sick] = $this->allocationService->calculateAllocationAmounts($policy, $stage, $fromDate, $toDate);
+        [$total, $paid, $sick] = $this->allocationService->calculateAllocationAmounts($policy, $stage, $fromDate, $toDate, $isPaidIntern);
+
+        $isInternOrProbation = str_contains(strtolower($stage), 'intern') || str_contains(strtolower($stage), 'probation') || strtolower($stage) !== 'permanent';
+        $monthlyQuota = $isInternOrProbation ? 0.0 : ($policy ? (float) ($policy->monthly_leave_limit ?? 2.0) : 2.0);
 
         return response()->json([
             'total_allocated' => round($total, 2),
             'paid_allocated' => round($paid, 2),
             'sick_allocated' => round($sick, 2),
+            'monthly_quota' => round($monthlyQuota, 2),
         ]);
     }
 }

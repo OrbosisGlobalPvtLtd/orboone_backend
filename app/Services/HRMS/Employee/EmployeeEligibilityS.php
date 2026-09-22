@@ -10,14 +10,7 @@ use Illuminate\Support\Facades\Schema;
 
 class EmployeeEligibilityS
 {
-    /**
-     * Check if an employee is operational and fully eligible.
-     * Eligible Employee =
-     *  - is_active == 1 (or employment_status == 'active')
-     *  - profile_status == 'approved' / is_profile_completed == 1
-     *  - exit_status != 'exit_completed' / employment_status != 'exited'
-     *  - employment_status != 'terminated'
-     */
+    
     public function isEligible($employee): bool
     {
         if (!$employee) {
@@ -43,9 +36,7 @@ class EmployeeEligibilityS
         return true;
     }
 
-    /**
-     * Check if employee record is active.
-     */
+    
     public function isActive($employee): bool
     {
         if (!$employee) {
@@ -66,9 +57,7 @@ class EmployeeEligibilityS
         return true;
     }
 
-    /**
-     * Check if employee profile is pending completion / approval.
-     */
+   
     public function isProfilePending($employee): bool
     {
         if (!$employee) {
@@ -93,10 +82,6 @@ class EmployeeEligibilityS
         $isCompleted = (bool) ($profile->is_profile_completed ?? false);
 
         if ($profStatus === 'approved') {
-            return false;
-        }
-
-        if ($isCompleted && in_array($profStatus, ['approved', 'submitted'], true)) {
             return false;
         }
 
@@ -268,9 +253,7 @@ class EmployeeEligibilityS
         return $this->isEligible($employee);
     }
 
-    /**
-     * Team Management & Approval Chain Eligibility.
-     */
+   
     public function canUseTeamManagement($employee): bool
     {
         return $this->isEligible($employee);

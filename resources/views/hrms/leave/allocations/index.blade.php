@@ -143,6 +143,8 @@
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 16px;
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .leave-action-box {
@@ -151,6 +153,18 @@
         padding: 16px;
         background: #fff;
         transition: all .2s ease;
+        box-sizing: border-box !important;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .leave-action-box form {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        margin: 0;
     }
 
     .leave-action-box:hover {
@@ -176,7 +190,10 @@
         display: flex;
         gap: 10px;
         align-items: center;
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box !important;
     }
 
     .leave-control {
@@ -189,6 +206,8 @@
         background: #fff;
         outline: none;
         transition: all .2s ease;
+        box-sizing: border-box !important;
+        max-width: 100%;
     }
 
     .leave-control:focus {
@@ -199,16 +218,21 @@
     .leave-year-input {
         width: 100px;
         flex-shrink: 0;
+        box-sizing: border-box !important;
     }
 
     .leave-employee-select-wrap {
         flex: 1;
-        min-width: 200px;
+        min-width: 180px;
+        max-width: 100%;
+        box-sizing: border-box !important;
     }
 
     .leave-employee-select-wrap .select2-container {
         width: 100% !important;
+        max-width: 100% !important;
         display: block !important;
+        box-sizing: border-box !important;
     }
 
     .leave-employee-select-wrap .select2-container .select2-selection--single {
@@ -220,6 +244,9 @@
         background: #FFFFFF !important;
         outline: none !important;
         transition: all 0.2s ease !important;
+        box-sizing: border-box !important;
+        width: 100% !important;
+        max-width: 100% !important;
     }
 
     .leave-employee-select-wrap .select2-container--open .select2-selection--single,
@@ -235,6 +262,10 @@
         font-weight: 600 !important;
         padding-left: 14px !important;
         padding-right: 28px !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
     }
 
     .leave-employee-select-wrap .select2-container .select2-selection--single .select2-selection__arrow {
@@ -260,6 +291,8 @@
         box-shadow: 0 4px 14px rgba(75, 0, 232, .25);
         white-space: nowrap;
         text-decoration: none;
+        box-sizing: border-box !important;
+        max-width: 100% !important;
     }
 
     .leave-btn:hover {
@@ -285,6 +318,8 @@
         transition: all .2s ease;
         white-space: nowrap;
         text-decoration: none;
+        box-sizing: border-box !important;
+        max-width: 100% !important;
     }
 
     .leave-btn-light:hover {
@@ -304,9 +339,14 @@
     }
 
     .orb-table-head {
-        padding: 20px 24px;
+        padding: 18px 24px;
         border-bottom: 1px solid var(--leave-border);
         background: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
     }
 
     .orb-table-title-wrap {
@@ -557,6 +597,7 @@
         align-items: flex-end;
         padding: 14px 20px;
         background: #FAFAFB;
+        border-bottom: 1px solid var(--leave-border);
     }
 
     @media (max-width: 1200px) {
@@ -704,24 +745,26 @@
 
     .dt-buttons {
         display: inline-flex !important;
-        gap: 6px !important;
+        gap: 8px !important;
         flex-wrap: wrap !important;
+        align-items: center !important;
     }
 
     .dt-buttons .dt-button,
     .dt-buttons .btn {
-        height: 34px !important;
-        padding: 0 12px !important;
-        border-radius: 8px !important;
+        height: 36px !important;
+        padding: 0 14px !important;
+        border-radius: 10px !important;
         font-size: 12px !important;
         font-weight: 700 !important;
-        border: 1px solid var(--leave-border) !important;
+        border: 1.5px solid var(--leave-border) !important;
         background: #fff !important;
         color: var(--leave-text) !important;
         display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
-        transition: all 0.2s ease !important;
+        gap: 6px !important;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
         box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05) !important;
     }
 
@@ -731,6 +774,7 @@
         border-color: rgba(75, 0, 232, 0.3) !important;
         color: var(--leave-primary) !important;
         transform: translateY(-1px) !important;
+        box-shadow: 0 4px 10px rgba(75, 0, 232, 0.12) !important;
     }
 
     .orb-table-footer {
@@ -890,25 +934,38 @@
             align-items: stretch !important;
             gap: 10px !important;
             width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
         }
 
         .leave-control,
         .leave-btn,
         .leave-btn-light {
             width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
         }
 
         .leave-year-input,
         .leave-employee-select-wrap {
             width: 100% !important;
-            min-width: 100% !important;
+            min-width: 0 !important;
             max-width: 100% !important;
             flex: none !important;
+            box-sizing: border-box !important;
         }
 
         .leave-employee-select-wrap .select2-container {
             width: 100% !important;
-            min-width: 100% !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+        }
+
+        .leave-employee-select-wrap .select2-container .select2-selection--single {
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
         }
     }
 
@@ -957,20 +1014,9 @@
 
         .orb-table-head {
             padding: 14px 16px;
-        }
-
-        .orb-table-tools {
-            padding: 12px 16px !important;
-            flex-direction: column !important;
-            align-items: stretch !important;
-            gap: 10px !important;
-        }
-
-        #allocationLengthBox {
-            width: 100% !important;
-            display: flex !important;
-            justify-content: space-between !important;
-            align-items: center !important;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
         }
 
         #allocationExportButtons {
@@ -980,9 +1026,16 @@
             gap: 6px !important;
         }
 
+        #allocationExportButtons .dt-buttons {
+            width: 100% !important;
+            display: flex !important;
+            flex-wrap: wrap !important;
+            gap: 6px !important;
+        }
+
         #allocationExportButtons .dt-button,
         #allocationExportButtons .btn {
-            flex: 1 1 calc(25% - 6px) !important;
+            flex: 1 1 calc(50% - 6px) !important;
             min-width: 60px !important;
             height: 36px !important;
             padding: 0 8px !important;
@@ -1058,6 +1111,20 @@
     @include('hrms.leave.allocations.partials.action-panel')
 
     <div class="orb-table-card">
+        <div class="orb-table-head">
+            <div class="orb-table-title-wrap">
+                <div class="orb-table-icon">
+                    <i class="fas fa-wallet"></i>
+                </div>
+                <div>
+                    <h3 class="m-0">Allocation Records</h3>
+                    <p class="m-0 text-muted" style="font-size: 12.5px;">View allocated, used, remaining and LWP leave balances by employee.</p>
+                </div>
+            </div>
+
+            <div id="allocationExportButtons" class="d-flex align-items-center gap-2"></div>
+        </div>
+
         @include('hrms.leave.allocations.partials.filter-bar')
         @include('hrms.leave.allocations.partials.allocation-table')
     </div>

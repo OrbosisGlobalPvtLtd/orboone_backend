@@ -249,12 +249,7 @@ class EmployeeLifecycleService
         int $employeeId,
         ?string $probationEndDate
     ): void {
-        if (
-            ! $probationEndDate
-            || ! Schema::hasTable('leave_allocations')
-            || ! Schema::hasColumn('leave_allocations', 'paid_allocated')
-            || ! Schema::hasColumn('leave_allocations', 'sick_allocated')
-        ) {
+        if (! $probationEndDate) {
             return;
         }
 
@@ -268,56 +263,7 @@ class EmployeeLifecycleService
             return;
         }
 
-        // Current leave allocation table references employees (legacy table),
-        // so skip auto allocation when that record doesn't exist.
-        if (! Schema::hasTable('employees') || ! DB::table('employees')->where('id', $employeeId)->exists()) {
-            return;
-        }
-
-        $year = (int) now()->format('Y');
-
-        $existing = DB::table('leave_allocations')
-            ->where('employee_id', $employeeId)
-            ->where('year', $year)
-            ->first();
-
-        if ($existing) {
-            DB::table('leave_allocations')
-                ->where('id', $existing->id)
-                ->update([
-                    'total_allocated' => 25,
-                    'paid_allocated' => 18,
-                    'sick_allocated' => 7,
-                    'comp_off_allocated' => (float) ($existing->comp_off_allocated ?? 0),
-                    'total_remaining' => max(0, 25 - (float) ($existing->total_used ?? 0)),
-                    'paid_remaining' => max(0, 18 - (float) ($existing->paid_used ?? 0)),
-                    'sick_remaining' => max(0, 7 - (float) ($existing->sick_used ?? 0)),
-                    'comp_off_remaining' => max(0, (float) ($existing->comp_off_allocated ?? 0) - (float) ($existing->comp_off_used ?? 0)),
-                    'updated_at' => now(),
-                ]);
-
-            return;
-        }
-
-        DB::table('leave_allocations')->insert([
-            'employee_id' => $employeeId,
-            'year' => $year,
-            'total_allocated' => 25,
-            'paid_allocated' => 18,
-            'sick_allocated' => 7,
-            'comp_off_allocated' => 0,
-            'total_used' => 0,
-            'paid_used' => 0,
-            'sick_used' => 0,
-            'comp_off_used' => 0,
-            'lwp_used' => 0,
-            'total_remaining' => 25,
-            'paid_remaining' => 18,
-            'sick_remaining' => 7,
-            'comp_off_remaining' => 0,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        $this->autoAllocateForStage($employeeId, 'permanent', $probationEndDate);
     }
 
     public function autoAllocateForStage(int $employeeId, ?string $forceStage = null, ?string $effectiveDate = null, ?int $actorId = null): void

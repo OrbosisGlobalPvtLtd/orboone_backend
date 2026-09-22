@@ -1,22 +1,3 @@
-<div class="orb-table-head">
-    <div class="d-flex align-items-center justify-content-between flex-wrap" style="gap: 16px;">
-        <div class="orb-table-title-wrap">
-            <div class="orb-table-icon">
-                <i class="fas fa-wallet"></i>
-            </div>
-            <div>
-                <h3 class="m-0">Allocation Records</h3>
-                <p class="m-0 text-muted" style="font-size: 12.5px;">View allocated, used, remaining and LWP leave balances by employee.</p>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="orb-table-tools d-flex align-items-center justify-content-between flex-wrap" style="padding: 12px 24px; background: #ffffff; border-bottom: 1px solid var(--leave-border); gap: 12px;">
-    <div id="allocationLengthBox" class="d-flex align-items-center gap-2"></div>
-    <div id="allocationExportButtons" class="d-flex align-items-center gap-2"></div>
-</div>
-
 <div class="leave-table-wrap">
     <div class="leave-table-responsive">
         <table id="leaveAllocationsTable" class="leave-table js-leave-allocations-table" style="width:100%;">

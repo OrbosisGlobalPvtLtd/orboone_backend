@@ -49,7 +49,7 @@
     <div class="eo-filter-actions-col">
         <div class="eo-filter-actions-wrap">
             <button type="button" id="btnFilterSubmit">
-                <i class="fas fa-filter mr-1"></i> Filter
+                <i class="fas fa-search mr-1"></i> Search
             </button>
             <button type="button" id="resetFilter">
                 <i class="fas fa-undo mr-1"></i> Reset

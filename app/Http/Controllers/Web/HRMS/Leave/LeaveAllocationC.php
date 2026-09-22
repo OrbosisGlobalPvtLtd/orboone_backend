@@ -8,6 +8,7 @@ use App\Models\Core\AccessM;
 use App\Models\HRMS\Employee\EmployeeM;
 use App\Models\HRMS\Leave\LeaveAllocationM;
 use App\Models\HRMS\Leave\LeavePolicyM;
+use App\Services\HRMS\Employee\EmployeeEligibilityS;
 use App\Services\HRMS\Leave\LeaveAllocationService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -18,8 +19,10 @@ class LeaveAllocationC extends Controller
 {
     use HrmsCrudPage;
 
-    public function __construct(private LeaveAllocationService $allocationService)
-    {
+    public function __construct(
+        private LeaveAllocationService $allocationService,
+        private EmployeeEligibilityS $eligibilityService
+    ) {
     }
 
     public function index(Request $request)
@@ -93,8 +96,7 @@ class LeaveAllocationC extends Controller
 
         $canManageAllocations = $this->userHasPermission('leave.allocation.manage')
             || $this->canViewAll('leave.allocation.view_all')
-            || $this->userHasPermission('leave.allocation.view')
-            || (auth()->user() && method_exists(auth()->user(), 'isSuperAdmin') && auth()->user()->isSuperAdmin());
+            || $this->userHasPermission('leave.allocation.view');
 
         $canViewAllAllocations = $canManageAllocations;
 
@@ -142,7 +144,7 @@ class LeaveAllocationC extends Controller
             ->with('active', 'leave_management');
     }
 
-    public function show($id)
+    public function show(int $id)
     {
         abort_unless(
             $this->userHasPermission('leave.allocation.view_all')
@@ -181,14 +183,7 @@ class LeaveAllocationC extends Controller
                 'allocation_to_date' => $allocation->allocation_to_date ? Carbon::parse($allocation->allocation_to_date)->format('Y-m-d') : '',
                 'allocation_reason' => $allocation->allocation_reason ?? '',
                 'is_locked' => (bool) $allocation->is_locked,
-                'is_unpaid_intern' => (function() use ($allocation) {
-                    $stg = strtolower($allocation->employment_stage ?? optional($allocation->employee)->employee_stage ?? '');
-                    if (str_contains($stg, 'intern') && $allocation->employee) {
-                        $emp = $allocation->employee;
-                        return ((int)($emp->is_paid_intern ?? 1) === 0) || ((float)($emp->actual_salary ?? 0) <= 0 && (int)($emp->is_paid_intern ?? 0) === 0);
-                    }
-                    return false;
-                })(),
+                'is_unpaid_intern' => $this->allocationService->isUnpaidIntern($allocation),
                 'update_url' => route('leave-allocations.update', $allocation->id),
             ]
         ]);
@@ -199,15 +194,7 @@ class LeaveAllocationC extends Controller
         abort_unless($this->userHasPermission('leave.allocation.manage') || $this->canViewAll('leave.allocation.view_all'), 403);
 
         $year = (int) ($request->year ?: Carbon::now('Asia/Kolkata')->year);
-        $count = 0;
-        $eligibilityService = app(\App\Services\HRMS\Employee\EmployeeEligibilityS::class);
-
-        foreach (EmployeeM::cursor() as $employee) {
-            if ($eligibilityService->isEligible($employee)) {
-                $this->allocationService->generateForEmployee($employee, $year, Auth::id());
-                $count++;
-            }
-        }
+        $count = $this->allocationService->generateYearly($year, Auth::id());
 
         return redirect()->route('leave-allocations.index', ['year' => $year])
             ->with('success', "Leave allocations generated for {$count} employee(s) for year {$year}.");
@@ -215,31 +202,47 @@ class LeaveAllocationC extends Controller
 
     public function allocateSingle(Request $request)
     {
-        abort_unless($this->userHasPermission('leave.allocation.manage') || $this->canViewAll('leave.allocation.view_all'), 403);
+        abort_unless(
+            $this->userHasPermission('leave.allocation.manage')
+            || $this->canViewAll('leave.allocation.view_all'),
+            403
+        );
 
-        $request->validate([
-            'employee_id' => 'required|exists:employees_new,id',
-            'year' => 'required|integer|min:2020|max:2099',
+        $validated = $request->validate([
+            'employee_id' => ['required', 'integer', 'exists:employees_new,id'],
+            'year' => ['required', 'integer', 'min:2020', 'max:2099'],
         ]);
 
-        try {
-            $employee = EmployeeM::findOrFail($request->employee_id);
-            $year = (int) $request->year;
-            $this->allocationService->generateForEmployee($employee, $year, Auth::id());
+        $year = (int) $validated['year'];
+        $employeeId = (int) $validated['employee_id'];
 
-            return redirect()->route('leave-allocations.index', ['year' => $year])
+        try {
+            $this->allocationService->generateSingle($employeeId, $year, Auth::id());
+
+            return redirect()
+                ->route('leave-allocations.index', ['year' => $year])
                 ->with('success', "Leave allocation generated successfully for year {$year}.");
+        } catch (\DomainException $e) {
+            return redirect()
+                ->route('leave-allocations.index', ['year' => $year])
+                ->with('error', $e->getMessage());
         } catch (\Throwable $e) {
-            Log::error('Single leave allocation failed', ['error' => $e->getMessage()]);
-            return back()->with('error', $e->getMessage());
+            Log::error('Single leave allocation failed.', [
+                'employee_id' => $employeeId,
+                'year' => $year,
+                'user_id' => Auth::id(),
+                'exception' => $e,
+            ]);
+
+            return back()
+                ->withInput()
+                ->with('error', $e->getMessage());
         }
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, int $id)
     {
         abort_unless($this->userHasPermission('leave.allocation.manage') || $this->canViewAll('leave.allocation.view_all'), 403);
-
-        $allocation = LeaveAllocationM::findOrFail($id);
 
         $validated = $request->validate([
             'year' => 'required|integer|min:2020|max:2099',
@@ -262,47 +265,13 @@ class LeaveAllocationC extends Controller
             'is_locked' => 'nullable',
         ]);
 
-        $allocation->year = (int) $validated['year'];
-        $allocation->policy_id = !empty($validated['policy_id']) ? $validated['policy_id'] : null;
-        $allocation->employment_stage = strtolower($validated['employment_stage']);
-        $allocation->paid_allocated = (float) $validated['paid_allocated'];
-        $allocation->sick_allocated = (float) $validated['sick_allocated'];
-        $allocation->comp_off_allocated = (float) ($validated['comp_off_allocated'] ?? 0);
-
-        $allocation->total_allocated = round($allocation->paid_allocated + $allocation->sick_allocated, 2);
-
-        $allocation->paid_used = (float) ($validated['paid_used'] ?? $allocation->paid_used ?? 0);
-        $allocation->sick_used = (float) ($validated['sick_used'] ?? $allocation->sick_used ?? 0);
-        $allocation->comp_off_used = (float) ($validated['comp_off_used'] ?? $allocation->comp_off_used ?? 0);
-        $allocation->lwp_used = (float) ($validated['lwp_used'] ?? $allocation->lwp_used ?? 0);
-        $allocation->monthly_quota = (float) ($validated['monthly_quota'] ?? $allocation->monthly_quota ?? 0);
-        $allocation->monthly_carry_forward = (float) ($validated['monthly_carry_forward'] ?? $allocation->monthly_carry_forward ?? 0);
-        if (isset($validated['monthly_used_this_month'])) {
-            $allocation->monthly_used_this_month = (float) $validated['monthly_used_this_month'];
-        }
-        if (isset($validated['total_monthly_remaining_paid'])) {
-            $allocation->total_monthly_remaining_paid = (float) $validated['total_monthly_remaining_paid'];
-        }
-
-        if (array_key_exists('allocation_from_date', $validated)) {
-            $allocation->allocation_from_date = $validated['allocation_from_date'];
-        }
-        if (array_key_exists('allocation_to_date', $validated)) {
-            $allocation->allocation_to_date = $validated['allocation_to_date'];
-        }
-        if (array_key_exists('allocation_reason', $validated)) {
-            $allocation->allocation_reason = $validated['allocation_reason'];
-        }
-        $allocation->is_locked = $request->has('is_locked') && $request->is_locked == 1;
-
-        $this->allocationService->recalculateAllocationFields($allocation);
-        $allocation->save();
+        $allocation = $this->allocationService->updateAllocation($id, $validated, Auth::id());
 
         return redirect()->route('leave-allocations.index', ['year' => $allocation->year])
             ->with('success', 'Leave allocation updated successfully.');
     }
 
-    public function destroy($id)
+    public function destroy(int $id)
     {
         abort_unless($this->userHasPermission('leave.allocation.manage'), 403);
 
@@ -316,53 +285,24 @@ class LeaveAllocationC extends Controller
 
     public function getBalance()
     {
-        $employee = EmployeeM::where('user_id', Auth::id())->first();
-        if (! $employee) {
+        $balance = $this->allocationService->getEmployeeBalance(Auth::id(), Carbon::now('Asia/Kolkata')->year);
+        if (! $balance) {
             return response()->json(['error' => 'No employee profile found.'], 404);
         }
 
-        $allocation = $this->allocationService->getOrGenerate($employee, Carbon::now('Asia/Kolkata')->year, Auth::id());
-
-        return response()->json([
-            'total_allocated' => $allocation->total_allocated,
-            'total_remaining' => $allocation->total_remaining,
-            'paid_allocated' => $allocation->paid_allocated,
-            'sick_allocated' => $allocation->sick_allocated,
-            'comp_off_remaining' => $allocation->comp_off_remaining,
-            'lwp_used' => $allocation->lwp_used,
-        ]);
+        return response()->json($balance);
     }
 
     public function calculateQuota(Request $request)
     {
-        $policyId = $request->get('policy_id');
-        $stage = (string) $request->get('employment_stage', 'permanent');
-        $fromDateStr = $request->get('allocation_from_date');
-        $toDateStr = $request->get('allocation_to_date');
-        $employeeId = $request->get('employee_id');
-        $isPaidIntern = true;
-        if ($employeeId && strtolower($stage) === 'internship') {
-            $emp = EmployeeM::find($employeeId);
-            if ($emp) {
-                $isPaidIntern = !(((int)($emp->is_paid_intern ?? 1) === 0) || ((float)($emp->actual_salary ?? 0) <= 0 && (int)($emp->is_paid_intern ?? 0) === 0));
-            }
-        }
+        $preview = $this->allocationService->previewQuota(
+            $request->filled('policy_id') ? (int) $request->policy_id : null,
+            (string) $request->get('employment_stage', 'permanent'),
+            $request->get('allocation_from_date'),
+            $request->get('allocation_to_date'),
+            $request->filled('employee_id') ? (int) $request->employee_id : null
+        );
 
-        $policy = $policyId ? LeavePolicyM::find($policyId) : LeavePolicyM::where('is_active', 1)->first();
-
-        $fromDate = $fromDateStr ? Carbon::parse($fromDateStr) : null;
-        $toDate = $toDateStr ? Carbon::parse($toDateStr) : null;
-
-        [$total, $paid, $sick] = $this->allocationService->calculateAllocationAmounts($policy, $stage, $fromDate, $toDate, $isPaidIntern);
-
-        $isInternOrProbation = str_contains(strtolower($stage), 'intern') || str_contains(strtolower($stage), 'probation') || strtolower($stage) !== 'permanent';
-        $monthlyQuota = $isInternOrProbation ? 0.0 : ($policy ? (float) ($policy->monthly_leave_limit ?? 2.0) : 2.0);
-
-        return response()->json([
-            'total_allocated' => round($total, 2),
-            'paid_allocated' => round($paid, 2),
-            'sick_allocated' => round($sick, 2),
-            'monthly_quota' => round($monthlyQuota, 2),
-        ]);
+        return response()->json($preview);
     }
 }

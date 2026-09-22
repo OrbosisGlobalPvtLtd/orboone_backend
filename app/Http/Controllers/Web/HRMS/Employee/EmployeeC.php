@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Web\HRMS\Employee;
 
 use App\Http\Controllers\Controller;
 use App\Mail\EmployeeCredentialMail;
+use App\Models\HRMS\Employee\EmployeeM;
+use App\Services\HRMS\Employee\EmployeeProfileS;
+use App\Services\HRMS\Notification\NotificationS;
 use App\Services\HRMS\Employee\EmployeeFileS;
 use App\Services\HRMS\Employee\EmployeeExitProcessS;
 use App\Services\HRMS\Employee\EmployeeLifecycleService;
@@ -11,6 +14,7 @@ use App\Services\HRMS\Employee\EmployeePermanentDeleteS;
 use App\Services\HRMS\Employee\EmployeeSalaryHistoryService;
 use App\Services\HRMS\Employee\EmployeeS;
 use App\Services\HRMS\Employee\EmployeeShiftAssignmentService;
+use App\Services\HRMS\Leave\LeaveAllocationService;
 use App\Http\Requests\Web\HRMS\Employee\InitiateExitRequest;
 use App\Http\Requests\Web\HRMS\Employee\StoreEmployeeOnboardingRequest;
 use App\Http\Requests\Web\HRMS\Employee\UpdateManageEmployeeRequest;
@@ -37,6 +41,7 @@ class EmployeeC extends Controller
     private EmployeePermanentDeleteS $permanentDeleteService;
     private EmployeeExitProcessS $exitProcessService;
     private EmployeeShiftAssignmentService $shiftAssignmentService;
+    private LeaveAllocationService $leaveAllocationService;
 
     public function __construct(
         EmployeeS $employeeService,
@@ -44,7 +49,8 @@ class EmployeeC extends Controller
         EmployeeSalaryHistoryService $salaryHistoryService,
         EmployeePermanentDeleteS $permanentDeleteService,
         EmployeeExitProcessS $exitProcessService,
-        EmployeeShiftAssignmentService $shiftAssignmentService
+        EmployeeShiftAssignmentService $shiftAssignmentService,
+        LeaveAllocationService $leaveAllocationService,
     ) {
         $this->employeeService = $employeeService;
         $this->lifecycleService = $lifecycleService;
@@ -52,6 +58,7 @@ class EmployeeC extends Controller
         $this->permanentDeleteService = $permanentDeleteService;
         $this->exitProcessService = $exitProcessService;
         $this->shiftAssignmentService = $shiftAssignmentService;
+        $this->leaveAllocationService = $leaveAllocationService;
     }
 
     public function index(Request $request)
@@ -1688,53 +1695,81 @@ class EmployeeC extends Controller
     }
 
     public function approveProfile($employee)
-    {
-        $employeeData = DB::table($this->employeeTable)->where('id', $employee)->first();
-        abort_if(! $employeeData, 404);
+   {
+    $employeeData = DB::table($this->employeeTable)
+        ->where('id', $employee)
+        ->first();
 
-        DB::beginTransaction();
+    abort_if(! $employeeData, 404);
 
-        try {
-            $oldProfile = DB::table($this->profileTable)
-                ->where('employee_id', $employee)
-                ->first();
+    DB::beginTransaction();
 
-            DB::table($this->profileTable)->updateOrInsert(
-                ['employee_id' => $employee],
-                [
-                    'profile_status' => 'approved',
-                    'is_profile_completed' => 1,
-                    'profile_completed_at' => now(),
-                    'approved_by_user_id' => Auth::id(),
-                    'approved_at' => now(),
-                    'rejection_reason' => null,
-                    'updated_at' => now(),
-                ]
+    try {
+        $oldProfile = DB::table($this->profileTable)
+            ->where('employee_id', $employee)
+            ->first();
+
+        
+        DB::table($this->profileTable)->updateOrInsert(
+            ['employee_id' => $employee],
+            [
+                'profile_status' => 'approved',
+                'is_profile_completed' => 1,
+                'profile_completed_at' => now(),
+                'approved_by_user_id' => Auth::id(),
+                'approved_at' => now(),
+                'rejection_reason' => null,
+                'updated_at' => now(),
+            ]
+        );
+
+        
+        DB::table('employee_documents_new')
+            ->where('employee_id', $employee)
+            ->update([
+                'verification_status' => 'verified',
+                'verified_by_user_id' => Auth::id(),
+                'verified_at' => now(),
+                'rejection_reason' => null,
+                'updated_at' => now(),
+            ]);
+
+        
+        $this->logLifecycle(
+            $employee,
+            'profile approved',
+            $oldProfile,
+            [
+                'profile_status' => 'approved',
+                'is_profile_completed' => 1,
+                'documents_status' => 'verified',
+            ],
+            'Profile and all uploaded documents approved by HR'
+        );
+
+        
+        $employeeModel = EmployeeM::query()
+            ->with('profile')
+            ->find($employee);
+
+        if (! $employeeModel) {
+            throw new \RuntimeException(
+                "Employee #{$employee} could not be loaded after profile approval."
+            );
+        }
+
+        
+        app(LeaveAllocationService::class)
+            ->generateForEmployee(
+                $employeeModel,
+                (int) now()->year,
+                Auth::id()
             );
 
-            DB::table('employee_documents_new')
-                ->where('employee_id', $employee)
-                ->update([
-                    'verification_status' => 'verified',
-                    'verified_by_user_id' => Auth::id(),
-                    'verified_at' => now(),
-                    'rejection_reason' => null,
-                    'updated_at' => now(),
-                ]);
-
-            $this->logLifecycle(
-                $employee,
-                'profile approved',
-                $oldProfile,
-                [
-                    'profile_status' => 'approved',
-                    'is_profile_completed' => 1,
-                    'documents_status' => 'verified',
-                ],
-                'Profile and all uploaded documents approved by HR'
-            );
-
-            app(\App\Services\HRMS\Notification\NotificationS::class)->notifyEmployee(
+        
+        DB::commit();
+        app(NotificationS::class)
+            ->notifyEmployee(
                 'Profile Approved',
                 'Your profile has been approved. You can now Punch In/Out and mark attendance.',
                 'profile_approved',
@@ -1748,19 +1783,25 @@ class EmployeeC extends Controller
                 $employeeData->user_id
             );
 
-            DB::commit();
+        
+        app(EmployeeProfileS::class)
+            ->checkAndSendAllDocumentsVerifiedEmail((int) $employee);
 
-            app(\App\Services\HRMS\Employee\EmployeeProfileS::class)->checkAndSendAllDocumentsVerifiedEmail((int)$employee);
-
-            return redirect()
-                ->route('hrms.employees.pending_profiles')
-                ->with('success', 'Profile approved and all uploaded documents verified successfully.');
-        } catch (\Throwable $e) {
-            DB::rollBack();
-
-            return back()->with('error', $e->getMessage());
-        }
+        return redirect()
+            ->route('hrms.employees.pending_profiles')
+            ->with(
+                'success',
+                'Profile approved and all uploaded documents verified successfully.'
+            );
+    } catch (\Throwable $e) {
+        DB::rollBack();
+        report($e);
+        return back()->with(
+            'error',
+            $e->getMessage()
+        );
     }
+   }
 
     public function rejectProfile(Request $request, $employee)
     {

@@ -2,7 +2,10 @@
 
 namespace App\Services\HRMS\Employee;
 
+use App\Services\HRMS\EnterprisePayroll\EnterpriseSalaryStructureSyncS;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
+use RuntimeException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -17,18 +20,46 @@ class EmployeeSalaryHistoryService
         $salaryAmount,
         ?string $effectiveFrom = null,
         ?string $reason = null,
-        ?int $actorId = null
+        ?int $actorId = null,
+        bool $syncEnterprise = true
     ): void {
         $this->performSyncSalary($employeeId, $stage, $salaryAmount, $effectiveFrom, $reason, $actorId);
+
+        if (! $syncEnterprise) {
+            return;
+        }
 
         try {
             $updatedEmployee = DB::table($this->employeeTable)->where('id', $employeeId)->first();
             if ($updatedEmployee) {
-                app(\App\Services\HRMS\EnterprisePayroll\EnterpriseSalaryStructureSyncS::class)->syncFromEmployee($updatedEmployee, $reason);
+                app(EnterpriseSalaryStructureSyncS::class)->syncFromEmployee($updatedEmployee, $reason);
             }
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('Enterprise payroll salary sync failed: '.$e->getMessage());
+            Log::error('Enterprise payroll salary sync failed: '.$e->getMessage());
         }
+    }
+
+    /** Record the activation-date salary revision inside the lifecycle transaction. */
+    public function syncPermanentActivation(int $employeeId, string $effectiveDate, ?int $actorId = null): void
+    {
+        if (! Schema::hasTable($this->employeeTable) || ! Schema::hasTable($this->salaryHistoryTable)) {
+            throw new RuntimeException('Employee salary history schema is unavailable for permanent activation.');
+        }
+
+        $employee = DB::table($this->employeeTable)->where('id', $employeeId)->first();
+        if (! $employee || $employee->actual_salary === null) {
+            return;
+        }
+
+        $this->performSyncSalary(
+            $employeeId,
+            'permanent',
+            $employee->actual_salary,
+            $effectiveDate,
+            'Permanent activation salary history',
+            $actorId,
+            true
+        );
     }
 
     private function performSyncSalary(
@@ -37,7 +68,8 @@ class EmployeeSalaryHistoryService
         $salaryAmount,
         ?string $effectiveFrom = null,
         ?string $reason = null,
-        ?int $actorId = null
+        ?int $actorId = null,
+        bool $forceLifecycleRevision = false
     ): void {
         if (
             ! Schema::hasTable($this->employeeTable)
@@ -80,7 +112,7 @@ class EmployeeSalaryHistoryService
             return;
         }
 
-        if ($activeHistory && $this->sameMoney($activeHistory->salary_amount, $newSalary)) {
+        if (! $forceLifecycleRevision && $activeHistory && $this->sameMoney($activeHistory->salary_amount, $newSalary)) {
             if (! $this->sameMoney($currentSalary, $newSalary)) {
                 $this->updateEmployeeSalary($employeeId, $newSalary, $actorId);
             }
@@ -89,9 +121,9 @@ class EmployeeSalaryHistoryService
         }
 
         if ($activeHistory) {
-            $previousEffectiveTo = Carbon::parse($effectiveDate)->subDay()->toDateString();
+            $previousEffectiveTo = Carbon::parse($effectiveDate, 'Asia/Kolkata')->subDay()->toDateString();
 
-            if (Carbon::parse($previousEffectiveTo)->lt(Carbon::parse($activeHistory->effective_from))) {
+            if (Carbon::parse($previousEffectiveTo, 'Asia/Kolkata')->lt(Carbon::parse($activeHistory->effective_from, 'Asia/Kolkata'))) {
                 DB::table($this->salaryHistoryTable)
                     ->where('id', $activeHistory->id)
                     ->update([
@@ -142,9 +174,9 @@ class EmployeeSalaryHistoryService
         $date = $effectiveFrom
             ?: ($employee->joining_date ?? null)
             ?: ($employee->internship_start_date ?? null)
-            ?: now()->toDateString();
+            ?: now('Asia/Kolkata')->toDateString();
 
-        return Carbon::parse($date)->toDateString();
+        return Carbon::parse($date, 'Asia/Kolkata')->toDateString();
     }
 
     private function normaliseSalary($salary): float
@@ -159,6 +191,6 @@ class EmployeeSalaryHistoryService
 
     private function sameDate($left, string $right): bool
     {
-        return Carbon::parse($left)->toDateString() === Carbon::parse($right)->toDateString();
+        return Carbon::parse($left, 'Asia/Kolkata')->toDateString() === Carbon::parse($right, 'Asia/Kolkata')->toDateString();
     }
 }

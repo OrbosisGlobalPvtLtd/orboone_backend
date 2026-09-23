@@ -3,7 +3,9 @@
 namespace App\Console;
 
 use App\Console\Commands\AttendanceAbsent;
+use App\Console\Commands\AttendanceBackfillShiftAssignments;
 use App\Console\Commands\AttendanceLeave;
+use App\Console\Commands\DispatchPermanentActivationNotifications;
 use App\Console\Commands\HRMS\AutoBlockMissedPunchIns;
 use App\Console\Commands\HRMS\AutoCloseBlockedAttendance;
 use App\Console\Commands\HRMS\ExpireCompOffs;
@@ -37,7 +39,8 @@ class Kernel extends ConsoleKernel
         LapseYearEndLeaves::class,
         RecalculateLeaveBalances::class,
         GenerateMonthlyAttendanceSummary::class,
-        \App\Console\Commands\AttendanceBackfillShiftAssignments::class,
+        DispatchPermanentActivationNotifications::class,
+        AttendanceBackfillShiftAssignments::class,
     ];
 
     /**
@@ -70,6 +73,7 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping();
         $schedule->command('hrms:lifecycle-reminders')->dailyAt('09:00')->timezone('Asia/Kolkata')->withoutOverlapping();
         $schedule->command('hrms:activate-scheduled-permanent')->dailyAt('00:10')->timezone('Asia/Kolkata')->withoutOverlapping();
+        $schedule->command('hrms:dispatch-permanent-activation-notifications')->everyMinute()->timezone('Asia/Kolkata')->withoutOverlapping();
         $schedule->command('hrms:leave-lapse-year-end')->yearlyOn(12, 31, '23:50')->timezone('Asia/Kolkata');
         $schedule->command('hrms:attendance-monthly-summary')->monthlyOn(1, '01:00')->timezone('Asia/Kolkata');
     }

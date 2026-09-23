@@ -194,10 +194,10 @@ class LeaveAllocationC extends Controller
         abort_unless($this->userHasPermission('leave.allocation.manage') || $this->canViewAll('leave.allocation.view_all'), 403);
 
         $year = (int) ($request->year ?: Carbon::now('Asia/Kolkata')->year);
-        $count = $this->allocationService->generateYearly($year, Auth::id());
+        $summary = $this->allocationService->generateYearly($year, Auth::id());
 
         return redirect()->route('leave-allocations.index', ['year' => $year])
-            ->with('success', "Leave allocations generated for {$count} employee(s) for year {$year}.");
+            ->with('success', "Leave allocations for {$year}: {$summary['successful_allocations']} allocated, {$summary['skipped']} skipped, {$summary['failed']} failed.");
     }
 
     public function allocateSingle(Request $request)

@@ -97,6 +97,11 @@ class EmployeeEligibilityS
             return true;
         }
 
+        if ($employee instanceof EmployeeM
+            && array_key_exists('has_completed_exit', $employee->getAttributes())) {
+            return (bool) $employee->getAttribute('has_completed_exit');
+        }
+
         $empId = is_object($employee) ? ($employee->id ?? null) : null;
         $empStatus = strtolower(trim((string) (is_object($employee) ? ($employee->employment_status ?? '') : '')));
 
@@ -259,9 +264,7 @@ class EmployeeEligibilityS
         return $this->isEligible($employee);
     }
 
-    /**
-     * Document Module Visibility.
-     */
+    
     public function canAccessDocuments($employee, string $context = 'general'): bool
     {
         if (!$employee) {

@@ -10,6 +10,9 @@ use App\Services\HRMS\Employee\EmployeeEligibilityS;
 use Carbon\Carbon;
 use DomainException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Log;
 
 class LeaveAllocationService
 {
@@ -87,6 +90,19 @@ class LeaveAllocationService
         ?string $forceStage = null,
         ?Carbon $effectiveDate = null
     ): LeaveAllocationM {
+        $stage = $forceStage !== null
+            ? $this->normalizeStage($forceStage)
+            : $this->stageFor($employee);
+        if ($stage === self::STAGE_PERMANENT) {
+            $effectiveDate = $this->effectiveDateForAllocationYear($employee, $year, $effectiveDate);
+            if ($effectiveDate === false) {
+                return LeaveAllocationM::firstOrNew([
+                    'employee_id' => $employee->id,
+                    'year' => $year,
+                ]);
+            }
+        }
+
         if (! $this->eligibilityService->canUseLeave($employee)) {
             return LeaveAllocationM::firstOrNew([
                 'employee_id' => $employee->id,
@@ -94,11 +110,12 @@ class LeaveAllocationService
             ]);
         }
 
-        return DB::transaction(function () use (
+        try {
+            return DB::transaction(function () use (
             $employee,
             $year,
             $userId,
-            $forceStage,
+            $stage,
             $effectiveDate
         ) {
             $allocation = LeaveAllocationM::query()
@@ -111,7 +128,6 @@ class LeaveAllocationService
             if ($allocation?->is_locked) {
                 return $allocation;
             }
-
             $policyDate = $this->yearStart($year);
             $policy = $this->policyService->forEmployee($employee, $policyDate);
 
@@ -120,10 +136,6 @@ class LeaveAllocationService
             }
 
             $this->validatePolicy($policy);
-
-            $stage = $forceStage !== null
-                ? $this->normalizeStage($forceStage)
-                : $this->stageFor($employee);
 
             $fromDate = $this->allocationStartDate(
                 $employee,
@@ -223,7 +235,39 @@ class LeaveAllocationService
             }
 
             return $allocation;
-        });
+            });
+        } catch (QueryException $e) {
+            // Concurrent first-time generators can both observe no row. The unique
+            // employee/year index chooses a winner; return that committed row safely.
+            $message = strtolower($e->getMessage());
+            $sqlState = (string) ($e->errorInfo[0] ?? $e->getCode());
+            $driverCode = (int) ($e->errorInfo[1] ?? 0);
+            $isExpectedUniqueCollision = (
+                $sqlState === '23505'
+                && (str_contains($message, 'leave_allocations_emp_year_unique')
+                    || str_contains($message, 'leave_allocations_employee_id_year_unique'))
+            ) || (
+                $sqlState === '23000'
+                && $driverCode === 1062
+                && (str_contains($message, 'leave_allocations_emp_year_unique')
+                    || str_contains($message, 'leave_allocations_employee_id_year_unique'))
+            ) || (
+                $sqlState === '23000'
+                && $driverCode === 19
+                && str_contains($message, 'unique constraint failed: leave_allocations.employee_id, leave_allocations.year')
+            );
+            if (! $isExpectedUniqueCollision) {
+                throw $e;
+            }
+            $existing = LeaveAllocationM::query()
+                ->where('employee_id', $employee->id)
+                ->where('year', $year)
+                ->first();
+            if ($existing) {
+                return $existing;
+            }
+            throw $e;
+        }
     }
 
     /**
@@ -249,19 +293,87 @@ class LeaveAllocationService
     }
 
     /**
-     * Bulk yearly allocation generation for all eligible employees using cursor streaming.
+     * Bulk yearly allocation generation with bounded memory and batched profile loading.
      */
-    public function generateYearly(int $year, ?int $userId = null): int
+    public function generateYearly(int $year, ?int $userId = null): array
     {
-        $count = 0;
-        foreach (EmployeeM::cursor() as $employee) {
-            if ($this->eligibilityService->canUseLeave($employee)) {
-                $this->generateForEmployee($employee, $year, $userId);
-                $count++;
-            }
+        $startedAt = microtime(true);
+        $summary = [
+            'total_processed' => 0,
+            'successful_allocations' => 0,
+            'skipped' => 0,
+            'failed' => 0,
+            'failed_employee_ids' => [],
+        ];
+        $query = EmployeeM::query()
+            ->without(['user', 'department', 'designation', 'position', 'systemRole'])
+            ->with('profile')
+            ->where(function ($query) {
+                $query->where('is_active', 1)->orWhereNull('is_active');
+            });
+        if (Schema::hasTable('employee_exit_processes')) {
+            $query->addSelect([
+                'has_completed_exit' => DB::table('employee_exit_processes')
+                    ->selectRaw('1')
+                    ->whereColumn('employee_exit_processes.employee_id', 'employees_new.id')
+                    ->where('employee_exit_processes.status', 'exit_completed')
+                    ->limit(1),
+            ]);
         }
+        $query->chunkById(250, function ($employees) use ($year, $userId, &$summary) {
+                $employeeIds = $employees->pluck('id')->all();
+                $existingAllocations = LeaveAllocationM::query()
+                    ->where('year', $year)
+                    ->whereIn('employee_id', $employeeIds)
+                    ->get(['employee_id', 'is_locked'])
+                    ->keyBy('employee_id');
 
-        return $count;
+                foreach ($employees as $employee) {
+                    $summary['total_processed']++;
+                    try {
+                        if (! $this->eligibilityService->canUseLeave($employee)) {
+                            $summary['skipped']++;
+                            continue;
+                        }
+
+                        $stage = $this->stageFor($employee);
+                        if ($stage === self::STAGE_PERMANENT) {
+                            $permanentDate = $employee->confirmation_effective_date
+                                ?: $employee->confirmation_date
+                                ?: $employee->permanent_at;
+                            if ($permanentDate && Carbon::parse($permanentDate, self::TIMEZONE)->year > $year) {
+                                $summary['skipped']++;
+                                continue;
+                            }
+                        }
+
+                        if ((bool) ($existingAllocations->get($employee->id)?->is_locked ?? false)) {
+                            $summary['skipped']++;
+                            continue;
+                        }
+
+                        $allocation = $this->generateForEmployee($employee, $year, $userId);
+                        if ($allocation->exists) {
+                            $summary['successful_allocations']++;
+                        } else {
+                            $summary['skipped']++;
+                        }
+                    } catch (\Throwable $e) {
+                        $summary['failed']++;
+                        $summary['failed_employee_ids'][] = (int) $employee->id;
+                        Log::error('Annual leave allocation failed for employee', [
+                            'employee_id' => (int) $employee->id,
+                            'year' => $year,
+                            'stage' => $employee->employee_stage ?? $employee->employment_type ?? null,
+                            'exception' => get_class($e),
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+            });
+
+        $summary['duration_seconds'] = round(microtime(true) - $startedAt, 3);
+        return $summary;
     }
 
     /**
@@ -1045,12 +1157,7 @@ class LeaveAllocationService
         ?Carbon $effectiveDate = null
     ): ?Carbon {
         $date = match ($stage) {
-            self::STAGE_PERMANENT =>
-                $effectiveDate?->toDateString()
-                ?: $employee->permanent_at
-                ?: $employee->confirmation_effective_date
-                ?: $employee->confirmation_date
-                ?: $employee->joining_date,
+            self::STAGE_PERMANENT => $effectiveDate?->toDateString() ?: $this->yearStart($year)->toDateString(),
 
             self::STAGE_INTERNSHIP =>
                 $effectiveDate?->toDateString()
@@ -1073,6 +1180,38 @@ class LeaveAllocationService
         $yearStart = $this->yearStart($year);
 
         return $parsedDate->lt($yearStart) ? $yearStart : $parsedDate;
+    }
+
+    /**
+     * Permanent effective dates affect only the allocation in that same year.
+     * A later allocation year starts on January 1 under that year's full annual policy.
+     * false means the requested allocation predates the employee's permanent effective year.
+     */
+    private function effectiveDateForAllocationYear(
+        EmployeeM $employee,
+        int $year,
+        ?Carbon $requestedEffectiveDate
+    ): Carbon|false|null {
+        $lifecycleDate = $employee->confirmation_effective_date
+            ?: $employee->confirmation_date
+            ?: $employee->permanent_at;
+        $effectiveDate = $lifecycleDate
+            ? Carbon::parse($lifecycleDate, self::TIMEZONE)->startOfDay()
+            : $requestedEffectiveDate?->copy()->startOfDay();
+
+        if (! $effectiveDate) {
+            // Legacy permanent records without a confirmation date receive the
+            // normal full annual allocation; joining_date is not a proxy here.
+            return null;
+        }
+
+        if ($year < $effectiveDate->year) {
+            return false;
+        }
+
+        return $year === $effectiveDate->year
+            ? $effectiveDate
+            : null;
     }
 
     private function now(): Carbon

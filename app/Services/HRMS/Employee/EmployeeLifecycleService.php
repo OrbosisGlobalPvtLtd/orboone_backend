@@ -4,13 +4,18 @@ namespace App\Services\HRMS\Employee;
 
 use App\Models\HRMS\Employee\EmployeeM;
 use App\Services\HRMS\Leave\LeaveAllocationService;
+use App\Services\HRMS\EnterprisePayroll\EnterpriseSalaryStructureSyncS;
+use App\Services\HRMS\Notification\NotificationS;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Log;
 
 class EmployeeLifecycleService
 {
+    private ?array $employeeColumns = null;
+
     public function __construct(private LeaveAllocationService $leaveAllocationService) {}
 
     public function calculateProbationDates(string $startDateStr, string $durationType = 'months', int $durationValue = 3): array
@@ -119,17 +124,22 @@ class EmployeeLifecycleService
                 }
             }
 
-            if ($employeeStage === 'probation') {
-                if (Carbon::now('Asia/Kolkata')->startOfDay()->greaterThan(Carbon::parse($probationEnd, 'Asia/Kolkata')->startOfDay())) {
-                    $employeeStage = 'permanent';
-                    $probationStatus = 'completed';
-                } else {
-                    $probationStatus = in_array($existingProbationStatus, ['completed', 'confirmed'], true)
-                        ? $existingProbationStatus
-                        : 'ongoing';
+            $today = Carbon::today('Asia/Kolkata');
+            $probationEndCarbon = Carbon::parse($probationEnd, 'Asia/Kolkata')->startOfDay();
+
+            if ($probationEndCarbon->greaterThanOrEqualTo($today)) {
+                if ($requestedStage !== 'permanent') {
+                    $employeeStage = 'probation';
+                    $probationStatus = 'ongoing';
                 }
             } else {
-                $probationStatus = 'completed';
+                if ($employeeStage === 'probation') {
+                    $probationStatus = in_array($existingProbationStatus, ['completed', 'confirmed', 'extended', 'scheduled_permanent'], true)
+                        ? $existingProbationStatus
+                        : 'ongoing';
+                } else {
+                    $probationStatus = 'completed';
+                }
             }
         } elseif ($employeeStage === 'permanent') {
             $probationStatus = 'completed';
@@ -148,8 +158,6 @@ class EmployeeLifecycleService
             $internshipEnd = $startDateObj->copy()->addMonthsNoOverflow($duration)->subDay()->format('Y-m-d');
         }
 
-        $actualPermanentAt = $employeeStage === 'permanent' ? $confirmationEffectiveDate : null;
-
         return [
             'employee_stage' => $employeeStage,
             'work_schedule_type' => Arr::get($input, 'work_schedule_type'),
@@ -157,7 +165,7 @@ class EmployeeLifecycleService
             'relieving_date' => Arr::get($input, 'relieving_date'),
             'probation_start_date' => $isInternshipStage ? null : $probationStart,
             'probation_end_date' => $isInternshipStage ? null : $probationEnd,
-            'confirmation_effective_date' => $actualPermanentAt,
+            'confirmation_effective_date' => $isInternshipStage ? null : $confirmationEffectiveDate,
             'probation_status' => $isInternshipStage ? null : $probationStatus,
             'probation_months' => $isInternshipStage ? null : $durationValue,
             'probation_duration_type' => $isInternshipStage ? null : $durationType,
@@ -252,18 +260,139 @@ class EmployeeLifecycleService
         if (! $probationEndDate) {
             return;
         }
+        $this->activatePermanent(new EmployeeM(['id' => $employeeId]), '', 'auto_expiry');
+    }
+
+    /** The single transactional entry point for every probation-to-permanent activation source. */
+    public function activatePermanent(
+        EmployeeM $employee,
+        string $effectiveDate,
+        ?string $source = null,
+        ?int $actorId = null,
+        mixed $salaryAmount = null
+    ): array
+    {
+        $employeeId = (int) $employee->id;
+        $source = $source ?: 'manual';
 
         try {
-            $probationEnded = Carbon::parse($probationEndDate)->lte(now());
+            return DB::transaction(function () use ($employeeId, $effectiveDate, $source, $actorId, $salaryAmount) {
+            $employeeRow = DB::table('employees_new')->where('id', $employeeId)->lockForUpdate()->first();
+            $fresh = $employeeRow ? (new EmployeeM())->newFromBuilder((array) $employeeRow) : null;
+            if (! $fresh || $fresh->employee_stage !== 'probation'
+                || in_array($fresh->probation_status, ['completed', 'confirmed'], true)
+                || (int) ($fresh->is_active ?? 1) === 0
+                || in_array(strtolower((string) ($fresh->employment_status ?? 'active')), ['inactive', 'terminated', 'exited', 'resigned_and_exited'], true)) {
+                return ['status' => 'skipped', 'employee_id' => $employeeId, 'effective_date' => null, 'reason' => 'employee_not_on_probation'];
+            }
+
+            $today = Carbon::today('Asia/Kolkata');
+            if ($source === 'scheduled') {
+                if ($fresh->probation_status !== 'scheduled_permanent' || ! $fresh->confirmation_effective_date
+                    || Carbon::parse($fresh->confirmation_effective_date, 'Asia/Kolkata')->gt($today)) {
+                    return ['status' => 'skipped', 'employee_id' => $employeeId, 'effective_date' => null, 'reason' => 'scheduled_confirmation_not_due'];
+                }
+                $effectiveDate = Carbon::parse($fresh->confirmation_effective_date, 'Asia/Kolkata')->toDateString();
+            } elseif ($source === 'auto_expiry') {
+                if (in_array($fresh->probation_status, ['completed', 'confirmed', 'extended', 'scheduled_permanent'], true)
+                    || ! $fresh->probation_end_date
+                    || ! Carbon::parse($fresh->probation_end_date, 'Asia/Kolkata')->lt($today)) {
+                    return ['status' => 'skipped', 'employee_id' => $employeeId, 'effective_date' => null, 'reason' => 'probation_not_expired'];
+                }
+                $effectiveDate = Carbon::parse($fresh->probation_end_date, 'Asia/Kolkata')->addDay()->toDateString();
+            } else {
+                $effectiveDate = Carbon::parse($effectiveDate, 'Asia/Kolkata')->toDateString();
+            }
+
+            $update = [
+                'employee_stage' => 'permanent',
+                'probation_status' => 'completed',
+                'confirmation_date' => $effectiveDate,
+                'confirmation_effective_date' => $effectiveDate,
+                'permanent_activated_at' => now('Asia/Kolkata'),
+                'updated_at' => now('Asia/Kolkata'),
+            ];
+            if ($salaryAmount !== null) {
+                $update['actual_salary'] = $salaryAmount;
+            }
+            $columns = $this->employeeColumns ??= Schema::getColumnListing('employees_new');
+            if (in_array('is_permanent', $columns, true)) $update['is_permanent'] = 1;
+            if (in_array('permanent_at', $columns, true)) $update['permanent_at'] = $effectiveDate;
+            if ($actorId && in_array('updated_by', $columns, true)) $update['updated_by'] = $actorId;
+            DB::table('employees_new')->where('id', $employeeId)->update($update);
+
+            $fresh->fill($update);
+            $effectiveDateCarbon = Carbon::parse($effectiveDate, 'Asia/Kolkata')->startOfDay();
+            $this->leaveAllocationService->generateForEmployee(
+                $fresh,
+                $effectiveDateCarbon->year,
+                $actorId,
+                'permanent',
+                $effectiveDateCarbon
+            );
+
+            // If activation is correcting a prior-year lifecycle, also establish
+            // this year's independent full annual allocation. The allocation
+            // service ignores the old effective date for later years.
+            if ($effectiveDateCarbon->year < $today->year) {
+                $this->leaveAllocationService->generateForEmployee(
+                    $fresh,
+                    $today->year,
+                    $actorId,
+                    'permanent'
+                );
+            }
+
+            if ($fresh->actual_salary !== null) {
+                app(EmployeeSalaryHistoryService::class)->syncPermanentActivation(
+                    $employeeId,
+                    $effectiveDate,
+                    $actorId
+                );
+                $salaryEmployee = (object) $fresh->getAttributes();
+                $salaryEmployee->salary_effective_from = $effectiveDate;
+                app(EnterpriseSalaryStructureSyncS::class)->syncFromEmployee(
+                    $salaryEmployee,
+                    'Auto-synced on permanent confirmation date',
+                    true
+                );
+            }
+
+            app(NotificationS::class)->markEmployeeLifecycleNotificationsResolved(
+                $employeeId,
+                ['probation_ending_soon', 'probation_ending_reminder']
+            );
+
+            $eventKey = "permanent_activated:{$employeeId}:{$effectiveDate}";
+            app(NotificationS::class)->ensurePermanentActivationEvent(
+                $employeeId,
+                (int) $fresh->user_id,
+                $effectiveDate
+            );
+
+            DB::afterCommit(function () use ($employeeId, $effectiveDate, $eventKey) {
+                try {
+                    app(NotificationS::class)->dispatchPermanentActivationEvent($eventKey);
+                } catch (\Throwable $e) {
+                    Log::error('Permanent activation notification dispatch failed', [
+                        'employee_id' => $employeeId,
+                        'effective_date' => $effectiveDate,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            });
+
+            return ['status' => 'activated', 'employee_id' => $employeeId, 'effective_date' => $effectiveDate, 'reason' => null];
+            });
         } catch (\Throwable $e) {
-            $probationEnded = false;
+            Log::error('Permanent lifecycle activation failed', [
+                'employee_id' => $employeeId,
+                'effective_date' => $effectiveDate,
+                'source' => $source,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
         }
-
-        if (! $probationEnded) {
-            return;
-        }
-
-        $this->autoAllocateForStage($employeeId, 'permanent', $probationEndDate);
     }
 
     public function autoAllocateForStage(int $employeeId, ?string $forceStage = null, ?string $effectiveDate = null, ?int $actorId = null): void
@@ -281,6 +410,20 @@ class EmployeeLifecycleService
         $date = $effectiveDate ? Carbon::parse($effectiveDate, 'Asia/Kolkata') : null;
         $year = (int) ($date?->year ?: Carbon::now('Asia/Kolkata')->year);
 
+        if ($stage === 'permanent' && ! $date) {
+            $authoritativeDate = $employee->confirmation_effective_date ?: $employee->confirmation_date ?: $employee->permanent_at;
+            $date = $authoritativeDate ? Carbon::parse($authoritativeDate, 'Asia/Kolkata') : null;
+            if ($date) $year = (int) $date->year;
+        }
         $this->leaveAllocationService->generateForEmployee($employee, $year, $actorId, $stage, $date);
+
+        if ($stage === 'permanent' && $date && $date->year < Carbon::today('Asia/Kolkata')->year) {
+            $this->leaveAllocationService->generateForEmployee(
+                $employee,
+                Carbon::today('Asia/Kolkata')->year,
+                $actorId,
+                $stage
+            );
+        }
     }
 }

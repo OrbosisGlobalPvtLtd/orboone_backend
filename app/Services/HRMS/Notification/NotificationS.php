@@ -2,15 +2,280 @@
 
 namespace App\Services\HRMS\Notification;
 
-use Illuminate\Support\Facades\DB;
+use App\Jobs\SendPermanentActivationNotifications;
+use App\Mail\HolidayWorkRequestMail;
+use App\Mail\HrWorkflowAlertMail;
+use App\Models\HRMS\Attendance\HolidayWorkRequestM;
+use App\Services\Notification\FcmNotificationS;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
+use RuntimeException;
+use Throwable;
 
 class NotificationS
 {
     private string $notificationsTable = 'notifications';
+
+    /** Idempotent delivery for a committed permanent-activation lifecycle event. */
+    public function notifyPermanentActivation(int $employeeId, int $employeeUserId, string $effectiveDate): void
+    {
+        $eventKey = "permanent_activated:{$employeeId}:{$effectiveDate}";
+        $this->ensurePermanentActivationEvent($employeeId, $employeeUserId, $effectiveDate);
+        $this->deliverPermanentActivationEvent($eventKey);
+    }
+
+    /** Create durable, indexed notification/event rows inside the activation transaction. */
+    public function ensurePermanentActivationEvent(int $employeeId, int $employeeUserId, string $effectiveDate): void
+    {
+        if (! Schema::hasTable($this->notificationsTable)) {
+            throw new RuntimeException('Permanent activation notifications table is unavailable.');
+        }
+
+        $eventKey = "permanent_activated:{$employeeId}:{$effectiveDate}";
+        DB::transaction(function () use ($employeeId, $employeeUserId, $effectiveDate, $eventKey) {
+            $employee = DB::table('employees_new')->where('id', $employeeId)->lockForUpdate()->first();
+            if (! $employee) {
+                return;
+            }
+
+            $employeeName = DB::table('users')->where('id', $employeeUserId)->value('name') ?: 'Employee';
+            $payloadData = [
+                'employee_id' => $employeeId,
+                'target_date' => $effectiveDate,
+                'lifecycle_event_key' => $eventKey,
+                'activation_delivery' => ['fcm' => false, 'email' => false],
+            ];
+            $this->createActivationNotificationIfMissing(
+                $employeeUserId,
+                null,
+                'Your permanent confirmation has been activated successfully.',
+                $eventKey,
+                $payloadData
+            );
+
+            $formattedDate = Carbon::parse($effectiveDate, 'Asia/Kolkata')->format('d M Y');
+            foreach ($this->hrAndSuperAdminUsers() as $user) {
+                $this->createActivationNotificationIfMissing(
+                    (int) $user->id,
+                    $user->system_role_id ?? null,
+                    "Permanent confirmation has been activated for {$employeeName} effective from {$formattedDate}.",
+                    $eventKey,
+                    $payloadData
+                );
+            }
+        });
+    }
+
+    private function createActivationNotificationIfMissing(int $userId, ?int $roleId, string $message, string $eventKey, array $data): void
+    {
+        if (DB::table($this->notificationsTable)->where('user_id', $userId)->where('lifecycle_event_key', $eventKey)->exists()) {
+            return;
+        }
+
+        $title = 'Permanent Confirmation Activated';
+        $payload = $this->standardPayload('permanent_activated', $title, $message, null, [], $data);
+        DB::table($this->notificationsTable)->insert([
+            'user_id' => $userId,
+            'role_id' => $roleId,
+            'title' => $title,
+            'message' => $message,
+            'type' => 'permanent_activated',
+            'route_name' => null,
+            'route_params' => json_encode([]),
+            'data' => json_encode($payload),
+            'is_read' => 0,
+            'lifecycle_event_key' => $eventKey,
+            'activation_delivery_status' => 'pending',
+            'activation_delivery_attempts' => 0,
+            'created_at' => now('Asia/Kolkata'),
+            'updated_at' => now('Asia/Kolkata'),
+        ]);
+    }
+
+    /** Deliver all recipient rows for a durable activation event. */
+    public function deliverPermanentActivationEvent(string $eventKey): void
+    {
+        DB::table($this->notificationsTable)
+            ->where('lifecycle_event_key', $eventKey)
+            ->where('activation_delivery_status', '!=', 'completed')
+            ->orderBy('id')
+            ->pluck('id')
+            ->each(fn ($id) => $this->deliverPermanentActivationNotification((int) $id));
+    }
+
+    /** Claim the event before dispatch so the minute sweep does not enqueue it repeatedly. */
+    public function dispatchPermanentActivationEvent(string $eventKey): bool
+    {
+        $now = now('Asia/Kolkata');
+        $staleBefore = $now->copy()->subMinutes(10);
+        $notificationIds = DB::transaction(function () use ($eventKey, $staleBefore, $now) {
+            $rows = DB::table($this->notificationsTable)
+                ->where('lifecycle_event_key', $eventKey)
+                ->where(function ($query) use ($staleBefore, $now) {
+                    $query->where(function ($pending) use ($now) {
+                        $pending->where('activation_delivery_status', 'pending')
+                            ->where(function ($due) use ($now) {
+                                $due->whereNull('activation_delivery_claimed_at')
+                                    ->orWhere('activation_delivery_claimed_at', '<=', $now);
+                            });
+                    })
+                        ->orWhere(function ($stale) use ($staleBefore) {
+                            $stale->whereIn('activation_delivery_status', ['queued', 'processing'])
+                                ->where('activation_delivery_claimed_at', '<=', $staleBefore);
+                        });
+                })
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->pluck('id');
+
+            if ($rows->isEmpty()) {
+                return [];
+            }
+
+            DB::table($this->notificationsTable)->whereIn('id', $rows)->update([
+                'activation_delivery_status' => 'queued',
+                'activation_delivery_claimed_at' => now('Asia/Kolkata'),
+                'activation_delivery_error' => null,
+                'updated_at' => now('Asia/Kolkata'),
+            ]);
+
+            return $rows->all();
+        });
+
+        if (! $notificationIds) {
+            return false;
+        }
+
+        try {
+            dispatch(new SendPermanentActivationNotifications($eventKey));
+            return true;
+        } catch (\Throwable $e) {
+            DB::transaction(function () use ($eventKey, $e) {
+                DB::table($this->notificationsTable)
+                    ->where('lifecycle_event_key', $eventKey)
+                    ->where('activation_delivery_status', 'queued')
+                    ->update([
+                        'activation_delivery_status' => 'pending',
+                        'activation_delivery_claimed_at' => null,
+                        'activation_delivery_error' => mb_substr($e->getMessage(), 0, 4000),
+                        'updated_at' => now('Asia/Kolkata'),
+                    ]);
+            });
+            throw $e;
+        }
+    }
+
+    /** Claim briefly, deliver without locks, then persist channel progress briefly. */
+    private function deliverPermanentActivationNotification(int $notificationId): void
+    {
+        $notification = DB::transaction(function () use ($notificationId) {
+            $row = DB::table($this->notificationsTable)->where('id', $notificationId)->lockForUpdate()->first();
+            if (! $row || $row->activation_delivery_status === 'completed') {
+                return null;
+            }
+
+            $claimedAt = $row->activation_delivery_claimed_at
+                ? Carbon::parse($row->activation_delivery_claimed_at, 'Asia/Kolkata')
+                : null;
+            if ($row->activation_delivery_status === 'processing'
+                && $claimedAt
+                && $claimedAt->gt(now('Asia/Kolkata')->subMinutes(10))) {
+                return null;
+            }
+
+            DB::table($this->notificationsTable)->where('id', $notificationId)->update([
+                'activation_delivery_status' => 'processing',
+                'activation_delivery_claimed_at' => now('Asia/Kolkata'),
+                'activation_delivery_attempts' => DB::raw('activation_delivery_attempts + 1'),
+                'updated_at' => now('Asia/Kolkata'),
+            ]);
+            return DB::table($this->notificationsTable)->where('id', $notificationId)->first();
+        });
+
+        if (! $notification) {
+            return;
+        }
+
+        $payload = json_decode((string) ($notification->data ?? ''), true) ?: [];
+        $eventData = (array) ($payload['data'] ?? []);
+        $delivery = (array) ($eventData['activation_delivery'] ?? []);
+        $type = (string) ($payload['type'] ?? $notification->type ?? 'permanent_activated');
+        $title = (string) ($payload['title'] ?? $notification->title ?? 'Permanent Confirmation Activated');
+        $message = (string) ($payload['message'] ?? $notification->message ?? 'Permanent confirmation has been activated successfully.');
+        $routeName = $payload['route_name'] ?? $notification->route_name ?? null;
+        $routeParams = (array) ($payload['route_params'] ?? []);
+        $policy = app(NotificationPolicyS::class);
+
+        try {
+            foreach (['fcm', 'email'] as $channel) {
+                if (! $policy->{'shouldSend' . ucfirst($channel)}($type, $eventData)) {
+                    $delivery[$channel] = true;
+                }
+                if (! empty($delivery[$channel])) {
+                    continue;
+                }
+
+                if ($channel === 'fcm') {
+                    $this->sendFcmPush(
+                        (int) $notification->id,
+                        $notification->user_id ? (int) $notification->user_id : null,
+                        ($notification->role_id ?? null) ? (int) $notification->role_id : null,
+                        $title,
+                        $message,
+                        $type,
+                        $routeName,
+                        $routeParams,
+                        $payload,
+                        true
+                    );
+                } else {
+                    $this->sendEmailNotification(
+                        $notification->user_id ? (int) $notification->user_id : null,
+                        $title,
+                        $message,
+                        $payload,
+                        true
+                    );
+                }
+
+                $delivery[$channel] = true;
+                $eventData['activation_delivery'] = $delivery;
+                $payload['data'] = $eventData;
+                $this->persistActivationNotificationProgress($notificationId, $payload, false);
+            }
+
+            $eventData['activation_delivery'] = $delivery;
+            $payload['data'] = $eventData;
+            $this->persistActivationNotificationProgress($notificationId, $payload, true);
+        } catch (\Throwable $e) {
+            DB::transaction(function () use ($notificationId, $e) {
+                DB::table($this->notificationsTable)->where('id', $notificationId)->update([
+                    'activation_delivery_status' => 'pending',
+                    'activation_delivery_claimed_at' => now('Asia/Kolkata')->addMinutes(10),
+                    'activation_delivery_error' => mb_substr($e->getMessage(), 0, 4000),
+                    'updated_at' => now('Asia/Kolkata'),
+                ]);
+            });
+            throw $e;
+        }
+    }
+
+    private function persistActivationNotificationProgress(int $notificationId, array $payload, bool $completed): void
+    {
+        DB::transaction(function () use ($notificationId, $payload, $completed) {
+            DB::table($this->notificationsTable)->where('id', $notificationId)->update([
+                'data' => json_encode($payload),
+                'activation_delivery_status' => $completed ? 'completed' : 'processing',
+                'activation_delivery_claimed_at' => $completed ? null : now('Asia/Kolkata'),
+                'activation_delivery_error' => null,
+                'updated_at' => now('Asia/Kolkata'),
+            ]);
+        });
+    }
 
     public function notifyHrAndSuperAdmin(
         string $title,
@@ -107,7 +372,8 @@ class NotificationS
         string $type,
         ?string $routeName = null,
         array $routeParams = [],
-        array $data = []
+        array $data = [],
+        bool $deferExternal = false
     ): ?int {
 
         if (! Schema::hasTable($this->notificationsTable)) {
@@ -150,7 +416,11 @@ class NotificationS
 
         $notificationId = DB::table($this->notificationsTable)->insertGetId($insert);
 
-        $policy = app(\App\Services\HRMS\Notification\NotificationPolicyS::class);
+        if ($deferExternal) {
+            return $notificationId;
+        }
+
+        $policy = app(NotificationPolicyS::class);
 
         if ($policy->shouldSendFcm($type, $payload)) {
             $this->sendFcmPush(
@@ -185,10 +455,11 @@ class NotificationS
         string $type,
         ?string $routeName = null,
         array $routeParams = [],
-        array $data = []
+        array $data = [],
+        bool $throwOnFailure = false
     ): void {
         try {
-            $fcmService = app(\App\Services\Notification\FcmNotificationS::class);
+            $fcmService = app(FcmNotificationS::class);
 
             $payload = array_merge($this->standardPayload($type, $title, $message, $routeName, $routeParams, $data), [
                 'notification_id' => (string) $notificationId,
@@ -210,7 +481,9 @@ class NotificationS
                     
                     if (! empty($uniqueTokens)) {
                         foreach ($uniqueTokens as $token) {
-                            $fcmService->sendPush($token, $title, $message, $payload);
+                            if (! $fcmService->sendPush($token, $title, $message, $payload) && $throwOnFailure) {
+                                throw new RuntimeException('FCM permanent activation delivery failed: ' . json_encode($fcmService->lastResponse()));
+                            }
                         }
                     } else {
                         Log::warning('Notification FCM skipped: token missing', [
@@ -235,10 +508,13 @@ class NotificationS
             }
         } catch (\Throwable $e) {
             Log::error('FCM Push Hook Error: ' . $e->getMessage());
+            if ($throwOnFailure) {
+                throw $e;
+            }
         }
     }
 
-    private function sendEmailNotification(?int $userId, string $title, string $message, array $payload): void
+    private function sendEmailNotification(?int $userId, string $title, string $message, array $payload, bool $throwOnFailure = false): void
     {
         if (! $userId || ! Schema::hasTable('users')) {
             return;
@@ -266,7 +542,7 @@ class NotificationS
                 $employeeId = data_get($payload, 'employee_id') ?? data_get($payloadData, 'employee_id');
                 if ($employeeId) {
                     $hrMailKey = 'hr_collective_mail:' . $type . ':' . $employeeId;
-                    // Cache lock for 1 hour to prevent duplicate triggers
+                    
                     if (Cache::add($hrMailKey, 1, now()->addHour())) {
                         $hrEmail = config('hrms.emails.hr');
                         if ($hrEmail) {
@@ -281,7 +557,7 @@ class NotificationS
                             }
 
                             Mail::to($hrEmail)->queue(
-                                new \App\Mail\HrWorkflowAlertMail(
+                                new HrWorkflowAlertMail(
                                     subjectText: $title,
                                     workflowTitle: $title,
                                     details: [
@@ -302,14 +578,14 @@ class NotificationS
                         }
                     }
                 }
-                return; // Prevent fall-through to individual admin emails
+                return; 
             }
 
             // 2. Custom Mailable for Holiday Work Requests
             if (in_array($type, ['holiday_work_request_submitted', 'holiday_work_request_approved', 'holiday_work_request_rejected'], true)) {
                 $requestId = data_get($payload, 'request_id') ?? data_get($payloadData, 'request_id');
                 if ($requestId) {
-                    $holidayRequest = \App\Models\HRMS\Attendance\HolidayWorkRequestM::with(['employee.department'])->find($requestId);
+                    $holidayRequest = HolidayWorkRequestM::with(['employee.department'])->find($requestId);
                     if ($holidayRequest) {
                         $mailKey = 'holiday_work_mail:' . $type . ':' . $requestId . ':' . $userId;
                         if (! Cache::add($mailKey, 1, now()->addMinutes(5))) {
@@ -333,7 +609,7 @@ class NotificationS
                         }
                         
                         Mail::to($user->email)->queue(
-                            (new \App\Mail\HolidayWorkRequestMail(
+                            (new HolidayWorkRequestMail(
                                 $holidayRequest,
                                 $type === 'holiday_work_request_submitted' ? 'submitted' : ($type === 'holiday_work_request_approved' ? 'approved' : 'rejected'),
                                 $actionUrl,
@@ -354,7 +630,7 @@ class NotificationS
                 }
             }
 
-            // 3. Fallback beautifully-styled HTML email that uses our enterprise layout!
+            
             $details = [];
             if (! empty($payload['attachment_url'])) {
                 $details['Attachment'] = $payload['attachment_url'];
@@ -371,7 +647,7 @@ class NotificationS
             }
 
             Mail::to($user->email)->queue(
-                new \App\Mail\HrWorkflowAlertMail(
+                new HrWorkflowAlertMail(
                     subjectText: $title,
                     workflowTitle: $title,
                     details: array_merge(['Message' => $message], $details),
@@ -391,6 +667,9 @@ class NotificationS
                 'type' => $payload['type'] ?? null,
                 'error' => $e->getMessage(),
             ]);
+            if ($throwOnFailure) {
+                throw $e;
+            }
         }
     }
 

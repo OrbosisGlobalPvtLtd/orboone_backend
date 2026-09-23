@@ -9,9 +9,13 @@ use Illuminate\Support\Facades\DB;
 
 class LeavePolicyService
 {
+    private ?LeavePolicyM $cachedDefault = null;
+    /** @var array<int, LeavePolicyM|null> */
+    private array $cachedPolicies = [];
+
     public function activeDefault(): LeavePolicyM
     {
-        return LeavePolicyM::query()
+        return $this->cachedDefault ??= LeavePolicyM::query()
             ->where('is_active', true)
             ->orderBy('id')
             ->firstOrFail();
@@ -36,19 +40,30 @@ class LeavePolicyService
             ->value('leave_policy_id');
 
         if ($overridePolicyId) {
-            $override = LeavePolicyM::where('is_active', true)->find($overridePolicyId);
+            $override = $this->activePolicy((int) $overridePolicyId);
             if ($override) {
                 return $override;
             }
         }
 
         if ($employee->leave_policy_id) {
-            $policy = LeavePolicyM::where('is_active', true)->find($employee->leave_policy_id);
+            $policy = $this->activePolicy((int) $employee->leave_policy_id);
             if ($policy) {
                 return $policy;
             }
         }
 
         return $this->activeDefault();
+    }
+
+    private function activePolicy(int $policyId): ?LeavePolicyM
+    {
+        if (! array_key_exists($policyId, $this->cachedPolicies)) {
+            $this->cachedPolicies[$policyId] = LeavePolicyM::query()
+                ->where('is_active', true)
+                ->find($policyId);
+        }
+
+        return $this->cachedPolicies[$policyId];
     }
 }

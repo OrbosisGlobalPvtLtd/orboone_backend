@@ -221,22 +221,48 @@ class LeavePolicyCalculatorS
 
             if ($leaveType->is_lwp) {
                 $lwp += $dayUnit;
-            } elseif ($leaveType->is_comp_off) {
-                $allocatedComp = min($dayUnit, $compCapacity);
-                $compOff += $allocatedComp;
-                $compCapacity = round($compCapacity - $allocatedComp, 2);
-                $lwp += round($dayUnit - $allocatedComp, 2);
             } elseif ($leaveType->is_sick) {
                 $allocatedSick = min($dayUnit, $sickCapacity);
                 $sick += $allocatedSick;
                 $sickCapacity = round($sickCapacity - $allocatedSick, 2);
                 $lwp += round($dayUnit - $allocatedSick, 2);
+            } elseif ($leaveType->is_comp_off) {
+                $remUnit = $dayUnit;
+
+                // 1. Comp Off balance first
+                $allocatedComp = min($remUnit, $compCapacity);
+                $compOff += $allocatedComp;
+                $compCapacity = round($compCapacity - $allocatedComp, 2);
+                $remUnit = round($remUnit - $allocatedComp, 2);
+
+                // 2. Monthly Paid Leave balance second for remaining
+                if ($remUnit > 0) {
+                    $remAllowedPaid = max(0.0, round($maxAllowedPaid - $paid, 2));
+                    $allocatedPaid = min($remUnit, $remAllowedPaid);
+
+                    $paid += $allocatedPaid;
+                    $remUnit = round($remUnit - $allocatedPaid, 2);
+                }
+
+                // 3. LWP for remaining
+                if ($remUnit > 0) {
+                    $lwp += $remUnit;
+                }
             } else {
-                $remAllowed = max(0.0, round($maxAllowedPaid - $paid, 2));
-                $allocatedPaid = min($dayUnit, $remAllowed);
+                // Normal Paid Leave (Paid Leave / Casual Leave / Earned Leave)
+                $remUnit = $dayUnit;
+
+                // 1. Monthly Paid Leave balance first
+                $remAllowedPaid = max(0.0, round($maxAllowedPaid - $paid, 2));
+                $allocatedPaid = min($remUnit, $remAllowedPaid);
 
                 $paid += $allocatedPaid;
-                $lwp += round($dayUnit - $allocatedPaid, 2);
+                $remUnit = round($remUnit - $allocatedPaid, 2);
+
+                // 2. LWP for remaining
+                if ($remUnit > 0) {
+                    $lwp += $remUnit;
+                }
             }
         }
 
@@ -332,6 +358,12 @@ class LeavePolicyCalculatorS
             }
 
             $remaining = $unit;
+
+            $take = min($remaining, $compOff);
+            $row['comp_off_day'] = $take;
+            $compOff = round($compOff - $take, 2);
+            $remaining = round($remaining - $take, 2);
+
             $take = min($remaining, $paid);
             $row['paid_day'] = $take;
             $paid = round($paid - $take, 2);
@@ -340,11 +372,6 @@ class LeavePolicyCalculatorS
             $take = min($remaining, $sick);
             $row['sick_day'] = $take;
             $sick = round($sick - $take, 2);
-            $remaining = round($remaining - $take, 2);
-
-            $take = min($remaining, $compOff);
-            $row['comp_off_day'] = $take;
-            $compOff = round($compOff - $take, 2);
             $remaining = round($remaining - $take, 2);
 
             $take = min($remaining, $lwp);

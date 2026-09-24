@@ -264,9 +264,24 @@ class LeaveRequestC extends Controller
                 'is_half_day' => $request->boolean('is_half_day'),
                 'half_day_type' => $request->input('half_day_type', 'first_half'),
                 'emergency_leave' => $request->boolean('emergency_leave'),
+                'bypass_notice_period' => true,
             ];
 
             $calc = $this->calculationService->calculate($employee, $leaveType, $sanitized);
+
+            $isSick = (bool) $leaveType->is_sick;
+            $isLwp = (bool) $leaveType->is_lwp;
+            $isEmergency = $request->boolean('emergency_leave');
+            $isHalfDay = $request->boolean('is_half_day');
+
+            $noticeWarning = null;
+            if (! $isSick && ! $isLwp && ! $isEmergency && ! $isHalfDay) {
+                $today = Carbon::now('Asia/Kolkata')->startOfDay();
+                $startCarbon = Carbon::parse($startDate, 'Asia/Kolkata')->startOfDay();
+                if ($startCarbon->gte($today) && $today->diffInDays($startCarbon, false) < 2) {
+                    $noticeWarning = 'Normal leaves must be applied at least 2 days in advance. Check "Emergency Leave" if applying due to urgent emergency.';
+                }
+            }
 
             return response()->json([
                 'success' => true,
@@ -278,10 +293,18 @@ class LeaveRequestC extends Controller
                     'sandwich_applied' => $calc['sandwich_applied'],
                     'sandwich_details' => $calc['sandwich_details'] ?? [],
                     'sandwich_message' => $calc['sandwich_message'] ?? null,
+                    'notice_warning' => $noticeWarning,
                     'paid_days' => $calc['paid_days'],
                     'sick_days' => $calc['sick_days'],
                     'comp_off_days' => $calc['comp_off_days'],
                     'lwp_days' => $calc['lwp_days'],
+                    'current_balance' => [
+                        'paid_remaining' => (float) ($calc['allocation']->paid_remaining ?? 0),
+                        'sick_remaining' => (float) ($calc['allocation']->sick_remaining ?? 0),
+                        'comp_off_remaining' => (float) ($calc['allocation']->comp_off_remaining ?? 0),
+                        'total_remaining' => (float) ($calc['allocation']->total_remaining ?? 0),
+                    ],
+                    'balance_after_split' => $calc['balance_after_split'] ?? [],
                 ],
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {

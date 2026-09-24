@@ -31,7 +31,7 @@ class MyHolidayWorkRequestC extends Controller
             ->latest('worked_date')
             ->paginate(15);
 
-        return view('hrms.attendance.my_holiday_work.index', compact('requests', 'employee'));
+        return view('hrms.attendance.holiday-work.my-requests', compact('requests', 'employee'));
     }
 
     /**

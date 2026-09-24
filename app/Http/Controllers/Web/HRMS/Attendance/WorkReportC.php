@@ -216,7 +216,7 @@ class WorkReportC extends Controller
         $isAdminOrManager = $this->userHasPermission('attendance.work_reports.view_all') 
             || $this->userHasPermission('attendance.work_reports.view_team');
 
-        return view('hrms.attendance.work-reports', compact('workLogs', 'employeeSummaries', 'employees', 'isAdminOrManager', 'statsSummary'));
+        return view('hrms.attendance.work-reports.index', compact('workLogs', 'employeeSummaries', 'employees', 'isAdminOrManager', 'statsSummary'));
     }
 
     private function attendanceEmployees()
@@ -390,7 +390,7 @@ class WorkReportC extends Controller
             'to_date' => $request->to_date,
         ];
 
-        return view('hrms.attendance.work-report-employee-history', compact('employee', 'workLogs', 'summary'));
+        return view('hrms.attendance.work-reports.history', compact('employee', 'workLogs', 'summary'));
     }
 
     public function printEmployeeHistory($employeeId, Request $request)
@@ -399,7 +399,7 @@ class WorkReportC extends Controller
         if ($response instanceof \Illuminate\View\View) {
             $data = $response->getData();
 
-            return view('hrms.attendance.work-report-employee-history-print', $data);
+            return view('hrms.attendance.work-reports.history-print', $data);
         }
 
         return $response;
@@ -430,6 +430,6 @@ class WorkReportC extends Controller
         $reportingManager = optional($employee)->reportingManager;
         $reportingManagerName = $reportingManager ? (optional($reportingManager->user)->name ?? $reportingManager->employee_code) : 'Department Head / Admin';
 
-        return view('hrms.attendance.work-report-single-print', compact('workLog', 'employee', 'reportingManagerName'));
+        return view('hrms.attendance.work-reports.print', compact('workLog', 'employee', 'reportingManagerName'));
     }
 }

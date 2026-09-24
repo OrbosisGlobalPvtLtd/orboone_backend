@@ -65,16 +65,46 @@ class PayrollAttendanceSummaryService
             ->selectRaw('SUM(paid_day) as paid, SUM(sick_day) as sick, SUM(comp_off_day) as comp, SUM(lwp_day) as lwp')
             ->first();
 
-        $present = $attendances->filter(fn ($attendance) => optional($attendance->attendanceType)->code === 'present')->count();
-        $holidayFromAtt = (float) $attendances->filter(fn ($attendance) => optional($attendance->attendanceType)->code === 'holiday')->count();
+        $present = 0;
+        $holidayFromAtt = 0.0;
+        $weekOff = 0;
+        $absent = 0;
+        $halfDays = 0;
+        $lwp = (float) ($leaveRows->lwp ?? 0);
+
+        foreach ($attendances as $attendance) {
+            $isCompOffWorked = $this->payableDayResolver->isCompOffWorkedDay($attendance);
+            $code = strtolower((string) optional($attendance->attendanceType)->code);
+
+            if ($isCompOffWorked) {
+                if ($code === 'holiday') {
+                    $holidayFromAtt += 1.0;
+                } else {
+                    $weekOff += 1;
+                }
+            } else {
+                if ($code === 'present') {
+                    $present++;
+                } elseif ($code === 'holiday') {
+                    $holidayFromAtt += 1.0;
+                } elseif ($code === 'week_off') {
+                    $weekOff++;
+                } elseif ($code === 'absent') {
+                    $absent++;
+                }
+
+                if ($attendance->is_half_day) {
+                    $halfDays++;
+                }
+                if ($attendance->is_lwp) {
+                    $lwp += 1.0;
+                }
+            }
+        }
+
         $tableHolidays = $this->activeHolidayDays($employee, $month, $year);
         $finalHolidays = max($holidayFromAtt, $tableHolidays);
         $missingHolidayDays = max(0.0, $finalHolidays - $holidayFromAtt);
-
-        $weekOff = $attendances->filter(fn ($attendance) => optional($attendance->attendanceType)->code === 'week_off')->count();
-        $absent = $attendances->filter(fn ($attendance) => optional($attendance->attendanceType)->code === 'absent')->count();
-        $halfDays = $attendances->where('is_half_day', true)->count();
-        $lwp = (float) ($leaveRows->lwp ?? 0) + (float) $attendances->where('is_lwp', true)->count();
 
         $attendancePayableDays = $attendances->filter(function (AttendanceM $attendance) {
             $code = strtolower((string) optional($attendance->attendanceType)->code);

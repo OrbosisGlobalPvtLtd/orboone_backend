@@ -8,8 +8,44 @@ use Illuminate\Support\Facades\DB;
 
 class AttendancePayableDayResolver
 {
+    public function isCompOffWorkedDay(AttendanceM $attendance): bool
+    {
+        if (strtolower((string) $attendance->attendance_source) === 'comp_off_work') {
+            return true;
+        }
+
+        if (!$attendance->employee_id || !$attendance->attendance_date) {
+            return false;
+        }
+
+        $dateStr = \Carbon\Carbon::parse($attendance->attendance_date)->toDateString();
+
+        $resolver = app(AttendanceRuleResolverService::class);
+        $employee = $attendance->employee ?: \App\Models\HRMS\Employee\EmployeeM::find($attendance->employee_id);
+        if (!$employee) {
+            return false;
+        }
+
+        $dayContext = $resolver->getDayContext($employee, $dateStr);
+        if (!($dayContext['is_holiday'] || $dayContext['is_weekoff'])) {
+            return false;
+        }
+
+        return DB::table('holiday_work_requests')
+            ->where('employee_id', $attendance->employee_id)
+            ->whereDate('worked_date', $dateStr)
+            ->where('status', 'approved')
+            ->whereNull('deleted_at')
+            ->exists();
+    }
+
     public function resolve(AttendanceM $attendance): array
     {
+        // Holiday/Weekoff worked specifically for Comp-Off must NOT create payroll deduction
+        if ($this->isCompOffWorkedDay($attendance)) {
+            return $this->row(1.0, 'paid', false, 'Holiday/Weekoff Comp-Off worked day (no payroll deduction).');
+        }
+
         $code = strtolower((string) optional($attendance->attendanceType)->code);
         $status = strtolower((string) ($attendance->attendance_status ?? ''));
         $effective = $code !== '' ? $code : $status;

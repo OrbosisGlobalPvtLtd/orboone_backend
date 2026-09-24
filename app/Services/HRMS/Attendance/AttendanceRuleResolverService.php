@@ -510,6 +510,20 @@ class AttendanceRuleResolverService
                 'next_action' => 'punch_in',
                 'primary_message' => 'Punch-in is available.',
             ];
+        } elseif ($isUnlocked && ! $hasPunchIn) {
+            return [
+                'status_code' => 'absent',
+                'status_name' => 'Absent',
+                'attendance_state' => 'absent',
+                'is_blocked' => false,
+                'is_punch_blocked' => false,
+                'show_blocked_card' => false,
+                'blocked_message' => null,
+                'can_punch_in' => false,
+                'can_punch_out' => false,
+                'next_action' => 'none',
+                'primary_message' => null,
+            ];
         }
 
         $finalCode = null;
@@ -598,7 +612,7 @@ class AttendanceRuleResolverService
             ];
         }
 
-        $isBlockedDb = (bool) (
+        $isBlockedDb = ! $isUnlocked && (bool) (
             $attendance?->is_blocked
             || $attendance?->is_punch_blocked
             || $typeCode === 'punch_blocked'

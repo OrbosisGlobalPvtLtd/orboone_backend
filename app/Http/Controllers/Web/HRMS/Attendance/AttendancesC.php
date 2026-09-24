@@ -276,7 +276,7 @@ class AttendancesC extends Controller
             $blocked->regularization_request = $regRequest;
         }
 
-        return view('hrms.attendance.index', compact(
+        return view('hrms.attendance.dashboard.index', compact(
             'attendances',
             'employees',
             'attendanceTypes',
@@ -303,7 +303,7 @@ class AttendancesC extends Controller
         $departments = DepartmentM::orderBy('name')->get();
         $canManageAttendance = $this->canManageAttendance();
 
-        return view('hrms.attendance.daily', compact('attendances', 'employees', 'attendanceTypes', 'attendanceTimes', 'departments', 'canManageAttendance'));
+        return view('hrms.attendance.records.daily', compact('attendances', 'employees', 'attendanceTypes', 'attendanceTimes', 'departments', 'canManageAttendance'));
     }
 
     public function teamAttendance(Request $request)
@@ -482,7 +482,7 @@ class AttendancesC extends Controller
             return $row;
         });
 
-        return view('hrms.attendance.team_attendance', [
+        return view('hrms.attendance.records.team', [
             'attendances' => $attendances,
             'teamEmployees' => $teamEmployees,
             'stats' => $stats,
@@ -564,7 +564,7 @@ class AttendancesC extends Controller
         $departments = DepartmentM::orderBy('name')->get();
         $canManageAttendance = $this->canManageAttendance();
 
-        return view('hrms.attendance.record', compact(
+        return view('hrms.attendance.records.index', compact(
             'attendances',
             'employees',
             'attendanceTypes',
@@ -890,7 +890,7 @@ class AttendancesC extends Controller
             'unlocked_today' => $unlockedToday,
         ];
 
-        return view('hrms.attendance.pending-approval', compact('attendances', 'employees', 'attendanceTypes', 'stats', 'canManageAttendance', 'canUnlockAttendance', 'today'));
+        return view('hrms.attendance.pending-approvals.index', compact('attendances', 'employees', 'attendanceTypes', 'stats', 'canManageAttendance', 'canUnlockAttendance', 'today'));
     }
 
     public function monthlyReport(Request $request)
@@ -984,7 +984,7 @@ class AttendancesC extends Controller
         $departments = DepartmentM::orderBy('name')->get();
         $employeeRows = array_values($employeeData);
 
-        return view('hrms.attendance.monthly-report', compact(
+        return view('hrms.attendance.reports.monthly', compact(
             'attendances',
             'employees',
             'attendanceTypes',
@@ -999,7 +999,7 @@ class AttendancesC extends Controller
     public function policies()
     {
         $attendancePolicies = AttendancePolicyRule::orderByDesc('is_active')->orderBy('policy_name')->get();
-        return view('hrms.attendance.policies', compact('attendancePolicies'));
+        return view('hrms.attendance.policies.index', compact('attendancePolicies'));
     }
 
     public function rules()
@@ -1017,7 +1017,7 @@ class AttendancesC extends Controller
 
         $attendancePolicies = AttendancePolicyRule::orderByDesc('is_active')->orderBy('policy_name')->get();
 
-        return view('hrms.attendance.rules', compact('attendanceTimes', 'employeeShiftTimings', 'employees', 'attendancePolicies'));
+        return view('hrms.attendance.policies.rules', compact('attendanceTimes', 'employeeShiftTimings', 'employees', 'attendancePolicies'));
     }
 
     public function updateRule(Request $request, AttendanceTime $attendanceTime)
@@ -1132,7 +1132,7 @@ class AttendancesC extends Controller
     public function types()
     {
         $attendanceTypes = AttendanceType::withCount('attendances')->orderBy('name')->get();
-        return view('hrms.attendance.types', compact('attendanceTypes'));
+        return view('hrms.attendance.types.index', compact('attendanceTypes'));
     }
 
     public function storeType(Request $request)
@@ -1201,7 +1201,7 @@ class AttendancesC extends Controller
             $periodLabel = Carbon::create((int) $request->year, (int) $request->month, 1)->format('F Y');
         }
 
-        return view('hrms.attendance.attendances_print', compact('attendances', 'periodLabel'));
+        return view('hrms.attendance.reports.print', compact('attendances', 'periodLabel'));
     }
 
     public function exportPdf(Request $request)
@@ -1223,7 +1223,7 @@ class AttendancesC extends Controller
             $periodLabel = Carbon::create((int) $request->year, (int) $request->month, 1)->format('F Y');
         }
 
-        $pdf = Pdf::loadView('hrms.attendance.attendance_pdf', compact('attendances', 'periodLabel'))
+        $pdf = Pdf::loadView('hrms.attendance.reports.pdf', compact('attendances', 'periodLabel'))
             ->setPaper('a4', 'landscape');
         return $pdf->download('attendance_report_' . date('Y_m_d') . '.pdf');
     }
@@ -1500,7 +1500,7 @@ class AttendancesC extends Controller
         $departments = DB::table('departments')->orderBy('name')->pluck('name', 'id')->toArray();
         $designations = DB::table('designations')->orderBy('name')->pluck('name', 'id')->toArray();
 
-        return view('hrms.attendance.access-control', compact('employees', 'departments', 'designations'));
+        return view('hrms.attendance.access-control.index', compact('employees', 'departments', 'designations'));
     }
 
     public function updateAccessControl(Request $request, $id)
@@ -1825,7 +1825,7 @@ class AttendancesC extends Controller
         $workLogs = $attendanceRecord?->workLogs;
         $workSummaryLog = $workLogs?->first();
 
-        return view('hrms.attendance.today', [
+        return view('hrms.attendance.records.today', [
             'employee' => $empObj,
             'attendancePayload' => $attendancePayload,
             'attendanceRecord' => $attendanceRecord,

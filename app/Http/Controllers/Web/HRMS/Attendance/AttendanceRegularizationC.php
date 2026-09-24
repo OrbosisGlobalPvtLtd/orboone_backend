@@ -35,10 +35,17 @@ class AttendanceRegularizationC extends Controller
 
         $query = $this->employeeJoinedQuery('attendance_regularizations')
             ->leftJoin('attendances', 'attendances.id', '=', 'attendance_regularizations.attendance_id')
+            ->leftJoin('departments', 'departments.id', '=', 'employees_new.department_id')
+            ->leftJoin('designations', 'designations.id', '=', 'employees_new.designation_id')
+            ->leftJoin('attendance_types', 'attendance_types.id', '=', 'attendances.attendance_type_id')
             ->addSelect([
                 DB::raw('COALESCE(attendances.attendance_date, DATE(attendance_regularizations.requested_punch_in), DATE(attendance_regularizations.requested_punch_out), DATE(attendance_regularizations.created_at)) as mapped_attendance_date'),
                 DB::raw('attendances.punch_in_time as mapped_current_punch_in'),
                 DB::raw('attendances.punch_out_time as mapped_current_punch_out'),
+                DB::raw('attendances.attendance_status as current_attendance_status'),
+                'departments.name as department_name',
+                'designations.name as designation_name',
+                'attendance_types.name as current_attendance_type_name',
             ])
             ->whereNull('attendance_regularizations.deleted_at');
 
@@ -68,7 +75,10 @@ class AttendanceRegularizationC extends Controller
             ],
         ]);
 
-        return view('hrms.attendance.regularizations.index', $this->pageData($query->latest('attendance_regularizations.id')->paginate(50), $request));
+        $perPage = min(max((int) $request->input('per_page', 25), 10), 100);
+        $rows = $query->latest('attendance_regularizations.id')->paginate($perPage)->appends($request->all());
+
+        return view('hrms.attendance.regularizations.index', $this->pageData($rows, $request));
     }
 
     public function getOptions(Request $request)

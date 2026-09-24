@@ -99,6 +99,7 @@ class EnterpriseAttendanceLeaveResolverS
             'missed_punch_count' => 0,
         ];
 
+        $payableResolver = app(\App\Services\HRMS\Attendance\AttendancePayableDayResolver::class);
         foreach ($attendances as $attendance) {
             $code = strtolower((string) optional($attendance->attendanceType)->code);
             $status = strtolower((string) $attendance->attendance_status);
@@ -109,7 +110,13 @@ class EnterpriseAttendanceLeaveResolverS
             $days['early_out_count'] += $attendance->is_early_out ? 1 : 0;
             $days['missed_punch_count'] += ($attendance->missed_punch || $attendance->is_missed_punch) ? 1 : 0;
 
-            if ($attendance->is_half_day || str_contains($label, 'half')) {
+            if ($payableResolver->isCompOffWorkedDay($attendance)) {
+                if (str_contains($label, 'holiday')) {
+                    $days['holiday_days'] += 1;
+                } else {
+                    $days['week_off_days'] += 1;
+                }
+            } elseif ($attendance->is_half_day || str_contains($label, 'half')) {
                 $days['half_days'] += 1;
             } elseif ($attendance->is_lwp || str_contains($label, 'lwp')) {
                 $days['lwp_days'] += 1;

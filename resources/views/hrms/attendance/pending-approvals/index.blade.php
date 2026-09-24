@@ -937,7 +937,10 @@
                             }
 
                             // Determine actual daily Attendance Status (Present, Absent, Half Day, etc.)
-                            if (!$isUnlocked && $isPastDate) {
+                            if ($isUnlocked && ($rawStatus === 'punch_blocked' || $rawStatus === 'unlocked' || $rawStatus === 'awaiting_punch_in' || empty($rawStatus))) {
+                                $statusCode = $attendance->punch_in_time ? 'present' : 'unlocked';
+                                $statusLabel = $attendance->punch_in_time ? 'Present' : 'Unlocked';
+                            } elseif (!$isUnlocked && $isPastDate) {
                                 // Past date unresolved blocked punches are marked ABSENT
                                 $statusCode = 'absent';
                                 $statusLabel = '🔴 ABSENT';

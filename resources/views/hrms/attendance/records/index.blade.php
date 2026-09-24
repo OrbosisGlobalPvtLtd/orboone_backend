@@ -1070,6 +1070,9 @@
                         if (empty($rawStatus)) {
                             $rawStatus = optional($attendance->attendanceType)->code ?? 'default';
                         }
+                        if (($attendance->is_admin_unlocked || $attendance->unlocked_at || $attendance->unlock_type) && ($rawStatus === 'punch_blocked' || empty($rawStatus))) {
+                            $rawStatus = $attendance->punch_in_time ? 'present' : 'unlocked';
+                        }
                         if ($rawStatus === 'absent' || $rawStatus === 'lwp') {
                             $typeCode = 'absent';
                             $statusName = '🔴 ABSENT';
@@ -1083,6 +1086,8 @@
                                 'holiday' => ['holiday', 'Holiday'],
                                 'week_off' => ['week_off', 'Week Off'],
                                 'punch_blocked' => ['punch_blocked', 'Punch Blocked'],
+                                'unlocked' => ['unlocked', '🔓 UNLOCKED'],
+                                'awaiting_punch_in' => ['unlocked', '🔓 UNLOCKED'],
                                 'lwp' => ['absent', '🔴 ABSENT'],
                             ];
                             $mapped = $statusMap[$rawStatus] ?? null;
@@ -1578,7 +1583,7 @@
             let url = new URL(window.location.href);
             if (val === '-1') val = 'all';
             url.searchParams.set('per_page', val);
-            url.searchParams.delete('page'); // Reset to page 1 on length change
+            url.searchParams.delete('page'); 
             window.location.href = url.toString();
         });
 

@@ -59,7 +59,7 @@ class MonthlyAttendanceSummaryC extends Controller
             ->orderByRaw("COALESCE(users.name, employees_new.employee_code)")
             ->get();
 
-        return view('hrms.attendance.monthly_summary.index', [
+        return view('hrms.attendance.monthly-summary.index', [
             'active' => 'attendances',
             'rows' => $rows,
             'employees' => $employees,

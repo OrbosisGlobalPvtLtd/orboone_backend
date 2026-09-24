@@ -30,7 +30,7 @@ class HolidayWorkRequestC extends Controller
             $perPage = 25;
         }
 
-        return view('hrms.attendance.holiday_work.index', $this->pageData($query->latest('holiday_work_requests.id')->paginate($perPage)->withQueryString()));
+        return view('hrms.attendance.holiday-work.index', $this->pageData($query->latest('holiday_work_requests.id')->paginate($perPage)->withQueryString()));
     }
 
     public function store(Request $request)
@@ -129,6 +129,9 @@ class HolidayWorkRequestC extends Controller
             }
         }
 
+        // Reconcile Comp-Off credit
+        app(\App\Services\HRMS\Leave\CompOffService::class)->reconcileRequest($request, $this->actorId());
+
         // Notify Employee
         $userId = $request->employee ? $request->employee->user_id : null;
         if ($userId) {
@@ -174,6 +177,8 @@ class HolidayWorkRequestC extends Controller
             'rejection_reason' => $rejectionReason,
         ]);
 
+        app(\App\Services\HRMS\Leave\CompOffService::class)->reverseRequest($request);
+
         $userId = $request->employee ? $request->employee->user_id : null;
         if ($userId) {
             try {
@@ -210,7 +215,11 @@ class HolidayWorkRequestC extends Controller
 
     public function destroy($id)
     {
-        DB::table('holiday_work_requests')->where('id', $id)->update(['deleted_at' => now(), 'updated_at' => now()]);
+        $request = HolidayWorkRequestM::find($id);
+        if ($request) {
+            app(\App\Services\HRMS\Leave\CompOffService::class)->reverseRequest($request);
+            $request->delete();
+        }
         return back()->with('success', 'Holiday work request deleted.');
     }
 

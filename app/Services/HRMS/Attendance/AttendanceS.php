@@ -160,6 +160,8 @@ class AttendanceS
 
         $policy = $this->ruleResolver->getPolicyForEmployee($employee, $now);
         $dayContext = $this->ruleResolver->getDayContext($employee, $now);
+        $approvedLeave = $this->ruleResolver->getApprovedLeaveOnDate($employee, $today);
+        $isFullLeave = $approvedLeave && ! ($approvedLeave['is_half_day'] ?? false);
         $hasApprovedHolidayWork = \App\Models\HRMS\Attendance\HolidayWorkRequestM::where('employee_id', $employee->id)
             ->whereDate('worked_date', $today)
             ->where('status', 'approved')

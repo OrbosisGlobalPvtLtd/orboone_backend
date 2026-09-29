@@ -98,7 +98,7 @@ class ProjectC extends Controller
         if ($empId === 'custom' || (!empty(trim($customName ?? '')) && empty($empId))) {
             $validated['delivery_head_name'] = trim($customName);
             $validated['delivery_head_employee_id'] = null;
-        } elseif (is_numeric($empId) && \App\Models\HRMS\Employee\EmployeeM::where('id', $empId)->exists()) {
+        } elseif (is_numeric($empId) && EmployeeM::where('id', $empId)->exists()) {
             $validated['delivery_head_employee_id'] = (int) $empId;
             $validated['delivery_head_name'] = null;
         } else {

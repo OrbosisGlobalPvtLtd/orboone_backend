@@ -38,21 +38,16 @@ $topbarNotifications = collect();
 }
 @endphp
 
-<nav class="navbar navbar-expand-lg bg-white w-100"
-    style="border-bottom:1px solid #e5e7eb;min-height:72px;position:sticky;top:0;z-index:1050;backdrop-filter:blur(8px);padding:0 20px;">
-
+<nav class="navbar navbar-expand-lg bg-white w-100 topbar-nav">
     <div class="container-fluid p-0">
-        <div class="d-flex align-items-center justify-content-between w-100">
+        <div class="d-flex align-items-center justify-content-between w-100 topbar-inner">
 
-            <div class="d-flex align-items-center" style="min-width:0;">
-                <button type="button" class="sidebar-toggle" onclick="toggleSidebar()"
-                    style="width:42px;height:42px;border-radius:12px;border:1px solid #e5e7eb;background:#fff;margin-right:14px;transition:.2s;"
-                    onmouseover="this.style.background='#f5f3ff'"
-                    onmouseout="this.style.background='#fff'">
-                    <i class="fa-solid fa-bars-staggered" style="color:var(--orb-primary);"></i>
+            <div class="d-flex align-items-center topbar-left-box">
+                <button type="button" class="sidebar-toggle topbar-toggle-btn" onclick="toggleSidebar()" aria-label="Toggle Navigation">
+                    <i class="fa-solid fa-bars-staggered"></i>
                 </button>
 
-                <div style="min-width:0;">
+                <div class="topbar-title-wrap">
                     @php
                         $titleOverrides = [
                             'reporting_supervisors' => 'Reporting Managers',
@@ -66,39 +61,28 @@ $topbarNotifications = collect();
                         ];
                         $displayActiveTitle = $titleOverrides[$active ?? ''] ?? ucwords(str_replace(['_', '-'], ' ', $active ?? 'dashboard'));
                     @endphp
-                    <h5 class="mb-0 fw-bold text-dark" style="line-height:1.2;">
+                    <h5 class="mb-0 fw-bold text-dark topbar-title" title="{{ $displayActiveTitle }}">
                         {{ $displayActiveTitle }}
                     </h5>
-                    <small class="text-muted d-block" style="font-size:12px;">
-                        {{ $branding['company_name'] ?? config('app.name', 'OrboOne HRMS') }}
-                    </small>
                 </div>
             </div>
 
-            <div class="d-flex align-items-center" style="gap:10px;">
+            <div class="d-flex align-items-center topbar-right-box">
 
-                <button type="button" class="d-none d-md-block"
-                    style="width:40px;height:40px;border-radius:12px;border:1px solid #e5e7eb;background:#fff;">
+                <button type="button" class="d-none d-md-flex align-items-center justify-content-center topbar-icon-btn" aria-label="Search">
                     <i class="fas fa-search text-muted"></i>
                 </button>
 
-                <a href="{{ $announcementRoute }}" class="d-none d-md-flex"
-                    style="width:40px;height:40px;border-radius:12px;border:1px solid #e5e7eb;background:#fff;display:flex;align-items:center;justify-content:center;text-decoration:none;"
-                    onmouseover="this.style.background='#f9f9ff'"
-                    onmouseout="this.style.background='#fff'">
+                <a href="{{ $announcementRoute }}" class="d-none d-md-flex align-items-center justify-content-center topbar-icon-btn" aria-label="Announcements">
                     <i class="fas fa-bullhorn text-muted"></i>
                 </a>
 
                 {{-- NOTIFICATION ICON (MOBILE: Direct link to notifications view page) --}}
-                <a href="{{ $notificationRoute }}" class="d-flex d-md-none align-items-center justify-content-center"
-                    style="width:40px;height:40px;border-radius:12px;border:1px solid #e5e7eb;background:#fff;position:relative;text-decoration:none;"
-                    onmouseover="this.style.background='#f9f9ff'"
-                    onmouseout="this.style.background='#fff'"
-                    title="Notifications">
+                <a href="{{ $notificationRoute }}" class="d-flex d-md-none align-items-center justify-content-center topbar-icon-btn topbar-notif-mobile-btn" title="Notifications" aria-label="Notifications">
                     <i class="fas fa-bell text-muted"></i>
 
                     @if($unreadCount > 0)
-                    <span style="position:absolute;top:2px;right:2px;background:#ec4e74;color:#fff;font-size:9px;font-weight:900;padding:2px 5px;border-radius:10px;line-height:1;">
+                    <span class="topbar-notif-badge">
                         {{ $unreadCount > 99 ? '99+' : $unreadCount }}
                     </span>
                     @endif
@@ -107,17 +91,16 @@ $topbarNotifications = collect();
                 {{-- NOTIFICATION DROPDOWN (DESKTOP) --}}
                 <div class="dropdown orb-notification-dropdown d-none d-md-block">
                     <button type="button"
+                        class="topbar-icon-btn"
                         data-toggle="dropdown"
                         aria-haspopup="true"
                         aria-expanded="false"
                         onclick="if (window.innerWidth < 768) { window.location.href = '{{ $notificationRoute }}'; }"
-                        style="width:40px;height:40px;border-radius:12px;border:1px solid #e5e7eb;background:#fff;position:relative;display:flex;align-items:center;justify-content:center;"
-                        onmouseover="this.style.background='#f9f9ff'"
-                        onmouseout="this.style.background='#fff'">
+                        aria-label="Notifications">
                         <i class="fas fa-bell text-muted"></i>
 
                         @if($unreadCount > 0)
-                        <span style="position:absolute;top:2px;right:2px;background:#ec4e74;color:#fff;font-size:9px;font-weight:900;padding:2px 5px;border-radius:10px;line-height:1;">
+                        <span class="topbar-notif-badge">
                             {{ $unreadCount > 99 ? '99+' : $unreadCount }}
                         </span>
                         @endif
@@ -126,8 +109,8 @@ $topbarNotifications = collect();
                     <div class="dropdown-menu dropdown-menu-right shadow border-0 p-0 orb-notification-menu">
                         <div class="orb-notification-head">
                             <div>
-                                <div class="fw-bold text-dark">Notifications</div>
-                                <small class="text-muted">{{ $unreadCount }} unread notification</small>
+                                <div class="orb-notification-head-title">Notifications</div>
+                                <div class="orb-notification-head-sub">{{ $unreadCount }} unread notification</div>
                             </div>
                             <span class="orb-notification-badge">{{ $topbarNotifications->count() }}</span>
                         </div>
@@ -146,29 +129,29 @@ $topbarNotifications = collect();
                                 }
                             }
                             
-                            // Map icon & background based on resolved type
-                            $type = strtolower($notification->type ?? $data['type'] ?? 'general');
+                            // Map icon & background based on resolved type and title
+                            $searchContext = strtolower(($notification->type ?? '') . ' ' . ($data['type'] ?? '') . ' ' . ($notification->title ?? ''));
                             $icon = 'fa-bell';
                             $iconBg = 'linear-gradient(135deg, var(--orb-primary), var(--orb-secondary))';
                             
-                            if (str_contains($type, 'announcement')) {
-                                $icon = 'fa-bullhorn';
-                                $iconBg = 'linear-gradient(135deg, #06B6D4, #0891B2)';
-                            } elseif (str_contains($type, 'leave')) {
+                            if (str_contains($searchContext, 'leave')) {
                                 $icon = 'fa-calendar-alt';
-                                $iconBg = 'linear-gradient(135deg, #3B82F6, #1D4ED8)';
-                            } elseif (str_contains($type, 'attendance')) {
+                                $iconBg = '#3B82F6';
+                            } elseif (str_contains($searchContext, 'attendance') || str_contains($searchContext, 'punch') || str_contains($searchContext, 'regularization')) {
                                 $icon = 'fa-clock';
-                                $iconBg = 'linear-gradient(135deg, #F59E0B, #D97706)';
-                            } elseif (str_contains($type, 'document')) {
+                                $iconBg = '#F59E0B';
+                            } elseif (str_contains($searchContext, 'announcement')) {
+                                $icon = 'fa-bullhorn';
+                                $iconBg = '#06B6D4';
+                            } elseif (str_contains($searchContext, 'document')) {
                                 $icon = 'fa-file-alt';
-                                $iconBg = 'linear-gradient(135deg, #10B981, #047857)';
-                            } elseif (str_contains($type, 'payroll') || str_contains($type, 'salary')) {
+                                $iconBg = '#10B981';
+                            } elseif (str_contains($searchContext, 'payroll') || str_contains($searchContext, 'salary')) {
                                 $icon = 'fa-wallet';
-                                $iconBg = 'linear-gradient(135deg, #F97316, #C2410C)';
-                            } elseif (str_contains($type, 'system') || str_contains($type, 'security')) {
+                                $iconBg = '#F97316';
+                            } elseif (str_contains($searchContext, 'system') || str_contains($searchContext, 'security')) {
                                 $icon = 'fa-shield-alt';
-                                $iconBg = 'linear-gradient(135deg, #EF4444, #B91C1C)';
+                                $iconBg = '#EF4444';
                             }
 
                             // Attachment extraction
@@ -236,8 +219,7 @@ $topbarNotifications = collect();
 
                         <div class="orb-notification-footer">
                             <a href="{{ $notificationRoute }}" class="orb-view-all-btn">
-                                View All Notifications
-                                <i class="fas fa-arrow-right ml-1"></i>
+                                View All Notifications &rarr;
                             </a>
                         </div>
                     </div>
@@ -249,21 +231,20 @@ $topbarNotifications = collect();
                 $topbarInitial = resolveEmployeeInitials($topbarUser);
                 @endphp
 
-                <div class="dropdown">
-                    <div class="d-flex align-items-center"
+                <div class="dropdown topbar-user-dropdown">
+                    <div class="d-flex align-items-center topbar-user-pill"
                         data-toggle="dropdown"
-                        style="cursor:pointer;border:1px solid #e5e7eb;border-radius:30px;padding:5px 10px;background:#fff;transition:.2s;"
-                        onmouseover="this.style.background='#f9f9ff'"
-                        onmouseout="this.style.background='#fff'">
+                        role="button"
+                        aria-haspopup="true"
+                        aria-expanded="false">
 
                         @if(!empty($topbarAvatar))
-                        <img src="{{ $topbarAvatar }}" alt="{{ $topbarUser?->name ?? 'User' }}"
-                            style="width:36px;height:36px;border-radius:50%;object-fit:cover;margin-right:8px;">
-                        <div class="topbar-avatar-fallback" style="width:36px;height:36px;border-radius:50%;background:#F4F2FF;color:var(--orb-primary);display:none;align-items:center;justify-content:center;font-size:13px;font-weight:900;margin-right:8px;">
+                        <img src="{{ $topbarAvatar }}" alt="{{ $topbarUser?->name ?? 'User' }}" class="topbar-avatar-img">
+                        <div class="topbar-avatar-fallback">
                             {{ $topbarInitial ?: '' }}
                         </div>
                         @else
-                        <div class="topbar-avatar-fallback" style="width:36px;height:36px;border-radius:50%;background:#F4F2FF;color:var(--orb-primary);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;margin-right:8px;">
+                        <div class="topbar-avatar-fallback">
                             @if($topbarInitial)
                             {{ $topbarInitial }}
                             @else
@@ -272,17 +253,16 @@ $topbarNotifications = collect();
                         </div>
                         @endif
 
-                        <div class="d-none d-md-block" style="line-height:1.1;">
-                            <div style="font-size:14px;font-weight:600;color:#111;">
+                        <div class="d-none d-md-block topbar-user-name-box">
+                            <div class="topbar-user-name text-truncate">
                                 {{ $topbarUser->name }}
                             </div>
                         </div>
 
-                        <i class="fas fa-chevron-down ml-2 text-muted" style="font-size:10px;"></i>
+                        <i class="fas fa-chevron-down text-muted topbar-user-chevron"></i>
                     </div>
 
-                    <div class="dropdown-menu dropdown-menu-right shadow border-0"
-                        style="border-radius:12px;padding:10px;min-width:180px;">
+                    <div class="dropdown-menu dropdown-menu-right shadow border-0 topbar-user-menu">
 
                         @if(!empty($isEmployeeUser))
                         <a class="dropdown-item py-2 rounded" href="{{ Route::has('profile.index') ? route('profile.index') : 'javascript:void(0)' }}">
@@ -317,171 +297,340 @@ $topbarNotifications = collect();
 </nav>
 
 <style>
-    .orb-notification-menu {
-        width: 420px;
-        max-width: calc(100vw - 24px);
-        border-radius: 24px;
+    .topbar-nav {
+        border-bottom: 1px solid #e5e7eb;
+        min-height: 56px;
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 1050 !important;
+        background: rgba(255, 255, 255, 0.98) !important;
+        backdrop-filter: blur(12px) !important;
+        -webkit-backdrop-filter: blur(12px) !important;
+        padding: 0 16px;
+    }
+
+    .topbar-inner {
+        min-width: 0;
+        gap: 10px;
+    }
+
+    .topbar-left-box {
+        min-width: 0;
+        flex: 1 1 auto;
+        gap: 10px;
         overflow: hidden;
-        margin-top: 12px;
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.5) !important;
-        box-shadow: 0 20px 40px rgba(16, 24, 40, 0.08) !important;
-        animation: dropdownSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    @keyframes dropdownSlideIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-
-    .orb-notification-head {
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        padding: 16px 18px;
-        background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary));
+    .topbar-toggle-btn {
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+        border-radius: 10px;
+        border: 1px solid #e5e7eb;
+        background: #fff;
         display: flex;
         align-items: center;
-        justify-content: space-between;
+        justify-content: center;
+        transition: all .2s ease;
+        flex-shrink: 0;
+        cursor: pointer;
+        padding: 0;
+        color: var(--orb-primary);
+        font-size: 13px;
+        margin-right: 0 !important;
     }
 
-    .orb-notification-head .fw-bold,
-    .orb-notification-head small {
-        color: #fff !important;
+    .topbar-toggle-btn:hover {
+        background: #f5f3ff;
     }
 
-    .orb-notification-badge {
-        background: rgba(255, 255, 255, .18);
+    .topbar-title-wrap {
+        min-width: 0;
+        flex: 1 1 auto;
+        overflow: hidden;
+    }
+
+    .topbar-title {
+        line-height: 1.25;
+        font-size: 15px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin: 0;
+    }
+
+    .topbar-right-box {
+        gap: 8px;
+        flex-shrink: 0;
+    }
+
+    .topbar-icon-btn {
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+        border-radius: 10px;
+        border: 1px solid #e5e7eb;
+        background: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        text-decoration: none !important;
+        transition: all .2s ease;
+        flex-shrink: 0;
+        padding: 0;
+        font-size: 13px;
+        cursor: pointer;
+    }
+
+    .topbar-icon-btn:hover {
+        background: #f9f9ff;
+    }
+
+    .topbar-notif-badge {
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        background: #ec4e74;
         color: #fff;
-        padding: 5px 10px;
+        font-size: 8.5px;
+        font-weight: 800;
+        min-width: 17px;
+        height: 17px;
         border-radius: 999px;
-        font-size: 12px;
+        padding: 0 4px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1.5px solid #fff;
+        line-height: 1;
+        box-shadow: 0 2px 4px rgba(236,78,116,0.35);
+        z-index: 2;
+    }
+
+    .topbar-user-pill {
+        cursor: pointer;
+        border: 1px solid #e5e7eb;
+        border-radius: 30px;
+        padding: 4px 10px 4px 4px;
+        background: #fff;
+        transition: all .2s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+        user-select: none;
+    }
+
+    .topbar-user-pill:hover {
+        background: #f9f9ff;
+    }
+
+    .topbar-avatar-img,
+    .topbar-avatar-fallback {
+        width: 34px;
+        height: 34px;
+        min-width: 34px;
+        border-radius: 50%;
+        object-fit: cover;
+        flex-shrink: 0;
+    }
+
+    .topbar-avatar-fallback {
+        background: #F4F2FF;
+        color: var(--orb-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
         font-weight: 900;
     }
 
+    .topbar-user-name-box {
+        line-height: 1.1;
+        max-width: 130px;
+    }
+
+    .topbar-user-name {
+        font-size: 13.5px;
+        font-weight: 600;
+        color: #111827;
+    }
+
+    .topbar-user-chevron {
+        font-size: 10px;
+        color: #9ca3af;
+        transition: transform .2s ease;
+    }
+
+    .topbar-user-menu {
+        border-radius: 14px;
+        padding: 8px;
+        min-width: 190px;
+        border: 1px solid rgba(0,0,0,0.06);
+        box-shadow: 0 12px 30px rgba(0,0,0,0.08) !important;
+        margin-top: 6px;
+    }
+
+    /* NOTIFICATION DROPDOWN STYLES */
+    .orb-notification-menu {
+        width: 360px !important;
+        max-width: 92vw !important;
+        border-radius: 20px !important;
+        border: none !important;
+        box-shadow: 0 20px 50px rgba(15, 23, 42, 0.18) !important;
+        overflow: hidden !important;
+        margin-top: 8px !important;
+        background: #ffffff !important;
+        padding: 0 !important;
+    }
+
+    .orb-notification-head {
+        padding: 16px 20px !important;
+        background: linear-gradient(135deg, var(--orb-primary, #4B00E8), var(--orb-secondary, #EC4E74)) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        border-bottom: none !important;
+    }
+
+    .orb-notification-head-title {
+        color: #ffffff !important;
+        font-size: 15px !important;
+        font-weight: 800 !important;
+        line-height: 1.2 !important;
+    }
+
+    .orb-notification-head-sub {
+        color: rgba(255, 255, 255, 0.85) !important;
+        font-size: 11.5px !important;
+        font-weight: 600 !important;
+        margin-top: 2px !important;
+    }
+
+    .orb-notification-badge {
+        background: rgba(255, 255, 255, 0.25) !important;
+        color: #ffffff !important;
+        font-size: 12px !important;
+        font-weight: 800 !important;
+        min-width: 24px !important;
+        height: 24px !important;
+        border-radius: 50% !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 0 6px !important;
+    }
+
     .orb-notification-list {
-        max-height: 380px;
-        overflow-y: auto;
-        background: #fff;
-        scroll-behavior: smooth;
+        max-height: 350px !important;
+        overflow-y: auto !important;
+        background: #ffffff !important;
+    }
+
+    .orb-notification-list::-webkit-scrollbar {
+        width: 5px;
+    }
+    .orb-notification-list::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 999px;
     }
 
     .orb-notification-item {
-        display: flex;
-        gap: 12px;
-        padding: 16px;
+        display: flex !important;
+        align-items: flex-start !important;
+        gap: 12px !important;
+        padding: 14px 18px !important;
+        border-bottom: 1px solid #f1f5f9 !important;
         text-decoration: none !important;
-        border-bottom: 1px solid #F0F2F7;
-        color: inherit !important;
-        transition: .2s;
+        color: #1e293b !important;
+        background: #ffffff !important;
+        transition: background .15s ease !important;
     }
 
     .orb-notification-item:hover {
-        background: rgba(75, 0, 232, 0.03);
+        background: #f8fafc !important;
+        text-decoration: none !important;
     }
 
     .orb-notification-item.unread {
-        background: rgba(75, 0, 232, 0.01);
+        background: #ffffff !important;
     }
 
     .orb-notification-icon {
-        width: 40px;
-        height: 40px;
-        min-width: 40px;
-        border-radius: 12px;
-        background: #F4F2FF;
-        color: var(--orb-primary);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 16px;
+        width: 36px !important;
+        height: 36px !important;
+        min-width: 36px !important;
+        border-radius: 10px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 14px !important;
+        color: #ffffff !important;
+        flex-shrink: 0 !important;
     }
 
     .orb-notification-title {
-        font-size: 13.5px;
-        font-weight: 800;
-        color: #101828;
-    }
-
-    .orb-notification-message {
-        font-size: 12.5px;
-        color: #667085;
-        margin-top: 4px;
-        line-height: 1.45;
-        word-break: break-word;
-    }
-
-    .orb-notification-time {
-        font-size: 11px;
-        color: #98A2B3;
-        margin-top: 6px;
-        font-weight: 600;
+        font-size: 13.5px !important;
+        font-weight: 800 !important;
+        color: #0f172a !important;
+        line-height: 1.25 !important;
     }
 
     .orb-unread-dot {
-        width: 8px;
-        height: 8px;
-        min-width: 8px;
-        border-radius: 50%;
-        background: var(--orb-primary);
-        margin-top: 5px;
-        animation: pulse-dot 1.5s infinite;
+        width: 8px !important;
+        height: 8px !important;
+        border-radius: 50% !important;
+        background: var(--orb-primary, #4B00E8) !important;
+        flex-shrink: 0 !important;
+        margin-top: 4px !important;
+    }
+
+    .orb-notification-message {
+        font-size: 12px !important;
+        color: #64748b !important;
+        line-height: 1.4 !important;
+        margin-top: 2px !important;
+        word-break: break-word !important;
+    }
+
+    .orb-notification-time {
+        font-size: 11px !important;
+        color: #94a3b8 !important;
+        font-weight: 600 !important;
+        margin-top: 4px !important;
     }
 
     .orb-notification-footer {
-        position: sticky;
-        bottom: 0;
-        z-index: 10;
-        padding: 12px;
-        background: #fff;
-        border-top: 1px solid #F0F2F7;
+        padding: 12px 18px 16px !important;
+        border-top: none !important;
+        text-align: center !important;
+        background: #ffffff !important;
     }
 
     .orb-view-all-btn {
-        width: 100%;
-        height: 42px;
-        border-radius: 14px;
-        background: #F4F2FF;
-        color: var(--orb-primary);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 800;
+        display: block !important;
+        width: 100% !important;
+        padding: 10px !important;
+        border-radius: 12px !important;
+        background: #F4F2FF !important;
+        color: var(--orb-primary, #4B00E8) !important;
+        font-size: 13px !important;
+        font-weight: 800 !important;
+        text-align: center !important;
         text-decoration: none !important;
-        transition: all 0.2s ease;
+        transition: all .2s ease !important;
     }
 
     .orb-view-all-btn:hover {
-        color: #fff !important;
-        background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary));
+        background: #EDE9FE !important;
+        color: var(--orb-primary, #4B00E8) !important;
+        text-decoration: none !important;
     }
 
     .orb-empty-bell {
-        width: 48px;
-        height: 48px;
-        border-radius: 16px;
-        background: #F4F2FF;
-        color: var(--orb-primary);
-        margin: 0 auto;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    /* Responsiveness for Topbar Dropdown */
-    @media (max-width: 992px) {
-        .orb-notification-menu {
-            width: 95vw;
-            right: -10px !important;
-        }
-    }
-
-    @media (max-width: 576px) {
-        .orb-notification-menu {
-            width: calc(100vw - 24px);
-            right: -12px !important;
-        }
+        font-size: 28px !important;
+        color: #cbd5e1 !important;
     }
 </style>
 

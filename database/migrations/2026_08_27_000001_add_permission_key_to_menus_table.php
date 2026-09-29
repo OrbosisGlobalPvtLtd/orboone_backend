@@ -70,7 +70,7 @@ return new class extends Migration
             'hrms.leave.history' => 'leave.history.view',
             'announcements.index' => 'announcements.view',
             'employee.announcements.index' => 'announcements.view_own',
-            'hrms.assets.index' => 'asset.view',
+            'hrms.assets.index' => 'asset_allocations.manage',
             'projects.index' => 'projects.view_all',
             'projects.my' => 'projects.my_projects.view',
             'projects.tasks.index' => 'projects.tasks.view',

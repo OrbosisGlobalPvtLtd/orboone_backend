@@ -100,7 +100,7 @@
     </div>
   </div>
 
-  @if (collect($accesses)->where('menu_id', 7)->first()->status == 2 && auth()->user()->isAdmin())
+  @if ((auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('recruitments.manage'))) && auth()->user()->isAdmin())
     <div class="row">
       <div class="col-12">
         <form action="{{ route('hrms.recruitments.edit', ['recruitment' => $recruitment->id]) }}" class="d-inline-block">

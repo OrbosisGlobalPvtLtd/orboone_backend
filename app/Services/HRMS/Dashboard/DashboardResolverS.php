@@ -2,7 +2,9 @@
 
 namespace App\Services\HRMS\Dashboard;
 
+use App\Services\HRMS\Birthday\BirthdayService;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
@@ -10,6 +12,11 @@ use Illuminate\Support\Facades\Log;
 
 class DashboardResolverS
 {
+    public function __construct(
+        protected ?BirthdayService $birthdayS = null
+    ) {
+        $this->birthdayS = $birthdayS ?? app(BirthdayService::class);
+    }
     private const ROLE_PRIORITY = [
         'super_admin' => [
             'title' => 'Super Admin Dashboard',
@@ -129,12 +136,11 @@ class DashboardResolverS
     public function birthdayStats($user = null): array
     {
         /** @var \App\Models\Core\UserM|null $user */
-        $user = $user ?: auth()->user();
-        $birthdayS = app(\App\Services\HRMS\Birthday\BirthdayService::class);
+        $user = $user ?: Auth::user();
         return [
-            'today'    => $birthdayS->getTodayBirthdays(),
-            'upcoming' => $birthdayS->getUpcomingBirthdays(7),
-            'own'      => $birthdayS->getOwnBirthdayStatus($user),
+            'today'    => $this->birthdayS->getTodayBirthdays(),
+            'upcoming' => $this->birthdayS->getUpcomingBirthdays(7),
+            'own'      => $this->birthdayS->getOwnBirthdayStatus($user),
         ];
     }
 
@@ -313,7 +319,7 @@ class DashboardResolverS
         }
 
         if ($role === 'hr_admin') {
-            $tasks = $this->taskStats(auth()->user());
+            $tasks = $this->taskStats(Auth::user());
             $cards = [
                 'active_employees' => (int) ($employee['active'] ?? 0),
                 'present_today' => (int) ($attendance['present'] ?? 0),
@@ -539,7 +545,7 @@ class DashboardResolverS
                 $this->card('Today Attendance', $project['today_attendance'], 'fas fa-user-check', 'Present today'),
             ],
             'quick_actions' => $this->dashboardQuickActions([
-                ['Projects', 'fas fa-project-diagram', ['project_management.projects.index', 'module.project-mgmt']],
+                ['Projects', 'fas fa-project-diagram', ['projects.index', 'project_management.projects.index']],
                 ['Tasks', 'fas fa-tasks', ['project_management.tasks.index']],
                 ['Team Work Logs', 'fas fa-clipboard-list', ['attendances.daily', 'hrms.attendance.monthly_summary.index']],
                 ['Employee Directory', 'fas fa-address-book', ['hrms.employees.index']],
@@ -2724,7 +2730,7 @@ class DashboardResolverS
             ],
             'finance_admin' => [
                 ['title' => 'Payroll Dashboard', 'icon' => 'fas fa-chart-line', 'routes' => ['enterprise-payroll.dashboard']],
-                ['title' => 'Run Payroll', 'icon' => 'fas fa-play-circle', 'routes' => ['pages.payroll.payrollrun']],
+                ['title' => 'Run Payroll', 'icon' => 'fas fa-play-circle', 'routes' => ['enterprise-payroll.runs.index']],
             ],
             'project_admin' => [
                 ['title' => 'Task Tracking', 'icon' => 'fas fa-tasks', 'routes' => ['project_management.tasks.index']],

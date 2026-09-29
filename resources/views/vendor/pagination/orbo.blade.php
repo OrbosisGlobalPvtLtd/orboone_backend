@@ -1,3 +1,27 @@
+@php
+    $currentPage = $paginator->currentPage();
+    $lastPage = $paginator->lastPage();
+    $total = method_exists($paginator, 'total') ? $paginator->total() : $paginator->count();
+    $firstItem = method_exists($paginator, 'firstItem') ? $paginator->firstItem() : 1;
+    $lastItem = method_exists($paginator, 'lastItem') ? $paginator->lastItem() : $paginator->count();
+
+    // Smart windowing: compact windowing (e.g. 1 2 3 ... 7)
+    $pages = [];
+    if ($lastPage <= 5) {
+        for ($i = 1; $i <= $lastPage; $i++) {
+            $pages[] = $i;
+        }
+    } else {
+        if ($currentPage <= 2) {
+            $pages = [1, 2, 3, '...', $lastPage];
+        } elseif ($currentPage >= $lastPage - 1) {
+            $pages = [1, '...', $lastPage - 2, $lastPage - 1, $lastPage];
+        } else {
+            $pages = [1, '...', $currentPage, '...', $lastPage];
+        }
+    }
+@endphp
+
 <div class="orb-pagination-wrapper">
     <div class="orb-pagination-info">
         @if(method_exists($paginator, 'total'))
@@ -12,53 +36,51 @@
             {{-- Previous Page Link --}}
             @if ($paginator->onFirstPage())
                 <li class="orb-page-item disabled" aria-disabled="true">
-                    <span class="orb-page-link orb-page-prev">Previous</span>
+                    <span class="orb-page-link orb-page-prev">
+                        <span class="d-none d-sm-inline">Previous</span>
+                        <span class="d-inline d-sm-none">&lsaquo;</span>
+                    </span>
                 </li>
             @else
                 <li class="orb-page-item">
-                    <a class="orb-page-link orb-page-prev" href="{{ $paginator->previousPageUrl() }}" rel="prev">Previous</a>
+                    <a class="orb-page-link orb-page-prev" href="{{ $paginator->previousPageUrl() }}" rel="prev">
+                        <span class="d-none d-sm-inline">Previous</span>
+                        <span class="d-inline d-sm-none">&lsaquo;</span>
+                    </a>
                 </li>
             @endif
 
-            {{-- Pagination Elements --}}
-            @if (isset($elements) && count($elements) > 0)
-                @foreach ($elements as $element)
-                    {{-- "Three Dots" Separator --}}
-                    @if (is_string($element))
-                        <li class="orb-page-item disabled" aria-disabled="true">
-                            <span class="orb-page-link orb-page-dots">{{ $element }}</span>
-                        </li>
-                    @endif
-
-                    {{-- Array Of Links --}}
-                    @if (is_array($element))
-                        @foreach ($element as $page => $url)
-                            @if ($page == $paginator->currentPage())
-                                <li class="orb-page-item active" aria-current="page">
-                                    <span class="orb-page-link">{{ $page }}</span>
-                                </li>
-                            @else
-                                <li class="orb-page-item">
-                                    <a class="orb-page-link" href="{{ $url }}">{{ $page }}</a>
-                                </li>
-                            @endif
-                        @endforeach
-                    @endif
-                @endforeach
-            @else
-                <li class="orb-page-item active" aria-current="page">
-                    <span class="orb-page-link">1</span>
-                </li>
-            @endif
+            {{-- Smart Page Numbers with Dots --}}
+            @foreach ($pages as $p)
+                @if ($p === '...')
+                    <li class="orb-page-item disabled" aria-disabled="true">
+                        <span class="orb-page-link orb-page-dots">&hellip;</span>
+                    </li>
+                @elseif ($p == $currentPage)
+                    <li class="orb-page-item active" aria-current="page">
+                        <span class="orb-page-link">{{ $p }}</span>
+                    </li>
+                @else
+                    <li class="orb-page-item">
+                        <a class="orb-page-link" href="{{ $paginator->url($p) }}">{{ $p }}</a>
+                    </li>
+                @endif
+            @endforeach
 
             {{-- Next Page Link --}}
             @if ($paginator->hasMorePages())
                 <li class="orb-page-item">
-                    <a class="orb-page-link orb-page-next" href="{{ $paginator->nextPageUrl() }}" rel="next">Next</a>
+                    <a class="orb-page-link orb-page-next" href="{{ $paginator->nextPageUrl() }}" rel="next">
+                        <span class="d-none d-sm-inline">Next</span>
+                        <span class="d-inline d-sm-none">&rsaquo;</span>
+                    </a>
                 </li>
             @else
                 <li class="orb-page-item disabled" aria-disabled="true">
-                    <span class="orb-page-link orb-page-next">Next</span>
+                    <span class="orb-page-link orb-page-next">
+                        <span class="d-none d-sm-inline">Next</span>
+                        <span class="d-inline d-sm-none">&rsaquo;</span>
+                    </span>
                 </li>
             @endif
         </ul>
@@ -147,20 +169,47 @@
     .orb-page-dots {
         border: none !important;
         background: transparent !important;
-        min-width: 20px;
+        min-width: 18px;
         padding: 0 2px;
         color: #94A3B8;
+        font-weight: 800;
+        letter-spacing: 1px;
     }
 
     @media (max-width: 576px) {
         .orb-pagination-wrapper {
             flex-direction: column;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
+            padding: 10px 4px;
             text-align: center;
         }
+        .orb-pagination-info {
+            font-size: 11px;
+        }
         .orb-pagination {
+            flex-wrap: nowrap;
             justify-content: center;
+            gap: 3px;
+            max-width: 100%;
+            overflow-x: auto;
+        }
+        .orb-page-link {
+            min-width: 28px;
+            height: 28px;
+            padding: 0 6px;
+            font-size: 11.5px;
+            border-radius: 7px;
+        }
+        .orb-page-item.active .orb-page-link {
+            min-width: 28px;
+            height: 28px;
+            border-radius: 7px !important;
+        }
+        .orb-page-dots {
+            min-width: 14px;
+            font-size: 11px;
+            padding: 0 1px;
         }
     }
 </style>

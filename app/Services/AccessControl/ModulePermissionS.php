@@ -188,10 +188,9 @@ class ModulePermissionS
                 if ($permKey === '') {
                     continue;
                 }
-                $moduleKey = explode('.', $permKey)[0] ?? 'general';
                 $rows[] = [
                     'user_id' => $userId,
-                    'module_key' => $moduleKey,
+                    'module_key' => $this->extractModuleKey($permKey),
                     'permission_key' => $permKey,
                     'is_enabled' => 1,
                     'is_allowed' => 1,
@@ -205,10 +204,9 @@ class ModulePermissionS
                 if ($permKey === '') {
                     continue;
                 }
-                $moduleKey = explode('.', $permKey)[0] ?? 'general';
                 $rows[] = [
                     'user_id' => $userId,
-                    'module_key' => $moduleKey,
+                    'module_key' => $this->extractModuleKey($permKey),
                     'permission_key' => $permKey,
                     'is_enabled' => 0,
                     'is_allowed' => 0,
@@ -217,7 +215,8 @@ class ModulePermissionS
                 ];
             }
 
-            foreach (array_chunk($rows, 100) as $chunk) {
+            $chunkSize = (int) config('authorization.db_chunk_size', 100);
+            foreach (array_chunk($rows, $chunkSize) as $chunk) {
                 DB::table('user_module_access')->insert($chunk);
             }
         });
@@ -270,48 +269,7 @@ class ModulePermissionS
      */
     public function savePositionMatrix(int $designationId, array $permissionKeys): void
     {
-        if (! Schema::hasTable('designation_module_access')) {
-            return;
-        }
-
-        DB::transaction(function () use ($designationId, $permissionKeys) {
-            DB::table('designation_module_access')->where('designation_id', $designationId)->delete();
-
-            $rows = [];
-            foreach (array_unique($permissionKeys) as $permKey) {
-                $permKey = trim((string) $permKey);
-                if ($permKey === '') {
-                    continue;
-                }
-                $moduleKey = explode('.', $permKey)[0] ?? 'general';
-                $rows[] = [
-                    'designation_id' => $designationId,
-                    'module_key' => $moduleKey,
-                    'permission_key' => $permKey,
-                    'is_enabled' => 1,
-                    'is_allowed' => 1,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ];
-            }
-
-            foreach (array_chunk($rows, 100) as $chunk) {
-                DB::table('designation_module_access')->insert($chunk);
-            }
-        });
-
-        // Flush cache for all users with this designation
-        if (Schema::hasTable('employees_new')) {
-            $userIds = DB::table('employees_new')
-                ->where('designation_id', $designationId)
-                ->whereNotNull('user_id')
-                ->pluck('user_id')
-                ->all();
-
-            foreach ($userIds as $uId) {
-                $this->flushUserCache((int) $uId);
-            }
-        }
+        $this->syncMatrixAccess('designation_module_access', 'designation_id', $designationId, $permissionKeys, 'designation_id');
     }
 
     /**
@@ -347,12 +305,20 @@ class ModulePermissionS
      */
     public function saveProfileMatrix(int $departmentId, array $permissionKeys): void
     {
-        if (! Schema::hasTable('department_module_access')) {
+        $this->syncMatrixAccess('department_module_access', 'department_id', $departmentId, $permissionKeys, 'department_id');
+    }
+
+    /**
+     * Generic helper to synchronize matrix access table records and flush affected user caches.
+     */
+    private function syncMatrixAccess(string $table, string $foreignColumn, int $foreignId, array $permissionKeys, ?string $employeeMatchColumn = null): void
+    {
+        if (! Schema::hasTable($table)) {
             return;
         }
 
-        DB::transaction(function () use ($departmentId, $permissionKeys) {
-            DB::table('department_module_access')->where('department_id', $departmentId)->delete();
+        DB::transaction(function () use ($table, $foreignColumn, $foreignId, $permissionKeys) {
+            DB::table($table)->where($foreignColumn, $foreignId)->delete();
 
             $rows = [];
             foreach (array_unique($permissionKeys) as $permKey) {
@@ -360,10 +326,9 @@ class ModulePermissionS
                 if ($permKey === '') {
                     continue;
                 }
-                $moduleKey = explode('.', $permKey)[0] ?? 'general';
                 $rows[] = [
-                    'department_id' => $departmentId,
-                    'module_key' => $moduleKey,
+                    $foreignColumn => $foreignId,
+                    'module_key' => $this->extractModuleKey($permKey),
                     'permission_key' => $permKey,
                     'is_enabled' => 1,
                     'is_allowed' => 1,
@@ -372,15 +337,18 @@ class ModulePermissionS
                 ];
             }
 
-            foreach (array_chunk($rows, 100) as $chunk) {
-                DB::table('department_module_access')->insert($chunk);
+            if (! empty($rows)) {
+                $chunkSize = (int) config('authorization.db_chunk_size', 100);
+                foreach (array_chunk($rows, $chunkSize) as $chunk) {
+                    DB::table($table)->insert($chunk);
+                }
             }
         });
 
-        // Flush cache for all users in this department
-        if (Schema::hasTable('employees_new')) {
+        // Flush cache for all users linked via employees_new
+        if ($employeeMatchColumn && Schema::hasTable('employees_new')) {
             $userIds = DB::table('employees_new')
-                ->where('department_id', $departmentId)
+                ->where($employeeMatchColumn, $foreignId)
                 ->whereNotNull('user_id')
                 ->pluck('user_id')
                 ->all();
@@ -389,6 +357,21 @@ class ModulePermissionS
                 $this->flushUserCache((int) $uId);
             }
         }
+    }
+
+    /**
+     * Helper to extract module token from permission key.
+     */
+    private function extractModuleKey(string $permissionKey): string
+    {
+        $permKey = trim($permissionKey);
+        if ($permKey === '') {
+            return 'general';
+        }
+
+        $parts = explode('.', $permKey);
+
+        return ! empty($parts[0]) ? $parts[0] : 'general';
     }
 
     /**
@@ -548,7 +531,6 @@ class ModulePermissionS
 
     private function groupPermissionsByCrud(object $menu, $allPermissions, array $assignedPermIds): array
     {
-        $matched = app(RbacPolicyMatrixS::class)->getMatrixForRole(0)['modules'] ?? [];
         $relevant = $this->findPermissionsForMenu($menu, $allPermissions);
 
         $crud = [
@@ -701,20 +683,6 @@ class ModulePermissionS
 
     private function flushUserCache(int $userId): void
     {
-        try {
-            if (app()->bound('cache')) {
-                app('cache')->forget('spatie.permission.cache');
-                app('cache')->forget('app_permissions_cache');
-            }
-        } catch (\Throwable $e) {
-        }
-
-        $sidebarService = app(SidebarS::class);
-        try {
-            $sidebarService->clearCache($userId);
-            Cache::forget('user_permissions_' . $userId);
-            Cache::forget('user_menus_' . $userId);
-        } catch (\Throwable $e) {
-        }
+        app(SidebarS::class)->clearCache($userId);
     }
 }

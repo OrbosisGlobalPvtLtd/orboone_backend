@@ -118,7 +118,7 @@
             <p class="opacity-75 mb-0">Stay updated with the latest company news and official directives.</p>
         </div>
         <div class="d-flex gap-3">
-            @if (collect($accesses)->where('menu_id', 6)->first()->status == 2)
+            @if (auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && (auth()->user()->hasPermission('announcements.manage') || auth()->user()->hasPermission('announcements.create'))))
                 <a href="{{ route('announcements.create') }}" class="btn-create text-decoration-none">
                     <i class="fas fa-plus mr-1"></i> New Notice
                 </a>

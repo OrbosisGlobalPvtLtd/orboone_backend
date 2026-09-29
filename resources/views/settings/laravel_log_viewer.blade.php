@@ -2,7 +2,7 @@
 
 @section('title', 'Laravel System Log Viewer')
 
-@section('content')
+@section('_content')
 <div class="container-fluid px-4 py-3">
     <!-- Header -->
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">

@@ -2,7 +2,7 @@
     $currentRoute = Route::currentRouteName();
 @endphp
 
-<div class="ac-nav-tabs-wrapper mb-4">
+<div class="ac-nav-tabs-wrapper mb-3">
     <div class="ac-nav-tabs">
         <a href="{{ route('access_control.visualizer.index') }}" 
            class="ac-nav-tab {{ str_starts_with($currentRoute, 'access_control.visualizer') ? 'active' : '' }}">
@@ -47,24 +47,24 @@
     .ac-nav-tabs-wrapper {
         background: #ffffff;
         border: 1px solid #E2E8F0;
-        border-radius: 16px;
-        padding: 6px;
+        border-radius: 10px;
+        padding: 4px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
     }
     .ac-nav-tabs {
         display: flex;
-        gap: 6px;
+        gap: 4px;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
     }
     .ac-nav-tab {
         display: inline-flex;
         align-items: center;
-        gap: 8px;
-        padding: 10px 18px;
-        border-radius: 12px;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 7px;
         font-weight: 750;
-        font-size: 13px;
+        font-size: 12px;
         color: #64748B;
         text-decoration: none !important;
         transition: all 0.2s ease;
@@ -80,8 +80,8 @@
         box-shadow: 0 4px 14px rgba(75, 0, 232, 0.25);
     }
     .ac-nav-badge {
-        font-size: 10px;
-        padding: 2px 7px;
+        font-size: 9px;
+        padding: 1px 6px;
         border-radius: 20px;
         font-weight: 850;
         text-transform: uppercase;

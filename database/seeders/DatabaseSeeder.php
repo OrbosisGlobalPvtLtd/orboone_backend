@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
     public function run()
     {
         $this->call([
+            RoleSeeder::class,
             DefaultAdminSeeder::class,
             EmployeeSeeder::class,
             AttendanceSeeder::class,
@@ -26,7 +27,6 @@ class DatabaseSeeder extends Seeder
             ScoreCategorySeeder::class,
             DocumentTypeSeeder::class,
             HolidaySeeder::class,
-            RoleSeeder::class,
             PermissionSeeder::class,
             DepartmentSeeder::class,
             RolePermissionSeeder::class,

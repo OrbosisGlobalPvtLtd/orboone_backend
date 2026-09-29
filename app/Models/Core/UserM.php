@@ -9,11 +9,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Auth;
 use Laravel\Sanctum\HasApiTokens;
 
 use App\Models\Core\RoleM;
 use App\Models\Core\PermissionM;
 use App\Models\HRMS\Employee\EmployeeM;
+use App\Services\AccessControl\PermissionMapS;
 
 class UserM extends Authenticatable
 {
@@ -92,7 +94,7 @@ class UserM extends Authenticatable
 
     public function getProfile()
     {
-        return $this->with('employee')->where('id', auth()->id())->first();
+        return $this->with('employee')->where('id', Auth::id())->first();
     }
 
     /*
@@ -101,29 +103,74 @@ class UserM extends Authenticatable
     |--------------------------------------------------------------------------
     */
 
-    public function hasRole($roles): bool
-    {
-        $roles = array_map(fn ($r) => strtolower(trim((string) $r)), (array) $roles);
+    /**
+     * In-memory cache of role slugs and names for the user instance.
+     * @var array<string>|null
+     */
+    protected ?array $cachedRoleTokens = null;
 
-        // 1. Check primary role
+    /**
+     * Get all role tokens (slugs and names in lowercase) for this user instance.
+     *
+     * @return array<string>
+     */
+    public function roleTokens(): array
+    {
+        if ($this->cachedRoleTokens !== null) {
+            return $this->cachedRoleTokens;
+        }
+
+        $tokens = [];
+
+        // 1. Primary role (system_role_id or role_id)
         $primaryRoleId = $this->system_role_id ?: ($this->role_id ?? null);
         if ($primaryRoleId) {
             $primary = $this->primaryRole()->first();
             if ($primary) {
-                if (in_array(strtolower($primary->slug), $roles, true) || in_array(strtolower($primary->name), $roles, true)) {
-                    return true;
+                if (! empty($primary->slug)) {
+                    $tokens[] = strtolower(trim((string) $primary->slug));
+                }
+                if (! empty($primary->name)) {
+                    $tokens[] = strtolower(trim((string) $primary->name));
                 }
             }
         }
 
-        // 2. Check multiple roles from user_roles
-        if (Schema::hasTable('user_roles')) {
-            return $this->roles()
-                ->where(function ($q) use ($roles) {
-                    $q->whereIn(DB::raw('LOWER(roles.slug)'), $roles)
-                        ->orWhereIn(DB::raw('LOWER(roles.name)'), $roles);
-                })
-                ->exists();
+        // 2. Multiple roles from user_roles
+        $secondaryRoles = $this->roles()->get(['roles.slug', 'roles.name']);
+        foreach ($secondaryRoles as $r) {
+            if (! empty($r->slug)) {
+                $tokens[] = strtolower(trim((string) $r->slug));
+            }
+            if (! empty($r->name)) {
+                $tokens[] = strtolower(trim((string) $r->name));
+            }
+        }
+
+        $this->cachedRoleTokens = array_values(array_unique(array_filter($tokens)));
+
+        return $this->cachedRoleTokens;
+    }
+
+    /**
+     * Clear in-memory cached role tokens on this user instance.
+     */
+    public function forgetRoleCache(): self
+    {
+        $this->cachedRoleTokens = null;
+
+        return $this;
+    }
+
+    public function hasRole($roles): bool
+    {
+        $targetRoles = array_map(fn ($r) => strtolower(trim((string) $r)), (array) $roles);
+        $userTokens = $this->roleTokens();
+
+        foreach ($targetRoles as $target) {
+            if (in_array($target, $userTokens, true)) {
+                return true;
+            }
         }
 
         return false;
@@ -135,7 +182,7 @@ class UserM extends Authenticatable
             return true;
         }
 
-        return $this->hasRole([
+        return $this->hasRole(config('authorization.admin_role_slugs', [
             'super_admin',
             'admin',
             'hr_admin',
@@ -144,17 +191,27 @@ class UserM extends Authenticatable
             'operations_admin',
             'custom_admin',
             'manager',
-        ]);
+        ]));
     }
 
     public function isHrAdmin(): bool
     {
-        return $this->hasRole(['super_admin', 'admin', 'hr_admin', 'hr admin', 'hr', 'human resources']);
+        return $this->hasRole(config('authorization.hr_admin_slugs', [
+            'super_admin',
+            'admin',
+            'hr_admin',
+            'hr admin',
+            'hr',
+            'human resources',
+        ]));
     }
 
     public function isSuperAdmin(): bool
     {
-        return $this->hasRole(['super_admin', 'super admin']);
+        return $this->hasRole(config('authorization.super_admin_slugs', [
+            'super_admin',
+            'super admin',
+        ]));
     }
 
     public function isEmployee(): bool
@@ -197,70 +254,35 @@ class UserM extends Authenticatable
 
         // 2. HR Admin = full access to all HRMS operations, Employee Management, Attendance & Leave
         if ($this->isHrAdmin()) {
-            if (
-                str_starts_with($permissionKey, 'employees.') ||
-                str_starts_with($permissionKey, 'employee.') ||
-                str_starts_with($permissionKey, 'employee_') ||
-                str_starts_with($permissionKey, 'attendance.') ||
-                str_starts_with($permissionKey, 'attendance_') ||
-                str_starts_with($permissionKey, 'leave.') ||
-                str_starts_with($permissionKey, 'leave_') ||
-                str_starts_with($permissionKey, 'departments.') ||
-                str_starts_with($permissionKey, 'designations.') ||
-                str_starts_with($permissionKey, 'organization_hierarchy.') ||
-                str_starts_with($permissionKey, 'probation.') ||
-                str_starts_with($permissionKey, 'internship.') ||
-                str_starts_with($permissionKey, 'hrms_exit_policy.') ||
-                str_starts_with($permissionKey, 'reporting.') ||
-                str_starts_with($permissionKey, 'reporting_structure.') ||
-                str_starts_with($permissionKey, 'document_generation.') ||
-                str_starts_with($permissionKey, 'documents.') ||
-                str_starts_with($permissionKey, 'company_documents.') ||
-                str_starts_with($permissionKey, 'asset_allocation.') ||
-                str_starts_with($permissionKey, 'asset_allocations.')
-            ) {
-                return true;
+            foreach (PermissionMapS::getHrAdminPrefixes() as $prefix) {
+                if (str_starts_with($permissionKey, $prefix)) {
+                    return true;
+                }
             }
         }
 
         // Fallback / Alias mappings
-        if ($permissionKey === 'employees.update') {
-            $permissionKey = 'employees.edit';
-        } elseif ($permissionKey === 'attendance.regularization.view') {
-            if (
-                $this->hasPermission('attendance.regularization.view_all') ||
-                $this->hasPermission('attendance.regularization.view_team') ||
-                $this->hasPermission('attendance.regularization.view_own')
-            ) {
-                return true;
-            }
-        } elseif ($permissionKey === 'attendance.monthly_report.view') {
-            if (
-                $this->hasPermission('attendance.monthly_report.view_all') ||
-                $this->hasPermission('attendance.monthly_report.view_team') ||
-                $this->hasPermission('attendance.monthly_report.view_own')
-            ) {
-                return true;
-            }
-        } elseif ($permissionKey === 'attendance.work_reports.view') {
-            if (
-                $this->hasPermission('attendance.work_reports.view_all') ||
-                $this->hasPermission('attendance.work_reports.view_team') ||
-                $this->hasPermission('attendance.work_reports.view_own')
-            ) {
-                return true;
-            }
+        $aliases = PermissionMapS::getPermissionAliases();
+        if (isset($aliases[$permissionKey])) {
+            $permissionKey = $aliases[$permissionKey];
         }
 
         // 2. User Level Direct Override Check
-        if (Schema::hasTable('user_module_access')) {
-            $userOverride = DB::table('user_module_access')
-                ->where('user_id', $this->id)
-                ->where('permission_key', $permissionKey)
-                ->first(['is_allowed', 'is_enabled']);
+        $userOverride = DB::table('user_module_access')
+            ->where('user_id', $this->id)
+            ->where('permission_key', $permissionKey)
+            ->first(['is_allowed', 'is_enabled']);
 
-            if ($userOverride) {
-                return (bool) ($userOverride->is_allowed ?? $userOverride->is_enabled);
+        if ($userOverride) {
+            return (bool) ($userOverride->is_allowed ?? $userOverride->is_enabled);
+        }
+
+        $attendanceExpansions = PermissionMapS::getAttendanceAliasExpansions();
+        if (isset($attendanceExpansions[$permissionKey])) {
+            foreach ($attendanceExpansions[$permissionKey] as $expandedKey) {
+                if ($this->hasPermission($expandedKey)) {
+                    return true;
+                }
             }
         }
 
@@ -271,11 +293,9 @@ class UserM extends Authenticatable
             $roleIds[] = (int) $this->system_role_id;
         }
 
-        if (Schema::hasTable('user_roles')) {
-            $roleIds = array_merge(
-                $roleIds,
-                DB::table('user_roles')->where('user_id', $this->id)->pluck('role_id')->map(fn ($id) => (int) $id)->all()
-            );
+        $userRoleIds = DB::table('user_roles')->where('user_id', $this->id)->pluck('role_id')->map(fn ($id) => (int) $id)->all();
+        if (! empty($userRoleIds)) {
+            $roleIds = array_merge($roleIds, $userRoleIds);
         }
 
         $roleIds = array_unique(array_filter($roleIds));
@@ -293,55 +313,34 @@ class UserM extends Authenticatable
             }
         }
 
-        // 4. Employee Position / Designation Permission Check
-        if (Schema::hasTable('employees_new') && Schema::hasTable('designation_module_access')) {
-            $employee = DB::table('employees_new')->where('user_id', $this->id)->first(['designation_id', 'department_id']);
-            if ($employee && ! empty($employee->designation_id)) {
-                $hasPosPerm = DB::table('designation_module_access')
-                    ->where('designation_id', $employee->designation_id)
-                    ->where('permission_key', $permissionKey)
-                    ->where(function ($q) {
-                        $q->where('is_allowed', 1)->orWhere('is_enabled', 1);
-                    })
-                    ->exists();
-
-                if ($hasPosPerm) {
-                    return true;
-                }
+        // 4. Employee Position / Designation & Department Check
+        $employee = DB::table('employees_new')->where('user_id', $this->id)->first(['designation_id', 'department_id']);
+        if ($employee) {
+            if (! empty($employee->designation_id) && $this->checkBaselineAccess('designation_module_access', 'designation_id', (int) $employee->designation_id, $permissionKey)) {
+                return true;
             }
 
             // 5. Employee Profile / Department Baseline Check
-            if ($employee && ! empty($employee->department_id) && Schema::hasTable('department_module_access')) {
-                $hasDeptPerm = DB::table('department_module_access')
-                    ->where('department_id', $employee->department_id)
-                    ->where('permission_key', $permissionKey)
-                    ->where(function ($q) {
-                        $q->where('is_allowed', 1)->orWhere('is_enabled', 1);
-                    })
-                    ->exists();
-
-                if ($hasDeptPerm) {
-                    return true;
-                }
-            }
-        } elseif (Schema::hasTable('employees_new') && Schema::hasTable('department_module_access')) {
-            $employee = DB::table('employees_new')->where('user_id', $this->id)->first(['department_id']);
-            if ($employee && ! empty($employee->department_id)) {
-                $hasDeptPerm = DB::table('department_module_access')
-                    ->where('department_id', $employee->department_id)
-                    ->where('permission_key', $permissionKey)
-                    ->where(function ($q) {
-                        $q->where('is_allowed', 1)->orWhere('is_enabled', 1);
-                    })
-                    ->exists();
-
-                if ($hasDeptPerm) {
-                    return true;
-                }
+            if (! empty($employee->department_id) && $this->checkBaselineAccess('department_module_access', 'department_id', (int) $employee->department_id, $permissionKey)) {
+                return true;
             }
         }
 
         return false;
+    }
+
+    /**
+     * Check if a baseline access table (designation or department) grants permission.
+     */
+    private function checkBaselineAccess(string $table, string $foreignKey, int $foreignId, string $permissionKey): bool
+    {
+        return DB::table($table)
+            ->where($foreignKey, $foreignId)
+            ->where('permission_key', $permissionKey)
+            ->where(function ($q) {
+                $q->where('is_allowed', 1)->orWhere('is_enabled', 1);
+            })
+            ->exists();
     }
 
     public function hasModuleAccess(string $moduleKey): bool
@@ -350,16 +349,14 @@ class UserM extends Authenticatable
             return true;
         }
 
-        if (Schema::hasTable('user_module_access')) {
-            $userMod = DB::table('user_module_access')
-                ->where('user_id', $this->id)
-                ->where('module_key', $moduleKey)
-                ->whereNull('permission_key')
-                ->first(['is_allowed', 'is_enabled']);
+        $userMod = DB::table('user_module_access')
+            ->where('user_id', $this->id)
+            ->where('module_key', $moduleKey)
+            ->whereNull('permission_key')
+            ->first(['is_allowed', 'is_enabled']);
 
-            if ($userMod) {
-                return (bool) ($userMod->is_allowed ?? $userMod->is_enabled);
-            }
+        if ($userMod) {
+            return (bool) ($userMod->is_allowed ?? $userMod->is_enabled);
         }
 
         return true;

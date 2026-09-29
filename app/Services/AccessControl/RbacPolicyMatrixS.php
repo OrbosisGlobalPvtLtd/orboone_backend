@@ -183,7 +183,8 @@ class RbacPolicyMatrixS
                     'updated_at' => now(),
                 ])->all();
 
-                foreach (array_chunk($rows, 100) as $chunk) {
+                $chunkSize = (int) config('authorization.db_chunk_size', 100);
+                foreach (array_chunk($rows, $chunkSize) as $chunk) {
                     DB::table('role_menu_access')->insert($chunk);
                 }
             }
@@ -198,7 +199,8 @@ class RbacPolicyMatrixS
                     'updated_at' => now(),
                 ])->all();
 
-                foreach (array_chunk($rows, 100) as $chunk) {
+                $chunkSize = (int) config('authorization.db_chunk_size', 100);
+                foreach (array_chunk($rows, $chunkSize) as $chunk) {
                     DB::table('role_permissions')->insert($chunk);
                 }
             }
@@ -213,30 +215,7 @@ class RbacPolicyMatrixS
      */
     public function flushRoleCaches(int $roleId): void
     {
-        $userIds = DB::table('users')
-            ->where('system_role_id', $roleId)
-            ->pluck('id')
-            ->merge(DB::table('user_roles')->where('role_id', $roleId)->pluck('user_id'))
-            ->unique()
-            ->all();
-
-        try {
-            if (app()->bound('cache')) {
-                app('cache')->forget('spatie.permission.cache');
-                app('cache')->forget('app_permissions_cache');
-            }
-        } catch (\Throwable $e) {
-        }
-
-        $sidebarService = app(SidebarS::class);
-        foreach ($userIds as $userId) {
-            try {
-                $sidebarService->clearCache((int) $userId);
-                Cache::forget('user_permissions_' . $userId);
-                Cache::forget('user_menus_' . $userId);
-            } catch (\Throwable $e) {
-            }
-        }
+        app(SidebarS::class)->clearRoleCaches($roleId);
     }
 
     /**

@@ -11,7 +11,11 @@ class PayrollMenuSeeder extends Seeder
 {
     public function run()
     {
-        $m = Menu::updateOrCreate(['name' => 'payroll'], ['is_active' => 1]);
+        $m = Menu::where('id', 300)->orWhere('id', 50)->first();
+        if (!$m) {
+            return;
+        }
+
         foreach (Role::all() as $r) {
             Access::updateOrCreate(
                 ['role_id' => $r->id, 'menu_id' => $m->id],

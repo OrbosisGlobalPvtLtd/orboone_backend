@@ -64,11 +64,10 @@
 
                     <!-- Actions Section -->
                     @php
-                        // Robust Access Check - menu_id 11 for Departments
-                        $access = collect($accesses)->where('menu_id', 11)->first();
+                        $canManageDept = auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('departments.manage'));
                     @endphp
 
-                    @if ($access && $access->status == 10)
+                    @if ($canManageDept)
                     <div class="d-flex flex-wrap align-items-center">
                         <a href="{{ route('hrms.departments.edit', $department->id) }}" class="btn btn-orb-edit mr-3 shadow-sm">
                             <i class="fas fa-edit mr-2"></i> Modify Department

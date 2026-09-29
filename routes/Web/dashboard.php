@@ -29,10 +29,6 @@ Route::middleware(['auth'])->group(function () {
             return view('settings.coming-soon')->with('module', 'crm');
         })->name('module.crm');
 
-        Route::get('/module/project-mgmt', function () {
-            return view('settings.coming-soon')->with('module', 'project-mgmt');
-        })->name('module.project-mgmt');
-
         Route::get('/module/finance', function () {
             return view('settings.coming-soon')->with('module', 'finance');
         })->name('module.finance');

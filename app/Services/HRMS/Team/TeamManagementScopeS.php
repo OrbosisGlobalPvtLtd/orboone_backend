@@ -62,12 +62,7 @@ class TeamManagementScopeS
      */
     public function getTeamEmployeeIds(?int $supervisorEmpId = null): array
     {
-        $user = Auth::user();
-        if ($user && !$this->isSuperAdminOrGlobal()) {
-            $empId = $this->getOwnEmployeeId();
-        } else {
-            $empId = $supervisorEmpId ?? $this->getOwnEmployeeId();
-        }
+        $empId = $supervisorEmpId ?? $this->getOwnEmployeeId();
 
         if (!$empId) {
             return [];

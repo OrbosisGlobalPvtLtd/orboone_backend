@@ -157,7 +157,7 @@
 </style>
 @endsection
 
-@section('content')
+@section('_content')
 <div class="container-fluid px-4 py-4">
     @include('access_control.partials.nav')
 

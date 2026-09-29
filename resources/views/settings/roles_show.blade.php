@@ -62,7 +62,7 @@
     </div>
   </div>
 
-  @if (collect($accesses)->where('menu_id', 9)->first()->status == 2)
+  @if (auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('roles.manage')))
     <div class="row">
       <div class="col-12">
         <form action="{{ route('roles.edit', ['role' => $role->id]) }}" class="d-inline-block">

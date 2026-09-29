@@ -55,7 +55,7 @@
     </div>
   </div>
 
-  @if (collect($accesses)->where('menu_id', 10)->first()->status == 10)
+  @if (auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && (auth()->user()->hasPermission('positions.manage') || auth()->user()->hasPermission('departments.manage'))))
     <div class="row">
       <div class="col-12">
         <form action="{{ route('hrms.designations.edit', ['position' => $position->id]) }}" class="d-inline-block">

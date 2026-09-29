@@ -580,17 +580,7 @@ class ApiController extends Controller
         ]);
     }
 
-    // ================================================================
-    // LEAVE MANAGEMENT — Production-Ready API
-    // Policy: 18 PL + 7 SL/year | Internship/Probation = 1 max
-    // ================================================================
-
-    /**
-     * Private Helper: Calculate working days (excl. Sundays & holidays)
-     * Weekend extension rule:
-     *   Fri+Sat leave → Sunday also counted
-     *   Thu+Fri leave → Sat+Sun also counted
-     */
+    
     private function calculateLeaveDays(\Carbon\Carbon $start, \Carbon\Carbon $end): array
     {
         $holidays = \App\Models\HRMS\Leave\NationalHolidayM::whereBetween('holiday_date', [
@@ -1058,15 +1048,7 @@ class ApiController extends Controller
                 elseif ($application->leave_type === 'SL') $allocation->sick_used = (float) $allocation->sick_used + $paidDays;
                 if ($lwpDays > 0) $allocation->lwp_used = (float) $allocation->lwp_used + $lwpDays;
 
-                $allocation->total_used = (float) $allocation->paid_used
-                    + (float) $allocation->sick_used
-                    + (float) $allocation->comp_off_used;
-                $allocation->paid_remaining = max(0, (float) $allocation->paid_allocated - (float) $allocation->paid_used);
-                $allocation->sick_remaining = max(0, (float) $allocation->sick_allocated - (float) $allocation->sick_used);
-                $allocation->comp_off_remaining = max(0, (float) $allocation->comp_off_allocated - (float) $allocation->comp_off_used);
-                $allocation->total_remaining = (float) $allocation->paid_remaining
-                    + (float) $allocation->sick_remaining
-                    + (float) $allocation->comp_off_remaining;
+                app(\App\Services\HRMS\Leave\LeaveAllocationService::class)->recalculateAllocationFields($allocation);
                 $allocation->save();
             }
 

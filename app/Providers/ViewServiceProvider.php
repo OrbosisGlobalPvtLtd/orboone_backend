@@ -10,15 +10,15 @@ class ViewServiceProvider extends ServiceProvider
 {
     public function boot()
     {
-        View::composer('*', function ($view) {
+        View::composer('components.sidebar', function ($view) {
+            // Respect explicit component data; only resolve menus when the caller omitted them.
+            if (! array_key_exists('menus', $view->getData())) {
+                $menus = auth()->check()
+                    ? app(SidebarS::class)->getMenus(auth()->user())
+                    : collect();
 
-            if (auth()->check()) {
-                $menus = app(SidebarS::class)->getMenus(auth()->user());
-            } else {
-                $menus = [];
+                $view->with('menus', $menus);
             }
-
-            $view->with('menus', $menus);
         });
     }
 }

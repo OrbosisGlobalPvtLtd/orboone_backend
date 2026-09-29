@@ -147,14 +147,14 @@ class RoleMenuAccessSeeder extends Seeder
                 1,
             ],
             'employee' => [
-                1,
-                20,145,350,28,163,26,29,332,
-                30,32,137,36,34,133,
-                300,309,310,
-                50,52,53,161,
-                154,
-                80,83,
-                309,310,
+                1, // Dashboard
+                20, 349, 145, 163, 332, 181, 28, 26, // Attendance Self-Service
+                30, 137, 32, 34, 36, 133, // Leave Self-Service
+                300, 309, 310, // Enterprise Payroll Self-Service
+                50, 52, 161, 53, // Document Management Self-Service
+                60, 154, // Announcements
+                330, 331, // Assets
+                80, 83, // Profile & Settings
             ],
         ];
 

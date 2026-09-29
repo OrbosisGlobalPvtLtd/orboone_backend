@@ -8,8 +8,10 @@ use App\Models\HRMS\Employee\EmployeeM;
 use App\Models\HRMS\Leave\LeavePolicyM;
 use App\Models\HRMS\Leave\LeaveTypeM;
 use App\Services\HRMS\Leave\LeaveAllocationService;
+use App\Services\HRMS\Leave\LeavePolicyService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
 class LeaveAllocationStageTest extends TestCase
@@ -90,6 +92,16 @@ class LeaveAllocationStageTest extends TestCase
         $this->assertSame(2.0, (float) $dec->total_allocated);
         $this->assertSame(1.0, (float) $dec->paid_allocated);
         $this->assertSame(1.0, (float) $dec->sick_allocated);
+
+        $employeeDec31 = $this->makeEmployee('permanent', '2026-12-31');
+        $dec31 = app(LeaveAllocationService::class)->generateForEmployee(
+            $employeeDec31,
+            2026,
+            null,
+            'permanent',
+            Carbon::parse('2026-12-31', 'Asia/Kolkata')
+        );
+        $this->assertSame(2.0, (float) $dec31->total_allocated);
     }
 
     public function test_stage_allocation_is_idempotent(): void
@@ -108,6 +120,95 @@ class LeaveAllocationStageTest extends TestCase
             ->where('year', 2026)
             ->where('employment_stage', 'probation')
             ->count());
+    }
+
+    public function test_each_permanent_allocation_year_uses_its_own_effective_window(): void
+    {
+        $employee = $this->makeEmployee('permanent', '2025-01-01');
+        $employee->confirmation_date = '2025-12-01';
+        $employee->confirmation_effective_date = '2025-12-01';
+        $employee->permanent_at = '2025-12-01';
+        $employee->save();
+        $service = app(LeaveAllocationService::class);
+
+        $historical = $service->generateForEmployee($employee, 2025, null, 'permanent');
+        $current = $service->generateForEmployee($employee, 2026, null, 'permanent');
+        $nextYear = $service->generateForEmployee($employee, 2027, null, 'permanent');
+
+        $this->assertSame('2025-12-01', substr((string) $historical->allocation_from_date, 0, 10));
+        $this->assertSame(2.0, (float) $historical->total_allocated);
+        $this->assertTrue((bool) $historical->is_locked);
+        $this->assertSame('2026-01-01', substr((string) $current->allocation_from_date, 0, 10));
+        $this->assertSame(25.0, (float) $current->total_allocated);
+        $this->assertSame('2027-01-01', substr((string) $nextYear->allocation_from_date, 0, 10));
+        $this->assertSame(25.0, (float) $nextYear->total_allocated);
+    }
+
+    public function test_regeneration_preserves_locked_manual_allocations(): void
+    {
+        $employee = $this->makeEmployee('permanent', '2026-03-01');
+        $employee->confirmation_effective_date = '2026-03-01';
+        $employee->save();
+        $service = app(LeaveAllocationService::class);
+        $allocation = $service->generateForEmployee($employee, 2026, null, 'permanent');
+        $allocation->update([
+            'paid_allocated' => 12,
+            'total_allocated' => 19,
+            'total_remaining' => 17,
+            'paid_used' => 2,
+            'is_locked' => 1,
+        ]);
+
+        $lockedPreserved = $service->generateForEmployee($employee, 2026, null, 'permanent');
+        $this->assertSame(12.0, (float) $lockedPreserved->paid_allocated);
+        $this->assertSame(2.0, (float) $lockedPreserved->paid_used);
+        $this->assertTrue((bool) $lockedPreserved->is_locked);
+    }
+
+    public function test_yearly_generation_isolates_employee_failures_and_can_be_retried(): void
+    {
+        $employees = [
+            $this->makeEmployee('permanent', '2026-01-01'),
+            $this->makeEmployee('permanent', '2026-01-01'),
+            $this->makeEmployee('permanent', '2026-01-01'),
+        ];
+        \App\Models\HRMS\Employee\EmployeeM::query()
+            ->whereNotIn('id', array_map(fn ($employee) => $employee->id, $employees))
+            ->update(['is_active' => 0]);
+        $policy = LeavePolicyM::where('is_active', true)->firstOrFail();
+        $firstId = $employees[0]->id;
+        $mockPolicyService = $this->mock(LeavePolicyService::class, function ($mock) use ($policy) {
+            $calls = 0;
+            $mock->shouldReceive('forEmployee')->times(3)->andReturnUsing(function () use (&$calls, $policy) {
+                $calls++;
+                if ($calls === 1) {
+                    throw new \DomainException('intentional employee policy failure');
+                }
+                return $policy;
+            });
+        });
+        Log::spy();
+
+        $service = app(LeaveAllocationService::class);
+        $summary = $service->generateYearly(2026);
+
+        $this->assertSame(3, $summary['total_processed']);
+        $this->assertSame(2, $summary['successful_allocations']);
+        $this->assertSame(1, $summary['failed']);
+        $this->assertSame([$firstId], $summary['failed_employee_ids']);
+        $employeeIds = array_map(fn ($employee) => $employee->id, $employees);
+        $this->assertSame(2, \App\Models\HRMS\Leave\LeaveAllocationM::where('year', 2026)->whereIn('employee_id', $employeeIds)->count());
+        Log::shouldHaveReceived('error')->once()->withArgs(fn ($message, $context) =>
+            str_contains($message, 'Annual leave allocation failed')
+            && $context['employee_id'] === $firstId
+            && $context['year'] === 2026
+        );
+
+        // The failed employee is retried on a later run; prior successes remain one row each.
+        $this->app->forgetInstance(LeavePolicyService::class);
+        $retry = app(LeaveAllocationService::class)->generateYearly(2026);
+        $this->assertSame(0, $retry['failed']);
+        $this->assertSame(3, \App\Models\HRMS\Leave\LeaveAllocationM::where('year', 2026)->whereIn('employee_id', $employeeIds)->count());
     }
 
     private function makeEmployee(string $stage, string $joiningDate): EmployeeM

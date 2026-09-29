@@ -18,10 +18,10 @@
 
           {{-- Check if access exists first --}}
           @php
-            $menuAccess = collect($accesses)->where('menu_id', 10)->first();
+            $canCreateUser = auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && (auth()->user()->hasPermission('users.manage') || auth()->user()->hasPermission('employees.create')));
           @endphp
 
-          @if ($menuAccess && $menuAccess->status == 2)
+          @if ($canCreateUser)
             <a href="{{ route('hrms.employees.create') }}" class="btn btn-outline-dark mb-3 w-25">
               <i class="fas fa-plus mr-1"></i>
               <span>Create</span>

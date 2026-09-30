@@ -37,24 +37,19 @@ class LeaveRequestC extends Controller
     {
         $user = Auth::user();
         $employee = EmployeeM::where('user_id', $user->id)->first();
-        $isAdminOrHr = $user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin() || $this->canViewAll('leave.approvals.view_all');
+        $isAdminOrHr = $user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin();
 
         if (! $employee && ! $isAdminOrHr) {
             abort(403, 'No employee profile linked to your account.');
         }
 
-        // Auto-expire past pending leaves
-        // app(\App\Services\HRMS\Leave\AutoExpireLeaveService::class)->expirePastPendingRequests();
-
         $query = LeaveRequestM::with(['leaveType', 'dates', 'employee.user', 'employee.department', 'employee.designation', 'approver'])
             ->when($request->status, fn ($q) => $q->where('status', $request->status))
             ->when($request->leave_type_id, fn ($q) => $q->where('leave_type_id', $request->leave_type_id));
 
-        if ($isAdminOrHr) {
-            $query->when($request->employee_id, fn ($q) => $q->where('employee_id', $request->employee_id));
-        } elseif ($this->canViewTeam('leave.approvals.view_team')) {
-            $query->whereIn('employee_id', $this->teamEmployeeIds(true));
-        } else {
+        if ($isAdminOrHr && $request->filled('employee_id')) {
+            $query->where('employee_id', $request->employee_id);
+        } elseif (! $isAdminOrHr) {
             $query->where('employee_id', $employee?->id);
         }
 
@@ -84,7 +79,7 @@ class LeaveRequestC extends Controller
     {
         $user = Auth::user();
         $employee = EmployeeM::where('user_id', $user->id)->first();
-        $isAdminOrHr = $user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin() || $this->canViewAll('leave.approvals.view_all');
+        $isAdminOrHr = $user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin();
 
         if (! $employee && ! $isAdminOrHr) {
             abort(403, 'No employee profile linked to your account.');
@@ -109,7 +104,7 @@ class LeaveRequestC extends Controller
     {
         try {
             $user = Auth::user();
-            $isAdminOrHr = $user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin() || $this->canViewAll('leave.approvals.view_all');
+            $isAdminOrHr = $user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin();
 
             $employee = $request->filled('employee_id') && $isAdminOrHr
                 ? EmployeeM::findOrFail($request->employee_id)
@@ -173,7 +168,7 @@ class LeaveRequestC extends Controller
     {
         try {
             $user = Auth::user();
-            $isAdminOrHr = $user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin() || $this->canViewAll('leave.approvals.view_all');
+            $isAdminOrHr = $user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin();
 
             $leaveRequest = LeaveRequestM::findOrFail($id);
             $employee = $isAdminOrHr ? $leaveRequest->employee : EmployeeM::where('user_id', Auth::id())->first();
@@ -234,7 +229,7 @@ class LeaveRequestC extends Controller
     {
         try {
             $user = Auth::user();
-            $isAdminOrHr = $user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin() || $this->canViewAll('leave.approvals.view_all');
+            $isAdminOrHr = $user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin();
 
             $employee = $request->filled('employee_id') && $isAdminOrHr
                 ? EmployeeM::find($request->employee_id)
@@ -319,7 +314,7 @@ class LeaveRequestC extends Controller
     {
         try {
             $user = Auth::user();
-            $isAdminOrHr = $user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin() || $this->canViewAll('leave.approvals.view_all');
+            $isAdminOrHr = $user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin();
 
             $leaveRequest = LeaveRequestM::findOrFail($id);
             $employeeId = $this->ownEmployeeId();
@@ -429,7 +424,7 @@ class LeaveRequestC extends Controller
     private function isEligibleForLeaveRequest(EmployeeM $employee): bool
     {
         $user = auth()->user();
-        if ($this->canViewAll('leave.approvals.view_all') || ($user->role_id ?? null) == 1 || ($user->system_role_id ?? null) == 1) {
+        if ($user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin() || ($user->role_id ?? null) == 1 || ($user->system_role_id ?? null) == 1) {
             return true;
         }
 

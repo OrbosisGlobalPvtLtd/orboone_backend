@@ -877,7 +877,7 @@
 
 {{-- Floating Bottom-Right Fixed Web Punch Button Overlay --}}
 @if ($canWebPunch)
-    <div style="position: fixed; bottom: 32px; right: 32px; z-index: 9999;">
+    <div style="position: fixed; bottom: 32px; right: 32px; z-index: 990;">
         @if ($isPunchBlocked)
             <button type="button" class="btn font-weight-bold px-4 py-3 shadow-lg d-flex align-items-center" data-toggle="modal" data-target="#webPunchInModal" style="border-radius: 50px; font-size: 15px; font-weight: 900; background: linear-gradient(135deg, #64748b 0%, #475569 100%) !important; color: #fff; border: 2px solid #ffffff; cursor: pointer;">
                 <i class="fas fa-ban fa-lg mr-2"></i> PUNCH BLOCKED

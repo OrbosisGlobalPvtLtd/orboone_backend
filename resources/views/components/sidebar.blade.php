@@ -254,7 +254,7 @@ $isMenuActive = function($item) use ($active) {
     }
     .sidebar-submenu {
         display: none;
-        padding: 2px 0 2px 6px !important;
+        padding: 2px 0 2px 14px !important;
     }
     .sidebar-group.open .sidebar-submenu,
     .sidebar-submenu.show {
@@ -464,9 +464,9 @@ $isMenuActive = function($item) use ($active) {
         </nav>
     </div>
 
-    <div class="sidebar-footer">
+    {{-- <div class="sidebar-footer">
         <div class="sidebar-footer-sub">{{ $branding['company_name'] ?? 'OrboOne' }} v1.0 • {{ date('Y') }}</div>
-    </div>
+    </div> --}}
 </aside>
 
 <script>

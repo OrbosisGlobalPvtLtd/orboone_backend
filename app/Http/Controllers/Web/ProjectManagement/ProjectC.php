@@ -28,15 +28,15 @@ class ProjectC extends Controller
     {
         $accessibleProjectIds = $this->accessScope->getAccessibleProjectIds();
 
-        abort_unless(
-            $this->userHasPermission('projects.view_all')
-            || $this->userHasPermission('projects.my_projects.view')
-            || $this->userHasPermission('projects.delivery_head.view')
-            || $this->userHasPermission('projects.team_lead.view')
-            || $this->accessScope->isProjectManagerOrLead()
-            || !empty($accessibleProjectIds),
-            403
-        );
+        // abort_unless(
+        //     $this->userHasPermission('projects.view_all')
+        //     || $this->userHasPermission('projects.my_projects.view')
+        //     || $this->userHasPermission('projects.delivery_head.view')
+        //     || $this->userHasPermission('projects.team_lead.view')
+        //     || $this->accessScope->isProjectManagerOrLead()
+        //     || !empty($accessibleProjectIds),
+        //     403
+        // );
 
         $query = ProjectM::with(['deliveryHead.user', 'activeTeams.teamLead.user', 'activeAssignments']);
 
@@ -201,7 +201,7 @@ class ProjectC extends Controller
         $projects = ProjectM::with([
             'deliveryHead.user',
             'teams.teamLead.user',
-            'teams.members.user',
+            'teams.activeAssignments.employee.user',
             'activeAssignments.employee.user',
             'activeAssignments.employee.designation'
         ])

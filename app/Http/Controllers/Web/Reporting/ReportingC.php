@@ -419,7 +419,7 @@ class ReportingC extends Controller
     /**
      * Process Relieving an Employee from Supervisor
      */
-    public function relieveEmployee(Request $request, $id)
+    public function relieveEmployee(Request $request, int|string $id)
     {
         if (!$this->scopeS->isSuperAdminOrGlobal()) {
             abort(403, 'Unauthorized. Only HR Admin / Super Admin can relieve reporting assignments.');
@@ -682,12 +682,11 @@ class ReportingC extends Controller
                             ->orWhere('leave_requests.approval_level', 'manager_approved');
                     });
             } elseif ($st === 'all') {
-                // Show all statuses (pending, approved, rejected)
+
             } else {
                 $query->where('leave_requests.status', $st);
             }
         } else {
-            // Default to PENDING leaves only so approved/rejected leaves are hidden by default
             $query->where('leave_requests.status', 'pending');
         }
 
@@ -765,14 +764,9 @@ class ReportingC extends Controller
         $approvedLeaveCount = (clone $baseCountQuery)->where('leave_requests.status', 'approved')->count();
         $rejectedLeaveCount = (clone $baseCountQuery)->where('leave_requests.status', 'rejected')->count();
 
-        $user = auth()->user();
-        $roleId = (int)($user->system_role_id ?? $user->role_id ?? 0);
-        $roleName = strtolower($user->role->name ?? '');
+        $isGlobal = $this->scopeS->isSuperAdminOrGlobal();
 
-        $isSuperAdmin = method_exists($user, 'isSuperAdmin') ? $user->isSuperAdmin() : in_array($roleId, [1, 2], true);
-        $isHrOrAdmin = $isSuperAdmin || in_array($roleId, [1, 2, 3, 5], true) || in_array($roleName, ['admin', 'super_admin', 'hr_admin', 'hr admin', 'manager', 'hr'], true) || ($user->can('leave.approvals.view_all') || $user->can('leave.approvals.view'));
-
-        if ($isHrOrAdmin || $isSuperAdmin) {
+        if ($isGlobal) {
             $employees = EmployeeM::with(['user'])->active()->get();
         } else {
             $employees = EmployeeM::with(['user'])->active()->whereIn('id', $supervisedEmpIds)->get();
@@ -798,9 +792,7 @@ class ReportingC extends Controller
             'employees',
             'leaveTypes',
             'reportingManagers',
-            'supervisorEmpId',
-            'isHrOrAdmin',
-            'isSuperAdmin'
+            'supervisorEmpId'
         ));
     }
 
@@ -818,56 +810,72 @@ class ReportingC extends Controller
         } else {
             // Dynamic DB Discovery of Developers, QA & Technical Team:
             // 1. Active project members from project_assignments
-            $projectMemberEmpIds = DB::table('project_assignments')
-                ->where('is_active', 1)
-                ->pluck('employee_id')
-                ->toArray();
+            $projectMemberEmpIds = [];
+            if (Schema::hasTable('project_assignments')) {
+                $paQuery = DB::table('project_assignments');
+                if (Schema::hasColumn('project_assignments', 'is_active')) {
+                    $paQuery->where('is_active', 1);
+                }
+                $projectMemberEmpIds = $paQuery->pluck('employee_id')->filter()->toArray();
+            }
 
             // 2. Employees who have submitted work logs in DB
-            $workLogEmpIds = DB::table('attendance_work_logs')
-                ->distinct()
-                ->pluck('employee_id')
-                ->toArray();
+            $workLogEmpIds = [];
+            if (Schema::hasTable('attendance_work_logs')) {
+                $workLogEmpIds = DB::table('attendance_work_logs')
+                    ->distinct()
+                    ->pluck('employee_id')
+                    ->filter()
+                    ->toArray();
+            }
 
             // 3. Dynamic Departments from DB (Engineering, Development, QA, Testing, UI/UX, Design, etc.)
-            $devQaDeptIds = DB::table('departments')
-                ->where(function ($q) {
-                    $q->where('name', 'LIKE', '%dev%')
-                      ->orWhere('name', 'LIKE', '%engineer%')
-                      ->orWhere('name', 'LIKE', '%qa%')
-                      ->orWhere('name', 'LIKE', '%test%')
-                      ->orWhere('name', 'LIKE', '%design%')
-                      ->orWhere('name', 'LIKE', '%tech%')
-                      ->orWhere('name', 'LIKE', '%product%');
-                })
-                ->pluck('id')
-                ->toArray();
+            $devQaDeptIds = [];
+            if (Schema::hasTable('departments')) {
+                $devQaDeptIds = DB::table('departments')
+                    ->where(function ($q) {
+                        $q->where('name', 'LIKE', '%dev%')
+                          ->orWhere('name', 'LIKE', '%engineer%')
+                          ->orWhere('name', 'LIKE', '%qa%')
+                          ->orWhere('name', 'LIKE', '%test%')
+                          ->orWhere('name', 'LIKE', '%design%')
+                          ->orWhere('name', 'LIKE', '%tech%')
+                          ->orWhere('name', 'LIKE', '%product%');
+                    })
+                    ->pluck('id')
+                    ->toArray();
+            }
 
             // 4. Dynamic Designations & Positions from DB linked to tech departments or titles
-            $devQaDesigIds = DB::table('designations')
-                ->where(function ($q) use ($devQaDeptIds) {
-                    if (!empty($devQaDeptIds)) {
-                        $q->whereIn('department_id', $devQaDeptIds);
-                    }
-                    $q->orWhere('name', 'LIKE', '%developer%')
-                      ->orWhere('name', 'LIKE', '%engineer%')
-                      ->orWhere('name', 'LIKE', '%qa%')
-                      ->orWhere('name', 'LIKE', '%tester%')
-                      ->orWhere('name', 'LIKE', '%test%')
-                      ->orWhere('name', 'LIKE', '%designer%')
-                      ->orWhere('name', 'LIKE', '%ui%')
-                      ->orWhere('name', 'LIKE', '%ux%')
-                      ->orWhere('name', 'LIKE', '%tech%')
-                      ->orWhere('name', 'LIKE', '%lead%');
-                })
-                ->pluck('id')
-                ->toArray();
+            $devQaDesigIds = [];
+            if (Schema::hasTable('designations')) {
+                $hasDesigDept = Schema::hasColumn('designations', 'department_id');
+                $devQaDesigIds = DB::table('designations')
+                    ->where(function ($q) use ($devQaDeptIds, $hasDesigDept) {
+                        if ($hasDesigDept && !empty($devQaDeptIds)) {
+                            $q->whereIn('department_id', $devQaDeptIds);
+                        }
+                        $q->orWhere('name', 'LIKE', '%developer%')
+                          ->orWhere('name', 'LIKE', '%engineer%')
+                          ->orWhere('name', 'LIKE', '%qa%')
+                          ->orWhere('name', 'LIKE', '%tester%')
+                          ->orWhere('name', 'LIKE', '%test%')
+                          ->orWhere('name', 'LIKE', '%designer%')
+                          ->orWhere('name', 'LIKE', '%ui%')
+                          ->orWhere('name', 'LIKE', '%ux%')
+                          ->orWhere('name', 'LIKE', '%tech%')
+                          ->orWhere('name', 'LIKE', '%lead%');
+                    })
+                    ->pluck('id')
+                    ->toArray();
+            }
 
             $posIds = [];
             if (Schema::hasTable('positions')) {
+                $hasPosDept = Schema::hasColumn('positions', 'department_id');
                 $posIds = DB::table('positions')
-                    ->where(function ($q) use ($devQaDeptIds) {
-                        if (!empty($devQaDeptIds)) {
+                    ->where(function ($q) use ($devQaDeptIds, $hasPosDept) {
+                        if ($hasPosDept && !empty($devQaDeptIds)) {
                             $q->whereIn('department_id', $devQaDeptIds);
                         }
                         $q->orWhere('name', 'LIKE', '%developer%')
@@ -881,20 +889,41 @@ class ReportingC extends Controller
                     ->toArray();
             }
 
-            $deptDesigEmpIds = EmployeeM::active()
-                ->where(function ($q) use ($devQaDeptIds, $devQaDesigIds, $posIds) {
-                    if (!empty($devQaDeptIds)) {
-                        $q->whereIn('department_id', $devQaDeptIds);
-                    }
-                    if (!empty($devQaDesigIds)) {
-                        $q->orWhereIn('designation_id', $devQaDesigIds);
-                    }
-                    if (!empty($posIds)) {
-                        $q->orWhereIn('designation_id', $posIds);
-                    }
-                })
-                ->pluck('id')
-                ->toArray();
+            $deptDesigEmpIds = [];
+            $hasEmpDept = Schema::hasColumn('employees_new', 'department_id');
+            $hasEmpDesig = Schema::hasColumn('employees_new', 'designation_id');
+
+            if ($hasEmpDept || $hasEmpDesig) {
+                $deptDesigEmpIds = EmployeeM::active()
+                    ->where(function ($q) use ($devQaDeptIds, $devQaDesigIds, $posIds, $hasEmpDept, $hasEmpDesig) {
+                        $hasCondition = false;
+                        if ($hasEmpDept && !empty($devQaDeptIds)) {
+                            $q->whereIn('department_id', $devQaDeptIds);
+                            $hasCondition = true;
+                        }
+                        if ($hasEmpDesig && !empty($devQaDesigIds)) {
+                            if ($hasCondition) {
+                                $q->orWhereIn('designation_id', $devQaDesigIds);
+                            } else {
+                                $q->whereIn('designation_id', $devQaDesigIds);
+                                $hasCondition = true;
+                            }
+                        }
+                        if ($hasEmpDesig && !empty($posIds)) {
+                            if ($hasCondition) {
+                                $q->orWhereIn('designation_id', $posIds);
+                            } else {
+                                $q->whereIn('designation_id', $posIds);
+                                $hasCondition = true;
+                            }
+                        }
+                        if (!$hasCondition) {
+                            $q->whereRaw('0 = 1');
+                        }
+                    })
+                    ->pluck('id')
+                    ->toArray();
+            }
 
             // Merge all dynamic scopes
             $accessibleEmpIds = EmployeeM::active()

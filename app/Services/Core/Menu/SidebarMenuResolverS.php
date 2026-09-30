@@ -36,7 +36,7 @@ class SidebarMenuResolverS
                 || (method_exists($user, 'hasRole') && $user->hasRole('super_admin'));
 
             $userRoles = ! empty($roleIds) ? DB::table('roles')->whereIn('id', $roleIds)->get(['id', 'slug', 'is_system']) : collect();
-            $isOnlyEmployee = $userRoles->isNotEmpty() && $userRoles->every(fn ($r) => $r->slug === 'employee');
+            $isOnlyEmployee = $userRoles->isNotEmpty() && $userRoles->every(fn($r) => $r->slug === 'employee');
             $hasAdminRole = $isSuperAdmin || ! $isOnlyEmployee;
 
             $userEmp = Schema::hasTable('employees_new')
@@ -46,7 +46,7 @@ class SidebarMenuResolverS
             $hasEmployeeRole = $hasEmployeeRecord;
 
             $hrSlugs = config('authorization.hr_admin_slugs', ['super_admin', 'admin', 'hr_admin', 'hr admin', 'hr', 'human resources']);
-            $isHrAdmin = $isSuperAdmin || ($userRoles->isNotEmpty() && $userRoles->contains(fn ($r) => in_array(strtolower((string) $r->slug), $hrSlugs, true))) || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin());
+            $isHrAdmin = $isSuperAdmin || ($userRoles->isNotEmpty() && $userRoles->contains(fn($r) => in_array(strtolower((string) $r->slug), $hrSlugs, true))) || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin());
 
             // Pre-compute in-memory permission checker to eliminate N+1 database queries during filtering
             $permissionChecker = $this->buildUserPermissionChecker($user, $userEmp, $roleIds, $isSuperAdmin, $isHrAdmin);
@@ -69,7 +69,7 @@ class SidebarMenuResolverS
 
             // If user has NO corresponding employee record in employees_new, strictly hide all Employee Self-Service menus
             if (! $hasEmployeeRecord) {
-                $merged = $merged->reject(fn ($m) => $this->isEmployeeOnlyMenu($m));
+                $merged = $merged->reject(fn($m) => $this->isEmployeeOnlyMenu($m));
             }
 
             // Post-merge repair and normalization pipeline
@@ -117,11 +117,16 @@ class SidebarMenuResolverS
                     ->where('is_active', 1)
                     ->where(function ($q) {
                         $q->whereIn(DB::raw('LOWER(project_role)'), [
-                            'team_lead', 'team lead',
-                            'project_lead', 'project lead',
-                            'project_manager', 'project manager',
-                            'lead', 'manager',
-                            'delivery_head', 'delivery head',
+                            'team_lead',
+                            'team lead',
+                            'project_lead',
+                            'project lead',
+                            'project_manager',
+                            'project manager',
+                            'lead',
+                            'manager',
+                            'delivery_head',
+                            'delivery head',
                         ]);
                     })->exists();
 
@@ -142,7 +147,7 @@ class SidebarMenuResolverS
                 }
             }
 
-            $hasManagerRole = $userRoles->contains(fn ($r) => in_array(strtolower((string) $r->slug), ['super_admin', 'admin', 'hr_admin', 'project_admin', 'operations_admin', 'custom_admin'], true));
+            $hasManagerRole = $userRoles->contains(fn($r) => in_array(strtolower((string) $r->slug), ['super_admin', 'admin', 'hr_admin', 'project_admin', 'operations_admin', 'custom_admin'], true));
 
             $hasProjectPerm = $permissionChecker('projects.view_all') || $permissionChecker('projects.manage');
 
@@ -205,7 +210,7 @@ class SidebarMenuResolverS
         });
 
         if (! $hasReportingAdminAccess && $hasReportingAdminMenus && ! empty($roleIds)) {
-            $hasReportingAdminAccess = $userRoles->contains(fn ($r) => in_array(strtolower((string) $r->slug), ['super_admin', 'admin', 'hr_admin'], true));
+            $hasReportingAdminAccess = $userRoles->contains(fn($r) => in_array(strtolower((string) $r->slug), ['super_admin', 'admin', 'hr_admin'], true));
         }
 
         return $menus->map(function ($m) use ($isProjectManager) {
@@ -232,7 +237,7 @@ class SidebarMenuResolverS
             }
 
             // 2. Team Management container (ID 370) and operational submenus:
-            // Strictly visible ONLY if user is an actual reporting manager (manages a team with reportees) or Super Admin
+            // Strictly visible ONLY if user is an actual reporting manager (manages a team with reportees) 
             $name = strtolower(trim((string) ($menu->name ?? '')));
             $isTeamMenu = $id === 370 || $parentId === 370 || str_starts_with($route, 'team.') || in_array($route, [
                 'attendances.team',
@@ -243,7 +248,8 @@ class SidebarMenuResolverS
                 'reporting.work_reports',
                 'reporting.projects',
             ], true) || (str_contains($name, 'team') && $moduleKey === 'reporting');
-            if ($isTeamMenu && ! $isTeamManager && ! $isSuperAdmin) {
+            // if ($isTeamMenu && ! $isTeamManager && ! $isSuperAdmin) {
+            if ($isTeamMenu && ! $isTeamManager) {
                 return true;
             }
 
@@ -321,7 +327,7 @@ class SidebarMenuResolverS
         if (method_exists($user, 'roles')) {
             $roleIds = array_merge(
                 $roleIds,
-                $user->roles()->pluck('roles.id')->map(fn ($id) => (int) $id)->all()
+                $user->roles()->pluck('roles.id')->map(fn($id) => (int) $id)->all()
             );
         }
 
@@ -346,7 +352,7 @@ class SidebarMenuResolverS
         $allowedIds = DB::table('role_menu_access')
             ->whereIn('role_id', $roleIds)
             ->pluck('menu_id')
-            ->map(fn ($id) => (int) $id)
+            ->map(fn($id) => (int) $id)
             ->all();
 
         if (empty($allowedIds)) {
@@ -359,7 +365,7 @@ class SidebarMenuResolverS
     private function buildUserPermissionChecker(Authenticatable $user, ?object $userEmp, array $roleIds, bool $isSuperAdmin, bool $isHrAdmin): callable
     {
         if ($isSuperAdmin) {
-            return fn (string $key) => true;
+            return fn(string $key) => true;
         }
 
         $userOverrides = [];
@@ -369,7 +375,7 @@ class SidebarMenuResolverS
                 ->whereNotNull('permission_key')
                 ->get(['permission_key', 'is_allowed', 'is_enabled'])
                 ->keyBy('permission_key')
-                ->map(fn ($row) => (bool) ($row->is_allowed ?? $row->is_enabled))
+                ->map(fn($row) => (bool) ($row->is_allowed ?? $row->is_enabled))
                 ->all();
         }
 
@@ -617,7 +623,7 @@ class SidebarMenuResolverS
             $allowedRoleMenuIds = DB::table('role_menu_access')
                 ->whereIn('role_id', $roleIds)
                 ->pluck('menu_id')
-                ->map(fn ($id) => (int) $id)
+                ->map(fn($id) => (int) $id)
                 ->all();
         }
 
@@ -735,8 +741,8 @@ class SidebarMenuResolverS
     private function removeEmptyParents(Collection $menus): Collection
     {
         $idsWithChildren = $menus->pluck('parent_id')
-            ->filter(fn ($id) => ! is_null($id))
-            ->map(fn ($id) => (int) $id)
+            ->filter(fn($id) => ! is_null($id))
+            ->map(fn($id) => (int) $id)
             ->all();
 
         return $menus->filter(function ($menu) use ($idsWithChildren) {

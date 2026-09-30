@@ -31,7 +31,20 @@ class ProjectAccessScopeS
             return true;
         }
 
-        return method_exists($user, 'hasPermission') && $user->hasPermission('projects.view_all');
+        if (method_exists($user, 'isHrAdmin') && $user->isHrAdmin()) {
+            return true;
+        }
+
+        if (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin', 'project_admin'])) {
+            return true;
+        }
+
+        $roleId = (int) ($user->system_role_id ?? $user->role_id ?? 0);
+        if (in_array($roleId, [1, 2, 3], true)) {
+            return true;
+        }
+
+        return method_exists($user, 'hasPermission') && ($user->hasPermission('projects.view_all') || $user->hasPermission('projects.manage'));
     }
 
     /**

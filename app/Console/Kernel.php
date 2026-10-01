@@ -2,6 +2,7 @@
 
 namespace App\Console;
 
+use App\Console\Commands\AccrueMonthlyLeaveCommand;
 use App\Console\Commands\AttendanceAbsent;
 use App\Console\Commands\AttendanceBackfillShiftAssignments;
 use App\Console\Commands\AttendanceLeave;
@@ -27,6 +28,7 @@ class Kernel extends ConsoleKernel
      * @var array
      */
     protected $commands = [
+        AccrueMonthlyLeaveCommand::class,
         AttendanceAbsent::class,
         AttendanceLeave::class,
         AutoBlockMissedPunchIns::class,
@@ -62,6 +64,10 @@ class Kernel extends ConsoleKernel
         $schedule->command('hrms:process-missed-punches')->everyMinute()->timezone('Asia/Kolkata')->withoutOverlapping();
         $schedule->command('attendance:process-lwp')->dailyAt('23:55')->timezone('Asia/Kolkata');
         $schedule->command('hrms:auto-close-blocked-attendance')->everyMinute()->timezone('Asia/Kolkata')->withoutOverlapping();
+        $schedule->command('hrms:accrue-monthly-leave')
+            ->monthlyOn(1, '00:01')
+            ->timezone('Asia/Kolkata')
+            ->withoutOverlapping();
         $schedule->command('hrms:leave-generate-allocations')->yearlyOn(1, 1, '00:05')->timezone('Asia/Kolkata');
         $schedule->command('hrms:comp-offs-expire')->dailyAt('00:20')->timezone('Asia/Kolkata');
         $schedule->command('hrms:process-holiday-work-comp-offs')->everyMinute()->timezone('Asia/Kolkata')->withoutOverlapping();

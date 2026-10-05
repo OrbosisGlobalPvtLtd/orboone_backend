@@ -7,6 +7,7 @@ use App\Http\Controllers\Web\HRMS\Concerns\HrmsCrudPage;
 use App\Models\Core\UserM as User;
 use App\Models\HRMS\Attendance\AttendanceWorkLogM as WorkLog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class WorkReportC extends Controller
 {
@@ -19,12 +20,30 @@ class WorkReportC extends Controller
 
     public function index(Request $request)
     {
-        abort_unless(
-            $this->userHasPermission('attendance.work_reports.view_all')
-            || $this->userHasPermission('attendance.work_reports.view_team')
-            || $this->userHasPermission('attendance.work_reports.view_own'),
-            403
-        );
+        /** @var User|null $user */
+        $user = Auth::user();
+        $roleId = (int) ($user->system_role_id ?? $user->role_id ?? 0);
+        $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
+        $isHrOrAdmin = $isSuperAdmin
+            || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin())
+            || (method_exists($user, 'isAdmin') && $user->isAdmin())
+            || (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin']))
+            || in_array($roleId, [1, 2, 3], true);
+
+        $teamEmpIds = $this->teamEmployeeIds(false);
+        $isManager = (! empty($teamEmpIds) || (method_exists($user, 'hasRole') && $user->hasRole('manager'))) && ! $isHrOrAdmin;
+        $isEmployee = ! $isHrOrAdmin && ! $isManager;
+
+        $canOwn = $this->userHasPermission('attendance.work_reports.view_own')
+            || $this->userHasPermission('attendance.work_reports.view')
+            || (method_exists($user, 'isEmployee') && $user->isEmployee())
+            || in_array($roleId, [7, 8], true);
+
+        abort_unless($isHrOrAdmin || $isManager || $canOwn, 403);
+
+        $ownEmployee = $this->currentEmployee();
+        $ownEmployeeId = $ownEmployee ? $ownEmployee->id : $this->ownEmployeeId();
+        $userId = Auth::id();
 
         $query = WorkLog::with([
             'user',
@@ -33,46 +52,77 @@ class WorkReportC extends Controller
             'attendance.attendanceTime'
         ]);
 
-        $isMyWorkReports = request()->routeIs('hrms.attendance.my-work-reports') || request()->routeIs('my-work-reports');
-        if ($isMyWorkReports) {
-            $employee = \App\Models\HRMS\Employee\EmployeeM::where('user_id', auth()->id())->first();
-            $employeeId = $employee ? $employee->id : ($this->ownEmployeeId() ?: null);
-            $userId = auth()->id();
+        $isMyWorkReportsRoute = request()->routeIs('hrms.attendance.my-work-reports') || request()->routeIs('my-work-reports');
 
-            $query->where(function ($q) use ($employeeId, $userId) {
-                if ($employeeId && $userId) {
-                    $q->where('employee_id', $employeeId)->orWhere('user_id', $userId);
-                } elseif ($employeeId) {
-                    $q->where('employee_id', $employeeId);
+        if ($isEmployee || $isMyWorkReportsRoute) {
+            // Strictly self only
+            $query->where(function ($q) use ($ownEmployeeId, $userId) {
+                if ($ownEmployeeId && $userId) {
+                    $q->where('employee_id', $ownEmployeeId)->orWhere('user_id', $userId);
+                } elseif ($ownEmployeeId) {
+                    $q->where('employee_id', $ownEmployeeId);
                 } elseif ($userId) {
                     $q->where('user_id', $userId);
                 } else {
                     $q->whereRaw('1 = 0');
                 }
             });
-        } else {
-            // Role-based scoping of employee visibility
-            $allPermission = 'attendance.work_reports.view_all';
-            $teamPermission = 'attendance.work_reports.view_team';
-            $query = $this->scopeEmployeeVisibility($query, $allPermission, $teamPermission, 'employee_id');
+            $request->merge(['employee_id' => $ownEmployeeId]);
+        } elseif ($isManager) {
+            // Scoped strictly to supervised team members + own
+            $allowedEmpIds = array_values(array_unique(array_filter(array_merge($teamEmpIds, array_filter([$ownEmployeeId])))));
+            $query->whereIn('employee_id', $allowedEmpIds);
+            if ($request->filled('employee_id') && in_array((int) $request->employee_id, $allowedEmpIds, true)) {
+                $query->where('employee_id', $request->employee_id);
+            }
+        } elseif ($isHrOrAdmin) {
+            // Admin can view all or filter by selected employee
+            if ($request->filled('employee_id')) {
+                $query->where('employee_id', $request->employee_id);
+            }
         }
 
-        // Apply request filters
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->whereHas('user', function ($qu) use ($search) {
-                    $qu->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%");
-                })->orWhereHas('employee', function ($qe) use ($search) {
-                    $qe->where('employee_code', 'like', "%{$search}%");
-                })->orWhere('work_summary', 'like', "%{$search}%");
-            });
+        // Build Month Dropdown Options (Last 12 Months)
+        $monthOptions = [];
+        $cursor = \Carbon\Carbon::now()->startOfMonth();
+        for ($i = 0; $i < 12; $i++) {
+            $val = $cursor->format('Y-m');
+            $monthOptions[$val] = $cursor->format('F Y');
+            $cursor->subMonth();
         }
 
-        if ($request->filled('employee_id')) {
-            $query->where('employee_id', $request->employee_id);
+        // Determine active month / custom date filtering
+        $selectedMonth = $request->input('month');
+        $isCustomDate = ($selectedMonth === 'custom') || (! $request->has('month') && ($request->filled('from_date') || $request->filled('to_date')));
+
+        if (! $request->has('month') && ! $request->filled('from_date') && ! $request->filled('to_date')) {
+            $selectedMonth = \Carbon\Carbon::now()->format('Y-m');
         }
 
+        if (! $isCustomDate && $selectedMonth && $selectedMonth !== 'all') {
+            try {
+                $mDate = \Carbon\Carbon::createFromFormat('Y-m', $selectedMonth);
+                $query->whereBetween('work_date', [
+                    $mDate->copy()->startOfMonth()->toDateString(),
+                    $mDate->copy()->endOfMonth()->toDateString()
+                ]);
+            } catch (\Throwable $e) {
+                $selectedMonth = \Carbon\Carbon::now()->format('Y-m');
+                $query->whereBetween('work_date', [
+                    \Carbon\Carbon::now()->startOfMonth()->toDateString(),
+                    \Carbon\Carbon::now()->endOfMonth()->toDateString()
+                ]);
+            }
+        } elseif ($isCustomDate) {
+            if ($request->filled('from_date')) {
+                $query->whereDate('work_date', '>=', $request->from_date);
+            }
+            if ($request->filled('to_date')) {
+                $query->whereDate('work_date', '<=', $request->to_date);
+            }
+        }
+
+        // Apply additional request filters
         if ($request->filled('work_mode')) {
             $workMode = strtolower($request->work_mode);
             $query->whereHas('attendance', function ($qa) use ($workMode) {
@@ -80,55 +130,12 @@ class WorkReportC extends Controller
             });
         }
 
-        if ($request->filled('from_date')) {
-            $query->whereDate('work_date', '>=', $request->from_date);
-        }
-
-        if ($request->filled('to_date')) {
-            $query->whereDate('work_date', '<=', $request->to_date);
-        }
-
-        // Retrieve work logs
-        $workLogs = $query->orderByDesc('work_date')
-            ->orderByDesc('id')
-            ->get();
-
-        // Batch preload passport photos to eliminate N+1 queries
-        $empIds = $workLogs->pluck('employee_id')->filter()->unique()->values()->toArray();
-        global $preloadedPassportPhotos;
-        $preloadedPassportPhotos = [];
-        if (!empty($empIds) && \Illuminate\Support\Facades\Schema::hasTable('employee_documents_new') && \Illuminate\Support\Facades\Schema::hasTable('document_types')) {
-            try {
-                $photos = \Illuminate\Support\Facades\DB::table('employee_documents_new')
-                    ->join('document_types', 'document_types.id', '=', 'employee_documents_new.document_type_id')
-                    ->whereIn('employee_documents_new.employee_id', $empIds)
-                    ->where(function ($q) {
-                        $q->where('document_types.name', 'Passport Size Photo')
-                            ->orWhere('document_types.code', 'passport_size_photo')
-                            ->orWhere('document_types.name', 'Passport Photo')
-                            ->orWhere('document_types.code', 'passport_photo')
-                            ->orWhere('document_types.name', 'Photo')
-                            ->orWhere('document_types.name', 'Passport')
-                            ->orWhere('document_types.name', 'like', '%Passport%Photo%')
-                            ->orWhere('document_types.name', 'like', '%Passport%Size%Photo%');
-                    })
-                    ->select('employee_documents_new.employee_id', 'employee_documents_new.file_path', 'employee_documents_new.verification_status')
-                    ->orderByRaw("CASE WHEN employee_documents_new.verification_status = 'verified' THEN 0 ELSE 1 END")
-                    ->orderBy('employee_documents_new.id', 'desc')
-                    ->get()
-                    ->groupBy('employee_id');
-
-                foreach ($empIds as $id) {
-                    $document = isset($photos[$id]) ? $photos[$id]->first() : null;
-                    $preloadedPassportPhotos[$id] = ($document && $document->file_path)
-                        ? route('hrms.documents.file', ['path' => $document->file_path])
-                        : null;
-                }
-            } catch (\Throwable $e) {}
-        }
+        // Clone query for overall dataset metrics & employee summaries
+        $statsQuery = (clone $query);
+        $allFilteredLogs = $statsQuery->get();
 
         // Build Employee Summaries grouping for Employee Cards View
-        $employeeSummaries = $workLogs->groupBy(function ($log) {
+        $employeeSummaries = $allFilteredLogs->groupBy(function ($log) {
             return $log->employee_id ?: ($log->user_id ?: 0);
         })->map(function ($logs, $empId) {
             $first = $logs->first();
@@ -188,9 +195,9 @@ class WorkReportC extends Controller
             ];
         })->values();
 
-        // Calculate aggregate KPI statistics
+        // Calculate aggregate KPI statistics accurately on the filtered dataset
         $totalSecondsAll = 0;
-        foreach ($workLogs as $log) {
+        foreach ($allFilteredLogs as $log) {
             $gross = optional($log->attendance)->gross_duration;
             if ($gross && preg_match('/(?:(\d+)\s*h(?:ours?)?)?\s*(?:(\d+)\s*m(?:ins?)?)?/i', $gross, $m)) {
                 $totalSecondsAll += ((int)($m[1] ?? 0) * 3600) + ((int)($m[2] ?? 0) * 60);
@@ -201,38 +208,114 @@ class WorkReportC extends Controller
         $formattedTotalGross = $hrsAll > 0 ? "{$hrsAll} hrs {$minsAll} mins" : "{$minsAll} mins";
 
         $statsSummary = [
-            'total_reports' => $workLogs->count(),
+            'total_reports' => $allFilteredLogs->count(),
             'unique_employees' => $employeeSummaries->count(),
             'total_tasks' => $employeeSummaries->sum('total_tasks'),
             'total_gross_formatted' => $formattedTotalGross,
-            'wfo_count' => $workLogs->filter(fn($l) => strtolower(optional($l->attendance)->work_mode ?? 'wfo') !== 'wfh')->count(),
-            'wfh_count' => $workLogs->filter(fn($l) => strtolower(optional($l->attendance)->work_mode ?? '') === 'wfh')->count(),
+            'wfo_count' => $allFilteredLogs->filter(fn($l) => strtolower(optional($l->attendance)->work_mode ?? 'wfo') !== 'wfh')->count(),
+            'wfh_count' => $allFilteredLogs->filter(fn($l) => strtolower(optional($l->attendance)->work_mode ?? '') === 'wfh')->count(),
         ];
 
-        // Get employees dropdown depending on role visibility
-        $employees = $this->attendanceEmployees();
+        // Server-Side Pagination
+        $perPageParam = $request->input('per_page', 25);
+        if ($perPageParam === 'all' || (int) $perPageParam === -1) {
+            $perPage = max($allFilteredLogs->count(), 1000);
+        } else {
+            $perPage = max(1, (int) $perPageParam);
+        }
 
-        // Check if admin / manager
-        $isAdminOrManager = $this->userHasPermission('attendance.work_reports.view_all') 
-            || $this->userHasPermission('attendance.work_reports.view_team');
+        $workLogs = $query->orderByDesc('work_date')
+            ->orderByDesc('id')
+            ->paginate($perPage)
+            ->withQueryString();
 
-        return view('hrms.attendance.work-reports.index', compact('workLogs', 'employeeSummaries', 'employees', 'isAdminOrManager', 'statsSummary'));
+        // Batch preload passport photos for current page to eliminate N+1 queries
+        $empIds = $workLogs->pluck('employee_id')->filter()->unique()->values()->toArray();
+        global $preloadedPassportPhotos;
+        $preloadedPassportPhotos = [];
+        if (!empty($empIds) && \Illuminate\Support\Facades\Schema::hasTable('employee_documents_new') && \Illuminate\Support\Facades\Schema::hasTable('document_types')) {
+            try {
+                $photos = \Illuminate\Support\Facades\DB::table('employee_documents_new')
+                    ->join('document_types', 'document_types.id', '=', 'employee_documents_new.document_type_id')
+                    ->whereIn('employee_documents_new.employee_id', $empIds)
+                    ->where(function ($q) {
+                        $q->where('document_types.name', 'Passport Size Photo')
+                            ->orWhere('document_types.code', 'passport_size_photo')
+                            ->orWhere('document_types.name', 'Passport Photo')
+                            ->orWhere('document_types.code', 'passport_photo')
+                            ->orWhere('document_types.name', 'Photo')
+                            ->orWhere('document_types.name', 'Passport')
+                            ->orWhere('document_types.name', 'like', '%Passport%Photo%')
+                            ->orWhere('document_types.name', 'like', '%Passport%Size%Photo%');
+                    })
+                    ->select('employee_documents_new.employee_id', 'employee_documents_new.file_path', 'employee_documents_new.verification_status')
+                    ->orderByRaw("CASE WHEN employee_documents_new.verification_status = 'verified' THEN 0 ELSE 1 END")
+                    ->orderBy('employee_documents_new.id', 'desc')
+                    ->get()
+                    ->groupBy('employee_id');
+
+                foreach ($empIds as $id) {
+                    $document = isset($photos[$id]) ? $photos[$id]->first() : null;
+                    $preloadedPassportPhotos[$id] = ($document && $document->file_path)
+                        ? route('hrms.documents.file', ['path' => $document->file_path])
+                        : null;
+                }
+            } catch (\Throwable $e) {}
+        }
+
+        // Get employees dropdown depending on role visibility (Active & Approved only)
+        $isAdminOrManager = $isHrOrAdmin || $isManager;
+        $employees = $this->attendanceEmployees($isHrOrAdmin, $isManager, $teamEmpIds);
+
+        $filters = [
+            'months' => $monthOptions,
+            'selected_month' => $selectedMonth,
+            'current_month' => \Carbon\Carbon::now()->format('Y-m'),
+            'is_custom' => $isCustomDate,
+            'from_date' => $request->from_date,
+            'to_date' => $request->to_date,
+            'per_page' => $perPageParam,
+            'work_mode' => $request->work_mode,
+            'employee_id' => $isEmployee ? $ownEmployeeId : $request->employee_id,
+            'search' => $request->search,
+        ];
+
+        return view('hrms.attendance.work-reports.index', compact('workLogs', 'employeeSummaries', 'employees', 'isAdminOrManager', 'statsSummary', 'filters'));
     }
 
-    private function attendanceEmployees()
+    private function attendanceEmployees(bool $isHrOrAdmin, bool $isManager, array $teamEmpIds = [])
     {
-        $query = User::whereHas('employee')->with('employee')->orderBy('name');
-        if (! $this->canViewAll('attendance.work_reports.view_all')) {
-            $ids = $this->userHasPermission('attendance.work_reports.view_team')
-                ? $this->teamEmployeeIds(true)
-                : array_filter([$this->ownEmployeeId()]);
-            $query->whereHas('employee', fn ($employeeQuery) => $employeeQuery->whereIn('id', $ids));
+        if (! $isHrOrAdmin && ! $isManager) {
+            return collect();
         }
+
+        $query = User::where('is_active', true)
+            ->whereHas('employee', function ($eq) use ($isHrOrAdmin, $teamEmpIds) {
+                $eq->where('is_active', 1)
+                   ->where(function ($q) {
+                       $q->whereNull('relieving_date')
+                         ->orWhereDate('relieving_date', '>=', now()->toDateString());
+                   })
+                   ->where(function ($q) {
+                       $q->whereNull('employment_status')
+                         ->orWhereNotIn('employment_status', ['terminated', 'resigned', 'relieved', 'inactive']);
+                   })
+                   ->whereHas('profile', function ($pq) {
+                       $pq->where('profile_status', 'approved');
+                   });
+
+                if (! $isHrOrAdmin) {
+                    $allowed = array_values(array_unique(array_filter(array_merge($teamEmpIds, array_filter([$this->ownEmployeeId()])))));
+                    $eq->whereIn('id', $allowed);
+                }
+            })
+            ->with(['employee.department', 'employee.designation'])
+            ->orderBy('name');
 
         return $query->get();
     }
 
-    public function employeeHistory($employeeId, Request $request)
+    public function employeeHistory(int|string $employeeId, Request $request)
     {
         abort_unless(
             $this->userHasPermission('attendance.work_reports.view_all')
@@ -251,17 +334,44 @@ class WorkReportC extends Controller
             }
         }
 
+        $selectedMonth = $request->get('month');
+        $fromDate = $request->get('from_date');
+        $toDate = $request->get('to_date');
+        $workMode = $request->get('work_mode');
+        $perPage = $request->get('per_page', 25);
+
+        // Default to current month if no specific dates or month passed
+        if (!$request->has('month') && !$fromDate && !$toDate) {
+            $selectedMonth = now()->format('Y-m');
+        }
+
         $query = WorkLog::with(['user', 'employee.department', 'employee.designation', 'attendance.attendanceTime'])
             ->where('employee_id', $employee->id);
 
-        if ($request->filled('from_date')) {
-            $query->whereDate('work_date', '>=', $request->from_date);
-        }
-        if ($request->filled('to_date')) {
-            $query->whereDate('work_date', '<=', $request->to_date);
+        if ($request->filled('work_mode')) {
+            $query->whereHas('attendance', function ($q) use ($request) {
+                $q->where('work_mode', $request->work_mode);
+            });
         }
 
-        $workLogs = $query->orderByDesc('work_date')->orderByDesc('id')->get();
+        if ($fromDate && $toDate) {
+            $query->whereBetween('work_date', [$fromDate, $toDate]);
+        } elseif ($fromDate) {
+            $query->whereDate('work_date', '>=', $fromDate);
+        } elseif ($toDate) {
+            $query->whereDate('work_date', '<=', $toDate);
+        } elseif ($selectedMonth && $selectedMonth !== 'all') {
+            try {
+                $dt = \Carbon\Carbon::createFromFormat('Y-m', $selectedMonth);
+                $query->whereYear('work_date', $dt->year)
+                      ->whereMonth('work_date', $dt->month);
+            } catch (\Exception $e) {
+                // fallback
+            }
+        }
+
+        // Calculate summary metrics on full filtered dataset
+        $statsLogs = (clone $query)->get();
 
         $totalSeconds = 0;
         $totalTasks = 0;
@@ -270,7 +380,7 @@ class WorkReportC extends Controller
         $wfhCount = 0;
         $issuesCount = 0;
 
-        foreach ($workLogs as $log) {
+        foreach ($statsLogs as $log) {
             $attendance = $log->attendance;
             $gross = optional($attendance)->gross_duration;
             if ($gross && preg_match('/(?:(\d+)\s*h(?:ours?)?)?\s*(?:(\d+)\s*m(?:ins?)?)?/i', $gross, $m)) {
@@ -336,7 +446,7 @@ class WorkReportC extends Controller
         $minsTotal = floor(($totalSeconds % 3600) / 60);
         $formattedGross = $hrsTotal > 0 ? "{$hrsTotal} hrs {$minsTotal} mins" : "{$minsTotal} mins";
 
-        $reportsCount = $workLogs->count();
+        $reportsCount = $statsLogs->count();
         $avgDailySeconds = $reportsCount > 0 ? floor($totalSeconds / $reportsCount) : 0;
         $avgHrs = floor($avgDailySeconds / 3600);
         $avgMins = floor(($avgDailySeconds % 3600) / 60);
@@ -346,15 +456,21 @@ class WorkReportC extends Controller
         $completionRate = $totalTasks > 0 ? round(($completedTasks / $totalTasks) * 100, 1) : 100;
 
         $dateRangeLabel = 'All Historical Records';
-        if ($request->filled('from_date') && $request->filled('to_date')) {
-            $dateRangeLabel = \Carbon\Carbon::parse($request->from_date)->format('d M Y') . ' – ' . \Carbon\Carbon::parse($request->to_date)->format('d M Y');
-        } elseif ($request->filled('from_date')) {
-            $dateRangeLabel = 'From ' . \Carbon\Carbon::parse($request->from_date)->format('d M Y');
-        } elseif ($request->filled('to_date')) {
-            $dateRangeLabel = 'Until ' . \Carbon\Carbon::parse($request->to_date)->format('d M Y');
-        } elseif ($workLogs->isNotEmpty()) {
-            $minDate = $workLogs->min('work_date');
-            $maxDate = $workLogs->max('work_date');
+        if ($fromDate && $toDate) {
+            $dateRangeLabel = \Carbon\Carbon::parse($fromDate)->format('d M Y') . ' – ' . \Carbon\Carbon::parse($toDate)->format('d M Y');
+        } elseif ($fromDate) {
+            $dateRangeLabel = 'From ' . \Carbon\Carbon::parse($fromDate)->format('d M Y');
+        } elseif ($toDate) {
+            $dateRangeLabel = 'Until ' . \Carbon\Carbon::parse($toDate)->format('d M Y');
+        } elseif ($selectedMonth && $selectedMonth !== 'all') {
+            try {
+                $dateRangeLabel = \Carbon\Carbon::createFromFormat('Y-m', $selectedMonth)->format('F Y');
+            } catch (\Exception $e) {
+                // fallback
+            }
+        } elseif ($statsLogs->isNotEmpty()) {
+            $minDate = $statsLogs->min('work_date');
+            $maxDate = $statsLogs->max('work_date');
             if ($minDate && $maxDate) {
                 $dateRangeLabel = \Carbon\Carbon::parse($minDate)->format('d M Y') . ' – ' . \Carbon\Carbon::parse($maxDate)->format('d M Y');
             }
@@ -386,14 +502,34 @@ class WorkReportC extends Controller
             'wfh_count' => $wfhCount,
             'issues_count' => $issuesCount,
             'date_range_label' => $dateRangeLabel,
-            'from_date' => $request->from_date,
-            'to_date' => $request->to_date,
+            'selected_month' => $selectedMonth,
+            'from_date' => $fromDate,
+            'to_date' => $toDate,
         ];
 
-        return view('hrms.attendance.work-reports.history', compact('employee', 'workLogs', 'summary'));
+        // Months for dropdown
+        $availableMonths = [];
+        $currentMonthObj = now()->startOfMonth();
+        for ($i = 0; $i < 12; $i++) {
+            $m = (clone $currentMonthObj)->subMonths($i);
+            $availableMonths[$m->format('Y-m')] = $m->format('F Y');
+        }
+
+        // Handle Pagination vs Print All
+        $isPrint = $request->routeIs('*print*');
+        if ($isPrint || $perPage === 'all' || $perPage == -1) {
+            $workLogs = $query->orderByDesc('work_date')->orderByDesc('id')->get();
+        } else {
+            $perPage = max(10, min(500, (int) $perPage));
+            $workLogs = $query->orderByDesc('work_date')->orderByDesc('id')
+                ->paginate($perPage)
+                ->withQueryString();
+        }
+
+        return view('hrms.attendance.work-reports.history', compact('employee', 'workLogs', 'summary', 'availableMonths', 'selectedMonth'));
     }
 
-    public function printEmployeeHistory($employeeId, Request $request)
+    public function printEmployeeHistory(int|string $employeeId, Request $request)
     {
         $response = $this->employeeHistory($employeeId, $request);
         if ($response instanceof \Illuminate\View\View) {
@@ -405,7 +541,7 @@ class WorkReportC extends Controller
         return $response;
     }
 
-    public function printSingleWorkReport($id, Request $request)
+    public function printSingleWorkReport(int|string $id, Request $request)
     {
         abort_unless(
             $this->userHasPermission('attendance.work_reports.view_all')

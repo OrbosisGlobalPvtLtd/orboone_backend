@@ -94,10 +94,42 @@
         font-size: 14px;
     }
 
+    .att-btn-glass,
+    .orb-hero-actions .btn-glass,
+    .orb-hero-actions .att-btn {
+        background: rgba(255, 255, 255, 0.18) !important;
+        border: 1px solid rgba(255, 255, 255, 0.45) !important;
+        color: #ffffff !important;
+        backdrop-filter: blur(10px) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+        border-radius: 999px !important;
+        padding: 10px 22px !important;
+        font-size: 13.5px !important;
+        font-weight: 750 !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08) !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        text-decoration: none !important;
+        cursor: pointer !important;
+        transition: all 0.25s ease !important;
+    }
+
+    .att-btn-glass:hover,
+    .orb-hero-actions .btn-glass:hover,
+    .orb-hero-actions .att-btn:hover {
+        background: rgba(255, 255, 255, 0.32) !important;
+        border-color: rgba(255, 255, 255, 0.75) !important;
+        color: #ffffff !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15) !important;
+    }
+
     /* STAT CARDS */
     .stat-card-row {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 16px;
         margin-bottom: 24px;
     }
@@ -518,6 +550,137 @@
         transform: translateY(-1px) !important;
         box-shadow: 0 6px 18px rgba(75, 0, 232, .35) !important;
     }
+    /* RESPONSIVE MEDIA QUERIES FOR ALL SCREEN SIZES */
+    @media(max-width: 1200px) {
+        .stat-card-row {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .policy-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media(max-width: 768px) {
+        .att-page {
+            padding: 12px 10px 24px;
+        }
+
+        .orb-hero {
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 20px 18px;
+            border-radius: 20px;
+            gap: 14px;
+        }
+
+        .orb-hero h1 {
+            font-size: 22px;
+        }
+
+        .orb-hero p {
+            font-size: 13px;
+        }
+
+        .orb-hero-actions {
+            width: 100%;
+        }
+
+        .orb-hero-actions .btn-glass,
+        .orb-hero-actions .att-btn {
+            width: 100% !important;
+            padding: 11px 20px !important;
+        }
+
+        .stat-card-row {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .stat-card {
+            padding: 14px 12px;
+            border-radius: 14px;
+            gap: 10px;
+        }
+
+        .stat-icon-wrapper {
+            width: 42px;
+            height: 42px;
+            font-size: 17px;
+            border-radius: 10px;
+        }
+
+        .stat-val {
+            font-size: 20px;
+        }
+
+        .stat-lbl {
+            font-size: 10px;
+        }
+
+        .filter-bar {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 12px;
+            padding: 12px 14px;
+            border-radius: 14px;
+            margin-bottom: 16px;
+        }
+
+        .filter-pills {
+            width: 100%;
+            overflow-x: auto;
+            flex-wrap: nowrap;
+            padding-bottom: 4px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .filter-pill {
+            white-space: nowrap;
+            flex-shrink: 0;
+            padding: 6px 14px;
+            font-size: 12px;
+        }
+
+        .search-box {
+            min-width: 100%;
+            width: 100%;
+        }
+
+        .policy-grid {
+            grid-template-columns: 1fr;
+            gap: 14px;
+        }
+
+        .policy-card {
+            padding: 16px;
+            border-radius: 16px;
+        }
+
+        .policy-title {
+            font-size: 16px;
+        }
+
+        .metric-grid {
+            padding: 10px;
+            border-radius: 10px;
+            gap: 8px;
+        }
+
+        .metric-val {
+            font-size: 14px;
+        }
+
+        .metric-lbl {
+            font-size: 10px;
+        }
+    }
+
+    @media(max-width: 480px) {
+        .stat-card-row {
+            grid-template-columns: 1fr;
+        }
+    }
 </style>
 
 <div class="att-page">
@@ -544,7 +707,7 @@
             </div>
             <div class="orb-hero-actions">
                 @if(auth()->user() && (auth()->user()->isAdmin() || auth()->user()->isSuperAdmin()))
-                    <button class="btn btn-light rounded-pill font-weight-bold shadow-sm text-primary px-4 py-2" data-toggle="modal" data-target="#createPolicyModal">
+                    <button class="att-btn att-btn-glass btn-glass" data-toggle="modal" data-target="#createPolicyModal">
                         <i class="fas fa-plus-circle mr-1"></i> Create New Policy
                     </button>
                 @endif

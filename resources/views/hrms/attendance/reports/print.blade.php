@@ -183,6 +183,7 @@
                 <th class="text-center">Gross</th>
                 <th class="text-center">Net</th>
                 <th class="text-center">Status</th>
+                <th>Reason</th>
                 <th>Flags / Remarks</th>
             </tr>
         </thead>
@@ -192,6 +193,16 @@
                     $typeCode = optional($attendance->attendanceType)->code ?? 'default';
                     $typeName = optional($attendance->attendanceType)->name ?? ucwords(str_replace('_', ' ', $attendance->attendance_status ?? 'N/A'));
                     
+                    $reasonText = $attendance->half_day_reason 
+                        ?: ($attendance->lwp_reason 
+                        ?: ($attendance->status_reason 
+                        ?: ($attendance->remarks 
+                        ?: ($attendance->blocked_reason
+                        ?: ($attendance->block_reason
+                        ?: ($attendance->auto_block_reason
+                        ?: ($attendance->unlock_remarks 
+                        ?: ($attendance->approval_remarks ?: '-'))))))));
+
                     $flags = [];
                     if ($attendance->is_late) {
                         $flags[] = 'Late ' . ($attendance->late_minutes ?? 0) . 'm';
@@ -250,6 +261,9 @@
                     <td class="text-center">
                         <span class="badge-pill badge-{{ $typeCode }}">{{ $typeName }}</span>
                     </td>
+                    <td style="font-size: 10px; color: #475569; max-width: 140px;">
+                        {{ $reasonText }}
+                    </td>
                     <td>
                         @if(!empty($flags))
                             @foreach($flags as $flag)
@@ -262,7 +276,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="12" class="text-center py-4 text-muted font-weight-bold">
+                    <td colspan="13" class="text-center py-4 text-muted font-weight-bold">
                         No attendance records found for the selected period/filter.
                     </td>
                 </tr>

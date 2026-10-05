@@ -1012,6 +1012,57 @@
             font-size: 11.5px;
         }
     }
+
+    /* Global Table Per Page Select2 Styling */
+    .select2-container--per-page .select2-selection--single,
+    .select2-container--per-page.select2-container--default .select2-selection--single {
+        min-height: 38px !important;
+        height: 38px !important;
+        border-radius: 10px !important;
+        border: 1px solid #D0D5DD !important;
+        background: #fff !important;
+        display: flex !important;
+        align-items: center !important;
+        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05) !important;
+        width: 75px !important;
+        padding: 0 6px !important;
+    }
+
+    .select2-container--per-page .select2-selection__rendered,
+    .select2-container--per-page.select2-container--default .select2-selection--single .select2-selection__rendered {
+        font-weight: 800 !important;
+        color: #1D2939 !important;
+        font-size: 13px !important;
+        padding-left: 6px !important;
+        padding-right: 22px !important;
+        line-height: 36px !important;
+    }
+
+    .select2-container--per-page .select2-selection__arrow,
+    .select2-container--per-page.select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 36px !important;
+        right: 6px !important;
+    }
+
+    .select2-dropdown-per-page {
+        min-width: 75px !important;
+        border: 1px solid #E7EAF3 !important;
+        border-radius: 10px !important;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1) !important;
+        font-size: 13px !important;
+        font-weight: 700 !important;
+        z-index: 99999 !important;
+    }
+
+    .select2-dropdown-per-page .select2-results__option {
+        padding: 6px 10px !important;
+        text-align: center !important;
+    }
+
+    .select2-dropdown-per-page .select2-results__option--highlighted[aria-selected] {
+        background-color: var(--orb-primary, #4B00E8) !important;
+        color: #ffffff !important;
+    }
 </style>
 @endsection
 
@@ -1032,6 +1083,8 @@
     </div>
 
     @include('hrms.attendance.wfh.partials.modals.assign')
+    @include('hrms.attendance.wfh.partials.modals.apply')
+    @include('hrms.attendance.wfh.partials.modals.edit')
     @include('hrms.attendance.wfh.partials.modals.details')
     @include('hrms.attendance.wfh.partials.modals.approve')
     @include('hrms.attendance.wfh.partials.modals.reject')
@@ -1040,16 +1093,7 @@
 @endsection
 
 @section('_script')
-<!-- DataTables and Export Buttons JS Libraries -->
-<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap4.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap4.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+<!-- DataTables Responsive (Core and Buttons already loaded in panel) -->
 <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
 <script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap4.min.js"></script>
 
@@ -1164,19 +1208,92 @@
         var scopeSelect = document.querySelector('.js-assign-scope');
         var singleBox = document.querySelector('.js-scope-single');
         var multipleBox = document.querySelector('.js-scope-multiple');
-        var departmentBox = document.querySelector('.js-scope-department');
-        var designationBox = document.querySelector('.js-scope-designation');
+        var allBox = document.querySelector('.js-scope-all');
+
         var toggleAssignScope = function() {
             if (!scopeSelect) return;
-            var scope = scopeSelect.value;
+            var scope = $(scopeSelect).val() || scopeSelect.value;
             if (singleBox) singleBox.classList.toggle('d-none', scope !== 'single');
             if (multipleBox) multipleBox.classList.toggle('d-none', scope !== 'multiple');
-            if (departmentBox) departmentBox.classList.toggle('d-none', scope !== 'department');
-            if (designationBox) designationBox.classList.toggle('d-none', scope !== 'designation');
+            if (allBox) allBox.classList.toggle('d-none', scope !== 'all');
         };
+
         if (scopeSelect) {
             scopeSelect.addEventListener('change', toggleAssignScope);
+            $(scopeSelect).on('change', toggleAssignScope);
             toggleAssignScope();
+        }
+
+        // Multiple Employee Checklist Functions
+        function updateSelectedCount() {
+            var checked = document.querySelectorAll('.js-assign-emp-check:checked');
+            var countEl = document.querySelector('.js-selected-emp-count');
+            if (countEl) {
+                countEl.textContent = checked.length + ' Selected';
+            }
+            document.querySelectorAll('.js-assign-emp-check').forEach(function(chk) {
+                var card = chk.closest('.js-emp-label-card');
+                if (card) {
+                    card.classList.toggle('is-selected', chk.checked);
+                }
+            });
+        }
+
+        $(document).on('change', '.js-assign-emp-check', updateSelectedCount);
+
+        $(document).on('click', '.js-btn-select-all', function() {
+            var items = document.querySelectorAll('.js-emp-check-item:not(.d-none) .js-assign-emp-check');
+            items.forEach(function(chk) {
+                chk.checked = true;
+            });
+            updateSelectedCount();
+        });
+
+        $(document).on('click', '.js-btn-deselect-all', function() {
+            var items = document.querySelectorAll('.js-assign-emp-check');
+            items.forEach(function(chk) {
+                chk.checked = false;
+            });
+            updateSelectedCount();
+        });
+
+        $(document).on('input', '.js-emp-search-input', function() {
+            var term = this.value.trim().toLowerCase();
+            var items = document.querySelectorAll('.js-emp-check-item');
+            var visibleCount = 0;
+            items.forEach(function(item) {
+                var search = item.getAttribute('data-search') || '';
+                var match = search.indexOf(term) !== -1;
+                item.classList.toggle('d-none', !match);
+                if (match) visibleCount++;
+            });
+            var noMatch = document.querySelector('.js-no-emp-match');
+            if (noMatch) {
+                noMatch.classList.toggle('d-none', visibleCount > 0);
+            }
+        });
+
+        // Validate on form submit
+        var assignForm = document.getElementById('assignWfhForm');
+        if (assignForm) {
+            assignForm.addEventListener('submit', function(e) {
+                var scope = $(scopeSelect).val() || (scopeSelect ? scopeSelect.value : 'single');
+                if (scope === 'single') {
+                    var empId = assignForm.querySelector('[name="employee_id"]')?.value;
+                    if (!empId) {
+                        e.preventDefault();
+                        alert('Please select an employee.');
+                        return false;
+                    }
+                } else if (scope === 'multiple') {
+                    var checked = assignForm.querySelectorAll('.js-assign-emp-check:checked');
+                    if (!checked || checked.length === 0) {
+                        e.preventDefault();
+                        alert('Please select at least one employee from the list.');
+                        return false;
+                    }
+                }
+            });
         }
 
         var approveForm = document.getElementById('approveForm');
@@ -1467,23 +1584,234 @@
                     }
                 }
             });
+
+            if (typeof $ !== 'undefined' && $.fn.select2) {
+                $('#recordsPerPageSelect').select2({
+                    minimumResultsForSearch: Infinity,
+                    width: '75px',
+                    dropdownCssClass: 'select2-dropdown-per-page',
+                    containerCssClass: 'select2-container--per-page'
+                });
+
+                $('#recordsPerPageSelect').off('change').on('change', function() {
+                    var u = new URL(window.location.href);
+                    u.searchParams.set('per_page', this.value);
+                    u.searchParams.set('page', '1');
+                    window.location.href = u.toString();
+                });
+            }
+        }
+
+        var filterMonthSelect = document.getElementById('wfh_filter_month') || document.querySelector('#wfhFilterForm [name="month"]');
+        var toggleCustomDateFields = function() {
+            var val = filterMonthSelect ? ($(filterMonthSelect).val() || filterMonthSelect.value) : '';
+            var customFields = document.querySelectorAll('.js-custom-date-field');
+            customFields.forEach(function(el) {
+                if (val === 'custom') {
+                    el.style.display = '';
+                } else {
+                    el.style.display = 'none';
+                    var inputs = el.querySelectorAll('input');
+                    inputs.forEach(function(inp) {
+                        inp.value = '';
+                        if (inp._flatpickr) inp._flatpickr.clear();
+                    });
+                }
+            });
+        };
+
+        if (filterMonthSelect) {
+            filterMonthSelect.addEventListener('change', toggleCustomDateFields);
+            $(filterMonthSelect).on('change', toggleCustomDateFields);
         }
 
         $(document).on('shown.bs.modal', '.modal', function () {
             if (typeof $.fn.select2 !== 'undefined') {
-                $(this).find('select.select2-modal-searchable').each(function() {
+                $(this).find('select.select2-modal-searchable, select.select2-searchable').each(function() {
                     if ($(this).hasClass('select2-hidden-accessible')) {
                         $(this).select2('destroy');
+                    }
+                    var allowClear = $(this).data('allow-clear');
+                    if (allowClear === false || allowClear === 'false') {
+                        allowClear = false;
+                    } else if (allowClear === true || allowClear === 'true') {
+                        allowClear = true;
+                    } else {
+                        allowClear = !$(this).prop('required') && $(this).find('option[value=""]').length > 0;
                     }
                     $(this).select2({
                         dropdownParent: $(this).closest('.modal'),
                         placeholder: $(this).data('placeholder') || $(this).attr('placeholder') || 'Search or select...',
-                        allowClear: true,
+                        allowClear: allowClear,
                         width: '100%'
                     });
                 });
             }
         });
+
+        var calcWfhDays = function() {
+            var fromEl = document.getElementById('wfh_from_date');
+            var toEl = document.getElementById('wfh_to_date');
+            if (!fromEl || !toEl) return;
+            var from = fromEl.value;
+            var to = toEl.value;
+            if (!from || !to) return;
+
+            fetch("{{ route('hrms.attendance.my-wfh.calculate-days') }}?from_date=" + encodeURIComponent(from) + "&to_date=" + encodeURIComponent(to))
+                .then(function(res) { return res.json(); })
+                .then(function(res) {
+                    if (res && res.status && res.data) {
+                        var d = res.data;
+                        var periodEl = document.getElementById('wfh_calc_period');
+                        var totalEl = document.getElementById('wfh_calc_total');
+                        var workingEl = document.getElementById('wfh_calc_working');
+                        var weekoffEl = document.getElementById('wfh_calc_weekoff');
+                        var holidayEl = document.getElementById('wfh_calc_holiday');
+                        var actualEl = document.getElementById('wfh_calc_actual');
+                        var boxEl = document.getElementById('wfh_calc_box');
+
+                        if (periodEl) periodEl.textContent = d.period_label || 'Requested Period';
+                        if (totalEl) totalEl.textContent = (d.total_days || 0) + ' Total Days';
+                        if (workingEl) workingEl.textContent = d.working_days || 0;
+                        if (weekoffEl) weekoffEl.textContent = d.weekoff_days || 0;
+                        if (holidayEl) holidayEl.textContent = d.holiday_days || 0;
+                        if (actualEl) actualEl.textContent = d.actual_wfh_days || 0;
+                        if (boxEl) boxEl.classList.remove('d-none');
+                    }
+                })
+                .catch(function(e) { console.error('WFH calc error:', e); });
+        };
+
+        var fromInput = document.getElementById('wfh_from_date');
+        var toInput = document.getElementById('wfh_to_date');
+        if (fromInput && toInput) {
+            fromInput.addEventListener('change', calcWfhDays);
+            toInput.addEventListener('change', calcWfhDays);
+            $(fromInput).on('change', calcWfhDays);
+            $(toInput).on('change', calcWfhDays);
+            $('#applyWfhModal').on('shown.bs.modal', calcWfhDays);
+        }
+
+        // Edit WFH Modal Logic
+        var editForm = document.getElementById('editWfhForm');
+        document.querySelectorAll('.js-edit-wfh').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                if (!editForm) return;
+                var row = JSON.parse(this.getAttribute('data-row') || '{}');
+                var id = row.id;
+                editForm.action = "{{ route('hrms.attendance.wfh.update', ['id' => '__ID__']) }}".replace('__ID__', id);
+
+                var fmt = function(v) { return (v !== null && v !== undefined && String(v).trim() !== '') ? String(v) : '-'; };
+                var empNameEl = document.getElementById('edit_employee_name');
+                if (empNameEl) empNameEl.textContent = fmt(row.employee_display_name);
+                var empCodeEl = document.getElementById('edit_employee_code');
+                if (empCodeEl) empCodeEl.textContent = fmt(row.employee_code);
+
+                var stBadgeEl = document.getElementById('edit_current_status_badge');
+                if (stBadgeEl) {
+                    var st = (row.status || 'pending').toLowerCase();
+                    if (st === 'approved') {
+                        stBadgeEl.innerHTML = '<span class="orb-badge orb-badge-success font-weight-bold" style="font-size: 11px;"><i class="fas fa-check-circle mr-1"></i> Approved</span>';
+                    } else if (st === 'rejected' || st === 'cancelled') {
+                        stBadgeEl.innerHTML = '<span class="orb-badge orb-badge-danger font-weight-bold" style="font-size: 11px;"><i class="fas fa-times-circle mr-1"></i> ' + (st.charAt(0).toUpperCase() + st.slice(1)) + '</span>';
+                    } else if (st === 'manager_approved') {
+                        stBadgeEl.innerHTML = '<span class="orb-badge orb-badge-info font-weight-bold" style="font-size: 11px;"><i class="fas fa-user-check mr-1"></i> Pending HR</span>';
+                    } else {
+                        stBadgeEl.innerHTML = '<span class="orb-badge orb-badge-warning font-weight-bold" style="font-size: 11px;"><i class="fas fa-clock mr-1"></i> Pending</span>';
+                    }
+                }
+
+                var fromDate = row.from_date || row.request_date || '';
+                var toDate = row.to_date || fromDate;
+                if (fromDate && fromDate.length > 10) fromDate = fromDate.substring(0, 10);
+                if (toDate && toDate.length > 10) toDate = toDate.substring(0, 10);
+
+                var editFromInput = document.getElementById('edit_wfh_from_date');
+                var editToInput = document.getElementById('edit_wfh_to_date');
+                if (editFromInput) {
+                    editFromInput.value = fromDate;
+                    if (editFromInput._flatpickr) editFromInput._flatpickr.setDate(fromDate, true);
+                }
+                if (editToInput) {
+                    editToInput.value = toDate;
+                    if (editToInput._flatpickr) editToInput._flatpickr.setDate(toDate, true);
+                }
+
+                var catSelect = document.getElementById('edit_wfh_reason_category');
+                if (catSelect) {
+                    catSelect.value = row.reason_category || '';
+                    if ($(catSelect).hasClass('select2-hidden-accessible')) {
+                        $(catSelect).trigger('change');
+                    }
+                }
+
+                var reasonInput = document.getElementById('edit_wfh_reason');
+                if (reasonInput) {
+                    reasonInput.value = row.reason || '';
+                }
+
+                var statusSelect = document.getElementById('edit_wfh_status');
+                if (statusSelect && row.status) {
+                    statusSelect.value = row.status.toLowerCase();
+                    if ($(statusSelect).hasClass('select2-hidden-accessible')) {
+                        $(statusSelect).trigger('change');
+                    }
+                }
+
+                var payrollSelect = document.getElementById('edit_wfh_payroll_impact');
+                if (payrollSelect && row.payroll_impact) {
+                    payrollSelect.value = row.payroll_impact.toLowerCase();
+                    if ($(payrollSelect).hasClass('select2-hidden-accessible')) {
+                        $(payrollSelect).trigger('change');
+                    }
+                }
+
+                calcEditWfhDays();
+                $('#editWfhModal').modal('show');
+            });
+        });
+
+        var calcEditWfhDays = function() {
+            var fromEl = document.getElementById('edit_wfh_from_date');
+            var toEl = document.getElementById('edit_wfh_to_date');
+            if (!fromEl || !toEl) return;
+            var from = fromEl.value;
+            var to = toEl.value;
+            if (!from || !to) return;
+
+            fetch("{{ route('hrms.attendance.my-wfh.calculate-days') }}?from_date=" + encodeURIComponent(from) + "&to_date=" + encodeURIComponent(to))
+                .then(function(res) { return res.json(); })
+                .then(function(res) {
+                    if (res && res.status && res.data) {
+                        var d = res.data;
+                        var periodEl = document.getElementById('edit_wfh_calc_period');
+                        var totalEl = document.getElementById('edit_wfh_calc_total');
+                        var workingEl = document.getElementById('edit_wfh_calc_working');
+                        var weekoffEl = document.getElementById('edit_wfh_calc_weekoff');
+                        var holidayEl = document.getElementById('edit_wfh_calc_holiday');
+                        var actualEl = document.getElementById('edit_wfh_calc_actual');
+                        var boxEl = document.getElementById('edit_wfh_calc_box');
+
+                        if (periodEl) periodEl.textContent = d.period_label || 'Requested Period';
+                        if (totalEl) totalEl.textContent = (d.total_days || 0) + ' Total Days';
+                        if (workingEl) workingEl.textContent = d.working_days || 0;
+                        if (weekoffEl) weekoffEl.textContent = d.weekoff_days || 0;
+                        if (holidayEl) holidayEl.textContent = d.holiday_days || 0;
+                        if (actualEl) actualEl.textContent = d.actual_wfh_days || 0;
+                        if (boxEl) boxEl.classList.remove('d-none');
+                    }
+                })
+                .catch(function(e) { console.error('Edit WFH calc error:', e); });
+        };
+
+        var editFromInput = document.getElementById('edit_wfh_from_date');
+        var editToInput = document.getElementById('edit_wfh_to_date');
+        if (editFromInput && editToInput) {
+            editFromInput.addEventListener('change', calcEditWfhDays);
+            editToInput.addEventListener('change', calcEditWfhDays);
+            $(editFromInput).on('change', calcEditWfhDays);
+            $(editToInput).on('change', calcEditWfhDays);
+        }
     })();
 </script>
 @endsection

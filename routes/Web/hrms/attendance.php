@@ -85,11 +85,11 @@ Route::middleware(['auth', 'check.access'])
         Route::post('/regularizations/{id}/reject', [AttendanceRegularizationC::class, 'reject'])->middleware('permission:attendance.regularization.reject')->name('regularizations.reject');
 
         Route::get('/holiday-work', [HolidayWorkRequestC::class, 'index'])->middleware('permission:attendance.holiday_work.view|attendance.holiday_work.manage')->name('holiday_work.index');
-        Route::post('/holiday-work', [HolidayWorkRequestC::class, 'store'])->middleware('permission:attendance.holiday_work.manage')->name('holiday_work.store');
-        Route::put('/holiday-work/{id}', [HolidayWorkRequestC::class, 'update'])->middleware('permission:attendance.holiday_work.manage')->name('holiday_work.update');
-        Route::delete('/holiday-work/{id}', [HolidayWorkRequestC::class, 'destroy'])->middleware('permission:attendance.holiday_work.manage')->name('holiday_work.destroy');
-        Route::post('/holiday-work/{id}/approve', [HolidayWorkRequestC::class, 'approve'])->middleware('permission:attendance.holiday_work.manage')->name('holiday_work.approve');
-        Route::post('/holiday-work/{id}/reject', [HolidayWorkRequestC::class, 'reject'])->middleware('permission:attendance.holiday_work.manage')->name('holiday_work.reject');
+        Route::post('/holiday-work', [HolidayWorkRequestC::class, 'store'])->middleware('permission:attendance.holiday_work.view|attendance.holiday_work.manage')->name('holiday_work.store');
+        Route::put('/holiday-work/{id}', [HolidayWorkRequestC::class, 'update'])->middleware('permission:attendance.holiday_work.view|attendance.holiday_work.manage')->name('holiday_work.update');
+        Route::delete('/holiday-work/{id}', [HolidayWorkRequestC::class, 'destroy'])->middleware('permission:attendance.holiday_work.view|attendance.holiday_work.manage')->name('holiday_work.destroy');
+        Route::post('/holiday-work/{id}/approve', [HolidayWorkRequestC::class, 'approve'])->middleware('permission:attendance.holiday_work.manage|attendance.holiday_work.approve')->name('holiday_work.approve');
+        Route::post('/holiday-work/{id}/reject', [HolidayWorkRequestC::class, 'reject'])->middleware('permission:attendance.holiday_work.manage|attendance.holiday_work.reject')->name('holiday_work.reject');
         Route::get('/my-holiday-work', [\App\Http\Controllers\Web\HRMS\Attendance\MyHolidayWorkRequestC::class, 'index'])->name('my-holiday-work.index');
         Route::post('/my-holiday-work', [\App\Http\Controllers\Web\HRMS\Attendance\MyHolidayWorkRequestC::class, 'store'])->name('my-holiday-work.store');
         Route::put('/my-holiday-work/{id}', [\App\Http\Controllers\Web\HRMS\Attendance\MyHolidayWorkRequestC::class, 'update'])->name('my-holiday-work.update');
@@ -118,6 +118,7 @@ Route::middleware(['auth', 'check.access'])
 
         Route::get('/wfh', [WfhRequestC::class, 'index'])->middleware('permission:attendance.wfh.view|attendance.wfh.own')->name('wfh.index');
         Route::post('/wfh/assign', [WfhRequestC::class, 'assign'])->middleware('permission:attendance.wfh.assign')->name('wfh.assign');
+        Route::post('/wfh/{id}/update', [WfhRequestC::class, 'update'])->middleware('permission:attendance.wfh.view|attendance.wfh.own')->name('wfh.update');
         Route::post('/wfh/{id}/approve', [WfhRequestC::class, 'approve'])->middleware('permission:attendance.wfh.approve')->name('wfh.approve');
         Route::post('/wfh/{id}/reject', [WfhRequestC::class, 'reject'])->middleware('permission:attendance.wfh.reject')->name('wfh.reject');
         Route::post('/wfh/{id}/mark-lwp', [WfhRequestC::class, 'markLwp'])->middleware('permission:attendance.wfh.mark_lwp')->name('wfh.mark-lwp');

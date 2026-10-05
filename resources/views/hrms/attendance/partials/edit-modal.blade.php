@@ -1,6 +1,6 @@
 <div class="modal fade" id="editModal{{ $attendance->id }}" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content orb-modal">
+        <div class="modal-content orb-modal" style="overflow-x: hidden; max-width: 100%;">
             <div class="orb-modal-header">
                 <div>
                     <h5 class="modal-title">Update Attendance</h5>
@@ -11,13 +11,13 @@
                 </button>
             </div>
 
-            <form method="POST" action="{{ route('attendances.update') }}">
+            <form method="POST" action="{{ route('attendances.update') }}" style="overflow-x: hidden; width: 100%;">
                 @csrf
                 @method('PUT')
 
                 <input type="hidden" name="id" value="{{ $attendance->id }}">
 
-                <div class="modal-body orb-modal-body">
+                <div class="modal-body orb-modal-body" style="overflow-x: hidden; width: 100%; box-sizing: border-box;">
                     <!-- Section 1: Attendance Status -->
                     <div class="orb-form-section">
                         <div class="orb-form-section-title">
@@ -26,7 +26,7 @@
                         <div class="orb-form-grid">
                             <div>
                                 <label class="orb-form-label">Status <span class="text-danger">*</span></label>
-                                <select name="attendance_type_id" class="form-control" required>
+                                <select name="attendance_type_id" class="form-control select2-modal-searchable" required style="width: 100%;">
                                     @foreach($attendanceTypes as $type)
                                         <option value="{{ $type->id }}" {{ $attendance->attendance_type_id == $type->id ? 'selected' : '' }}>
                                             {{ $type->name }}
@@ -43,11 +43,11 @@
                             </div>
                             <div>
                                 <label class="orb-form-label">Date</label>
-                                <input type="date" name="attendance_date" class="form-control" value="{{ optional($attendance->attendance_date)->format('Y-m-d') }}">
+                                <x-form.date-picker name="attendance_date" id="edit_attendance_date_{{ $attendance->id }}" :value="optional($attendance->attendance_date)->format('Y-m-d')" placeholder="dd-mm-yyyy" class="form-control" />
                             </div>
-                            <div style="grid-column: span 2;">
+                            <div class="orb-col-span-2">
                                 <label class="orb-form-label">Work Mode</label>
-                                <select name="work_mode" class="form-control">
+                                <select name="work_mode" class="form-control select2-modal-searchable" style="width: 100%;">
                                     <option value="">None</option>
                                     <option value="wfo" {{ $attendance->work_mode == 'wfo' ? 'selected' : '' }}>Work From Office</option>
                                     <option value="wfh" {{ $attendance->work_mode == 'wfh' ? 'selected' : '' }}>Work From Home</option>

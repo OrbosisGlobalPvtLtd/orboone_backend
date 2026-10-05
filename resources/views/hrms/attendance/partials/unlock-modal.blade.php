@@ -25,7 +25,7 @@
                         <div class="orb-form-grid">
                             <div>
                                 <label class="orb-form-label">Unlock Type <span class="text-danger">*</span></label>
-                                <select name="unlock_type" class="form-control unlock-type-select" data-target="#approvedPunchIn{{ $attendance->id }}" required>
+                                <select name="unlock_type" class="form-control unlock-type-select select2-modal-searchable" data-target="#approvedPunchIn{{ $attendance->id }}" required>
                                     <option value="unlock_only">Unlock Only</option>
                                     <option value="late_exemption">Late Exemption</option>
                                     <option value="manual_punch_in">Manual Punch-In</option>
@@ -79,10 +79,9 @@
 @once
     @push('scripts')
         <script>
-            document.addEventListener('change', function (event) {
-                if (!event.target.classList.contains('unlock-type-select')) return;
-                const target = document.querySelector(event.target.dataset.target);
-                if (target) target.style.display = event.target.value === 'manual_punch_in' ? 'block' : 'none';
+            $(document).on('change', '.unlock-type-select', function () {
+                const target = document.querySelector(this.dataset.target);
+                if (target) target.style.display = this.value === 'manual_punch_in' ? 'block' : 'none';
             });
         </script>
     @endpush

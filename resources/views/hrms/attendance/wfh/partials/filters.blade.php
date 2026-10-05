@@ -8,25 +8,43 @@
             <p class="orb-table-subtitle">Review request details, quota impact and payroll impact with clear approvals.</p>
         </div>
     </div>
-    @if($canAssign ?? false)
     <div class="orb-table-head-right">
-        <button type="button" class="orb-btn orb-btn-gradient" data-toggle="modal" data-target="#assignWfhModal">
-            <i class="fas fa-plus-circle"></i> Assign Company WFH
-        </button>
+        @if($isEmployee ?? false)
+            <button type="button" class="orb-btn orb-btn-gradient" data-toggle="modal" data-target="#applyWfhModal">
+                <i class="fas fa-plus-circle"></i> Request WFH
+            </button>
+        @elseif($canAssign ?? false)
+            <button type="button" class="orb-btn orb-btn-gradient" data-toggle="modal" data-target="#assignWfhModal">
+                <i class="fas fa-plus-circle"></i> Assign Company WFH
+            </button>
+        @endif
     </div>
-    @endif
 </div>
 
 <div class="orb-filter">
-    <form method="GET" action="{{ route('hrms.attendance.wfh.index') }}" class="orb-filter-form">
+    <form method="GET" action="{{ route('hrms.attendance.wfh.index') }}" class="orb-filter-form" id="wfhFilterForm">
+        <input type="hidden" name="per_page" value="{{ request('per_page', 25) }}">
         @php
-            $empOptions = ['' => 'All Employees'];
+            $currentMonthKey = \Carbon\Carbon::now('Asia/Kolkata')->format('Y-m');
+            $reqMonth = request('month');
+            $hasCustomDates = request()->filled('from') || request()->filled('from_date') || request()->filled('to') || request()->filled('to_date');
+
+            if ($hasCustomDates || $reqMonth === 'custom') {
+                $activeMonth = 'custom';
+            } elseif ($reqMonth !== null) {
+                $activeMonth = $reqMonth;
+            } else {
+                $activeMonth = $currentMonthKey;
+            }
+
+            $empOptions = [
+                'all' => 'All Employees',
+            ];
             foreach($employees as $emp) {
                 $empOptions[$emp->id] = $emp->display_name;
             }
 
             $statusOptions = [
-                '' => 'All Status',
                 'pending' => 'Pending',
                 'manager_approved' => 'Pending HR',
                 'approved' => 'Approved',
@@ -35,7 +53,6 @@
             ];
 
             $typeOptions = [
-                '' => 'All Type',
                 'working_day_wfh' => 'Working Day WFH',
                 'holiday_wfh' => 'Holiday WFH',
                 'weekoff_wfh' => 'Weekoff WFH',
@@ -43,7 +60,6 @@
             ];
 
             $reasonOptions = [
-                '' => 'All Reason',
                 'personal_reason' => 'Personal Reason',
                 'health_medical' => 'Health / Medical',
                 'commute_disruption' => 'Commute Disruption',
@@ -60,7 +76,7 @@
                 name="employee_id"
                 label="Employee"
                 :options="$empOptions"
-                :selected="request('employee_id')"
+                :selected="request('employee_id', ($isEmployee ?? false) ? $userEmpId : 'all')"
                 placeholder="All Employees"
                 :searchable="true"
                 wrapper-class="mb-0"
@@ -74,6 +90,7 @@
                 :options="$statusOptions"
                 :selected="request('status')"
                 placeholder="All Status"
+                :searchable="true"
                 wrapper-class="mb-0"
             />
         </div>
@@ -85,6 +102,7 @@
                 :options="$typeOptions"
                 :selected="request('request_type')"
                 placeholder="All Type"
+                :searchable="true"
                 wrapper-class="mb-0"
             />
         </div>
@@ -96,21 +114,34 @@
                 :options="$reasonOptions"
                 :selected="request('reason_category')"
                 placeholder="All Reason"
+                :searchable="true"
                 wrapper-class="mb-0"
             />
         </div>
 
         <div class="orb-filter-item">
+            <x-form.select 
+                name="month"
+                id="wfh_filter_month"
+                label="Month"
+                :options="$monthOptions ?? []"
+                :selected="$activeMonth"
+                :searchable="true"
+                wrapper-class="mb-0"
+            />
+        </div>
+
+        <div class="orb-filter-item js-custom-date-field" style="{{ $activeMonth !== 'custom' ? 'display: none;' : '' }}">
             <div class="orb-form-group">
                 <label class="orb-form-label">Date From</label>
-                <input type="date" name="from" value="{{ request('from') }}" class="form-control">
+                <x-form.date-picker name="from" id="wfh_p_from" :value="request('from')" placeholder="dd-mm-yyyy" class="form-control" />
             </div>
         </div>
 
-        <div class="orb-filter-item">
+        <div class="orb-filter-item js-custom-date-field" style="{{ $activeMonth !== 'custom' ? 'display: none;' : '' }}">
             <div class="orb-form-group">
                 <label class="orb-form-label">Date To</label>
-                <input type="date" name="to" value="{{ request('to') }}" class="form-control">
+                <x-form.date-picker name="to" id="wfh_p_to" :value="request('to')" placeholder="dd-mm-yyyy" class="form-control" />
             </div>
         </div>
 
@@ -118,7 +149,7 @@
             <button type="submit" class="orb-btn orb-btn-search">
                 <i class="fas fa-search"></i> Search
             </button>
-            <a href="{{ route('hrms.attendance.wfh.index') }}" class="orb-btn orb-btn-reset" title="Reset Filters">
+            <a href="{{ route('hrms.attendance.wfh.index') }}?month={{ \Carbon\Carbon::now('Asia/Kolkata')->format('Y-m') }}" class="orb-btn orb-btn-reset" title="Reset Filters">
                 <i class="fas fa-undo"></i> Reset
             </a>
         </div>

@@ -9,9 +9,25 @@
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // Tooltips activation
-    if (window.jQuery && $.fn.tooltip) {
-        $('[data-toggle="tooltip"]').tooltip();
+    if (typeof initSearchableSelects === 'function') {
+        initSearchableSelects();
+    }
+
+    if (window.jQuery) {
+        if ($.fn.tooltip) {
+            $('[data-toggle="tooltip"]').tooltip();
+        }
+
+        // Toggle Custom Date fields based on Month dropdown selection
+        $(document).on('change', '#filter_month', function () {
+            const val = $(this).val();
+            if (val === 'custom') {
+                $('.js-custom-date-field').show();
+            } else {
+                $('.js-custom-date-field').hide();
+                $('.js-custom-date-field input').val('');
+            }
+        });
     }
 
     function initRegularizationForm(form) {
@@ -27,10 +43,12 @@ document.addEventListener('DOMContentLoaded', function () {
         
         if (!typeSelect) return;
 
+        const reqTypeGroup = form.querySelector('.js-req-type-group');
+        const hasEmployeeSelect = form.querySelector('select[name="employee_id"]') !== null;
+
         const updateFields = () => {
             const type = typeSelect.value;
             
-            // Hide all conditional groups first
             if (inGroup) inGroup.style.display = 'none';
             if (outGroup) outGroup.style.display = 'none';
             if (statusGroup) statusGroup.style.display = 'none';
@@ -39,6 +57,15 @@ document.addEventListener('DOMContentLoaded', function () {
             if (outInput) outInput.removeAttribute('required');
             if (statusSelect) statusSelect.removeAttribute('required');
             
+            const hasBothPunches = (type === 'regular_attendance' || type === 'wrong_punch_time' || type === 'attendance_correction');
+            if (reqTypeGroup) {
+                if (hasBothPunches && hasEmployeeSelect) {
+                    reqTypeGroup.classList.add('grid-col-full');
+                } else {
+                    reqTypeGroup.classList.remove('grid-col-full');
+                }
+            }
+
             if (type === 'missed_punch_in') {
                 if (inGroup) inGroup.style.display = '';
                 if (inInput) inInput.setAttribute('required', 'required');
@@ -67,7 +94,6 @@ document.addEventListener('DOMContentLoaded', function () {
         typeSelect.addEventListener('change', updateFields);
         updateFields();
 
-        // Handle prepending dynamic status to reason before submit
         form.addEventListener('submit', function(e) {
             const type = typeSelect.value;
             const reasonTextarea = form.querySelector('textarea[name="reason"]');
@@ -85,7 +111,6 @@ document.addEventListener('DOMContentLoaded', function () {
         initRegularizationForm(form);
     });
 
-    // Dynamic Attendance Options fetcher for Create Modal
     const createModal = document.getElementById('createModal');
     if (createModal) {
         const createForm = createModal.querySelector('form');
@@ -155,7 +180,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     typeSelect.disabled = false;
                     if (submitBtn) submitBtn.disabled = false;
 
-                    // Auto-select Unlock Attendance if blocked, or default option
                     if (data.default_option) {
                         typeSelect.value = data.default_option;
                     } else if (data.is_blocked || options.some(function(o) { return (o.value || o.id) === 'unlock_attendance'; })) {
@@ -208,7 +232,6 @@ document.addEventListener('DOMContentLoaded', function () {
             empSelect.addEventListener('change', fetchAvailableOptions);
         }
 
-        // Also fetch on modal show if date is pre-filled
         $(createModal).on('shown.bs.modal', function () {
             if (dateInput && dateInput.value) {
                 fetchAvailableOptions();
@@ -216,65 +239,187 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // DataTable initialization
+    const exportFormatBody = function(data, row, column, node) {
+        let rawText = $(node).text().replace(/\s+/g, ' ').trim();
+        rawText = rawText.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|🔴|🔓/gu, '').trim();
+
+        if (column === 1) {
+            let name = $(node).find('.att-emp-name').text().trim();
+            let dept = $(node).find('.att-emp-code').text().trim();
+            return dept ? name + ' (' + dept + ')' : name;
+        }
+        return rawText;
+    };
+
     if (window.jQuery && $.fn.DataTable) {
+        $.fn.dataTable.ext.errMode = 'none';
+
         if ($.fn.DataTable.isDataTable('#regularizationDataTable')) {
             $('#regularizationDataTable').DataTable().destroy();
         }
 
-        $('#regularizationDataTable').DataTable({
+        const table = $('#regularizationDataTable').DataTable({
             destroy: true,
-            paging: false,
-            searching: false,
-            lengthChange: false,
-            info: false,
+            ordering: false,
             responsive: false,
             autoWidth: false,
-            order: [],
-            scrollX: false,
-            dom: "<'row mx-0 px-2 py-3 align-items-center'<'col-sm-12 col-md-6 px-0'l><'col-sm-12 col-md-6 px-0 text-right'B>><'table-responsive-wrap'rt>",
+            scrollX: true,
+            scrollCollapse: true,
+            paging: false,
+            info: false,
+            searching: false,
+            dom: 'rt',
             buttons: [
                 {
                     extend: 'csvHtml5',
-                    text: '<i class="fas fa-file-csv"></i> CSV',
-                    className: 'btn btn-light border',
+                    text: '<i class="fas fa-file-csv text-success"></i> CSV',
+                    className: 'leave-export-btn',
+                    title: '{{ branding_name() }} Attendance Regularizations',
                     exportOptions: {
-                        columns: ':not(.no-export)'
+                        columns: ':not(.no-export)',
+                        format: { body: exportFormatBody }
                     }
                 },
                 {
                     extend: 'excelHtml5',
-                    text: '<i class="fas fa-file-excel"></i> Excel',
-                    className: 'btn btn-light border',
+                    text: '<i class="fas fa-file-excel text-success"></i> Excel',
+                    className: 'leave-export-btn',
+                    title: '{{ branding_name() }} Attendance Regularizations',
                     exportOptions: {
-                        columns: ':not(.no-export)'
+                        columns: ':not(.no-export)',
+                        format: { body: exportFormatBody }
                     }
                 },
                 {
                     extend: 'pdfHtml5',
-                    text: '<i class="fas fa-file-pdf"></i> PDF',
-                    className: 'btn btn-light border',
+                    text: '<i class="fas fa-file-pdf text-danger"></i> PDF',
+                    className: 'leave-export-btn',
                     orientation: 'landscape',
                     pageSize: 'A4',
-                    title: '{{ branding_name() }} Attendance Regularizations',
+                    title: '',
                     exportOptions: {
-                        columns: ':not(.no-export)'
+                        columns: ':not(.no-export)',
+                        format: { body: exportFormatBody }
+                    },
+                    customize: function(doc) {
+                        doc.pageMargins = [20, 25, 20, 25];
+                        doc.defaultStyle.fontSize = 8;
+                        doc.styles.tableHeader.fontSize = 8.5;
+                        doc.styles.tableHeader.bold = true;
+                        doc.styles.tableHeader.fillColor = '#1E293B';
+                        doc.styles.tableHeader.color = '#FFFFFF';
+                        doc.styles.tableHeader.alignment = 'left';
+
+                        doc.content.unshift({
+                            text: '{{ branding_name() }} - Attendance Regularizations',
+                            fontSize: 14,
+                            bold: true,
+                            color: '#1E293B',
+                            alignment: 'center',
+                            margin: [0, 0, 0, 12]
+                        });
+
+                        let tableNode = doc.content.find(c => c.table);
+                        if (tableNode && tableNode.table && tableNode.table.body && tableNode.table.body.length > 0) {
+                            let colCount = tableNode.table.body[0].length;
+                            if (colCount === 9) {
+                                tableNode.table.widths = ['4%', '18%', '9%', '12%', '10%', '10%', '17%', '9%', '11%'];
+                            } else {
+                                tableNode.table.widths = Array(colCount).fill('*');
+                            }
+                            tableNode.layout = {
+                                hLineWidth: function(i, node) { return (i === 0 || i === node.table.body.length) ? 1.2 : 0.5; },
+                                vLineWidth: function() { return 0; },
+                                hLineColor: function() { return '#CBD5E1'; },
+                                paddingLeft: function() { return 4; },
+                                paddingRight: function() { return 4; },
+                                paddingTop: function() { return 5; },
+                                paddingBottom: function() { return 5; },
+                                fillColor: function(rowIndex) {
+                                    return (rowIndex === 0) ? '#1E293B' : (rowIndex % 2 === 0 ? '#F8FAFC' : null);
+                                }
+                            };
+                        }
                     }
                 },
                 {
                     extend: 'print',
-                    text: '<i class="fas fa-print"></i> Print',
-                    className: 'btn btn-light border',
-                    title: '{{ branding_name() }} Attendance Regularizations',
+                    text: '<i class="fas fa-print text-primary"></i> Print',
+                    className: 'leave-export-btn',
+                    title: '',
                     exportOptions: {
-                        columns: ':not(.no-export)'
+                        columns: ':not(.no-export)',
+                        format: { body: exportFormatBody }
+                    },
+                    customize: function(win) {
+                        $(win.document.body).css('font-family', 'Inter, system-ui, -apple-system, sans-serif').css('padding', '20px');
+                        $(win.document.body).prepend(
+                            '<div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #1E293B; padding-bottom: 12px;">' +
+                                '<h2 style="margin: 0; color: #1E293B; font-weight: 800; font-size: 20px;">{{ branding_name() }}</h2>' +
+                                '<h4 style="margin: 4px 0 0; color: #475569; font-weight: 600; font-size: 14px;">Attendance Regularizations Report</h4>' +
+                                '<p style="margin: 4px 0 0; color: #94A3B8; font-size: 11px;">Report Generated: ' + new Date().toLocaleString() + '</p>' +
+                            '</div>'
+                        );
                     }
                 }
             ],
             language: {
-                emptyTable: 'No regularization records found.'
+                emptyTable: 'No regularization records found.',
+                zeroRecords: 'No regularization records found.'
             }
         });
+
+        // Attach buttons to custom toolbar
+        if ($('#recordsExportButtons').length) {
+            $('#recordsExportButtons').empty();
+            table.buttons().container().appendTo('#recordsExportButtons');
+        }
+
+        // Custom entries per page length select linking to backend pagination
+        var currentPerPage = "{{ request('per_page', 25) }}";
+        var lengthSelect = $(
+            '<div class="dataTables_length d-flex align-items-center gap-2">' +
+                '<label class="mb-0 font-weight-bold text-muted mr-2" style="font-size:13px;">Show</label>' +
+                '<select class="table-per-page-select" style="width:75px;">' +
+                    '<option value="10"' + (currentPerPage == 10 ? ' selected' : '') + '>10</option>' +
+                    '<option value="25"' + (currentPerPage == 25 ? ' selected' : '') + '>25</option>' +
+                    '<option value="50"' + (currentPerPage == 50 ? ' selected' : '') + '>50</option>' +
+                    '<option value="100"' + (currentPerPage == 100 ? ' selected' : '') + '>100</option>' +
+                    '<option value="all"' + ((currentPerPage == 'all' || currentPerPage == -1) ? ' selected' : '') + '>All</option>' +
+                '</select>' +
+                '<label class="mb-0 font-weight-bold text-muted ml-2" style="font-size:13px;">entries</label>' +
+            '</div>'
+        );
+
+        $('#recordsLengthBox').empty().append(lengthSelect);
+
+        if ($.fn.select2) {
+            var $perPageSelect = lengthSelect.find('select');
+            $perPageSelect.select2({
+                minimumResultsForSearch: Infinity,
+                width: '75px',
+                dropdownCssClass: 'select2-dropdown-per-page',
+                containerCssClass: 'select2-container--per-page'
+            });
+
+            $perPageSelect.on('change', function() {
+                var val = $(this).val();
+                var url = new URL(window.location.href);
+                if (val === '-1') val = 'all';
+                url.searchParams.set('per_page', val);
+                url.searchParams.delete('page');
+                window.location.href = url.toString();
+            });
+        } else {
+            lengthSelect.find('select').on('change', function() {
+                var val = $(this).val();
+                var url = new URL(window.location.href);
+                if (val === '-1') val = 'all';
+                url.searchParams.set('per_page', val);
+                url.searchParams.delete('page');
+                window.location.href = url.toString();
+            });
+        }
 
         setTimeout(function() {
             $('#regularizationDataTable').DataTable().columns.adjust();

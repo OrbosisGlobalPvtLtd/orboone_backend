@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Web\HRMS\Attendance;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Web\HRMS\Concerns\HrmsCrudPage;
+use App\Models\Core\UserM as User;
 use App\Services\HRMS\Attendance\AttendanceViolationService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -44,8 +46,51 @@ class AttendanceViolationC extends Controller
      */
     public function index(Request $request)
     {
-        // 1. Fetch Real-time Dashboard Summary Metrics
-        $summaryMetrics = $this->violationService->getSummaryMetrics($request->all());
+        /** @var User|null $user */
+        $user = Auth::user();
+        $roleId = (int) ($user->system_role_id ?? $user->role_id ?? 0);
+        $roleName = strtolower($user->role->name ?? '');
+        $isSuperAdmin = (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) || $roleId === 1 || in_array($roleName, ['super_admin', 'super admin'], true);
+        $isAdminOrHr = in_array($roleId, [2, 3], true) || in_array($roleName, ['admin', 'hr_admin', 'hr admin', 'hr', 'human resources'], true);
+        
+        $canViewAll = $isSuperAdmin || $isAdminOrHr || $this->userHasPermission('attendance.violations.view_all');
+        $canViewTeam = ! $canViewAll && ($this->userHasPermission('attendance.violations.view_team') || $this->canViewTeam('attendance.violations.view_team'));
+        $isEmployeeOnly = ! $canViewAll && ! $canViewTeam;
+
+        $currentEmployee = $this->currentEmployee();
+        $currentEmployeeId = $currentEmployee?->id;
+
+        $now = Carbon::now(AttendanceViolationService::TIMEZONE);
+        $currentMonthKey = $now->format('Y-m');
+        $monthInput = $request->input('month');
+        $fromDate = $request->input('from_date') ?: $request->input('from');
+        $toDate = $request->input('to_date') ?: $request->input('to');
+
+        // If month is not provided or empty string and no custom date is specified, ALWAYS default to current month
+        if (empty($monthInput) && empty($fromDate) && empty($toDate)) {
+            $monthInput = $currentMonthKey;
+        }
+
+        // 1. Fetch Real-time Dashboard Summary Metrics with active filters and employee role scoping
+        $summaryFilterParams = $request->all();
+        $summaryFilterParams['month'] = $monthInput;
+        $summaryFilterParams['from'] = $fromDate;
+        $summaryFilterParams['to'] = $toDate;
+
+        if ($isEmployeeOnly) {
+            $summaryFilterParams['employee_id'] = $currentEmployeeId;
+        } elseif ($canViewTeam) {
+            $teamIds = $this->teamEmployeeIds(true);
+            if ($request->filled('employee_id') && in_array((int) $request->input('employee_id'), $teamIds, true)) {
+                $summaryFilterParams['employee_id'] = (int) $request->input('employee_id');
+            } else {
+                $summaryFilterParams['employee_ids'] = $teamIds;
+            }
+        } elseif ($request->filled('employee_id')) {
+            $summaryFilterParams['employee_id'] = (int) $request->input('employee_id');
+        }
+
+        $summaryMetrics = $this->violationService->getSummaryMetrics($summaryFilterParams);
 
         // 2. Base Query with Dynamic Column Resolution
         $query = DB::table('attendance_violations')
@@ -83,37 +128,54 @@ class AttendanceViolationC extends Controller
 
         $query->addSelect($selects);
 
-        // 3. Apply Multi-filters
-        if ($request->filled('employee_id')) {
-            $query->where('attendance_violations.employee_id', $request->input('employee_id'));
+        // 3. Apply Multi-filters & Role Visibility Scope
+        if ($isEmployeeOnly) {
+            $query->where('attendance_violations.employee_id', $currentEmployeeId);
+        } elseif ($canViewTeam) {
+            $teamIds = $this->teamEmployeeIds(true);
+            $query->whereIn('attendance_violations.employee_id', $teamIds);
+            if ($request->filled('employee_id') && in_array((int) $request->input('employee_id'), $teamIds, true)) {
+                $query->where('attendance_violations.employee_id', (int) $request->input('employee_id'));
+            }
+        } elseif ($request->filled('employee_id')) {
+            $query->where('attendance_violations.employee_id', (int) $request->input('employee_id'));
         }
-        if ($request->filled('department_id') && Schema::hasColumn('employees_new', 'department_id')) {
-            $query->where('employees_new.department_id', $request->input('department_id'));
-        }
-        if ($request->filled('designation_id') && Schema::hasColumn('employees_new', 'designation_id')) {
-            $query->where('employees_new.designation_id', $request->input('designation_id'));
-        }
+
         if ($request->filled('type')) {
             $query->where('attendance_violations.type', $request->input('type'));
         }
-        $fromDate = $request->input('from_date') ?: $request->input('from');
-        $toDate = $request->input('to_date') ?: $request->input('to');
 
-        if ($request->filled('month')) {
-            $monthDate = Carbon::parse($request->input('month') . '-01');
-            $query->whereDate('attendance_violations.violation_date', '>=', $monthDate->copy()->startOfMonth()->toDateString())
-                  ->whereDate('attendance_violations.violation_date', '<=', $monthDate->copy()->endOfMonth()->toDateString());
-        } else {
+        if (!empty($monthInput) && $monthInput !== 'custom') {
+            try {
+                $monthDate = Carbon::parse($monthInput . '-01');
+                $mStart = $monthDate->copy()->startOfMonth()->toDateString();
+                $mEnd = $monthDate->copy()->endOfMonth()->toDateString();
+                $query->whereDate('attendance_violations.violation_date', '>=', $mStart)
+                      ->whereDate('attendance_violations.violation_date', '<=', $mEnd);
+            } catch (\Throwable $e) {
+                // Fallback ignore malformed month
+            }
+        } elseif ($monthInput === 'custom' || (!empty($fromDate) || !empty($toDate))) {
             if ($fromDate) {
-                $query->whereDate('attendance_violations.violation_date', '>=', $fromDate);
+                try {
+                    $parsedFrom = Carbon::parse($fromDate)->toDateString();
+                    $query->whereDate('attendance_violations.violation_date', '>=', $parsedFrom);
+                } catch (\Throwable $e) {
+                    $query->whereDate('attendance_violations.violation_date', '>=', $fromDate);
+                }
             }
             if ($toDate) {
-                $query->whereDate('attendance_violations.violation_date', '<=', $toDate);
+                try {
+                    $parsedTo = Carbon::parse($toDate)->toDateString();
+                    $query->whereDate('attendance_violations.violation_date', '<=', $parsedTo);
+                } catch (\Throwable $e) {
+                    $query->whereDate('attendance_violations.violation_date', '<=', $toDate);
+                }
             }
         }
 
         if ($request->filled('search')) {
-            $search = $request->input('search');
+            $search = trim((string) $request->input('search'));
             $query->where(function ($q) use ($search) {
                 $q->where('users.name', 'like', "%{$search}%")
                   ->orWhere('users.email', 'like', "%{$search}%")
@@ -147,19 +209,17 @@ class AttendanceViolationC extends Controller
             }
         }
 
-        // Apply Common Security Scopes
-        if (! ($this->canViewAll('attendance.violations.view_all') || $this->canViewAll('attendance.violations.view') || $this->canViewAll('attendance.records.view_all') || $this->canViewAll('attendance.dashboard.view'))) {
-            $this->scopeEmployeeVisibility($query, 'attendance.violations.view_all', 'attendance.violations.view_team', 'attendance_violations.employee_id');
-        }
-
         $perPageInput = $request->input('per_page');
         if ($perPageInput === 'all' || $perPageInput == -1) {
             $perPage = 5000;
         } else {
-            $perPage = (int) ($perPageInput ?: 500); // Default to 500 so DataTables can paginate 10, 25, 50, 100, All seamlessly!
+            $perPage = (int) ($perPageInput ?: 25);
+            if (!in_array($perPage, [10, 25, 50, 100, 250], true)) {
+                $perPage = 25;
+            }
         }
 
-        $paginatedRows = $query->latest('attendance_violations.id')->paginate($perPage);
+        $paginatedRows = $query->latest('attendance_violations.id')->paginate($perPage)->withQueryString();
 
         // 4. Enrich Row Items with Read-Only Audit Metrics
         $paginatedRows->getCollection()->transform(function ($row) {
@@ -197,43 +257,101 @@ class AttendanceViolationC extends Controller
             $months[$m->format('Y-m')] = $m->format('F Y');
         }
 
-        // Employee Options
-        $empQuery = DB::table('employees_new')
-            ->leftJoin('users', 'users.id', '=', 'employees_new.user_id')
-            ->select('employees_new.id', DB::raw("{$empNameExpr} as name"), 'employees_new.employee_code');
+        $employeeOptions = [];
+        if ($canViewAll) {
+            $today = Carbon::now(AttendanceViolationService::TIMEZONE)->toDateString();
+            $empQuery = DB::table('employees_new')
+                ->leftJoin('users', 'users.id', '=', 'employees_new.user_id')
+                ->join('employee_profiles', 'employee_profiles.employee_id', '=', 'employees_new.id')
+                ->where('employee_profiles.profile_status', 'approved')
+                ->where(function ($q) {
+                    $q->whereNull('employees_new.is_active')->orWhere('employees_new.is_active', 1);
+                })
+                ->where(function ($q) {
+                    $q->whereNull('employees_new.employment_status')
+                      ->orWhereNotIn('employees_new.employment_status', ['terminated', 'exit', 'resigned', 'relieved', 'inactive']);
+                })
+                ->where(function ($q) use ($today) {
+                    $q->whereNull('employees_new.relieving_date')->orWhere('employees_new.relieving_date', '>', $today);
+                })
+                ->select('employees_new.id', DB::raw("{$empNameExpr} as name"), 'employees_new.employee_code');
 
-        if (Schema::hasColumn('employees_new', 'deleted_at')) {
-            $empQuery->whereNull('employees_new.deleted_at');
+            if (Schema::hasColumn('employees_new', 'deleted_at')) {
+                $empQuery->whereNull('employees_new.deleted_at');
+            }
+
+            $employeeOptions = $empQuery->orderBy('name')->get()->mapWithKeys(function ($e) {
+                return [$e->id => "{$e->name} ({$e->employee_code})"];
+            })->toArray();
+        } elseif ($canViewTeam) {
+            $teamIds = $this->teamEmployeeIds(true);
+            $empQuery = DB::table('employees_new')
+                ->leftJoin('users', 'users.id', '=', 'employees_new.user_id')
+                ->whereIn('employees_new.id', $teamIds)
+                ->select('employees_new.id', DB::raw("{$empNameExpr} as name"), 'employees_new.employee_code');
+
+            $employeeOptions = $empQuery->orderBy('name')->get()->mapWithKeys(function ($e) {
+                return [$e->id => "{$e->name} ({$e->employee_code})"];
+            })->toArray();
         }
-
-        $employeeOptions = $empQuery->orderBy('name')->get()->mapWithKeys(function ($e) {
-            return [$e->id => "{$e->name} ({$e->employee_code})"];
-        })->toArray();
 
         return view('hrms.attendance.violations.index', [
             'accesses' => $this->accesses(),
             'active' => 'attendance',
             'summaryMetrics' => $summaryMetrics,
             'rows' => $paginatedRows,
+            'canViewAll' => $canViewAll,
+            'canViewTeam' => $canViewTeam,
+            'isEmployeeOnly' => $isEmployeeOnly,
             'filters' => [
-                'departments' => $departments,
-                'designations' => $designations,
                 'types' => $types,
                 'penalty_statuses' => $penaltyStatuses,
                 'months' => $months,
                 'employee_options' => $employeeOptions,
+                'selected_month' => $monthInput,
+                'current_month' => $currentMonthKey,
             ],
-            'pageTitle' => 'Attendance Violations Audit Dashboard',
-            'pageSubtitle' => 'Enterprise audit overview of attendance discipline, missed punch cycles, and penalty conversions.',
+            'pageTitle' => $isEmployeeOnly ? 'My Attendance Violations' : 'Attendance Violations Audit Dashboard',
+            'pageSubtitle' => $isEmployeeOnly ? 'Your personal attendance discipline, missed punch cycles, and penalty conversions.' : 'Enterprise audit overview of attendance discipline, missed punch cycles, and penalty conversions.',
         ]);
     }
 
     /**
      * AJAX Payload for Employee Audit Side Drawer.
      */
-    public function employeeAudit(int $employeeId)
+    public function employeeAudit(Request $request, int $employeeId)
     {
-        $payload = $this->violationService->getEmployeeAuditPayload($employeeId);
+        /** @var User|null $user */
+        $user = Auth::user();
+        $roleId = (int) ($user->system_role_id ?? $user->role_id ?? 0);
+        $roleName = strtolower($user->role->name ?? '');
+        $isSuperAdmin = (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) || $roleId === 1 || in_array($roleName, ['super_admin', 'super admin'], true);
+        $isAdminOrHr = in_array($roleId, [2, 3], true) || in_array($roleName, ['admin', 'hr_admin', 'hr admin', 'hr', 'human resources'], true);
+        
+        $canViewAll = $isSuperAdmin || $isAdminOrHr || $this->userHasPermission('attendance.violations.view_all');
+        $canViewTeam = ! $canViewAll && ($this->userHasPermission('attendance.violations.view_team') || $this->canViewTeam('attendance.violations.view_team'));
+
+        $currentEmployee = $this->currentEmployee();
+        $currentEmployeeId = $currentEmployee?->id;
+
+        if (! $canViewAll) {
+            if ($canViewTeam) {
+                $teamIds = $this->teamEmployeeIds(true);
+                abort_if(! in_array($employeeId, $teamIds, true), 403, 'Unauthorized access to employee audit.');
+            } else {
+                abort_if((int) $employeeId !== (int) $currentEmployeeId, 403, 'Unauthorized access to employee audit.');
+            }
+        }
+
+        $month = $request->input('month');
+        $fromDate = $request->input('from_date') ?: $request->input('from');
+        $toDate = $request->input('to_date') ?: $request->input('to');
+
+        if (empty($month) && empty($fromDate) && empty($toDate)) {
+            $month = Carbon::now(AttendanceViolationService::TIMEZONE)->format('Y-m');
+        }
+
+        $payload = $this->violationService->getEmployeeAuditPayload($employeeId, $month, $fromDate, $toDate);
         return response()->json($payload);
     }
 
@@ -242,6 +360,30 @@ class AttendanceViolationC extends Controller
      */
     public function attendanceAudit(int $attendanceId)
     {
+        /** @var User|null $user */
+        $user = Auth::user();
+        $roleId = (int) ($user->system_role_id ?? $user->role_id ?? 0);
+        $roleName = strtolower($user->role->name ?? '');
+        $isSuperAdmin = (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) || $roleId === 1 || in_array($roleName, ['super_admin', 'super admin'], true);
+        $isAdminOrHr = in_array($roleId, [2, 3], true) || in_array($roleName, ['admin', 'hr_admin', 'hr admin', 'hr', 'human resources'], true);
+        $canViewAll = $isSuperAdmin || $isAdminOrHr || $this->userHasPermission('attendance.violations.view_all');
+        $canViewTeam = ! $canViewAll && ($this->userHasPermission('attendance.violations.view_team') || $this->canViewTeam('attendance.violations.view_team'));
+
+        $currentEmployee = $this->currentEmployee();
+        $currentEmployeeId = $currentEmployee?->id;
+
+        if (! $canViewAll) {
+            $att = DB::table('attendances')->where('id', $attendanceId)->first();
+            if ($att) {
+                if ($canViewTeam) {
+                    $teamIds = $this->teamEmployeeIds(true);
+                    abort_if(! in_array($att->employee_id, $teamIds, true), 403, 'Unauthorized access.');
+                } else {
+                    abort_if((int) $att->employee_id !== (int) $currentEmployeeId, 403, 'Unauthorized access.');
+                }
+            }
+        }
+
         $payload = $this->violationService->getAttendanceAuditDetail($attendanceId);
         return response()->json($payload);
     }

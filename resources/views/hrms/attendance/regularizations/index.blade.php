@@ -31,12 +31,14 @@
                 'missed_punch_out' => 'Missed Punch Out',
                 'wrong_punch_time' => 'Punch Time Correction',
                 'punch_time_correction' => 'Punch Time Correction',
+                'regular_attendance' => 'Regular Attendance',
                 'late_mark_exemption' => 'Late Mark Exemption',
                 'early_logout_correction' => 'Early Logout Exemption',
                 'early_logout_exemption' => 'Early Logout Exemption',
                 'geofence_issue' => 'Geofence Issue',
                 'system_error' => 'System/App Error',
-                'attendance_status_correction' => 'Attendance Status Correction',
+                'attendance_status_correction' => 'Status Correction',
+                'unlock_attendance' => 'Unlock Attendance',
                 'other' => 'Other',
             ];
         @endphp
@@ -47,6 +49,58 @@
         {{-- Session Flash Alerts Component --}}
         @include('hrms.attendance.regularizations.partials.alerts')
 
+        {{-- Metrics Grid Component --}}
+        <div class="att-metric-grid">
+            <div class="att-metric" style="--metric-color:var(--orb-primary);--metric-soft:#F4F2FF;">
+                <div class="att-metric-top">
+                    <div class="att-metric-icon"><i class="fas fa-list-alt"></i></div>
+                    <div class="att-metric-value">{{ $stats['total'] ?? 0 }}</div>
+                </div>
+                <div class="att-metric-label">Total Requests</div>
+                <div class="att-metric-line"></div>
+            </div>
+            <div class="att-metric" style="--metric-color:#F59E0B;--metric-soft:#FEF3C7;">
+                <div class="att-metric-top">
+                    <div class="att-metric-icon"><i class="fas fa-clock"></i></div>
+                    <div class="att-metric-value">{{ $stats['pending'] ?? 0 }}</div>
+                </div>
+                <div class="att-metric-label">Pending Approval</div>
+                <div class="att-metric-line"></div>
+            </div>
+            <div class="att-metric" style="--metric-color:#16A34A;--metric-soft:#DCFCE7;">
+                <div class="att-metric-top">
+                    <div class="att-metric-icon"><i class="fas fa-check-circle"></i></div>
+                    <div class="att-metric-value">{{ $stats['approved'] ?? 0 }}</div>
+                </div>
+                <div class="att-metric-label">Approved</div>
+                <div class="att-metric-line"></div>
+            </div>
+            <div class="att-metric" style="--metric-color:#EF4444;--metric-soft:#FEE2E2;">
+                <div class="att-metric-top">
+                    <div class="att-metric-icon"><i class="fas fa-times-circle"></i></div>
+                    <div class="att-metric-value">{{ $stats['rejected'] ?? 0 }}</div>
+                </div>
+                <div class="att-metric-label">Rejected</div>
+                <div class="att-metric-line"></div>
+            </div>
+            <div class="att-metric" style="--metric-color:#EA580C;--metric-soft:#FFEDD5;">
+                <div class="att-metric-top">
+                    <div class="att-metric-icon"><i class="fas fa-unlock-alt"></i></div>
+                    <div class="att-metric-value">{{ $stats['unlock_requests'] ?? 0 }}</div>
+                </div>
+                <div class="att-metric-label">Unlock Requests</div>
+                <div class="att-metric-line"></div>
+            </div>
+            <div class="att-metric" style="--metric-color:#6366F1;--metric-soft:#E0E7FF;">
+                <div class="att-metric-top">
+                    <div class="att-metric-icon"><i class="fas fa-user-edit"></i></div>
+                    <div class="att-metric-value">{{ $stats['punch_corrections'] ?? 0 }}</div>
+                </div>
+                <div class="att-metric-label">Punch Corrections</div>
+                <div class="att-metric-line"></div>
+            </div>
+        </div>
+
         {{-- Main Regularizations Card --}}
         <div class="att-card">
             <div class="att-section-head">
@@ -54,9 +108,13 @@
                     <h5 class="att-section-title"><i class="fas fa-history"></i> Regularization Logs</h5>
                     <div class="att-section-sub">Track correction requests, employee submissions, and approval status logs.</div>
                 </div>
-                <div class="att-head-badges align-items-center">
-                    <span class="att-total-pill purple"><i class="fas fa-list"></i> Total Requests: {{ optional($rows)->total() ?? collect($rows)->count() }}</span>
+                @if(!empty($canCreate))
+                <div>
+                    <button type="button" class="att-section-btn" data-toggle="modal" data-target="#createModal">
+                        <i class="fas fa-plus-circle"></i> Apply Regularization
+                    </button>
                 </div>
+                @endif
             </div>
 
             {{-- Filter Panel Component --}}

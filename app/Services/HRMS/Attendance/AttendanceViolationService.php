@@ -25,27 +25,21 @@ class AttendanceViolationService
     public function getSummaryMetrics(array $filters = []): array
     {
         $today = Carbon::now(self::TIMEZONE)->toDateString();
+        $month = $filters['month'] ?? null;
+        $from = $filters['from_date'] ?? ($filters['from'] ?? null);
+        $to = $filters['to_date'] ?? ($filters['to'] ?? null);
+        $employeeId = $filters['employee_id'] ?? null;
 
-        // 1. Violations created today
-        $todayViolationsQuery = DB::table('attendance_violations')
-            ->whereDate('violation_date', $today);
-
+        $violationsQuery = DB::table('attendance_violations');
         if (Schema::hasColumn('attendance_violations', 'deleted_at')) {
-            $todayViolationsQuery->whereNull('deleted_at');
+            $violationsQuery->whereNull('deleted_at');
         }
 
-        $totalToday = (clone $todayViolationsQuery)->count();
-        $lateToday = (clone $todayViolationsQuery)->where('type', 'late_login')->count();
-        $earlyToday = (clone $todayViolationsQuery)->where('type', 'early_logout')->count();
-        $missedToday = (clone $todayViolationsQuery)->where('type', 'missed_punch')->count();
-
-        // 2. Penalties (Half Day & LWP) applied
         $halfDayQuery = DB::table('attendances')
             ->where(function ($q) {
                 $q->where('is_half_day', 1)
                   ->orWhere('attendance_status', 'half_day');
             });
-
         if (Schema::hasColumn('attendances', 'deleted_at')) {
             $halfDayQuery->whereNull('deleted_at');
         }
@@ -55,25 +49,71 @@ class AttendanceViolationService
                 $q->where('is_lwp', 1)
                   ->orWhere('attendance_status', 'lwp');
             });
-
         if (Schema::hasColumn('attendances', 'deleted_at')) {
             $lwpQuery->whereNull('deleted_at');
         }
 
-        if (! empty($filters['from'])) {
-            $halfDayQuery->whereDate('attendance_date', '>=', $filters['from']);
-            $lwpQuery->whereDate('attendance_date', '>=', $filters['from']);
-        }
-        if (! empty($filters['to'])) {
-            $halfDayQuery->whereDate('attendance_date', '<=', $filters['to']);
-            $lwpQuery->whereDate('attendance_date', '<=', $filters['to']);
+        if (!empty($employeeId)) {
+            $violationsQuery->where('employee_id', $employeeId);
+            $halfDayQuery->where('employee_id', $employeeId);
+            $lwpQuery->where('employee_id', $employeeId);
+        } elseif (!empty($filters['employee_ids']) && is_array($filters['employee_ids'])) {
+            $violationsQuery->whereIn('employee_id', $filters['employee_ids']);
+            $halfDayQuery->whereIn('employee_id', $filters['employee_ids']);
+            $lwpQuery->whereIn('employee_id', $filters['employee_ids']);
         }
 
+        if (!empty($month) && $month !== 'custom') {
+            try {
+                $mDate = Carbon::parse($month . '-01');
+                $mStart = $mDate->copy()->startOfMonth()->toDateString();
+                $mEnd = $mDate->copy()->endOfMonth()->toDateString();
+
+                $violationsQuery->whereDate('violation_date', '>=', $mStart)
+                                ->whereDate('violation_date', '<=', $mEnd);
+                $halfDayQuery->whereDate('attendance_date', '>=', $mStart)
+                             ->whereDate('attendance_date', '<=', $mEnd);
+                $lwpQuery->whereDate('attendance_date', '>=', $mStart)
+                         ->whereDate('attendance_date', '<=', $mEnd);
+            } catch (\Throwable $e) {
+            }
+        } elseif (!empty($from) || !empty($to)) {
+            if (!empty($from)) {
+                try {
+                    $pFrom = Carbon::parse($from)->toDateString();
+                    $violationsQuery->whereDate('violation_date', '>=', $pFrom);
+                    $halfDayQuery->whereDate('attendance_date', '>=', $pFrom);
+                    $lwpQuery->whereDate('attendance_date', '>=', $pFrom);
+                } catch (\Throwable $e) {
+                    $violationsQuery->whereDate('violation_date', '>=', $from);
+                    $halfDayQuery->whereDate('attendance_date', '>=', $from);
+                    $lwpQuery->whereDate('attendance_date', '>=', $from);
+                }
+            }
+            if (!empty($to)) {
+                try {
+                    $pTo = Carbon::parse($to)->toDateString();
+                    $violationsQuery->whereDate('violation_date', '<=', $pTo);
+                    $halfDayQuery->whereDate('attendance_date', '<=', $pTo);
+                    $lwpQuery->whereDate('attendance_date', '<=', $pTo);
+                } catch (\Throwable $e) {
+                    $violationsQuery->whereDate('violation_date', '<=', $to);
+                    $halfDayQuery->whereDate('attendance_date', '<=', $to);
+                    $lwpQuery->whereDate('attendance_date', '<=', $to);
+                }
+            }
+        }
+
+        $totalViolations = (clone $violationsQuery)->count();
+        $lateCount = (clone $violationsQuery)->whereIn('type', ['late_login', 'late_mark'])->count();
+        $earlyCount = (clone $violationsQuery)->whereIn('type', ['early_logout', 'early_out'])->count();
+        $missedCount = (clone $violationsQuery)->where('type', 'missed_punch')->count();
+
         return [
-            'total_today' => $totalToday,
-            'late_today' => $lateToday,
-            'early_today' => $earlyToday,
-            'missed_today' => $missedToday,
+            'total_today' => $totalViolations,
+            'late_today' => $lateCount,
+            'early_today' => $earlyCount,
+            'missed_today' => $missedCount,
             'half_day_applied' => $halfDayQuery->count(),
             'lwp_applied' => $lwpQuery->count(),
         ];
@@ -82,10 +122,8 @@ class AttendanceViolationService
     /**
      * Compute row-level employee active cycle counter string (e.g. "2 / 3" or "1 / 3").
      */
-    /**
-     * Compute row-level employee active cycle counter string (e.g. "1 / 3", "2 / 3", "3 / 3").
-     */
-    public function getActiveCounterString(int $employeeId, string $date, string $violationType): string
+    
+    public function getActiveCounterString(int $employeeId, string $date, string $violationType, int $limit = 3): string
     {
         $rawType = strtolower((string) $violationType);
         $canonicalType = match ($rawType) {
@@ -119,11 +157,11 @@ class AttendanceViolationService
 
         $count = $query->count();
         if ($count === 0) {
-            return '1 / 3';
+            return "0 / {$limit}";
         }
 
-        $pos = (($count - 1) % 3) + 1;
-        return "{$pos} / 3";
+        $pos = (($count - 1) % $limit) + 1;
+        return "{$pos} / {$limit}";
     }
 
     /**
@@ -301,26 +339,66 @@ class AttendanceViolationService
     /**
      * Read-only payload for Employee Summary Side Drawer.
      */
-    public function getEmployeeAuditPayload(int $employeeId): array
+    public function getEmployeeAuditPayload(int $employeeId, ?string $month = null, ?string $fromDate = null, ?string $toDate = null): array
     {
         $employee = Employee::with(['department', 'designation', 'profile'])->find($employeeId);
         if (! $employee) {
             return ['error' => 'Employee profile not found.'];
         }
 
-        $today = Carbon::now(self::TIMEZONE);
+        $now = Carbon::now(self::TIMEZONE);
+        $policy = $this->ruleResolver->getPolicyForEmployee($employee, $now);
+        $disciplineLimit = (int) ($policy->combined_violation_limit ?? 3);
+        $missedLimit = ((int) ($policy->allowed_missed_punches ?? 2)) + 1;
 
-        // Shift & Policy info
-        $policy = $this->ruleResolver->getPolicyForEmployee($employee, $today);
+        // Resolve date filter
+        if (! empty($fromDate) && ! empty($toDate)) {
+            $start = Carbon::parse($fromDate, self::TIMEZONE)->startOfDay();
+            $end = Carbon::parse($toDate, self::TIMEZONE)->endOfDay();
+            $periodLabel = $start->format('d M Y') . ' - ' . $end->format('d M Y');
+        } elseif (! empty($month) && $month !== 'all') {
+            try {
+                $parsed = Carbon::createFromFormat('Y-m', $month, self::TIMEZONE);
+                $start = $parsed->copy()->startOfMonth();
+                $end = $parsed->copy()->endOfMonth();
+                $periodLabel = $parsed->format('F Y');
+            } catch (\Throwable $e) {
+                $start = $now->copy()->startOfMonth();
+                $end = $now->copy()->endOfMonth();
+                $periodLabel = $now->format('F Y');
+            }
+        } else {
+            $start = $now->copy()->startOfMonth();
+            $end = $now->copy()->endOfMonth();
+            $periodLabel = $now->format('F Y');
+        }
 
-        // Active counters
-        $disciplineCounter = $this->getActiveCounterString($employeeId, $today->toDateString(), 'late_login');
-        $missedCounter = $this->getActiveCounterString($employeeId, $today->toDateString(), 'missed_punch');
+        // Active counters for this month/period
+        $discQuery = DB::table('attendance_violations')
+            ->where('employee_id', $employeeId)
+            ->whereBetween('violation_date', [$start->toDateString(), $end->toDateString()])
+            ->whereIn('type', ['late_login', 'late_mark', 'early_logout', 'early_out']);
+        if (Schema::hasColumn('attendance_violations', 'deleted_at')) {
+            $discQuery->whereNull('deleted_at');
+        }
+        $discCount = $discQuery->count();
+        $discCounter = $discCount === 0 ? "0 / {$disciplineLimit}" : ((($discCount - 1) % $disciplineLimit) + 1) . " / {$disciplineLimit}";
 
-        // Violation history & timeline
+        $missedQuery = DB::table('attendance_violations')
+            ->where('employee_id', $employeeId)
+            ->whereBetween('violation_date', [$start->toDateString(), $end->toDateString()])
+            ->where('type', 'missed_punch');
+        if (Schema::hasColumn('attendance_violations', 'deleted_at')) {
+            $missedQuery->whereNull('deleted_at');
+        }
+        $missedCount = $missedQuery->count();
+        $missedCounter = $missedCount === 0 ? "0 / {$missedLimit}" : ((($missedCount - 1) % $missedLimit) + 1) . " / {$missedLimit}";
+
+        // Violation history & timeline strictly within this period
         $violationsQuery = DB::table('attendance_violations')
             ->leftJoin('attendances', 'attendances.id', '=', 'attendance_violations.attendance_id')
             ->where('attendance_violations.employee_id', $employeeId)
+            ->whereBetween('attendance_violations.violation_date', [$start->toDateString(), $end->toDateString()])
             ->select([
                 'attendance_violations.*',
                 'attendances.punch_in_time',
@@ -332,9 +410,11 @@ class AttendanceViolationService
             $violationsQuery->whereNull('attendance_violations.deleted_at');
         }
 
-        $violations = $violationsQuery->latest('attendance_violations.violation_date')
-            ->limit(30)
+        $violations = $violationsQuery->orderBy('attendance_violations.violation_date', 'desc')
+            ->orderBy('attendance_violations.id', 'desc')
             ->get();
+
+        $this->enrichViolationsWithCycles($violations);
 
         $timeline = [];
         foreach ($violations as $v) {
@@ -344,15 +424,17 @@ class AttendanceViolationService
                 'type' => $this->resolveHumanViolationLabel($v->type, $v->policy_action),
                 'raw_type' => $v->type,
                 'minutes' => (int) ($v->minutes ?? 0),
+                'active_counter' => $v->active_counter ?? '-',
                 'penalty_status' => $statusData['label'],
                 'badge_class' => $statusData['badge'],
                 'remarks' => $v->remarks ?? '-',
             ];
         }
 
-        // Recent Attendances
+        // Recent Attendances in this period
         $recentAttQuery = DB::table('attendances')
-            ->where('employee_id', $employeeId);
+            ->where('employee_id', $employeeId)
+            ->whereBetween('attendance_date', [$start->toDateString(), $end->toDateString()]);
 
         if (Schema::hasColumn('attendances', 'deleted_at')) {
             $recentAttQuery->whereNull('deleted_at');
@@ -398,6 +480,7 @@ class AttendanceViolationService
 
         return [
             'success' => true,
+            'period_label' => $periodLabel,
             'employee' => [
                 'id' => $employee->id,
                 'name' => $employee->display_name ?: $employee->name,
@@ -412,11 +495,11 @@ class AttendanceViolationService
                 'shift_type' => ucfirst(str_replace('_', ' ', $policy->shift_type ?? 'fixed')),
                 'shift_start' => $this->ruleResolver->timeString($policy->shift_start_time ?? null) ?: '10:00 AM',
                 'shift_end' => $this->ruleResolver->timeString($policy->shift_end_time ?? null) ?: '07:00 PM',
-                'discipline_limit' => (int) ($policy->combined_violation_limit ?? 3),
-                'missed_limit' => ((int) ($policy->allowed_missed_punches ?? 2)) + 1,
+                'discipline_limit' => $disciplineLimit,
+                'missed_limit' => $missedLimit,
             ],
             'counters' => [
-                'discipline' => $disciplineCounter,
+                'discipline' => $discCounter,
                 'missed_punch' => $missedCounter,
             ],
             'timeline' => $timeline,
@@ -450,6 +533,7 @@ class AttendanceViolationService
                 'employee_name' => $employee?->display_name ?: 'Employee',
                 'employee_code' => $employee?->employee_code ?: 'N/A',
                 'department' => $employee?->department?->name ?? 'N/A',
+                'designation' => $employee?->designation?->name ?? 'N/A',
                 'punch_in' => $attendance->punch_in_time ? Carbon::parse($attendance->punch_in_time)->format('h:i A') : 'N/A',
                 'punch_out' => $attendance->punch_out_time ? Carbon::parse($attendance->punch_out_time)->format('h:i A') : 'N/A',
                 'target_punch_out' => $targetOutStr ? Carbon::parse($targetOutStr)->format('h:i A') : 'N/A',
@@ -461,7 +545,7 @@ class AttendanceViolationService
                 'half_day_reason' => $attendance->half_day_reason,
                 'is_lwp' => (bool) $attendance->is_lwp,
                 'lwp_reason' => $attendance->lwp_reason,
-                'policy_name' => $policy->policy_name ?? $policy->name ?? 'Default Policy',
+                'policy_name' => $policy->policy_name ?? $policy->name ?? 'General Shift Policy',
             ],
         ];
     }

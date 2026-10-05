@@ -857,7 +857,7 @@
 
                                 <div class="col-md-6 mb-3">
                                     <label>Shift Type</label>
-                                    <select name="shift_type" class="form-control">
+                                    <select name="shift_type" class="form-control select2-modal-searchable">
                                         <option value="fixed" {{ ($time->shift_type ?? 'fixed') === 'fixed' ? 'selected' : '' }}>Fixed Shift</option>
                                         <option value="dynamic_hours" {{ ($time->shift_type ?? '') === 'dynamic_hours' ? 'selected' : '' }}>Dynamic Hours Shift</option>
                                         <option value="flexible_part_time" {{ ($time->shift_type ?? '') === 'flexible_part_time' ? 'selected' : '' }}>Flexible Part Time Shift</option>

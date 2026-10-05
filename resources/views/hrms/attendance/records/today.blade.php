@@ -150,6 +150,81 @@
         70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
         100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
     }
+
+    @media(max-width: 991px) {
+        .att-header-premium {
+            padding: 22px 24px !important;
+            border-radius: 20px !important;
+            gap: 16px !important;
+            margin-bottom: 20px !important;
+        }
+
+        .att-header-premium .title-area h3 {
+            font-size: 22px !important;
+        }
+    }
+
+    @media(max-width: 768px) {
+        .att-page {
+            padding: 14px 12px 24px !important;
+        }
+
+        .att-header-premium {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            padding: 18px 16px !important;
+            border-radius: 18px !important;
+            gap: 14px !important;
+            margin-bottom: 16px !important;
+        }
+
+        .att-header-premium .title-area {
+            width: 100% !important;
+        }
+
+        .att-header-premium .header-kicker {
+            font-size: 10.5px !important;
+            padding: 4px 10px !important;
+            letter-spacing: 0.04em !important;
+            margin-bottom: 8px !important;
+        }
+
+        .att-header-premium .title-area h3 {
+            font-size: 19px !important;
+            line-height: 1.3 !important;
+        }
+
+        .att-header-premium .title-area p {
+            font-size: 12.5px !important;
+            line-height: 1.4 !important;
+            margin-top: 4px !important;
+        }
+
+        .att-header-premium .text-right {
+            text-align: left !important;
+            width: 100% !important;
+        }
+    }
+
+    @media(max-width: 480px) {
+        .att-page {
+            padding: 10px 8px 20px !important;
+        }
+
+        .att-header-premium {
+            padding: 16px 14px !important;
+            border-radius: 16px !important;
+            gap: 12px !important;
+        }
+
+        .att-header-premium .title-area h3 {
+            font-size: 17.5px !important;
+        }
+
+        .att-header-premium .title-area p {
+            font-size: 12px !important;
+        }
+    }
 </style>
 
 <div class="att-page">

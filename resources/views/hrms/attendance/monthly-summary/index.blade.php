@@ -564,7 +564,7 @@
                         <!-- Month Filter -->
                         <div>
                             <label>Month</label>
-                            <select name="month" class="form-control">
+                            <select name="month" class="form-control select2-searchable">
                                 <option value="">All Months</option>
                                 @foreach(range(1, 12) as $m)
                                 <option value="{{ $m }}" {{ request('month', now()->month) == $m ? 'selected' : '' }}>
@@ -584,7 +584,7 @@
                         <!-- Locked Filter -->
                         <div>
                             <label>Locked Status</label>
-                            <select name="locked" class="form-control">
+                            <select name="locked" class="form-control select2-searchable">
                                 <option value="">All Statuses</option>
                                 <option value="1" {{ request('locked') === '1' ? 'selected' : '' }}>Locked</option>
                                 <option value="0" {{ request('locked') === '0' ? 'selected' : '' }}>Unlocked</option>
@@ -595,7 +595,7 @@
                         <div>
                             <label>&nbsp;</label>
                             <div class="d-flex align-items-center" style="gap: 8px;">
-                                <button type="submit" class="btn text-white font-weight-bold shadow-sm" style="height: 42px; border-radius: 12px; background: var(--orb-primary); border: none; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; flex: 1;">
+                                <button type="submit" class="btn text-white font-weight-bold shadow-sm" style="height: 42px; border-radius: 12px; background: linear-gradient(135deg, var(--orb-primary, #4B00E8) 0%, var(--orb-secondary, #FF5252) 100%); border: none; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; flex: 1;">
                                     <i class="fas fa-search"></i> Search
                                 </button>
                                 <a href="{{ route('hrms.attendance.monthly_summary.index') }}" class="btn btn-light border text-secondary font-weight-bold" style="height: 42px; width: 42px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Reset Filters">
@@ -739,7 +739,7 @@
                         Showing {{ $rows->firstItem() ?? 0 }} to {{ $rows->lastItem() ?? 0 }} of {{ $rows->total() }} entries
                     </div>
                     <div>
-                        {{ $rows->appends(request()->query())->links() }}
+                        {{ $rows->appends(request()->query())->links('vendor.pagination.orbo') }}
                     </div>
                 </div>
                 @endif

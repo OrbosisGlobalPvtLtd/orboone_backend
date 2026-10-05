@@ -1,15 +1,15 @@
 <div class="orb-table-tools">
     <div class="crud-dt-toolbar">
         <div class="crud-dt-left">
-            <label class="mb-0 d-flex align-items-center font-weight-bold text-muted" style="font-size: 13px; gap: 8px;">
-                Show
-                <select name="per_page" class="form-control form-control-sm custom-select" style="width: 75px; height: 34px; font-weight: 700; border-radius: 8px; padding: 0 8px;" onchange="var u = new URL(window.location.href); u.searchParams.set('per_page', this.value); u.searchParams.set('page', '1'); window.location.href = u.toString();">
+            <div class="d-flex align-items-center" style="gap: 8px;">
+                <label class="mb-0 text-muted font-weight-bold" style="font-size: 13px;">Show</label>
+                <select id="recordsPerPageSelect" class="table-per-page-select" style="width: 75px;">
                     @foreach([10, 25, 50, 100] as $size)
                         <option value="{{ $size }}" {{ (int) request('per_page', 25) === $size ? 'selected' : '' }}>{{ $size }}</option>
                     @endforeach
                 </select>
-                entries
-            </label>
+                <label class="mb-0 text-muted font-weight-bold" style="font-size: 13px;">entries</label>
+            </div>
         </div>
         <div class="crud-dt-right"></div>
     </div>
@@ -104,53 +104,69 @@
                             <button type="button" class="dropdown-item js-view-details py-2" data-row='@json($row)'>
                                 <i class="fas fa-eye text-muted mr-2"></i> View Details
                             </button>
+
+                            @php
+                                $canEditRow = ($isHrOrAdmin ?? false) || ($isSuperAdmin ?? false) || (($isEmployee ?? false) && in_array($st, ['pending', 'manager_approved']));
+                            @endphp
+
+                            @if($canEditRow)
+                            <button type="button" class="dropdown-item js-edit-wfh text-primary font-weight-bold py-2" data-row='@json($row)'>
+                                <i class="fas fa-edit mr-2"></i> Edit Request
+                            </button>
+                            @endif
                             
-                            @if(in_array($st, ['pending', 'manager_approved']) && ($canApprove || $canReject))
-                                @if($isSuperAdmin ?? false)
-                                    @if($canApprove)
-                                    <button type="button" class="dropdown-item text-success js-approve font-weight-bold py-2" data-id="{{ $row->id }}" data-row='@json($row)'>
-                                        <i class="fas fa-crown text-warning mr-2"></i> Super Admin Approve
+                            @if($isEmployee ?? false)
+                                @if(in_array($st, ['pending', 'manager_approved']))
+                                <form method="POST" action="{{ route('hrms.attendance.my-wfh.cancel', $row->id) }}" onsubmit="return confirm('Are you sure you want to cancel this WFH request?');" class="m-0">
+                                    @csrf
+                                    <button type="submit" class="dropdown-item text-danger font-weight-bold py-2">
+                                        <i class="fas fa-times-circle text-danger mr-2"></i> Cancel Request
                                     </button>
-                                    @endif
-                                    @if($canReject)
-                                    <button type="button" class="dropdown-item text-danger js-reject font-weight-bold py-2" data-id="{{ $row->id }}">
-                                        <i class="fas fa-times-circle mr-2"></i> Reject Request
-                                    </button>
-                                    @endif
-                                @elseif($st === 'pending' && $isAssignedMgr)
-                                    @if($canApprove)
-                                    <button type="button" class="dropdown-item text-success js-approve font-weight-bold py-2" data-id="{{ $row->id }}" data-row='@json($row)'>
-                                        <i class="fas fa-check-circle text-success mr-2"></i> Manager Approve
-                                    </button>
-                                    @endif
-                                    @if($canReject)
-                                    <button type="button" class="dropdown-item text-danger js-reject font-weight-bold py-2" data-id="{{ $row->id }}">
-                                        <i class="fas fa-times-circle mr-2"></i> Reject Request
-                                    </button>
-                                    @endif
-                                @elseif($isHrOrAdmin ?? false)
-                                    @if($canApprove)
-                                    <button type="button" class="dropdown-item text-primary js-approve font-weight-bold py-2" data-id="{{ $row->id }}" data-row='@json($row)'>
-                                        <i class="fas fa-check-double text-primary mr-2"></i> HR Final Approve
-                                    </button>
-                                    @endif
-                                    @if($canReject)
-                                    <button type="button" class="dropdown-item text-danger js-reject font-weight-bold py-2" data-id="{{ $row->id }}">
-                                        <i class="fas fa-times-circle mr-2"></i> Reject Request
-                                    </button>
+                                </form>
+                                @endif
+                            @else
+                                @if(in_array($st, ['pending', 'manager_approved']) && ($canApprove || $canReject))
+                                    @if($isSuperAdmin ?? false)
+                                        @if($canApprove)
+                                        <button type="button" class="dropdown-item text-success js-approve font-weight-bold py-2" data-id="{{ $row->id }}" data-row='@json($row)'>
+                                            <i class="fas fa-crown text-warning mr-2"></i> Super Admin Approve
+                                        </button>
+                                        @endif
+                                        @if($canReject)
+                                        <button type="button" class="dropdown-item text-danger js-reject font-weight-bold py-2" data-id="{{ $row->id }}">
+                                            <i class="fas fa-times-circle mr-2"></i> Reject Request
+                                        </button>
+                                        @endif
+                                    @elseif($st === 'pending' && $isAssignedMgr)
+                                        @if($canApprove)
+                                        <button type="button" class="dropdown-item text-success js-approve font-weight-bold py-2" data-id="{{ $row->id }}" data-row='@json($row)'>
+                                            <i class="fas fa-check-circle text-success mr-2"></i> Manager Approve
+                                        </button>
+                                        @endif
+                                        @if($canReject)
+                                        <button type="button" class="dropdown-item text-danger js-reject font-weight-bold py-2" data-id="{{ $row->id }}">
+                                            <i class="fas fa-times-circle mr-2"></i> Reject Request
+                                        </button>
+                                        @endif
+                                    @elseif($isHrOrAdmin ?? false)
+                                        @if($canApprove)
+                                        <button type="button" class="dropdown-item text-primary js-approve font-weight-bold py-2" data-id="{{ $row->id }}" data-row='@json($row)'>
+                                            <i class="fas fa-check-double text-primary mr-2"></i> HR Final Approve
+                                        </button>
+                                        @endif
+                                        @if($canReject)
+                                        <button type="button" class="dropdown-item text-danger js-reject font-weight-bold py-2" data-id="{{ $row->id }}">
+                                            <i class="fas fa-times-circle mr-2"></i> Reject Request
+                                        </button>
+                                        @endif
                                     @endif
                                 @endif
-                            @endif
 
-                            @if(($canMarkLwp ?? false) && $row->status === 'approved' && $row->payroll_impact !== 'lwp')
-                            <button type="button" class="dropdown-item text-warning js-mark-lwp py-2" data-id="{{ $row->id }}">
-                                <i class="fas fa-exclamation-triangle mr-2"></i> Mark as LWP
-                            </button>
-                            @endif
-                            @if($canAssign ?? false)
-                            <button type="button" class="dropdown-item js-open-assign py-2">
-                                <i class="fas fa-plus-circle text-info mr-2"></i> Assign WFH
-                            </button>
+                                @if(($canMarkLwp ?? false) && $row->status === 'approved' && $row->payroll_impact !== 'lwp')
+                                <button type="button" class="dropdown-item text-warning js-mark-lwp py-2" data-id="{{ $row->id }}">
+                                    <i class="fas fa-exclamation-triangle mr-2"></i> Mark as LWP
+                                </button>
+                                @endif
                             @endif
                         </div>
                     </div>

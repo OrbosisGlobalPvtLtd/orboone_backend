@@ -12,11 +12,13 @@ use App\Models\HRMS\Attendance\AttendanceTypeM as AttendanceType;
 use App\Models\HRMS\Department\DepartmentM;
 use App\Models\HRMS\Employee\EmployeeM;
 use App\Models\HRMS\Employee\EmployeeShiftTimingM;
+use App\Services\HRMS\Attendance\AttendanceMobileService;
 use App\Services\HRMS\Attendance\AttendanceS;
 use App\Services\HRMS\Employee\EmployeeShiftAssignmentService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -28,11 +30,15 @@ class AttendancesC extends Controller
     use HrmsCrudPage;
 
     private AttendanceS $attendanceService;
+    private AttendanceMobileService $mobileService;
 
-    public function __construct(AttendanceS $attendanceService)
-    {
+    public function __construct(
+        AttendanceS $attendanceService,
+        AttendanceMobileService $mobileService
+    ) {
         $this->middleware('auth');
         $this->attendanceService = $attendanceService;
+        $this->mobileService = $mobileService;
     }
 
     private function baseQuery()
@@ -49,7 +55,7 @@ class AttendancesC extends Controller
         ]);
     }
 
-    private function applyFilters($query, Request $request)
+    private function applyFilters(mixed $query, Request $request)
     {
         if ($request->filled('search')) {
             $search = $request->search;
@@ -78,19 +84,33 @@ class AttendancesC extends Controller
         $fromDate = $request->input('from_date') ?: $request->input('from');
         $toDate = $request->input('to_date') ?: $request->input('to');
 
-        if ($fromDate || $toDate) {
+        if ($request->filled('date')) {
+            $query->whereDate('attendance_date', $request->date);
+        } elseif ($fromDate || $toDate) {
             if ($fromDate) {
                 $query->whereDate('attendance_date', '>=', $fromDate);
             }
             if ($toDate) {
                 $query->whereDate('attendance_date', '<=', $toDate);
             }
-        } elseif ($request->filled('date')) {
-            $query->whereDate('attendance_date', $request->date);
-        } elseif ($request->filled('month')) {
-            $query->whereMonth('attendance_date', (int) $request->month);
-            if ($request->filled('year')) {
-                $query->whereYear('attendance_date', (int) $request->year);
+        } elseif ($request->filled('month_year') && $request->month_year !== 'all') {
+            $parts = explode('-', $request->month_year);
+            if (count($parts) === 2) {
+                $year = (int) $parts[0];
+                $month = (int) $parts[1];
+                $query->whereYear('attendance_date', $year)->whereMonth('attendance_date', $month);
+            }
+        } elseif ($request->filled('month') && $request->month !== 'all' && $request->month !== 'custom') {
+            if (str_contains($request->month, '-')) {
+                $parts = explode('-', $request->month);
+                if (count($parts) === 2) {
+                    $query->whereYear('attendance_date', (int) $parts[0])->whereMonth('attendance_date', (int) $parts[1]);
+                }
+            } else {
+                $query->whereMonth('attendance_date', (int) $request->month);
+                if ($request->filled('year')) {
+                    $query->whereYear('attendance_date', (int) $request->year);
+                }
             }
         } else {
             $today = Carbon::now($this->attendanceService->attendanceTimezone())->toDateString();
@@ -167,8 +187,18 @@ class AttendancesC extends Controller
             $request->merge(['date' => $today]);
         }
 
-        $query = $this->scopeAttendanceQuery($this->applyFilters($this->baseQuery(), $request), 'attendance.records.view_all', 'attendance.regularization.view_team');
-        $todayRecordsQuery = Attendance::with('attendanceType')->whereDate('attendance_date', $today);
+        // Only active, non-exited employees with completed approved profiles
+        $query = $this->scopeAttendanceQuery($this->applyFilters($this->baseQuery(), $request), 'attendance.records.view_all', 'attendance.regularization.view_team')
+            ->whereHas('employee', function ($eq) use ($today) {
+                $eq->activeEligible($today);
+            });
+
+        $todayRecordsQuery = Attendance::with('attendanceType')
+            ->whereDate('attendance_date', $today)
+            ->whereHas('employee', function ($eq) use ($today) {
+                $eq->activeEligible($today);
+            });
+
         $todayRecords = $this->scopeAttendanceQuery($todayRecordsQuery, 'attendance.records.view_all', 'attendance.regularization.view_team')->get();
         $this->normalizeAttendanceCollection($todayRecords);
 
@@ -194,11 +224,12 @@ class AttendancesC extends Controller
             'total_blocked' => $todayRecords->filter(fn($item) => $item->is_punch_blocked || $item->is_blocked || $item->attendance_status === 'punch_blocked')->count(),
         ];
 
-        // Unmarked attendance today (Active employees who haven't punched in today)
-        $user = auth()->user();
+        // Unmarked attendance today (Active employees with completed profiles who haven't punched in today)
+        /** @var User|null $user */
+        $user = Auth::user();
         $isEmployeeRole = ($user->role_id ?? null) == 7 || ($user->system_role_id ?? null) == 7;
-        $activeEmployeesQuery = EmployeeM::with(['user', 'department', 'designation'])
-            ->where('employment_status', 'active');
+        $activeEmployeesQuery = EmployeeM::with(['user', 'department', 'designation', 'profile'])
+            ->activeEligible($today);
 
         if ($isEmployeeRole || (! $this->canViewAll('attendance.records.view_all') && ! $this->canViewAll('attendance.monthly_report.view_all'))) {
             $ids = ($this->userHasPermission('attendance.monthly_report.view_team') || $this->userHasPermission('attendance.regularization.view_team')) && ! $isEmployeeRole
@@ -211,18 +242,41 @@ class AttendancesC extends Controller
         $punchedInEmployeeIds = $todayRecords->whereNotNull('punch_in_time')->pluck('employee_id')->filter()->unique()->toArray();
         $todayRecordsByEmp = $todayRecords->keyBy('employee_id');
 
-        $unmarkedEmployees = $activeEmployeesList->reject(function ($emp) use ($punchedInEmployeeIds) {
+        $allUnmarkedEmployees = $activeEmployeesList->reject(function ($emp) use ($punchedInEmployeeIds) {
             return in_array($emp->id, $punchedInEmployeeIds, true);
         })->map(function ($emp) use ($todayRecordsByEmp) {
             $emp->today_attendance = $todayRecordsByEmp->get($emp->id);
             return $emp;
         })->values();
 
-        $stats['unmarked_today'] = $unmarkedEmployees->count();
+        $stats['unmarked_today'] = $allUnmarkedEmployees->count();
 
+        // Server-side pagination for Unmarked Attendance Table
+        $unmarkedPage = (int) $request->input('unmarked_page', 1);
+        $unmarkedPerPage = (int) $request->input('unmarked_per_page', 10);
+        if ($unmarkedPerPage <= 0) {
+            $unmarkedPerPage = 10;
+        }
+        $unmarkedEmployees = new \Illuminate\Pagination\LengthAwarePaginator(
+            $allUnmarkedEmployees->forPage($unmarkedPage, $unmarkedPerPage)->values(),
+            $allUnmarkedEmployees->count(),
+            $unmarkedPerPage,
+            $unmarkedPage,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+                'pageName' => 'unmarked_page',
+            ]
+        );
+
+        // Server-side pagination for Today's Attendance Table
+        $attendancePerPage = (int) $request->input('attendance_per_page', $request->input('per_page', 25));
+        if ($attendancePerPage <= 0) {
+            $attendancePerPage = 25;
+        }
         $attendances = $query->orderByDesc('attendance_date')
             ->orderByDesc('id')
-            ->paginate(20)
+            ->paginate($attendancePerPage, ['*'], 'attendance_page')
             ->appends($request->query());
         $this->normalizeAttendanceCollection($attendances->getCollection());
 
@@ -231,16 +285,29 @@ class AttendancesC extends Controller
         $attendanceTimes = AttendanceTime::where('is_active', true)->orderByDesc('is_default')->get();
         $canManageAttendance = $this->canManageAttendance();
         $canUnlockAttendance = $this->canUnlockAttendance();
-        $blockedAttendances = $this->scopeAttendanceQuery($this->baseQuery(), 'attendance.records.view_all', 'attendance.regularization.view_team')
+
+        // Server-side pagination for Blocked Attendance Table
+        $blockedPerPage = (int) $request->input('blocked_per_page', 10);
+        if ($blockedPerPage <= 0) {
+            $blockedPerPage = 10;
+        }
+
+        $blockedAttendancesQuery = $this->scopeAttendanceQuery($this->baseQuery(), 'attendance.records.view_all', 'attendance.regularization.view_team')
             ->whereDate('attendance_date', $today)
             ->where(function ($q) {
                 $q->where('is_punch_blocked', true)
                     ->orWhere('is_blocked', true)
                     ->orWhere('attendance_status', 'punch_blocked');
             })
+            ->whereHas('employee', function ($eq) use ($today) {
+                $eq->activeEligible($today);
+            });
+
+        $blockedAttendances = $blockedAttendancesQuery
             ->orderBy('id')
-            ->get();
-        $this->normalizeAttendanceCollection($blockedAttendances);
+            ->paginate($blockedPerPage, ['*'], 'blocked_page')
+            ->appends($request->query());
+        $this->normalizeAttendanceCollection($blockedAttendances->getCollection());
 
         $blockedEmpIds = $blockedAttendances->pluck('employee_id')->filter()->unique()->toArray();
         $regRequestsByEmp = collect();
@@ -293,9 +360,74 @@ class AttendancesC extends Controller
     public function daily(Request $request)
     {
         abort_unless($this->userHasPermission('attendance.records.view_all') || $this->userHasPermission('attendance.my.view'), 403);
+
+        $selectedMonth = $request->input('month');
+        $fromDate = $request->input('from_date') ?: $request->input('from');
+        $toDate = $request->input('to_date') ?: $request->input('to');
+        if (!$request->has('month') && !$fromDate && !$toDate && !$request->has('date')) {
+            $selectedMonth = now()->format('Y-m');
+            $request->merge(['month' => $selectedMonth]);
+        }
+
         $query = $this->scopeAttendanceQuery($this->applyFilters($this->baseQuery(), $request), 'attendance.records.view_all');
 
-        $attendances = $this->orderAttendanceQuery($query, $request)->paginate(50)->appends($request->query());
+        // Calculate accurate metric counts for the filtered dataset without loading entire table into memory
+        $statsQuery = clone $query;
+        $totalRecords = (clone $statsQuery)->count();
+        $presentRecords = (clone $statsQuery)->where(function ($q) {
+            $q->whereIn('attendance_status', ['present', 'verified', 'approved', 'early'])
+                ->orWhere(function ($sq) {
+                    $sq->whereNotNull('punch_in_time')
+                        ->whereNotIn('attendance_status', ['absent', 'punch_blocked']);
+                });
+        })->count();
+        $lateRecords = (clone $statsQuery)->where('is_late', 1)->count();
+        $blockedRecords = (clone $statsQuery)->where(function ($q) {
+            $q->where('attendance_status', 'punch_blocked')
+                ->orWhere('is_blocked', 1)
+                ->orWhere('is_punch_blocked', 1);
+        })->count();
+        $missedRecords = (clone $statsQuery)->where(function ($q) {
+            $q->where('missed_punch', 1)
+                ->orWhere('is_missed_punch', 1)
+                ->orWhere(function ($sq) {
+                    $sq->whereNotNull('punch_in_time')
+                        ->whereNull('punch_out_time')
+                        ->where('is_half_day', 0)
+                        ->whereDate('attendance_date', '<', now()->toDateString());
+                });
+        })->count();
+        $halfDayRecords = (clone $statsQuery)->where(function ($q) {
+            $q->where('attendance_status', 'half_day')->orWhere('is_half_day', 1);
+        })->count();
+        $wfoRecords = (clone $statsQuery)->where('work_mode', 'wfo')->count();
+        $wfhRecords = (clone $statsQuery)->where('work_mode', 'wfh')->count();
+
+        $statsSummary = [
+            'total' => $totalRecords,
+            'present' => $presentRecords,
+            'late' => $lateRecords,
+            'blocked' => $blockedRecords,
+            'missed' => $missedRecords,
+            'half_day' => $halfDayRecords,
+            'wfo' => $wfoRecords,
+            'wfh' => $wfhRecords,
+        ];
+
+        // Available Months for dropdown
+        $availableMonths = [];
+        $currentMonthObj = now()->startOfMonth();
+        for ($i = 0; $i < 12; $i++) {
+            $m = (clone $currentMonthObj)->subMonths($i);
+            $availableMonths[$m->format('Y-m')] = $m->format('F Y');
+        }
+
+        $perPage = (int) $request->input('attendance_per_page', $request->input('per_page', 25));
+        if ($perPage <= 0) {
+            $perPage = 25;
+        }
+
+        $attendances = $this->orderAttendanceQuery($query, $request)->paginate($perPage)->appends($request->query());
         $this->normalizeAttendanceCollection($attendances->getCollection());
         $employees = $this->attendanceEmployees();
         $attendanceTypes = $this->activeAttendanceTypes();
@@ -303,12 +435,23 @@ class AttendancesC extends Controller
         $departments = DepartmentM::orderBy('name')->get();
         $canManageAttendance = $this->canManageAttendance();
 
-        return view('hrms.attendance.records.daily', compact('attendances', 'employees', 'attendanceTypes', 'attendanceTimes', 'departments', 'canManageAttendance'));
+        return view('hrms.attendance.records.daily', compact(
+            'attendances',
+            'employees',
+            'attendanceTypes',
+            'attendanceTimes',
+            'departments',
+            'canManageAttendance',
+            'statsSummary',
+            'availableMonths',
+            'selectedMonth'
+        ));
     }
 
     public function teamAttendance(Request $request)
     {
-        $user = auth()->user();
+        /** @var User|null $user */
+        $user = Auth::user();
         $isGlobal = $this->canViewAll('attendance.records.view_all');
         $canTeam = $this->canViewTeam('attendance.regularization.view_team') || $this->canViewTeam('attendance.monthly_report.view_team');
 
@@ -447,10 +590,17 @@ class AttendancesC extends Controller
             'blocked_today' => $blockedCount,
         ];
 
+        $perPage = 50;
+        if ($request->filled('per_page')) {
+            $perPage = ($request->per_page === 'all' || $request->per_page == '-1') ? 5000 : (int) $request->per_page;
+        } elseif ($request->filled('attendance_per_page')) {
+            $perPage = ($request->attendance_per_page === 'all' || $request->attendance_per_page == '-1') ? 5000 : (int) $request->attendance_per_page;
+        }
+
         $attendances = $query->orderByDesc('attendance_date')
             ->orderByDesc('punch_in_time')
             ->orderByDesc('id')
-            ->paginate(50)
+            ->paginate($perPage)
             ->appends($request->query());
 
         $this->normalizeAttendanceCollection($attendances->getCollection());
@@ -509,15 +659,29 @@ class AttendancesC extends Controller
             403
         );
 
-        $currentEmployee = \App\Models\HRMS\Employee\EmployeeM::where('user_id', auth()->id())->first();
+        $currentEmployee = \App\Models\HRMS\Employee\EmployeeM::where('user_id', Auth::id())->first();
         $currentEmployeeId = $currentEmployee ? $currentEmployee->id : ($this->ownEmployeeId() ?: null);
-        $userId = auth()->id();
+        $userId = Auth::id();
+
+        $hasDateFilter = $request->filled('date') 
+            || $request->filled('from_date') 
+            || $request->filled('to_date') 
+            || $request->filled('month_year') 
+            || $request->filled('month') 
+            || $request->filled('from') 
+            || $request->filled('to');
+
+        $currentMonthYear = Carbon::now($this->attendanceService->attendanceTimezone())->format('Y-m');
+        $selectedMonthYear = $request->input('month_year', $hasDateFilter ? ($request->input('month_year') ?: '') : $currentMonthYear);
 
         if ($isMyAttendance) {
             $selectedEmployeeId = $currentEmployeeId;
             $cleanRequest = clone $request;
             $cleanRequest->query->remove('employee_id');
             $cleanRequest->query->remove('search');
+            if (! $hasDateFilter && $currentMonthYear) {
+                $cleanRequest->merge(['month_year' => $currentMonthYear]);
+            }
 
             $query = $this->applyFilters($this->baseQuery(), $cleanRequest);
             $query->where(function ($q) use ($currentEmployeeId, $userId) {
@@ -548,8 +712,33 @@ class AttendancesC extends Controller
                 $filterRequest->query->remove('employee_id');
             }
 
+            if (! $hasDateFilter && $currentMonthYear) {
+                $filterRequest->merge(['month_year' => $currentMonthYear]);
+            }
+
             $query = $this->scopeAttendanceQuery($this->applyFilters($this->baseQuery(), $filterRequest), 'attendance.records.view_all', 'attendance.regularization.view_team');
         }
+
+        $statsRaw = (clone $query)->leftJoin('attendance_types', 'attendance_types.id', '=', 'attendances.attendance_type_id')
+            ->selectRaw("
+                COUNT(attendances.id) as total_records,
+                COUNT(CASE WHEN (attendances.attendance_status = 'present' OR attendance_types.code = 'present') THEN 1 END) as present_records,
+                COUNT(CASE WHEN (attendances.is_late = 1 OR attendances.late_minutes > 0) THEN 1 END) as late_records,
+                COUNT(CASE WHEN (attendances.missed_punch = 1 OR attendances.is_missed_punch = 1 OR attendances.attendance_status = 'missed_punch' OR attendance_types.code = 'missed_punch') THEN 1 END) as missed_records,
+                COUNT(CASE WHEN (attendances.is_half_day = 1 OR attendances.attendance_status = 'half_day' OR attendance_types.code = 'half_day') THEN 1 END) as half_day_records,
+                COUNT(CASE WHEN LOWER(COALESCE(attendances.work_mode, '')) = 'wfo' THEN 1 END) as wfo_records,
+                COUNT(CASE WHEN LOWER(COALESCE(attendances.work_mode, '')) = 'wfh' THEN 1 END) as wfh_records
+            ")->first();
+
+        $stats = [
+            'total' => (int) ($statsRaw->total_records ?? 0),
+            'present' => (int) ($statsRaw->present_records ?? 0),
+            'late' => (int) ($statsRaw->late_records ?? 0),
+            'missed_punch' => (int) ($statsRaw->missed_records ?? 0),
+            'half_day' => (int) ($statsRaw->half_day_records ?? 0),
+            'wfo' => (int) ($statsRaw->wfo_records ?? 0),
+            'wfh' => (int) ($statsRaw->wfh_records ?? 0),
+        ];
 
         $perPage = 50;
         if ($request->filled('per_page')) {
@@ -572,7 +761,9 @@ class AttendancesC extends Controller
             'departments',
             'canManageAttendance',
             'selectedEmployeeId',
-            'currentEmployeeId'
+            'currentEmployeeId',
+            'selectedMonthYear',
+            'stats'
         ));
     }
 
@@ -589,7 +780,7 @@ class AttendancesC extends Controller
             'approved_punch_in_time' => 'required_if:unlock_type,manual_punch_in|nullable',
         ]);
 
-        $result = $this->attendanceService->unlockAttendance($request->id, auth()->id(), $request->only([
+        $result = $this->attendanceService->unlockAttendance($request->id, Auth::id(), $request->only([
             'unlock_type',
             'unlock_reason_category',
             'unlock_remarks',
@@ -661,7 +852,7 @@ class AttendancesC extends Controller
             'punch_in_time' => $request->filled('punch_in_time') ? Carbon::parse($request->punch_in_time)->format('H:i:s') : $attendance->punch_in_time,
             'punch_out_time' => $request->filled('punch_out_time') ? Carbon::parse($request->punch_out_time)->format('H:i:s') : $attendance->punch_out_time,
             'hr_approval_note' => $request->hr_approval_note,
-            'hr_approved_by' => auth()->id(),
+            'hr_approved_by' => Auth::id(),
             'hr_approved_at' => now(),
         ]);
 
@@ -766,20 +957,55 @@ class AttendancesC extends Controller
             $violationQuery->whereHas('employee', fn($eq) => $eq->where('department_id', $request->department_id));
         }
 
-        $vFrom = $request->input('from_date') ?: $request->input('from');
-        $vTo = $request->input('to_date') ?: $request->input('to');
+        $hasDateFilter = $request->filled('date') 
+            || $request->filled('from_date') 
+            || $request->filled('to_date') 
+            || $request->filled('month_year') 
+            || $request->filled('month') 
+            || $request->filled('from') 
+            || $request->filled('to');
 
-        if ($request->filled('date')) {
-            $violationQuery->whereDate('violation_date', $request->date);
-        } elseif ($vFrom) {
-            $violationQuery->whereDate('violation_date', '>=', $vFrom);
+        $currentMonthYear = Carbon::now($this->attendanceService->attendanceTimezone())->format('Y-m');
+        $selectedMonthYear = $request->input('month_year', $hasDateFilter ? ($request->input('month_year') ?: '') : $currentMonthYear);
+
+        $filterRequest = clone $request;
+        if (! $hasDateFilter && $currentMonthYear) {
+            $filterRequest->merge(['month_year' => $currentMonthYear]);
+        }
+
+        $vFrom = $filterRequest->input('from_date') ?: $filterRequest->input('from');
+        $vTo = $filterRequest->input('to_date') ?: $filterRequest->input('to');
+
+        if ($filterRequest->filled('date')) {
+            $violationQuery->whereDate('violation_date', $filterRequest->date);
+        } elseif ($vFrom || $vTo) {
+            if ($vFrom) {
+                $violationQuery->whereDate('violation_date', '>=', $vFrom);
+            }
             if ($vTo) {
                 $violationQuery->whereDate('violation_date', '<=', $vTo);
             }
+        } elseif ($filterRequest->filled('month_year') && $filterRequest->month_year !== 'all') {
+            $parts = explode('-', $filterRequest->month_year);
+            if (count($parts) === 2) {
+                $violationQuery->whereYear('violation_date', (int) $parts[0])->whereMonth('violation_date', (int) $parts[1]);
+            }
+        } elseif ($filterRequest->filled('month') && $filterRequest->month !== 'all' && $filterRequest->month !== 'custom') {
+            if (str_contains($filterRequest->month, '-')) {
+                $parts = explode('-', $filterRequest->month);
+                if (count($parts) === 2) {
+                    $violationQuery->whereYear('violation_date', (int) $parts[0])->whereMonth('violation_date', (int) $parts[1]);
+                }
+            } else {
+                $violationQuery->whereMonth('violation_date', (int) $filterRequest->month);
+                if ($filterRequest->filled('year')) {
+                    $violationQuery->whereYear('violation_date', (int) $filterRequest->year);
+                }
+            }
         } else {
-            if ($request->filter === 'today' || $request->flag === 'today') {
+            if ($filterRequest->filter === 'today' || $filterRequest->flag === 'today') {
                 $violationQuery->whereDate('violation_date', $today);
-            } elseif ($request->filter === 'yesterday') {
+            } elseif ($filterRequest->filter === 'yesterday') {
                 $violationQuery->whereDate('violation_date', Carbon::yesterday()->toDateString());
             }
         }
@@ -813,7 +1039,7 @@ class AttendancesC extends Controller
             return $att;
         });
 
-        $realAttendances = $this->applyFilters($query, $request)->get();
+        $realAttendances = $this->applyFilters($query, $filterRequest)->get();
 
         // Build set of existing real attendance IDs and (employee_id + date) keys for strict deduplication
         $realAttendanceIds = $realAttendances->pluck('id')->filter()->toArray();
@@ -882,15 +1108,28 @@ class AttendancesC extends Controller
             $unlDate = $item->unlocked_at ? Carbon::parse($item->unlocked_at)->toDateString() : ($item->updated_at ? Carbon::parse($item->updated_at)->toDateString() : null);
             return $unlDate === $today;
         })->count();
+        $missedPunchTotal = $merged->filter(fn($item) => (bool) ($item->missed_punch || $item->is_missed_punch || ($item->attendance_status ?? '') === 'missed_punch'))->count();
+        $manualPunchTotal = $merged->filter(fn($item) => ($item->unlock_type ?? '') === 'manual_punch_in')->count();
 
         $stats = [
             'total_blocked' => $totalBlocked,
             'pending_unlock' => $pendingUnlock,
             'unlocked_total' => $unlockedTotal,
             'unlocked_today' => $unlockedToday,
+            'missed_punch' => $missedPunchTotal,
+            'manual_punch' => $manualPunchTotal,
         ];
 
-        return view('hrms.attendance.pending-approvals.index', compact('attendances', 'employees', 'attendanceTypes', 'stats', 'canManageAttendance', 'canUnlockAttendance', 'today'));
+        return view('hrms.attendance.pending-approvals.index', compact(
+            'attendances',
+            'employees',
+            'attendanceTypes',
+            'stats',
+            'canManageAttendance',
+            'canUnlockAttendance',
+            'today',
+            'selectedMonthYear'
+        ));
     }
 
     public function monthlyReport(Request $request)
@@ -1077,7 +1316,7 @@ class AttendancesC extends Controller
         $data['is_active'] = $request->boolean('is_active', true);
 
         $shiftService = app(EmployeeShiftAssignmentService::class);
-        $result = $shiftService->assignShift((int) $data['employee_id'], $data, auth()->id());
+        $result = $shiftService->assignShift((int) $data['employee_id'], $data, Auth::id());
 
         if (!empty($result['warning'])) {
             session()->flash('warning', $result['warning']);
@@ -1106,7 +1345,7 @@ class AttendancesC extends Controller
         $data['is_active'] = $request->boolean('is_active', true);
 
         $shiftService = app(EmployeeShiftAssignmentService::class);
-        $shiftService->updateShiftAssignment((int) $employeeShiftTiming->id, $data, auth()->id());
+        $shiftService->updateShiftAssignment((int) $employeeShiftTiming->id, $data, Auth::id());
 
         return back()->with('status', 'Employee shift timing updated successfully.');
     }
@@ -1268,6 +1507,7 @@ class AttendancesC extends Controller
                 'Gross Duration',
                 'Net Duration',
                 'Status',
+                'Reason',
                 'Late Minutes',
                 'Early Out Minutes',
                 'Flags / Remarks'
@@ -1289,6 +1529,16 @@ class AttendancesC extends Controller
                 }
                 $flagStr = !empty($flags) ? implode(', ', $flags) : 'Clear';
 
+                $reasonText = $row->half_day_reason 
+                    ?: ($row->lwp_reason 
+                    ?: ($row->status_reason 
+                    ?: ($row->remarks 
+                    ?: ($row->blocked_reason
+                    ?: ($row->block_reason
+                    ?: ($row->auto_block_reason
+                    ?: ($row->unlock_remarks 
+                    ?: ($row->approval_remarks ?: '-'))))))));
+
                 fputcsv($handle, [
                     $index + 1,
                     optional($row->user)->name ?? optional($row->employee)->display_name ?? 'N/A',
@@ -1303,6 +1553,7 @@ class AttendancesC extends Controller
                     $row->gross_duration ?? '-',
                     $row->net_duration ?? '-',
                     optional($row->attendanceType)->name ?? ucwords(str_replace('_', ' ', $row->attendance_status ?? 'N/A')),
+                    $reasonText,
                     (int) ($row->late_minutes ?? 0),
                     (int) ($row->early_out_minutes ?? 0),
                     $flagStr
@@ -1327,11 +1578,14 @@ class AttendancesC extends Controller
     // Helper Methods
     private function attendanceEmployees()
     {
-        $user = auth()->user();
+        /** @var User|null $user */
+        $user = Auth::user();
         $isEmployeeRole = ($user->role_id ?? null) == 7 
             || ($user->system_role_id ?? null) == 7;
 
-        $query = User::whereHas('employee')->with(['employee.department', 'employee.designation'])->orderBy('name');
+        $query = User::whereHas('employee', function ($eq) {
+            $eq->activeEligible();
+        })->with(['employee.department', 'employee.designation'])->orderBy('name');
         if ($isEmployeeRole || (! $this->canViewAll('attendance.records.view_all') && ! $this->canViewAll('attendance.monthly_report.view_all'))) {
             $ids = ($this->userHasPermission('attendance.monthly_report.view_team') || $this->userHasPermission('attendance.regularization.view_team')) && ! $isEmployeeRole
                 ? $this->teamEmployeeIds(true)
@@ -1342,33 +1596,47 @@ class AttendancesC extends Controller
         return $query->get();
     }
 
-    private function scopeAttendanceQuery($query, string $allPermission, ?string $teamPermission = null)
+    private function scopeAttendanceQuery(mixed $query, string $allPermission, ?string $teamPermission = null)
     {
         return $this->scopeEmployeeVisibility($query, $allPermission, $teamPermission, 'employee_id');
     }
 
     private function activeAttendanceTypes()
     {
-        return AttendanceType::where('is_active', true)->orderBy('name')->get();
+        return AttendanceType::where('is_active', true)
+            ->whereNotIn(DB::raw('LOWER(name)'), [
+                'late',
+                'early leave',
+                'early out',
+                'missed punch',
+                'punch blocked',
+                'blocked'
+            ])
+            ->orderBy('name')
+            ->get();
     }
 
-    private function reportPeriodLabel($month, $year)
+    private function reportPeriodLabel(int|string $month, int|string $year)
     {
-        return Carbon::create($year, $month, 1)->format('F Y');
+        return Carbon::create((int) $year, (int) $month, 1)->format('F Y');
     }
 
     private function canManageAttendance(): bool
     {
+        /** @var User|null $authUser */
+        $authUser = Auth::user();
         return $this->userHasPermission('attendance.rules.manage')
             || $this->userHasPermission('attendance.records.manage')
-            || (bool) (auth()->user() && method_exists(auth()->user(), 'isSuperAdmin') && auth()->user()->isSuperAdmin())
-            || (bool) (auth()->user() && method_exists(auth()->user(), 'isAdmin') && auth()->user()->isAdmin());
+            || (bool) ($authUser && method_exists($authUser, 'isSuperAdmin') && $authUser->isSuperAdmin())
+            || (bool) ($authUser && method_exists($authUser, 'isAdmin') && $authUser->isAdmin());
     }
 
     private function canUnlockAttendance(): bool
     {
+        /** @var User|null $authUser */
+        $authUser = Auth::user();
         return $this->userHasPermission('attendance.blocked.unlock')
-            || (bool) (auth()->user() && method_exists(auth()->user(), 'isAdmin') && auth()->user()->isAdmin());
+            || (bool) ($authUser && method_exists($authUser, 'isAdmin') && $authUser->isAdmin());
     }
 
     private function validatedPolicyRule(Request $request): array
@@ -1413,7 +1681,7 @@ class AttendancesC extends Controller
             ->all();
     }
 
-    private function orderAttendanceQuery($query, Request $request)
+    private function orderAttendanceQuery(mixed $query, Request $request)
     {
         if ($request->filled('from_date') || $request->filled('date') || $request->filled('to_date') || $request->filled('month')) {
             return $query->orderBy('attendance_date', 'asc')->orderBy('id', 'asc');
@@ -1448,10 +1716,44 @@ class AttendancesC extends Controller
 
     public function accessControl(Request $request)
     {
+        $exitedEmployeeIds = DB::table('employee_exit_processes')
+            ->whereNotIn('status', ['cancelled', 'rejected', 'rolled_back'])
+            ->pluck('employee_id')
+            ->filter()
+            ->toArray();
+
         $query = DB::table('employees_new')
             ->leftJoin('users', 'users.id', '=', 'employees_new.user_id')
             ->leftJoin('departments', 'departments.id', '=', 'employees_new.department_id')
             ->leftJoin('designations', 'designations.id', '=', 'employees_new.designation_id')
+            ->where(function ($q) {
+                $q->where('employees_new.is_active', 1)
+                  ->orWhereNull('employees_new.is_active');
+            })
+            ->where(function ($q) {
+                $q->whereNull('employees_new.employment_status')
+                  ->orWhere('employees_new.employment_status', '')
+                  ->orWhereNotIn(DB::raw('LOWER(TRIM(employees_new.employment_status))'), [
+                      'exited', 'exit', 'resigned', 'resigned_and_exited', 'terminated', 'inactive', 'relieved', 'absconded', 'suspended'
+                  ]);
+            })
+            ->where(function ($q) {
+                $q->whereNull('employees_new.employee_stage')
+                  ->orWhereNotIn(DB::raw('LOWER(TRIM(employees_new.employee_stage))'), [
+                      'exited', 'exit', 'resigned', 'terminated', 'relieved'
+                  ]);
+            })
+            ->where(function ($q) {
+                $q->whereNull('employees_new.relieving_date')
+                  ->orWhere('employees_new.relieving_date', '>', now()->toDateString());
+            })
+            ->where(function ($q) {
+                $q->whereNull('users.is_active')
+                  ->orWhere('users.is_active', 1);
+            })
+            ->when(!empty($exitedEmployeeIds), function ($q) use ($exitedEmployeeIds) {
+                $q->whereNotIn('employees_new.id', $exitedEmployeeIds);
+            })
             ->select([
                 'employees_new.id',
                 'employees_new.employee_code',
@@ -1503,7 +1805,7 @@ class AttendancesC extends Controller
         return view('hrms.attendance.access-control.index', compact('employees', 'departments', 'designations'));
     }
 
-    public function updateAccessControl(Request $request, $id)
+    public function updateAccessControl(Request $request, int|string $id)
     {
         $request->validate([
             'allow_mobile_attendance' => 'nullable|boolean',
@@ -1553,37 +1855,73 @@ class AttendancesC extends Controller
 
     public function bulkUpdateAccessControl(Request $request)
     {
-        $request->validate([
-            'update_target' => 'required|in:selected,department,designation,all',
-            'employee_ids' => 'required_if:update_target,selected|array',
-            'employee_ids.*' => 'integer|exists:employees_new,id',
-            'department_id' => 'required_if:update_target,department|nullable|integer',
-            'designation_id' => 'required_if:update_target,designation|nullable|integer',
-            'allow_mobile_attendance' => 'required|in:keep,enable,disable',
-            'allow_web_attendance' => 'required|in:keep,enable,disable',
-        ]);
+        // Support selected_ids_json or employee_ids
+        $employeeIds = $request->input('employee_ids', []);
+        if (empty($employeeIds) && $request->filled('selected_ids_json')) {
+            $decoded = json_decode($request->input('selected_ids_json'), true);
+            if (is_array($decoded)) {
+                $employeeIds = array_map('intval', $decoded);
+            }
+        }
 
-        $query = DB::table('employees_new');
+        $target = $request->input('update_target') ?? $request->input('target_scope', 'selected');
 
-        if ($request->update_target === 'selected') {
-            $query->whereIn('id', $request->input('employee_ids', []));
-        } elseif ($request->update_target === 'department' && $request->filled('department_id')) {
-            $query->where('department_id', $request->department_id);
-        } elseif ($request->update_target === 'designation' && $request->filled('designation_id')) {
-            $query->where('designation_id', $request->designation_id);
+        $exitedEmployeeIds = DB::table('employee_exit_processes')
+            ->whereNotIn('status', ['cancelled', 'rejected', 'rolled_back'])
+            ->pluck('employee_id')
+            ->filter()
+            ->toArray();
+
+        $query = DB::table('employees_new')
+            ->where(function ($q) {
+                $q->where('employees_new.is_active', 1)
+                  ->orWhereNull('employees_new.is_active');
+            })
+            ->where(function ($q) {
+                $q->whereNull('employees_new.employment_status')
+                  ->orWhere('employees_new.employment_status', '')
+                  ->orWhereNotIn(DB::raw('LOWER(TRIM(employees_new.employment_status))'), [
+                      'exited', 'exit', 'resigned', 'resigned_and_exited', 'terminated', 'inactive', 'relieved', 'absconded', 'suspended'
+                  ]);
+            })
+            ->where(function ($q) {
+                $q->whereNull('employees_new.employee_stage')
+                  ->orWhereNotIn(DB::raw('LOWER(TRIM(employees_new.employee_stage))'), [
+                      'exited', 'exit', 'resigned', 'terminated', 'relieved'
+                  ]);
+            })
+            ->where(function ($q) {
+                $q->whereNull('employees_new.relieving_date')
+                  ->orWhere('employees_new.relieving_date', '>', now()->toDateString());
+            })
+            ->when(!empty($exitedEmployeeIds), function ($q) use ($exitedEmployeeIds) {
+                $q->whereNotIn('employees_new.id', $exitedEmployeeIds);
+            });
+
+        if ($target === 'selected') {
+            if (empty($employeeIds)) {
+                return back()->with('error', 'Please select at least one active employee.');
+            }
+            $query->whereIn('employees_new.id', $employeeIds);
+        } elseif ($target === 'department' && $request->filled('department_id')) {
+            $query->where('employees_new.department_id', $request->department_id);
+        } elseif ($target === 'designation' && $request->filled('designation_id')) {
+            $query->where('employees_new.designation_id', $request->designation_id);
         }
 
         $updateData = ['updated_at' => now()];
 
-        if ($request->allow_mobile_attendance === 'enable') {
+        $mobileVal = $request->input('allow_mobile_attendance');
+        if ($mobileVal === '1' || $mobileVal === 1 || $mobileVal === 'enable') {
             $updateData['allow_mobile_attendance'] = 1;
-        } elseif ($request->allow_mobile_attendance === 'disable') {
+        } elseif ($mobileVal === '0' || $mobileVal === 0 || $mobileVal === 'disable') {
             $updateData['allow_mobile_attendance'] = 0;
         }
 
-        if ($request->allow_web_attendance === 'enable') {
+        $webVal = $request->input('allow_web_attendance');
+        if ($webVal === '1' || $webVal === 1 || $webVal === 'enable') {
             $updateData['allow_web_attendance'] = 1;
-        } elseif ($request->allow_web_attendance === 'disable') {
+        } elseif ($webVal === '0' || $webVal === 0 || $webVal === 'disable') {
             $updateData['allow_web_attendance'] = 0;
         }
 
@@ -1594,7 +1932,7 @@ class AttendancesC extends Controller
             foreach ($userIds as $uId) {
                 $resolver->clearCache((int) $uId);
             }
-            return back()->with('success', "Attendance access updated for {$count} employees.");
+            return back()->with('success', "Attendance access updated for {$count} active employees.");
         }
 
         return back()->with('info', 'No changes made.');
@@ -1629,7 +1967,7 @@ class AttendancesC extends Controller
             ];
 
             $result = $this->attendanceService->processPunchIn(
-                auth()->id(),
+                Auth::id(),
                 $workMode,
                 $request->note,
                 $meta
@@ -1644,7 +1982,7 @@ class AttendancesC extends Controller
             throw $ve;
         } catch (\Throwable $e) {
             Log::error('Web Punch In Exception: ' . $e->getMessage(), [
-                'user_id' => auth()->id(),
+                'user_id' => Auth::id(),
                 'trace' => $e->getTraceAsString(),
             ]);
             return back()->with('error', 'Punch in error: ' . $e->getMessage());
@@ -1655,8 +1993,6 @@ class AttendancesC extends Controller
     {
         $request->validate([
             'task_summary' => 'nullable|string|max:10000',
-            'task_name' => 'nullable|string|max:255',
-            'task_summary' => 'nullable|string|max:5000',
             'task_name' => 'nullable|string|max:255',
             'today_work_description' => 'nullable|string|max:5000',
             'current_status' => 'nullable|string|max:50',
@@ -1789,7 +2125,7 @@ class AttendancesC extends Controller
         ];
 
         $result = $this->attendanceService->processPunchOut(
-            auth()->id(),
+            Auth::id(),
             $taskSummaryText,
             $request->remarks,
             $meta,
@@ -1807,13 +2143,13 @@ class AttendancesC extends Controller
 
     public function today(Request $request)
     {
-        $employee = DB::table('employees_new')->where('user_id', auth()->id())->first();
+        $employee = DB::table('employees_new')->where('user_id', Auth::id())->first();
         if (! $employee) {
             return back()->with('error', 'Employee profile not found.');
         }
 
-        $empObj = \App\Models\HRMS\Employee\EmployeeM::find($employee->id);
-        $todayStatusResult = $this->attendanceService ? (new \App\Services\HRMS\Attendance\AttendanceMobileService($this->attendanceService, app(\App\Services\HRMS\Attendance\AttendanceRuleResolverService::class), app(\App\Services\HRMS\Attendance\WfhRequestService::class)))->todayStatus(auth()->id()) : [];
+        $empObj = EmployeeM::find($employee->id);
+        $todayStatusResult = $this->mobileService->todayStatus(Auth::id());
         $attendancePayload = $todayStatusResult['data'] ?? [];
 
         $todayDate = Carbon::now($this->attendanceService->attendanceTimezone())->toDateString();

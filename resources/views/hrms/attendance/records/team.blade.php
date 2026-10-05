@@ -416,7 +416,7 @@
                     <input type="hidden" name="view_mode" value="{{ $viewMode }}">
 
                     <!-- Team Member -->
-                    <select name="employee_id" class="filter-input mr-2 mb-2" style="min-width: 190px;">
+                    <select name="employee_id" class="filter-input mr-2 mb-2 select2-searchable" style="min-width: 190px;">
                         <option value="">All Team Members</option>
                         @foreach($teamEmployees as $emp)
                             <option value="{{ $emp->id }}" {{ request('employee_id') == $emp->id ? 'selected' : '' }}>
@@ -426,14 +426,14 @@
                     </select>
 
                     <!-- Work Mode -->
-                    <select name="work_mode" class="filter-input mr-2 mb-2">
+                    <select name="work_mode" class="filter-input mr-2 mb-2 select2-searchable">
                         <option value="">All Work Modes</option>
                         <option value="wfo" {{ request('work_mode') === 'wfo' ? 'selected' : '' }}>WFO (Office)</option>
                         <option value="wfh" {{ request('work_mode') === 'wfh' ? 'selected' : '' }}>WFH (Home)</option>
                     </select>
 
                     <!-- Status Filter -->
-                    <select name="status_filter" class="filter-input mr-2 mb-2">
+                    <select name="status_filter" class="filter-input mr-2 mb-2 select2-searchable">
                         <option value="">All Statuses</option>
                         <option value="working" {{ request('status_filter') === 'working' ? 'selected' : '' }}>Currently Working</option>
                         <option value="completed" {{ request('status_filter') === 'completed' ? 'selected' : '' }}>Completed Shift</option>
@@ -445,18 +445,24 @@
 
                     @if($viewMode === 'history')
                         <!-- Date Range -->
-                        <input type="date" name="from_date" class="filter-input mr-2 mb-2" value="{{ $fromDate }}" placeholder="From Date">
-                        <input type="date" name="to_date" class="filter-input mr-2 mb-2" value="{{ $toDate }}" placeholder="To Date">
+                        <div class="mr-2 mb-2" style="min-width: 140px;">
+                            <x-form.date-picker name="from_date" id="team_from_date" :value="$fromDate" placeholder="From Date" class="filter-input" />
+                        </div>
+                        <div class="mr-2 mb-2" style="min-width: 140px;">
+                            <x-form.date-picker name="to_date" id="team_to_date" :value="$toDate" placeholder="To Date" class="filter-input" />
+                        </div>
                     @else
                         <!-- Single Date -->
-                        <input type="date" name="date" class="filter-input mr-2 mb-2" value="{{ $date }}">
+                        <div class="mr-2 mb-2" style="min-width: 140px;">
+                            <x-form.date-picker name="date" id="team_date" :value="$date" placeholder="Date" class="filter-input" />
+                        </div>
                     @endif
 
                     <!-- Search Input -->
                     <input type="text" name="search" class="filter-input mr-2 mb-2" placeholder="Search name or code..." value="{{ request('search') }}" style="min-width: 170px;">
 
                     <!-- Buttons -->
-                    <button type="submit" class="btn btn-primary font-weight-bold px-3 mr-2 mb-2" style="height: 38px; border-radius: 10px; background: var(--orb-primary); border: none;">
+                    <button type="submit" class="btn font-weight-bold text-white px-3 mr-2 mb-2" style="height: 38px; border-radius: 10px; background: linear-gradient(135deg, var(--orb-primary, #4B00E8) 0%, var(--orb-secondary, #FF5252) 100%); border: none;">
                         <i class="fas fa-search mr-1"></i> Search
                     </button>
                     <a href="{{ route('attendances.team', ['view_mode' => $viewMode]) }}" class="btn btn-light border font-weight-bold px-3 mb-2" style="height: 38px; border-radius: 10px;">
@@ -605,7 +611,7 @@
                     Showing {{ $attendances->firstItem() ?? 0 }} to {{ $attendances->lastItem() ?? 0 }} of {{ $attendances->total() }} records
                 </div>
                 <div>
-                    {{ $attendances->links() }}
+                    {{ $attendances->links('vendor.pagination.orbo') }}
                 </div>
             </div>
         </div>

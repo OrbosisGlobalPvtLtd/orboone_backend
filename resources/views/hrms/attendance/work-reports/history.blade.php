@@ -1,47 +1,86 @@
 @extends('layouts.panel', ['active' => 'attendances'])
 
-@section('page_title', 'Employee Work Report History')
+@section('page_title', 'Employee Work Report History - ' . ($summary['employee_name'] ?? 'Employee'))
 
 @section('_head')
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap4.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap4.min.css">
-@endsection
-
-@section('_content')
-
-@include('hrms.employee.partials.styles')
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 
 <style>
-    .report-page {
+    :root {
+        --orb-bg: #F6F7FB;
+        --orb-card: #FFFFFF;
+        --orb-border: #E7EAF3;
+        --orb-text: #101828;
+        --orb-muted: #667085;
+        --orb-soft: #F4F2FF;
+        --orb-shadow: 0 14px 35px rgba(16, 24, 40, .07);
+    }
+
+    body {
+        background: var(--orb-bg) !important;
+        font-family: 'Outfit', sans-serif !important;
+    }
+
+    .report-page, .att-page {
         min-height: calc(100vh - 90px);
-        background: #F6F7FB;
+        background: var(--orb-bg);
         padding: 24px;
         font-family: 'Outfit', sans-serif;
     }
+
+    .report-container, .att-container {
+        max-width: 1600px;
+        margin: 0 auto;
+    }
+
+    /* Hero Header */
     .report-header-premium {
-        background: linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%) !important;
+        background: linear-gradient(135deg, var(--orb-primary, #4B00E8) 0%, var(--orb-secondary, #6B11F4) 100%) !important;
         border-radius: 26px !important;
-        padding: 32px 36px !important;
+        padding: 28px 34px !important;
         color: #fff !important;
         display: flex !important;
         justify-content: space-between !important;
         align-items: center !important;
         gap: 20px !important;
-        box-shadow: 0 12px 30px rgba(75, 0, 232, 0.15) !important;
-        margin-bottom: 28px !important;
+        box-shadow: 0 14px 35px rgba(75, 0, 232, 0.18) !important;
+        position: relative !important;
+        overflow: hidden !important;
+        margin-bottom: 24px !important;
+        border: none !important;
     }
+
+    .report-header-premium::before {
+        content: '' !important;
+        position: absolute !important;
+        top: -50% !important;
+        right: -20% !important;
+        width: 320px !important;
+        height: 320px !important;
+        background: rgba(255, 255, 255, 0.09) !important;
+        border-radius: 50% !important;
+        filter: blur(40px) !important;
+        pointer-events: none !important;
+    }
+
     .emp-profile-pill {
         display: flex;
         align-items: center;
-        gap: 16px;
+        gap: 18px;
+        position: relative;
+        z-index: 1;
     }
+
     .emp-profile-avatar {
-        width: 64px;
-        height: 64px;
-        border-radius: 20px;
+        width: 62px;
+        height: 62px;
+        border-radius: 18px;
         background: rgba(255, 255, 255, 0.2);
         backdrop-filter: blur(10px);
-        border: 2px solid rgba(255, 255, 255, 0.3);
+        border: 2px solid rgba(255, 255, 255, 0.35);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -50,101 +89,386 @@
         color: #fff;
         overflow: hidden;
         flex-shrink: 0;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
     }
+
     .emp-profile-avatar img {
         width: 100%;
         height: 100%;
         object-fit: cover;
     }
+
+    .emp-profile-title {
+        font-size: 24px !important;
+        font-weight: 900 !important;
+        margin: 0 !important;
+        color: #fff !important;
+        letter-spacing: -0.02em !important;
+        line-height: 1.2;
+    }
+
+    .emp-profile-meta {
+        font-size: 13.5px !important;
+        color: rgba(255, 255, 255, 0.9) !important;
+        margin-top: 5px !important;
+        font-weight: 600 !important;
+    }
+
     .action-toolbar-pill {
         display: flex;
+        align-items: center;
         gap: 10px;
+        position: relative;
+        z-index: 1;
         flex-wrap: wrap;
     }
-    .btn-pill-action {
-        height: 42px;
+
+    .report-btn-pill {
+        height: 40px;
         padding: 0 20px;
         border-radius: 50px;
-        font-size: 13px;
+        font-size: 12.5px;
         font-weight: 800;
         display: inline-flex;
         align-items: center;
         gap: 8px;
         border: 1px solid rgba(255, 255, 255, 0.3);
-        background: rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.15);
         color: #FFFFFF !important;
         text-decoration: none !important;
         transition: all 0.2s ease;
     }
-    .btn-pill-action:hover {
+
+    .report-btn-pill:hover {
         background: #FFFFFF;
-        color: var(--orb-primary) !important;
+        color: var(--orb-primary, #4B00E8) !important;
         transform: translateY(-2px);
     }
-    .stats-card-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 20px;
-        margin-bottom: 28px;
+
+    .report-btn-pill.btn-white {
+        background: #FFFFFF !important;
+        color: var(--orb-primary, #4B00E8) !important;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12) !important;
     }
-    .stat-card-box {
-        background: #FFFFFF;
-        border: 1px solid #E7EAF3;
-        border-radius: 20px;
-        padding: 20px 24px;
-        box-shadow: 0 10px 25px rgba(16, 24, 40, .03);
+
+    .report-btn-pill.btn-white:hover {
+        background: #F8FAFC !important;
+        transform: translateY(-2px);
+    }
+
+    /* Summary KPI Cards matching Violations design */
+    .report-kpi-grid, .audit-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+        margin-bottom: 24px;
+    }
+
+    .att-kpi {
+        min-height: 86px;
+        padding: 12px 16px;
+        border-radius: 18px;
+        border: 1px solid var(--orb-border);
+        background: #fff;
+        box-shadow: 0 10px 24px rgba(16, 24, 40, .045);
+        position: relative;
+        overflow: hidden;
+        transition: transform .18s ease, box-shadow .18s ease;
+    }
+
+    .att-kpi:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 16px 34px rgba(16, 24, 40, .08);
+    }
+
+    .att-kpi:after {
+        content: "";
+        position: absolute;
+        right: -32px;
+        top: -34px;
+        width: 88px;
+        height: 88px;
+        border-radius: 50%;
+        background: var(--tone-soft);
+    }
+
+    .att-kpi-top {
         display: flex;
         align-items: center;
-        gap: 16px;
+        justify-content: space-between;
+        gap: 8px;
+        position: relative;
+        z-index: 1;
     }
-    .stat-card-icon {
-        width: 52px;
-        height: 52px;
-        border-radius: 16px;
-        background: #F4F2FF;
-        color: var(--orb-primary);
-        font-size: 20px;
+
+    .att-kpi-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
-        flex-shrink: 0;
+        background: var(--tone-soft);
+        color: var(--tone);
+        font-size: 15px;
     }
-    .stat-card-val {
-        font-size: 22px;
-        font-weight: 900;
-        color: #101828;
-        line-height: 1.2;
+
+    .att-kpi-value {
+        font-size: 24px;
+        line-height: 1;
+        font-weight: 950;
+        color: var(--orb-text);
     }
-    .stat-card-lbl {
-        font-size: 12px;
-        font-weight: 700;
-        color: #667085;
+
+    .att-kpi-label {
+        margin-top: 10px;
+        font-size: 10.5px;
+        color: var(--orb-muted);
+        font-weight: 950;
         text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin-top: 2px;
-    }
-    .orb-table-card {
-        background: #fff;
-        border-radius: 24px;
-        border: 1px solid #E7EAF3;
-        box-shadow: 0 14px 35px rgba(16,24,40,.07);
+        letter-spacing: .035em;
+        white-space: nowrap;
         overflow: hidden;
-        margin-bottom: 30px;
+        text-overflow: ellipsis;
+        position: relative;
+        z-index: 1;
     }
-    .badge-wfo { background: #E6F4EA; color: #137333; }
-    .badge-wfh { background: #E8F0FE; color: #1A73E8; }
-    .badge-premium-pill {
-        padding: 6px 14px;
-        border-radius: 50px;
-        font-weight: 700;
+
+    .att-kpi-line {
+        position: absolute;
+        left: 14px;
+        right: 14px;
+        bottom: 6px;
+        height: 3px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, var(--tone), transparent);
+    }
+
+    .tone-success { --tone: #12B76A; --tone-soft: rgba(18, 183, 106, .12); }
+    .tone-danger  { --tone: #F04438; --tone-soft: rgba(240, 68, 56, .12); }
+    .tone-warning { --tone: #F79009; --tone-soft: rgba(247, 144, 9, .14); }
+    .tone-orange  { --tone: #EA580C; --tone-soft: rgba(234, 88, 12, .13); }
+    .tone-amber   { --tone: #D97706; --tone-soft: rgba(217, 119, 6, .13); }
+    .tone-blocked { --tone: #B42318; --tone-soft: rgba(180, 35, 24, .13); }
+    .tone-purple  { --tone: #7000FF; --tone-soft: rgba(112, 0, 255, .12); }
+    .tone-blue    { --tone: #175CD3; --tone-soft: rgba(23, 92, 211, .12); }
+    .tone-emerald { --tone: #027A48; --tone-soft: rgba(2, 122, 72, .12); }
+    .tone-indigo  { --tone: #4B00E8; --tone-soft: rgba(75, 0, 232, .12); }
+
+    /* Main Container Card */
+    .att-card, .orb-table-card {
+        background: #FFFFFF !important;
+        border-radius: 24px !important;
+        border: 1px solid var(--orb-border) !important;
+        box-shadow: var(--orb-shadow) !important;
+        overflow: hidden !important;
+        margin-bottom: 30px !important;
+    }
+
+    /* Section Head inside Card */
+    .att-section-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 24px 16px 24px;
+        border-bottom: 1px solid var(--orb-border);
+        background: #FFFFFF;
+    }
+
+    .att-section-title {
+        font-size: 17px;
+        font-weight: 900;
+        color: var(--orb-text);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .att-section-title i {
+        color: var(--orb-primary, #4B00E8);
+    }
+
+    /* Filter Panel below Section Head */
+    .att-filter-panel {
+        padding: 18px 24px;
+        background: #FAFBFC;
+        border-bottom: 1px solid var(--orb-border);
+    }
+
+    .att-filter-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        gap: 14px;
+        align-items: flex-end;
+    }
+
+    .att-filter-grid label {
         font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--orb-muted);
+        margin-bottom: 6px;
+        display: block;
+    }
+
+    .att-filter-grid .form-control {
+        height: 42px;
+        border-radius: 12px;
+        border: 1px solid var(--orb-border);
+        background: #FFFFFF;
+        padding: 8px 14px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--orb-text);
+        width: 100%;
+        transition: all 0.2s ease;
+    }
+
+    .att-filter-grid .form-control:focus {
+        border-color: var(--orb-primary, #4B00E8);
+        box-shadow: 0 0 0 3px rgba(75, 0, 232, 0.1);
+    }
+
+    .att-filter-panel .select2-container .select2-selection--single {
+        height: 42px !important;
+        border-radius: 12px !important;
+        border: 1px solid var(--orb-border) !important;
+        padding: 6px 12px !important;
+        display: flex !important;
+        align-items: center !important;
+        background: #FFFFFF !important;
+    }
+
+    .att-filter-panel .select2-container--default .select2-selection--single .select2-selection__arrow {
+        top: 8px !important;
+    }
+
+    .att-filter-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .att-search-btn {
+        height: 42px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, var(--orb-primary, #4B00E8) 0%, var(--orb-secondary, #6B11F4) 100%);
+        color: #FFFFFF;
+        border: none;
+        padding: 0 20px;
+        font-size: 13px;
+        font-weight: 800;
         display: inline-flex;
         align-items: center;
-        gap: 6px;
+        justify-content: center;
+        gap: 7px;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(75, 0, 232, 0.2);
+        transition: all 0.2s ease;
+        white-space: nowrap;
     }
+
+    .att-search-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(75, 0, 232, 0.3);
+        color: #FFFFFF;
+    }
+
+    .att-reset-btn {
+        height: 42px;
+        width: 42px;
+        border-radius: 12px;
+        background: #FFFFFF;
+        border: 1px solid var(--orb-border);
+        color: var(--orb-muted);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        flex-shrink: 0;
+        text-decoration: none !important;
+    }
+
+    .att-reset-btn:hover {
+        background: #F8FAFC;
+        color: var(--orb-primary, #4B00E8);
+        border-color: #D9CCFF;
+    }
+
+    /* Table Component */
+    .att-table-wrap, .orb-table-scroll {
+        width: 100%;
+        overflow-x: auto;
+    }
+
+    .att-table, .report-table {
+        width: 100%;
+        margin-bottom: 0;
+        border-collapse: collapse;
+    }
+
+    .att-table thead th, .report-table thead th {
+        background: #FAFBFC;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #475467;
+        padding: 14px 18px;
+        border-bottom: 1px solid var(--orb-border);
+        border-top: none;
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+
+    .att-table tbody td, .report-table tbody td {
+        padding: 14px 18px;
+        font-size: 13px;
+        vertical-align: middle;
+        border-bottom: 1px solid var(--orb-border);
+        color: var(--orb-text);
+        background: #FFFFFF;
+        transition: background 0.15s ease;
+    }
+
+    .att-table tbody tr:hover td, .report-table tbody tr:hover td {
+        background: #F9FAFB !important;
+    }
+
+    /* Badges */
+    .badge-premium-pill {
+        font-size: 11px;
+        font-weight: 800;
+        padding: 4px 10px;
+        border-radius: 50px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        letter-spacing: 0.03em;
+    }
+
+    .badge-wfo { background: #ECFDF3; color: #027A48; border: 1px solid #A6F4C5; }
+    .badge-wfh { background: #EFF8FF; color: #175CD3; border: 1px solid #B2DDFF; }
+
+    .badge-gross-pill {
+        background: #FEF7C3;
+        color: #B54708;
+        border: 1px solid #FEE4E2;
+        border-radius: 8px;
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 800;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
     .project-tag-pill {
         background: #F4F2FF;
-        color: var(--orb-primary);
+        color: var(--orb-primary, #4B00E8);
         border: 1px solid rgba(75, 0, 232, 0.15);
         font-weight: 800;
         font-size: 11.5px;
@@ -156,19 +480,21 @@
         max-width: 100%;
         margin-bottom: 6px;
     }
+
     .work-summary-snippet {
-        font-size: 13px;
+        font-size: 12.5px;
         color: #1E293B;
         line-height: 1.5;
-        max-width: 100%;
-        word-break: break-word;
+        font-weight: 500;
     }
+
     .work-tasks-mini-list {
         display: flex;
         flex-wrap: wrap;
         gap: 5px;
         margin-top: 6px;
     }
+
     .mini-task-pill {
         font-size: 11px;
         font-weight: 700;
@@ -181,16 +507,19 @@
         align-items: center;
         gap: 4px;
     }
+
     .mini-task-pill.done {
         background: #ECFDF5;
         border-color: #A7F3D0;
         color: #065F46;
     }
+
     .mini-task-pill.pending {
         background: #FFFBEB;
         border-color: #FDE68A;
         color: #92400E;
     }
+
     .mini-task-more {
         font-size: 10.5px;
         font-weight: 800;
@@ -199,10 +528,65 @@
         background: #F1F5F9;
         border-radius: 6px;
     }
-</style>
 
-<div class="report-page">
-    <div class="container-fluid max-w-1500">
+    /* Action Buttons */
+    .btn-action-primary {
+        height: 34px;
+        padding: 0 14px;
+        border-radius: 10px;
+        font-size: 12px;
+        font-weight: 800;
+        background: #F4F2FF;
+        color: var(--orb-primary, #4B00E8);
+        border: 1px solid rgba(75, 0, 232, 0.15);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s ease;
+        text-decoration: none !important;
+        cursor: pointer;
+    }
+
+    .btn-action-primary:hover {
+        background: var(--orb-primary, #4B00E8);
+        color: #FFFFFF !important;
+        box-shadow: 0 4px 10px rgba(75, 0, 232, 0.25);
+    }
+
+    /* DataTables wrapper adjustments */
+    .dataTables_wrapper .dataTables_length,
+    .dataTables_wrapper .dataTables_filter,
+    .dataTables_wrapper .dataTables_info,
+    .dataTables_wrapper .dataTables_paginate {
+        display: none !important;
+    }
+
+    @media (max-width: 1200px) {
+        .report-kpi-grid, .audit-kpi-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 768px) {
+        .report-header-premium {
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 24px 20px !important;
+        }
+        .report-kpi-grid, .audit-kpi-grid {
+            grid-template-columns: 1fr;
+        }
+        .att-filter-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+@endsection
+
+@section('_content')
+
+<div class="report-page att-page">
+    <div class="report-container att-container">
 
         <!-- Hero Header -->
         <div class="report-header-premium">
@@ -215,113 +599,179 @@
                     @endif
                 </div>
                 <div>
-                    <h3 class="m-0 font-weight-bold text-white">{{ $summary['employee_name'] }}</h3>
-                    <div class="text-white-50 font-weight-bold mt-1" style="font-size: 14px;">
+                    <h3 class="emp-profile-title">{{ $summary['employee_name'] }}</h3>
+                    <div class="emp-profile-meta">
                         Code: {{ $summary['employee_code'] }} &bull; {{ $summary['department'] }} &bull; {{ $summary['designation'] }}
                     </div>
                 </div>
             </div>
 
             <div class="action-toolbar-pill">
-                <a href="{{ route('hrms.attendance.work-reports.employee-history.print', ['employee' => $employee->id, 'from_date' => request('from_date'), 'to_date' => request('to_date')]) }}" 
-                   target="_blank" class="btn-pill-action" style="background: rgba(255, 255, 255, 0.95); color: var(--orb-primary) !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
-                    <i class="fas fa-file-pdf text-danger"></i> Print / Save PDF
-                </a>
-                <a href="{{ route('hrms.attendance.work-reports') }}" class="btn-pill-action">
+                <a href="{{ route('hrms.attendance.work-reports') }}" class="report-btn-pill">
                     <i class="fas fa-arrow-left"></i> All Work Reports
                 </a>
             </div>
         </div>
 
-        <!-- Metric Summary Cards Grid -->
-        <div class="stats-card-grid" style="grid-template-columns: repeat(4, 1fr);">
-            <div class="stat-card-box">
-                <div class="stat-card-icon"><i class="fas fa-clipboard-check"></i></div>
-                <div>
-                    <div class="stat-card-val">{{ $summary['total_reports'] }}</div>
-                    <div class="stat-card-lbl">Daily Reports Logged</div>
+        <!-- Summary KPI Cards matching Violations design -->
+        <div class="report-kpi-grid audit-kpi-grid">
+            <div class="att-kpi tone-purple">
+                <div class="att-kpi-top">
+                    <div class="att-kpi-icon"><i class="fas fa-clipboard-check"></i></div>
+                    <div class="att-kpi-value">{{ number_format($summary['total_reports']) }}</div>
                 </div>
+                <div class="att-kpi-label">Daily Reports Logged</div>
+                <div class="att-kpi-line"></div>
             </div>
 
-            <div class="stat-card-box">
-                <div class="stat-card-icon"><i class="fas fa-clock"></i></div>
-                <div>
-                    <div class="stat-card-val" style="font-size: 19px;">{{ $summary['total_gross_formatted'] }}</div>
-                    <div class="stat-card-lbl">Avg {{ $summary['avg_daily_formatted'] }}</div>
+            <div class="att-kpi tone-amber">
+                <div class="att-kpi-top">
+                    <div class="att-kpi-icon"><i class="fas fa-clock"></i></div>
+                    <div class="att-kpi-value" style="font-size: 19px; line-height: 1.2;">{{ $summary['total_gross_formatted'] }}</div>
                 </div>
+                <div class="att-kpi-label">Avg {{ $summary['avg_daily_formatted'] }}</div>
+                <div class="att-kpi-line"></div>
             </div>
 
-            <div class="stat-card-box">
-                <div class="stat-card-icon"><i class="fas fa-tasks"></i></div>
-                <div>
-                    <div class="stat-card-val" style="font-size: 19px;">{{ $summary['completed_tasks'] }} <span style="font-size: 13px; color: #667085; font-weight: 700;">/ {{ $summary['total_tasks'] }}</span></div>
-                    <div class="stat-card-lbl">{{ $summary['completion_rate'] }}% Tasks Completed</div>
+            <div class="att-kpi tone-success">
+                <div class="att-kpi-top">
+                    <div class="att-kpi-icon"><i class="fas fa-tasks"></i></div>
+                    <div class="att-kpi-value" style="font-size: 19px; line-height: 1.2;">
+                        <span>{{ $summary['completed_tasks'] }}</span>
+                        <span style="font-size: 14px; color: #64748B; font-weight: 700;">/ {{ $summary['total_tasks'] }}</span>
+                    </div>
                 </div>
+                <div class="att-kpi-label">{{ $summary['completion_rate'] }}% Tasks Completed</div>
+                <div class="att-kpi-line"></div>
             </div>
 
-            <div class="stat-card-box">
-                <div class="stat-card-icon"><i class="fas fa-laptop-house"></i></div>
-                <div>
-                    <div class="stat-card-val" style="font-size: 19px;">{{ $summary['wfo_count'] }} <span style="font-size: 12px; color: #166534; font-weight: 800;">WFO</span> &bull; {{ $summary['wfh_count'] }} <span style="font-size: 12px; color: #1E40AF; font-weight: 800;">WFH</span></div>
-                    <div class="stat-card-lbl">Work Mode Distribution</div>
+            <div class="att-kpi tone-orange">
+                <div class="att-kpi-top">
+                    <div class="att-kpi-icon"><i class="fas fa-laptop-house"></i></div>
+                    <div class="att-kpi-value" style="font-size: 19px; line-height: 1.2;">
+                        <span>{{ $summary['wfo_count'] }} <small style="font-size: 11px; font-weight: 800; color: #027A48;">WFO</small></span>
+                        <span style="font-size: 14px; opacity: 0.4;">/</span>
+                        <span>{{ $summary['wfh_count'] }} <small style="font-size: 11px; font-weight: 800; color: #175CD3;">WFH</small></span>
+                    </div>
                 </div>
+                <div class="att-kpi-label">Work Mode Distribution</div>
+                <div class="att-kpi-line"></div>
             </div>
         </div>
 
-        <!-- Data Card -->
-        <div class="card orb-table-card">
-            <!-- Filter Row -->
-            <div class="p-4 bg-light border-bottom">
-                <form method="GET" action="{{ route('hrms.attendance.work-reports.employee-history', $employee->id) }}" class="row align-items-end">
-                    <div class="col-md-2 mb-2 mb-md-0">
-                        <label class="font-weight-bold text-muted small text-uppercase mb-1">From Date</label>
-                        <input type="date" name="from_date" class="form-control rounded-10" value="{{ request('from_date') }}">
-                    </div>
-                    <div class="col-md-2 mb-2 mb-md-0">
-                        <label class="font-weight-bold text-muted small text-uppercase mb-1">To Date</label>
-                        <input type="date" name="to_date" class="form-control rounded-10" value="{{ request('to_date') }}">
-                    </div>
-                    <div class="col-md-3 mb-2 mb-md-0">
-                        <label class="font-weight-bold text-muted small text-uppercase mb-1">Search Keyword</label>
-                        <input type="text" id="dtSearchInput" class="form-control rounded-10" placeholder="Search tasks or summary...">
-                    </div>
-                    <div class="col-md-2 mb-2 mb-md-0">
-                        <label class="font-weight-bold text-muted small text-uppercase mb-1">Per Page</label>
-                        <select name="per_page" id="filterPerPage" class="form-control rounded-10 font-weight-bold">
-                            <option value="10" {{ (int)request('per_page', 25) === 10 ? 'selected' : '' }}>10 rows</option>
-                            <option value="25" {{ (int)request('per_page', 25) === 25 ? 'selected' : '' }}>25 rows</option>
-                            <option value="50" {{ (int)request('per_page', 25) === 50 ? 'selected' : '' }}>50 rows</option>
-                            <option value="100" {{ (int)request('per_page', 25) === 100 ? 'selected' : '' }}>100 rows</option>
-                            <option value="250" {{ (int)request('per_page', 25) === 250 ? 'selected' : '' }}>250 rows</option>
-                            <option value="-1" {{ (int)request('per_page', 25) === -1 ? 'selected' : '' }}>All rows</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3 text-md-right d-flex align-items-end justify-content-end">
-                        <button type="submit" class="btn btn-primary rounded-10 font-weight-bold px-3 mr-2" style="background: var(--orb-primary); border: none;">
-                            <i class="fas fa-search mr-1"></i> Search
-                        </button>
-                        <a href="{{ route('hrms.attendance.work-reports.employee-history', $employee->id) }}" class="btn btn-outline-secondary rounded-10 font-weight-bold px-3">
-                            <i class="fas fa-undo mr-1"></i> Reset
-                        </a>
+        <!-- Main Card with Filter, Toolbar, and Table -->
+        <div class="card att-card orb-table-card">
+            <!-- Card Section Head -->
+            <div class="att-section-head">
+                <div class="att-section-title-wrap">
+                    <h4 class="att-section-title">
+                        <i class="fas fa-history"></i> Employee Work Report History
+                    </h4>
+                    <p class="text-muted small mb-0 mt-1 font-weight-semibold">
+                        Review daily work deliverables, time duration, and structured achievements for {{ $summary['employee_name'] }}.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Filter Panel -->
+            <div class="att-filter-panel">
+                <form method="GET" action="{{ route('hrms.attendance.work-reports.employee-history', $employee->id) }}" id="historyFilterForm">
+                    <input type="hidden" name="per_page" id="hiddenPerPageInput" value="{{ request('per_page', 25) }}">
+                    <div class="att-filter-grid">
+                        <div>
+                            <label>Work Mode</label>
+                            <select name="work_mode" id="hist_work_mode" class="form-control select2-searchable">
+                                <option value="">All Modes</option>
+                                <option value="WFO" {{ request('work_mode') === 'WFO' ? 'selected' : '' }}>WFO (Office)</option>
+                                <option value="WFH" {{ request('work_mode') === 'WFH' ? 'selected' : '' }}>WFH (Remote)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label>Month</label>
+                            <select name="month" id="hist_month_select" class="form-control select2-searchable">
+                                @php
+                                    $activeMonth = request('month', $selectedMonth ?? now()->format('Y-m'));
+                                    $isCustom = request()->filled('from_date') || request()->filled('to_date') || $activeMonth === 'custom';
+                                @endphp
+                                <option value="custom" {{ $isCustom ? 'selected' : '' }}>Custom Date Range</option>
+                                @foreach($availableMonths as $val => $lbl)
+                                    <option value="{{ $val }}" {{ (!$isCustom && $activeMonth === $val) ? 'selected' : '' }}>
+                                        {{ $lbl }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div id="hist_custom_dates_wrap" style="{{ $isCustom ? '' : 'display: none;' }}">
+                            <div class="d-flex gap-2" style="gap: 10px;">
+                                <div style="flex: 1;">
+                                    <label>From Date</label>
+                                    <x-form.date-picker name="from_date" id="wr_hist_from" :value="request('from_date')" placeholder="dd-mm-yyyy" class="form-control" />
+                                </div>
+                                <div style="flex: 1;">
+                                    <label>To Date</label>
+                                    <x-form.date-picker name="to_date" id="wr_hist_to" :value="request('to_date')" placeholder="dd-mm-yyyy" class="form-control" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label>&nbsp;</label>
+                            <div class="att-filter-actions">
+                                <button type="submit" class="att-search-btn">
+                                    <i class="fas fa-search"></i> Search
+                                </button>
+                                <a href="{{ route('hrms.attendance.work-reports.employee-history', $employee->id) }}" class="att-reset-btn" title="Reset Filters">
+                                    <i class="fas fa-undo"></i>
+                                </a>
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>
 
-            <div class="table-responsive p-3">
-                <table class="table table-hover align-middle mb-0" id="employeeHistoryTable">
-                    <thead class="bg-light">
+            <!-- Entries & Export Toolbar -->
+            <div class="orb-table-tools-bar eo-toolbar">
+                <div class="orb-table-length-box eo-toolbar-left">
+                    <div class="eo-entries-wrapper">
+                        <label class="eo-entries-label">
+                            Show
+                            <select id="recordsPerPageSelect" class="eo-entries-select">
+                                @foreach([10, 25, 50, 100, 250] as $size)
+                                    <option value="{{ $size }}" {{ (int) request('per_page', 25) === $size ? 'selected' : '' }}>{{ $size }}</option>
+                                @endforeach
+                                <option value="all" {{ (request('per_page') === 'all' || request('per_page') == -1) ? 'selected' : '' }}>All</option>
+                            </select>
+                            entries
+                        </label>
+                    </div>
+                </div>
+
+                <div id="historyExportButtons" class="orb-table-export-buttons eo-toolbar-right">
+                    <x-ui.export-buttons table="employeeHistoryTable" />
+                </div>
+            </div>
+
+            <!-- Table Section -->
+            <div class="att-table-wrap">
+                <table class="att-table table table-hover" id="employeeHistoryTable">
+                    <thead>
                         <tr>
-                            <th class="text-center" style="width: 45px;">S.No.</th>
+                            <th class="text-center" style="width: 50px; min-width: 50px;">#</th>
                             <th style="min-width: 120px;">Date</th>
                             <th style="min-width: 90px;">Mode</th>
-                            <th style="min-width: 120px;">Shift Context</th>
-                            <th style="min-width: 110px;">Gross Duration</th>
-                            <th style="min-width: 380px; width: 42%;">Work Summary Description</th>
-                            <th class="text-center" style="min-width: 100px;">Structured Tasks</th>
-                            <th class="text-right pr-4 no-export" style="width: 110px;">Actions</th>
+                            <th style="min-width: 130px;">Shift Context</th>
+                            <th style="min-width: 120px;">Gross Work</th>
+                            <th style="min-width: 380px; width: 44%;">Work Summary Description</th>
+                            <th style="min-width: 200px; width: 22%;">Structured Tasks</th>
+                            <th class="text-right pr-4 no-export" style="width: 110px; min-width: 110px;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
+                        @php
+                            $startIdx = method_exists($workLogs, 'currentPage') ? (($workLogs->currentPage() - 1) * $workLogs->perPage()) : 0;
+                        @endphp
                         @forelse($workLogs as $log)
                         @php
                             $attendance = $log->attendance;
@@ -456,12 +906,39 @@
                             ];
                         @endphp
                         <tr>
-                            <td class="text-center font-weight-bold text-muted">{{ $loop->iteration }}</td>
-                            <td><strong>{{ $log->work_date ? $log->work_date->format('d M Y') : '-' }}</strong></td>
-                            <td><span class="badge-premium-pill {{ $modeBadgeClass }}">{{ $modeText }}</span></td>
-                            <td>{{ optional($attendance)->attendanceTime->name ?? 'Default Shift' }}</td>
-                            <td><strong class="text-dark">{{ $grossWork }}</strong></td>
-                            <td style="min-width: 380px;">
+                            <td class="text-center font-weight-bold text-muted table-sr-no" style="font-size: 12px;" data-export="{{ $startIdx + $loop->iteration }}">
+                                {{ $startIdx + $loop->iteration }}
+                            </td>
+                            <td data-export="{{ $log->work_date ? $log->work_date->format('d M Y') : '-' }}" data-order="{{ $log->work_date ? $log->work_date->format('Y-m-d') : '' }}">
+                                <div class="font-weight-bold text-dark" style="font-size: 13px; white-space: nowrap;">
+                                    {{ $log->work_date ? $log->work_date->format('d M Y') : '-' }}
+                                </div>
+                                @if($log->work_date)
+                                <div class="small text-muted font-weight-semibold">
+                                    {{ $log->work_date->format('l') }}
+                                </div>
+                                @endif
+                            </td>
+                            <td data-export="{{ $modeText }}">
+                                <span class="badge-premium-pill {{ $modeBadgeClass }}">
+                                    @if($mode === 'wfh')
+                                        <i class="fas fa-laptop-house mr-1"></i> WFH
+                                    @else
+                                        <i class="fas fa-building mr-1"></i> WFO
+                                    @endif
+                                </span>
+                            </td>
+                            <td data-export="{{ optional($attendance)->attendanceTime->name ?? 'Default Shift' }}">
+                                <div class="font-weight-bold text-dark" style="font-size: 12.5px;">
+                                    {{ optional($attendance)->attendanceTime->name ?? 'Default Shift' }}
+                                </div>
+                            </td>
+                            <td data-export="{{ $grossWork }}">
+                                <div class="badge-gross-pill" style="white-space: nowrap;">
+                                    <i class="fas fa-stopwatch mr-1"></i> {{ $grossWork }}
+                                </div>
+                            </td>
+                            <td data-export="{{ $cleanSummary }}" style="min-width: 380px;">
                                 @if(!empty($title) && $title !== 'Work Report Submitted' && strtolower(trim($title)) !== strtolower(trim($cleanSummary)))
                                 <div class="project-tag-pill" title="{{ $title }}">
                                     <i class="fas fa-folder-open"></i> {{ $title }}
@@ -487,33 +964,41 @@
                                 </div>
                                 @endif
                             </td>
-                            <td class="text-center">
+                            <td data-export="{{ $tasksCount }} Tasks" class="text-center">
                                 @if($tasksCount > 0)
-                                    <span class="badge badge-light border px-2 py-1 font-weight-bold">
+                                    <span class="badge badge-light border px-2 py-1 font-weight-bold" style="font-size: 12px;">
                                         <i class="fas fa-list-check text-primary"></i> {{ $tasksCount }} Tasks
                                     </span>
                                 @else
                                     <span class="text-muted font-italic" style="font-size:12px;">None</span>
                                 @endif
                             </td>
-                            <td class="text-right pr-4">
-                                <button type="button" class="btn btn-sm btn-light border rounded-10 px-3 font-weight-bold"
+                            <td class="text-right pr-4 no-export" style="white-space: nowrap;">
+                                <button type="button" class="btn-action-primary"
                                         data-work-log="{{ json_encode($logPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}"
-                                        onclick="parseAndOpenWorkReport(this)">
-                                    <i class="fas fa-eye text-primary"></i> Details
+                                        onclick="parseAndOpenWorkReport(this)"
+                                        title="View Full Report Details">
+                                    <i class="fas fa-eye"></i> Details
                                 </button>
                             </td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="8" class="text-center py-5 text-muted font-weight-bold">
-                                No work report history found for this employee in the selected date range.
+                            <td colspan="8" class="text-center py-5 text-muted">
+                                <i class="fas fa-clipboard-list fa-3x d-block mb-3 opacity-50"></i>
+                                <h5 class="font-weight-bold text-dark mb-1">No Work Report History Found</h5>
+                                <p class="text-muted font-weight-semibold mb-0">Try adjusting your filters or date range.</p>
                             </td>
                         </tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
+
+            <!-- Server-Side Pagination using Orbo Theme Template -->
+            @if(method_exists($workLogs, 'links'))
+                {{ $workLogs->appends(request()->query())->links('vendor.pagination.orbo') }}
+            @endif
         </div>
 
     </div>
@@ -534,278 +1019,79 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
 $(function() {
-    var initialPageLen = parseInt($('#filterPerPage').val()) || 25;
+    // Initialize Select2 on filter panel
+    if ($.fn.select2) {
+        $('.select2-searchable').select2({
+            width: '100%',
+            minimumResultsForSearch: 8
+        });
+    }
+
+    // Month Selector Change Toggle
+    $('#hist_month_select').on('change', function() {
+        if ($(this).val() === 'custom') {
+            $('#hist_custom_dates_wrap').slideDown(180);
+        } else {
+            $('#hist_custom_dates_wrap').slideUp(180);
+            $('#wr_hist_from').val('');
+            $('#wr_hist_to').val('');
+        }
+    });
+
+    // Handle Server-Side Page Length Change
+    $('#recordsPerPageSelect').on('change', function() {
+        var len = $(this).val();
+        $('#hiddenPerPageInput').val(len);
+        $('#historyFilterForm').submit();
+    });
+
+    // Initialize DataTable for Exports and Sorting only (server handles pagination)
     var table = $('#employeeHistoryTable').DataTable({
-        pageLength: initialPageLen,
-        lengthMenu: [[10, 25, 50, 100, 250, 500, -1], [10, 25, 50, 100, 250, 500, "All"]],
+        paging: false,
         ordering: true,
-        searching: true,
-        paging: true,
-        info: true,
+        searching: false,
+        info: false,
         buttons: [
-            { extend: 'csvHtml5', text: '<i class="fas fa-file-csv text-info"></i> CSV', className: 'btn btn-sm btn-outline-secondary rounded-8 mr-1', exportOptions: { columns: ':not(.no-export)' } },
-            { extend: 'excelHtml5', text: '<i class="fas fa-file-excel text-success"></i> Excel', className: 'btn btn-sm btn-outline-secondary rounded-8 mr-1', exportOptions: { columns: ':not(.no-export)' } },
+            { 
+                extend: 'csvHtml5', 
+                text: 'CSV', 
+                className: 'd-none', 
+                exportOptions: { columns: ':not(.no-export)' } 
+            },
+            { 
+                extend: 'excelHtml5', 
+                text: 'Excel', 
+                className: 'd-none', 
+                exportOptions: { columns: ':not(.no-export)' } 
+            },
             { 
                 extend: 'pdfHtml5', 
-                text: '<i class="fas fa-file-pdf text-danger"></i> PDF', 
-                className: 'btn btn-sm btn-outline-secondary rounded-8 mr-1', 
+                text: 'PDF', 
+                className: 'd-none', 
                 orientation: 'landscape',
                 pageSize: 'A4',
-                exportOptions: { columns: ':not(.no-export)' },
-                customize: function(doc) {
-                    doc.pageMargins = [20, 20, 20, 20];
-                    doc.defaultStyle.fontSize = 8.5;
-                    if (doc.styles.tableHeader) {
-                        doc.styles.tableHeader.fontSize = 9.5;
-                        doc.styles.tableHeader.fillColor = '#1E293B';
-                        doc.styles.tableHeader.color = '#FFFFFF';
-                    }
-                    if (doc.content && doc.content[1] && doc.content[1].table) {
-                        doc.content[1].table.widths = ['4%', '12%', '9%', '12%', '10%', '45%', '8%'];
-                    }
-                }
+                exportOptions: { columns: ':not(.no-export)' }
             },
             { 
                 extend: 'print', 
-                text: '<i class="fas fa-print text-primary"></i> Print Table', 
-                className: 'btn btn-sm btn-outline-secondary rounded-8',
-                exportOptions: { columns: ':not(.no-export)' },
-                customize: function(win) {
-                    $(win.document.body).css({
-                        'font-family': "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-                        'color': '#0F172A',
-                        'background': '#ffffff',
-                        'padding': '16px 20px',
-                        'font-size': '11px',
-                        '-webkit-print-color-adjust': 'exact',
-                        'print-color-adjust': 'exact'
-                    });
-
-                    var customStyles = `
-                        @page {
-                            size: landscape A4;
-                            margin: 10mm 12mm 12mm 12mm;
-                        }
-                        * {
-                            -webkit-print-color-adjust: exact !important;
-                            print-color-adjust: exact !important;
-                            box-sizing: border-box;
-                        }
-                        body {
-                            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
-                            color: #0F172A !important;
-                            background: #ffffff !important;
-                            padding: 0 !important;
-                        }
-                        .dt-print-header {
-                            display: flex;
-                            justify-content: space-between;
-                            align-items: center;
-                            border-bottom: 2px solid #0F172A;
-                            padding-bottom: 12px;
-                            margin-bottom: 16px;
-                        }
-                        .dt-print-brand {
-                            display: flex;
-                            align-items: center;
-                            gap: 12px;
-                        }
-                        .dt-print-logo {
-                            max-height: 42px;
-                            max-width: 150px;
-                            object-fit: contain;
-                        }
-                        .dt-print-title {
-                            font-size: 18px;
-                            font-weight: 900;
-                            color: #0F172A;
-                            margin: 0;
-                            line-height: 1.1;
-                        }
-                        .dt-print-subtitle {
-                            font-size: 10.5px;
-                            font-weight: 700;
-                            color: #64748B;
-                            text-transform: uppercase;
-                            letter-spacing: 0.08em;
-                            margin-top: 3px;
-                        }
-                        .dt-print-meta {
-                            text-align: right;
-                            font-size: 10px;
-                            color: #64748B;
-                            font-weight: 600;
-                        }
-                        .dt-print-badge {
-                            display: inline-block;
-                            background: #F1F5F9;
-                            border: 1px solid #CBD5E1;
-                            color: #334155;
-                            font-size: 9px;
-                            font-weight: 800;
-                            text-transform: uppercase;
-                            letter-spacing: 0.06em;
-                            padding: 3px 8px;
-                            border-radius: 4px;
-                            margin-bottom: 4px;
-                        }
-                        table.dataTable {
-                            width: 100% !important;
-                            border-collapse: collapse !important;
-                            margin: 0 !important;
-                            font-size: 11px !important;
-                        }
-                        table.dataTable thead th {
-                            background: #0F172A !important;
-                            color: #ffffff !important;
-                            font-size: 10.5px !important;
-                            font-weight: 800 !important;
-                            text-transform: uppercase !important;
-                            letter-spacing: 0.05em !important;
-                            padding: 10px 10px !important;
-                            border: 1px solid #0F172A !important;
-                            vertical-align: middle !important;
-                        }
-                        table.dataTable thead th:nth-child(1) { width: 4% !important; text-align: center; }
-                        table.dataTable thead th:nth-child(2) { width: 12% !important; }
-                        table.dataTable thead th:nth-child(3) { width: 8% !important; }
-                        table.dataTable thead th:nth-child(4) { width: 12% !important; }
-                        table.dataTable thead th:nth-child(5) { width: 10% !important; }
-                        table.dataTable thead th:nth-child(6) { width: 46% !important; }
-                        table.dataTable thead th:nth-child(7) { width: 8% !important; text-align: center; }
-
-                        table.dataTable tbody td {
-                            padding: 9px 10px !important;
-                            border: 1px solid #E2E8F0 !important;
-                            font-size: 11px !important;
-                            color: #1E293B !important;
-                            vertical-align: top !important;
-                            background: #ffffff !important;
-                            line-height: 1.45 !important;
-                        }
-                        table.dataTable tbody tr:nth-child(even) td {
-                            background: #F8FAFC !important;
-                        }
-                        table.dataTable tbody tr {
-                            page-break-inside: avoid !important;
-                            break-inside: avoid !important;
-                        }
-                        .project-tag-pill {
-                            background: #EEF2FF !important;
-                            color: #4338CA !important;
-                            border: 1px solid #C7D2FE !important;
-                            font-weight: 800 !important;
-                            font-size: 10px !important;
-                            padding: 2px 6px !important;
-                            border-radius: 4px !important;
-                            display: inline-block !important;
-                            margin-bottom: 4px !important;
-                        }
-                        .work-summary-snippet {
-                            font-size: 11.5px !important;
-                            color: #1E293B !important;
-                            line-height: 1.45 !important;
-                            max-width: 100% !important;
-                            display: block !important;
-                            word-wrap: break-word !important;
-                            white-space: normal !important;
-                        }
-                        .work-tasks-mini-list {
-                            margin-top: 5px !important;
-                            display: flex !important;
-                            flex-wrap: wrap !important;
-                            gap: 4px !important;
-                        }
-                        .mini-task-pill {
-                            font-size: 9.5px !important;
-                            padding: 2px 6px !important;
-                            border-radius: 4px !important;
-                            background: #F1F5F9 !important;
-                            border: 1px solid #CBD5E1 !important;
-                            color: #334155 !important;
-                            display: inline-flex !important;
-                            align-items: center !important;
-                            gap: 3px !important;
-                        }
-                        .mini-task-pill.done {
-                            background: #ECFDF5 !important;
-                            border-color: #A7F3D0 !important;
-                            color: #065F46 !important;
-                        }
-                        .badge-premium-pill {
-                            padding: 3px 7px !important;
-                            border-radius: 4px !important;
-                            font-size: 9.5px !important;
-                            font-weight: 800 !important;
-                            display: inline-block !important;
-                        }
-                        .badge-wfo { background: #ECFDF5 !important; color: #065F46 !important; border: 1px solid #A7F3D0 !important; }
-                        .badge-wfh { background: #EFF6FF !important; color: #1E40AF !important; border: 1px solid #BFDBFE !important; }
-                        .dt-print-footer {
-                            margin-top: 16px;
-                            padding-top: 10px;
-                            border-top: 1px solid #E2E8F0;
-                            display: flex;
-                            justify-content: space-between;
-                            font-size: 9.5px;
-                            color: #64748B;
-                            font-weight: 600;
-                        }
-                    `;
-
-                    var styleElem = win.document.createElement('style');
-                    styleElem.type = 'text/css';
-                    styleElem.innerHTML = customStyles;
-                    win.document.head.appendChild(styleElem);
-
-                    $(win.document.body).find('h1').remove();
-
-                    var headerHtml = `
-                        <div class="dt-print-header">
-                            <div class="dt-print-brand">
-                                @if(branding_logo())
-                                    <img src="{{ branding_logo() }}" alt="{{ company_name() }}" class="dt-print-logo">
-                                @endif
-                                <div>
-                                    <div class="dt-print-title">{{ company_name() }}</div>
-                                    <div class="dt-print-subtitle">Work Report History &bull; {{ $summary['employee_name'] }} ({{ $summary['employee_code'] }})</div>
-                                </div>
-                            </div>
-                            <div class="dt-print-meta">
-                                <span class="dt-print-badge">Official Employee Performance Record</span>
-                                <div>Printed: ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
-                                <div style="margin-top: 2px;">Department: {{ $summary['department'] }} &bull; Designation: {{ $summary['designation'] }}</div>
-                            </div>
-                        </div>
-                    `;
-                    $(win.document.body).prepend(headerHtml);
-
-                    var footerHtml = `
-                        <div class="dt-print-footer">
-                            <div><strong>{{ company_name() }}</strong> &bull; OrboOne HRMS Work Reports Module</div>
-                            <div>Confidential & Official Document &bull; Valid Without Physical Stamp</div>
-                        </div>
-                    `;
-                    $(win.document.body).append(footerHtml);
-                }
+                text: 'Print', 
+                className: 'd-none',
+                exportOptions: { columns: ':not(.no-export)' }
             }
         ]
     });
 
-    table.buttons().container().appendTo('#employeeHistoryTable_wrapper .col-md-6:eq(0)');
-
-    $('#filterPerPage').on('change', function() {
-        var len = parseInt($(this).val());
-        if (table) {
-            table.page.len(len).draw();
-        }
-    });
-
-    $('#dtSearchInput').on('keyup', function() {
-        table.search(this.value).draw();
+    // Custom Export buttons bridge for Orbo theme export buttons
+    $(document).on('click', '.eo-toolbar [data-export-action]', function(e) {
+        var action = $(this).data('export-action');
+        if (action === 'csv') table.button('.buttons-csv').trigger();
+        else if (action === 'excel') table.button('.buttons-excel').trigger();
+        else if (action === 'pdf') table.button('.buttons-pdf').trigger();
+        else if (action === 'print') table.button('.buttons-print').trigger();
     });
 });
 </script>

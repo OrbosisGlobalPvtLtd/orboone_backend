@@ -149,7 +149,7 @@
 
     @if($requests->hasPages())
     <div class="mt-3">
-        {{ $requests->withQueryString()->links() }}
+        {{ $requests->withQueryString()->links('vendor.pagination.orbo') }}
     </div>
     @endif
 </div>
@@ -171,7 +171,7 @@
                     <div class="col-md-6 col-12">
                         <div class="ep-form-group mb-3">
                             <label class="font-weight-bold text-dark mb-1" style="font-size: 13px;">Work Type <span class="text-danger">*</span></label>
-                            <select name="work_type" id="work_type" class="form-control shadow-none" style="border-radius: 10px; height: 42px;" required>
+                            <select name="work_type" id="work_type" class="form-control shadow-none select2-modal-searchable" style="border-radius: 10px; height: 42px;" required>
                                 <option value="">Select Work Type</option>
                                 <option value="holiday_work" @selected(old('work_type') === 'holiday_work')>Holiday Work</option>
                                 <option value="weekoff_work" @selected(old('work_type') === 'weekoff_work')>Week-Off Work</option>
@@ -181,7 +181,7 @@
                     <div class="col-md-6 col-12">
                         <div class="ep-form-group mb-3">
                             <label class="font-weight-bold text-dark mb-1" style="font-size: 13px;">Work Mode <span class="text-danger">*</span></label>
-                            <select name="work_mode" class="form-control shadow-none" style="border-radius: 10px; height: 42px;" required>
+                            <select name="work_mode" class="form-control shadow-none select2-modal-searchable" style="border-radius: 10px; height: 42px;" required>
                                 <option value="wfo" @selected(old('work_mode') === 'wfo')>WFO (Work From Office)</option>
                                 <option value="wfh" @selected(old('work_mode') === 'wfh')>WFH (Work From Home)</option>
                             </select>
@@ -329,7 +329,7 @@
                     <div class="col-md-6 col-12">
                         <div class="ep-form-group mb-3">
                             <label class="font-weight-bold text-dark mb-1" style="font-size: 13px;">Work Type <span class="text-danger">*</span></label>
-                            <select name="work_type" id="edit_work_type" class="form-control shadow-none" style="border-radius: 10px; height: 42px;" required>
+                            <select name="work_type" id="edit_work_type" class="form-control shadow-none select2-modal-searchable" style="border-radius: 10px; height: 42px;" required>
                                 <option value="holiday_work">Holiday Work</option>
                                 <option value="weekoff_work">Week-Off Work</option>
                             </select>
@@ -338,7 +338,7 @@
                     <div class="col-md-6 col-12">
                         <div class="ep-form-group mb-3">
                             <label class="font-weight-bold text-dark mb-1" style="font-size: 13px;">Work Mode <span class="text-danger">*</span></label>
-                            <select name="work_mode" id="edit_work_mode" class="form-control shadow-none" style="border-radius: 10px; height: 42px;" required>
+                            <select name="work_mode" id="edit_work_mode" class="form-control shadow-none select2-modal-searchable" style="border-radius: 10px; height: 42px;" required>
                                 <option value="wfo">WFO (Work From Office)</option>
                                 <option value="wfh">WFH (Work From Home)</option>
                             </select>
@@ -348,7 +348,7 @@
 
                 <div class="ep-form-group mb-3">
                     <label class="font-weight-bold text-dark mb-1" style="font-size: 13px;">Worked Date <span class="text-danger">*</span></label>
-                    <input type="date" name="worked_date" id="edit_worked_date" class="form-control shadow-none" style="border-radius: 10px; height: 42px;" required>
+                    <input type="text" data-date-picker name="worked_date" id="edit_worked_date" class="form-control shadow-none orbo-date-picker" placeholder="dd-mm-yyyy" style="border-radius: 10px; height: 42px;" required>
                 </div>
 
                 <div class="ep-form-group mb-3">

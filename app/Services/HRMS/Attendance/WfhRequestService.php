@@ -692,18 +692,33 @@ class WfhRequestService
     private function resolveTargetEmployees(array $payload): array
     {
         $scope = (string) ($payload['assignment_scope'] ?? 'single');
-        $query = EmployeeM::query()->where('is_active', 1);
+        $query = EmployeeM::query()
+            ->where('is_active', 1)
+            ->where(function ($q) {
+                $q->where('work_mode', 'wfo')
+                  ->orWhere(function ($sub) {
+                      $sub->whereNull('work_mode')
+                          ->orWhereRaw("LOWER(TRIM(work_mode)) NOT IN ('wfh', 'permanent_wfh', 'permanent wfh')");
+                  });
+            });
 
         return match ($scope) {
-            'single' => ! empty($payload['employee_id']) ? [(int) $payload['employee_id']] : [],
-            'multiple' => collect($payload['employee_ids'] ?? [])->map(fn($id) => (int) $id)->filter()->unique()->values()->all(),
+            'single' => ! empty($payload['employee_id'])
+                ? (clone $query)->where('id', (int) $payload['employee_id'])->pluck('id')->map(fn($id) => (int) $id)->all()
+                : [],
+            'multiple' => collect($payload['employee_ids'] ?? [])
+                ->map(fn($id) => (int) $id)
+                ->filter()
+                ->unique()
+                ->values()
+                ->pipe(fn($ids) => (clone $query)->whereIn('id', $ids)->pluck('id')->map(fn($id) => (int) $id)->all()),
             'department' => ! empty($payload['department_id'])
-                ? $query->where('department_id', (int) $payload['department_id'])->pluck('id')->map(fn($id) => (int) $id)->all()
+                ? (clone $query)->where('department_id', (int) $payload['department_id'])->pluck('id')->map(fn($id) => (int) $id)->all()
                 : [],
             'designation' => ! empty($payload['designation_id'])
-                ? $query->where('designation_id', (int) $payload['designation_id'])->pluck('id')->map(fn($id) => (int) $id)->all()
+                ? (clone $query)->where('designation_id', (int) $payload['designation_id'])->pluck('id')->map(fn($id) => (int) $id)->all()
                 : [],
-            'all' => $query->pluck('id')->map(fn($id) => (int) $id)->all(),
+            'all' => (clone $query)->pluck('id')->map(fn($id) => (int) $id)->all(),
             default => [],
         };
     }

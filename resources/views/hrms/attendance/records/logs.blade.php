@@ -363,12 +363,12 @@
 
                         <div class="col-lg-2 col-md-6 mb-2">
                             <label class="font-weight-bold small">Date</label>
-                            <input type="date" name="date" class="form-control" value="{{ request('date') }}">
+                            <x-form.date-picker name="date" id="logs_date" :value="request('date')" placeholder="dd-mm-yyyy" class="form-control" />
                         </div>
 
                         <div class="col-lg-2 col-md-6 mb-2">
                             <label class="font-weight-bold small">Period</label>
-                            <select name="filter" class="form-control">
+                            <select name="filter" class="form-control select2-searchable">
                                 <option value="">All</option>
                                 <option value="weekly" {{ request('filter') == 'weekly' ? 'selected' : '' }}>This Week
                                 </option>
@@ -379,7 +379,7 @@
 
                         <div class="col-lg-2 col-md-6 mb-2">
                             <label class="font-weight-bold small">Status</label>
-                            <select name="attendance_type_id" class="form-control">
+                            <select name="attendance_type_id" class="form-control select2-searchable">
                                 <option value="">All Status</option>
                                 @foreach ($attendanceTypes as $type)
                                     <option value="{{ $type->id }}"
@@ -525,7 +525,7 @@
                 </div>
 
                 <div class="mt-3">
-                    {{ $attendances->links() }}
+                    {{ $attendances->links('vendor.pagination.orbo') }}
                 </div>
             </div>
 
@@ -608,7 +608,7 @@
                         <div class="orb-form-grid" style="grid-template-columns: 1fr;">
                             <div>
                                 <label class="orb-form-label">Employee <span class="text-danger">*</span></label>
-                                <select name="user_id" class="form-control" required>
+                                <select name="user_id" class="form-control select2-modal-searchable" required>
                                     <option value="">Select Employee</option>
                                     @foreach ($employees as $emp)
                                         <option value="{{ $emp->id }}">{{ $emp->name }} -
@@ -624,7 +624,7 @@
 
                             <div>
                                 <label class="orb-form-label">Work Mode <span class="text-danger">*</span></label>
-                                <select name="work_mode" class="form-control" required>
+                                <select name="work_mode" class="form-control select2-modal-searchable" required>
                                     <option value="wfo">Work From Office</option>
                                     <option value="wfh">Work From Home</option>
                                 </select>
@@ -632,7 +632,7 @@
 
                             <div>
                                 <label class="orb-form-label">Status <span class="text-danger">*</span></label>
-                                <select name="attendance_type_id" class="form-control">
+                                <select name="attendance_type_id" class="form-control select2-modal-searchable">
                                     @foreach ($attendanceTypes as $type)
                                         <option value="{{ $type->id }}">{{ $type->name }}</option>
                                     @endforeach
@@ -673,7 +673,7 @@
                         <div class="orb-form-grid" style="grid-template-columns: 1fr;">
                             <div>
                                 <label class="orb-form-label">Employee <span class="text-danger">*</span></label>
-                                <select name="user_id" class="form-control" required>
+                                <select name="user_id" class="form-control select2-modal-searchable" required>
                                     <option value="">Select Employee</option>
                                     @foreach ($employees as $emp)
                                         <option value="{{ $emp->id }}">{{ $emp->name }} -

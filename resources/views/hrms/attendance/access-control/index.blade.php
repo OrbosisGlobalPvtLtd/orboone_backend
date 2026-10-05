@@ -42,18 +42,22 @@
     /* Dynamic DB Theme Premium Hero Header */
     .att-header-premium {
         background: linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%) !important;
-        border-radius: 26px !important;
-        padding: 32px 36px !important;
+        border-radius: 24px !important;
+        padding: 28px 32px !important;
         color: #fff !important;
         display: flex !important;
+        flex-direction: row !important;
         justify-content: space-between !important;
         align-items: center !important;
         gap: 20px !important;
+        flex-wrap: wrap !important;
         box-shadow: 0 12px 30px rgba(75, 0, 232, 0.15) !important;
         position: relative !important;
         overflow: hidden !important;
-        margin-bottom: 28px !important;
+        margin-bottom: 24px !important;
         border: none !important;
+        box-sizing: border-box !important;
+        width: 100% !important;
     }
 
     .att-header-premium::before {
@@ -69,31 +73,56 @@
         pointer-events: none !important;
     }
 
+    .att-header-premium .title-area {
+        position: relative !important;
+        z-index: 2 !important;
+        flex: 1 1 280px !important;
+        min-width: 0 !important;
+    }
+
     .att-header-premium .title-area h3 {
         font-size: 26px !important;
         font-weight: 900 !important;
         margin: 0 !important;
         color: #fff !important;
         letter-spacing: -0.02em !important;
+        line-height: 1.25 !important;
+        word-break: break-word !important;
     }
 
     .att-header-premium .title-area p {
-        font-size: 14px !important;
+        font-size: 13.5px !important;
         color: rgba(255, 255, 255, 0.88) !important;
         margin: 6px 0 0 0 !important;
         font-weight: 500 !important;
+        line-height: 1.4 !important;
     }
 
     .att-header-premium .header-kicker {
-        font-size: 11px !important;
-        font-weight: 800 !important;
-        text-transform: uppercase !important;
-        letter-spacing: 0.15em !important;
-        color: rgba(255, 255, 255, 0.75) !important;
-        margin-bottom: 8px !important;
-        display: flex !important;
+        display: inline-flex !important;
         align-items: center !important;
         gap: 6px !important;
+        padding: 5px 12px !important;
+        border-radius: 999px !important;
+        background: rgba(255, 255, 255, 0.16) !important;
+        color: rgba(255, 255, 255, 0.95) !important;
+        font-size: 11px !important;
+        font-weight: 800 !important;
+        letter-spacing: 0.06em !important;
+        text-transform: uppercase !important;
+        margin-bottom: 10px !important;
+        width: fit-content !important;
+        max-width: 100% !important;
+        white-space: normal !important;
+        line-height: 1.3 !important;
+    }
+
+    .att-header-premium .hero-actions-wrap {
+        position: relative !important;
+        z-index: 2 !important;
+        flex-shrink: 0 !important;
+        display: flex !important;
+        align-items: center !important;
     }
 
     .orb-card-theme {
@@ -174,21 +203,83 @@
         padding: 16px;
     }
 
-    .manage-dropdown-btn {
-        border-radius: 12px !important;
-        padding: 6px 16px !important;
-        font-weight: 800 !important;
-        font-size: 13px !important;
-        border: 1px solid var(--orb-border) !important;
-        background: #f8fafc !important;
-        color: var(--orb-text) !important;
-        transition: all 0.2s ease;
+    .action-dot {
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+        border: 1px solid var(--orb-border);
+        background: #ffffff;
+        color: var(--orb-muted);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all .2s ease;
+        font-size: 14px;
+        box-shadow: 0 1px 3px rgba(16, 24, 40, 0.04);
+        padding: 0;
+        outline: none !important;
     }
 
-    .manage-dropdown-btn:hover {
-        background: var(--orb-soft) !important;
+    .action-dot:hover,
+    .action-dot:focus,
+    .show > .action-dot {
+        background: var(--orb-soft);
+        color: var(--orb-primary);
+        border-color: rgba(75, 0, 232, 0.25);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(75, 0, 232, 0.08);
+    }
+
+    .att-action-menu {
+        border: 1px solid var(--orb-border) !important;
+        border-radius: 16px !important;
+        box-shadow: 0 16px 36px rgba(16, 24, 40, .12) !important;
+        padding: 6px !important;
+        min-width: 220px !important;
+        overflow: hidden !important;
+    }
+
+    .att-action-menu .dropdown-item {
+        border-radius: 10px !important;
+        padding: 9px 12px !important;
+        font-size: 13px !important;
+        font-weight: 700 !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        transition: all 0.15s ease !important;
+        color: var(--orb-text) !important;
+        background: transparent !important;
+        border: none !important;
+        width: 100% !important;
+        text-align: left !important;
+    }
+
+    .att-action-menu .dropdown-item:hover {
+        background: #f8fafc !important;
         color: var(--orb-primary) !important;
-        border-color: var(--orb-primary) !important;
+        transform: translateX(2px);
+    }
+
+    .att-action-menu .dropdown-item.text-success:hover {
+        background: #f0fdf4 !important;
+        color: #16a34a !important;
+    }
+
+    .att-action-menu .dropdown-item.text-primary:hover {
+        background: #eff6ff !important;
+        color: #2563eb !important;
+    }
+
+    .att-action-menu .dropdown-item.text-info:hover {
+        background: #f0fdfa !important;
+        color: #0d9488 !important;
+    }
+
+    .att-action-menu .dropdown-item.text-danger:hover {
+        background: #fef2f2 !important;
+        color: #dc2626 !important;
     }
 
     .btn-theme-primary {
@@ -197,13 +288,138 @@
         border: none !important;
         border-radius: 12px !important;
         font-weight: 800 !important;
-        box-shadow: 0 8px 20px rgba(75, 0, 232, 0.18) !important;
-        transition: transform 0.2s ease !important;
     }
 
-    .btn-theme-primary:hover {
-        transform: translateY(-1px) !important;
+    .att-btn-glass,
+    .att-header-premium .att-btn,
+    .att-header-premium .btn-glass {
+        background: rgba(255, 255, 255, 0.18) !important;
+        border: 1px solid rgba(255, 255, 255, 0.45) !important;
         color: #ffffff !important;
+        backdrop-filter: blur(10px) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+        border-radius: 999px !important;
+        padding: 10px 22px !important;
+        font-size: 13.5px !important;
+        font-weight: 750 !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08) !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        text-decoration: none !important;
+        cursor: pointer !important;
+        transition: all 0.25s ease !important;
+        white-space: nowrap !important;
+    }
+
+    .att-btn-glass:hover,
+    .att-header-premium .att-btn:hover,
+    .att-header-premium .btn-glass:hover {
+        background: rgba(255, 255, 255, 0.32) !important;
+        border-color: rgba(255, 255, 255, 0.75) !important;
+        color: #ffffff !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    .table-responsive {
+        -webkit-overflow-scrolling: touch;
+    }
+
+    @media(max-width: 991px) {
+        .att-header-premium {
+            padding: 22px 24px !important;
+            border-radius: 20px !important;
+            gap: 16px !important;
+            margin-bottom: 20px !important;
+        }
+
+        .att-header-premium .title-area h3 {
+            font-size: 22px !important;
+        }
+    }
+
+    @media(max-width: 768px) {
+        .att-page {
+            padding: 14px 12px 24px !important;
+        }
+
+        .att-header-premium {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            padding: 18px 16px !important;
+            border-radius: 18px !important;
+            gap: 14px !important;
+            margin-bottom: 16px !important;
+        }
+
+        .att-header-premium .title-area {
+            width: 100% !important;
+            flex: 1 1 100% !important;
+        }
+
+        .att-header-premium .header-kicker {
+            font-size: 10.5px !important;
+            padding: 4px 10px !important;
+            letter-spacing: 0.04em !important;
+            margin-bottom: 8px !important;
+        }
+
+        .att-header-premium .title-area h3 {
+            font-size: 19px !important;
+            line-height: 1.3 !important;
+        }
+
+        .att-header-premium .title-area p {
+            font-size: 12.5px !important;
+            line-height: 1.4 !important;
+            margin-top: 4px !important;
+        }
+
+        .att-header-premium .hero-actions-wrap {
+            width: 100% !important;
+        }
+
+        .att-header-premium .hero-actions-wrap button,
+        .att-header-premium .att-btn-glass,
+        .att-header-premium .btn-glass {
+            width: 100% !important;
+            justify-content: center !important;
+            padding: 10px 16px !important;
+            font-size: 13px !important;
+        }
+
+        .orb-card-theme {
+            padding: 16px !important;
+            border-radius: 16px !important;
+            margin-bottom: 16px !important;
+        }
+
+        .table th, .table td {
+            padding: 10px 12px !important;
+            font-size: 12.5px !important;
+        }
+    }
+
+    @media(max-width: 480px) {
+        .att-page {
+            padding: 10px 8px 20px !important;
+        }
+
+        .att-header-premium {
+            padding: 16px 14px !important;
+            border-radius: 16px !important;
+            gap: 12px !important;
+        }
+
+        .att-header-premium .title-area h3 {
+            font-size: 17.5px !important;
+        }
+
+        .att-header-premium .title-area p {
+            font-size: 12px !important;
+        }
     }
 </style>
 
@@ -237,8 +453,8 @@
                 $canManageAccess = auth()->user()->hasRole('super_admin') || auth()->user()->hasPermission('attendance.access_control.manage') || auth()->user()->hasPermission('attendance.blocked.unlock');
             @endphp
             @if($canManageAccess)
-            <div>
-                <button type="button" class="btn btn-light font-weight-bold px-4 py-2 shadow-sm" data-toggle="modal" data-target="#bulkUpdateModal" style="border-radius: 50px; color: var(--orb-primary); font-weight: 800;">
+            <div class="hero-actions-wrap">
+                <button type="button" class="att-btn att-btn-glass btn-glass" data-toggle="modal" data-target="#bulkUpdateModal">
                     <i class="fas fa-users-cog mr-2"></i> Bulk Access Update
                 </button>
             </div>
@@ -263,7 +479,7 @@
                 </div>
                 <div class="col-md-2 mb-3 mb-md-0">
                     <label class="font-weight-bold text-muted small">Web Attendance</label>
-                    <select name="web_attendance" class="form-control" style="border-radius: 12px; height: 42px;">
+                    <select name="web_attendance" class="form-control select2-searchable" style="border-radius: 12px; height: 42px;">
                         <option value="">All</option>
                         <option value="1" {{ request('web_attendance') === '1' ? 'selected' : '' }}>Allowed</option>
                         <option value="0" {{ request('web_attendance') === '0' ? 'selected' : '' }}>Disabled</option>
@@ -271,14 +487,14 @@
                 </div>
                 <div class="col-md-2 mb-3 mb-md-0">
                     <label class="font-weight-bold text-muted small">Mobile Attendance</label>
-                    <select name="mobile_attendance" class="form-control" style="border-radius: 12px; height: 42px;">
+                    <select name="mobile_attendance" class="form-control select2-searchable" style="border-radius: 12px; height: 42px;">
                         <option value="">All</option>
                         <option value="1" {{ request('mobile_attendance') === '1' ? 'selected' : '' }}>Allowed</option>
                         <option value="0" {{ request('mobile_attendance') === '0' ? 'selected' : '' }}>Disabled</option>
                     </select>
                 </div>
                 <div class="col-md-2 d-flex gap-2">
-                    <button type="submit" class="btn text-white font-weight-bold mr-2" style="border-radius: 12px; height: 42px; background: var(--orb-primary); border: none; flex: 1;" title="Search Filters">
+                    <button type="submit" class="btn text-white font-weight-bold mr-2" style="border-radius: 12px; height: 42px; background: linear-gradient(135deg, var(--orb-primary, #4B00E8) 0%, var(--orb-secondary, #FF5252) 100%); border: none; flex: 1;" title="Search Filters">
                         <i class="fas fa-search"></i> Search
                     </button>
                     <a href="{{ route('attendances.access-control') }}" class="btn btn-outline-secondary font-weight-bold d-flex align-items-center justify-content-center" style="border-radius: 12px; height: 42px; width: 42px; flex-shrink: 0;" title="Reset All Filters">
@@ -294,15 +510,15 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead class="bg-light">
                         <tr>
-                            <th style="width: 40px;" class="pl-4">
+                            <th style="width: 40px; min-width: 40px;" class="pl-4">
                                 <input type="checkbox" id="selectAllEmployees">
                             </th>
-                            <th>Employee Details (Code & Name)</th>
-                            <th>Department & Designation</th>
-                            <th class="text-center">Login Access (Authentication)</th>
-                            <th class="text-center">Mobile Attendance</th>
-                            <th class="text-center">Web Attendance</th>
-                            <th class="text-right pr-4">Actions</th>
+                            <th style="min-width: 220px;">Employee Details (Code & Name)</th>
+                            <th style="min-width: 170px;">Department & Designation</th>
+                            <th class="text-center" style="min-width: 210px;">Login Access (Authentication)</th>
+                            <th class="text-center" style="min-width: 140px;">Mobile Attendance</th>
+                            <th class="text-center" style="min-width: 140px;">Web Attendance</th>
+                            <th class="text-right pr-4" style="min-width: 100px;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -401,40 +617,40 @@
 
                                 <td class="text-right pr-4">
                                     @if($canManageAccess)
-                                    <div class="dropdown">
-                                        <button class="btn manage-dropdown-btn dropdown-toggle" type="button" data-toggle="dropdown">
-                                            Manage
+                                    <div class="dropdown d-inline-block">
+                                        <button class="action-dot" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="Actions">
+                                            <i class="fas fa-ellipsis-v"></i>
                                         </button>
-                                        <div class="dropdown-menu dropdown-menu-right shadow-sm border-0" style="border-radius: 14px;">
+                                        <div class="dropdown-menu dropdown-menu-right att-action-menu">
                                             <form method="POST" action="{{ route('attendances.access-control.update', $emp->id) }}">
                                                 @csrf
                                                 <input type="hidden" name="allow_web_attendance" value="1">
                                                 <input type="hidden" name="allow_mobile_attendance" value="1">
-                                                <button type="submit" class="dropdown-item py-2 text-success font-weight-bold"><i class="fas fa-check-circle mr-2"></i> Allow Both (Mobile + Web)</button>
+                                                <button type="submit" class="dropdown-item text-success"><i class="fas fa-check-circle mr-2"></i> Allow Both (Mobile + Web)</button>
                                             </form>
                                             <form method="POST" action="{{ route('attendances.access-control.update', $emp->id) }}">
                                                 @csrf
                                                 <input type="hidden" name="allow_web_attendance" value="0">
                                                 <input type="hidden" name="allow_mobile_attendance" value="1">
-                                                <button type="submit" class="dropdown-item py-2 text-primary font-weight-bold"><i class="fas fa-mobile-alt mr-2"></i> Mobile Only</button>
+                                                <button type="submit" class="dropdown-item text-primary"><i class="fas fa-mobile-alt mr-2"></i> Mobile Only</button>
                                             </form>
                                             <form method="POST" action="{{ route('attendances.access-control.update', $emp->id) }}">
                                                 @csrf
                                                 <input type="hidden" name="allow_web_attendance" value="1">
                                                 <input type="hidden" name="allow_mobile_attendance" value="0">
-                                                <button type="submit" class="dropdown-item py-2 text-info font-weight-bold"><i class="fas fa-laptop mr-2"></i> Web Only</button>
+                                                <button type="submit" class="dropdown-item text-info"><i class="fas fa-laptop mr-2"></i> Web Only</button>
                                             </form>
-                                            <div class="dropdown-divider"></div>
+                                            <div class="dropdown-divider my-1"></div>
                                             <form method="POST" action="{{ route('attendances.access-control.update', $emp->id) }}">
                                                 @csrf
                                                 <input type="hidden" name="allow_web_attendance" value="0">
                                                 <input type="hidden" name="allow_mobile_attendance" value="0">
-                                                <button type="submit" class="dropdown-item py-2 text-danger font-weight-bold"><i class="fas fa-ban mr-2"></i> Disable Both</button>
+                                                <button type="submit" class="dropdown-item text-danger"><i class="fas fa-ban mr-2"></i> Disable Both</button>
                                             </form>
                                         </div>
                                     </div>
                                     @else
-                                    <span class="badge badge-light border text-muted px-2 py-1" style="font-size: 11px;">
+                                    <span class="badge badge-light border text-muted px-2 py-1" style="font-size: 11px; border-radius: 8px;">
                                         <i class="fas fa-eye mr-1"></i> Read-only
                                     </span>
                                     @endif
@@ -459,7 +675,7 @@
                         Showing {{ $employees->firstItem() }} to {{ $employees->lastItem() }} of {{ $employees->total() }} employees
                     </div>
                     <div>
-                        {{ $employees->links() }}
+                        {{ $employees->links('vendor.pagination.orbo') }}
                     </div>
                 </div>
             @endif
@@ -485,7 +701,7 @@
                 <div class="modal-body p-4">
                     <div class="form-group mb-3">
                         <label class="font-weight-bold text-muted small">Update Target Scope</label>
-                        <select name="target_scope" id="targetScope" class="form-control" required style="border-radius: 12px;">
+                        <select name="target_scope" id="targetScope" class="form-control select2-modal-searchable" required style="border-radius: 12px;">
                             <option value="department">By Department</option>
                             <option value="designation">By Designation</option>
                             <option value="selected">Selected Employees (<span id="selectedCount">0</span>)</option>
@@ -495,7 +711,7 @@
 
                     <div class="form-group mb-3" id="departmentSelectGroup">
                         <label class="font-weight-bold text-muted small">Select Department</label>
-                        <select name="department_id" class="form-control" style="border-radius: 12px;">
+                        <select name="department_id" class="form-control select2-modal-searchable" style="border-radius: 12px;">
                             <option value="">Select Department</option>
                             @foreach ($departments as $id => $name)
                                 <option value="{{ $id }}">{{ $name }}</option>
@@ -505,7 +721,7 @@
 
                     <div class="form-group mb-3 d-none" id="designationSelectGroup">
                         <label class="font-weight-bold text-muted small">Select Designation</label>
-                        <select name="designation_id" class="form-control" style="border-radius: 12px;">
+                        <select name="designation_id" class="form-control select2-modal-searchable" style="border-radius: 12px;">
                             <option value="">Select Designation</option>
                             @foreach ($designations as $id => $name)
                                 <option value="{{ $id }}">{{ $name }}</option>
@@ -517,7 +733,7 @@
 
                     <div class="form-group mb-3">
                         <label class="font-weight-bold text-muted small">Mobile Attendance Access</label>
-                        <select name="allow_mobile_attendance" class="form-control" required style="border-radius: 12px;">
+                        <select name="allow_mobile_attendance" class="form-control select2-modal-searchable" required style="border-radius: 12px;">
                             <option value="1">Enable Mobile Attendance</option>
                             <option value="0">Disable Mobile Attendance</option>
                         </select>
@@ -525,7 +741,7 @@
 
                     <div class="form-group mb-3">
                         <label class="font-weight-bold text-muted small">Web Attendance Access</label>
-                        <select name="allow_web_attendance" class="form-control" required style="border-radius: 12px;">
+                        <select name="allow_web_attendance" class="form-control select2-modal-searchable" required style="border-radius: 12px;">
                             <option value="1">Enable Web Attendance</option>
                             <option value="0">Disable Web Attendance</option>
                         </select>

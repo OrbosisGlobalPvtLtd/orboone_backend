@@ -27,11 +27,11 @@
                     <div class="row">
                         <div class="col-6">
                             <small class="text-muted font-weight-bold d-block mb-1">Approved From</small>
-                            <input type="date" class="form-control" name="approved_from_date">
+                            <input type="text" data-date-picker class="form-control orbo-date-picker" placeholder="dd-mm-yyyy" name="approved_from_date">
                         </div>
                         <div class="col-6">
                             <small class="text-muted font-weight-bold d-block mb-1">Approved To</small>
-                            <input type="date" class="form-control" name="approved_to_date">
+                            <input type="text" data-date-picker class="form-control orbo-date-picker" placeholder="dd-mm-yyyy" name="approved_to_date">
                         </div>
                     </div>
                     <small class="form-text text-muted mt-1">Leave empty to approve full requested period.</small>

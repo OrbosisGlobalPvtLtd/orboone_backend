@@ -12,18 +12,24 @@
                 @csrf
                 <div class="modal-body">
                     <div class="text-center mb-3">
-                        <i class="fas fa-times-circle text-danger mb-3" style="font-size: 56px;"></i>
-                        <h4 class="font-weight-bold mb-2">Reject Request?</h4>
-                        <p class="text-muted">Explain the reason for rejecting <strong>{{ $row->employee_display_name ?? $row->name }}</strong>'s regularization request.</p>
+                        <div class="mb-3 d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 72px; height: 72px; background: #FEF2F2; color: #EF4444; font-size: 32px; border: 2px solid #FECACA;">
+                            <i class="fas fa-times"></i>
+                        </div>
+                        <h5 class="font-weight-bold text-dark mb-1">Reject Regularization Request?</h5>
+                        <p class="text-muted small">Please provide the rejection rationale for <strong>{{ $row->employee_display_name ?? $row->name }}</strong>.</p>
                     </div>
-                    <div class="form-group">
-                        <label class="font-weight-bold text-dark">Rejection Reason <span class="text-danger">*</span></label>
-                        <textarea name="rejection_reason" class="form-control" rows="3" required placeholder="Type the reason for rejection here..."></textarea>
+                    <div class="form-group mb-1">
+                        <label class="font-weight-bold text-dark small text-uppercase">Rejection Reason <span class="text-danger">*</span></label>
+                        <textarea name="rejection_reason" class="form-control" rows="3" required placeholder="Type the reason for rejection here..." style="border-radius: 10px; resize: vertical;"></textarea>
                     </div>
                 </div>
-                <div class="modal-footer" style="background: rgba(255,255,255,0.5);">
-                    <button type="button" class="btn btn-light" style="border-radius: 10px;" data-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-danger font-weight-bold px-4" style="border-radius: 10px; background: #EF4444; border: 0;">Reject Request</button>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light border font-weight-bold" style="border-radius: 10px; font-size: 13px;" data-dismiss="modal">
+                        <i class="fas fa-times mr-1"></i> Cancel
+                    </button>
+                    <button type="submit" class="btn btn-danger font-weight-bold px-4 shadow-sm" style="border-radius: 10px; background: #EF4444; border: 0; font-size: 13px;">
+                        <i class="fas fa-ban mr-1"></i> Reject Request
+                    </button>
                 </div>
             </form>
         </div>

@@ -532,129 +532,65 @@
 
                         <div class="att-filter-group">
                             <label>Status</label>
-
-                            <select name="attendance_type_id"
-                                class="form-control">
-
+                            <select name="attendance_type_id" class="form-control select2-searchable">
                                 <option value="">All Status</option>
-
                                 @foreach($attendanceTypes as $type)
-
-                                <option value="{{ $type->id }}"
-                                    {{ request('attendance_type_id') == $type->id ? 'selected' : '' }}>
-
+                                <option value="{{ $type->id }}" {{ request('attendance_type_id') == $type->id ? 'selected' : '' }}>
                                     {{ $type->name }}
-
                                 </option>
-
                                 @endforeach
-
                             </select>
                         </div>
 
                         <div class="att-filter-group">
                             <label>Shift</label>
-
-                            <select name="attendance_time_id"
-                                class="form-control">
-
+                            <select name="attendance_time_id" class="form-control select2-searchable">
                                 <option value="">All Shifts</option>
-
                                 @foreach($attendanceTimes as $shift)
-
-                                <option value="{{ $shift->id }}"
-                                    {{ request('attendance_time_id') == $shift->id ? 'selected' : '' }}>
-
+                                <option value="{{ $shift->id }}" {{ request('attendance_time_id') == $shift->id ? 'selected' : '' }}>
                                     {{ $shift->name }}
-
                                 </option>
-
                                 @endforeach
-
                             </select>
                         </div>
 
                         <div class="att-filter-group">
                             <label>Work Mode</label>
-
-                            <select name="work_mode"
-                                class="form-control">
-
+                            <select name="work_mode" class="form-control select2-searchable">
                                 <option value="">All</option>
-
-                                <option value="wfo"
-                                    {{ request('work_mode') == 'wfo' ? 'selected' : '' }}>
-                                    WFO
-                                </option>
-
-                                <option value="wfh"
-                                    {{ request('work_mode') == 'wfh' ? 'selected' : '' }}>
-                                    WFH
-                                </option>
-
+                                <option value="wfo" {{ request('work_mode') == 'wfo' ? 'selected' : '' }}>WFO</option>
+                                <option value="wfh" {{ request('work_mode') == 'wfh' ? 'selected' : '' }}>WFH</option>
                             </select>
                         </div>
 
                         <div class="att-filter-group">
                             <label>Flags</label>
-
-                            <select name="flag"
-                                class="form-control">
-
+                            <select name="flag" class="form-control select2-searchable">
                                 <option value="">All Records</option>
-
-                                <option value="late"
-                                    {{ request('flag') == 'late' ? 'selected' : '' }}>
-                                    Late
-                                </option>
-
-                                <option value="early_out"
-                                    {{ request('flag') == 'early_out' ? 'selected' : '' }}>
-                                    Early Logout
-                                </option>
-
-                                <option value="blocked"
-                                    {{ request('flag') == 'blocked' ? 'selected' : '' }}>
-                                    Punch Blocked
-                                </option>
-
-                                <option value="missed_punch"
-                                    {{ request('flag') == 'missed_punch' ? 'selected' : '' }}>
-                                    Missed Punch
-                                </option>
-
+                                <option value="late" {{ request('flag') == 'late' ? 'selected' : '' }}>Late</option>
+                                <option value="early_out" {{ request('flag') == 'early_out' ? 'selected' : '' }}>Early Logout</option>
+                                <option value="blocked" {{ request('flag') == 'blocked' ? 'selected' : '' }}>Punch Blocked</option>
+                                <option value="missed_punch" {{ request('flag') == 'missed_punch' ? 'selected' : '' }}>Missed Punch</option>
                             </select>
                         </div>
 
                         <div class="att-filter-group">
                             <label>From Date</label>
-
-                            <input type="date"
-                                name="from_date"
-                                class="form-control"
-                                value="{{ request('from_date') }}">
+                            <x-form.date-picker name="from_date" id="rep_from_date" :value="request('from_date')" placeholder="dd-mm-yyyy" class="form-control" />
                         </div>
 
                         <div class="att-filter-group">
                             <label>To Date</label>
-
-                            <input type="date"
-                                name="to_date"
-                                class="form-control"
-                                value="{{ request('to_date') }}">
+                            <x-form.date-picker name="to_date" id="rep_to_date" :value="request('to_date')" placeholder="dd-mm-yyyy" class="form-control" />
                         </div>
 
                         <div class="att-filter-group">
                             <label>Single Date</label>
-
-                            <input type="date"
-                                name="date"
-                                class="form-control"
-                                value="{{ request('date') }}">
+                            <x-form.date-picker name="date" id="rep_single_date" :value="request('date')" placeholder="dd-mm-yyyy" class="form-control" />
                         </div>
 
                         <div class="att-filter-group d-flex align-items-end" style="gap: 8px;">
-                            <button type="submit" class="btn text-white font-weight-bold shadow-sm" style="height: 42px; border-radius: 12px; background: var(--orb-primary); border: none; flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                            <button type="submit" class="btn text-white font-weight-bold shadow-sm" style="height: 42px; border-radius: 12px; background: linear-gradient(135deg, var(--orb-primary, #4B00E8) 0%, var(--orb-secondary, #FF5252) 100%); border: none; flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
                                 <i class="fas fa-search"></i> Search
                             </button>
                             <a href="{{ url()->current() }}" class="att-btn att-btn-light" style="height: 42px; width: 42px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Reset Filters">

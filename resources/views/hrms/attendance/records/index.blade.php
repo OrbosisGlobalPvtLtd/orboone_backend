@@ -40,6 +40,47 @@
         border: 1px solid #E4E7EC !important;
         padding: 6px 10px !important;
     }
+
+    /* Compact Select2 for Table Length Entries */
+    .select2-container--per-page.select2-container--default .select2-selection--single {
+        min-height: 38px !important;
+        height: 38px !important;
+        border: 1px solid var(--orb-border, #E7EAF3) !important;
+        border-radius: 10px !important;
+        padding: 0 6px !important;
+        width: 75px !important;
+        background-color: #fff !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+    .select2-container--per-page.select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 36px !important;
+        font-size: 13px !important;
+        font-weight: 750 !important;
+        color: var(--orb-text, #101828) !important;
+        padding-left: 4px !important;
+    }
+    .select2-container--per-page.select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 36px !important;
+        right: 6px !important;
+    }
+    .select2-dropdown-per-page {
+        min-width: 75px !important;
+        border: 1px solid var(--orb-border, #E7EAF3) !important;
+        border-radius: 10px !important;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
+        font-size: 13px !important;
+        font-weight: 700 !important;
+        z-index: 99999 !important;
+    }
+    .select2-dropdown-per-page .select2-results__option {
+        padding: 6px 10px !important;
+        text-align: center !important;
+    }
+    .select2-dropdown-per-page .select2-results__option--highlighted[aria-selected] {
+        background-color: var(--orb-primary, #4B00E8) !important;
+        color: #ffffff !important;
+    }
 </style>
 @endsection
 
@@ -63,11 +104,12 @@
     .att-page {
         min-height: calc(100vh - 90px);
         background: var(--orb-bg);
-        padding: 16px 12px 36px;
+        padding: 12px 14px 28px;
     }
 
     .att-container {
-        max-width: 1600px;
+        max-width: 100% !important;
+        width: 100%;
         margin: 0 auto;
     }
 
@@ -146,16 +188,41 @@
         white-space: nowrap;
     }
 
-    .att-btn-light {
-        background: #fff;
-        color: #101828 !important;
-        box-shadow: 0 10px 22px rgba(16, 24, 40, .08);
+    .att-btn-glass,
+    .att-hero-actions .att-btn {
+        background: rgba(255, 255, 255, 0.18) !important;
+        border: 1px solid rgba(255, 255, 255, 0.38) !important;
+        color: #ffffff !important;
+        backdrop-filter: blur(10px) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+        border-radius: 999px !important;
+        padding: 9px 20px !important;
+        font-size: 13.5px !important;
+        font-weight: 750 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        text-decoration: none !important;
+        white-space: nowrap !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08) !important;
+        transition: all 0.2s ease !important;
     }
 
-    .att-btn-light:hover {
-        background: #F9F5FF;
-        color: var(--orb-primary) !important;
+    .att-btn-glass:hover,
+    .att-hero-actions .att-btn:hover {
+        background: rgba(255, 255, 255, 0.32) !important;
+        border-color: rgba(255, 255, 255, 0.65) !important;
+        color: #ffffff !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15) !important;
     }
+
+    .att-btn-glass i,
+    .att-hero-actions .att-btn i {
+        color: #ffffff !important;
+    }
+
 
     .att-metric-grid {
         display: grid;
@@ -237,24 +304,25 @@
     .att-card {
         background: #fff;
         border: 1px solid var(--orb-border);
-        border-radius: 24px;
+        border-radius: 18px;
         overflow: hidden;
         box-shadow: var(--orb-shadow);
+        width: 100%;
     }
 
     .att-section-head {
-        padding: 18px 22px;
+        padding: 16px 20px;
         border-bottom: 1px solid var(--orb-border);
         background: linear-gradient(180deg, #fff, #FAFBFF);
         display: flex;
-        align-items: flex-start;
+        align-items: center;
         justify-content: space-between;
         gap: 16px;
     }
 
     .att-section-title {
-        font-size: 19px;
-        font-weight: 950;
+        font-size: 18px;
+        font-weight: 900;
         color: var(--orb-text);
         margin: 0;
         display: flex;
@@ -269,54 +337,34 @@
     .att-section-sub {
         font-size: 13px;
         color: var(--orb-muted);
-        font-weight: 650;
+        font-weight: 600;
         margin-top: 4px;
     }
 
-    .att-head-badges {
+    .att-table-toolbar {
+        padding: 10px 18px;
+        background: #F8FAFC;
+        border-bottom: 1px solid #EAECF0;
         display: flex;
-        gap: 9px;
+        align-items: center;
+        justify-content: space-between;
         flex-wrap: wrap;
-        justify-content: flex-end;
+        gap: 10px;
     }
 
     .att-total-pill {
         border: 1px solid #FAD7AA;
         background: #FFF7ED;
         color: #C2410C;
-        border-radius: 12px;
-        padding: 9px 12px;
+        border-radius: 10px;
+        padding: 6px 12px;
         font-size: 12px;
-        font-weight: 950;
+        font-weight: 850;
         white-space: nowrap;
-    }
-
-    .att-export-btn {
-        border: 1px solid #E4E7EC;
-        background: #FFFFFF;
-        color: #344054;
-        border-radius: 12px;
-        padding: 8px 14px;
-        font-size: 12px;
-        font-weight: 800;
-        white-space: nowrap;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        text-decoration: none !important;
-        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
-        transition: all .15s ease;
-    }
-
-    .att-export-btn:hover {
-        background: #F9FAFB;
-        border-color: #D0D5DD;
-        color: #101828;
-        transform: translateY(-1px);
     }
 
     .att-filter-panel {
-        padding: 16px 22px;
+        padding: 14px 18px;
         border-bottom: 1px solid var(--orb-border);
         background: #fff;
     }
@@ -338,12 +386,12 @@
     }
 
     .att-filter-group .form-control {
-        height: 43px;
-        border-radius: 14px;
+        height: 42px;
+        border-radius: 12px;
         border: 1px solid #E4E7EC;
         font-size: 13px;
-        font-weight: 750;
-        padding: 0 14px;
+        font-weight: 700;
+        padding: 0 12px;
         box-shadow: none !important;
         background: #fff;
     }
@@ -354,12 +402,35 @@
     }
 
     .att-table-wrap {
-        padding: 0 16px 16px;
+        padding: 0 !important;
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+        scrollbar-color: #CBD5E1 #F1F5F9;
+    }
+
+    .att-table-wrap::-webkit-scrollbar {
+        height: 6px;
+    }
+
+    .att-table-wrap::-webkit-scrollbar-track {
+        background: #F1F5F9;
+        border-radius: 999px;
+    }
+
+    .att-table-wrap::-webkit-scrollbar-thumb {
+        background: #CBD5E1;
+        border-radius: 999px;
+    }
+
+    .att-table-wrap::-webkit-scrollbar-thumb:hover {
+        background: #94A3B8;
     }
 
     .att-table {
         width: 100% !important;
-        min-width: 1560px;
+        min-width: 1040px;
         border-collapse: separate !important;
         border-spacing: 0;
         margin: 0 !important;
@@ -367,12 +438,13 @@
 
     .att-table thead th {
         background: #F8FAFC !important;
-        color: #344054 !important;
-        font-size: 10px !important;
-        font-weight: 950 !important;
+        color: #475467 !important;
+        font-size: 11px !important;
+        font-weight: 800 !important;
         text-transform: uppercase;
-        padding: 14px 12px !important;
-        border-top: 1px solid #EAECF0 !important;
+        letter-spacing: 0.03em;
+        padding: 11px 8px !important;
+        border-top: none !important;
         border-bottom: 1px solid #EAECF0 !important;
         white-space: nowrap;
         vertical-align: middle !important;
@@ -380,10 +452,11 @@
 
     .att-table tbody td {
         background: #fff;
-        border-bottom: 1px solid #EEF2F6 !important;
-        padding: 13px 12px !important;
+        border-bottom: 1px solid #F2F4F7 !important;
+        padding: 9px 8px !important;
         vertical-align: middle !important;
         white-space: nowrap;
+        font-size: 12.5px;
     }
 
     .att-table tbody tr:hover td {
@@ -582,26 +655,44 @@
     }
 
     .dropdown-menu.att-action-menu {
-        border: 1px solid var(--orb-border);
-        border-radius: 15px;
-        box-shadow: 0 18px 45px rgba(16, 24, 40, .14);
-        padding: 7px;
-        min-width: 185px
+        border: 1px solid #EAECF0;
+        border-radius: 12px;
+        box-shadow: 0 10px 25px -5px rgba(16, 24, 40, 0.1), 0 8px 10px -6px rgba(16, 24, 40, 0.06);
+        padding: 6px;
+        min-width: 175px;
+        background: #ffffff;
     }
 
     .att-action-menu .dropdown-item {
-        border-radius: 11px;
-        padding: 8px 10px;
+        border-radius: 8px;
+        padding: 8px 12px;
         font-size: 13px;
-        font-weight: 800;
+        font-weight: 600;
+        color: #344054;
         display: flex;
         align-items: center;
-        gap: 8px
+        gap: 10px;
+        transition: all 0.15s ease;
+    }
+
+    .att-action-menu .dropdown-item i {
+        font-size: 13px;
+        width: 16px;
+        text-align: center;
+        flex-shrink: 0;
     }
 
     .att-action-menu .dropdown-item:hover {
-        background: var(--orb-soft);
-        color: var(--orb-primary)
+        background: #F4F3FF;
+        color: var(--orb-primary, #4B00E8);
+    }
+
+    .att-action-menu .dropdown-item.disabled,
+    .att-action-menu .dropdown-item:disabled {
+        color: #98A2B3 !important;
+        background: transparent !important;
+        cursor: not-allowed;
+        opacity: 0.6;
     }
 
     /* Premium unified Datatables styles */
@@ -787,14 +878,14 @@
         @php
         $isPaginator = $attendances instanceof \Illuminate\Pagination\AbstractPaginator;
         $recordItems = $isPaginator ? collect($attendances->items()) : collect($attendances);
-        $totalRecords = $isPaginator ? $attendances->total() : $recordItems->count();
-        $presentRecords = $recordItems->filter(fn($a) => optional($a->attendanceType)->code === 'present')->count();
-        $lateRecords = $recordItems->filter(fn($a) => ($a->is_late ?? $a->late_mark ?? false))->count();
-        $blockedRecords = $recordItems->filter(fn($a) => ($a->is_blocked ?? $a->is_punch_blocked ?? false))->count();
-        $missedRecords = $recordItems->filter(fn($a) => ($a->missed_punch ?? false))->count();
-        $halfDayRecords = $recordItems->filter(fn($a) => ($a->is_half_day ?? false))->count();
-        $wfoRecords = $recordItems->filter(fn($a) => strtolower($a->work_mode ?? '') === 'wfo')->count();
-        $wfhRecords = $recordItems->filter(fn($a) => strtolower($a->work_mode ?? '') === 'wfh')->count();
+        $totalRecords = isset($stats['total']) ? (int) $stats['total'] : ($isPaginator ? $attendances->total() : $recordItems->count());
+        $presentRecords = isset($stats['present']) ? (int) $stats['present'] : $recordItems->filter(fn($a) => optional($a->attendanceType)->code === 'present' || ($a->attendance_status ?? '') === 'present')->count();
+        $lateRecords = isset($stats['late']) ? (int) $stats['late'] : $recordItems->filter(fn($a) => ($a->is_late ?? $a->late_mark ?? false))->count();
+        $blockedRecords = isset($stats['blocked']) ? (int) $stats['blocked'] : $recordItems->filter(fn($a) => ($a->is_blocked ?? $a->is_punch_blocked ?? false))->count();
+        $missedRecords = isset($stats['missed_punch']) ? (int) $stats['missed_punch'] : $recordItems->filter(fn($a) => ($a->missed_punch ?? $a->is_missed_punch ?? false) || ($a->attendance_status ?? '') === 'missed_punch')->count();
+        $halfDayRecords = isset($stats['half_day']) ? (int) $stats['half_day'] : $recordItems->filter(fn($a) => ($a->is_half_day ?? false) || ($a->attendance_status ?? '') === 'half_day')->count();
+        $wfoRecords = isset($stats['wfo']) ? (int) $stats['wfo'] : $recordItems->filter(fn($a) => strtolower($a->work_mode ?? '') === 'wfo')->count();
+        $wfhRecords = isset($stats['wfh']) ? (int) $stats['wfh'] : $recordItems->filter(fn($a) => strtolower($a->work_mode ?? '') === 'wfh')->count();
         @endphp
 
         <div class="att-hero">
@@ -812,21 +903,9 @@
             </div>
             @if(!$isMyAttendance)
             <div class="att-hero-actions">
-                <a href="{{ route('attendances.index') }}" class="att-btn att-btn-light">
+                {{-- <a href="{{ route('attendances.index') }}" class="att-btn att-btn-glass">
                     <i class="fas fa-chart-line"></i> Attendance Dashboard
-                </a>
-                <!-- <a href="{{ route('attendances.export-pdf', request()->query()) }}" class="att-btn att-btn-light">
-                    <i class="fas fa-file-pdf text-danger"></i> Export PDF
-                </a>
-                <a href="{{ route('attendances.export-excel', request()->query()) }}" class="att-btn att-btn-light">
-                    <i class="fas fa-file-excel text-success"></i> Export CSV
-                </a>
-                <a href="{{ route('attendances.print', request()->query()) }}" target="_blank" class="att-btn att-btn-light">
-                    <i class="fas fa-print text-primary"></i> Print
-                </a>
-                <a href="{{ route('attendances.record') }}" class="att-btn att-btn-light">
-                    <i class="fas fa-undo"></i> Reset
-                </a> -->
+                </a> --}}
             </div>
             @endif
         </div>
@@ -920,25 +999,6 @@
                         <div class="att-section-sub" style="margin-top:4px;">Filter by employee to inspect their attendance history, timings, and status.</div>
                     </div>
                 </div>
-                <div class="att-head-badges align-items-center">
-                    <span class="att-total-pill">Total: {{ $totalRecords }}</span>
-                    @if($blockedRecords > 0)
-                    <span class="att-total-pill" style="border-color:#FECDD3; background:#FFF1F2; color:#E11D48;">Blocked: {{ $blockedRecords }}</span>
-                    @endif
-
-                    <a href="{{ route('attendances.export-excel', request()->query()) }}" class="att-export-btn">
-                        <i class="fas fa-file-csv text-success"></i> CSV
-                    </a>
-                    <a href="{{ route('attendances.export-excel', request()->query()) }}" class="att-export-btn">
-                        <i class="fas fa-file-excel text-success"></i> Excel
-                    </a>
-                    <a href="{{ route('attendances.export-pdf', request()->query()) }}" class="att-export-btn">
-                        <i class="fas fa-file-pdf text-danger"></i> PDF
-                    </a>
-                    <a href="{{ route('attendances.print', request()->query()) }}" target="_blank" class="att-export-btn">
-                        <i class="fas fa-print text-primary"></i> Print
-                    </a>
-                </div>
                 @endif
             </div>
 
@@ -950,7 +1010,7 @@
                         <div class="att-filter-group">
                             <label><i class="fas fa-user text-primary mr-1"></i> Employee</label>
                             <select name="employee_id" class="form-control select2-searchable" id="employeeSelect">
-                                <option value="all" {{ ((string)($selectedEmployeeId ?? request('employee_id')) === 'all') ? 'selected' : '' }}>👥 All Employees</option>
+                                <option value="all" {{ ((string)($selectedEmployeeId ?? request('employee_id')) === 'all') ? 'selected' : '' }}> All Employees</option>
                                 @foreach($employees as $emp)
                                 @php 
                                     $empId = optional($emp->employee)->id ?? $emp->id; 
@@ -967,24 +1027,65 @@
                         </div>
                         @endif
 
+                        @php
+                            $hasRangeParam = request()->filled('from_date') || request()->filled('to_date');
+                            $monthParam = request('month_year');
+                            $hasSingleDate = request()->filled('date');
+
+                            
+                            $isCustomRange = ($monthParam === 'all' || $monthParam === 'custom' || ($hasRangeParam && !$hasSingleDate));
+
+                            if ($isCustomRange) {
+                                $effectiveMonthYear = 'all';
+                            } elseif ($hasSingleDate) {
+                                try {
+                                    $effectiveMonthYear = \Carbon\Carbon::parse(request('date'))->format('Y-m');
+                                } catch (\Throwable $e) {
+                                    $effectiveMonthYear = ($selectedMonthYear && $selectedMonthYear !== 'all') ? $selectedMonthYear : \Carbon\Carbon::now()->format('Y-m');
+                                }
+                            } else {
+                                $effectiveMonthYear = ($selectedMonthYear && $selectedMonthYear !== 'all') ? $selectedMonthYear : \Carbon\Carbon::now()->format('Y-m');
+                            }
+                        @endphp
+
                         <div class="att-filter-group">
-                            <label>Date</label>
-                            <input type="date" name="date" class="form-control" value="{{ request('date') }}">
+                            <label><i class="fas fa-calendar-alt text-primary mr-1"></i> Month</label>
+                            <select name="month_year" class="form-control select2-searchable" id="monthYearSelect">
+                                <option value="all" {{ ($isCustomRange || $effectiveMonthYear === 'all') ? 'selected' : '' }}>Custom Date Range</option>
+                                @php
+                                    $cursorDate = \Carbon\Carbon::now();
+                                    for ($m = 0; $m < 12; $m++) {
+                                        $val = $cursorDate->format('Y-m');
+                                        $label = $cursorDate->format('F Y');
+                                        if ($m === 0) {
+                                            $label .= ' (Current)';
+                                        }
+                                        $isSelected = (!$isCustomRange && $effectiveMonthYear === $val);
+                                        echo "<option value=\"{$val}\" " . ($isSelected ? 'selected' : '') . ">{$label}</option>";
+                                        $cursorDate->subMonth();
+                                    }
+                                @endphp
+                            </select>
                         </div>
 
                         <div class="att-filter-group">
+                            <label><i class="fas fa-calendar-day text-primary mr-1"></i> Date</label>
+                            <x-form.date-picker name="date" id="record_date" :value="request('date')" placeholder="dd-mm-yyyy" class="form-control" />
+                        </div>
+
+                        <div class="att-filter-group custom-date-filter {{ $isCustomRange ? '' : 'd-none' }}">
                             <label>From Date</label>
-                            <input type="date" name="from_date" class="form-control" value="{{ request('from_date') }}">
+                            <x-form.date-picker name="from_date" id="record_from_date" :value="request('from_date')" placeholder="dd-mm-yyyy" class="form-control" />
                         </div>
 
-                        <div class="att-filter-group">
+                        <div class="att-filter-group custom-date-filter {{ $isCustomRange ? '' : 'd-none' }}">
                             <label>To Date</label>
-                            <input type="date" name="to_date" class="form-control" value="{{ request('to_date') }}">
+                            <x-form.date-picker name="to_date" id="record_to_date" :value="request('to_date')" placeholder="dd-mm-yyyy" class="form-control" />
                         </div>
 
                         <div class="att-filter-group">
                             <label>Status</label>
-                            <select name="attendance_type_id" class="form-control">
+                            <select name="attendance_type_id" class="form-control select2-searchable">
                                 <option value="">All Status</option>
                                 @foreach($attendanceTypes as $type)
                                 <option value="{{ $type->id }}" {{ request('attendance_type_id') == $type->id ? 'selected' : '' }}>
@@ -996,7 +1097,7 @@
 
                         <div class="att-filter-group">
                             <label>Shift</label>
-                            <select name="attendance_time_id" class="form-control">
+                            <select name="attendance_time_id" class="form-control select2-searchable">
                                 <option value="">All Shifts</option>
                                 @foreach($attendanceTimes ?? [] as $shift)
                                 <option value="{{ $shift->id }}" {{ request('attendance_time_id') == $shift->id ? 'selected' : '' }}>
@@ -1008,7 +1109,7 @@
 
                         <div class="att-filter-group">
                             <label>Work Mode</label>
-                            <select name="work_mode" class="form-control">
+                            <select name="work_mode" class="form-control select2-searchable">
                                 <option value="">All</option>
                                 <option value="wfo" {{ request('work_mode') == 'wfo' ? 'selected' : '' }}>WFO</option>
                                 <option value="wfh" {{ request('work_mode') == 'wfh' ? 'selected' : '' }}>WFH</option>
@@ -1017,7 +1118,7 @@
 
                         <div class="att-filter-group">
                             <label>Flags</label>
-                            <select name="flag" class="form-control">
+                            <select name="flag" class="form-control select2-searchable">
                                 <option value="">All Records</option>
                                 <option value="late" {{ request('flag') == 'late' ? 'selected' : '' }}>Late</option>
                                 <option value="early_out" {{ request('flag') == 'early_out' ? 'selected' : '' }}>Early Logout</option>
@@ -1028,7 +1129,7 @@
                         </div>
 
                         <div class="att-filter-group d-flex align-items-end" style="gap: 8px;">
-                            <button type="submit" class="btn text-white font-weight-bold shadow-sm" style="height:43px; border-radius:14px; background:var(--orb-primary); border:none; flex:1; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
+                            <button type="submit" class="btn text-white font-weight-bold shadow-sm" style="height:43px; border-radius:14px; background:linear-gradient(135deg, var(--orb-primary, #4B00E8) 0%, var(--orb-secondary, #FF5252) 100%); border:none; flex:1; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
                                 <i class="fas fa-search"></i> Search
                             </button>
                             <a href="{{ $isMyAttendance ? route('hrms.attendance.my') : route('attendances.record') }}" class="btn btn-light" style="height:43px; width:43px; border-radius:14px; display:inline-flex; align-items:center; justify-content:center; font-weight:750; border:1px solid #E4E7EC; background:#fff; color:#344054; flex-shrink:0;" title="Reset Filters">
@@ -1038,6 +1139,33 @@
 
                     </div>
                 </form>
+            </div>
+
+            <!-- Table Action Toolbar with Show Entries & Export Tools -->
+            <div class="orb-table-tools-bar eo-toolbar">
+                <div class="orb-table-length-box eo-toolbar-left">
+                    <div class="dataTables_length d-flex align-items-center">
+                        <label class="eo-entries-label mb-0 d-flex align-items-center font-weight-bold text-muted" style="font-size: 13px; gap: 8px;">
+                            <span>Show</span>
+                            <select id="recordsPerPageSelect" name="per_page" class="table-per-page-select orb-per-page-select" style="width: 75px;">
+                                @foreach([10, 25, 50, 100, 250] as $size)
+                                    <option value="{{ $size }}" {{ (int) request('per_page', 50) === $size ? 'selected' : '' }}>{{ $size }}</option>
+                                @endforeach
+                            </select>
+                            <span>entries</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="orb-table-export-buttons eo-toolbar-right">
+                    @if(!$isMyAttendance)
+                    <x-ui.export-buttons 
+                        :csvUrl="route('attendances.export-excel', request()->query())" 
+                        :excelUrl="route('attendances.export-excel', request()->query())" 
+                        :pdfUrl="route('attendances.export-pdf', request()->query())" 
+                        :printUrl="route('attendances.print', request()->query())" 
+                    />
+                    @endif
+                </div>
             </div>
 
             <div class="att-table-wrap">
@@ -1057,8 +1185,9 @@
                             <th>Gross</th>
                             <th>Net</th>
                             <th>Status</th>
+                            <th>Reason</th>
                             <th>Flags</th>
-                            <th>Task Summary</th>
+                            <th>Work Report</th>
                             <th class="no-export text-right">Action</th>
                         </tr>
                     </thead>
@@ -1075,32 +1204,28 @@
                         }
                         if ($rawStatus === 'absent' || $rawStatus === 'lwp') {
                             $typeCode = 'absent';
-                            $statusName = '🔴 ABSENT';
+                            $statusName = 'ABSENT';
                         } else {
                             $statusMap = [
-                                'present' => ['present', 'Present'],
-                                'half_day' => ['half_day', 'Half Day'],
-                                'absent' => ['absent', '🔴 ABSENT'],
-                                'missed_punch' => ['missed_punch', 'Missed Punch'],
-                                'leave' => ['leave', 'Leave'],
-                                'holiday' => ['holiday', 'Holiday'],
-                                'week_off' => ['week_off', 'Week Off'],
-                                'punch_blocked' => ['punch_blocked', 'Punch Blocked'],
-                                'unlocked' => ['unlocked', '🔓 UNLOCKED'],
-                                'awaiting_punch_in' => ['unlocked', '🔓 UNLOCKED'],
-                                'lwp' => ['absent', '🔴 ABSENT'],
+                                'present'           => ['present', 'PRESENT'],
+                                'half_day'          => ['half_day', 'HALF DAY'],
+                                'absent'            => ['absent', 'ABSENT'],
+                                'missed_punch'      => ['missed_punch', 'MISSED PUNCH'],
+                                'leave'             => ['leave', 'LEAVE'],
+                                'holiday'           => ['holiday', 'HOLIDAY'],
+                                'week_off'          => ['week_off', 'WEEK OFF'],
+                                'punch_blocked'     => ['punch_blocked', 'PUNCH BLOCKED'],
+                                'unlocked'          => ['unlocked', 'UNLOCKED'],
+                                'awaiting_punch_in' => ['unlocked', 'UNLOCKED'],
+                                'lwp'               => ['absent', 'ABSENT'],
                             ];
                             $mapped = $statusMap[$rawStatus] ?? null;
                             if ($mapped) {
                                 $typeCode = $mapped[0];
                                 $statusName = $mapped[1];
                             } else {
-                                $typeCode = optional($attendance->attendanceType)->code ?? 'default';
-                                $statusName = optional($attendance->attendanceType)->name ?? 'N/A';
-                                if ($typeCode === 'lwp') {
-                                    $typeCode = 'absent';
-                                    $statusName = '🔴 ABSENT';
-                                }
+                                $typeCode = optional($attendance->attendanceType)->code ?? ($rawStatus ?: 'default');
+                                $statusName = strtoupper(optional($attendance->attendanceType)->name ?? ($attendance->attendance_status ?? 'N/A'));
                             }
                         }
 
@@ -1201,13 +1326,28 @@
                             <td><strong>{{ $net }}</strong></td>
 
                              <td>
-                                <span class="att-badge badge-{{ $typeCode }}" @if(!empty($attendance->half_day_reason) || !empty($attendance->lwp_reason)) title="{{ $attendance->half_day_reason ?: $attendance->lwp_reason }}" @endif>
+                                <span class="att-badge badge-{{ $typeCode }}">
                                     {{ $statusName }}
                                 </span>
-                                @if(!empty($attendance->half_day_reason))
-                                    <small class="d-block text-muted mt-1" style="font-size: 11px; max-width: 220px; line-height: 1.2; white-space: normal !important; word-break: break-word;">{{ $attendance->half_day_reason }}</small>
-                                @elseif(!empty($attendance->lwp_reason))
-                                    <small class="d-block text-muted mt-1" style="font-size: 11px; max-width: 220px; line-height: 1.2; white-space: normal !important; word-break: break-word;">{{ $attendance->lwp_reason }}</small>
+                            </td>
+
+                            <td>
+                                @php
+                                    $reasonText = $attendance->half_day_reason 
+                                        ?: ($attendance->lwp_reason 
+                                        ?: ($attendance->status_reason 
+                                        ?: ($attendance->remarks 
+                                        ?: ($attendance->blocked_reason
+                                        ?: ($attendance->block_reason
+                                        ?: ($attendance->unlock_remarks 
+                                        ?: ($attendance->approval_remarks ?: null)))))));
+                                @endphp
+                                @if(!empty($reasonText))
+                                    <div class="text-truncate" style="max-width: 160px; font-size: 12px; color: #475467; font-weight: 500;" title="{{ $reasonText }}">
+                                        {{ $reasonText }}
+                                    </div>
+                                @else
+                                    <span class="text-muted" style="font-size: 12px;">-</span>
                                 @endif
                             </td>
 
@@ -1316,22 +1456,22 @@
                                     </button>
 
                                     <div class="dropdown-menu dropdown-menu-right att-action-menu">
-                                        @if($firstLog)
-                                            @php
+                                        @php
+                                            $repTitle = 'Work Report Submitted';
+                                            $repDesc = null;
+                                            $repStatus = 'Completed';
+                                            $projectsList = [];
+                                            $requirementsList = [];
+                                            $testStatus = ['tested' => false, 'completed' => false];
+                                            $issues = [];
+                                            $notes = null;
+
+                                            if ($firstLog) {
                                                 $tasks = $firstLog->work_summary_json;
                                                 if (is_string($tasks)) {
                                                     $tasks = json_decode($tasks, true);
                                                 }
                                                 
-                                                $repTitle = 'Work Report Submitted';
-                                                $repDesc = null;
-                                                $repStatus = 'Completed';
-                                                $projectsList = [];
-                                                $requirementsList = [];
-                                                $testStatus = ['tested' => false, 'completed' => false];
-                                                $issues = [];
-                                                $notes = null;
-
                                                 if (is_array($tasks)) {
                                                     if (isset($tasks['projects']) && is_array($tasks['projects'])) {
                                                         $projectsList = $tasks['projects'];
@@ -1430,18 +1570,35 @@
                                                     'issues' => $issues,
                                                     'notes' => $notes,
                                                 ];
-                                            @endphp
+                                            }
+                                        @endphp
+
+                                        <button type="button"
+                                            class="dropdown-item"
+                                            data-toggle="modal"
+                                            data-target="#viewModal{{ $attendance->id }}">
+                                            <i class="fas fa-eye text-info"></i>
+                                            <span>View Details</span>
+                                        </button>
+
+                                        @if($firstLog)
                                             <button type="button"
                                                 class="dropdown-item"
-                                                data-work-log="{{ json_encode($logPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}"
+                                                data-project="{{ $repTitle }}"
+                                                data-desc="{{ $repDesc }}"
+                                                data-status="{{ $repStatus }}"
+                                                data-tasks="{{ json_encode($requirementsList) }}"
+                                                data-test-status="{{ json_encode($testStatus) }}"
+                                                data-issues="{{ json_encode($issues) }}"
+                                                data-notes="{{ $notes ?? '' }}"
                                                 onclick="parseAndOpenWorkReport(this)">
                                                 <i class="fas fa-clipboard-list text-primary"></i>
-                                                View Work Report
+                                                <span>View Work Report</span>
                                             </button>
                                         @else
-                                            <button type="button" class="dropdown-item disabled text-muted" disabled style="cursor: not-allowed; opacity: 0.6;">
+                                            <button type="button" class="dropdown-item disabled" disabled>
                                                 <i class="fas fa-clipboard-list text-muted"></i>
-                                                No Work Report
+                                                <span>No Work Report</span>
                                             </button>
                                         @endif
 
@@ -1453,8 +1610,8 @@
                                                 class="dropdown-item"
                                                 data-toggle="modal"
                                                 data-target="#editModal{{ $attendance->id }}">
-                                                <i class="fas fa-edit text-primary"></i>
-                                                Edit
+                                                <i class="fas fa-edit text-warning"></i>
+                                                <span>Edit Attendance</span>
                                             </button>
                                             @endif
                                         @endif
@@ -1468,18 +1625,15 @@
             </div>
 
             @if($attendances instanceof \Illuminate\Pagination\AbstractPaginator && $attendances->hasPages())
-            <div class="px-4 py-3 border-top d-flex justify-content-between align-items-center flex-wrap gap-2" style="background:#FAFBFD; border-bottom-left-radius:24px; border-bottom-right-radius:24px;">
-                <div class="text-muted font-weight-bold" style="font-size:13px;">
-                    Showing {{ $attendances->firstItem() }} to {{ $attendances->lastItem() }} of {{ $attendances->total() }} records
-                </div>
-                <div>
-                    {{ $attendances->appends(request()->query())->links() }}
-                </div>
+            <div class="border-top bg-white" style="border-bottom-left-radius:18px; border-bottom-right-radius:18px;">
+                {{ $attendances->appends(request()->query())->links('vendor.pagination.orbo') }}
             </div>
             @endif
         </div>
 
         @foreach($attendances as $attendance)
+            @include('hrms.attendance.partials.view-modal', ['attendance' => $attendance])
+
             @if(!$isMyAttendance)
                 @if(($canManageAttendance ?? false) || (auth()->user() && method_exists(auth()->user(), 'hasRole') && auth()->user()->hasRole('super_admin')))
                     @include('hrms.attendance.partials.edit-modal', ['attendance' => $attendance])
@@ -1506,14 +1660,19 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        if (typeof $ !== 'undefined' && $.fn.select2) {
-            $('.select2-searchable').select2({
-                width: '100%',
-                dropdownAutoWidth: true
+    $(function() {
+        if (typeof initSearchableSelects === 'function') {
+            initSearchableSelects();
+        }
+
+        if (typeof $.fn.select2 !== 'undefined') {
+            $('#recordsPerPageSelect').select2({
+                minimumResultsForSearch: Infinity,
+                width: '75px',
+                dropdownCssClass: 'select2-dropdown-per-page',
+                containerCssClass: 'select2-container--per-page'
             });
         }
         const form = document.getElementById('dailyAttendanceFilterForm');
@@ -1524,6 +1683,32 @@
         const dateInput = document.querySelector('input[name="date"]');
         const fromDateInput = document.querySelector('input[name="from_date"]');
         const toDateInput = document.querySelector('input[name="to_date"]');
+        const monthYearSelect = document.getElementById('monthYearSelect');
+        const customDateFilters = document.querySelectorAll('.custom-date-filter');
+
+        function toggleCustomDateFilters(show) {
+            customDateFilters.forEach(function(el) {
+                if (show) {
+                    el.classList.remove('d-none');
+                } else {
+                    el.classList.add('d-none');
+                }
+            });
+        }
+
+        if (monthYearSelect) {
+            $(monthYearSelect).on('change', function() {
+                const val = $(this).val();
+                if (val === 'all' || val === 'custom') {
+                    toggleCustomDateFilters(true);
+                } else {
+                    toggleCustomDateFilters(false);
+                    if (fromDateInput) fromDateInput.value = '';
+                    if (toDateInput) toDateInput.value = '';
+                }
+                // Month filter does not auto-submit; user submits via Search button
+            });
+        }
 
         if (dateInput) {
             dateInput.addEventListener('change', function() {
@@ -1576,6 +1761,15 @@
             language: {
                 emptyTable: 'No attendance records found.'
             }
+        });
+
+        $('#recordsPerPageSelect').on('change', function() {
+            let val = $(this).val();
+            let url = new URL(window.location.href);
+            if (val === '-1') val = 'all';
+            url.searchParams.set('per_page', val);
+            url.searchParams.delete('page'); 
+            window.location.href = url.toString();
         });
 
         $('.dataTables_length select').off('change').on('change', function() {

@@ -256,18 +256,19 @@
     <table class="data-table">
         <thead>
             <tr>
-                <th style="width: 22px; text-align: center;">#</th>
-                <th style="width: 125px;">Employee</th>
-                <th style="width: 85px;">Dept / Shift</th>
-                <th style="width: 60px;">Date</th>
-                <th style="width: 35px; text-align: center;">Mode</th>
-                <th style="width: 50px; text-align: center;">Punch In</th>
-                <th style="width: 50px; text-align: center;">Punch Out</th>
-                <th style="width: 50px; text-align: center;">Target Out</th>
-                <th style="width: 40px; text-align: center;">Gross</th>
-                <th style="width: 40px; text-align: center;">Net</th>
-                <th style="width: 65px; text-align: center;">Status</th>
-                <th style="width: 75px;">Flags</th>
+                <th style="width: 20px; text-align: center;">#</th>
+                <th style="width: 110px;">Employee</th>
+                <th style="width: 80px;">Dept / Shift</th>
+                <th style="width: 55px;">Date</th>
+                <th style="width: 32px; text-align: center;">Mode</th>
+                <th style="width: 45px; text-align: center;">Punch In</th>
+                <th style="width: 45px; text-align: center;">Punch Out</th>
+                <th style="width: 45px; text-align: center;">Target Out</th>
+                <th style="width: 38px; text-align: center;">Gross</th>
+                <th style="width: 38px; text-align: center;">Net</th>
+                <th style="width: 55px; text-align: center;">Status</th>
+                <th style="width: 85px;">Reason</th>
+                <th style="width: 65px;">Flags</th>
             </tr>
         </thead>
         <tbody>
@@ -276,6 +277,16 @@
                     $typeCode = optional($attendance->attendanceType)->code ?? 'default';
                     $typeName = optional($attendance->attendanceType)->name ?? ucwords(str_replace('_', ' ', $attendance->attendance_status ?? 'N/A'));
                     
+                    $reasonText = $attendance->half_day_reason 
+                        ?: ($attendance->lwp_reason 
+                        ?: ($attendance->status_reason 
+                        ?: ($attendance->remarks 
+                        ?: ($attendance->blocked_reason
+                        ?: ($attendance->block_reason
+                        ?: ($attendance->auto_block_reason
+                        ?: ($attendance->unlock_remarks 
+                        ?: ($attendance->approval_remarks ?: '-'))))))));
+
                     $flags = [];
                     if ($attendance->is_late) {
                         $flags[] = 'Late ' . ($attendance->late_minutes ?? 0) . 'm';
@@ -324,6 +335,9 @@
                     <td style="text-align: center;">
                         <span class="badge badge-{{ $typeCode }}">{{ $typeName }}</span>
                     </td>
+                    <td style="font-size: 7.5px; color: #475569;">
+                        {{ $reasonText }}
+                    </td>
                     <td>
                         @if(!empty($flags))
                             @foreach($flags as $flag)
@@ -336,7 +350,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="12" style="text-align: center; padding: 14px; color: #94a3b8; font-weight: 700;">
+                    <td colspan="13" style="text-align: center; padding: 14px; color: #94a3b8; font-weight: 700;">
                         No attendance records found for the selected period/filter.
                     </td>
                 </tr>

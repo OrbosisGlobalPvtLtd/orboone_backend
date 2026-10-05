@@ -900,7 +900,7 @@
                         
                         <div class="orb-filter-item">
                             <label>Month</label>
-                            <select name="month" class="form-control">
+                            <select name="month" class="form-control select2-searchable">
                                 @for($m = 1; $m <= 12; $m++)
                                     <option value="{{ $m }}" {{ (int)$month === $m ? 'selected' : '' }}>
                                         {{ \Carbon\Carbon::create(null,$m,1)->format('F') }}
@@ -946,7 +946,7 @@
                         @endif
 
                         <div class="orb-filter-item align-self-end d-flex align-items-center" style="gap: 8px;">
-                            <button type="submit" class="btn btn-primary font-weight-bold px-4 rounded-10 shadow-sm" style="height: 42px; background: var(--orb-primary); border: none;">
+                            <button type="submit" class="btn text-white font-weight-bold px-4 rounded-10 shadow-sm" style="height: 42px; background: linear-gradient(135deg, var(--orb-primary, #4B00E8) 0%, var(--orb-secondary, #FF5252) 100%); border: none;">
                                 <i class="fas fa-search mr-1"></i> Search
                             </button>
                             <a href="{{ route('attendances.monthly-report') }}" class="btn btn-light border text-secondary font-weight-bold" style="height: 42px; width: 42px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Reset Filters">

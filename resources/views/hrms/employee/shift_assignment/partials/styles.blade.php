@@ -355,4 +355,52 @@
         font-weight: 700 !important;
         color: #101828 !important;
     }
+
+    /* Shift Assignment Modal Internal Scroll */
+    #assignShiftModal .modal-dialog,
+    [id^="editShiftModal"] .modal-dialog {
+        max-height: calc(100vh - 40px) !important;
+        margin-top: 20px !important;
+        margin-bottom: 20px !important;
+    }
+
+    #assignShiftModal .modal-content,
+    [id^="editShiftModal"] .modal-content {
+        max-height: calc(100vh - 40px) !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    #assignShiftModal .modal-header,
+    [id^="editShiftModal"] .modal-header,
+    #assignShiftModal .modal-footer,
+    [id^="editShiftModal"] .modal-footer {
+        flex-shrink: 0 !important;
+    }
+
+    #assignShiftModal .modal-body,
+    [id^="editShiftModal"] .modal-body {
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        flex: 1 1 auto !important;
+        max-height: calc(100vh - 200px) !important;
+    }
+
+    #assignShiftModal .modal-body::-webkit-scrollbar,
+    [id^="editShiftModal"] .modal-body::-webkit-scrollbar {
+        width: 6px;
+    }
+    #assignShiftModal .modal-body::-webkit-scrollbar-track,
+    [id^="editShiftModal"] .modal-body::-webkit-scrollbar-track {
+        background: #F1F3F8;
+    }
+    #assignShiftModal .modal-body::-webkit-scrollbar-thumb,
+    [id^="editShiftModal"] .modal-body::-webkit-scrollbar-thumb {
+        background: #CBD5E1;
+        border-radius: 4px;
+    }
+    #assignShiftModal .modal-body::-webkit-scrollbar-thumb:hover,
+    [id^="editShiftModal"] .modal-body::-webkit-scrollbar-thumb:hover {
+        background: #94A3B8;
+    }
 </style>

@@ -1,8 +1,29 @@
+{{-- DataTable Toolbar: Length Left, Export buttons Right --}}
+<div class="orb-table-tools-bar">
+    <div id="shiftAssignmentLengthBox" class="orb-table-length-box">
+        <label class="d-inline-flex align-items-center mb-0 text-muted font-weight-bold" style="font-size: 13px; gap: 6px;">
+            Show
+            <select name="per_page" id="shiftLengthSelect" class="orb-length-dropdown select2-searchable">
+                <option value="10" {{ request('per_page') == 10 ? 'selected' : '' }}>10</option>
+                <option value="15" {{ request('per_page', 15) == 15 ? 'selected' : '' }}>15</option>
+                <option value="25" {{ request('per_page') == 25 ? 'selected' : '' }}>25</option>
+                <option value="50" {{ request('per_page') == 50 ? 'selected' : '' }}>50</option>
+                <option value="100" {{ request('per_page') == 100 ? 'selected' : '' }}>100</option>
+            </select>
+            entries
+        </label>
+    </div>
+    <div id="shiftAssignmentExportButtons" class="orb-table-export-buttons">
+        <x-ui.export-buttons table="shiftAssignmentTable" />
+    </div>
+</div>
+
 <!-- Table Container -->
 <div class="table-responsive">
-    <table class="report-table table mb-0" style="font-size: 13px;">
+    <table id="shiftAssignmentTable" class="report-table table mb-0 eo-table" style="font-size: 13px;">
         <thead>
             <tr>
+                <th class="py-3 px-3 text-center" style="width: 50px;">#</th>
                 <th class="py-3 px-4">Employee</th>
                 <th class="py-3">Dept & Designation</th>
                 <th class="py-3">Current Shift</th>
@@ -36,6 +57,9 @@
                 $employeeName = optional($emp->user)->name ?? 'Employee #' . $emp->id;
             @endphp
             <tr>
+                <td class="py-3 px-3 text-center align-middle font-weight-bold text-muted" style="font-size: 12.5px;">
+                    {{ ($employees->currentPage() - 1) * $employees->perPage() + $loop->iteration }}
+                </td>
                 <td class="py-3 px-4">
                     <div class="att-emp">
                         <span class="hrms-emp-avatar hrms-emp-avatar-sm mr-2">
@@ -127,7 +151,7 @@
             </tr>
             @empty
             <tr>
-                <td colspan="12" class="text-center py-5 text-muted">
+                <td colspan="13" class="text-center py-5 text-muted">
                     <i class="fas fa-users-slash fa-2x mb-3 d-block opacity-50"></i>
                     No employees found matching the specified filters.
                 </td>
@@ -137,7 +161,6 @@
     </table>
 </div>
 
-<div class="card-footer bg-white border-0 py-3 px-4 d-flex justify-content-between align-items-center">
-    <div class="text-muted small">Showing {{ $employees->firstItem() ?? 0 }} to {{ $employees->lastItem() ?? 0 }} of {{ $employees->total() }} employees</div>
-    <div>{{ $employees->links() }}</div>
-</div>
+@if($employees->hasPages() || $employees->total() > 0)
+    {{ $employees->withQueryString()->links('vendor.pagination.orbo') }}
+@endif

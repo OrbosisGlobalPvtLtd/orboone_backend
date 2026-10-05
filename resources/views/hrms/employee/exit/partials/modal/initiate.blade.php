@@ -5,7 +5,7 @@
     <div class="row">
         <div class="col-md-6 mb-3">
             <label class="eo-label">Exit Type <span class="required">*</span></label>
-            <select name="exit_type" class="eo-control eo-exit-type" required>
+            <select name="exit_type" class="eo-control eo-exit-type select2-searchable" required>
                 <option value="" disabled selected>Select Exit Type</option>
                 <option value="resignation">Resignation</option>
                 <option value="termination">Termination</option>

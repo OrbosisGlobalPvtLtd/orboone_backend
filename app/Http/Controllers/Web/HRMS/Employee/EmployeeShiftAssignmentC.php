@@ -63,7 +63,12 @@ class EmployeeShiftAssignmentC extends Controller
             $query->where('employees_new.id', $employeeId);
         }
 
-        $employees = $query->orderBy('employees_new.id', 'desc')->paginate(15)->withQueryString();
+        $perPage = (int) $request->input('per_page', 15);
+        if ($perPage < 5 || $perPage > 500) {
+            $perPage = 15;
+        }
+
+        $employees = $query->orderBy('users.name', 'asc')->paginate($perPage)->withQueryString();
 
         $allEmployeesList = EmployeeM::query()
             ->select('employees_new.*')
@@ -73,7 +78,7 @@ class EmployeeShiftAssignmentC extends Controller
             ->where('employee_profiles.is_profile_completed', 1)
             ->where('employee_profiles.profile_status', 'approved')
             ->with('user')
-            ->orderBy('employees_new.id', 'desc')
+            ->orderBy('users.name', 'asc')
             ->get();
         $attendanceTimes = AttendanceTimeM::where('is_active', 1)->orderBy('name')->get();
         $departments = DepartmentM::orderBy('name')->get();

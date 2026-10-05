@@ -9,8 +9,8 @@
                 'half_day_after_time' => $shiftItem->half_day_after_time ? \Carbon\Carbon::parse($shiftItem->half_day_after_time)->format('H:i') : '',
                 'block_after_time' => $shiftItem->block_after_time ? \Carbon\Carbon::parse($shiftItem->block_after_time)->format('H:i') : '',
                 'shift_end_time' => $shiftItem->shift_end_time ? \Carbon\Carbon::parse($shiftItem->shift_end_time)->format('H:i') : '',
-                'required_work_minutes' => $shiftItem->required_work_minutes ?? '',
-                'lunch_minutes' => $shiftItem->lunch_break_minutes ?? '',
+                'required_work_minutes' => (string)($shiftItem->required_work_minutes ?? ''),
+                'lunch_minutes' => (string)($shiftItem->lunch_break_minutes ?? ''),
             ];
         }
     }
@@ -18,6 +18,10 @@
 
 <script type="application/json" id="shift-default-timings-data">
     @json($shiftDefaultTimings)
+</script>
+
+<script type="application/json" id="all-designations-data">
+    @json($designations ?? [])
 </script>
 
 <script>
@@ -68,6 +72,14 @@
 
         let salaryEffectiveTouched = false;
 
+        function setDateVal(el, val) {
+            if (!el) return;
+            el.value = val || '';
+            if (el._flatpickr) {
+                el._flatpickr.setDate(val || '', true);
+            }
+        }
+
         function formatDateDDMMYYYY(date) {
             if (!date || isNaN(date.getTime())) return '';
             const day = String(date.getDate()).padStart(2, '0');
@@ -83,15 +95,27 @@
             return `${date.getFullYear()}-${month}-${day}`;
         }
 
-        function addMonths(dateString, months) {
+        function parseDateString(dateString) {
             if (!dateString) return null;
             const parts = dateString.split('-');
             if (parts.length !== 3) return null;
-            const y = parseInt(parts[0], 10);
-            const m = parseInt(parts[1], 10) - 1;
-            const d = parseInt(parts[2], 10);
-            const date = new Date(y, m, d);
-            if (isNaN(date.getTime())) return null;
+            let y, m, d;
+            if (parts[0].length === 4) {
+                y = parseInt(parts[0], 10);
+                m = parseInt(parts[1], 10) - 1;
+                d = parseInt(parts[2], 10);
+            } else {
+                d = parseInt(parts[0], 10);
+                m = parseInt(parts[1], 10) - 1;
+                y = parseInt(parts[2], 10);
+            }
+            const dt = new Date(y, m, d);
+            return isNaN(dt.getTime()) ? null : dt;
+        }
+
+        function addMonths(dateString, months) {
+            const date = parseDateString(dateString);
+            if (!date) return null;
 
             const originalDay = date.getDate();
             date.setMonth(date.getMonth() + Number(months));
@@ -103,15 +127,9 @@
         }
 
         function diffDaysInclusive(startValue, endValue) {
-            if (!startValue || !endValue) return '';
-            const startParts = startValue.split('-');
-            const endParts = endValue.split('-');
-            if (startParts.length !== 3 || endParts.length !== 3) return '';
-
-            const start = new Date(parseInt(startParts[0], 10), parseInt(startParts[1], 10) - 1, parseInt(startParts[2], 10));
-            const end = new Date(parseInt(endParts[0], 10), parseInt(endParts[1], 10) - 1, parseInt(endParts[2], 10));
-
-            if (isNaN(start.getTime()) || isNaN(end.getTime())) return '';
+            const start = parseDateString(startValue);
+            const end = parseDateString(endValue);
+            if (!start || !end) return '';
 
             const diff = end - start;
             if (diff < 0) return 'Invalid date range';
@@ -119,21 +137,44 @@
             return Math.floor(diff / (1000 * 60 * 60 * 24)) + 1;
         }
 
-        function filterDesignations() {
-            if (!elements.department || !elements.designation) return;
-            const deptId = elements.department.value;
+        const allDesignationsElement = document.getElementById('all-designations-data');
+        const allDesignations = allDesignationsElement ? JSON.parse(allDesignationsElement.textContent || '[]') : [];
 
-            Array.from(elements.designation.options).forEach(option => {
-                if (!option.value) {
-                    option.hidden = false;
-                    return;
+        function filterDesignations(preserveSelected = true) {
+            if (!elements.department || !elements.designation) return;
+            const deptId = String(elements.department.value || '');
+            let currentSelected = '';
+            if (preserveSelected) {
+                currentSelected = String(elements.designation.value || elements.designation.getAttribute('data-initial-val') || '');
+            }
+
+            elements.designation.innerHTML = '<option value="">Select Designation</option>';
+
+            let hasMatchingSelected = false;
+            allDesignations.forEach(item => {
+                if (!deptId || String(item.department_id) === deptId) {
+                    const isSelected = currentSelected && (String(item.id) === currentSelected);
+                    if (isSelected) hasMatchingSelected = true;
+
+                    const opt = document.createElement('option');
+                    opt.value = item.id;
+                    opt.textContent = item.name;
+                    opt.setAttribute('data-department-id', item.department_id);
+                    if (isSelected) {
+                        opt.selected = true;
+                    }
+                    elements.designation.appendChild(opt);
                 }
-                option.hidden = option.getAttribute('data-department-id') !== deptId;
             });
 
-            const selected = elements.designation.options[elements.designation.selectedIndex];
-            if (selected && selected.hidden) {
+            if (hasMatchingSelected) {
+                elements.designation.value = currentSelected;
+            } else {
                 elements.designation.value = '';
+            }
+
+            if (window.jQuery) {
+                $(elements.designation).trigger('change.select2');
             }
         }
 
@@ -162,14 +203,12 @@
         }
 
         function calculateClientProbation(startDateStr, option, customValue, customUnit) {
-            if (!startDateStr) return null;
-            const parts = startDateStr.split('-');
-            if (parts.length !== 3) return null;
-            const y = parseInt(parts[0], 10);
-            const m = parseInt(parts[1], 10) - 1;
-            const d = parseInt(parts[2], 10);
-            const start = new Date(y, m, d);
-            if (isNaN(start.getTime())) return null;
+            const start = parseDateString(startDateStr);
+            if (!start) return null;
+
+            const y = start.getFullYear();
+            const m = start.getMonth();
+            const d = start.getDate();
 
             let type = 'months';
             let val = 3;
@@ -214,7 +253,6 @@
             };
         }
 
-        
         function setProbationInputsEnabled(enabled) {
             var fields = [elements.probationOption, elements.customValue, elements.customUnit];
             fields.forEach(function(el) {
@@ -225,6 +263,10 @@
                     el.setAttribute('disabled', 'disabled');
                 }
             });
+            if (window.jQuery) {
+                if (elements.probationOption) $(elements.probationOption).prop('disabled', !enabled).trigger('change.select2');
+                if (elements.customUnit) $(elements.customUnit).prop('disabled', !enabled).trigger('change.select2');
+            }
         }
 
         function updateProbation() {
@@ -236,14 +278,20 @@
             if (elements.customProbationBox) {
                 if (option === 'custom') {
                     elements.customProbationBox.classList.remove('eo-hidden');
-                  
+                    elements.customProbationBox.style.display = '';
                     if (elements.customValue) elements.customValue.removeAttribute('disabled');
-                    if (elements.customUnit) elements.customUnit.removeAttribute('disabled');
+                    if (elements.customUnit) {
+                        elements.customUnit.removeAttribute('disabled');
+                        if (window.jQuery) $(elements.customUnit).prop('disabled', false).trigger('change.select2');
+                    }
                 } else {
                     elements.customProbationBox.classList.add('eo-hidden');
-                  
+                    elements.customProbationBox.style.display = 'none';
                     if (elements.customValue) elements.customValue.setAttribute('disabled', 'disabled');
-                    if (elements.customUnit) elements.customUnit.setAttribute('disabled', 'disabled');
+                    if (elements.customUnit) {
+                        elements.customUnit.setAttribute('disabled', 'disabled');
+                        if (window.jQuery) $(elements.customUnit).prop('disabled', true).trigger('change.select2');
+                    }
                 }
             }
 
@@ -284,7 +332,7 @@
             if (duration && duration !== 'custom' && elements.internshipEnd) {
                 const endDate = addMonths(elements.internshipStart.value, duration);
                 if (endDate) {
-                    elements.internshipEnd.value = formatInputDate(endDate);
+                    setDateVal(elements.internshipEnd, formatInputDate(endDate));
                     elements.internshipEnd.setAttribute('readonly', 'readonly');
                 }
             } else if (elements.internshipEnd) {
@@ -313,7 +361,7 @@
 
         function disableSalaryEffectiveForUnpaidIntern() {
             if (!elements.salaryEffectiveFrom) return;
-            elements.salaryEffectiveFrom.value = '';
+            setDateVal(elements.salaryEffectiveFrom, '');
             elements.salaryEffectiveFrom.setAttribute('readonly', 'readonly');
             elements.salaryEffectiveFrom.classList.add('disabled-soft');
             if (elements.salaryEffectiveNote) elements.salaryEffectiveNote.innerText = 'Salary effective date is not required for an unpaid internship.';
@@ -348,7 +396,7 @@
                 enableSalaryEffective();
 
                 if (!salaryEffectiveTouched && elements.internshipStart && elements.internshipStart.value && elements.salaryEffectiveFrom) {
-                    elements.salaryEffectiveFrom.value = elements.internshipStart.value;
+                    setDateVal(elements.salaryEffectiveFrom, elements.internshipStart.value);
                 }
 
                 if (elements.salaryNote) elements.salaryNote.innerText = 'Please enter the stipend amount for a paid intern.';
@@ -362,7 +410,7 @@
             if (elements.salaryReason) elements.salaryReason.placeholder = 'Initial salary';
 
             if (!salaryEffectiveTouched && elements.joiningDate && elements.joiningDate.value && elements.salaryEffectiveFrom) {
-                elements.salaryEffectiveFrom.value = elements.joiningDate.value;
+                setDateVal(elements.salaryEffectiveFrom, elements.joiningDate.value);
             }
 
             if (elements.salaryNote) elements.salaryNote.innerText = "Annual CTC is calculated automatically by the system.";
@@ -375,20 +423,17 @@
                 if (elements.internBox) elements.internBox.style.display = 'block';
                 if (elements.contractBox) elements.contractBox.style.display = 'none';
                 document.querySelectorAll('.joining-box,.probation-box').forEach(el => el.classList.add('eo-hidden'));
-               
                 setProbationInputsEnabled(false);
             } else if (stage === 'contract' || stage === 'freelance') {
                 if (elements.internBox) elements.internBox.style.display = 'none';
                 if (elements.contractBox) elements.contractBox.style.display = 'block';
                 document.querySelectorAll('.joining-box').forEach(el => el.classList.remove('eo-hidden'));
                 document.querySelectorAll('.probation-box').forEach(el => el.classList.add('eo-hidden'));
-              
                 setProbationInputsEnabled(false);
             } else {
                 if (elements.internBox) elements.internBox.style.display = 'none';
                 if (elements.contractBox) elements.contractBox.style.display = 'none';
                 document.querySelectorAll('.joining-box,.probation-box').forEach(el => el.classList.remove('eo-hidden'));
-                
                 setProbationInputsEnabled(true);
                 updateProbation();
             }
@@ -399,7 +444,10 @@
 
         function toggleFlexibleTimingFields() {
             if (!elements.workScheduleType || !elements.flexibleShiftBox) return;
-            if (elements.workScheduleType.value === 'flexible_part_time') {
+            const val = String(elements.workScheduleType.value || '').toLowerCase();
+            const isFlex = val === 'flexible_part_time' || val === 'flexible_part_time_shift' || val.indexOf('flex') !== -1;
+
+            if (isFlex) {
                 elements.flexibleShiftBox.style.display = 'block';
                 elements.flexibleShiftBox.querySelectorAll('input').forEach(input => {
                     input.setAttribute('required', 'required');
@@ -519,20 +567,18 @@
         }
 
         function bindEvents() {
-            if (elements.salaryEffectiveFrom) {
-                elements.salaryEffectiveFrom.addEventListener('change', function() {
+            if (window.jQuery) {
+                $(document).off('change.eoSal', '#salary_effective_from').on('change.eoSal', '#salary_effective_from', function() {
                     salaryEffectiveTouched = true;
                 });
-            }
 
-            if (elements.department) {
-                elements.department.addEventListener('change', filterDesignations);
-            }
+                $(document).off('change.eoDept', '#department_id').on('change.eoDept', '#department_id', function() {
+                    filterDesignations(false);
+                });
 
-            if (elements.employmentType) {
-                elements.employmentType.addEventListener('change', function() {
+                $(document).off('change.eoEmpType', '#employment_type').on('change.eoEmpType', '#employment_type', function() {
                     salaryEffectiveTouched = false;
-                    if (elements.salaryEffectiveFrom) elements.salaryEffectiveFrom.value = '';
+                    if (elements.salaryEffectiveFrom) setDateVal(elements.salaryEffectiveFrom, '');
                     updateEmploymentFields();
 
                     const workScheduleMap = {
@@ -544,7 +590,7 @@
                         'trainee': 'general_shift'
                     };
                     if (elements.workScheduleType) {
-                        const schedule = workScheduleMap[elements.employmentType.value];
+                        const schedule = workScheduleMap[this.value];
                         if (schedule) {
                             const hasOption = Array.from(elements.workScheduleType.options).some(opt => opt.value === schedule);
                             if (hasOption) {
@@ -552,86 +598,86 @@
                             } else {
                                 elements.workScheduleType.value = '';
                             }
-                        } else if (!elements.employmentType.value) {
+                        } else if (!this.value) {
                             elements.workScheduleType.value = '';
                         }
+                        $(elements.workScheduleType).trigger('change.select2');
                         handleScheduleChange(false);
                     }
                 });
-            }
 
-            if (elements.joiningDate) {
-                elements.joiningDate.addEventListener('change', function() {
+                $(document).off('change.eoJoin', '#joining_date').on('change.eoJoin', '#joining_date', function() {
                     if (currentStage() !== 'internship') {
                         salaryEffectiveTouched = false;
                     }
                     updateProbation();
                     updateSalary();
                 });
-            }
 
-            if (elements.probationOption) elements.probationOption.addEventListener('change', updateProbation);
-            if (elements.customValue) {
-                elements.customValue.addEventListener('input', updateProbation);
-                elements.customValue.addEventListener('change', updateProbation);
-            }
-            if (elements.customUnit) elements.customUnit.addEventListener('change', updateProbation);
-            if (elements.probationMonths) elements.probationMonths.addEventListener('change', updateProbation);
+                $(document).off('change.eoProbOpt', '#probation_duration_option').on('change.eoProbOpt', '#probation_duration_option', updateProbation);
+                $(document).off('input.eoProbVal change.eoProbVal', '#custom_duration_value').on('input.eoProbVal change.eoProbVal', '#custom_duration_value', updateProbation);
+                $(document).off('change.eoProbUnit', '#custom_duration_unit').on('change.eoProbUnit', '#custom_duration_unit', updateProbation);
+                $(document).off('change.eoProbMonths', '#probation_months').on('change.eoProbMonths', '#probation_months', updateProbation);
 
-            if (elements.internshipStart) {
-                elements.internshipStart.addEventListener('change', function() {
+                $(document).off('change.eoInternStart', '#internship_start_date').on('change.eoInternStart', '#internship_start_date', function() {
                     if (currentStage() === 'internship' && elements.paidIntern && elements.paidIntern.value !== '0') {
                         salaryEffectiveTouched = false;
                     }
                     updateInternshipEndDate();
                     updateSalary();
                 });
-            }
 
-            if (elements.internshipDurationMonths) elements.internshipDurationMonths.addEventListener('change', updateInternshipEndDate);
-            if (elements.internshipEnd) elements.internshipEnd.addEventListener('change', updateInternshipDuration);
+                $(document).off('change.eoInternDur', '#internship_duration_months').on('change.eoInternDur', '#internship_duration_months', updateInternshipEndDate);
+                $(document).off('change.eoInternEnd', '#internship_end_date').on('change.eoInternEnd', '#internship_end_date', updateInternshipDuration);
 
-            if (elements.paidIntern) {
-                elements.paidIntern.addEventListener('change', function() {
+                $(document).off('change.eoPaid', '#is_paid_intern').on('change.eoPaid', '#is_paid_intern', function() {
                     salaryEffectiveTouched = false;
                     updateSalary();
                 });
-            }
 
-            if (elements.workScheduleType) {
-                elements.workScheduleType.addEventListener('change', function() {
+                $(document).off('change.eoWorkSched', '#work_schedule_type').on('change.eoWorkSched', '#work_schedule_type', function() {
                     handleScheduleChange(false);
                 });
-            }
 
-            if (elements.shiftStart) {
-                elements.shiftStart.addEventListener('input', autoCalculateTimings);
-                elements.shiftStart.addEventListener('change', autoCalculateTimings);
+                const timeSelectors = '#punch_allowed_from, #shift_start_time, #late_after_time, #half_day_after_time, #block_after_time, #shift_end_time, #required_work_minutes, #lunch_minutes';
+                $(document).off('input.eoTimings change.eoTimings', timeSelectors).on('input.eoTimings change.eoTimings', timeSelectors, function() {
+                    if (this.id === 'shift_start_time' || this.id === 'required_work_minutes' || this.id === 'lunch_minutes') {
+                        autoCalculateTimings();
+                    } else {
+                        updateAllTimeDisplays();
+                    }
+                });
             }
-            if (elements.requiredWorkMinutes) {
-                elements.requiredWorkMinutes.addEventListener('input', autoCalculateTimings);
-                elements.requiredWorkMinutes.addEventListener('change', autoCalculateTimings);
-            }
-            if (elements.lunchMinutes) {
-                elements.lunchMinutes.addEventListener('input', autoCalculateTimings);
-                elements.lunchMinutes.addEventListener('change', autoCalculateTimings);
-            }
-
-            const timeFields = ['punch_allowed_from', 'shift_start_time', 'late_after_time', 'half_day_after_time', 'block_after_time', 'shift_end_time'];
-            timeFields.forEach(field => {
-                const el = document.getElementById(field);
-                if (el) {
-                    el.addEventListener('input', updateAllTimeDisplays);
-                    el.addEventListener('change', updateAllTimeDisplays);
-                }
-            });
 
             bindDoubleSubmitGuard();
         }
 
-      
-        filterDesignations();
+        function initializeWorkSchedule() {
+            if (!elements.workScheduleType) return;
+            if (!elements.workScheduleType.value) {
+                const workScheduleMap = {
+                    'full_time': 'general_shift',
+                    'part_time': 'part_time_shift',
+                    'intern': 'general_shift',
+                    'contract': 'general_shift',
+                    'consultant': 'general_shift',
+                    'trainee': 'general_shift'
+                };
+                const empType = (elements.employmentType && elements.employmentType.value) ? elements.employmentType.value : 'full_time';
+                const defaultSchedule = workScheduleMap[empType] || 'general_shift';
+                const hasOption = Array.from(elements.workScheduleType.options).some(opt => opt.value === defaultSchedule);
+                if (hasOption) {
+                    elements.workScheduleType.value = defaultSchedule;
+                    if (window.jQuery) {
+                        $(elements.workScheduleType).trigger('change.select2');
+                    }
+                }
+            }
+        }
+
+        filterDesignations(true);
         updateEmploymentFields();
+        initializeWorkSchedule();
         handleScheduleChange(true);
         bindEvents();
     });

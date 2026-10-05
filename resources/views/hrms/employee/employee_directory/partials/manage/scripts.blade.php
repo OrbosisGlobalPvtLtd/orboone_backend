@@ -143,9 +143,17 @@ foreach ($attendanceTimes ?? [] as $shiftItem) {
                         const selected = String(selectedId) === String(item.id) ? 'selected' : '';
                         designationSelect.innerHTML += '<option value="' + item.id + '" ' + selected + '>' + item.name + '</option>';
                     });
+
+                    if (window.jQuery) {
+                        $(designationSelect).trigger('change.select2');
+                        $(designationSelect).trigger('change');
+                    }
                 })
                 .catch(function() {
                     designationSelect.innerHTML = '<option value="">Unable to load designations</option>';
+                    if (window.jQuery) {
+                        $(designationSelect).trigger('change.select2');
+                    }
                 });
         }
 
@@ -179,10 +187,17 @@ foreach ($attendanceTimes ?? [] as $shiftItem) {
                         if (el.type !== 'file' && !el.classList.contains('em-control-readonly') && el.name !== 'derived_employee_stage' && el.id !== 'employee_stage_display') {
                             el.removeAttribute('readonly');
                             el.removeAttribute('disabled');
+                            if (el._flatpickr && el._flatpickr.altInput) {
+                                el._flatpickr.altInput.removeAttribute('disabled');
+                            }
                         } else if (el.type === 'file') {
                             el.removeAttribute('disabled');
                         }
                     });
+
+                    if (window.jQuery) {
+                        $(card).find('select').prop('disabled', false).trigger('change.select2');
+                    }
 
                     this.style.display = 'none';
                     card.querySelector('.cancel-sec-btn').style.display = 'inline-flex';
@@ -212,19 +227,29 @@ foreach ($attendanceTimes ?? [] as $shiftItem) {
                         const name = el.name || el.id;
                         if (name && originalValues[name] !== undefined) {
                             el.value = originalValues[name];
+                            if (el._flatpickr) {
+                                el._flatpickr.setDate(originalValues[name] || '', true);
+                            }
                         }
 
                         // Restore readonly/disabled
-                        if (el.type !== 'file' && el.name !== 'name' && el.name !== 'email' && el.name !== 'phone' && !el.classList.contains('editable') && !el.classList.contains('editable-select')) {
+                        if (el.type !== 'file' && el.name !== 'name' && el.name !== 'email' && el.name !== 'phone' && !el.classList.contains('editable') && !el.classList.contains('editable-select') && !el.hasAttribute('data-date-picker')) {
                             // Keep unchanged
                         } else {
-                            if (el.tagName === 'SELECT' || el.type === 'file') {
+                            if (el.tagName === 'SELECT' || el.type === 'file' || el.hasAttribute('data-date-picker')) {
                                 el.setAttribute('disabled', 'disabled');
+                                if (el._flatpickr && el._flatpickr.altInput) {
+                                    el._flatpickr.altInput.setAttribute('disabled', 'disabled');
+                                }
                             } else {
                                 el.setAttribute('readonly', 'readonly');
                             }
                         }
                     });
+
+                    if (window.jQuery) {
+                        $(card).find('select').prop('disabled', true).trigger('change.select2');
+                    }
 
                     card.querySelector('.edit-sec-btn').style.display = 'inline-flex';
                     this.style.display = 'none';
@@ -233,6 +258,8 @@ foreach ($attendanceTimes ?? [] as $shiftItem) {
                     if (sectionId === 'cardA') {
                         document.body.classList.remove('edit-mode');
                         toggleEmploymentSections();
+                        handleScheduleChange(true);
+                        calculateManageProbation();
                     }
                 });
             });
@@ -317,6 +344,13 @@ foreach ($attendanceTimes ?? [] as $shiftItem) {
 
                             document.body.classList.remove('edit-mode');
                             document.querySelectorAll('.em-card').forEach(c => c.classList.remove('is-editing'));
+
+                            if (typeof initSearchableSelects === 'function') {
+                                initSearchableSelects(document);
+                            }
+                            if (typeof window.initOrboDatePickers === 'function') {
+                                window.initOrboDatePickers(document);
+                            }
 
                             rebindAllListeners();
 
@@ -513,82 +547,44 @@ foreach ($attendanceTimes ?? [] as $shiftItem) {
             });
 
             // 5. Department Designation dropdown cascade binding
-            const departmentSelect = document.getElementById('department_id');
-            if (departmentSelect) {
-                // Clean and bind
-                const newDept = departmentSelect.cloneNode(true);
-                departmentSelect.replaceWith(newDept);
-                newDept.addEventListener('change', function() {
+            if (window.jQuery) {
+                $(document).off('change.dept', '#department_id').on('change.dept', '#department_id', function() {
                     loadDesignations(this.value);
                 });
-            }
 
-            // 6. Employment type stage toggle binding
-            const employmentTypeSelect = document.getElementById('employment_type');
-            if (employmentTypeSelect) {
-                const newEmpType = employmentTypeSelect.cloneNode(true);
-                employmentTypeSelect.replaceWith(newEmpType);
-                newEmpType.addEventListener('change', function() {
+                // 6. Employment type stage toggle binding
+                $(document).off('change.empType', '#employment_type').on('change.empType', '#employment_type', function() {
                     toggleEmploymentSections();
                 });
-            }
 
-            // 6b. Work Schedule Type custom timings toggle
-            const workScheduleSelect = document.getElementById('work_schedule_type');
-            if (workScheduleSelect) {
-                const newSchedule = workScheduleSelect.cloneNode(true);
-                workScheduleSelect.replaceWith(newSchedule);
-                newSchedule.addEventListener('change', function() {
+                // 6b. Work Schedule Type custom timings toggle
+                $(document).off('change.workSchedule', '#work_schedule_type').on('change.workSchedule', '#work_schedule_type', function() {
                     handleScheduleChange(false);
+                });
+
+                // 6c. Timing calculation and helper bindings
+                const timeSelectors = '#punch_allowed_from, #shift_start_time, #late_after_time, #half_day_after_time, #block_after_time, #shift_end_time, #required_work_minutes, #lunch_minutes';
+                $(document).off('input.timings change.timings', timeSelectors).on('input.timings change.timings', timeSelectors, function() {
+                    if (this.id === 'shift_start_time' || this.id === 'required_work_minutes' || this.id === 'lunch_minutes') {
+                        autoCalculateTimings();
+                    } else {
+                        updateAllTimeDisplays();
+                    }
+                });
+
+                // 6d. Probation calculation and helper bindings
+                const probSelectors = '#joining_date, #manage_probation_start_date, #manage_probation_duration_option, #manage_custom_duration_value, #manage_custom_duration_unit';
+                $(document).off('input.prob change.prob', probSelectors).on('input.prob change.prob', probSelectors, function() {
+                    calculateManageProbation();
+                });
+
+                // 7. Experience Type binding
+                $(document).off('change.exp', '#manage_experience_type').on('change.exp', '#manage_experience_type', function() {
+                    toggleManageExperienceFields(this.value);
                 });
             }
 
-            // 6c. Timing calculation and helper bindings
-            const timeFields = ['punch_allowed_from', 'shift_start_time', 'late_after_time', 'half_day_after_time', 'block_after_time', 'shift_end_time'];
-            timeFields.forEach(field => {
-                const el = document.getElementById(field);
-                if (el) {
-                    const newEl = el.cloneNode(true);
-                    el.replaceWith(newEl);
-                    newEl.addEventListener('input', updateAllTimeDisplays);
-                    newEl.addEventListener('change', updateAllTimeDisplays);
-
-                    if (field === 'shift_start_time') {
-                        newEl.addEventListener('input', autoCalculateTimings);
-                        newEl.addEventListener('change', autoCalculateTimings);
-                    }
-                }
-            });
-
-            // 6d. Probation calculation and helper bindings
-            const probationControls = ['joining_date', 'manage_probation_start_date', 'manage_probation_duration_option', 'manage_custom_duration_value', 'manage_custom_duration_unit'];
-            probationControls.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) {
-                    const newEl = el.cloneNode(true);
-                    el.replaceWith(newEl);
-                    newEl.addEventListener('change', calculateManageProbation);
-                    newEl.addEventListener('input', calculateManageProbation);
-                }
-            });
-
-            const reqMinEl = document.getElementById('required_work_minutes');
-            const lunchMinEl = document.getElementById('lunch_minutes');
-
-            if (reqMinEl) {
-                const newReqMin = reqMinEl.cloneNode(true);
-                reqMinEl.replaceWith(newReqMin);
-                newReqMin.addEventListener('input', autoCalculateTimings);
-                newReqMin.addEventListener('change', autoCalculateTimings);
-            }
-            if (lunchMinEl) {
-                const newLunchMin = lunchMinEl.cloneNode(true);
-                lunchMinEl.replaceWith(newLunchMin);
-                newLunchMin.addEventListener('input', autoCalculateTimings);
-                newLunchMin.addEventListener('change', autoCalculateTimings);
-            }
-
-            // 7. Toggle experience fields initially
+            // 7b. Toggle experience fields initially
             const manageExpSelect = document.getElementById('manage_experience_type');
             if (manageExpSelect) {
                 toggleManageExperienceFields(manageExpSelect.value);
@@ -618,7 +614,7 @@ foreach ($attendanceTimes ?? [] as $shiftItem) {
             timeFields.forEach(field => {
                 const input = document.getElementById(field);
                 if (input) {
-                    const overlay = input.parentNode.querySelector('.time-display-val');
+                    const overlay = input.parentNode ? input.parentNode.querySelector('.time-display-val') : null;
                     if (overlay) {
                         overlay.textContent = formatTimeTo12Hour(input.value);
                     }
@@ -712,16 +708,31 @@ foreach ($attendanceTimes ?? [] as $shiftItem) {
             }
 
             let startDateStr = startInput ? startInput.value : '';
-            if (!startDateStr && joiningDateInput) {
+            if (!startDateStr && joiningDateInput && joiningDateInput.value) {
                 startDateStr = joiningDateInput.value;
+                if (startInput) {
+                    startInput.value = startDateStr;
+                    if (startInput._flatpickr) {
+                        startInput._flatpickr.setDate(startDateStr, true);
+                    }
+                }
             }
             if (!startDateStr) return;
 
             const parts = startDateStr.split('-');
             if (parts.length !== 3) return;
-            const y = parseInt(parts[0], 10);
-            const m = parseInt(parts[1], 10) - 1;
-            const d = parseInt(parts[2], 10);
+
+            let y, m, d;
+            if (parts[0].length === 4) {
+                y = parseInt(parts[0], 10);
+                m = parseInt(parts[1], 10) - 1;
+                d = parseInt(parts[2], 10);
+            } else {
+                d = parseInt(parts[0], 10);
+                m = parseInt(parts[1], 10) - 1;
+                y = parseInt(parts[2], 10);
+            }
+
             const start = new Date(y, m, d);
             if (isNaN(start.getTime())) return;
 
@@ -738,6 +749,11 @@ foreach ($attendanceTimes ?? [] as $shiftItem) {
             } else {
                 type = 'months';
                 val = 3;
+            }
+
+            const hiddenProbMonths = document.getElementById('manage_probation_months');
+            if (hiddenProbMonths) {
+                hiddenProbMonths.value = (type === 'months' ? val : Math.round(val / 30) || 1);
             }
 
             let endDate;
@@ -768,11 +784,20 @@ foreach ($attendanceTimes ?? [] as $shiftItem) {
                 return `${year}-${month}-${day}`;
             };
 
+            const endYmd = formatDateStr(endDate);
+            const permYmd = formatDateStr(permDate);
+
             if (endInput) {
-                endInput.value = formatDateStr(endDate);
+                endInput.value = endYmd;
+                if (endInput._flatpickr) {
+                    endInput._flatpickr.setDate(endYmd, true);
+                }
             }
             if (confirmationInput) {
-                confirmationInput.value = formatDateStr(permDate);
+                confirmationInput.value = permYmd;
+                if (confirmationInput._flatpickr) {
+                    confirmationInput._flatpickr.setDate(permYmd, true);
+                }
             }
         }
         window.calculateManageProbation = calculateManageProbation;
@@ -782,7 +807,10 @@ foreach ($attendanceTimes ?? [] as $shiftItem) {
             const flexibleShiftTimingsBox = document.getElementById('flexible_shift_timings_box');
             if (!workScheduleSelect || !flexibleShiftTimingsBox) return;
 
-            if (workScheduleSelect.value === 'flexible_part_time') {
+            const val = String(workScheduleSelect.value || '').toLowerCase();
+            const isFlex = val === 'flexible_part_time' || val === 'flexible_part_time_shift' || val.indexOf('flex') !== -1;
+
+            if (isFlex) {
                 flexibleShiftTimingsBox.style.display = 'block';
                 flexibleShiftTimingsBox.querySelectorAll('input').forEach(input => {
                     input.setAttribute('required', 'required');
@@ -840,6 +868,7 @@ foreach ($attendanceTimes ?? [] as $shiftItem) {
         rebindAllListeners();
         toggleEmploymentSections();
         handleScheduleChange(true);
+        calculateManageProbation();
 
         // Handle Laravel validation redirect fallbacks (if any non-ajax errors exist)
         const formErrorsEl = document.getElementById('manage-form-errors');

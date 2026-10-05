@@ -45,11 +45,11 @@
             if ($isHRorAdmin) {
                 $canApproveDept = true;
             } else {
-                if ($dKey === 'manager' && $actor->employee && !empty($employee->reporting_manager_employee_id) && $employee->reporting_manager_employee_id == $actor->employee->id) {
+                if ($dKey === 'manager' && $actor && !empty($actor->employee) && !empty($employee->reporting_manager_employee_id) && $employee->reporting_manager_employee_id == $actor->employee->id) {
                     $canApproveDept = true;
                 }
 
-                if (!$canApproveDept) {
+                if (!$canApproveDept && $actor) {
                     $pMap = [
                         'hr' => 'employee_exit.clearance.hr',
                         'manager' => 'employee_exit.clearance.manager',
@@ -60,13 +60,13 @@
                         'security' => 'employee_exit.clearance.security',
                         'accounts' => 'employee_exit.clearance.accounts',
                     ];
-                    if (isset($pMap[$dKey]) && $actor->hasPermission($pMap[$dKey])) {
+                    if (isset($pMap[$dKey]) && method_exists($actor, 'hasPermission') && $actor->hasPermission($pMap[$dKey])) {
                         $canApproveDept = true;
                     }
                 }
 
                 // Fallback department name check
-                if (!$canApproveDept && $actor->employee && !empty($actor->employee->department_id)) {
+                if (!$canApproveDept && $actor && !empty($actor->employee) && !empty($actor->employee->department_id)) {
                     $uDeptName = \DB::table('departments')->where('id', $actor->employee->department_id)->value('name');
                     if ($uDeptName) {
                         $uDeptNameLower = strtolower($uDeptName);
@@ -80,9 +80,27 @@
                     }
                 }
             }
+
+            $iconClass = match($clrStatus) {
+                'approved' => 'fa-check-circle text-success',
+                'rejected' => 'fa-times-circle text-danger',
+                default => 'fa-clock text-warning',
+            };
+
+            $badgeClass = match($clrStatus) {
+                'approved' => 'badge-success',
+                'rejected' => 'badge-danger',
+                default => 'badge-warning',
+            };
+
+            $borderColor = match($clrStatus) {
+                'approved' => '#10B981',
+                'rejected' => '#EF4444',
+                default => '#F59E0B',
+            };
             @endphp
 
-            <div class="card border mb-2 js-dept-card js-dept-card-{{ $dKey }} js-dept-card-{{ $dKey }}-{{ $employee->id }}" data-dept="{{ $dKey }}" data-employee-id="{{ $employee->id }}" style="border-radius:10px; overflow:hidden; border-left: 4px solid {{ $clrStatus === 'approved' ? '#10B981' : ($clrStatus === 'rejected' ? '#EF4444' : '#F59E0B') }} !important;">
+            <div class="card border mb-2 js-dept-card js-dept-card-{{ $dKey }} js-dept-card-{{ $dKey }}-{{ $employee->id }}" data-dept="{{ $dKey }}" data-employee-id="{{ $employee->id }}" style="border-radius:10px; overflow:hidden; border-left: 4px solid {{ $borderColor }} !important;">
                 <div class="card-header py-2.5 px-3 d-flex justify-content-between align-items-center eo-dept-head" 
                      style="cursor:pointer;" 
                      data-toggle="collapse" 
@@ -90,7 +108,7 @@
                      aria-expanded="false">
                     <!-- Left: Department Icon & Label -->
                     <div class="d-flex align-items-center eo-dept-head-left pr-2">
-                        <i class="fas {{ $clrStatus === 'approved' ? 'fa-check-circle text-success' : ($clrStatus === 'rejected' ? 'fa-times-circle text-danger' : 'fa-clock text-warning') }} mr-2 js-dept-icon js-dept-icon-{{ $dKey }} js-dept-icon-{{ $dKey }}-{{ $employee->id }}" style="font-size:13.5px;"></i>
+                        <i class="fas {{ $iconClass }} mr-2 js-dept-icon js-dept-icon-{{ $dKey }} js-dept-icon-{{ $dKey }}-{{ $employee->id }}" style="font-size:13.5px;"></i>
                         <span class="font-weight-bold text-dark" style="font-size:12.8px; letter-spacing: 0.1px;">{{ $deptLabels[$dKey] }}</span>
                     </div>
 
@@ -101,7 +119,7 @@
                             <span class="text-muted small mr-2 d-none d-md-inline" style="font-size:11.5px;">by <strong class="text-dark">{{ $approvedBy }}</strong> on {{ $approvedAt }}</span>
                             @endif
                         </span>
-                        <span class="badge js-dept-badge js-dept-badge-{{ $dKey }} js-dept-badge-{{ $dKey }}-{{ $employee->id }} badge-{{ $clrStatus === 'approved' ? 'success' : ($clrStatus === 'rejected' ? 'danger' : 'warning') }} px-2.5 py-1" style="font-size:11px; font-weight:700; border-radius:6px; letter-spacing:0.3px;">
+                        <span class="badge js-dept-badge js-dept-badge-{{ $dKey }} js-dept-badge-{{ $dKey }}-{{ $employee->id }} {{ $badgeClass }} px-2.5 py-1" style="font-size:11px; font-weight:700; border-radius:6px; letter-spacing:0.3px;">
                             {{ ucfirst($clrStatus) }}
                         </span>
                         <i class="fas fa-chevron-down fa-xs text-muted ml-2"></i>
@@ -136,7 +154,7 @@
                                 </div>
                                 <div class="col-md-4 mb-2">
                                     <label class="eo-label">Action</label>
-                                    <select name="status" class="eo-control" required>
+                                    <select name="status" class="eo-control select2-searchable" required>
                                         <option value="pending" {{ $clrStatus === 'pending' ? 'selected' : '' }}>Set Pending</option>
                                         <option value="approved" {{ $clrStatus === 'approved' ? 'selected' : '' }}>Approve Clearance</option>
                                         <option value="rejected" {{ $clrStatus === 'rejected' ? 'selected' : '' }}>Reject Clearance</option>
@@ -152,8 +170,8 @@
                             <div class="mb-2 pl-2">
                                 @foreach($checklist as $item)
                                 <div class="mb-1 text-dark" style="font-size:12px;">
-                                    <i class="fas {{ $item['completed'] ? 'fa-check-square text-success' : 'fa-square text-muted' }} mr-2"></i>
-                                    <span class="{{ $item['completed'] ? 'text-success font-weight-bold' : '' }}">{{ $item['item'] }}</span>
+                                    <i class="fas {{ !empty($item['completed']) ? 'fa-check-square text-success' : 'fa-square text-muted' }} mr-2"></i>
+                                    <span class="{{ !empty($item['completed']) ? 'text-success font-weight-bold' : '' }}">{{ $item['item'] }}</span>
                                 </div>
                                 @endforeach
                             </div>

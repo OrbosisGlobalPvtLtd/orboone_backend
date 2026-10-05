@@ -15,13 +15,22 @@
 
                                 <div class="em-field">
                                     <label>Account Type</label>
-                                    <select name="bank_account_type" class="em-control editable-select" disabled>
-                                        <option value="">Select Account Type</option>
-                                        <option value="saving" {{ old('bank_account_type', $employeeData->bank_account_type) == 'saving' ? 'selected' : '' }}>Saving</option>
-                                        <option value="savings" {{ old('bank_account_type', $employeeData->bank_account_type) == 'savings' ? 'selected' : '' }}>Savings</option>
-                                        <option value="current" {{ old('bank_account_type', $employeeData->bank_account_type) == 'current' ? 'selected' : '' }}>Current</option>
-                                        <option value="salary" {{ old('bank_account_type', $employeeData->bank_account_type) == 'salary' ? 'selected' : '' }}>Salary</option>
-                                    </select>
+                                    <x-form.select 
+                                        name="bank_account_type" 
+                                        id="bank_account_type" 
+                                        class="em-control editable-select" 
+                                        placeholder="Select Account Type"
+                                        :options="[
+                                            'saving' => 'Saving',
+                                            'savings' => 'Savings',
+                                            'current' => 'Current',
+                                            'salary' => 'Salary'
+                                        ]"
+                                        :selected="old('bank_account_type', $employeeData->bank_account_type)" 
+                                        :searchable="true" 
+                                        disabled 
+                                        wrapper-class="m-0"
+                                    />
                                     @error('bank_account_type') <div class="em-error">{{ $message }}</div> @enderror
                                 </div>
 

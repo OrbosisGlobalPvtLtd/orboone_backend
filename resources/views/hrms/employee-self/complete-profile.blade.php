@@ -268,11 +268,11 @@
 
     .profile-control {
         width: 100%;
-        min-height: 42px;
-        border-radius: 13px !important;
-        border: 1px solid var(--orb-border) !important;
-        background: #fff !important;
-        color: var(--orb-text) !important;
+        min-height: 40px;
+        border-radius: 12px;
+        border: 1px solid var(--orb-border);
+        background-color: #fff;
+        color: var(--orb-text);
         font-size: 13px;
         font-weight: 700;
         padding: 9px 13px;
@@ -281,7 +281,7 @@
 
     .profile-control:focus {
         border-color: var(--orb-primary) !important;
-        box-shadow: 0 0 0 4px rgba(75, 0, 232, .08) !important;
+        box-shadow: 0 0 0 3px rgba(75, 0, 232, .1) !important;
     }
 
     textarea.profile-control {
@@ -711,11 +711,19 @@ $disabled = $isReadOnly ? 'disabled' : '';
                             </div>
                             <div class="col-md-4 mb-3">
                                 <label class="profile-label">DOB *</label>
-                                <input type="date" name="date_of_birth" class="profile-control" value="{{ old('date_of_birth', $dobFormatted) }}" required {{ $disabled }}>
+                                <x-form.date-picker 
+                                    name="date_of_birth" 
+                                    id="date_of_birth" 
+                                    value="{{ old('date_of_birth', $dobFormatted) }}" 
+                                    placeholder="dd-mm-yyyy"
+                                    class="profile-control"
+                                    :required="!$isReadOnly"
+                                    :disabled="$isReadOnly"
+                                />
                             </div>
                             <div class="col-md-4 mb-3">
                                 <label class="profile-label">Gender *</label>
-                                <select name="gender" class="profile-control" required {{ $disabled }}>
+                                <select name="gender" id="gender" class="profile-control select2-searchable" data-placeholder="Select Gender" required {{ $disabled }} style="width: 100%;">
                                     <option value="">Select Gender</option>
                                     <option value="male" {{ old('gender', $genderVal) === 'male' ? 'selected' : '' }}>Male</option>
                                     <option value="female" {{ old('gender', $genderVal) === 'female' ? 'selected' : '' }}>Female</option>
@@ -739,7 +747,7 @@ $disabled = $isReadOnly ? 'disabled' : '';
                         <div class="row">
                             <div class="col-md-4 mb-3">
                                 <label class="profile-label">Experience Type *</label>
-                                <select name="experience_type" id="experience_type" class="profile-control" required onchange="toggleExperience(this.value)" {{ $disabled }}>
+                                <select name="experience_type" id="experience_type" class="profile-control select2-searchable" data-placeholder="Select Experience Type" required onchange="toggleExperience(this.value)" {{ $disabled }} style="width: 100%;">
                                     <option value="fresher" {{ old('experience_type', $profile?->experience_type ?? 'fresher') === 'fresher' ? 'selected' : '' }}>Fresher</option>
                                     <option value="experienced" {{ old('experience_type', $profile?->experience_type) === 'experienced' ? 'selected' : '' }}>Experienced</option>
                                 </select>
@@ -782,7 +790,7 @@ $disabled = $isReadOnly ? 'disabled' : '';
                             </div>
                             <div class="col-md-4 mb-3">
                                 <label class="profile-label">Account Type *</label>
-                                <select name="bank_account_type" class="profile-control" required {{ $disabled }}>
+                                <select name="bank_account_type" id="bank_account_type" class="profile-control select2-searchable" data-placeholder="Select Account Type" required {{ $disabled }} style="width: 100%;">
                                     <option value="">Select Account Type</option>
                                     <option value="saving" {{ old('bank_account_type', $profile?->bank_account_type) === 'saving' ? 'selected' : '' }}>Savings</option>
                                     <option value="current" {{ old('bank_account_type', $profile?->bank_account_type) === 'current' ? 'selected' : '' }}>Current</option>
@@ -940,7 +948,27 @@ $disabled = $isReadOnly ? 'disabled' : '';
             countBadge.textContent = visibleCount + ' Items';
         }
     }
-    toggleExperience('{{ old("experience_type", $profile?->experience_type ?? "fresher") }}');
+
+    document.addEventListener('DOMContentLoaded', function() {
+        toggleExperience('{{ old("experience_type", $profile?->experience_type ?? "fresher") }}');
+
+        if (window.jQuery && $.fn.select2) {
+            $('.select2-searchable').select2({
+                width: '100%',
+                placeholder: function() {
+                    return $(this).data('placeholder') || 'Select option';
+                }
+            });
+
+            $('#experience_type').on('change select2:select', function() {
+                toggleExperience(this.value);
+            });
+        }
+
+        if (window.initOrboDatePickers) {
+            window.initOrboDatePickers();
+        }
+    });
 
     function uploadDoc(typeId) {
         let fileInput = document.getElementById('file_' + typeId);

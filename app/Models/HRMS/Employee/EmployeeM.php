@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use App\Models\Core\UserM;
 use App\Models\Core\RoleM;
 use App\Models\HRMS\Employee\PositionM;
-use App\Models\HRMS\Department\DepartmentM; // ✅ NEW
+use App\Models\HRMS\Department\DepartmentM;
 use App\Models\HRMS\Designation\DesignationM;
 
 use App\Models\HRMS\Employee\EmployeeProfileM;
@@ -148,6 +148,29 @@ class EmployeeM extends Model
     public function profile()
     {
         return $this->hasOne(EmployeeProfileM::class, 'employee_id');
+    }
+
+    public function employeeProfile()
+    {
+        return $this->hasOne(EmployeeProfileM::class, 'employee_id');
+    }
+
+    public function scopeActiveEligible($query, ?string $date = null)
+    {
+        $date = $date ?: now()->toDateString();
+        return $query->where('employment_status', 'active')
+            ->where(function ($q) {
+                $q->whereNull('is_active')->orWhere('is_active', 1);
+            })
+            ->where(function ($q) use ($date) {
+                $q->whereNull('relieving_date')->orWhere('relieving_date', '>', $date);
+            })
+            ->whereHas('profile', function ($p) {
+                $p->where('is_profile_completed', 1)
+                  ->where(function ($st) {
+                      $st->whereNull('profile_status')->orWhere('profile_status', 'approved');
+                  });
+            });
     }
 
     public function salaryHistories()

@@ -13,33 +13,52 @@
         <div class="row">
             <div class="col-xl-3 col-lg-4 col-md-6 eo-field">
                 <label>System Role <span class="required">*</span></label>
-                @php $roleId = old('system_role_id', $employeeData->system_role_id ?? ''); @endphp
-                <select name="system_role_id" class="form-select" required>
-                    <option value="">Select Role</option>
-                    @foreach ($roles as $role)
-                    <option value="{{ $role->id }}"
-                        {{ (string)$roleId === (string)$role->id || (empty($roleId) && ($role->slug ?? '') === 'employee') ? 'selected' : '' }}>
-                        {{ $role->display_name ?? ($role->name ?? ($role->title ?? 'Role ' . $role->id)) }}
-                    </option>
-                    @endforeach
-                </select>
+                @php
+                    $roleId = old('system_role_id', $employeeData->system_role_id ?? '');
+                    $roleOptions = [];
+                    foreach ($roles as $role) {
+                        $roleOptions[$role->id] = $role->display_name ?? ($role->name ?? ($role->title ?? 'Role ' . $role->id));
+                    }
+                    $selectedRoleId = (string)($roleId ?: (optional($roles->firstWhere('slug', 'employee'))->id ?? ''));
+                @endphp
+                <x-form.select 
+                    name="system_role_id" 
+                    id="system_role_id" 
+                    placeholder="Select Role"
+                    :options="$roleOptions"
+                    :selected="$selectedRoleId" 
+                    :searchable="true" 
+                    :required="true"
+                    wrapper-class="m-0"
+                />
             </div>
 
             <div class="col-xl-3 col-lg-4 col-md-6 eo-field">
                 <label>Employment Status</label>
                 @php $statusVal = old('employment_status', $employeeData->employment_status ?? 'active'); @endphp
-                <select name="employment_status" class="form-select">
-                    <option value="active" {{ $statusVal === 'active' ? 'selected' : '' }}>Active</option>
-                    <option value="resigned" {{ $statusVal === 'resigned' ? 'selected' : '' }}>Resigned</option>
-                    <option value="terminated" {{ $statusVal === 'terminated' ? 'selected' : '' }}>Terminated</option>
-                    <option value="inactive" {{ $statusVal === 'inactive' ? 'selected' : '' }}>Inactive</option>
-                </select>
+                <x-form.select 
+                    name="employment_status" 
+                    id="employment_status" 
+                    placeholder="Select Status"
+                    :options="[
+                        'active' => 'Active',
+                        'resigned' => 'Resigned',
+                        'terminated' => 'Terminated',
+                        'inactive' => 'Inactive'
+                    ]"
+                    :selected="$statusVal" 
+                    :searchable="true" 
+                    wrapper-class="m-0"
+                />
             </div>
 
             <div class="col-xl-3 col-lg-4 col-md-6 eo-field">
                 <label>Relieving Date</label>
-                <input type="date" name="relieving_date" class="form-control"
-                    value="{{ old('relieving_date', $employeeData->relieving_date ?? '') }}">
+                <x-form.date-picker 
+                    name="relieving_date" 
+                    id="relieving_date"
+                    :value="old('relieving_date', $employeeData->relieving_date ?? '')"
+                />
             </div>
 
             <div class="col-xl-3 col-lg-4 col-md-6 eo-field">
@@ -52,8 +71,11 @@
 
             <div class="col-xl-3 col-lg-4 col-md-6 eo-field">
                 <label>Salary Effective From</label>
-                <input type="date" name="salary_effective_from" id="salary_effective_from"
-                    class="form-control" value="{{ old('salary_effective_from', $employeeData->salary_effective_from ?? '') }}">
+                <x-form.date-picker 
+                    name="salary_effective_from" 
+                    id="salary_effective_from"
+                    :value="old('salary_effective_from', $employeeData->salary_effective_from ?? '')"
+                />
                 <div class="small-note" id="salary_effective_note">Salary history effective date.</div>
             </div>
 

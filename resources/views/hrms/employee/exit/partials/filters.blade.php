@@ -7,7 +7,7 @@
         </div>
         <div class="eo-field">
             <label>Department</label>
-            <select id="filterDepartment" class="eo-control select2-filter">
+            <select id="filterDepartment" class="eo-control select2-searchable">
                 <option value="">All Departments</option>
                 @foreach ($departments as $dept)
                 <option value="{{ strtolower($dept) }}">{{ $dept }}</option>
@@ -16,7 +16,7 @@
         </div>
         <div class="eo-field">
             <label>Status</label>
-            <select id="filterStatus" class="eo-control select2-filter">
+            <select id="filterStatus" class="eo-control select2-searchable">
                 <option value="">All Statuses</option>
                 <option value="notice_period">Notice Period</option>
                 <option value="ready_for_final_approval">Ready For Final Approval</option>
@@ -29,7 +29,7 @@
         </div>
         <div class="eo-field">
             <label>Exit Type</label>
-            <select id="filterExitType" class="eo-control select2-filter">
+            <select id="filterExitType" class="eo-control select2-searchable">
                 <option value="">All Exit Types</option>
                 <option value="resignation">Resignation</option>
                 <option value="termination">Termination</option>
@@ -43,7 +43,7 @@
         </div>
         <div class="eo-field">
             <label>Asset Status</label>
-            <select id="filterAssetStatus" class="eo-control select2-filter">
+            <select id="filterAssetStatus" class="eo-control select2-searchable">
                 <option value="">All Asset Statuses</option>
                 @foreach ($assetStatuses as $ast)
                 <option value="{{ strtolower($ast) }}">{{ ucfirst(str_replace('_', ' ', $ast)) }}</option>
@@ -52,7 +52,7 @@
         </div>
         <div class="eo-field">
             <label>FNF Status</label>
-            <select id="filterFnfStatus" class="eo-control select2-filter">
+            <select id="filterFnfStatus" class="eo-control select2-searchable">
                 <option value="">All FNF Statuses</option>
                 @foreach ($fnfStatuses as $fnf)
                 <option value="{{ strtolower($fnf) }}">{{ ucfirst(str_replace('_', ' ', $fnf)) }}</option>
@@ -69,3 +69,4 @@
         </div>
     </div>
 </div>
+

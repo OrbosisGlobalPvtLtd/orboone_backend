@@ -223,6 +223,156 @@
                 lunchInput.addEventListener('change', () => autoCalculateTimingsForScope(panel));
             }
         });
+
+        // Submit filter form on length dropdown change
+        $(document).on('change select2:select', '#shiftLengthSelect', function() {
+            const val = $(this).val();
+            $('#shiftPerPageInput').val(val);
+            $('#shiftFilterForm').submit();
+        });
+
+        // Shift Assignment Table Export Handler (CSV, Excel, PDF, Print)
+        let isExporting = false;
+        $(document).off('click', '#shiftAssignmentExportButtons [data-export]').on('click', '#shiftAssignmentExportButtons [data-export]', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+
+            if (isExporting) return;
+            isExporting = true;
+            setTimeout(() => { isExporting = false; }, 800);
+
+            const exportType = $(this).attr('data-export');
+            const table = document.getElementById('shiftAssignmentTable');
+            if (!table) return;
+
+            if (exportType === 'print') {
+                const printWindow = window.open('', '', 'height=700,width=950');
+                printWindow.document.write('<html><head><title>Shift Assignments</title>');
+                printWindow.document.write('<style>body{font-family:sans-serif;padding:20px;} table{width:100%;border-collapse:collapse;margin-top:14px;font-size:12px;} th,td{border:1px solid #ddd;padding:8px 10px;text-align:left;} th{background:#f8f9fa;font-weight:bold;} .badge{background:transparent!important;border:none!important;padding:0!important;font-weight:600;} .hrms-emp-avatar{display:none;}</style>');
+                printWindow.document.write('</head><body>');
+                printWindow.document.write('<h2 style="margin:0 0 4px 0;color:#101828;">Shift Assignments List</h2>');
+                printWindow.document.write('<p style="margin:0 0 16px 0;color:#667085;font-size:13px;">Generated on ' + new Date().toLocaleDateString() + '</p>');
+                
+                const cloneTable = table.cloneNode(true);
+                cloneTable.querySelectorAll('tr').forEach(tr => {
+                    if (tr.children.length > 1) {
+                        tr.removeChild(tr.lastElementChild); // Remove action column
+                    }
+                });
+                printWindow.document.write(cloneTable.outerHTML);
+                printWindow.document.write('</body></html>');
+                printWindow.document.close();
+                printWindow.focus();
+                setTimeout(() => { printWindow.print(); printWindow.close(); }, 350);
+            } else if (exportType === 'csv' || exportType === 'excel') {
+                let csv = [];
+                const rows = table.querySelectorAll('tr');
+                for (let i = 0; i < rows.length; i++) {
+                    let row = [], cols = rows[i].querySelectorAll('td, th');
+                    for (let j = 0; j < cols.length - 1; j++) { // Omit actions
+                        let text = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, ' ').replace(/\s+/g, ' ').trim();
+                        text = text.replace(/"/g, '""');
+                        row.push('"' + text + '"');
+                    }
+                    if (row.length > 0) csv.push(row.join(','));
+                }
+                const mimeType = exportType === 'csv' ? 'text/csv;charset=utf-8;' : 'application/vnd.ms-excel;charset=utf-8;';
+                const blob = new Blob(["\uFEFF" + csv.join('\n')], { type: mimeType });
+                const downloadLink = document.createElement('a');
+                downloadLink.download = 'shift_assignments_' + new Date().toISOString().slice(0, 10) + (exportType === 'csv' ? '.csv' : '.xls');
+                downloadLink.href = window.URL.createObjectURL(blob);
+                downloadLink.style.display = 'none';
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                setTimeout(() => {
+                    if (downloadLink.parentNode) {
+                        downloadLink.parentNode.removeChild(downloadLink);
+                    }
+                    window.URL.revokeObjectURL(downloadLink.href);
+                }, 200);
+            } else if (exportType === 'pdf') {
+                if (typeof pdfMake === 'undefined') {
+                    window.print();
+                    return;
+                }
+
+                const headers = [];
+                const thCols = table.querySelectorAll('thead tr th');
+                for (let j = 0; j < thCols.length - 1; j++) { // omit Actions
+                    headers.push({
+                        text: thCols[j].innerText.replace(/\s+/g, ' ').trim(),
+                        bold: true,
+                        fillColor: '#F1F5F9',
+                        color: '#0F172A',
+                        fontSize: 8.5
+                    });
+                }
+
+                const bodyRows = [headers];
+                const trRows = table.querySelectorAll('tbody tr');
+
+                trRows.forEach((tr, rowIndex) => {
+                    const tdCols = tr.querySelectorAll('td');
+                    if (tdCols.length > 1) {
+                        const rowData = [];
+                        for (let j = 0; j < tdCols.length - 1; j++) { // omit Actions
+                            let cellText = tdCols[j].innerText.replace(/(\r\n|\n|\r)/gm, ' ').replace(/\s+/g, ' ').trim();
+                            rowData.push({
+                                text: cellText || '-',
+                                fontSize: 7.5,
+                                fillColor: rowIndex % 2 === 0 ? '#FFFFFF' : '#F8FAFC',
+                                color: '#1E293B'
+                            });
+                        }
+                        bodyRows.push(rowData);
+                    }
+                });
+
+                const docDefinition = {
+                    pageOrientation: 'landscape',
+                    pageSize: 'A4',
+                    pageMargins: [14, 18, 14, 18],
+                    content: [
+                        {
+                            text: 'EMPLOYEE SHIFT ASSIGNMENT REPORT',
+                            fontSize: 13,
+                            bold: true,
+                            alignment: 'center',
+                            color: '#0F172A',
+                            margin: [0, 0, 0, 4]
+                        },
+                        {
+                            text: 'Generated on: ' + new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString(),
+                            fontSize: 8.5,
+                            alignment: 'center',
+                            color: '#64748B',
+                            margin: [0, 0, 0, 10]
+                        },
+                        {
+                            table: {
+                                headerRows: 1,
+                                widths: ['4%', '15%', '13%', '8%', '9%', '8%', '8%', '8%', '7%', '9%', '9%', '7%'],
+                                body: bodyRows
+                            },
+                            layout: {
+                                hLineWidth: function() { return 0.5; },
+                                vLineWidth: function() { return 0.5; },
+                                hLineColor: function() { return '#E2E8F0'; },
+                                vLineColor: function() { return '#E2E8F0'; },
+                                paddingTop: function() { return 4; },
+                                paddingBottom: function() { return 4; },
+                                paddingLeft: function() { return 4; },
+                                paddingRight: function() { return 4; }
+                            }
+                        }
+                    ]
+                };
+
+                const fileName = 'shift_assignments_' + new Date().toISOString().slice(0, 10) + '.pdf';
+                pdfMake.createPdf(docDefinition).download(fileName);
+            }
+        });
     });
 </script>
 @endpush

@@ -16,13 +16,14 @@
 
 .ev-page {
     min-height: calc(100vh - 90px) !important;
-    padding: 24px !important;
+    padding: 20px !important;
     background: var(--orb-bg) !important;
+    width: 100% !important;
 }
 
 .ev-container {
-    max-width: 1280px !important;
-    margin: 0 auto !important;
+    max-width: 100% !important;
+    margin: 0 !important;
     width: 100% !important;
 }
 
@@ -869,16 +870,19 @@
 
             <!-- Section C: Lifecycle Details (Conditional) -->
             @php
-                $isInternship = ($employeeData->employee_stage ?? '') === 'internship' || ($employeeData->employment_type ?? '') === 'intern';
+                $stage = strtolower($employeeData->employee_stage ?? '');
+                $type = strtolower($employeeData->employment_type ?? '');
+                $isInternship = $stage === 'internship' || ($stage === '' && $type === 'intern');
+                $isScheduledProbation = $isInternship && (($employeeData->internship_status ?? '') === 'scheduled_probation');
                 $hasInternship = !empty($employeeData->internship_start_date) || !empty($employeeData->internship_end_date) || $isInternship;
                 $hasProbation = !$isInternship && (
                     !empty($employeeData->probation_start_date) ||
                     !empty($employeeData->probation_end_date) ||
                     !empty($employeeData->probation_duration_value) ||
                     !empty($employeeData->probation_months) ||
-                    ($employeeData->employee_stage ?? '') === 'probation'
+                    $stage === 'probation'
                 );
-                $hasConfirmation = ($employeeData->employee_stage ?? '') === 'permanent' || !empty($employeeData->permanent_at) || in_array($employeeData->probation_status ?? '', ['completed', 'confirmed']);
+                $hasConfirmation = $stage === 'permanent' || !empty($employeeData->permanent_at) || in_array($employeeData->probation_status ?? '', ['completed', 'confirmed']);
                 $hasExit = $employmentStatus !== 'active' || !empty($employeeData->relieving_date) || !$isActive;
             @endphp
 
@@ -898,13 +902,21 @@
                             @if($hasInternship)
                                 <div class="ev-item" style="border-left: 4px solid #3B82F6;"><span class="ev-label">Internship Start</span><span class="ev-value">{{ evDate($employeeData->internship_start_date ?? null) }}</span></div>
                                 <div class="ev-item" style="border-left: 4px solid #3B82F6;"><span class="ev-label">Internship End</span><span class="ev-value">{{ evDate($employeeData->internship_end_date ?? null) }}</span></div>
-                                <div class="ev-item" style="border-left: 4px solid #3B82F6;"><span class="ev-label">Internship Extended To</span><span class="ev-value">{{ evDate($employeeData->internship_extended_to ?? null) }}</span></div>
+                                <div class="ev-item" style="border-left: 4px solid #3B82F6;"><span class="ev-label">Internship Status</span><span class="ev-value">{{ ucwords(str_replace('_', ' ', $employeeData->internship_status ?? 'Active')) }}</span></div>
                                 <div class="ev-item" style="border-left: 4px solid #3B82F6;"><span class="ev-label">Paid Intern</span><span class="ev-value">{{ isset($employeeData->is_paid_intern) ? ((int)$employeeData->is_paid_intern === 1 ? 'Yes' : 'No') : '-' }}</span></div>
                             @endif
 
-                            @if($hasProbation)
+                            @if($isScheduledProbation)
+                                <div class="ev-item" style="border-left: 4px solid #8B5CF6; grid-column: span 2;">
+                                    <span class="ev-label">Scheduled Next Stage</span>
+                                    <span class="ev-value" style="color: #6366F1; font-weight: 600;">
+                                        Probation: {{ evDate($employeeData->probation_start_date ?? null) }} to {{ evDate($employeeData->probation_end_date ?? null) }} ({{ formatProbationDuration($employeeData) }})
+                                        <span class="badge badge-primary px-2 py-1 ml-2" style="font-size: 11px; vertical-align: middle;">Scheduled</span>
+                                    </span>
+                                </div>
+                            @elseif($hasProbation)
                                 <div class="ev-item" style="border-left: 4px solid #F59E0B;"><span class="ev-label">Probation Duration</span><span class="ev-value">{{ formatProbationDuration($employeeData) }}</span></div>
-                                <div class="ev-item" style="border-left: 4px solid #F59E0B;"><span class="ev-label">Probation Status</span><span class="ev-value">{{ !empty($employeeData->probation_status) ? ucfirst($employeeData->probation_status) : '-' }}</span></div>
+                                <div class="ev-item" style="border-left: 4px solid #F59E0B;"><span class="ev-label">Probation Status</span><span class="ev-value">{{ !empty($employeeData->probation_status) ? ucwords(str_replace('_', ' ', $employeeData->probation_status)) : '-' }}</span></div>
                                 <div class="ev-item" style="border-left: 4px solid #F59E0B;"><span class="ev-label">Probation Start</span><span class="ev-value">{{ evDate($employeeData->probation_start_date ?? null) }}</span></div>
                                 <div class="ev-item" style="border-left: 4px solid #F59E0B;"><span class="ev-label">Probation End</span><span class="ev-value">{{ evDate($employeeData->probation_end_date ?? null) }}</span></div>
                             @endif
@@ -1205,7 +1217,7 @@
                                                     <a href="{{ $fileUrl($doc['file_path']) }}" target="_blank" class="ev-btn-icon" title="View / Preview">
                                                         <i class="fas fa-eye"></i> View
                                                     </a>
-                                                    <a href="{{ $fileUrl($doc['file_path']) }}?download=1" class="ev-btn-icon ev-btn-icon-soft" title="Download">
+                                                    <a href="{{ $fileUrl($doc['file_path']) }}?download=1" download="{{ $doc['file_original_name'] ?? '' }}" class="ev-btn-icon ev-btn-icon-soft" title="Download">
                                                         <i class="fas fa-download"></i> Download
                                                     </a>
                                                 </div>

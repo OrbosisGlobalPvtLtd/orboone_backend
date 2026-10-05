@@ -34,7 +34,7 @@
             <div class="row">
                 <div class="col-md-6 mb-2">
                     <label class="eo-label">Exit Type</label>
-                    <select name="exit_type" class="eo-control">
+                    <select name="exit_type" class="eo-control select2-searchable">
                         <option value="resignation" {{ strtolower($exitType) === 'resignation' ? 'selected' : '' }}>Resignation</option>
                         <option value="termination" {{ strtolower($exitType) === 'termination' ? 'selected' : '' }}>Termination</option>
                         <option value="discontinued" {{ strtolower($exitType) === 'discontinued' ? 'selected' : '' }}>Discontinuation</option>
@@ -47,7 +47,7 @@
                 </div>
                 <div class="col-md-6 mb-2">
                     <label class="eo-label">Asset Status</label>
-                    <select name="asset_status" class="eo-control">
+                    <select name="asset_status" class="eo-control select2-searchable">
                         <option value="pending" {{ strtolower($assetStatus) === 'pending' ? 'selected' : '' }}>Pending</option>
                         <option value="cleared" {{ strtolower($assetStatus) === 'cleared' ? 'selected' : '' }}>Cleared</option>
                         <option value="waived" {{ strtolower($assetStatus) === 'waived' ? 'selected' : '' }}>Waived</option>
@@ -55,7 +55,7 @@
                 </div>
                 <div class="col-md-6 mb-2">
                     <label class="eo-label">FnF Status</label>
-                    <select name="fnf_status" class="eo-control">
+                    <select name="fnf_status" class="eo-control select2-searchable">
                         <option value="pending" {{ strtolower($fnfStatus) === 'pending' ? 'selected' : '' }}>Pending</option>
                         <option value="processing" {{ strtolower($fnfStatus) === 'processing' ? 'selected' : '' }}>Processing</option>
                         <option value="approved" {{ strtolower($fnfStatus) === 'approved' ? 'selected' : '' }}>Approved</option>
@@ -66,7 +66,7 @@
                 </div>
                 <div class="col-md-6 mb-2">
                     <label class="eo-label">Document Status</label>
-                    <select name="document_status" class="eo-control">
+                    <select name="document_status" class="eo-control select2-searchable">
                         <option value="pending" {{ strtolower($documentStatus) === 'pending' ? 'selected' : '' }}>Pending</option>
                         <option value="generated" {{ strtolower($documentStatus) === 'generated' ? 'selected' : '' }}>Generated</option>
                         <option value="sent" {{ strtolower($documentStatus) === 'sent' ? 'selected' : '' }}>Sent</option>
@@ -76,7 +76,7 @@
                 </div>
                 <div class="col-md-6 mb-2">
                     <label class="eo-label">Handover Status</label>
-                    <select name="handover_status" class="eo-control">
+                    <select name="handover_status" class="eo-control select2-searchable">
                         <option value="pending" {{ strtolower($handoverStatus) === 'pending' ? 'selected' : '' }}>Pending</option>
                         <option value="cleared" {{ strtolower($handoverStatus) === 'cleared' ? 'selected' : '' }}>Cleared</option>
                         <option value="completed" {{ strtolower($handoverStatus) === 'completed' ? 'selected' : '' }}>Completed</option>

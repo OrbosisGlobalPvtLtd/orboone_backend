@@ -29,11 +29,21 @@
                             <div class="em-form-grid">
                                 <div class="em-field">
                                     <label>Probation Duration @if(formatProbationDuration($employeeData))<span class="em-prob-formatted-text text-muted font-weight-normal ml-1">({{ formatProbationDuration($employeeData) }})</span>@endif</label>
-                                    <select name="probation_duration_option" id="manage_probation_duration_option" class="em-control editable" disabled>
-                                        <option value="3_months" {{ $manageProbOpt === '3_months' ? 'selected' : '' }}>3 Months</option>
-                                        <option value="6_months" {{ $manageProbOpt === '6_months' ? 'selected' : '' }}>6 Months</option>
-                                        <option value="custom" {{ $manageProbOpt === 'custom' ? 'selected' : '' }}>Custom</option>
-                                    </select>
+                                    <x-form.select 
+                                        name="probation_duration_option" 
+                                        id="manage_probation_duration_option" 
+                                        class="em-control editable-select" 
+                                        placeholder="Select Duration"
+                                        :options="[
+                                            '3_months' => '3 Months',
+                                            '6_months' => '6 Months',
+                                            'custom' => 'Custom'
+                                        ]"
+                                        :selected="$manageProbOpt" 
+                                        :searchable="true" 
+                                        disabled 
+                                        wrapper-class="m-0"
+                                    />
                                     <input type="hidden" name="probation_months" id="manage_probation_months" value="{{ old('probation_months', $employeeData->probation_months ?? 3) }}">
                                 </div>
 
@@ -41,10 +51,20 @@
                                     <label>Custom Duration <span class="required">*</span></label>
                                     <div class="input-group" style="display: flex; gap: 8px;">
                                         <input type="number" name="custom_duration_value" id="manage_custom_duration_value" class="em-control editable" min="1" max="365" value="{{ $manageCustomVal }}" placeholder="e.g. 10" disabled style="flex: 1;">
-                                        <select name="custom_duration_unit" id="manage_custom_duration_unit" class="em-control editable" disabled style="max-width: 110px;">
-                                            <option value="days" {{ $manageCustomUnit === 'days' ? 'selected' : '' }}>Days</option>
-                                            <option value="months" {{ $manageCustomUnit === 'months' ? 'selected' : '' }}>Months</option>
-                                        </select>
+                                        <x-form.select 
+                                            name="custom_duration_unit" 
+                                            id="manage_custom_duration_unit" 
+                                            class="em-control editable-select" 
+                                            :options="[
+                                                'days' => 'Days',
+                                                'months' => 'Months'
+                                            ]"
+                                            :selected="$manageCustomUnit" 
+                                            :searchable="true" 
+                                            disabled 
+                                            wrapper-class="m-0 flex-shrink-0"
+                                            style="width: 130px;"
+                                        />
                                     </div>
                                 </div>
 
@@ -55,12 +75,24 @@
 
                                 <div class="em-field">
                                     <label>Probation Start Date</label>
-                                    <input type="date" name="probation_start_date" id="manage_probation_start_date" class="em-control editable" value="{{ old('probation_start_date', $employeeData->probation_start_date) }}" disabled>
+                                    <x-form.date-picker 
+                                        name="probation_start_date" 
+                                        id="manage_probation_start_date" 
+                                        class="em-control editable" 
+                                        :value="old('probation_start_date', $employeeData->probation_start_date)" 
+                                        disabled 
+                                    />
                                 </div>
 
                                 <div class="em-field">
                                     <label>Probation End Date</label>
-                                    <input type="date" name="probation_end_date" id="manage_probation_end_date" class="em-control em-control-readonly" value="{{ old('probation_end_date', $employeeData->probation_end_date) }}" readonly>
+                                    <x-form.date-picker 
+                                        name="probation_end_date" 
+                                        id="manage_probation_end_date" 
+                                        class="em-control em-control-readonly" 
+                                        :value="old('probation_end_date', $employeeData->probation_end_date)" 
+                                        disabled 
+                                    />
                                 </div>
 
                                 <div class="em-field">
@@ -70,7 +102,13 @@
 
                                 <div class="em-field">
                                     <label>Permanent Date</label>
-                                    <input type="date" name="confirmation_date" id="manage_confirmation_date" class="em-control editable" value="{{ old('confirmation_date', $employeeData->confirmation_date ?? $employeeData->permanent_at ?? '') }}" disabled>
+                                    <x-form.date-picker 
+                                        name="confirmation_date" 
+                                        id="manage_confirmation_date" 
+                                        class="em-control editable" 
+                                        :value="old('confirmation_date', $employeeData->confirmation_date ?? $employeeData->permanent_at ?? '')" 
+                                        disabled 
+                                    />
                                 </div>
                             </div>
                         </div>

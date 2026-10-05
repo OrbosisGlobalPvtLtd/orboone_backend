@@ -27,31 +27,46 @@
 
                                 <div class="em-field">
                                     <label>Date of Birth</label>
-                                    <input type="date" name="date_of_birth" class="em-control editable" value="{{ old('date_of_birth', $employeeData->date_of_birth) }}" readonly>
+                                    <x-form.date-picker 
+                                        name="date_of_birth" 
+                                        id="date_of_birth" 
+                                        class="em-control editable" 
+                                        :value="old('date_of_birth', $employeeData->date_of_birth)" 
+                                        disabled 
+                                    />
                                     @error('date_of_birth') <div class="em-error">{{ $message }}</div> @enderror
                                 </div>
 
                                 <div class="em-field">
                                     <label>Gender</label>
-                                    <select name="gender" class="em-control editable-select" disabled>
-                                        <option value="">Select Gender</option>
-                                        <option value="male" {{ old('gender', $employeeData->gender) == 'male' ? 'selected' : '' }}>Male</option>
-                                        <option value="female" {{ old('gender', $employeeData->gender) == 'female' ? 'selected' : '' }}>Female</option>
-                                        <option value="other" {{ old('gender', $employeeData->gender) == 'other' ? 'selected' : '' }}>Other</option>
-                                    </select>
+                                    <x-form.select 
+                                        name="gender" 
+                                        id="gender" 
+                                        class="em-control editable-select" 
+                                        placeholder="Select Gender"
+                                        :options="[
+                                            'male' => 'Male',
+                                            'female' => 'Female',
+                                            'other' => 'Other'
+                                        ]"
+                                        :selected="old('gender', $employeeData->gender)" 
+                                        :searchable="true" 
+                                        disabled 
+                                        wrapper-class="m-0"
+                                    />
                                     @error('gender') <div class="em-error">{{ $message }}</div> @enderror
-                                </div>
-
-                                <div class="em-field">
-                                    <label>Address</label>
-                                    <textarea name="address" class="em-control editable" readonly>{{ old('address', $employeeData->address) }}</textarea>
-                                    @error('address') <div class="em-error">{{ $message }}</div> @enderror
                                 </div>
 
                                 <div class="em-field">
                                     <label>Emergency Contact Number</label>
                                     <input type="text" name="emergency_contact_number" class="em-control editable" value="{{ old('emergency_contact_number', $employeeData->emergency_contact_number) }}" readonly>
                                     @error('emergency_contact_number') <div class="em-error">{{ $message }}</div> @enderror
+                                </div>
+
+                                <div class="em-field" style="grid-column: 1 / -1;">
+                                    <label>Address</label>
+                                    <textarea name="address" class="em-control editable" readonly>{{ old('address', $employeeData->address) }}</textarea>
+                                    @error('address') <div class="em-error">{{ $message }}</div> @enderror
                                 </div>
                             </div>
                         </div>

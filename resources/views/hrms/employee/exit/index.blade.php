@@ -2,10 +2,12 @@
 
 @section('page_title', 'Exit Employees')
 
-@section('_content')
+@section('_head')
     @include('hrms.employee.partials.styles')
     @include('hrms.employee.exit.partials.styles')
+@endsection
 
+@section('_content')
     <div class="eo-page">
         <div class="eo-container">
             @include('hrms.employee.exit.partials.header')
@@ -38,46 +40,28 @@
                 @include('hrms.employee.exit.partials.filters')
 
                 <!-- Entries Toolbar -->
-                <div class="eo-toolbar">
-                    <div class="eo-toolbar-left">
-                        <div class="eo-entries-wrapper">
-                            <span class="eo-entries-label">Show</span>
-                            <select id="customLengthMenu" class="eo-entries-select">
-                                <option value="10">10</option>
-                                <option value="25">25</option>
-                                <option value="50">50</option>
-                                <option value="100">100</option>
-                            </select>
-                            <span class="eo-entries-label">entries</span>
-                        </div>
-                    </div>
-                    <div class="eo-toolbar-right d-flex align-items-center gap-2 flex-wrap">
-                        <button type="button" class="eo-export-btn js-export-csv">
-                            <i class="fas fa-file-csv"></i> CSV
-                        </button>
-                        <button type="button" class="eo-export-btn js-export-excel">
-                            <i class="fas fa-file-excel"></i> Excel
-                        </button>
-                        <button type="button" class="eo-export-btn js-export-pdf">
-                            <i class="fas fa-file-pdf"></i> PDF
-                        </button>
-                        <button type="button" class="eo-export-btn js-export-print">
-                            <i class="fas fa-print"></i> Print
-                        </button>
+                <div class="orb-table-tools-bar eo-toolbar">
+                    <div id="exitLengthBox" class="orb-table-length-box eo-toolbar-left"></div>
+                    <div id="exitExportButtons" class="orb-table-export-buttons eo-toolbar-right">
+                        <x-ui.export-buttons table="exitEmployeesTable" />
                     </div>
                 </div>
 
                 @include('hrms.employee.exit.partials.table')
 
-                <!-- Footer / Pagination (will be dynamically appended by DataTable drawCallback) -->
-                <div class="exit-dt-footer"></div>
+                <!-- Footer / Pagination -->
+                <div class="eo-table-footer orb-pagination-wrapper">
+                    <div id="exitInfoBox" class="orb-pagination-info"></div>
+                    <div id="exitPaginationBox"></div>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Modals declaration -->
     @include('hrms.employee.exit.partials.modal.main')
+@endsection
 
-    <!-- Scripts -->
+@section('_script')
     @include('hrms.employee.exit.partials.scripts')
 @endsection

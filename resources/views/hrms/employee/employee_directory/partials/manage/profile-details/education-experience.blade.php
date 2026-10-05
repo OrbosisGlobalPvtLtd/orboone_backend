@@ -15,11 +15,21 @@
 
                                 <div class="em-field">
                                     <label>Experience Type</label>
-                                    <select name="experience_type" id="manage_experience_type" class="em-control editable-select" disabled onchange="toggleManageExperienceFields(this.value)">
-                                        <option value="">Select Experience Type</option>
-                                        <option value="fresher" {{ old('experience_type', $employeeData->experience_type ?? '') == 'fresher' ? 'selected' : '' }}>Fresher</option>
-                                        <option value="experienced" {{ old('experience_type', $employeeData->experience_type ?? '') == 'experienced' ? 'selected' : '' }}>Experienced</option>
-                                    </select>
+                                    <x-form.select 
+                                        name="experience_type" 
+                                        id="manage_experience_type" 
+                                        class="em-control editable-select" 
+                                        placeholder="Select Experience Type"
+                                        :options="[
+                                            'fresher' => 'Fresher',
+                                            'experienced' => 'Experienced'
+                                        ]"
+                                        :selected="old('experience_type', $employeeData->experience_type ?? '')" 
+                                        :searchable="true" 
+                                        disabled 
+                                        wrapper-class="m-0"
+                                        onchange="toggleManageExperienceFields(this.value)"
+                                    />
                                     @error('experience_type') <div class="em-error">{{ $message }}</div> @enderror
                                 </div>
 

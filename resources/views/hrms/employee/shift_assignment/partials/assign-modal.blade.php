@@ -1,6 +1,6 @@
 <!-- Assign Shift Modal -->
 <div class="modal fade" id="assignShiftModal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" role="document">
         <form method="POST" action="{{ route('employee.shift-assignment.store') }}" class="modal-content border-0 rounded-24 shadow-lg overflow-hidden">
             @csrf
             <div class="modal-header text-white p-4" style="background: linear-gradient(135deg, var(--orb-primary, #6366F1), var(--orb-secondary, #4F46E5));">
@@ -18,7 +18,7 @@
                     <div class="row">
                         <div class="col-md-6 form-group mb-3">
                             <label class="shift-modal-label">Employee <span class="text-danger">*</span></label>
-                            <select name="employee_id" id="assignEmployeeSelect" class="form-control rounded-12 border-light bg-light" required style="height: 42px; font-size: 13px;">
+                            <select name="employee_id" id="assignEmployeeSelect" class="form-control rounded-12 border-light bg-light select2-searchable" required style="height: 42px; font-size: 13px;">
                                 <option value="">-- Select Employee --</option>
                                 @foreach($allEmployeesList as $empOption)
                                     <option value="{{ $empOption->id }}">{{ $empOption->employee_code }} - {{ optional($empOption->user)->name ?? 'Employee #' . $empOption->id }}</option>
@@ -27,7 +27,7 @@
                         </div>
                         <div class="col-md-6 form-group mb-3">
                             <label class="shift-modal-label">Select Shift Template <span class="text-danger">*</span></label>
-                            <select name="attendance_time_id" id="assignShiftSelect" class="form-control rounded-12 border-light bg-light" required style="height: 42px; font-size: 13px;" onchange="handleShiftTemplateSelect('assign', this)">
+                            <select name="attendance_time_id" id="assignShiftSelect" class="form-control rounded-12 border-light bg-light select2-searchable" required style="height: 42px; font-size: 13px;" onchange="handleShiftTemplateSelect('assign', this)">
                                 <option value="">-- Select Shift --</option>
                                 @foreach($attendanceTimes as $timeOption)
                                     @php
@@ -115,11 +115,11 @@
                     <div class="row">
                         <div class="col-md-6 form-group mb-3">
                             <label class="shift-modal-label">Effective From Date <span class="text-danger">*</span></label>
-                            <input type="date" name="effective_from" class="form-control rounded-12 border-light bg-light" value="{{ date('Y-m-d') }}" required style="height: 42px; font-size: 13px;">
+                            <x-form.date-picker name="effective_from" id="assign_effective_from" :value="date('Y-m-d')" required placeholder="dd-mm-yyyy" class="rounded-12 border-light bg-light" style="height: 42px; font-size: 13px;" />
                         </div>
                         <div class="col-md-6 form-group mb-3">
                             <label class="shift-modal-label">Effective Till Date (Optional)</label>
-                            <input type="date" name="effective_to" class="form-control rounded-12 border-light bg-light" style="height: 42px; font-size: 13px;">
+                            <x-form.date-picker name="effective_to" id="assign_effective_to" placeholder="dd-mm-yyyy" class="rounded-12 border-light bg-light" style="height: 42px; font-size: 13px;" />
                         </div>
                     </div>
                     <div class="custom-control custom-switch mt-2">

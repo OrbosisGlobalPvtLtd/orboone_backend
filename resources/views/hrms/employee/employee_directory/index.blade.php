@@ -10,29 +10,53 @@
 
 @section('_content')
 <style>
+    /* 0. Full Width Fluid Fit for All Zoom & Screen Ratios */
+    .eo-page,
+    .eo-container {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    .orb-page-header,
+    .eo-stat-grid,
+    .eo-card,
+    .orb-table-wrap,
+    #employeesTable {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
     /* 1. Metric card grid & card overrides */
     .eo-stat-grid {
         display: grid !important;
-        grid-template-columns: repeat(5, minmax(170px, 1fr)) !important;
+        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
         gap: 12px !important;
         margin-bottom: 24px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
 
     .eo-stat {
         background: #fff !important;
         border-radius: 18px !important;
         border: 1px solid var(--orb-border, #E7EAF3) !important;
-        padding: 12px 16px !important; /* Reduced padding slightly */
+        padding: 12px 16px !important;
         box-shadow: 0 10px 24px rgba(16, 24, 40, .045) !important;
         display: flex !important;
         align-items: center !important;
-        gap: 12px !important; /* Reduced gap slightly */
+        gap: 12px !important;
         transition: transform 0.2s ease, box-shadow 0.2s ease !important;
-        min-height: 72px !important; /* Reduced height slightly */
+        min-height: 72px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        min-width: 0 !important;
     }
 
     .eo-stat-icon {
-        width: 38px !important; /* Reduced icon size slightly */
+        width: 38px !important;
         height: 38px !important;
         border-radius: 10px !important;
         display: flex !important;
@@ -43,7 +67,7 @@
     }
 
     .eo-stat-value {
-        font-size: 18px !important; /* Reduced slightly */
+        font-size: 18px !important;
         font-weight: 900 !important;
         color: var(--orb-text, #101828) !important;
         margin: 0 !important;
@@ -51,7 +75,7 @@
     }
 
     .eo-stat-label {
-        font-size: 10px !important; /* Reduced slightly */
+        font-size: 10px !important;
         font-weight: 800 !important;
         text-transform: uppercase !important;
         color: var(--orb-muted, #667085) !important;
@@ -60,15 +84,15 @@
     }
 
     /* Media query responsiveness for Metric Card Grid */
-    @media (max-width: 1400px) {
+    @media (max-width: 1199px) {
         .eo-stat-grid {
-            grid-template-columns: repeat(4, minmax(180px, 1fr)) !important;
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
         }
     }
 
-    @media (max-width: 991px) {
+    @media (max-width: 768px) {
         .eo-stat-grid {
-            grid-template-columns: repeat(2, 1fr) !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
         }
     }
 
@@ -83,6 +107,7 @@
         display: flex !important;
         flex-direction: column !important;
         justify-content: flex-end !important;
+        min-width: 0 !important;
     }
 
     .eo-filter-actions-wrap {
@@ -92,76 +117,24 @@
         width: 100% !important;
     }
 
-    #btnEmpFilterSubmit {
-        height: 38px !important;
-        border-radius: 12px !important;
-        background: linear-gradient(135deg, var(--orb-primary, #6366F1), var(--orb-secondary, #8B5CF6)) !important;
-        color: #ffffff !important;
-        border: none !important;
-        padding: 0 16px !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        gap: 6px !important;
-        font-size: 13px !important;
-        font-weight: 700 !important;
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.22) !important;
-        transition: all 0.2s ease !important;
-        cursor: pointer !important;
-        white-space: nowrap !important;
-        flex: 1 1 auto !important;
-    }
-
-    #btnEmpFilterSubmit:hover {
-        opacity: 0.94 !important;
-        transform: translateY(-1px) !important;
-        box-shadow: 0 6px 16px rgba(99, 102, 241, 0.32) !important;
-        color: #ffffff !important;
-    }
-
-    #resetFilter {
-        height: 38px !important;
-        border-radius: 12px !important;
-        background: #F8FAFC !important;
-        border: 1px solid #E2E8F0 !important;
-        color: #475569 !important;
-        padding: 0 14px !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        gap: 6px !important;
-        font-size: 13px !important;
-        font-weight: 700 !important;
-        box-shadow: 0 2px 6px rgba(16, 24, 40, .04) !important;
-        transition: all 0.2s ease !important;
-        cursor: pointer !important;
-        white-space: nowrap !important;
-        flex: 1 1 auto !important;
-    }
-
-    #resetFilter:hover {
-        background: #F1F5F9 !important;
-        color: var(--orb-primary, #6366F1) !important;
-        border-color: #CBD5E1 !important;
-        transform: translateY(-1px) !important;
-    }
-
     .eo-filter-grid {
         display: grid !important;
-        grid-template-columns: 1.4fr 1.2fr 0.9fr 1fr 1fr auto !important;
+        grid-template-columns: 1.5fr 1.2fr 1fr 1fr 1fr auto !important;
         gap: 12px !important;
         align-items: flex-end !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
 
-    @media (max-width: 1400px) {
+    @media (max-width: 1199px) {
         .eo-filter-grid {
-            grid-template-columns: repeat(3, 1fr) !important;
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
         }
     }
 
     @media (max-width: 991px) {
         .eo-filter-grid {
-            grid-template-columns: repeat(2, 1fr) !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
         }
     }
 
@@ -565,28 +538,7 @@
         padding: 4px 8px;
     }
 
-    .dt-buttons {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-    }
 
-    .dt-buttons .btn {
-        border-radius: 11px !important;
-        border: 1px solid var(--orb-border) !important;
-        background: #fff !important;
-        color: var(--orb-text) !important;
-        font-size: 12px !important;
-        font-weight: 950 !important;
-        padding: 8px 12px !important;
-        box-shadow: 0 6px 16px rgba(16, 24, 40, .045) !important;
-    }
-
-    .dt-buttons .btn:hover {
-        color: #fff !important;
-        border-color: var(--orb-primary) !important;
-        background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary)) !important;
-    }
 
     #employeesTable {
         width: 100% !important;
@@ -632,78 +584,6 @@
         background: #fff !important;
     }
 
-    #employeeLengthBox select {
-        height: 34px !important;
-        border: 1px solid var(--orb-border, #E7EAF3) !important;
-        border-radius: 8px !important;
-        padding: 2px 8px !important;
-        font-size: 12px !important;
-        font-weight: 700 !important;
-        outline: none !important;
-    }
-
-    #employeeLengthBox {
-        font-size: 13px !important;
-        font-weight: 700 !important;
-        color: var(--orb-muted, #667085) !important;
-    }
-
-    #employeeExportButtons {
-        display: flex !important;
-        gap: 6px !important;
-    }
-
-    #employeeExportButtons .btn {
-        height: 34px !important;
-        padding: 0 12px !important;
-        font-size: 12px !important;
-        font-weight: 800 !important;
-        border: 1px solid var(--orb-border, #E7EAF3) !important;
-        background: #fff !important;
-        color: var(--orb-text, #101828) !important;
-        border-radius: 8px !important;
-        transition: all .2s !important;
-    }
-
-    #employeeExportButtons .btn:hover {
-        background: var(--orb-soft, #F4F2FF) !important;
-        color: var(--orb-primary, #4B00E8) !important;
-        border-color: rgba(75, 0, 232, 0.2) !important;
-    }
-
-    #employeeInfoBox {
-        font-size: 13px !important;
-        font-weight: 750 !important;
-        color: var(--orb-muted, #667085) !important;
-    }
-
-    .pagination {
-        margin: 0 !important;
-        gap: 4px !important;
-    }
-
-    .page-item .page-link {
-        border-radius: 8px !important;
-        border: 1px solid var(--orb-border, #E7EAF3) !important;
-        color: var(--orb-text, #101828) !important;
-        font-size: 13px !important;
-        font-weight: 800 !important;
-        padding: 6px 12px !important;
-        min-width: 32px !important;
-        text-align: center !important;
-    }
-
-    .page-item.active .page-link {
-        background: linear-gradient(135deg, var(--orb-primary, #4B00E8), var(--orb-secondary, #8600EE)) !important;
-        border-color: transparent !important;
-        color: #fff !important;
-    }
-
-    .page-item:not(.active) .page-link:hover {
-        background: var(--orb-soft, #F4F2FF) !important;
-        color: var(--orb-primary, #4B00E8) !important;
-        border-color: rgba(75, 0, 232, .2) !important;
-    }
 
     .emp-profile-cell {
         display: flex !important;
@@ -955,67 +835,97 @@
                         <input type="text" id="filterSearch" class="eo-control" style="height: 38px !important;" placeholder="Search name, code, email, phone...">
                     </div>
 
-                    <div class="eo-field">
-                        <label>Department</label>
-                        <select id="filterDepartment" class="eo-control select2-searchable" style="height: 38px !important;">
-                            <option value="">All Departments</option>
-                            @foreach ($departments ?? [] as $dept)
-                            <option value="{{ $dept->id }}">{{ $dept->name ?? '-' }}</option>
-                            @endforeach
-                        </select>
-                    </div>
+                    <x-form.select
+                        id="filterDepartment"
+                        name="department"
+                        label="Department"
+                        :options="$departments ?? []"
+                        placeholder="All Departments"
+                        :searchable="true"
+                        wrapper-class="eo-field mb-0"
+                        class="eo-control"
+                    />
 
-                    <div class="eo-field">
-                        <label>Work Mode</label>
-                        <select id="filterWorkMode" class="eo-control" style="height: 38px !important;">
-                            <option value="">All Mode</option>
-                            <option value="wfo">WFO</option>
-                            <option value="wfh">WFH</option>
-                            <option value="hybrid">Hybrid</option>
-                        </select>
-                    </div>
+                    <x-form.select
+                        id="filterWorkMode"
+                        name="work_mode"
+                        label="Work Mode"
+                        :options="[
+                            'wfo' => 'WFO',
+                            'wfh' => 'WFH',
+                            'hybrid' => 'Hybrid'
+                        ]"
+                        placeholder="All Mode"
+                        :searchable="true"
+                        wrapper-class="eo-field mb-0"
+                        class="eo-control"
+                    />
 
-                    <div class="eo-field">
-                        <label>Employment Type</label>
-                        <select id="filterEmploymentType" class="eo-control" style="height: 38px !important;">
-                            <option value="">All Type</option>
-                            <option value="full_time">Full Time</option>
-                            <option value="intern">Intern</option>
-                            <option value="contract">Contract</option>
-                            <option value="part_time">Part Time</option>
-                        </select>
-                    </div>
+                    <x-form.select
+                        id="filterEmploymentType"
+                        name="employment_type"
+                        label="Employment Type"
+                        :options="[
+                            'full_time' => 'Full Time',
+                            'intern' => 'Intern',
+                            'contract' => 'Contract',
+                            'part_time' => 'Part Time'
+                        ]"
+                        placeholder="All Type"
+                        :searchable="true"
+                        wrapper-class="eo-field mb-0"
+                        class="eo-control"
+                    />
 
-                    <div class="eo-field">
-                        <label>Status</label>
-                        <select id="filterStatus" class="eo-control" style="height: 38px !important;">
-                            <option value="">All Status</option>
-                            <option value="active">Active</option>
-                            <option value="probation">Probation</option>
-                            <option value="internship">Internship</option>
-                            <option value="notice">Notice</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
-                    </div>
+                    <x-form.select
+                        id="filterStatus"
+                        name="status"
+                        label="Status"
+                        :options="[
+                            'active' => 'Active',
+                            'probation' => 'Probation',
+                            'internship' => 'Internship',
+                            'notice' => 'Notice',
+                            'inactive' => 'Inactive'
+                        ]"
+                        placeholder="All Status"
+                        :searchable="true"
+                        wrapper-class="eo-field mb-0"
+                        class="eo-control"
+                    />
 
                     <div class="eo-field eo-filter-actions-col">
                         <label class="d-none d-sm-block">&nbsp;</label>
                         <div class="eo-filter-actions-wrap">
-                            <button type="button" id="btnEmpFilterSubmit" title="Search / Apply Filter">
-                                <i class="fas fa-search mr-1"></i> Search
-                            </button>
-                            <button type="button" id="resetFilter" title="Reset Filters">
-                                <i class="fas fa-undo mr-1"></i> Reset
-                            </button>
+                            <x-ui.button
+                                type="button"
+                                id="btnEmpFilterSubmit"
+                                variant="search"
+                                icon="fas fa-search mr-1"
+                                title="Search / Apply Filter"
+                                class="orbo-button-flex"
+                            >
+                                Search
+                            </x-ui.button>
+                            <x-ui.button
+                                type="button"
+                                id="resetFilter"
+                                variant="reset"
+                                icon="fas fa-undo mr-1"
+                                title="Reset Filters"
+                                class="orbo-button-flex"
+                            >
+                                Reset
+                            </x-ui.button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- 4. DataTable toolbar: single clean row, length LEFT, export RIGHT -->
-            <div class="orb-table-tools py-2 px-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <div id="employeeLengthBox" class="d-flex align-items-center"></div>
-                <div id="employeeExportButtons" class="d-flex align-items-center gap-1"></div>
+            <!-- 4. DataTable toolbar: clean responsive row, length LEFT, export RIGHT -->
+            <div class="orb-table-tools-bar">
+                <div id="employeeLengthBox"></div>
+                <div id="employeeExportButtons"></div>
             </div>
 
             <!-- 6. Table wrapper -->
@@ -1023,6 +933,7 @@
                 <table id="employeesTable" class="table table-hover">
                     <thead>
                         <tr>
+                            <th width="45" class="text-center">S.No</th>
                             <th>Employee</th>
                             <th>Department</th>
                             <th>Designation</th>
@@ -1059,6 +970,8 @@
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap4.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
 
@@ -1069,41 +982,159 @@
             if (!data) return '-';
             let $el = $('<div>').html(data);
 
-            // Strip action dropdowns, avatars, fallback initial letters, scripts, styles
-            $el.find('.hrms-emp-avatar, .hrms-emp-avatar-fallback, .eo-action-menu, script, style').remove();
+            // Strip action dropdowns, avatars, dots, scripts, styles
+            $el.find('.hrms-emp-avatar, .hrms-emp-avatar-fallback, .eo-action-menu, .eo-dot, script, style').remove();
 
-            // Column 0: Employee Name, Code, Email
-            if (column === 0 && $el.find('.eo-name').length > 0) {
+            // Column 0: S.No
+            if (column === 0) {
+                return (row + 1).toString();
+            }
+
+            // Column 1: Employee Name, Code, Email
+            if (column === 1) {
                 let name = $el.find('.eo-name').text().trim();
                 let code = $el.find('.eo-meta').text().trim();
                 let email = $el.find('.eo-mini').text().trim();
 
-                if (targetType === 'print') {
-                    let html = '<div style="font-weight:700; color:#0F172A; font-size:12px; line-height:1.3;">' + name + '</div>';
-                    if (code && code !== '-') {
-                        html += '<div style="color:#475569; font-size:11px; font-weight:500; margin-top:2px;">' + code + '</div>';
+                if (name) {
+                    if (targetType === 'print') {
+                        let html = '<div style="font-weight:700; color:#0F172A; font-size:12px; line-height:1.3;">' + name + '</div>';
+                        if (code && code !== '-') {
+                            html += '<div style="color:#475569; font-size:11px; font-weight:500; margin-top:2px;">' + code + '</div>';
+                        }
+                        if (email && email !== '-') {
+                            html += '<div style="color:#64748B; font-size:10px; margin-top:1px; word-break:break-all;">' + email + '</div>';
+                        }
+                        return html;
+                    } else if (targetType === 'pdf') {
+                        let lines = [name];
+                        if (code && code !== '-') lines.push('(' + code + ')');
+                        if (email && email !== '-') lines.push(email);
+                        return lines.join('\n');
+                    } else {
+                        let parts = [name];
+                        if (code && code !== '-') parts.push('(' + code + ')');
+                        if (email && email !== '-') parts.push('- ' + email);
+                        return parts.join(' ');
                     }
-                    if (email && email !== '-') {
-                        html += '<div style="color:#64748B; font-size:10px; margin-top:1px; word-break:break-all;">' + email + '</div>';
-                    }
-                    return html;
-                } else {
-                    let parts = [name];
-                    if (code && code !== '-') parts.push('(' + code + ')');
-                    if (email && email !== '-') parts.push('- ' + email);
-                    return parts.join(' ');
                 }
             }
 
-            if (targetType === 'print') {
-                return $el.html().trim() || $el.text().replace(/\s+/g, ' ').trim();
+            // Column 4: Type & Mode (handle multiple pills)
+            if (column === 4) {
+                let pills = [];
+                $el.find('.eo-pill').each(function() {
+                    let t = $(this).text().trim();
+                    if (t) pills.push(t);
+                });
+                if (pills.length > 0) {
+                    return targetType === 'pdf' ? pills.join('\n') : pills.join(' / ');
+                }
             }
 
-            return $el.text().replace(/\s+/g, ' ').trim();
+            // Column 5: Manager Name & Code
+            if (column === 5) {
+                let managerCode = $el.find('.eo-mini').text().trim();
+                $el.find('.eo-mini').remove();
+                let managerName = $el.text().replace(/\s+/g, ' ').trim();
+                if (!managerName) managerName = 'Not assigned';
+
+                if (managerName !== 'Not assigned' && managerCode && managerCode !== '-') {
+                    return targetType === 'pdf' ? managerName + '\n(' + managerCode + ')' : managerName + ' (' + managerCode + ')';
+                }
+                return managerName;
+            }
+
+            if (targetType === 'print') {
+                return $el.html().trim() || $el.text().replace(/\s+/g, ' ').trim() || '-';
+            }
+
+            return $el.text().replace(/\s+/g, ' ').trim() || '-';
         }
 
         function cleanExportText(data) {
             return formatExportColumn(data, null, null, null, 'text');
+        }
+
+        function buildTabularExportData(data) {
+            data.header = [
+                'S.No',
+                'Employee Code',
+                'Employee Name',
+                'Email',
+                'Department',
+                'Designation',
+                'Employment Type',
+                'Work Mode',
+                'Reporting Manager',
+                'Manager Code',
+                'Shift',
+                'Verification Status',
+                'Stage',
+                'Joining Date',
+                'Status'
+            ];
+
+            let api = $('#employeesTable').DataTable();
+            let rowsData = api.rows({ search: 'applied' }).data().toArray();
+            let startIdx = (api.page.info && api.page.info().start) ? api.page.info().start : 0;
+
+            let newBody = [];
+            for (let i = 0; i < rowsData.length; i++) {
+                let row = rowsData[i];
+                let sNo = (startIdx + i + 1).toString();
+
+                let empCode = row.raw_employee_code || '';
+                let empName = row.raw_name || '';
+                let empEmail = row.raw_email || '';
+
+                if (!empName) {
+                    let $emp = $('<div>').html(row.employee || '');
+                    empName = $emp.find('.eo-name').text().trim() || '-';
+                    empCode = $emp.find('.eo-meta').text().trim() || '-';
+                    empEmail = $emp.find('.eo-mini').text().trim() || '-';
+                }
+
+                let dept = row.raw_department || $('<div>').html(row.department || '-').text().trim();
+                let desig = row.raw_designation || $('<div>').html(row.designation || '-').text().trim();
+                let empType = row.raw_employment_type || $('<div>').html(row.employment_type || '-').text().trim();
+                let workMode = row.raw_work_mode || $('<div>').html(row.work_mode || '-').text().trim();
+
+                let mgrName = row.raw_manager_name || '';
+                let mgrCode = row.raw_manager_code || '';
+                if (!mgrName) {
+                    let $mgr = $('<div>').html(row.reporting_manager || '');
+                    mgrCode = $mgr.find('.eo-mini').text().trim() || '-';
+                    $mgr.find('.eo-mini').remove();
+                    mgrName = $mgr.text().replace(/\s+/g, ' ').trim() || 'Not assigned';
+                }
+
+                let shift = row.raw_shift || $('<div>').html(row.shift || '-').text().trim();
+                let verif = row.raw_verification_status || $('<div>').html(row.verification_status || '-').text().trim();
+                let stage = row.raw_stage || $('<div>').html(row.employee_stage || '-').text().trim();
+                let joining = row.raw_joining_date || $('<div>').html(row.joining_date || '-').text().trim();
+                let status = row.raw_status || $('<div>').html(row.status || '-').text().trim();
+
+                newBody.push([
+                    sNo,
+                    empCode,
+                    empName,
+                    empEmail,
+                    dept,
+                    desig,
+                    empType,
+                    workMode,
+                    mgrName,
+                    mgrCode,
+                    shift,
+                    verif,
+                    stage,
+                    joining,
+                    status
+                ]);
+            }
+
+            data.body = newBody;
         }
 
         function pill(text, type) {
@@ -1154,7 +1185,19 @@
                     alert('Unable to load employee data. Please check the console for details.');
                 }
             },
-            columns: [{
+            columns: [
+                {
+                    data: null,
+                    name: 's_no',
+                    orderable: false,
+                    searchable: false,
+                    className: 'text-center font-weight-bold text-muted',
+                    width: '45px',
+                    render: function(data, type, row, meta) {
+                        return meta.row + meta.settings._iDisplayStart + 1;
+                    }
+                },
+                {
                     data: 'employee',
                     name: 'employee',
                     defaultContent: '-'
@@ -1229,44 +1272,115 @@
                 }
             ],
             order: [
-                [0, 'asc']
+                [1, 'asc']
             ],
             dom: "<'d-none'lB><'row'<'col-12'tr>><'d-none'i p>",
-            buttons: [{
-                    extend: 'excelHtml5',
-                    text: '<i class="fas fa-file-excel mr-1"></i> Excel',
-                    title: 'Employee Directory',
-                    className: 'btn btn-sm',
-                    exportOptions: {
-                        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-                        format: {
-                            body: function(data, row, column, node) {
-                                return formatExportColumn(data, row, column, node, 'excel');
-                            }
-                        }
-                    }
-                },
+            buttons: [
                 {
                     extend: 'csvHtml5',
                     text: '<i class="fas fa-file-csv mr-1"></i> CSV',
                     title: 'Employee Directory',
-                    className: 'btn btn-sm',
+                    className: 'btn btn-sm btn-export-csv',
+                    customizeData: function(data) {
+                        buildTabularExportData(data);
+                    }
+                },
+                {
+                    extend: 'excelHtml5',
+                    text: '<i class="fas fa-file-excel mr-1"></i> Excel',
+                    title: 'Employee Directory',
+                    className: 'btn btn-sm btn-export-excel',
+                    customizeData: function(data) {
+                        buildTabularExportData(data);
+                    }
+                },
+                {
+                    extend: 'pdfHtml5',
+                    text: '<i class="fas fa-file-pdf mr-1"></i> PDF',
+                    title: 'Employee Directory',
+                    className: 'btn btn-sm btn-export-pdf',
+                    orientation: 'landscape',
+                    pageSize: 'A4',
                     exportOptions: {
-                        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
                         format: {
                             body: function(data, row, column, node) {
-                                return formatExportColumn(data, row, column, node, 'csv');
+                                return formatExportColumn(data, row, column, node, 'pdf');
                             }
                         }
+                    },
+                    customize: function(doc) {
+                        doc.pageOrientation = 'landscape';
+                        doc.pageSize = 'A4';
+                        doc.pageMargins = [14, 18, 14, 18];
+
+                        // Set clean header title
+                        doc.content[0] = {
+                            text: 'EMPLOYEE DIRECTORY REPORT',
+                            fontSize: 13,
+                            bold: true,
+                            alignment: 'center',
+                            color: '#0F172A',
+                            margin: [0, 0, 0, 10]
+                        };
+
+                        doc.defaultStyle.fontSize = 7;
+                        doc.styles.tableHeader = {
+                            fontSize: 7.5,
+                            bold: true,
+                            color: '#0F172A',
+                            fillColor: '#F1F5F9',
+                            alignment: 'left'
+                        };
+
+                        // All 11 columns proportional widths (Sum = 100%)
+                        doc.content[1].table.widths = ['3.5%', '16.5%', '11%', '11%', '8%', '11%', '8%', '8%', '7%', '8%', '8%'];
+
+                        let body = doc.content[1].table.body;
+                        for (let i = 0; i < body.length; i++) {
+                            let row = body[i];
+                            let isHeader = (i === 0);
+                            for (let j = 0; j < row.length; j++) {
+                                let cell = row[j];
+                                if (isHeader) {
+                                    cell.fillColor = '#F1F5F9';
+                                    cell.color = '#0F172A';
+                                    cell.bold = true;
+                                    cell.fontSize = 7.5;
+                                    if (j === 0 || j === 4 || j === 7 || j === 8 || j === 9 || j === 10) {
+                                        cell.alignment = 'center';
+                                    }
+                                } else {
+                                    if (i % 2 === 0) {
+                                        cell.fillColor = '#F8FAFC';
+                                    }
+                                    cell.fontSize = 6.8;
+                                    if (j === 0 || j === 4 || j === 7 || j === 8 || j === 9 || j === 10) {
+                                        cell.alignment = 'center';
+                                    }
+                                }
+                            }
+                        }
+
+                        doc.content[1].layout = {
+                            hLineWidth: function() { return 0.5; },
+                            vLineWidth: function() { return 0.5; },
+                            hLineColor: function() { return '#E2E8F0'; },
+                            vLineColor: function() { return '#E2E8F0'; },
+                            paddingLeft: function() { return 4; },
+                            paddingRight: function() { return 4; },
+                            paddingTop: function() { return 3.5; },
+                            paddingBottom: function() { return 3.5; }
+                        };
                     }
                 },
                 {
                     extend: 'print',
                     text: '<i class="fas fa-print mr-1"></i> Print',
                     title: 'Employee Directory Report',
-                    className: 'btn btn-sm',
+                    className: 'btn btn-sm btn-export-print',
                     exportOptions: {
-                        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                        columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
                         format: {
                             body: function(data, row, column, node) {
                                 return formatExportColumn(data, row, column, node, 'print');
@@ -1323,6 +1437,10 @@
                 emptyTable: 'No approved active employees found',
                 zeroRecords: 'No matching employee found'
             },
+            drawCallback: function(settings) {
+                $('.dataTables_info').appendTo('#employeeInfoBox');
+                $('.dataTables_paginate').appendTo('#employeePaginationBox');
+            },
             initComplete: function() {
                 $('.dataTables_length').appendTo('#employeeLengthBox');
                 $('.dt-buttons').appendTo('#employeeExportButtons');
@@ -1335,7 +1453,7 @@
             e.preventDefault();
             let value = $('#filterSearch').val();
             table.search(value);
-            table.ajax.reload();
+            table.page('first').draw('page');
         });
 
         $('#filterSearch').on('keypress', function(e) {
@@ -1348,12 +1466,12 @@
         $('#resetFilter').on('click', function() {
             $('#filterSearch').val('');
             $('#filterDepartment').val('').trigger('change');
-            $('#filterWorkMode').val('');
-            $('#filterEmploymentType').val('');
-            $('#filterStatus').val('');
+            $('#filterWorkMode').val('').trigger('change');
+            $('#filterEmploymentType').val('').trigger('change');
+            $('#filterStatus').val('').trigger('change');
 
             table.search('');
-            table.ajax.reload();
+            table.page('first').draw('page');
         });
 
         // Production-grade floating action dropdown (immune to table-responsive overflow clipping)

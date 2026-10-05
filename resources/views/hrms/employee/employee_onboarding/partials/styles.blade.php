@@ -12,13 +12,15 @@
 
     .eo-page {
         min-height: calc(100vh - 90px);
-        padding: 16px 10px 30px;
+        padding: 16px 20px 30px;
         background: var(--orb-bg);
+        width: 100%;
     }
 
     .eo-container {
-        max-width: 1280px;
-        margin: 0 auto;
+        max-width: 100%;
+        margin: 0;
+        width: 100%;
     }
 
     .eo-header {
@@ -152,6 +154,20 @@
     .form-select:focus {
         border-color: var(--orb-secondary, #FF5252);
         box-shadow: 0 0 0 .16rem rgba(134, 0, 238, .10);
+    }
+
+    .orbo-date-picker-display,
+    .flatpickr-input.orbo-date-picker-display,
+    input[data-date-picker],
+    .form-control.orbo-date-picker-display {
+        min-height: 42px !important;
+        border-radius: 12px !important;
+        padding-right: 38px !important;
+        background-color: #fff !important;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%234B00E8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E") !important;
+        background-repeat: no-repeat !important;
+        background-position: right 14px center !important;
+        background-size: 16px 16px !important;
     }
 
     select.form-select,

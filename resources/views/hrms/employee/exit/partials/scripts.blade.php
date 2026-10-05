@@ -1,18 +1,3 @@
-<!-- DataTables CSS -->
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap4.min.css">
-<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap4.min.css">
-
-<!-- DataTables JS & Buttons Extensions -->
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap4.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap4.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
-
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const searchInput = document.getElementById('filterSearch');
@@ -43,7 +28,7 @@
 
         // Initialize DataTable with custom styling and export features
         const table = $('#exitEmployeesTable').DataTable({
-            dom: 't<"d-none"ip>', // Generate native info and pagination hidden, we move them to custom footer
+            dom: "<'d-none'lB><'row'<'col-12'tr>><'d-none'i p>",
             pageLength: 10,
             ordering: true,
             order: [], // Server-side default order preserved
@@ -57,7 +42,7 @@
             },
             buttons: [{
                     extend: 'csv',
-                    className: 'd-none',
+                    className: 'buttons-csv d-none',
                     exportOptions: {
                         columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
                         format: exportFormat
@@ -65,7 +50,7 @@
                 },
                 {
                     extend: 'excel',
-                    className: 'd-none',
+                    className: 'buttons-excel d-none',
                     exportOptions: {
                         columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
                         format: exportFormat
@@ -73,7 +58,7 @@
                 },
                 {
                     extend: 'pdf',
-                    className: 'd-none',
+                    className: 'buttons-pdf d-none',
                     orientation: 'landscape',
                     pageSize: 'A4',
                     exportOptions: {
@@ -90,7 +75,7 @@
                 },
                 {
                     extend: 'print',
-                    className: 'd-none',
+                    className: 'buttons-print d-none',
                     exportOptions: {
                         columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
                         format: exportFormat
@@ -101,27 +86,22 @@
                     }
                 }
             ],
-            drawCallback: function() {
-                const api = this.api();
-                const $wrapper = $(api.table().container());
-                const $card = $('#exitEmployeesTable').closest('.eo-card');
+            drawCallback: function(settings) {
+                $('.dataTables_info').appendTo('#exitInfoBox');
+                $('.dataTables_paginate').appendTo('#exitPaginationBox');
+            },
+            initComplete: function() {
+                $('.dataTables_length').appendTo('#exitLengthBox');
+                $('.dataTables_info').appendTo('#exitInfoBox');
+                $('.dataTables_paginate').appendTo('#exitPaginationBox');
 
-                let $footer = $card.find('.exit-dt-footer');
-                if (!$footer.length) {
-                    $footer = $('<div class="exit-dt-footer"></div>');
-                    $card.append($footer);
+                if ($.fn.select2) {
+                    $('#exitLengthBox .dataTables_length select').select2({
+                        minimumResultsForSearch: -1,
+                        width: 'auto',
+                        dropdownCssClass: 'orb-length-dropdown'
+                    });
                 }
-
-                // Retrieve native info and pagination elements
-                const $info = $wrapper.find('.dataTables_info');
-                const $paginate = $wrapper.find('.dataTables_paginate');
-
-                // Remove hidden class if present
-                $info.removeClass('d-none');
-                $paginate.removeClass('d-none');
-
-                // Populate custom footer outside horizontal scroll
-                $footer.empty().append($info).append($paginate);
             }
         });
 
@@ -151,14 +131,6 @@
 
         function applyFilters() {
             table.draw();
-        }
-
-        // Custom entries dropdown
-        const customLength = document.getElementById('customLengthMenu');
-        if (customLength) {
-            customLength.addEventListener('change', function() {
-                table.page.len(parseInt(this.value)).draw();
-            });
         }
 
         // Dynamic notice period date recalculation in Exit Init forms
@@ -219,29 +191,33 @@
         });
 
         // Bind custom premium export buttons to DataTable triggers
-        $('.js-export-csv').on('click', function() {
+        $(document).on('click', '.js-export-csv, [data-export="csv"]', function(e) {
+            e.preventDefault();
             table.button('.buttons-csv').trigger();
         });
-        $('.js-export-excel').on('click', function() {
+        $(document).on('click', '.js-export-excel, [data-export="excel"]', function(e) {
+            e.preventDefault();
             table.button('.buttons-excel').trigger();
         });
-        $('.js-export-pdf').on('click', function() {
+        $(document).on('click', '.js-export-pdf, [data-export="pdf"]', function(e) {
+            e.preventDefault();
             table.button('.buttons-pdf').trigger();
         });
-        $('.js-export-print').on('click', function() {
+        $(document).on('click', '.js-export-print, [data-export="print"]', function(e) {
+            e.preventDefault();
             table.button('.buttons-print').trigger();
         });
 
         // Initialize Select2 on Filter Dropdowns
         if (typeof $.fn.select2 !== 'undefined') {
-            $('.select2-filter').select2({
+            $('.select2-searchable').select2({
                 width: '100%',
-                minimumResultsForSearch: 8
+                minimumResultsForSearch: 0
             }).on('change', function() {
                 applyFilters();
             });
         } else {
-            $('.select2-filter').on('change', function() {
+            $('.select2-searchable').on('change', function() {
                 applyFilters();
             });
         }
@@ -267,7 +243,7 @@
             assetStatusFilter.value = '';
             fnfStatusFilter.value = '';
             if (typeof $.fn.select2 !== 'undefined') {
-                $('.select2-filter').val('').trigger('change.select2');
+                $('.select2-searchable').val('').trigger('change.select2');
             }
             applyFilters();
         });

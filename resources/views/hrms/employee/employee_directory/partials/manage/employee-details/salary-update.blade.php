@@ -10,7 +10,13 @@
 
                                 <div class="em-field">
                                     <label>Salary Effective From</label>
-                                    <input type="date" name="salary_effective_from" class="em-control editable" value="{{ old('salary_effective_from', now()->toDateString()) }}" readonly>
+                                    <x-form.date-picker 
+                                        name="salary_effective_from" 
+                                        id="salary_effective_from" 
+                                        class="em-control editable" 
+                                        :value="old('salary_effective_from', now()->toDateString())" 
+                                        disabled 
+                                    />
                                     @error('salary_effective_from') <div class="em-error">{{ $message }}</div> @enderror
                                 </div>
 

@@ -1,6 +1,6 @@
-<!-- Auto-Submitting Filter Grid Bar -->
 <div class="report-filters-attached">
     <form id="shiftFilterForm" method="GET" action="{{ route('employee.shift-assignment.index') }}">
+        <input type="hidden" name="per_page" id="shiftPerPageInput" value="{{ request('per_page', 15) }}">
         <div class="report-filter-grid">
 
             <div>
@@ -17,7 +17,7 @@
 
             <div>
                 <label>Department</label>
-                <select name="department_id" class="form-control">
+                <select name="department_id" class="form-control select2-searchable">
                     <option value="">All Departments</option>
                     @foreach($departments as $dept)
                         <option value="{{ $dept->id }}" {{ request('department_id') == $dept->id ? 'selected' : '' }}>{{ $dept->name }}</option>

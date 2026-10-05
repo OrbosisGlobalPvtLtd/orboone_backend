@@ -264,20 +264,21 @@ class EmployeeC extends Controller
                 $recordsFiltered = $filteredQuery->count();
 
                 $columns = [
-                    0  => 'users.name',
-                    1  => 'departments.name',
-                    2  => 'designations.name',
-                    3  => $employeeTable . '.employment_type',
-                    4  => 'manager_user.name',
-                    5  => $hasAttendanceTime ? 'attendance_times.name' : $employeeTable . '.id',
-                    6  => $profileTable . '.profile_status',
-                    7  => $employeeTable . '.employee_stage',
-                    8  => $employeeTable . '.joining_date',
-                    9  => $employeeTable . '.employment_status',
-                    10 => $employeeTable . '.id',
+                    0  => $employeeTable . '.id',
+                    1  => 'users.name',
+                    2  => 'departments.name',
+                    3  => 'designations.name',
+                    4  => $employeeTable . '.employment_type',
+                    5  => 'manager_user.name',
+                    6  => $hasAttendanceTime ? 'attendance_times.name' : $employeeTable . '.id',
+                    7  => $profileTable . '.profile_status',
+                    8  => $employeeTable . '.employee_stage',
+                    9  => $employeeTable . '.joining_date',
+                    10 => $employeeTable . '.employment_status',
+                    11 => $employeeTable . '.id',
                 ];
 
-                $orderColumnIndex = (int) $request->input('order.0.column', 11);
+                $orderColumnIndex = (int) $request->input('order.0.column', 1);
                 $orderDirection = $request->input('order.0.dir', 'desc') === 'asc' ? 'asc' : 'desc';
                 $orderColumn = $columns[$orderColumnIndex] ?? $employeeTable . '.id';
 
@@ -442,6 +443,24 @@ class EmployeeC extends Controller
                             : '-',
                         'status' => e($status),
                         'actions' => $actions,
+
+                        // Clean raw fields for precise export column mapping
+                        'raw_name' => (string) $name,
+                        'raw_employee_code' => (string) $employeeCode,
+                        'raw_email' => (string) ($employee->email ?? '-'),
+                        'raw_department' => (string) ($employee->department_name ?? 'General'),
+                        'raw_designation' => (string) ($employee->designation_name ?? 'Executive'),
+                        'raw_employment_type' => (string) $employmentType,
+                        'raw_work_mode' => (string) $workMode,
+                        'raw_manager_name' => (string) ($employee->manager_name ?? 'Not assigned'),
+                        'raw_manager_code' => (string) ($employee->manager_code ?? '-'),
+                        'raw_shift' => (string) ($employee->shift_name ?? 'General Shift'),
+                        'raw_verification_status' => (string) $verificationStatus,
+                        'raw_stage' => (string) $stage,
+                        'raw_joining_date' => ! empty($employee->joining_date)
+                            ? Carbon::parse($employee->joining_date)->format('d M Y')
+                            : '-',
+                        'raw_status' => (string) $status,
                     ];
                 });
 
@@ -1525,7 +1544,7 @@ class EmployeeC extends Controller
         return $this->manageUpdate($request, $employee);
     }
 
-    public function pendingProfiles()
+    public function pendingProfiles(Request $request)
     {
         $documentStats = DB::table('employee_documents_new')
             ->select(
@@ -1537,7 +1556,7 @@ class EmployeeC extends Controller
             )
             ->groupBy('employee_id');
 
-        $employees = DB::table($this->employeeTable)
+        $baseQuery = DB::table($this->employeeTable)
             ->join('users', 'users.id', '=', $this->employeeTable . '.user_id')
             ->leftJoin('departments', 'departments.id', '=', $this->employeeTable . '.department_id')
             ->leftJoin('designations', 'designations.id', '=', $this->employeeTable . '.designation_id')
@@ -1567,9 +1586,162 @@ class EmployeeC extends Controller
                 DB::raw('COALESCE(doc_stats.pending_documents_count, 0) as pending_documents_count'),
                 DB::raw('COALESCE(doc_stats.rejected_documents_count, 0) as rejected_documents_count'),
                 $this->profileTable . '.updated_at'
-            )
-            ->orderByDesc($this->employeeTable . '.id')
-            ->get();
+            );
+
+        if ($request->has('ajax_table') || $request->ajax()) {
+            try {
+                $query = clone $baseQuery;
+
+                if ($request->filled('department')) {
+                    $query->where($this->employeeTable . '.department_id', $request->department);
+                }
+
+                if ($request->filled('status')) {
+                    $status = $request->status;
+                    if ($status === 'pending') {
+                        $query->where(function ($q) {
+                            $q->whereNull($this->profileTable . '.profile_status')
+                                ->orWhere($this->profileTable . '.profile_status', 'pending');
+                        });
+                    } else {
+                        $query->where($this->profileTable . '.profile_status', $status);
+                    }
+                }
+
+                $totalQuery = clone $baseQuery;
+                $recordsTotal = $totalQuery->count();
+
+                $searchValue = $request->input('search.value');
+                if (!empty($searchValue)) {
+                    $query->where(function ($q) use ($searchValue) {
+                        $q->where('users.name', 'like', "%{$searchValue}%")
+                            ->orWhere('users.email', 'like', "%{$searchValue}%")
+                            ->orWhere($this->employeeTable . '.employee_code', 'like', "%{$searchValue}%")
+                            ->orWhere('departments.name', 'like', "%{$searchValue}%")
+                            ->orWhere('designations.name', 'like', "%{$searchValue}%");
+                    });
+                }
+
+                $filteredQuery = clone $query;
+                $recordsFiltered = $filteredQuery->count();
+
+                $columns = [
+                    0 => $this->employeeTable . '.id',
+                    1 => 'users.name',
+                    2 => $this->employeeTable . '.employee_code',
+                    3 => 'departments.name',
+                    4 => 'designations.name',
+                    5 => DB::raw("COALESCE({$this->profileTable}.profile_status, 'pending')"),
+                    6 => $this->profileTable . '.is_profile_completed',
+                    7 => $this->profileTable . '.updated_at',
+                    8 => $this->employeeTable . '.id',
+                ];
+
+                $orderColumnIndex = (int) $request->input('order.0.column', 0);
+                $orderDirection = $request->input('order.0.dir', 'desc') === 'asc' ? 'asc' : 'desc';
+                $orderColumn = $columns[$orderColumnIndex] ?? $this->employeeTable . '.id';
+
+                $start = (int) $request->input('start', 0);
+                $length = (int) $request->input('length', 25);
+
+                $employees = $query
+                    ->orderBy($orderColumn, $orderDirection)
+                    ->offset($start)
+                    ->limit($length)
+                    ->get();
+
+                $data = $employees->map(function ($emp, $idx) use ($start) {
+                    $status = $emp->profile_status ?? 'pending';
+                    $statusClass = match ($status) {
+                        'submitted' => 'status-submitted',
+                        'approved' => 'status-approved',
+                        'rejected' => 'status-rejected',
+                        default => 'status-pending',
+                    };
+                    $statusLabel = match ($status) {
+                        'submitted' => 'Submitted',
+                        'approved' => 'Approved',
+                        'rejected' => 'Rejected',
+                        default => 'Pending',
+                    };
+
+                    $name = $emp->name ?? 'Employee';
+                    $email = $emp->email ?? '-';
+                    $code = $emp->employee_code ?? '-';
+                    $department = $emp->department_name ?? '-';
+                    $designation = $emp->designation_name ?? '-';
+                    $updated = !empty($emp->updated_at) ? \Carbon\Carbon::parse($emp->updated_at)->diffForHumans() : 'Not updated';
+
+                    // Employee cell (name & email)
+                    $employeeHtml = '<div class="emp-cell"><div class="emp-info"><div class="emp-name">' . e($name) . '</div><div class="emp-email">' . e($email) . '</div></div></div>';
+
+                    // Code badge
+                    $codeHtml = '<span class="code-badge">' . e($code) . '</span>';
+
+                    // Status badge
+                    $statusHtml = '<span class="status-badge ' . $statusClass . '"><i class="fas fa-circle"></i> ' . $statusLabel . '</span>';
+
+                    // Approve Cell
+                    if ($status === 'approved') {
+                        $approveHtml = '<span class="lock-badge"><i class="fas fa-lock"></i> Approved</span>';
+                    } elseif ($status === 'submitted') {
+                        $approveHtml = '<div class="complete-cell"><label class="complete-switch" title="Approve Profile"><input type="checkbox" class="profile-approve-toggle" data-form-id="approveForm' . $emp->id . '"><span class="slider"></span></label><form id="approveForm' . $emp->id . '" action="' . route('hrms.employees.profile.approve', $emp->id) . '" method="POST" class="d-none">' . csrf_field() . '</form></div>';
+                    } else {
+                        $approveHtml = '<span class="lock-badge"><i class="fas fa-clock"></i> Pending</span>';
+                    }
+
+                    // Actions Cell
+                    $actionsHtml = '<div class="actions">';
+                    if (Route::has('hrms.employees.profile.view')) {
+                        $actionsHtml .= '<a href="' . route('hrms.employees.profile.view', $emp->id) . '" class="action-btn action-view" title="View Profile"><i class="fas fa-eye"></i></a>';
+                    }
+                    if (Route::has('hrms.employees.edit')) {
+                        $actionsHtml .= '<a href="' . route('hrms.employees.edit', $emp->id) . '" class="action-btn action-edit" title="Edit Onboarding"><i class="fas fa-edit"></i></a>';
+                    }
+                    if ($status !== 'approved' && Route::has('hrms.employees.profile.reject')) {
+                        $actionsHtml .= '<button type="button" class="action-btn action-reject reject-profile-btn" title="Reject Profile" data-form-id="rejectForm' . $emp->id . '"><i class="fas fa-times"></i></button><form id="rejectForm' . $emp->id . '" action="' . route('hrms.employees.profile.reject', $emp->id) . '" method="POST" class="d-none">' . csrf_field() . '<input type="hidden" name="rejection_reason" class="reject-reason-input"></form>';
+                    }
+                    $actionsHtml .= '</div>';
+
+                    return [
+                        's_no' => $start + $idx + 1,
+                        'employee' => $employeeHtml,
+                        'code' => $codeHtml,
+                        'department' => '<span class="font-weight-bold" style="color: var(--orb-text);">' . e($department) . '</span>',
+                        'designation' => '<span style="color: var(--orb-muted); font-weight: 600;">' . e($designation) . '</span>',
+                        'status' => $statusHtml,
+                        'approve' => $approveHtml,
+                        'updated' => $updated,
+                        'actions' => $actionsHtml,
+                        // Raw fields for export & mobile render
+                        'raw_id' => $emp->id,
+                        'raw_name' => $name,
+                        'raw_email' => $email,
+                        'raw_code' => $code,
+                        'raw_department' => $department,
+                        'raw_designation' => $designation,
+                        'raw_status' => $statusLabel,
+                        'raw_status_class' => $statusClass,
+                        'raw_updated' => $updated,
+                    ];
+                });
+
+                return response()->json([
+                    'draw' => intval($request->input('draw', 1)),
+                    'recordsTotal' => $recordsTotal,
+                    'recordsFiltered' => $recordsFiltered,
+                    'data' => $data,
+                ]);
+            } catch (\Throwable $e) {
+                return response()->json([
+                    'draw' => intval($request->input('draw', 1)),
+                    'recordsTotal' => 0,
+                    'recordsFiltered' => 0,
+                    'data' => [],
+                    'error' => $e->getMessage(),
+                ], 500);
+            }
+        }
 
         $allCounts = DB::table($this->employeeTable)
             ->leftJoin($this->profileTable, $this->profileTable . '.employee_id', '=', $this->employeeTable . '.id')
@@ -1583,13 +1755,15 @@ class EmployeeC extends Controller
             )
             ->first();
 
+        $departments = DB::table('departments')->orderBy('name')->get();
+
         return view('hrms.employee.profile.pending', [
-            'employees' => $employees,
             'total' => $allCounts->total ?? 0,
             'pending' => $allCounts->pending ?? 0,
             'submitted' => $allCounts->submitted ?? 0,
             'approved' => $allCounts->approved ?? 0,
             'rejected' => $allCounts->rejected ?? 0,
+            'departments' => $departments,
         ]);
     }
 
@@ -2257,8 +2431,8 @@ class EmployeeC extends Controller
 
     public function extendInternship(Request $request, $employee)
     {
-        $employeeData = DB::table($this->employeeTable)->where('id', $employee)->first();
-        abort_if(! $employeeData, 404);
+        $employeeModel = EmployeeM::find((int) $employee);
+        abort_if(! $employeeModel, 404);
 
         $request->validate([
             'internship_extended_to' => ['required', 'date'],
@@ -2267,90 +2441,27 @@ class EmployeeC extends Controller
             'salary_change_reason' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $currentEndDate = $employeeData->internship_extended_to ?: $employeeData->internship_end_date;
-
-        if (! empty($currentEndDate) && Carbon::parse($request->internship_extended_to)->lte(Carbon::parse($currentEndDate))) {
-            return back()->with(
-                'error',
-                'Extension date must be after current internship end date ' . Carbon::parse($currentEndDate)->format('d M Y') . '.'
-            );
-        }
-
-        $oldEndDate = $currentEndDate ?: now()->toDateString();
-        $newEndDate = Carbon::parse($request->internship_extended_to)->toDateString();
-        $salaryEffectiveFrom = Carbon::parse($oldEndDate)->addDay()->toDateString();
-
-        DB::beginTransaction();
-
         try {
-            if (Schema::hasTable('employee_internship_extensions')) {
-                DB::table('employee_internship_extensions')->insert([
-                    'employee_id' => $employee,
-                    'old_end_date' => $oldEndDate,
-                    'new_end_date' => $newEndDate,
-                    'reason' => $request->reason,
-                    'extended_by_user_id' => Auth::id(),
-                    'extended_at' => now(),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            }
-
-            $updateData = [
-                'employee_stage' => 'internship',
-                'updated_by' => Auth::id(),
-                'updated_at' => now(),
-            ];
-
-            if (Schema::hasColumn($this->employeeTable, 'internship_extended_to')) {
-                $updateData['internship_extended_to'] = $newEndDate;
-            } else {
-                $updateData['internship_end_date'] = $newEndDate;
-            }
-
-            if (Schema::hasColumn($this->employeeTable, 'internship_status')) {
-                $updateData['internship_status'] = 'extended';
-            }
-
-            DB::table($this->employeeTable)->where('id', $employee)->update($updateData);
-
-            if ($request->filled('actual_salary')) {
-                $this->salaryHistoryService->syncSalary(
-                    (int) $employee,
-                    'internship',
-                    $request->actual_salary,
-                    $salaryEffectiveFrom,
-                    $request->salary_change_reason ?: 'Internship stipend updated during extension',
-                    Auth::id()
-                );
-            }
-
-            app(NotificationS::class)
-                ->markEmployeeLifecycleNotificationsResolved((int) $employee, ['internship_ending_soon', 'internship_ending_reminder']);
-
-            $this->logLifecycle(
-                $employee,
-                'internship extended',
-                ['old_end_date' => $oldEndDate],
-                ['new_end_date' => $newEndDate],
-                $request->reason ?: 'Internship extended'
+            $result = $this->lifecycleService->extendInternship(
+                $employeeModel,
+                $request->all(),
+                (int) Auth::id()
             );
-
-            DB::commit();
 
             return redirect()
                 ->route('hrms.employees.probation_internship')
-                ->with('success', 'Internship extended successfully.');
+                ->with('success', $result['message'] ?? 'Internship extended successfully.');
+        } catch (\InvalidArgumentException $e) {
+            return back()->with('error', $e->getMessage());
         } catch (\Throwable $e) {
-            DB::rollBack();
             return back()->with('error', $e->getMessage());
         }
     }
 
     public function completeInternship(Request $request, $employee)
     {
-        $employeeData = DB::table($this->employeeTable)->where('id', $employee)->first();
-        abort_if(! $employeeData, 404);
+        $employeeModel = EmployeeM::find((int) $employee);
+        abort_if(! $employeeModel, 404);
 
         $request->validate([
             'next_stage' => ['required', Rule::in(['completed', 'probation'])],
@@ -2361,102 +2472,17 @@ class EmployeeC extends Controller
             'custom_duration_unit' => ['nullable', 'string', Rule::in(['days', 'months'])],
         ]);
 
-        $internshipEndDate = $employeeData->internship_extended_to ?: $employeeData->internship_end_date;
-
-        $effectiveDate = $internshipEndDate
-            ? Carbon::parse($internshipEndDate)->addDay()->toDateString()
-            : now()->toDateString();
-
-        DB::beginTransaction();
-
         try {
-            $updateData = [
-                'updated_by' => Auth::id(),
-                'updated_at' => now(),
-            ];
-
-            if (Schema::hasColumn($this->employeeTable, 'internship_completed_at')) {
-                $updateData['internship_completed_at'] = now();
-            }
-
-            if ($request->next_stage === 'completed') {
-                if (Schema::hasColumn($this->employeeTable, 'internship_status')) {
-                    $updateData['internship_status'] = 'completed';
-                }
-            }
-
-            if ($request->next_stage === 'probation') {
-                $durationOption = $request->input('probation_duration_option', '3_months');
-                $durationType = 'months';
-                $durationValue = 3;
-
-                if ($durationOption === '6_months') {
-                    $durationType = 'months';
-                    $durationValue = 6;
-                } elseif ($durationOption === '3_months') {
-                    $durationType = 'months';
-                    $durationValue = 3;
-                } elseif ($durationOption === 'custom') {
-                    $durationType = strtolower($request->input('custom_duration_unit', 'months')) === 'days' ? 'days' : 'months';
-                    $durationValue = max(1, (int) $request->input('custom_duration_value', 3));
-                }
-
-                $probationDates = $this->lifecycleService->calculateProbationDates($effectiveDate, $durationType, $durationValue);
-
-                $updateData['employment_type'] = 'full_time';
-                $updateData['employee_stage'] = 'probation';
-                $updateData['joining_date'] = $effectiveDate;
-                $updateData['probation_start_date'] = $effectiveDate;
-                $updateData['probation_end_date'] = $probationDates['probation_end_date'];
-                $updateData['confirmation_effective_date'] = $probationDates['confirmation_effective_date'];
-                $updateData['probation_duration_type'] = $probationDates['probation_duration_type'];
-                $updateData['probation_duration_value'] = $probationDates['probation_duration_value'];
-                $updateData['probation_months'] = $probationDates['probation_months'];
-                $updateData['probation_status'] = 'ongoing';
-                $updateData['employment_status'] = 'active';
-            }
-
-            DB::table($this->employeeTable)->where('id', $employee)->update($updateData);
-
-            if ($request->next_stage === 'probation') {
-                $this->lifecycleService->autoAllocateForStage(
-                    (int) $employee,
-                    'probation',
-                    $effectiveDate,
-                    Auth::id()
-                );
-            }
-
-            if ($request->filled('actual_salary') && $request->next_stage === 'probation') {
-                $this->salaryHistoryService->syncSalary(
-                    (int) $employee,
-                    'probation',
-                    $request->actual_salary,
-                    $effectiveDate,
-                    $request->salary_change_reason ?: 'Internship converted to probation',
-                    Auth::id()
-                );
-            }
-
-            app(NotificationS::class)
-                ->markEmployeeLifecycleNotificationsResolved((int) $employee, ['internship_ending_soon', 'internship_ending_reminder']);
-
-            $this->logLifecycle(
-                $employee,
-                'internship completed',
-                $employeeData,
-                $updateData,
-                'Internship action applied effective from ' . $effectiveDate
+            $result = $this->lifecycleService->handleInternshipCompletion(
+                $employeeModel,
+                $request->all(),
+                (int) Auth::id()
             );
-
-            DB::commit();
 
             return redirect()
                 ->route('hrms.employees.probation_internship')
-                ->with('success', 'Internship action completed. Effective from ' . Carbon::parse($effectiveDate)->format('d M Y') . '.');
+                ->with('success', $result['message'] ?? 'Internship action completed successfully.');
         } catch (\Throwable $e) {
-            DB::rollBack();
-
             return back()->with('error', $e->getMessage());
         }
     }

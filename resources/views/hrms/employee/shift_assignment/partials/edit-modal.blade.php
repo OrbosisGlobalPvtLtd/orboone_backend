@@ -7,7 +7,7 @@
         $isCurrentFlex = $currentShiftModel && (in_array(strtolower($currentShiftModel->shift_type ?? ''), ['flexible_part_time', 'dynamic_hours']) || stripos($currentShiftModel->name, 'flexible') !== false);
     @endphp
     <div class="modal fade" id="editShiftModal{{ $assignment->id }}" tabindex="-1" role="dialog" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" role="document">
             <form method="POST" action="{{ route('employee.shift-assignment.update', $assignment->id) }}" class="modal-content border-0 rounded-24 shadow-lg overflow-hidden">
                 @csrf
                 @method('PUT')
@@ -25,7 +25,7 @@
                         <h6 class="shift-modal-card-title"><i class="fas fa-business-time mr-1 text-primary"></i> Shift Template Selection</h6>
                         <div class="form-group mb-0">
                             <label class="shift-modal-label">Select Shift Template <span class="text-danger">*</span></label>
-                            <select name="attendance_time_id" id="editShiftSelect{{ $assignment->id }}" class="form-control rounded-12 border-light bg-light" required style="height: 42px; font-size: 13px;" onchange="handleShiftTemplateSelect('edit_{{ $assignment->id }}', this)">
+                            <select name="attendance_time_id" id="editShiftSelect{{ $assignment->id }}" class="form-control rounded-12 border-light bg-light select2-searchable" required style="height: 42px; font-size: 13px;" onchange="handleShiftTemplateSelect('edit_{{ $assignment->id }}', this)">
                                 @foreach($attendanceTimes as $timeOption)
                                     @php
                                         $isFlexOpt = in_array(strtolower($timeOption->shift_type ?? ''), ['flexible_part_time', 'dynamic_hours']) || stripos($timeOption->name, 'flexible') !== false;
@@ -112,11 +112,11 @@
                         <div class="row">
                             <div class="col-md-6 form-group mb-3">
                                 <label class="shift-modal-label">Effective From Date <span class="text-danger">*</span></label>
-                                <input type="date" name="effective_from" class="form-control rounded-12 border-light bg-light" value="{{ optional($assignment->effective_from)->format('Y-m-d') }}" required style="height: 42px; font-size: 13px;">
+                                <x-form.date-picker name="effective_from" id="edit_effective_from_{{ $assignment->id }}" :value="optional($assignment->effective_from)->format('Y-m-d')" required placeholder="dd-mm-yyyy" class="rounded-12 border-light bg-light" style="height: 42px; font-size: 13px;" />
                             </div>
                             <div class="col-md-6 form-group mb-3">
                                 <label class="shift-modal-label">Effective Till Date (Optional)</label>
-                                <input type="date" name="effective_to" class="form-control rounded-12 border-light bg-light" value="{{ optional($assignment->effective_to)->format('Y-m-d') }}" style="height: 42px; font-size: 13px;">
+                                <x-form.date-picker name="effective_to" id="edit_effective_to_{{ $assignment->id }}" :value="optional($assignment->effective_to)->format('Y-m-d')" placeholder="dd-mm-yyyy" class="rounded-12 border-light bg-light" style="height: 42px; font-size: 13px;" />
                             </div>
                         </div>
                         <div class="custom-control custom-switch mt-2">

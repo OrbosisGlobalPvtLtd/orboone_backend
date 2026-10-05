@@ -149,6 +149,13 @@ Route::middleware(['auth', 'module:hrms'])
                 abort(404, 'File not found.');
             }
 
+            $isDownload = request()->boolean('download') || request()->has('download') || request()->query('download') === '1';
+            $fileName = basename($resolved['absolute']);
+
+            if ($isDownload) {
+                return response()->download($resolved['absolute'], $fileName);
+            }
+
             $ext = strtolower(pathinfo($resolved['absolute'], PATHINFO_EXTENSION));
             $mime = mime_content_type($resolved['absolute']) ?: 'application/octet-stream';
             if ($ext === 'pdf') {
@@ -157,7 +164,7 @@ Route::middleware(['auth', 'module:hrms'])
 
             return response()->file($resolved['absolute'], [
                 'Content-Type' => $mime,
-                'Content-Disposition' => 'inline; filename="' . basename($resolved['absolute']) . '"',
+                'Content-Disposition' => 'inline; filename="' . $fileName . '"',
             ]);
         })
             ->where('path', '.*')

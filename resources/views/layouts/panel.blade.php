@@ -659,9 +659,11 @@
         flex-shrink:0;
     }
 
-    /* .page-content{
-        padding:calc(var(--topbar-height) + 20px) 20px 20px;
-    } */
+    .page-content{
+        min-height: 100vh;
+        width: 100%;
+        box-sizing: border-box;
+    }
 
     .overlay{
         position:fixed;
@@ -827,6 +829,78 @@
         font-size: 12px !important;
     }
 </style>
+
+<!-- Global Flatpickr, Select2 & DataTables Styles for Panel -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap4.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap4.min.css">
+<link rel="stylesheet" href="{{ asset('css/orbo-components.css') }}">
+<!-- Early Select2 Core for zero-flicker searchable dropdowns -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    window.initSearchableSelects = function(context, force) {
+        if (typeof window.jQuery === 'undefined' || typeof jQuery.fn.select2 === 'undefined') return;
+        const $target = context ? jQuery(context).find('select.select2-searchable, select.js-searchable, select.auto-filter, select.js-auto-filter, select.select2-modal-searchable') : jQuery('select.select2-searchable, select.js-searchable, select.auto-filter, select.js-auto-filter, select.select2-modal-searchable');
+        $target.each(function() {
+            if (jQuery(this).hasClass('select2-hidden-accessible')) {
+                if (force) {
+                    jQuery(this).select2('destroy');
+                } else {
+                    return;
+                }
+            }
+            const $modalParent = jQuery(this).closest('.modal');
+            const rawMin = jQuery(this).attr('data-minimum-results-for-search') ?? jQuery(this).data('minimum-results-for-search');
+            let minResults = 7;
+            if (rawMin !== undefined && rawMin !== null) {
+                if (rawMin === 'Infinity' || rawMin === Infinity || rawMin === '-1' || rawMin === -1) {
+                    minResults = Infinity;
+                } else {
+                    let parsed = parseInt(rawMin, 10);
+                    minResults = isNaN(parsed) ? 7 : parsed;
+                }
+            }
+            jQuery(this).select2({
+                placeholder: jQuery(this).data('placeholder') || jQuery(this).attr('placeholder') || jQuery(this).find('option:first').text() || 'Search or select...',
+                allowClear: true,
+                minimumResultsForSearch: minResults,
+                width: '100%',
+                dropdownParent: $modalParent.length ? $modalParent : undefined
+            });
+        });
+    };
+
+    // Global MutationObserver to automatically initialize any select2-searchable as soon as it enters the DOM
+    if (typeof MutationObserver !== 'undefined') {
+        const selectObserver = new MutationObserver(function(mutations) {
+            let hasNewSelect = false;
+            for (let i = 0; i < mutations.length; i++) {
+                const added = mutations[i].addedNodes;
+                for (let j = 0; j < added.length; j++) {
+                    const node = added[j];
+                    if (node.nodeType === 1) {
+                        if (node.matches && node.matches('select.select2-searchable:not(.select2-hidden-accessible), select.js-searchable:not(.select2-hidden-accessible), select.select2-modal-searchable:not(.select2-hidden-accessible)')) {
+                            hasNewSelect = true;
+                            break;
+                        }
+                        if (node.querySelector && node.querySelector('select.select2-searchable:not(.select2-hidden-accessible), select.js-searchable:not(.select2-hidden-accessible), select.select2-modal-searchable:not(.select2-hidden-accessible)')) {
+                            hasNewSelect = true;
+                            break;
+                        }
+                    }
+                }
+                if (hasNewSelect) break;
+            }
+            if (hasNewSelect) {
+                window.initSearchableSelects();
+            }
+        });
+        selectObserver.observe(document.documentElement, { childList: true, subtree: true });
+    }
+</script>
+
+@stack('styles')
 @yield('_head')
 @endsection
 
@@ -847,6 +921,23 @@
 @endsection
 
 @section('script')
+<!-- Global Select2 Core -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<!-- Global Flatpickr Core -->
+<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+
+<!-- Global DataTables Core & HTML5 Export Tools -->
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap4.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap4.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+
 <script>
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('overlay');
@@ -884,123 +975,113 @@
         }
     });
 
-    // Global Select2 Searchable Dropdown Initializer
-    function initSearchableSelects(context) {
-        if (typeof $.fn.select2 === 'undefined') return;
-        const $target = context ? $(context).find('select.select2-searchable, select.js-searchable, select.auto-filter, select.js-auto-filter, select.select2-modal-searchable') : $('select.select2-searchable, select.js-searchable, select.auto-filter, select.js-auto-filter, select.select2-modal-searchable');
-        $target.each(function() {
-            if ($(this).hasClass('select2-hidden-accessible')) {
-                $(this).select2('destroy');
+    // Global DataTable Length Select Dropdown Initializer
+    window.initGlobalDataTableLengthSelects = function() {
+        if (typeof window.jQuery === 'undefined' || typeof jQuery.fn.select2 === 'undefined') return;
+        jQuery('div.dataTables_length select, .orb-table-length-box select, [id$="LengthBox"] select, .eo-entries-select, .table-per-page-select, .orb-per-page-select, #recordsPerPageSelect').each(function() {
+            if (!jQuery(this).hasClass('select2-hidden-accessible')) {
+                jQuery(this).select2({
+                    minimumResultsForSearch: Infinity,
+                    width: '75px',
+                    dropdownCssClass: 'select2-dropdown-per-page',
+                    containerCssClass: 'select2-container--per-page'
+                });
             }
-            const $modalParent = $(this).closest('.modal');
-            $(this).select2({
-                placeholder: $(this).data('placeholder') || $(this).attr('placeholder') || $(this).find('option:first').text() || 'Search or select...',
-                allowClear: true,
-                width: '100%',
-                dropdownParent: $modalParent.length ? $modalParent : undefined
-            });
         });
+    };
+    function initGlobalDataTableLengthSelects() {
+        window.initGlobalDataTableLengthSelects();
+    }
+
+    // Global DataTables Configuration: Suppress browser alert popups application-wide
+    if (typeof $ !== 'undefined' && $.fn && $.fn.dataTable) {
+        $.fn.dataTable.ext.errMode = 'none';
     }
 
     $(document).ready(function() {
-        initSearchableSelects();
+        if (typeof $ !== 'undefined' && $.fn && $.fn.dataTable) {
+            $.fn.dataTable.ext.errMode = 'none';
+        }
+        if (typeof window.initSearchableSelects === 'function') {
+            window.initSearchableSelects();
+        }
+        initGlobalDataTableLengthSelects();
+    });
+
+    $(document).on('init.dt draw.dt', function () {
+        initGlobalDataTableLengthSelects();
     });
 
     $(document).on('shown.bs.modal', '.modal', function () {
-        initSearchableSelects(this);
+        if (typeof window.initSearchableSelects === 'function') {
+            window.initSearchableSelects(this);
+        }
+        initGlobalDataTableLengthSelects();
     });
+
+    // Global DataTable Export Buttons Trigger
+    $(document).on('click', '[data-export], .js-export-btn, .orbo-export-btn', function(e) {
+        if ($(this).closest('#shiftAssignmentExportButtons').length || e.isImmediatePropagationStopped()) {
+            return;
+        }
+
+        const exportType = $(this).attr('data-export') || 
+                           ($(this).hasClass('btn-export-csv') || $(this).hasClass('js-export-csv') ? 'csv' :
+                           $(this).hasClass('btn-export-excel') || $(this).hasClass('js-export-excel') ? 'excel' :
+                           $(this).hasClass('btn-export-pdf') || $(this).hasClass('js-export-pdf') ? 'pdf' :
+                           $(this).hasClass('btn-export-print') || $(this).hasClass('js-export-print') ? 'print' : null);
+        
+        if (!exportType || $(this).is('a[href]:not([href="#"]):not([href="javascript:void(0)"])')) {
+            return;
+        }
+
+        const group = $(this).closest('[data-export-group], .orbo-export-group, [id$="ExportButtons"], .orb-table-export-buttons');
+        const targetTableId = group.data('target-table') || $(this).data('target-table');
+        let dtInstance = null;
+
+        if (targetTableId) {
+            const $tbl = $('#' + targetTableId);
+            if ($tbl.length && $.fn.DataTable && $.fn.DataTable.isDataTable($tbl)) {
+                dtInstance = $tbl.DataTable();
+            }
+        }
+
+        if (!dtInstance) {
+            const $container = $(this).closest('.orb-table-card, .eo-card, .card, .container-fluid, .eo-container, body');
+            const $tbl = $container.find('table.dataTable, table.eo-table');
+            if ($tbl.length && $.fn.DataTable && $.fn.DataTable.isDataTable($tbl.first())) {
+                dtInstance = $tbl.first().DataTable();
+            }
+        }
+
+        if (dtInstance && typeof dtInstance.button === 'function') {
+            const btn = dtInstance.button('.buttons-' + exportType);
+            if (btn && btn.length) {
+                e.preventDefault();
+                btn.trigger();
+            }
+        }
+    });
+
+    // Global Datepicker Auto-Dismiss on Scroll (Prevent floating popup in modals & page)
+    function dismissOpenFlatpickrs(e) {
+        if (e && e.target && (e.target.closest && e.target.closest('.flatpickr-calendar'))) {
+            return;
+        }
+        document.querySelectorAll('.flatpickr-calendar.open').forEach(function(cal) {
+            if (cal._flatpickr) {
+                cal._flatpickr.close();
+            } else {
+                cal.classList.remove('open');
+            }
+        });
+    }
+
+    window.addEventListener('scroll', dismissOpenFlatpickrs, { capture: true, passive: true });
+    document.addEventListener('scroll', dismissOpenFlatpickrs, { capture: true, passive: true });
 </script>
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<style>
-    /* Select2 OrboOne Theme Custom Overrides */
-    .select2-container {
-        width: 100% !important;
-    }
-    .select2-container--default .select2-selection--single {
-        height: 34px !important;
-        border-radius: 8px !important;
-        border: 1px solid var(--orb-border, #E7EAF3) !important;
-        background-color: #FFFFFF !important;
-        display: flex !important;
-        align-items: center !important;
-        padding-left: 8px !important;
-        padding-right: 28px !important;
-        transition: all 0.2s ease !important;
-    }
-    .select2-container--default.select2-container--focus .select2-selection--single,
-    .select2-container--default.select2-container--open .select2-selection--single {
-        border-color: var(--orb-primary, #4B00E8) !important;
-        box-shadow: 0 0 0 3px rgba(75, 0, 232, 0.10) !important;
-        outline: none !important;
-    }
-    .select2-container--default .select2-selection--single .select2-selection__rendered {
-        color: #101828 !important;
-        font-weight: 600 !important;
-        font-size: 12.5px !important;
-        line-height: 32px !important;
-        padding-left: 0 !important;
-    }
-    .select2-container--default .select2-selection--single .select2-selection__arrow {
-        height: 32px !important;
-        right: 8px !important;
-    }
-    .select2-dropdown {
-        border-radius: 10px !important;
-        border: 1px solid var(--orb-border, #E7EAF3) !important;
-        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12) !important;
-        overflow: hidden !important;
-        z-index: 31050 !important;
-        background: #FFFFFF !important;
-    }
-    .select2-search--dropdown {
-        padding: 10px 12px !important;
-        background: #F8FAFC !important;
-        border-bottom: 1px solid #EEF2F6 !important;
-    }
-    .select2-search--dropdown .select2-search__field {
-        border-radius: 10px !important;
-        border: 1px solid #CBD5E1 !important;
-        padding: 8px 12px !important;
-        font-size: 13px !important;
-        font-weight: 600 !important;
-        outline: none !important;
-        width: 100% !important;
-        box-sizing: border-box !important;
-    }
-    .select2-search--dropdown .select2-search__field:focus {
-        border-color: var(--orb-primary, #4B00E8) !important;
-        box-shadow: 0 0 0 3px rgba(75, 0, 232, 0.10) !important;
-    }
-    .select2-results__options {
-        max-height: 240px !important;
-        padding: 6px !important;
-    }
-    .select2-results__option {
-        padding: 8px 12px !important;
-        font-size: 13px !important;
-        font-weight: 600 !important;
-        border-radius: 8px !important;
-        margin-bottom: 2px !important;
-        color: #334155 !important;
-    }
-    .select2-container--default .select2-results__option[aria-selected="true"] {
-        background-color: rgba(75, 0, 232, 0.08) !important;
-        color: var(--orb-primary, #4B00E8) !important;
-        font-weight: 700 !important;
-    }
-    .select2-container--default .select2-results__option--highlighted,
-    .select2-container--default .select2-results__option--highlighted[aria-selected],
-    .select2-container--default .select2-results__option--highlighted[aria-selected="true"],
-    .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
-        background: linear-gradient(135deg, var(--orb-primary, #4B00E8), var(--orb-secondary, #FF5252)) !important;
-        color: #FFFFFF !important;
-    }
-    .select2-container--default .select2-results__option--highlighted *,
-    .select2-container--default .select2-results__option--highlighted[aria-selected] *,
-    .select2-container--default .select2-results__option--highlighted[aria-selected="true"] * {
-        color: #FFFFFF !important;
-    }
-</style>
+
+@stack('scripts')
 @yield('_script')
 @endsection
+

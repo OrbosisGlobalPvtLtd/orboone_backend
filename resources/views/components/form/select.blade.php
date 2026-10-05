@@ -4,7 +4,7 @@
     'options' => [],
     'selected' => null,
     'placeholder' => null,
-    'searchable' => false,
+    'searchable' => true,
     'required' => false,
     'disabled' => false,
     'multiple' => false,
@@ -69,6 +69,7 @@
                 {{ $optLabel }}
             </option>
         @endforeach
+        {{ $slot }}
     </select>
 
     @if($help)

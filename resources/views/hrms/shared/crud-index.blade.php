@@ -812,6 +812,15 @@
         margin-bottom: 12px;
     }
 
+    /* ACTION & CONFIRMATION MODALS COMPACT */
+    .orb-action-modal-dialog,
+    .modal-dialog.orb-action-modal-dialog,
+    .modal.fade .modal-dialog.orb-action-modal-dialog {
+        max-width: 680px !important;
+        width: 95% !important;
+        margin: 1.75rem auto !important;
+    }
+
     /* MODAL */
     .orb-modal .modal-content {
         border: 0;
@@ -1047,6 +1056,49 @@
             font-size: 12px;
         }
     }
+
+    /* ACTION & DELETE MODAL REFINEMENTS */
+    .orb-action-modal-dialog {
+        max-width: 580px !important;
+        width: 95% !important;
+        margin: 1.75rem auto !important;
+    }
+
+    .orb-modal-close-btn {
+        width: 32px !important;
+        height: 32px !important;
+        min-width: 32px !important;
+        min-height: 32px !important;
+        border-radius: 50% !important;
+        background: rgba(255, 255, 255, 0.22) !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border: none !important;
+        color: #ffffff !important;
+        font-size: 14px !important;
+        opacity: 1 !important;
+        outline: none !important;
+        cursor: pointer !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        line-height: 1 !important;
+        box-shadow: none !important;
+        float: none !important;
+        transition: background 0.2s ease, transform 0.15s ease !important;
+    }
+
+    .orb-modal-close-btn:hover {
+        background: rgba(255, 255, 255, 0.38) !important;
+        color: #ffffff !important;
+        transform: scale(1.06) !important;
+    }
+
+    .orb-modal-close-btn i {
+        color: #ffffff !important;
+        font-size: 14px !important;
+        line-height: 1 !important;
+    }
 </style>
 @endsection
 
@@ -1160,19 +1212,35 @@
                     <div class="orb-filter-item">
 
                         @if(($filter['type'] ?? 'text') === 'select')
+                        @php
+                            $selectedVal = request($filter['name'], $filter['default'] ?? ($filter['value'] ?? null));
+                            if ($selectedVal === null && !empty($isEmployee) && $filter['name'] === 'employee_id' && !empty($filter['options']) && count($filter['options']) === 1) {
+                                $selectedVal = array_key_first($filter['options']);
+                            }
+                        @endphp
 
                         <x-form.select 
                             :name="$filter['name']"
                             :label="$filter['label']"
                             :options="$filter['options'] ?? []"
-                            :selected="request($filter['name'])"
+                            :selected="$selectedVal"
                             :placeholder="$filter['placeholder'] ?? 'All'"
-                            :searchable="($filter['name'] ?? '') === 'employee_id' || count($filter['options'] ?? []) > 5"
+                            :searchable="true"
                             wrapper-class="mb-0"
                         />
 
+                        @elseif(($filter['type'] ?? 'text') === 'date')
+                        <div class="orb-form-group mb-0">
+                            <label class="orb-form-label">
+                                {{ $filter['label'] }}
+                            </label>
+                            <x-form.date-picker 
+                                :name="$filter['name']"
+                                :value="request($filter['name'])"
+                                :placeholder="$filter['placeholder'] ?? 'dd-mm-yyyy'"
+                            />
+                        </div>
                         @else
-
                         <div class="orb-form-group mb-0">
                             <label class="orb-form-label">
                                 {{ $filter['label'] }}
@@ -1183,7 +1251,6 @@
                                 class="form-control"
                                 placeholder="{{ $filter['placeholder'] ?? '' }}">
                         </div>
-
                         @endif
 
                     </div>
@@ -1207,7 +1274,7 @@
                     <div class="crud-dt-left d-flex align-items-center" style="gap: 8px;">
                         <label class="mb-0 d-flex align-items-center font-weight-bold text-muted" style="font-size: 13px; gap: 8px;">
                             Show
-                            <select name="per_page" class="form-control form-control-sm custom-select" style="width: 75px; height: 34px; font-weight: 700; border-radius: 8px; padding: 0 8px;" onchange="var u = new URL(window.location.href); u.searchParams.set('per_page', this.value); u.searchParams.set('page', '1'); window.location.href = u.toString();">
+                            <select id="recordsPerPageSelect" name="per_page" class="table-per-page-select" style="width: 75px;">
                                 @foreach([10, 25, 50, 100] as $size)
                                     <option value="{{ $size }}" {{ (int) request('per_page', 25) === $size ? 'selected' : '' }}>{{ $size }}</option>
                                 @endforeach
@@ -1247,7 +1314,7 @@
                         <tr>
 
                             <td>
-                                <strong>{{ $loop->iteration }}</strong>
+                                <strong>{{ (method_exists($rows, 'firstItem') && $rows->firstItem()) ? ($rows->firstItem() + $loop->index) : $loop->iteration }}</strong>
                             </td>
 
                             @foreach($columns as $column)
@@ -1262,22 +1329,31 @@
 
                                 @php
                                 $valLower = is_string($value) ? strtolower(trim($value)) : $value;
-                                $badge =
-                                in_array($valLower, ['approved','active','earned','processed',1,true,'wfo'], true)
-                                ? 'orb-badge-success'
-                                : (
-                                in_array($valLower, ['pending','unprocessed'], true)
-                                ? 'orb-badge-warning'
-                                : (
-                                in_array($valLower, ['rejected','cancelled','expired','inactive',0,false], true)
-                                ? 'orb-badge-danger'
-                                : 'orb-badge-primary'
-                                )
-                                );
+                                $isCompOffGen = ($column['key'] ?? '') === 'comp_off_generated';
+
+                                if ($isCompOffGen) {
+                                    $isGen = (bool) $value;
+                                    $badge = $isGen ? 'orb-badge-success' : 'orb-badge-danger';
+                                    $badgeText = $isGen ? 'Generated' : 'Not Generated';
+                                } else {
+                                    $badge =
+                                    in_array($valLower, ['approved','active','earned','processed',1,true,'wfo'], true)
+                                    ? 'orb-badge-success'
+                                    : (
+                                    in_array($valLower, ['pending','unprocessed'], true)
+                                    ? 'orb-badge-warning'
+                                    : (
+                                    in_array($valLower, ['rejected','cancelled','expired','inactive',0,false], true)
+                                    ? 'orb-badge-danger'
+                                    : 'orb-badge-primary'
+                                    )
+                                    );
+                                    $badgeText = is_bool($value) ? ($value ? 'Active' : 'Inactive') : (in_array($valLower, ['wfh','wfo'], true) ? strtoupper((string) $value) : ucfirst((string) $value));
+                                }
                                 @endphp
 
                                 <span class="orb-badge {{ $badge }}">
-                                    {{ is_bool($value) ? ($value ? 'Active' : 'Inactive') : (in_array($valLower, ['wfh','wfo'], true) ? strtoupper((string) $value) : ucfirst((string) $value)) }}
+                                    {{ $badgeText }}
                                 </span>
 
                                 @elseif(($column['type'] ?? '') === 'date' && $value)
@@ -1304,11 +1380,39 @@
                             @endforeach
 
                             @if(!empty($rowActions) || !empty($canEdit) || !empty($canDelete))
+                            @php
+                                $rowStatus = strtolower((string) data_get($row, 'status', ''));
+                                $userIsHrOrAdmin = !empty($isHrOrAdmin);
+
+                                // For employees: Edit and Delete are only allowed when request status is 'pending'
+                                $canEditThisRow = !empty($canEdit) && ($userIsHrOrAdmin || $rowStatus === 'pending');
+                                $canDeleteThisRow = !empty($canDelete) && ($userIsHrOrAdmin || $rowStatus === 'pending');
+
+                                // Check if any row action (Approve/Reject) is visible for this row
+                                $hasVisibleRowActions = false;
+                                foreach ($rowActions ?? [] as $act) {
+                                    $actLabel = strtolower((string) ($act['label'] ?? ''));
+                                    $skipThis = false;
+                                    if (isset($act['show_when_status'])) {
+                                        $allowed = (array) $act['show_when_status'];
+                                        $skipThis = !in_array($rowStatus, array_map('strtolower', $allowed), true);
+                                    } elseif (in_array($actLabel, ['approve', 'accept'])) {
+                                        $skipThis = ($rowStatus === 'approved' || $rowStatus === 'rejected' || $rowStatus === 'cancelled');
+                                    } elseif (in_array($actLabel, ['reject', 'decline'])) {
+                                        $skipThis = ($rowStatus === 'rejected' || $rowStatus === 'approved' || $rowStatus === 'cancelled');
+                                    }
+                                    if (!$skipThis) {
+                                        $hasVisibleRowActions = true;
+                                        break;
+                                    }
+                                }
+
+                                $hasAnyDropdownAction = true; // View Details is always available for every record
+                            @endphp
 
                             <td>
-
+                                @if($hasAnyDropdownAction)
                                 <div class="dropdown">
-
                                     <button class="orb-action-btn"
                                         type="button"
                                         data-toggle="dropdown">
@@ -1317,8 +1421,16 @@
 
                                     <div class="dropdown-menu dropdown-menu-right">
 
-                                        @if(!empty($canEdit))
+                                        <!-- View Details (Always available) -->
+                                        <button type="button"
+                                            class="dropdown-item"
+                                            data-toggle="modal"
+                                            data-target="#viewModal{{ data_get($row, 'id') }}">
+                                            <i class="fas fa-eye mr-2 text-info"></i>
+                                            View Details
+                                        </button>
 
+                                        @if($canEditThisRow)
                                         <button type="button"
                                             class="dropdown-item"
                                             data-toggle="modal"
@@ -1326,13 +1438,13 @@
                                             <i class="fas fa-edit mr-2 text-primary"></i>
                                             Edit
                                         </button>
-
                                         @endif
 
                                         @foreach($rowActions ?? [] as $action)
                                             @php
-                                                $rowStatus = strtolower((string) data_get($row, 'status', ''));
                                                 $actionLabel = strtolower((string) ($action['label'] ?? ''));
+                                                $actionSlug = strtolower(\Illuminate\Support\Str::slug($action['label'] ?? 'action'));
+                                                $actionModalId = 'actionModal_' . $actionSlug . '_' . data_get($row, 'id');
                                                 $skipAction = false;
 
                                                 if (isset($action['show_when_status'])) {
@@ -1346,44 +1458,32 @@
                                             @endphp
 
                                             @if(!$skipAction)
-                                            <form method="POST"
-                                                action="{{ route($action['route'], data_get($row, 'id')) }}"
-                                                onsubmit="return confirm('{{ $action['confirm'] ?? 'Continue?' }}')">
-
-                                                @csrf
-
-                                                <button class="dropdown-item"
-                                                    type="submit">
-                                                    <i class="{{ $action['icon'] ?? 'fas fa-check' }} mr-2"></i>
-                                                    {{ $action['label'] }}
-                                                </button>
-
-                                            </form>
+                                            <button type="button"
+                                                class="dropdown-item"
+                                                data-toggle="modal"
+                                                data-target="#{{ $actionModalId }}">
+                                                <i class="{{ $action['icon'] ?? 'fas fa-check' }} mr-2"></i>
+                                                {{ $action['label'] }}
+                                            </button>
                                             @endif
                                         @endforeach
 
-                                        @if(!empty($canDelete))
-
-                                        <form method="POST"
-                                            action="{{ route($deleteRoute, data_get($row, 'id')) }}"
-                                            onsubmit="return confirm('Delete this record?')">
-
-                                            @csrf
-                                            @method('DELETE')
-
-                                            <button class="dropdown-item text-danger"
-                                                type="submit">
-                                                <i class="fas fa-trash mr-2"></i>
-                                                Delete
-                                            </button>
-
-                                        </form>
-
+                                        @if($canDeleteThisRow)
+                                        <button type="button"
+                                            class="dropdown-item text-danger"
+                                            data-toggle="modal"
+                                            data-target="#deleteModal{{ data_get($row, 'id') }}">
+                                            <i class="fas fa-trash mr-2"></i>
+                                            Delete
+                                        </button>
                                         @endif
 
                                     </div>
 
                                 </div>
+                                @else
+                                    <span class="text-muted small font-weight-bold">-</span>
+                                @endif
 
                             </td>
 
@@ -1430,6 +1530,34 @@
     ])
     @endforeach
     @endif
+
+    @if(!empty($rowActions))
+    @foreach($rows as $row)
+        @foreach($rowActions as $action)
+            @include('hrms.shared.crud-action-modal', [
+                'action' => $action,
+                'row' => $row
+            ])
+        @endforeach
+    @endforeach
+    @endif
+
+    @if(!empty($canDelete))
+    @foreach($rows as $row)
+    @include('hrms.shared.crud-delete-modal', [
+        'modalId' => 'deleteModal'.data_get($row, 'id'),
+        'action' => route($deleteRoute, data_get($row, 'id')),
+        'row' => $row
+    ])
+    @endforeach
+    @endif
+
+    @foreach($rows as $row)
+    @include('hrms.shared.crud-view-modal', [
+        'modalId' => 'viewModal'.data_get($row, 'id'),
+        'row' => $row
+    ])
+    @endforeach
 
 </div>
 @endsection
@@ -1675,6 +1803,22 @@
                 }
             });
         });
+
+        // Initialize custom per-page Select2 dropdown
+        if (typeof $.fn.select2 !== 'undefined') {
+            $('#recordsPerPageSelect').select2({
+                minimumResultsForSearch: Infinity,
+                width: '75px',
+                dropdownCssClass: 'select2-dropdown-per-page',
+                containerCssClass: 'select2-container--per-page'
+            }).on('change', function() {
+                var val = $(this).val();
+                var url = new URL(window.location.href);
+                url.searchParams.set('per_page', val);
+                url.searchParams.set('page', '1');
+                window.location.href = url.toString();
+            });
+        }
 
         // Initialize Select2 in modals
         $(document).on('shown.bs.modal', '.modal', function () {

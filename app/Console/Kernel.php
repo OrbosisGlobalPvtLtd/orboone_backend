@@ -7,6 +7,8 @@ use App\Console\Commands\AttendanceAbsent;
 use App\Console\Commands\AttendanceBackfillShiftAssignments;
 use App\Console\Commands\AttendanceLeave;
 use App\Console\Commands\DispatchPermanentActivationNotifications;
+use App\Console\Commands\ActivateScheduledProbationEmployees;
+use App\Console\Commands\ActivateScheduledPermanentEmployees;
 use App\Console\Commands\HRMS\AutoBlockMissedPunchIns;
 use App\Console\Commands\HRMS\AutoCloseBlockedAttendance;
 use App\Console\Commands\HRMS\ExpireCompOffs;
@@ -43,6 +45,8 @@ class Kernel extends ConsoleKernel
         GenerateMonthlyAttendanceSummary::class,
         DispatchPermanentActivationNotifications::class,
         AttendanceBackfillShiftAssignments::class,
+        ActivateScheduledProbationEmployees::class,
+        ActivateScheduledPermanentEmployees::class,
     ];
 
     /**
@@ -78,6 +82,7 @@ class Kernel extends ConsoleKernel
             ->timezone('Asia/Kolkata')
             ->withoutOverlapping();
         $schedule->command('hrms:lifecycle-reminders')->dailyAt('09:00')->timezone('Asia/Kolkata')->withoutOverlapping();
+        $schedule->command('hrms:activate-scheduled-probation')->dailyAt('00:08')->timezone('Asia/Kolkata')->withoutOverlapping();
         $schedule->command('hrms:activate-scheduled-permanent')->dailyAt('00:10')->timezone('Asia/Kolkata')->withoutOverlapping();
         $schedule->command('hrms:dispatch-permanent-activation-notifications')->everyMinute()->timezone('Asia/Kolkata')->withoutOverlapping();
         $schedule->command('hrms:leave-lapse-year-end')->yearlyOn(12, 31, '23:50')->timezone('Asia/Kolkata');

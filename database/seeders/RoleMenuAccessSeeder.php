@@ -49,7 +49,6 @@ class RoleMenuAccessSeeder extends Seeder
 
             30,     // Leave Management
             32,     // Apply for Leave
-            36,    // Leave History
             34,     // Balance Tracker
             132,    // Holiday List
 
@@ -149,7 +148,7 @@ class RoleMenuAccessSeeder extends Seeder
             'employee' => [
                 1, // Dashboard
                 20, 349, 145, 163, 332, 181, 28, 26, // Attendance Self-Service
-                30, 137, 32, 34, 36, 133, // Leave Self-Service
+                30, 137, 32, 34, // Leave Self-Service
                 300, 309, 310, // Enterprise Payroll Self-Service
                 50, 52, 161, 53, // Document Management Self-Service
                 60, 154, // Announcements

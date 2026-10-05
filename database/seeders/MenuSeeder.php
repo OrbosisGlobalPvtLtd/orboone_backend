@@ -60,25 +60,24 @@ class MenuSeeder extends Seeder
 
             // 4. Leave Management
             ['id' => 30, 'name' => 'Leave Management', 'route' => null, 'icon' => 'fas fa-calendar-alt', 'module_key' => 'leave', 'permission_key' => null, 'parent_id' => null, 'sort_order' => 30, 'is_active' => 1],
-            // Self-Service
-            ['id' => 32, 'name' => 'My Leave Requests', 'route' => 'leave-requests.index', 'icon' => 'fas fa-paper-plane', 'module_key' => 'my.leave', 'permission_key' => 'leave.my_requests.view', 'parent_id' => 30, 'sort_order' => 1, 'is_active' => 1],
-            ['id' => 137, 'name' => 'Apply Leave', 'route' => 'leave-requests.create', 'icon' => 'fas fa-plus-circle', 'module_key' => 'employee.leave', 'permission_key' => null, 'parent_id' => 30, 'sort_order' => 2, 'is_active' => 1],
-            ['id' => 34, 'name' => 'Leave Balance', 'route' => 'hrms.leave.balances.index', 'icon' => 'fas fa-wallet', 'module_key' => 'employee.leave', 'permission_key' => 'leave.balance.view_all', 'parent_id' => 30, 'sort_order' => 3, 'is_active' => 1],
-            ['id' => 36, 'name' => 'Leave History', 'route' => 'hrms.leave.history', 'icon' => 'fas fa-history', 'module_key' => 'leave', 'permission_key' => 'leave.history.view', 'parent_id' => 30, 'sort_order' => 4, 'is_active' => 1],
-            ['id' => 133, 'name' => 'Compensatory Off', 'route' => 'hrms.comp_offs.index', 'icon' => 'fas fa-calendar-plus', 'module_key' => 'leave', 'permission_key' => null, 'parent_id' => 30, 'sort_order' => 5, 'is_active' => 1],
-            // Leave Operations
-            ['id' => 31, 'name' => 'Leave Dashboard', 'route' => 'hrms.leave.dashboard', 'icon' => 'fas fa-chart-pie', 'module_key' => 'leave', 'permission_key' => 'leave.dashboard.view', 'parent_id' => 30, 'sort_order' => 6, 'is_active' => 1],
-            ['id' => 146, 'name' => 'Team Leave Calendar', 'route' => 'hrms.leave.team_calendar.index', 'icon' => 'fas fa-calendar-week', 'module_key' => 'leave', 'permission_key' => null, 'parent_id' => 30, 'sort_order' => 7, 'is_active' => 1],
-            // Approvals / Administration
-            ['id' => 33, 'name' => 'Leave Approvals', 'route' => 'leave-approvals.index', 'icon' => 'fas fa-check-double', 'module_key' => 'leave', 'permission_key' => 'leave.approvals.view_all', 'parent_id' => 30, 'sort_order' => 8, 'is_active' => 1],
-            ['id' => 35, 'name' => 'Leave Allocation', 'route' => 'leave-allocations.index', 'icon' => 'fas fa-coins', 'module_key' => 'leave', 'permission_key' => 'leave.allocation.manage', 'parent_id' => 30, 'sort_order' => 9, 'is_active' => 1],
-            // Configuration
-            ['id' => 130, 'name' => 'Leave Types', 'route' => 'hrms.leave.types.index', 'icon' => 'fas fa-tags', 'module_key' => 'leave', 'permission_key' => null, 'parent_id' => 30, 'sort_order' => 10, 'is_active' => 1],
-            ['id' => 131, 'name' => 'Leave Policies', 'route' => 'hrms.leave.policies.index', 'icon' => 'fas fa-sliders-h', 'module_key' => 'leave', 'permission_key' => null, 'parent_id' => 30, 'sort_order' => 11, 'is_active' => 1],
-            ['id' => 132, 'name' => 'Holidays', 'route' => 'hrms.holidays.index', 'icon' => 'fas fa-glass-cheers', 'module_key' => 'leave', 'permission_key' => null, 'parent_id' => 30, 'sort_order' => 12, 'is_active' => 1],
-            ['id' => 138, 'name' => 'Weekoff Rules', 'route' => 'hrms.weekoff_rules.index', 'icon' => 'fas fa-calendar-day', 'module_key' => 'leave', 'permission_key' => null, 'parent_id' => 30, 'sort_order' => 13, 'is_active' => 1],
-            ['id' => 139, 'name' => 'Leave Policy Overrides', 'route' => 'hrms.leave.policy_overrides.index', 'icon' => 'fas fa-user-cog', 'module_key' => 'leave', 'permission_key' => null, 'parent_id' => 30, 'sort_order' => 14, 'is_active' => 1],
-            ['id' => 140, 'name' => 'Leave Balance Logs', 'route' => 'hrms.leave.balance_logs.index', 'icon' => 'fas fa-history', 'module_key' => 'leave', 'permission_key' => null, 'parent_id' => 30, 'sort_order' => 15, 'is_active' => 1],
+            // Primary Operations & Approvals
+            ['id' => 31, 'name' => 'Leave Dashboard', 'route' => 'hrms.leave.dashboard', 'icon' => 'fas fa-chart-pie', 'module_key' => 'leave', 'permission_key' => 'leave.dashboard.view', 'parent_id' => 30, 'sort_order' => 1, 'is_active' => 1],
+            ['id' => 33, 'name' => 'Leave Approvals', 'route' => 'leave-approvals.index', 'icon' => 'fas fa-check-double', 'module_key' => 'leave', 'permission_key' => 'leave.approvals.view_all', 'parent_id' => 30, 'sort_order' => 2, 'is_active' => 1],
+            ['id' => 146, 'name' => 'Team Leave Calendar', 'route' => 'hrms.leave.team_calendar.index', 'icon' => 'fas fa-calendar-week', 'module_key' => 'leave', 'permission_key' => null, 'parent_id' => 30, 'sort_order' => 3, 'is_active' => 1],
+            // Requests & Balances
+            ['id' => 32, 'name' => 'My Leave Requests', 'route' => 'leave-requests.index', 'icon' => 'fas fa-paper-plane', 'module_key' => 'my.leave', 'permission_key' => 'leave.my_requests.view', 'parent_id' => 30, 'sort_order' => 4, 'is_active' => 1],
+            ['id' => 137, 'name' => 'Apply Leave', 'route' => 'leave-requests.create', 'icon' => 'fas fa-plus-circle', 'module_key' => 'employee.leave', 'permission_key' => null, 'parent_id' => 30, 'sort_order' => 5, 'is_active' => 1],
+            ['id' => 34, 'name' => 'Leave Balance', 'route' => 'hrms.leave.balances.index', 'icon' => 'fas fa-wallet', 'module_key' => 'employee.leave', 'permission_key' => 'leave.balance.view_all', 'parent_id' => 30, 'sort_order' => 6, 'is_active' => 1],
+            ['id' => 35, 'name' => 'Leave Allocation', 'route' => 'leave-allocations.index', 'icon' => 'fas fa-coins', 'module_key' => 'leave', 'permission_key' => 'leave.allocation.manage', 'parent_id' => 30, 'sort_order' => 7, 'is_active' => 1],
+            ['id' => 133, 'name' => 'Compensatory Off', 'route' => 'hrms.comp_offs.index', 'icon' => 'fas fa-calendar-plus', 'module_key' => 'leave', 'permission_key' => null, 'parent_id' => 30, 'sort_order' => 8, 'is_active' => 1],
+            ['id' => 36, 'name' => 'Leave History', 'route' => 'hrms.leave.history', 'icon' => 'fas fa-history', 'module_key' => 'leave', 'permission_key' => 'leave.history.view', 'parent_id' => 30, 'sort_order' => 9, 'is_active' => 1],
+            ['id' => 140, 'name' => 'Leave Balance Logs', 'route' => 'hrms.leave.balance_logs.index', 'icon' => 'fas fa-history', 'module_key' => 'leave', 'permission_key' => null, 'parent_id' => 30, 'sort_order' => 10, 'is_active' => 1],
+            // Configuration & Policy
+            ['id' => 130, 'name' => 'Leave Types', 'route' => 'hrms.leave.types.index', 'icon' => 'fas fa-tags', 'module_key' => 'leave', 'permission_key' => null, 'parent_id' => 30, 'sort_order' => 11, 'is_active' => 1],
+            ['id' => 131, 'name' => 'Leave Policies', 'route' => 'hrms.leave.policies.index', 'icon' => 'fas fa-sliders-h', 'module_key' => 'leave', 'permission_key' => null, 'parent_id' => 30, 'sort_order' => 12, 'is_active' => 1],
+            ['id' => 132, 'name' => 'Holidays', 'route' => 'hrms.holidays.index', 'icon' => 'fas fa-glass-cheers', 'module_key' => 'leave', 'permission_key' => null, 'parent_id' => 30, 'sort_order' => 13, 'is_active' => 1],
+            ['id' => 138, 'name' => 'Weekoff Rules', 'route' => 'hrms.weekoff_rules.index', 'icon' => 'fas fa-calendar-day', 'module_key' => 'leave', 'permission_key' => null, 'parent_id' => 30, 'sort_order' => 14, 'is_active' => 1],
+            ['id' => 139, 'name' => 'Leave Policy Overrides', 'route' => 'hrms.leave.policy_overrides.index', 'icon' => 'fas fa-user-cog', 'module_key' => 'leave', 'permission_key' => null, 'parent_id' => 30, 'sort_order' => 15, 'is_active' => 1],
 
             // 5. Enterprise Payroll (Active)
             ['id' => 300, 'name' => 'Enterprise Payroll', 'route' => null, 'icon' => 'fas fa-wallet', 'module_key' => 'enterprise_payroll', 'permission_key' => null, 'parent_id' => null, 'sort_order' => 40, 'is_active' => 1],

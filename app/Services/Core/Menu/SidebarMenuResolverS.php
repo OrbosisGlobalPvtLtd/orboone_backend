@@ -54,18 +54,8 @@ class SidebarMenuResolverS
             // Compute user management/work context once per resolution pass
             $userContext = $this->buildUserContext($user, $userEmp, $roleIds, $isSuperAdmin, $userRoles, $menus, $permissionChecker);
 
-            $employeeMenus = collect();
-            $adminMenus = collect();
-
-            if ($hasEmployeeRole) {
-                $employeeMenus = $this->resolveForContext($menus, $user, $roleIds, $isSuperAdmin, true, $userContext, $permissionChecker, $userRoles);
-            }
-
-            if ($hasAdminRole) {
-                $adminMenus = $this->resolveForContext($menus, $user, $roleIds, $isSuperAdmin, false, $userContext, $permissionChecker, $userRoles);
-            }
-
-            $merged = $employeeMenus->concat($adminMenus)->unique('id');
+            // Resolve menus dynamically based on role menu access, permissions & user context
+            $merged = $this->resolveForContext($menus, $user, $roleIds, $isSuperAdmin, $userContext, $permissionChecker, $userRoles);
 
             // If user has NO corresponding employee record in employees_new, strictly hide all Employee Self-Service menus
             if (! $hasEmployeeRecord) {
@@ -164,13 +154,11 @@ class SidebarMenuResolverS
         ];
     }
 
-    private function resolveForContext(Collection $menus, Authenticatable $user, array $roleIds, bool $isSuperAdmin, bool $isEmployeeContext, array $userContext, callable $permissionChecker, Collection $userRoles): Collection
+    private function resolveForContext(Collection $menus, Authenticatable $user, array $roleIds, bool $isSuperAdmin, array $userContext, callable $permissionChecker, Collection $userRoles): Collection
     {
         $filtered = $this->filterByRoleMenuAccess($menus, $user, $roleIds, $isSuperAdmin);
         $filtered = $this->filterByPermission($filtered, $user, $isSuperAdmin, $permissionChecker);
         $filtered = $this->filterReportingManagementVisibility($filtered, $user, $roleIds, $isSuperAdmin, $userContext, $userRoles);
-        $filtered = $this->filterByEmployeeOnlyVisibility($filtered, $isEmployeeContext, $userContext['is_project_manager']);
-        $filtered = $this->filterByPermanentWfhVisibility($filtered, $userContext['is_permanent_wfh']);
         $filtered = $this->filterByRouteValidity($filtered);
 
         return $filtered;
@@ -562,6 +550,8 @@ class SidebarMenuResolverS
                     'hrms.attendance.policy_overrides.index',
                     'attendances.export-pdf',
                     'hrms.attendance.wfh.index',
+                    'hrms.comp_offs.index',
+                    'hrms.leave.history',
                 ];
 
                 if (in_array($route, $adminOnlyRoutes, true)) {
@@ -570,7 +560,6 @@ class SidebarMenuResolverS
 
                 if (in_array($route, [
                     'hrms.leave.dashboard',
-                    'hrms.leave.history',
                     'leave-requests.create',
                     'leave-requests.index',
                     'hrms.leave.balances.index',

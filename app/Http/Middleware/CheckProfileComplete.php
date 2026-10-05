@@ -24,7 +24,7 @@ class CheckProfileComplete
             return $next($request);
         }
 
-        if (method_exists($user, 'isAdmin') && $user->isAdmin()) {
+        if (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) {
             return $next($request);
         }
 

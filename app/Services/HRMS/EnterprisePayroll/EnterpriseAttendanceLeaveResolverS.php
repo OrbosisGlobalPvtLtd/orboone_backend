@@ -121,7 +121,11 @@ class EnterpriseAttendanceLeaveResolverS
             } elseif ($attendance->is_lwp || str_contains($label, 'lwp')) {
                 $days['lwp_days'] += 1;
             } elseif (str_contains($label, 'missed_punch') || str_contains($label, 'missed')) {
-                $days['lwp_days'] += 1;
+                if ($attendance->is_lwp) {
+                    $days['lwp_days'] += 1;
+                } else {
+                    $days['present_days'] += 1;
+                }
             } elseif (str_contains($label, 'absent')) {
                 $days['absent_days'] += 1;
             } elseif (str_contains($label, 'holiday')) {

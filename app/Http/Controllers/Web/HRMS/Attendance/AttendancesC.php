@@ -52,6 +52,12 @@ class AttendancesC extends Controller
             'workLogs',
             'hrApprovedBy',
             'unlockedBy',
+            'violations',
+            'regularizations.approvedBy',
+            'statusLogs.createdBy',
+            'payrollImpacts',
+            'leaveRequest.leaveType',
+            'compOff',
         ]);
     }
 
@@ -455,27 +461,35 @@ class AttendancesC extends Controller
         $isGlobal = $this->canViewAll('attendance.records.view_all');
         $canTeam = $this->canViewTeam('attendance.regularization.view_team') || $this->canViewTeam('attendance.monthly_report.view_team');
 
-        abort_unless(
-            $isGlobal || $canTeam || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin()) || (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin', 'manager'])),
-            403
-        );
-
         $supervisorEmpId = $this->ownEmployeeId();
-        $teamEmpIds = $isGlobal ? [] : array_merge($this->teamEmployeeIds(false), array_filter([$supervisorEmpId]));
+        $teamScope = app(\App\Services\HRMS\Team\TeamManagementScopeS::class);
+        $teamEmpIds = $supervisorEmpId ? $teamScope->getTeamEmployeeIds($supervisorEmpId) : [];
+
+        // If global/admin with no specific team, default to all active employees
+        if (($isGlobal || $teamScope->isSuperAdminOrGlobal()) && empty($teamEmpIds)) {
+            $teamEmpIds = EmployeeM::active()->pluck('id')->toArray();
+        }
+
+        $hasAccess = $isGlobal 
+            || $canTeam 
+            || !empty($teamEmpIds)
+            || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin()) 
+            || (method_exists($user, 'isAdmin') && $user->isAdmin())
+            || (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin())
+            || (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin', 'manager', 'lead', 'team_lead']))
+            || (method_exists($user, 'can') && ($user->can('attendance.records.view_team') || $user->can('attendance.records.view_all') || $user->can('reporting.attendance')));
+
+        abort_unless($hasAccess, 403);
 
         $today = Carbon::now($this->attendanceService->attendanceTimezone())->toDateString();
+        $currentMonthYear = Carbon::now($this->attendanceService->attendanceTimezone())->format('Y-m');
         $viewMode = $request->input('view_mode', 'today'); // 'today' or 'history'
 
-        // Date filters
-        $date = $request->input('date', $today);
+        // Date & Month filters
+        $date = $request->input('date');
         $fromDate = $request->input('from_date');
         $toDate = $request->input('to_date');
-
-        if ($viewMode === 'today') {
-            $fromDate = $today;
-            $toDate = $today;
-            $date = $today;
-        }
+        $monthYear = $request->input('month_year');
 
         // Base Query
         $query = Attendance::with([
@@ -488,8 +502,10 @@ class AttendancesC extends Controller
             'workLogs',
         ]);
 
-        if (! $isGlobal) {
-            $query->whereIn('employee_id', array_filter($teamEmpIds));
+        if (!empty($teamEmpIds)) {
+            $query->whereIn('employee_id', $teamEmpIds);
+        } else {
+            $query->whereRaw('1 = 0');
         }
 
         // Apply filters
@@ -533,31 +549,51 @@ class AttendancesC extends Controller
         }
 
         if ($viewMode === 'today') {
-            $query->whereDate('attendance_date', $today);
+            $date = $date ?: $today;
+            $query->whereDate('attendance_date', $date);
+            $selectedMonthYear = $currentMonthYear;
         } else {
+            $hasRange = !empty($fromDate) || !empty($toDate);
+            $hasSingleDate = !empty($date);
+
             if ($fromDate && $toDate) {
                 $query->whereBetween('attendance_date', [$fromDate, $toDate]);
+                $selectedMonthYear = 'all';
             } elseif ($fromDate) {
                 $query->whereDate('attendance_date', '>=', $fromDate);
+                $selectedMonthYear = 'all';
             } elseif ($toDate) {
                 $query->whereDate('attendance_date', '<=', $toDate);
-            } elseif ($date) {
+                $selectedMonthYear = 'all';
+            } elseif ($hasSingleDate) {
                 $query->whereDate('attendance_date', $date);
+                try {
+                    $selectedMonthYear = Carbon::parse($date)->format('Y-m');
+                } catch (\Throwable $e) {
+                    $selectedMonthYear = $currentMonthYear;
+                }
+            } elseif (!empty($monthYear) && $monthYear !== 'all' && $monthYear !== 'custom') {
+                $query->where('attendance_date', 'LIKE', "{$monthYear}%");
+                $selectedMonthYear = $monthYear;
+            } else {
+                // Default to current month in History mode
+                $query->where('attendance_date', 'LIKE', "{$currentMonthYear}%");
+                $selectedMonthYear = $currentMonthYear;
             }
         }
 
         // Team stats today calculation
         $todayStatsQuery = Attendance::whereDate('attendance_date', $today);
-        if (! $isGlobal) {
-            $todayStatsQuery->whereIn('employee_id', array_filter($teamEmpIds));
+        if (!empty($teamEmpIds)) {
+            $todayStatsQuery->whereIn('employee_id', $teamEmpIds);
+        } else {
+            $todayStatsQuery->whereRaw('1 = 0');
         }
         $todayAttendanceRows = $todayStatsQuery->get();
 
-        $activeTeamEmpQuery = EmployeeM::with(['user', 'department', 'designation'])->active();
-        if (! $isGlobal) {
-            $activeTeamEmpQuery->whereIn('id', array_filter($teamEmpIds));
-        }
-        $teamEmployees = $activeTeamEmpQuery->orderBy('id')->get();
+        $teamEmployees = !empty($teamEmpIds)
+            ? EmployeeM::with(['user', 'department', 'designation'])->active()->whereIn('id', $teamEmpIds)->orderBy('id')->get()
+            : collect();
         $totalTeamCount = $teamEmployees->count();
 
         $punchedInEmpIds = $todayAttendanceRows->whereNotNull('punch_in_time')->pluck('employee_id')->filter()->unique()->toArray();
@@ -572,8 +608,10 @@ class AttendancesC extends Controller
             ->whereDate('start_date', '<=', $today)
             ->whereDate('end_date', '>=', $today)
             ->where('status', 'approved');
-        if (! $isGlobal) {
-            $leaveEmpQuery->whereIn('employee_id', array_filter($teamEmpIds));
+        if (!empty($teamEmpIds)) {
+            $leaveEmpQuery->whereIn('employee_id', $teamEmpIds);
+        } else {
+            $leaveEmpQuery->whereRaw('1 = 0');
         }
         $onLeaveTodayCount = $leaveEmpQuery->distinct('employee_id')->count('employee_id');
 
@@ -589,6 +627,198 @@ class AttendancesC extends Controller
             'not_punched_today' => $notPunchedCount,
             'blocked_today' => $blockedCount,
         ];
+
+        // Handle Team Attendance Export (Full filtered dataset)
+        if ($request->filled('export')) {
+            $exportType = strtolower($request->input('export'));
+            $allRows = (clone $query)->orderByDesc('attendance_date')
+                ->orderByDesc('punch_in_time')
+                ->orderByDesc('id')
+                ->get();
+            $this->normalizeAttendanceCollection($allRows);
+
+            if ($exportType === 'json') {
+                $formatted = [];
+                foreach ($allRows as $idx => $row) {
+                    $punchIn = $row->punch_in_time ? Carbon::parse($row->punch_in_time) : null;
+                    $punchOut = $row->punch_out_time ? Carbon::parse($row->punch_out_time) : null;
+
+                    $punchInFormatted = $punchIn ? $punchIn->format('h:i A') : '--:--';
+                    $punchOutFormatted = $punchOut ? $punchOut->format('h:i A') : ($punchIn ? 'Currently Active' : '--:--');
+                    $dateFormatted = $row->attendance_date ? Carbon::parse($row->attendance_date)->format('d M Y') : '-';
+
+                    if ($punchIn && $punchOut) {
+                        $mins = $punchIn->diffInMinutes($punchOut);
+                        $h = floor($mins / 60);
+                        $m = $mins % 60;
+                        $workingHours = sprintf('%02dh %02dm', $h, $m);
+                    } elseif ($punchIn) {
+                        $mins = $punchIn->diffInMinutes(Carbon::now());
+                        $h = floor($mins / 60);
+                        $m = $mins % 60;
+                        $workingHours = sprintf('%02dh %02dm (Live)', $h, $m);
+                    } else {
+                        $workingHours = '--';
+                    }
+
+                    $statusLabel = optional($row->attendanceType)->name ?? ucwords(str_replace('_', ' ', $row->attendance_status ?? 'N/A'));
+                    if ($punchIn && !$punchOut && !$row->is_blocked) {
+                        $statusLabel = 'Currently Working';
+                    } elseif ($punchIn && $punchOut) {
+                        $statusLabel = 'Completed Shift';
+                    }
+
+                    $workSummary = '-';
+                    if ($row->workLogs && $row->workLogs->count() > 0) {
+                        $summaryParts = [];
+                        foreach ($row->workLogs as $log) {
+                            if (!empty($log->task_title)) {
+                                $summaryParts[] = $log->task_title;
+                            } elseif (!empty($log->work_summary)) {
+                                $summaryParts[] = $log->work_summary;
+                            }
+                        }
+                        if (!empty($summaryParts)) {
+                            $workSummary = implode('; ', $summaryParts);
+                        }
+                    }
+
+                    $flags = [];
+                    if ($row->is_late) $flags[] = 'Late (' . ($row->late_minutes ?? 0) . 'm)';
+                    if ($row->is_early_out) $flags[] = 'Early Out (' . ($row->early_out_minutes ?? 0) . 'm)';
+                    if ($row->is_blocked || $row->is_punch_blocked) $flags[] = 'Blocked';
+                    if ($row->missed_punch || $row->is_missed_punch) $flags[] = 'Missed Punch';
+                    $flagStr = !empty($flags) ? implode(', ', $flags) : 'Clear';
+
+                    $formatted[] = [
+                        'sr_no' => $idx + 1,
+                        'employee_name' => optional($row->employee)->display_name ?? optional($row->user)->name ?? 'Team Member',
+                        'employee_code' => optional($row->employee)->employee_code ?? '-',
+                        'department' => optional(optional($row->employee)->department)->name ?? '-',
+                        'designation' => optional(optional($row->employee)->designation)->name ?? '-',
+                        'shift' => optional($row->attendanceTime)->name ?? 'General Shift',
+                        'date' => $dateFormatted,
+                        'punch_in' => $punchInFormatted,
+                        'punch_out' => $punchOutFormatted,
+                        'working_hours' => $workingHours,
+                        'work_mode' => strtoupper($row->work_mode ?? 'WFO'),
+                        'status' => $statusLabel,
+                        'work_summary' => $workSummary,
+                        'flags' => $flagStr,
+                    ];
+                }
+                return response()->json([
+                    'success' => true,
+                    'total' => count($formatted),
+                    'data' => $formatted,
+                ]);
+            }
+
+            if ($exportType === 'csv' || $exportType === 'excel') {
+                $filename = 'team_attendance_' . date('Y_m_d_His') . '.csv';
+                $headers = [
+                    'Content-Type' => 'text/csv; charset=UTF-8',
+                    'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+                    'Pragma' => 'no-cache',
+                    'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+                    'Expires' => '0',
+                ];
+
+                $callback = function () use ($allRows) {
+                    $handle = fopen('php://output', 'w');
+                    // UTF-8 BOM
+                    fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
+                    fputcsv($handle, [
+                        '#',
+                        'Employee Name',
+                        'Employee Code',
+                        'Department',
+                        'Designation',
+                        'Date',
+                        'Shift',
+                        'Login (Punch In)',
+                        'Logout (Punch Out)',
+                        'Working Hours',
+                        'Work Mode',
+                        'Status',
+                        'Work Summary',
+                        'Flags / Remarks'
+                    ]);
+
+                    foreach ($allRows as $index => $row) {
+                        $punchIn = $row->punch_in_time ? Carbon::parse($row->punch_in_time) : null;
+                        $punchOut = $row->punch_out_time ? Carbon::parse($row->punch_out_time) : null;
+
+                        $punchInFormatted = $punchIn ? $punchIn->format('h:i A') : '--:--';
+                        $punchOutFormatted = $punchOut ? $punchOut->format('h:i A') : ($punchIn ? 'Currently Active' : '--:--');
+                        $dateFormatted = $row->attendance_date ? Carbon::parse($row->attendance_date)->format('d M Y') : '-';
+
+                        if ($punchIn && $punchOut) {
+                            $mins = $punchIn->diffInMinutes($punchOut);
+                            $h = floor($mins / 60);
+                            $m = $mins % 60;
+                            $workingHours = sprintf('%02dh %02dm', $h, $m);
+                        } elseif ($punchIn) {
+                            $mins = $punchIn->diffInMinutes(Carbon::now());
+                            $h = floor($mins / 60);
+                            $m = $mins % 60;
+                            $workingHours = sprintf('%02dh %02dm (Live)', $h, $m);
+                        } else {
+                            $workingHours = '--';
+                        }
+
+                        $statusLabel = optional($row->attendanceType)->name ?? ucwords(str_replace('_', ' ', $row->attendance_status ?? 'N/A'));
+                        if ($punchIn && !$punchOut && !$row->is_blocked) {
+                            $statusLabel = 'Currently Working';
+                        } elseif ($punchIn && $punchOut) {
+                            $statusLabel = 'Completed Shift';
+                        }
+
+                        $workSummary = '-';
+                        if ($row->workLogs && $row->workLogs->count() > 0) {
+                            $summaryParts = [];
+                            foreach ($row->workLogs as $log) {
+                                if (!empty($log->task_title)) {
+                                    $summaryParts[] = $log->task_title;
+                                } elseif (!empty($log->work_summary)) {
+                                    $summaryParts[] = $log->work_summary;
+                                }
+                            }
+                            if (!empty($summaryParts)) {
+                                $workSummary = implode('; ', $summaryParts);
+                            }
+                        }
+
+                        $flags = [];
+                        if ($row->is_late) $flags[] = 'Late (' . ($row->late_minutes ?? 0) . 'm)';
+                        if ($row->is_early_out) $flags[] = 'Early Out (' . ($row->early_out_minutes ?? 0) . 'm)';
+                        if ($row->is_blocked || $row->is_punch_blocked) $flags[] = 'Blocked';
+                        if ($row->missed_punch || $row->is_missed_punch) $flags[] = 'Missed Punch';
+                        $flagStr = !empty($flags) ? implode(', ', $flags) : 'Clear';
+
+                        fputcsv($handle, [
+                            $index + 1,
+                            optional($row->employee)->display_name ?? optional($row->user)->name ?? 'Team Member',
+                            optional($row->employee)->employee_code ?? '-',
+                            optional(optional($row->employee)->department)->name ?? '-',
+                            optional(optional($row->employee)->designation)->name ?? '-',
+                            $dateFormatted,
+                            optional($row->attendanceTime)->name ?? 'General Shift',
+                            $punchInFormatted,
+                            $punchOutFormatted,
+                            $workingHours,
+                            strtoupper($row->work_mode ?? 'WFO'),
+                            $statusLabel,
+                            $workSummary,
+                            $flagStr
+                        ]);
+                    }
+                    fclose($handle);
+                };
+
+                return response()->stream($callback, 200, $headers);
+            }
+        }
 
         $perPage = 50;
         if ($request->filled('per_page')) {
@@ -640,11 +870,104 @@ class AttendancesC extends Controller
             'date' => $date,
             'fromDate' => $fromDate,
             'toDate' => $toDate,
+            'selectedMonthYear' => $selectedMonthYear,
             'viewMode' => $viewMode,
             'accesses' => $this->accesses(),
             'active' => 'attendances',
             'isGlobal' => $isGlobal,
         ]);
+    }
+
+    private function resolveAttendanceRecordsQuery(Request $request): array
+    {
+        $currentEmployee = \App\Models\HRMS\Employee\EmployeeM::where('user_id', Auth::id())->first();
+        $currentEmployeeId = $currentEmployee ? $currentEmployee->id : ($this->ownEmployeeId() ?: null);
+        $userId = Auth::id();
+
+        $fromDate = $request->input('from_date') ?: $request->input('from');
+        $toDate = $request->input('to_date') ?: $request->input('to');
+        $singleDate = $request->input('date');
+        $monthYear = $request->input('month_year');
+        $month = $request->input('month');
+
+        $hasDateFilter = !empty($singleDate) 
+            || !empty($fromDate) 
+            || !empty($toDate) 
+            || (!empty($monthYear) && $monthYear !== 'all' && $monthYear !== 'custom') 
+            || (!empty($month) && $month !== 'all' && $month !== 'custom');
+
+        $currentMonthYear = Carbon::now($this->attendanceService->attendanceTimezone())->format('Y-m');
+        $selectedMonthYear = $hasDateFilter 
+            ? ($monthYear ?: '') 
+            : $currentMonthYear;
+
+        $isMyAttendance = request()->routeIs('hrms.attendance.my') || ($request->input('view_scope') === 'my');
+
+        if ($isMyAttendance) {
+            $selectedEmployeeId = $currentEmployeeId;
+            $filterRequest = clone $request;
+            $filterRequest->query->remove('employee_id');
+            $filterRequest->query->remove('search');
+            if (! $hasDateFilter && $currentMonthYear) {
+                $filterRequest->merge(['month_year' => $currentMonthYear]);
+            }
+
+            $query = $this->applyFilters($this->baseQuery(), $filterRequest);
+            $query->where(function ($q) use ($currentEmployeeId, $userId) {
+                if ($currentEmployeeId && $userId) {
+                    $q->where('employee_id', $currentEmployeeId)->orWhere('user_id', $userId);
+                } elseif ($currentEmployeeId) {
+                    $q->where('employee_id', $currentEmployeeId);
+                } elseif ($userId) {
+                    $q->where('user_id', $userId);
+                } else {
+                    $q->whereRaw('1 = 0');
+                }
+            });
+        } else {
+            // Admin / HR Admin page (/attendances/record)
+            $hasEmployeeFilter = $request->filled('employee_id');
+            if ($hasEmployeeFilter) {
+                $selectedEmployeeId = $request->input('employee_id');
+            } else {
+                $selectedEmployeeId = 'all';
+            }
+
+            $filterRequest = clone $request;
+            if (! $hasEmployeeFilter && $selectedEmployeeId && $selectedEmployeeId !== 'all') {
+                $filterRequest->merge(['employee_id' => $selectedEmployeeId]);
+            } elseif ($selectedEmployeeId === 'all') {
+                $filterRequest->query->remove('employee_id');
+            }
+
+            if (! $hasDateFilter && $currentMonthYear) {
+                $filterRequest->merge(['month_year' => $currentMonthYear]);
+            }
+
+            $query = $this->scopeAttendanceQuery($this->applyFilters($this->baseQuery(), $filterRequest), 'attendance.records.view_all', 'attendance.regularization.view_team');
+        }
+
+        
+        $periodLabel = 'All Records';
+        if ($filterRequest->filled('from_date') && $filterRequest->filled('to_date')) {
+            $periodLabel = Carbon::parse($filterRequest->from_date)->format('d M Y') . ' - ' . Carbon::parse($filterRequest->to_date)->format('d M Y');
+        } elseif ($filterRequest->filled('from_date')) {
+            $periodLabel = 'From ' . Carbon::parse($filterRequest->from_date)->format('d M Y');
+        } elseif ($filterRequest->filled('to_date')) {
+            $periodLabel = 'Up to ' . Carbon::parse($filterRequest->to_date)->format('d M Y');
+        } elseif ($filterRequest->filled('date')) {
+            $periodLabel = Carbon::parse($filterRequest->date)->format('d M Y');
+        } elseif ($filterRequest->filled('month_year') && $filterRequest->month_year !== 'all') {
+            try {
+                $periodLabel = Carbon::parse($filterRequest->month_year . '-01')->format('F Y');
+            } catch (\Throwable $e) {
+                $periodLabel = $filterRequest->month_year;
+            }
+        } elseif ($filterRequest->filled('month') && $filterRequest->filled('year')) {
+            $periodLabel = Carbon::create((int) $filterRequest->year, (int) $filterRequest->month, 1)->format('F Y');
+        }
+
+        return [$query, $filterRequest, $selectedEmployeeId, $selectedMonthYear, $periodLabel];
     }
 
     public function attendanceRecord(Request $request)
@@ -661,63 +984,8 @@ class AttendancesC extends Controller
 
         $currentEmployee = \App\Models\HRMS\Employee\EmployeeM::where('user_id', Auth::id())->first();
         $currentEmployeeId = $currentEmployee ? $currentEmployee->id : ($this->ownEmployeeId() ?: null);
-        $userId = Auth::id();
 
-        $hasDateFilter = $request->filled('date') 
-            || $request->filled('from_date') 
-            || $request->filled('to_date') 
-            || $request->filled('month_year') 
-            || $request->filled('month') 
-            || $request->filled('from') 
-            || $request->filled('to');
-
-        $currentMonthYear = Carbon::now($this->attendanceService->attendanceTimezone())->format('Y-m');
-        $selectedMonthYear = $request->input('month_year', $hasDateFilter ? ($request->input('month_year') ?: '') : $currentMonthYear);
-
-        if ($isMyAttendance) {
-            $selectedEmployeeId = $currentEmployeeId;
-            $cleanRequest = clone $request;
-            $cleanRequest->query->remove('employee_id');
-            $cleanRequest->query->remove('search');
-            if (! $hasDateFilter && $currentMonthYear) {
-                $cleanRequest->merge(['month_year' => $currentMonthYear]);
-            }
-
-            $query = $this->applyFilters($this->baseQuery(), $cleanRequest);
-            $query->where(function ($q) use ($currentEmployeeId, $userId) {
-                if ($currentEmployeeId && $userId) {
-                    $q->where('employee_id', $currentEmployeeId)->orWhere('user_id', $userId);
-                } elseif ($currentEmployeeId) {
-                    $q->where('employee_id', $currentEmployeeId);
-                } elseif ($userId) {
-                    $q->where('user_id', $userId);
-                } else {
-                    $q->whereRaw('1 = 0');
-                }
-            });
-        } else {
-            // Admin / HR Admin page (/attendances/record)
-            // By default (first page load without employee_id query param), show the authenticated user's attendance
-            $hasEmployeeFilter = $request->filled('employee_id');
-            if ($hasEmployeeFilter) {
-                $selectedEmployeeId = $request->input('employee_id');
-            } else {
-                $selectedEmployeeId = $currentEmployeeId ? (string) $currentEmployeeId : 'all';
-            }
-
-            $filterRequest = clone $request;
-            if (! $hasEmployeeFilter && $selectedEmployeeId && $selectedEmployeeId !== 'all') {
-                $filterRequest->merge(['employee_id' => $selectedEmployeeId]);
-            } elseif ($selectedEmployeeId === 'all') {
-                $filterRequest->query->remove('employee_id');
-            }
-
-            if (! $hasDateFilter && $currentMonthYear) {
-                $filterRequest->merge(['month_year' => $currentMonthYear]);
-            }
-
-            $query = $this->scopeAttendanceQuery($this->applyFilters($this->baseQuery(), $filterRequest), 'attendance.records.view_all', 'attendance.regularization.view_team');
-        }
+        [$query, $filterRequest, $selectedEmployeeId, $selectedMonthYear, $periodLabel] = $this->resolveAttendanceRecordsQuery($request);
 
         $statsRaw = (clone $query)->leftJoin('attendance_types', 'attendance_types.id', '=', 'attendances.attendance_type_id')
             ->selectRaw("
@@ -745,7 +1013,7 @@ class AttendancesC extends Controller
             $perPage = ($request->per_page === 'all' || $request->per_page == '-1') ? 5000 : (int) $request->per_page;
         }
 
-        $attendances = $this->orderAttendanceQuery($query, $request)->paginate($perPage)->appends($request->query());
+        $attendances = $this->orderAttendanceQuery($query, $filterRequest)->paginate($perPage)->appends($request->query());
         $this->normalizeAttendanceCollection($attendances->getCollection());
         $employees = $this->attendanceEmployees();
         $attendanceTypes = $this->activeAttendanceTypes();
@@ -836,25 +1104,109 @@ class AttendancesC extends Controller
 
     public function update(Request $request)
     {
-        abort_unless($this->canManageAttendance(), 403, 'Only Super Admin can modify attendance history.');
+        abort_unless($this->canManageAttendance(), 403, 'Only HR/Admin can modify attendance history.');
 
         $request->validate([
             'id' => 'required|exists:attendances,id',
             'attendance_type_id' => 'required|exists:attendance_types,id',
+            'attendance_date' => 'nullable',
+            'work_mode' => 'nullable|in:wfo,wfh',
             'punch_in_time' => 'nullable',
             'punch_out_time' => 'nullable',
+            'note' => 'nullable|string|max:2000',
             'hr_approval_note' => 'nullable|string|max:2000',
         ]);
 
         $attendance = Attendance::findOrFail($request->id);
-        $attendance->update([
-            'attendance_type_id' => $request->attendance_type_id,
-            'punch_in_time' => $request->filled('punch_in_time') ? Carbon::parse($request->punch_in_time)->format('H:i:s') : $attendance->punch_in_time,
-            'punch_out_time' => $request->filled('punch_out_time') ? Carbon::parse($request->punch_out_time)->format('H:i:s') : $attendance->punch_out_time,
-            'hr_approval_note' => $request->hr_approval_note,
+        $type = AttendanceType::findOrFail($request->attendance_type_id);
+        $typeCode = strtolower($type->code);
+
+        $punchInTime = $request->filled('punch_in_time') ? Carbon::parse($request->punch_in_time)->format('H:i:s') : $attendance->punch_in_time;
+        $punchOutTime = $request->filled('punch_out_time') ? Carbon::parse($request->punch_out_time)->format('H:i:s') : $attendance->punch_out_time;
+        $adminReason = $request->hr_approval_note ?: ($request->note ?: 'Manually updated by HR/Admin');
+
+        $updateData = [
+            'attendance_type_id' => $type->id,
+            'attendance_status' => $typeCode,
+            'attendance_source' => 'admin_override',
+            'punch_in_time' => $punchInTime,
+            'punch_out_time' => $punchOutTime,
+            'hr_approval_note' => $adminReason,
             'hr_approved_by' => Auth::id(),
             'hr_approved_at' => now(),
-        ]);
+            'remarks' => $adminReason,
+            'status_reason' => $adminReason,
+            'is_admin_unlocked' => true,
+            'unlocked_by' => Auth::id(),
+            'unlocked_at' => now(),
+            'unlock_type' => 'hr_manual_override',
+        ];
+
+        if ($request->filled('work_mode')) {
+            $updateData['work_mode'] = $request->work_mode;
+        }
+
+        if ($request->filled('attendance_date')) {
+            $updateData['attendance_date'] = Carbon::parse($request->attendance_date)->toDateString();
+        }
+
+        if ($request->filled('note')) {
+            $updateData['punch_out_note'] = $request->note;
+        }
+
+        // Adjust flags based on selected status
+        if ($typeCode === 'present') {
+            $updateData['is_lwp'] = false;
+            $updateData['is_half_day'] = false;
+            $updateData['is_blocked'] = false;
+            $updateData['is_punch_blocked'] = false;
+            $updateData['missed_punch'] = false;
+            $updateData['is_missed_punch'] = false;
+            $updateData['lwp_reason'] = null;
+            $updateData['half_day_reason'] = null;
+        } elseif ($typeCode === 'half_day') {
+            $updateData['is_half_day'] = true;
+            $updateData['is_lwp'] = false;
+            $updateData['is_blocked'] = false;
+            $updateData['is_punch_blocked'] = false;
+            $updateData['half_day_reason'] = $adminReason;
+            $updateData['lwp_reason'] = null;
+        } elseif ($typeCode === 'lwp') {
+            $updateData['is_lwp'] = true;
+            $updateData['is_half_day'] = false;
+            $updateData['lwp_reason'] = $adminReason;
+            $updateData['half_day_reason'] = null;
+        } elseif ($typeCode === 'absent') {
+            $updateData['is_lwp'] = true;
+            $updateData['is_half_day'] = false;
+            $updateData['status_reason'] = $adminReason;
+            $updateData['lwp_reason'] = $adminReason;
+        } elseif (in_array($typeCode, ['leave', 'holiday', 'week_off'], true)) {
+            $updateData['is_lwp'] = false;
+            $updateData['is_half_day'] = false;
+            $updateData['is_blocked'] = false;
+            $updateData['is_punch_blocked'] = false;
+            $updateData['missed_punch'] = false;
+            $updateData['is_missed_punch'] = false;
+        }
+
+        $oldStatus = $attendance->attendance_status ?? optional($attendance->attendanceType)->code ?? 'unknown';
+        $attendance->update($updateData);
+
+        try {
+            \App\Models\HRMS\Attendance\AttendanceDailyStatusLogM::create([
+                'employee_id' => $attendance->employee_id,
+                'attendance_id' => $attendance->id,
+                'status_date' => $attendance->attendance_date ?? now()->toDateString(),
+                'old_status' => $oldStatus,
+                'new_status' => $typeCode,
+                'source' => 'admin_override',
+                'remarks' => $adminReason,
+                'created_by_user_id' => Auth::id(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Could not log attendance status change: ' . $e->getMessage());
+        }
 
         if ($attendance->punch_in_time && $attendance->punch_out_time) {
             $this->attendanceService->calculateAttendanceStats($attendance);
@@ -1423,59 +1775,147 @@ class AttendancesC extends Controller
 
     public function print(Request $request)
     {
-        abort_unless($this->userHasPermission('attendance.export'), 403);
-        $attendances = $this->orderAttendanceQuery($this->scopeAttendanceQuery($this->applyFilters($this->baseQuery(), $request), 'attendance.records.view_all', 'attendance.monthly_report.view_team'), $request)->get();
-        $this->normalizeAttendanceCollection($attendances);
+        abort_unless(
+            $this->userHasPermission('attendance.export') 
+                || $this->userHasPermission('attendance.records.view_all') 
+                || $this->userHasPermission('attendance.monthly_report.view_all')
+                || $this->canViewAll('attendance.records.view_all'), 
+            403
+        );
 
-        $periodLabel = 'All Records';
-        if ($request->filled('from_date') && $request->filled('to_date')) {
-            $periodLabel = Carbon::parse($request->from_date)->format('d M Y') . ' - ' . Carbon::parse($request->to_date)->format('d M Y');
-        } elseif ($request->filled('from_date')) {
-            $periodLabel = 'From ' . Carbon::parse($request->from_date)->format('d M Y');
-        } elseif ($request->filled('to_date')) {
-            $periodLabel = 'Up to ' . Carbon::parse($request->to_date)->format('d M Y');
-        } elseif ($request->filled('date')) {
-            $periodLabel = Carbon::parse($request->date)->format('d M Y');
-        } elseif ($request->filled('month') && $request->filled('year')) {
-            $periodLabel = Carbon::create((int) $request->year, (int) $request->month, 1)->format('F Y');
-        }
+        [$query, $filterRequest, $selectedEmployeeId, $selectedMonthYear, $periodLabel] = $this->resolveAttendanceRecordsQuery($request);
+
+        $attendances = $this->orderAttendanceQuery($query, $filterRequest)->get();
+        $this->normalizeAttendanceCollection($attendances);
 
         return view('hrms.attendance.reports.print', compact('attendances', 'periodLabel'));
     }
 
     public function exportPdf(Request $request)
     {
-        abort_unless($this->userHasPermission('attendance.export'), 403);
-        $attendances = $this->orderAttendanceQuery($this->scopeAttendanceQuery($this->applyFilters($this->baseQuery(), $request), 'attendance.records.view_all', 'attendance.monthly_report.view_team'), $request)->get();
-        $this->normalizeAttendanceCollection($attendances);
+        abort_unless(
+            $this->userHasPermission('attendance.export') 
+                || $this->userHasPermission('attendance.records.view_all') 
+                || $this->userHasPermission('attendance.monthly_report.view_all')
+                || $this->canViewAll('attendance.records.view_all'), 
+            403
+        );
 
-        $periodLabel = 'All Records';
-        if ($request->filled('from_date') && $request->filled('to_date')) {
-            $periodLabel = Carbon::parse($request->from_date)->format('d M Y') . ' - ' . Carbon::parse($request->to_date)->format('d M Y');
-        } elseif ($request->filled('from_date')) {
-            $periodLabel = 'From ' . Carbon::parse($request->from_date)->format('d M Y');
-        } elseif ($request->filled('to_date')) {
-            $periodLabel = 'Up to ' . Carbon::parse($request->to_date)->format('d M Y');
-        } elseif ($request->filled('date')) {
-            $periodLabel = Carbon::parse($request->date)->format('d M Y');
-        } elseif ($request->filled('month') && $request->filled('year')) {
-            $periodLabel = Carbon::create((int) $request->year, (int) $request->month, 1)->format('F Y');
+        [$query, $filterRequest, $selectedEmployeeId, $selectedMonthYear, $periodLabel] = $this->resolveAttendanceRecordsQuery($request);
+
+        @ini_set('memory_limit', '1024M');
+        @ini_set('max_execution_time', '300');
+
+        $rawRows = $this->orderAttendanceQuery($query, $filterRequest)->get();
+
+        $totalCount = $rawRows->count();
+        $presentCount = 0;
+        $lateCount = 0;
+        $earlyOutCount = 0;
+        $blockedCount = 0;
+        $totalMinutes = 0;
+
+        $rows = [];
+        foreach ($rawRows as $index => $a) {
+            $typeCode = optional($a->attendanceType)->code ?? 'default';
+            $typeName = optional($a->attendanceType)->name ?? ucwords(str_replace('_', ' ', $a->attendance_status ?? 'N/A'));
+            
+            if ($typeCode === 'present' || $a->attendance_status === 'present') {
+                $presentCount++;
+            }
+            if ($a->is_late) {
+                $lateCount++;
+            }
+            if ($a->is_early_out) {
+                $earlyOutCount++;
+            }
+            if ($a->is_blocked || $a->is_punch_blocked) {
+                $blockedCount++;
+            }
+            $totalMinutes += (int) ($a->total_work_minutes ?? 0);
+
+            $reasonText = $a->half_day_reason 
+                ?: ($a->lwp_reason 
+                ?: ($a->status_reason 
+                ?: ($a->remarks 
+                ?: ($a->blocked_reason
+                ?: ($a->block_reason
+                ?: ($a->auto_block_reason
+                ?: ($a->unlock_remarks 
+                ?: ($a->approval_remarks ?: '-'))))))));
+
+            $flags = [];
+            if ($a->is_late) {
+                $flags[] = 'Late ' . ($a->late_minutes ?? 0) . 'm';
+            }
+            if ($a->is_early_out) {
+                $flags[] = 'Early ' . ($a->early_out_minutes ?? 0) . 'm';
+            }
+            if ($a->is_blocked || $a->is_punch_blocked) {
+                $flags[] = 'Blocked';
+            }
+            if ($a->missed_punch || $a->is_missed_punch) {
+                $flags[] = 'Missed';
+            }
+
+            $rows[] = [
+                'sno' => $index + 1,
+                'emp_name' => optional($a->user)->name ?? optional($a->employee)->display_name ?? 'N/A',
+                'emp_code' => optional($a->employee)->employee_code ?? 'N/A',
+                'dept' => optional(optional($a->employee)->department)->name ?? 'Staff',
+                'shift' => optional($a->attendanceTime)->name ?? 'Default Shift',
+                'date' => $a->attendance_date ? Carbon::parse($a->attendance_date)->format('d M Y') : '-',
+                'mode' => ($a->punch_in_time && !in_array($typeCode, ['week_off', 'absent', 'leave'], true)) ? strtoupper($a->work_mode ?? 'WFO') : '-',
+                'punch_in' => $a->punch_in_time ? Carbon::parse($a->punch_in_time)->format('h:i A') : '-',
+                'punch_out' => $a->punch_out_time ? Carbon::parse($a->punch_out_time)->format('h:i A') : '-',
+                'target_out' => $a->target_punch_out_time ? Carbon::parse($a->target_punch_out_time)->format('h:i A') : '-',
+                'gross' => $a->gross_duration ?? 'N/A',
+                'net' => $a->net_duration ?? 'N/A',
+                'status_code' => $typeCode,
+                'status_name' => $typeName,
+                'reason' => $reasonText,
+                'flags' => !empty($flags) ? implode(', ', $flags) : 'Clear',
+            ];
         }
 
-        $pdf = Pdf::loadView('hrms.attendance.reports.pdf', compact('attendances', 'periodLabel'))
-            ->setPaper('a4', 'landscape');
-        return $pdf->download('attendance_report_' . date('Y_m_d') . '.pdf');
+        unset($rawRows);
+
+        $stats = [
+            'total' => $totalCount,
+            'present' => $presentCount,
+            'late' => $lateCount,
+            'early_out' => $earlyOutCount,
+            'blocked' => $blockedCount,
+            'total_hours' => round($totalMinutes / 60, 1),
+        ];
+
+        // 30 rows per page chunk
+        $chunkedRows = array_chunk($rows, 30);
+        if (empty($chunkedRows)) {
+            $chunkedRows = [[]];
+        }
+
+        $pdf = Pdf::loadView('hrms.attendance.reports.pdf', compact('chunkedRows', 'periodLabel', 'stats'))
+            ->setPaper('a4', 'landscape')
+            ->setOption('isHtml5ParserEnabled', false)
+            ->setOption('isRemoteEnabled', false);
+
+        return $pdf->download('attendance_report_' . date('Y_m_d_His') . '.pdf');
     }
 
     public function exportExcel(Request $request)
     {
-        abort_unless($this->userHasPermission('attendance.export'), 403);
-        $rows = $this->orderAttendanceQuery($this->scopeAttendanceQuery(
-            $this->applyFilters($this->baseQuery(), $request),
-            'attendance.records.view_all',
-            'attendance.monthly_report.view_team'
-        ), $request)->get();
+        abort_unless(
+            $this->userHasPermission('attendance.export') 
+                || $this->userHasPermission('attendance.records.view_all') 
+                || $this->userHasPermission('attendance.monthly_report.view_all')
+                || $this->canViewAll('attendance.records.view_all'), 
+            403
+        );
 
+        [$query, $filterRequest, $selectedEmployeeId, $selectedMonthYear, $periodLabel] = $this->resolveAttendanceRecordsQuery($request);
+
+        $rows = $this->orderAttendanceQuery($query, $filterRequest)->get();
         $this->normalizeAttendanceCollection($rows);
 
         $filename = 'attendance_report_' . date('Y_m_d_His') . '.csv';

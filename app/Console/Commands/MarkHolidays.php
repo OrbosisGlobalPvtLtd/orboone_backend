@@ -32,7 +32,7 @@ class MarkHolidays extends Command
             return self::FAILURE;
         }
 
-        $employees = Employee::where('is_active', true)->get();
+        $employees = Employee::activeEligible($dateStr)->get();
         $count = 0;
 
         foreach ($employees as $employee) {

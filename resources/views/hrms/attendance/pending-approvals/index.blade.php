@@ -832,9 +832,12 @@
                         } elseif (empty($rawStatus) || $rawStatus === 'unlocked' || $rawStatus === 'present' || ($isUnlocked && empty($attendance->attendance_status))) {
                             $statusCode = 'present';
                             $statusLabel = 'Present';
-                        } elseif ($rawStatus === 'absent' || $rawStatus === 'lwp') {
+                        } elseif ($rawStatus === 'absent') {
                             $statusCode = 'absent';
                             $statusLabel = '🔴 ABSENT';
+                        } elseif ($rawStatus === 'lwp') {
+                            $statusCode = 'lwp';
+                            $statusLabel = '🔴 LWP';
                         } elseif ($rawStatus === 'half_day') {
                             $statusCode = 'half_day';
                             $statusLabel = 'Half Day';

@@ -1411,20 +1411,23 @@ $kpis = [
                          if (empty($rawStatus)) {
                              $rawStatus = optional($attendance->attendanceType)->code ?? 'default';
                          }
-                         if ($rawStatus === 'absent' || $rawStatus === 'lwp') {
+                         if ($rawStatus === 'absent') {
                              $typeCode = 'absent';
                              $statusName = '🔴 ABSENT';
+                         } elseif ($rawStatus === 'lwp') {
+                             $typeCode = 'lwp';
+                             $statusName = '🔴 LWP';
                          } else {
                              $statusMap = [
                                  'present' => ['present', 'Present'],
                                  'half_day' => ['half_day', 'Half Day'],
                                  'absent' => ['absent', '🔴 ABSENT'],
+                                 'lwp' => ['lwp', '🔴 LWP'],
                                  'missed_punch' => ['missed_punch', 'Missed Punch'],
                                  'leave' => ['leave', 'Leave'],
                                  'holiday' => ['holiday', 'Holiday'],
                                  'week_off' => ['week_off', 'Week Off'],
                                  'punch_blocked' => ['punch_blocked', 'Punch Blocked'],
-                                 'lwp' => ['absent', '🔴 ABSENT'],
                              ];
                              $mapped = $statusMap[$rawStatus] ?? null;
                              if ($mapped) {
@@ -1434,8 +1437,8 @@ $kpis = [
                                  $typeCode = optional($attendance->attendanceType)->code ?? 'default';
                                  $statusName = optional($attendance->attendanceType)->name ?? 'N/A';
                                  if ($typeCode === 'lwp') {
-                                     $typeCode = 'absent';
-                                     $statusName = '🔴 ABSENT';
+                                     $typeCode = 'lwp';
+                                     $statusName = '🔴 LWP';
                                  }
                              }
                          }

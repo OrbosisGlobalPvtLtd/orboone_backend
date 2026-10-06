@@ -113,6 +113,19 @@ class AttendanceMobileService
             $payload['can_punch_out'] = false;
         }
         $payload['next_action'] = $attendanceData['next_action'] ?? ($payload['ui']['next_action'] ?? 'none');
+
+        $eligibilityService = app(\App\Services\HRMS\Employee\EmployeeEligibilityS::class);
+        if (! $eligibilityService->canUseAttendance($employee)) {
+            $payload['can_punch_in'] = false;
+            $payload['can_punch_out'] = false;
+            $payload['next_action'] = 'none';
+            if (isset($payload['ui']) && is_array($payload['ui'])) {
+                $payload['ui']['can_punch_in'] = false;
+                $payload['ui']['can_punch_out'] = false;
+                $payload['ui']['next_action'] = 'none';
+            }
+        }
+
         $payload['office_location'] = $this->attendanceService->officeLocationPayload();
 
         $wfhService = $this->wfhRequestService ?: app(WfhRequestService::class);

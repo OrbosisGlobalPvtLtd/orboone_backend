@@ -64,11 +64,11 @@
                     'status' => $row['status'],
                     'work_mode' => $row['mode'],
                     'submitted_time' => $row['submitted_time'],
-                    'projects' => [],
+                    'projects' => $row['projects'] ?? [],
                     'requirements' => array_map(fn($t) => ['text' => $t['text'], 'done' => $t['done']], $row['structured_tasks']),
-                    'test_status' => ['tested' => false, 'completed' => true],
-                    'issues' => [],
-                    'notes' => null,
+                    'test_status' => $row['test_status'] ?? ['tested' => false, 'completed' => true],
+                    'issues' => $row['issues'] ?? [],
+                    'notes' => $row['notes'] ?? null,
                 ];
             @endphp
             <tr>

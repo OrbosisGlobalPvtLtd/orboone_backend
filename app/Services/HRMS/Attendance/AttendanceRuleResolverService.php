@@ -475,14 +475,14 @@ class AttendanceRuleResolverService
         $hasApprovedWorkRequest = (bool) ($dayContext['has_approved_work_request'] ?? false);
 
         // Check for Final Attendance States
-        $isLwp = (bool) ($attendance?->is_lwp ?? false) || $rawStatus === 'lwp' || in_array($typeCode, ['lwp'], true);
-        $isLeave = ! $isAttendanceHalfDay && ! $isLwp && ($isFullLeave || $rawStatus === 'leave' || $typeCode === 'leave' || (bool) ($attendance?->is_leave ?? false));
+        $isAbsent = ($rawStatus === 'absent' || in_array($typeCode, ['absent'], true)) && (! $isUnlocked || $hasPunchOut || ! $hasPunchIn);
+        $isLwp = ! $isAbsent && ($rawStatus === 'lwp' || in_array($typeCode, ['lwp'], true));
+        $isLeave = ! $isAttendanceHalfDay && ! $isLwp && ! $isAbsent && ($isFullLeave || $rawStatus === 'leave' || $typeCode === 'leave' || (bool) ($attendance?->is_leave ?? false));
         $isHoliday = ! $hasApprovedWorkRequest && ! $hasPunchIn && ((bool) ($dayContext['is_holiday'] ?? false) || $rawStatus === 'holiday' || in_array($typeCode, ['holiday'], true));
         $isWeekoff = ! $hasApprovedWorkRequest && ! $hasPunchIn && ((bool) ($dayContext['is_weekoff'] ?? false) || $rawStatus === 'week_off' || in_array($typeCode, ['week_off'], true));
         $isHalfDay = $isAttendanceHalfDay || $rawStatus === 'half_day' || in_array($typeCode, ['half_day'], true);
-        $isMissedPunch = (bool) ($attendance?->missed_punch ?? $attendance?->is_missed_punch ?? false) || $rawStatus === 'missed_punch' || in_array($typeCode, ['missed_punch'], true);
-        $isAbsent = ($rawStatus === 'absent' || in_array($typeCode, ['absent'], true) || $isLwp) && (! $isUnlocked || $hasPunchOut || ! $hasPunchIn);
-        $isPresent = $hasPunchIn && ! $isHalfDay && ! $isMissedPunch && ! $isLwp && ! $isAbsent;
+        $isMissedPunch = ! ($hasPunchIn && $hasPunchOut) && ($rawStatus === 'missed_punch' || in_array($typeCode, ['missed_punch'], true));
+        $isPresent = ($rawStatus === 'present' || in_array($typeCode, ['present'], true) || ($hasPunchIn && ! $isHalfDay && ! $isLwp && ! $isAbsent && ! $isLeave && ! $isHoliday && ! $isWeekoff && ! $isMissedPunch));
 
         $isBlockedDb = ! $isUnlocked && (bool) (
             $attendance?->is_blocked
@@ -495,7 +495,7 @@ class AttendanceRuleResolverService
         $attDateStr = $attendance ? Carbon::parse($attendance->attendance_date, self::TIMEZONE)->toDateString() : $today;
         $isAttDateToday = $attDateStr === $evalNow->toDateString();
 
-        // Priority Order: 1 Holiday, 2 Week Off, 3 Approved Leave, 4 Present, 5 Half Day, 6 Missed Punch, 7 Punch Blocked, 8 Absent
+        // Priority Order: 1 Holiday, 2 Week Off, 3 Approved Leave, 4 LWP, 5 Half Day, 6 Present, 7 Missed Punch, 8 Punch Blocked, 9 Absent
         if ($isUnlocked && ! $hasPunchIn && $isAttDateToday) {
             return [
                 'status_code' => 'awaiting_punch_in',
@@ -533,10 +533,12 @@ class AttendanceRuleResolverService
             $finalCode = 'week_off';
         } elseif ($isLeave) {
             $finalCode = 'leave';
-        } elseif ($isPresent) {
-            $finalCode = 'present';
+        } elseif ($isLwp) {
+            $finalCode = 'lwp';
         } elseif ($isHalfDay) {
             $finalCode = 'half_day';
+        } elseif ($isPresent) {
+            $finalCode = 'present';
         } elseif ($isMissedPunch) {
             $finalCode = 'missed_punch';
         } elseif ($isBlockedDb) {
@@ -555,6 +557,7 @@ class AttendanceRuleResolverService
                 'week_off' => 'Week Off',
                 'present' => 'Present',
                 'half_day' => 'Half Day',
+                'lwp' => 'Leave Without Pay',
                 'missed_punch' => 'Missed Punch',
                 'punch_blocked' => 'Punch Blocked',
                 'absent' => 'Absent',
@@ -577,7 +580,7 @@ class AttendanceRuleResolverService
                 $nextAction = 'punch_in';
             }
 
-            if (in_array($finalCode, ['absent', 'missed_punch', 'punch_blocked', 'leave', 'holiday', 'week_off'], true)) {
+            if (in_array($finalCode, ['absent', 'lwp', 'missed_punch', 'punch_blocked', 'leave', 'holiday', 'week_off'], true)) {
                 $attendanceState = $finalCode;
             }
 

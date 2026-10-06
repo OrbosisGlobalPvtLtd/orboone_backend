@@ -6,7 +6,10 @@ use App\Http\Resources\HRMS\Attendance\AttendanceRegularizationResource;
 use App\Http\Controllers\Api\V1\ApiController;
 use App\Models\HRMS\Attendance\AttendanceM as Attendance;
 use App\Models\HRMS\Attendance\AttendanceRegularizationM;
+use App\Models\HRMS\Attendance\AttendanceViolationM;
 use App\Models\HRMS\Employee\EmployeeM;
+use App\Services\HRMS\Attendance\AttendanceRegularizationService;
+use App\Services\HRMS\Attendance\AttendanceRuleResolverService;
 use App\Services\HRMS\Attendance\AttendanceS;
 use App\Services\HRMS\Notification\NotificationS;
 use Carbon\Carbon;
@@ -79,7 +82,7 @@ class AttendanceRegularizationController extends ApiController
                 ], 422);
             }
 
-            $service = app(\App\Services\HRMS\Attendance\AttendanceRegularizationService::class);
+            $service = app(AttendanceRegularizationService::class);
             $result = $service->getAvailableRegularizationTypes($employee, $date);
 
             return response()->json([
@@ -379,7 +382,7 @@ class AttendanceRegularizationController extends ApiController
         $result = null;
         try {
             DB::transaction(function () use ($row, $request, &$result) {
-                $service = app(\App\Services\HRMS\Attendance\AttendanceRegularizationService::class);
+                $service = app(AttendanceRegularizationService::class);
                 $result = $service->applyApprovedRegularization($row, auth()->id());
 
                 if ($request->filled('approval_note')) {
@@ -445,6 +448,37 @@ class AttendanceRegularizationController extends ApiController
                 }
 
                 if ($attendance && !$attendance->payroll_processed && !$attendance->is_locked) {
+                    $employee = EmployeeM::find($row->employee_id);
+                    $dateStr = Carbon::parse($attendance->attendance_date)->toDateString();
+                    $policy = $employee ? app(AttendanceRuleResolverService::class)->resolveShiftPolicy($employee, $dateStr, $attendance->attendance_time_id) : null;
+                    $allowedMissedPunches = (int) ($policy->allowed_missed_punches ?? 2);
+                    if ($allowedMissedPunches <= 0 && isset($policy->missed_punch_lwp_after) && (int)$policy->missed_punch_lwp_after > 1) {
+                        $allowedMissedPunches = (int)$policy->missed_punch_lwp_after - 1;
+                    }
+
+                    $attDate = Carbon::parse($attendance->attendance_date, AttendanceRegularizationService::TIMEZONE);
+                    $missedCount = AttendanceViolationM::where('employee_id', $attendance->employee_id)
+                        ->where('type', 'missed_punch')
+                        ->whereYear('violation_date', $attDate->year)
+                        ->whereMonth('violation_date', $attDate->month)
+                        ->count();
+
+                    $limitExceeded = $allowedMissedPunches >= 0 && $missedCount > $allowedMissedPunches;
+
+                    if ($limitExceeded) {
+                        $lwpType = $attendanceService->attendanceType('lwp');
+                        $attendance->attendance_status = 'lwp';
+                        if ($lwpType) {
+                            $attendance->attendance_type_id = $lwpType->id;
+                        }
+                        $attendance->is_lwp = true;
+                        $attendance->lwp_reason = 'Monthly missed punch grace limit exceeded. Regularization rejected.';
+                        $attendance->remarks = 'Monthly missed punch grace limit exceeded. Regularization rejected.';
+                    } else {
+                        $attendance->remarks = 'Regularization rejected: ' . $data['rejection_reason'];
+                    }
+                    $attendance->save();
+
                     $attendanceService->calculateAttendanceStats($attendance);
                     $attendanceService->syncAttendanceViolations($attendance);
                 }

@@ -150,6 +150,26 @@ class AttendanceM extends Model
         return $this->belongsTo(User::class, 'unlocked_by');
     }
 
+    public function violations()
+    {
+        return $this->hasMany(AttendanceViolationM::class, 'attendance_id');
+    }
+
+    public function regularizations()
+    {
+        return $this->hasMany(AttendanceRegularizationM::class, 'attendance_id');
+    }
+
+    public function statusLogs()
+    {
+        return $this->hasMany(AttendanceDailyStatusLogM::class, 'attendance_id')->orderBy('created_at', 'desc');
+    }
+
+    public function payrollImpacts()
+    {
+        return $this->hasMany(\App\Models\HRMS\Payroll\PayrollAttendanceImpactM::class, 'attendance_id');
+    }
+
     public function getDurationAttribute()
     {
         if ($this->punch_in_time && $this->punch_out_time) {

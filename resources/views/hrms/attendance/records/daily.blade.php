@@ -936,7 +936,11 @@
                             $typeCode = 'info';
                             $statusBadgeClass = 'badge-half_day';
                             $statusName = 'Half Day';
-                        } elseif ($attStatus === 'absent' || $attStatus === 'lwp' || ($attendance->is_lwp ?? false)) {
+                        } elseif ($attStatus === 'lwp' || ($attendance->is_lwp ?? false)) {
+                            $typeCode = 'danger';
+                            $statusBadgeClass = 'badge-lwp';
+                            $statusName = 'LWP';
+                        } elseif ($attStatus === 'absent') {
                             $typeCode = 'danger';
                             $statusBadgeClass = 'badge-absent';
                             $statusName = 'ABSENT';

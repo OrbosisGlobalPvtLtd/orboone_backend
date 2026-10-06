@@ -127,7 +127,7 @@ class PayrollAttendanceSummaryService
             'absent_days' => $absent,
             'late_count' => $attendances->where('is_late', true)->count(),
             'early_out_count' => $attendances->where('is_early_out', true)->count(),
-            'missed_punch_count' => $attendances->where('is_missed_punch', true)->count() + $attendances->where('missed_punch', true)->count(),
+            'missed_punch_count' => $attendances->filter(fn ($a) => (bool) ($a->is_missed_punch || $a->missed_punch || $a->attendance_status === 'missed_punch'))->count(),
             'total_work_minutes' => $attendances->sum('total_work_minutes'),
             'payable_days' => max(0, round(
                 $attendancePayableDays

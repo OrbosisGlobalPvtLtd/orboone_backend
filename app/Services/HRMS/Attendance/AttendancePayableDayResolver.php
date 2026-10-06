@@ -63,8 +63,11 @@ class AttendancePayableDayResolver
             return $this->row(0.0, 'unpaid', true, 'Punch blocked attendance is unresolved.');
         }
 
+        if ((bool) $attendance->is_lwp || in_array($effective, ['lwp', 'absent'], true)) {
+            return $this->row(0.0, 'unpaid', false, 'Unpaid attendance.');
+        }
+
         if ($isPendingHr || $isMissedPunch) {
-           
             $hasApprovedReg = DB::table('attendance_regularizations')
                 ->where('attendance_id', $attendance->id)
                 ->where('status', 'approved')
@@ -74,12 +77,7 @@ class AttendancePayableDayResolver
                 return $this->row(1.0, 'paid', false, 'Missed punch regularized and approved.');
             }
 
-            
-            return $this->row(0.0, 'unpaid', false, 'Missed punch treated as LWP for payroll calculation.');
-        }
-
-        if ((bool) $attendance->is_lwp || in_array($effective, ['lwp', 'absent'], true)) {
-            return $this->row(0.0, 'unpaid', false, 'Unpaid attendance.');
+            return $this->row(1.0, 'paid', false, 'Missed punch within monthly grace limit (Warning - No salary deduction).');
         }
 
         if ((bool) $attendance->is_half_day || $effective === 'half_day') {

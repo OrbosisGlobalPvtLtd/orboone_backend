@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Web\HRMS\Concerns\HrmsCrudPage;
 use App\Mail\HrWorkflowAlertMail;
 use App\Models\HRMS\Attendance\AttendanceM;
+use App\Models\HRMS\Attendance\AttendanceViolationM;
 use App\Models\HRMS\Employee\EmployeeM;
+use App\Services\HRMS\Attendance\AttendanceRegularizationService;
+use App\Services\HRMS\Attendance\AttendanceRuleResolverService;
 use App\Services\HRMS\Attendance\AttendanceS;
 use App\Services\HRMS\Notification\NotificationS;
 use Carbon\Carbon;
@@ -176,7 +179,7 @@ class AttendanceRegularizationC extends Controller
                 ]);
             }
 
-            $service = app(\App\Services\HRMS\Attendance\AttendanceRegularizationService::class);
+            $service = app(AttendanceRegularizationService::class);
             $result = $service->getAvailableRegularizationTypes($employee, $rawDate);
 
             return response()->json($result);
@@ -222,7 +225,7 @@ class AttendanceRegularizationC extends Controller
 
         $attendanceDate = $data['attendance_date'];
 
-        $service = app(\App\Services\HRMS\Attendance\AttendanceRegularizationService::class);
+        $service = app(AttendanceRegularizationService::class);
         $optionsResult = $service->getAvailableRegularizationTypes($employee, $attendanceDate);
 
         if (! $optionsResult['can_regularize']) {
@@ -330,7 +333,7 @@ class AttendanceRegularizationC extends Controller
         $employee = EmployeeM::find($data['employee_id']);
         if ($employee) {
             try {
-                $service = app(\App\Services\HRMS\Attendance\AttendanceRegularizationService::class);
+                $service = app(AttendanceRegularizationService::class);
                 $service->validateRegularizationTimes(
                     employee: $employee,
                     attendanceDate: $baseDate,
@@ -363,7 +366,7 @@ class AttendanceRegularizationC extends Controller
         }
 
         try {
-            $service = app(\App\Services\HRMS\Attendance\AttendanceRegularizationService::class);
+            $service = app(AttendanceRegularizationService::class);
             $result = $service->applyApprovedRegularization((int) $id, $this->actorId());
         } catch (\Throwable $e) {
             return back()->with('error', $e->getMessage());
@@ -401,6 +404,7 @@ class AttendanceRegularizationC extends Controller
         $note = request('rejection_note') ?: request('rejection_reason') ?: 'Rejected by Admin';
 
         if ($row) {
+            $attendanceService = app(AttendanceS::class);
             $attendance = $row->attendance_id ? AttendanceM::find($row->attendance_id) : null;
             if (!$attendance) {
                 $attendance = AttendanceM::firstOrCreate(
@@ -408,17 +412,39 @@ class AttendanceRegularizationC extends Controller
                 );
             }
             if ($attendance && !$attendance->payroll_processed && !$attendance->is_locked) {
-                $lwpType = app(AttendanceS::class)->attendanceType('lwp');
-                $attendance->attendance_status = 'lwp';
-                if ($lwpType) {
-                    $attendance->attendance_type_id = $lwpType->id;
+                $employee = EmployeeM::find($row->employee_id);
+                $dateStr = Carbon::parse($attendance->attendance_date)->toDateString();
+                $policy = $employee ? app(AttendanceRuleResolverService::class)->resolveShiftPolicy($employee, $dateStr, $attendance->attendance_time_id) : null;
+                $allowedMissedPunches = (int) ($policy->allowed_missed_punches ?? 2);
+                if ($allowedMissedPunches <= 0 && isset($policy->missed_punch_lwp_after) && (int)$policy->missed_punch_lwp_after > 1) {
+                    $allowedMissedPunches = (int)$policy->missed_punch_lwp_after - 1;
                 }
-                $attendance->is_lwp = true;
-                $attendance->lwp_reason = 'Missed punch regularization rejected';
-                $attendance->remarks = 'Missed punch regularization rejected';
+
+                $attDate = Carbon::parse($attendance->attendance_date, AttendanceRegularizationService::TIMEZONE);
+                $missedCount = AttendanceViolationM::where('employee_id', $attendance->employee_id)
+                    ->where('type', 'missed_punch')
+                    ->whereYear('violation_date', $attDate->year)
+                    ->whereMonth('violation_date', $attDate->month)
+                    ->count();
+
+                $limitExceeded = $allowedMissedPunches >= 0 && $missedCount > $allowedMissedPunches;
+
+                if ($limitExceeded) {
+                    $lwpType = $attendanceService->attendanceType('lwp');
+                    $attendance->attendance_status = 'lwp';
+                    if ($lwpType) {
+                        $attendance->attendance_type_id = $lwpType->id;
+                    }
+                    $attendance->is_lwp = true;
+                    $attendance->lwp_reason = 'Monthly missed punch grace limit exceeded. Regularization rejected.';
+                    $attendance->remarks = 'Monthly missed punch grace limit exceeded. Regularization rejected.';
+                } else {
+                    $attendance->remarks = 'Regularization rejected: ' . $note;
+                }
                 $attendance->save();
 
-                app(AttendanceS::class)->syncAttendanceViolations($attendance);
+                $attendanceService->calculateAttendanceStats($attendance);
+                $attendanceService->syncAttendanceViolations($attendance);
             }
         }
 
@@ -429,6 +455,19 @@ class AttendanceRegularizationC extends Controller
             'rejection_reason' => $note,
             'updated_at' => now(),
         ]);
+
+        $employee = $row ? EmployeeM::find($row->employee_id) : null;
+        if ($employee?->user_id) {
+            app(NotificationS::class)->notifyEmployee(
+                'Attendance Regularization Update',
+                'Your regularization request has been rejected.',
+                'attendance_regularization_rejected',
+                'hrms.attendance.regularizations.index',
+                [],
+                ['regularization_id' => $id],
+                (int) $employee->user_id
+            );
+        }
 
         return back()->with('success', 'Regularization rejected.');
     }

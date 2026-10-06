@@ -128,85 +128,128 @@
     </div>
 </div>
 
-<script>
+<<script>
     function parseAndOpenWorkReport(btnElement) {
+        if (!btnElement) return;
         const rawLog = btnElement.getAttribute('data-work-log');
 
-        // Debug payload temporarily
-        console.log('[WorkReportPayload]', rawLog);
-
         try {
-            if (!rawLog) {
+            let log = null;
+
+            if (rawLog) {
+                try {
+                    log = typeof rawLog === 'object' ? rawLog : JSON.parse(rawLog);
+                } catch (e) {
+                    console.warn('[WorkReportPayload Parse Warning]', e);
+                }
+            }
+
+            if (!log) {
+                // Fallback to legacy attributes if present
+                const legacyProject = btnElement.getAttribute('data-project');
+                const legacyTasks = btnElement.getAttribute('data-tasks');
+                const legacyDesc = btnElement.getAttribute('data-desc');
+                const legacyStatus = btnElement.getAttribute('data-status');
+                const legacyIssues = btnElement.getAttribute('data-issues');
+                const legacyNotes = btnElement.getAttribute('data-notes');
+
+                if (legacyProject || legacyTasks || legacyDesc || legacyStatus) {
+                    let parsedTasks = [];
+                    try { if (legacyTasks) parsedTasks = JSON.parse(legacyTasks); } catch(err) {}
+                    let parsedIssues = [];
+                    try { if (legacyIssues) parsedIssues = JSON.parse(legacyIssues); } catch(err) {}
+
+                    log = {
+                        title: legacyProject || 'Work Report Submitted',
+                        description: legacyDesc || '',
+                        status: legacyStatus || 'Completed',
+                        requirements: Array.isArray(parsedTasks) ? parsedTasks : [],
+                        issues: Array.isArray(parsedIssues) ? parsedIssues : (legacyIssues ? [legacyIssues] : []),
+                        notes: legacyNotes || ''
+                    };
+                }
+            }
+
+            if (!log) {
                 showModalFallback("No report data associated.");
                 return;
             }
 
-            let log = null;
-            try {
-                log = JSON.parse(rawLog);
-            } catch (e) {
-                showModalFallback("Unable to load structured report.");
-                return;
-            }
-
-            if (!log) {
-                showModalFallback("Unable to load structured report.");
-                return;
-            }
-
             // Hide fallback, show content
-            document.getElementById('modal-fallback-alert').classList.add('d-none');
-            document.getElementById('modal-content-container').classList.remove('d-none');
+            const fallbackEl = document.getElementById('modal-fallback-alert');
+            const containerEl = document.getElementById('modal-content-container');
+            if (fallbackEl) fallbackEl.classList.add('d-none');
+            if (containerEl) containerEl.classList.remove('d-none');
 
             // Populate Employee Info
-            document.getElementById('modal-emp-name').innerText = log.employee_name || 'Employee';
+            const empNameEl = document.getElementById('modal-emp-name');
+            if (empNameEl) empNameEl.innerText = log.employee_name || 'Employee';
+
             const avatarBox = document.getElementById('modal-emp-avatar');
             const initial = (log.employee_initial || (log.employee_name || 'E').substring(0, 1)).toUpperCase();
 
-            if (log.passport_photo_url) {
-                avatarBox.innerHTML = `
-                    <img src="${escapeHtml(log.passport_photo_url)}"
-                         alt="${escapeHtml(log.employee_name || 'Employee')}"
-                         style="width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block;"
-                         onerror="this.style.display='none'; this.parentElement.innerHTML='${initial}';">
-                `;
-            } else {
-                avatarBox.innerHTML = '';
-                avatarBox.innerText = initial;
+            if (avatarBox) {
+                if (log.passport_photo_url) {
+                    avatarBox.innerHTML = `
+                        <img src="${escapeHtml(log.passport_photo_url)}"
+                             alt="${escapeHtml(log.employee_name || 'Employee')}"
+                             style="width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block;"
+                             onerror="this.style.display='none'; this.parentElement.innerHTML='${initial}';">
+                    `;
+                } else {
+                    avatarBox.innerHTML = '';
+                    avatarBox.innerText = initial;
+                }
             }
-            document.getElementById('modal-emp-code').innerText = log.employee_code || 'N/A';
-            document.getElementById('modal-emp-dept').innerText = log.department || 'Staff';
-            document.getElementById('modal-emp-desig').innerText = log.designation || 'Member';
+
+            const codeEl = document.getElementById('modal-emp-code');
+            if (codeEl) codeEl.innerText = log.employee_code || 'N/A';
+
+            const deptEl = document.getElementById('modal-emp-dept');
+            if (deptEl) deptEl.innerText = log.department || 'Staff';
+
+            const desigEl = document.getElementById('modal-emp-desig');
+            if (desigEl) desigEl.innerText = log.designation || 'Member';
 
             // Populate Date / Shift / Status
-            document.getElementById('modal-work-date').innerText = log.work_date || '-';
-            document.getElementById('modal-shift-name').innerText = log.shift_name || 'Default Shift';
+            const dateEl = document.getElementById('modal-work-date');
+            if (dateEl) dateEl.innerText = log.work_date || '-';
+
+            const shiftEl = document.getElementById('modal-shift-name');
+            if (shiftEl) shiftEl.innerText = log.shift_name || 'Default Shift';
 
             // Status Badge
             const statusBadge = document.getElementById('modal-attendance-badge');
-            const status = (log.attendance_status || 'present').toLowerCase();
-            statusBadge.innerText = status.includes('absent') && log.is_lwp ? '🔴 ABSENT' : status.replace('_', ' ');
-            statusBadge.className = 'badge-premium-pill';
-            if (status === 'present') {
-                statusBadge.style.background = '#DCFCE7';
-                statusBadge.style.color = '#15803D';
-            } else if (status === 'absent' || status === 'lwp' || status.includes('absent')) {
-                statusBadge.style.background = '#FEE2E2';
-                statusBadge.style.color = '#B91C1C';
-            } else if (status === 'half_day') {
-                statusBadge.style.background = '#FEF3C7';
-                statusBadge.style.color = '#B45309';
-            } else {
-                statusBadge.style.background = '#F3F4F6';
-                statusBadge.style.color = '#374151';
+            if (statusBadge) {
+                const status = (log.attendance_status || 'present').toLowerCase();
+                statusBadge.innerText = status.includes('absent') && log.is_lwp ? '🔴 ABSENT' : status.replace('_', ' ');
+                statusBadge.className = 'badge-premium-pill';
+                if (status === 'present') {
+                    statusBadge.style.background = '#DCFCE7';
+                    statusBadge.style.color = '#15803D';
+                } else if (status === 'absent' || status === 'lwp' || status.includes('absent')) {
+                    statusBadge.style.background = '#FEE2E2';
+                    statusBadge.style.color = '#B91C1C';
+                } else if (status === 'half_day') {
+                    statusBadge.style.background = '#FEF3C7';
+                    statusBadge.style.color = '#B45309';
+                } else {
+                    statusBadge.style.background = '#F3F4F6';
+                    statusBadge.style.color = '#374151';
+                }
             }
 
             // Mode & Submitted Badge
-            document.getElementById('modal-mode-badge').innerText = (log.work_mode || 'WFO').toUpperCase();
-            document.getElementById('modal-submitted-badge').innerText = log.submitted_time || '-';
+            const modeEl = document.getElementById('modal-mode-badge');
+            if (modeEl) modeEl.innerText = (log.work_mode || 'WFO').toUpperCase();
+
+            const submittedEl = document.getElementById('modal-submitted-badge');
+            if (submittedEl) submittedEl.innerText = log.submitted_time || '-';
 
             // Title & Description
-            document.getElementById('modal-report-title').innerText = log.title || 'Work Report Submitted';
+            const titleEl = document.getElementById('modal-report-title');
+            if (titleEl) titleEl.innerText = log.title || 'Work Report Submitted';
+
             let descText = log.description || '';
             if (descText.includes('☑') || descText.includes('☐')) {
                 const lines = descText.split('\n');
@@ -216,136 +259,160 @@
                     descText = log.status ? ("Today's Work Status: " + log.status) : "Work report submitted with project tasks.";
                 }
             }
-            document.getElementById('modal-report-desc').innerText = descText || 'No summary description provided.';
+            const descEl = document.getElementById('modal-report-desc');
+            if (descEl) descEl.innerText = descText || 'No summary description provided.';
 
             // Requirements / Tasks Checklist / Projects
             const tasksList = document.getElementById('modal-tasks-list');
-            tasksList.innerHTML = '';
+            if (tasksList) {
+                tasksList.innerHTML = '';
 
-            if (log.projects && Array.isArray(log.projects) && log.projects.length > 0) {
-                log.projects.forEach(proj => {
-                    const projBlock = document.createElement('div');
-                    projBlock.className = 'mb-3 p-2.5 rounded-lg border bg-white shadow-xs';
-                    projBlock.style.borderRadius = '12px';
+                if (log.projects && Array.isArray(log.projects) && log.projects.length > 0) {
+                    log.projects.forEach(proj => {
+                        const projBlock = document.createElement('div');
+                        projBlock.className = 'mb-3 p-2.5 rounded-lg border bg-white shadow-xs';
+                        projBlock.style.borderRadius = '12px';
 
-                    let projTasksHtml = '';
-                    if (proj.tasks && Array.isArray(proj.tasks)) {
-                        proj.tasks.forEach(task => {
-                            const isDone = (task.is_completed === true || task.is_completed === 1 || task.is_completed === '1' || task.completed === true || task.completed === 1 || task.completed === '1');
-                            const taskName = task.task_name || task.task || task.description || task.title || 'Task';
-                            projTasksHtml += `
-                                <div class="d-flex justify-content-between align-items-center mb-1.5 p-2 rounded" style="border-radius: 8px; background: ${isDone ? '#F0FDF4' : '#F8FAFC'}; border: ${isDone ? '1px solid #BBF7D0' : '1.5px solid #E2E8F0'};">
-                                    <div style="font-size: 12.5px; font-weight: 700; color: ${isDone ? '#166534' : '#334155'};">
-                                        ${isDone ? '☑' : '☐'} ${taskName}
+                        let projTasksHtml = '';
+                        if (proj.tasks && Array.isArray(proj.tasks)) {
+                            proj.tasks.forEach(task => {
+                                let isDone = true;
+                                let taskName = 'Task';
+
+                                if (typeof task === 'string') {
+                                    taskName = task;
+                                    isDone = true;
+                                } else if (typeof task === 'object' && task !== null) {
+                                    taskName = task.task_name || task.task || task.description || task.title || 'Task';
+                                    if (task.is_completed !== undefined) {
+                                        isDone = (task.is_completed === true || task.is_completed === 1 || task.is_completed === '1' || task.is_completed === 'true');
+                                    } else if (task.completed !== undefined) {
+                                        isDone = (task.completed === true || task.completed === 1 || task.completed === '1' || task.completed === 'true');
+                                    } else if (task.done !== undefined) {
+                                        isDone = (task.done === true || task.done === 1 || task.done === '1' || task.done === 'true');
+                                    } else {
+                                        const st = (task.status || 'completed').toLowerCase();
+                                        isDone = (st === 'completed' || st === 'done' || st === 'success');
+                                    }
+                                }
+
+                                projTasksHtml += `
+                                    <div class="d-flex justify-content-between align-items-center mb-1.5 p-2 rounded" style="border-radius: 8px; background: ${isDone ? '#F0FDF4' : '#F8FAFC'}; border: ${isDone ? '1px solid #BBF7D0' : '1.5px solid #E2E8F0'};">
+                                        <div style="font-size: 12.5px; font-weight: 700; color: ${isDone ? '#166534' : '#334155'};">
+                                            ${isDone ? '☑' : '☐'} ${escapeHtml(taskName)}
+                                        </div>
+                                        <span style="font-size: 9px; font-weight: 800; padding: 2px 8px; border-radius: 50px; ${isDone ? 'background: #DCFCE7; color: #166534;' : 'background: #FEF3C7; color: #D97706;'}">
+                                            ${isDone ? 'COMPLETED' : 'PENDING'}
+                                        </span>
                                     </div>
-                                    <span style="font-size: 9px; font-weight: 800; padding: 2px 8px; border-radius: 50px; ${isDone ? 'background: #DCFCE7; color: #166534;' : 'background: #FEF3C7; color: #D97706;'}">
-                                        ${isDone ? 'COMPLETED' : 'PENDING'}
-                                    </span>
-                                </div>
-                            `;
-                        });
-                    }
-
-                    projBlock.innerHTML = `
-                        <div class="d-flex align-items-center mb-2 pb-1 border-bottom">
-                            <strong style="font-size: 13px; color: #1e1b4b;"><i class="fas fa-folder text-primary mr-1"></i> ${proj.project_name || 'Project'}</strong>
-                        </div>
-                        ${projTasksHtml || '<div class="text-muted small italic p-2">No tasks listed under this project</div>'}
-                    `;
-                    tasksList.appendChild(projBlock);
-                });
-            } else {
-                // Normalize requirements/tasks for legacy reports
-                const items = log.requirements || log.tasks || [];
-                if (Array.isArray(items) && items.length > 0) {
-                    items.forEach(item => {
-                        let taskText = '';
-                        let isCompleted = true;
-
-                        if (typeof item === 'string') {
-                            taskText = item;
-                            isCompleted = true;
-                        } else if (typeof item === 'object' && item !== null) {
-                            taskText = item.text || item.task || item.title || item.description || 'Task';
-                            if (item.done !== undefined) {
-                                isCompleted = (item.done === true || item.done === 'true');
-                            } else {
-                                const tStatus = (item.status || 'completed').toLowerCase();
-                                isCompleted = (tStatus === 'completed' || tStatus === 'done' || tStatus === 'success');
-                            }
+                                `;
+                            });
                         }
 
-                        const row = document.createElement('div');
-                        row.style.background = isCompleted ? '#F0FDF4' : '#F9FAFB';
-                        row.style.border = isCompleted ? '1px solid #BBF7D0' : '1px solid #E5E7EB';
-                        row.style.borderRadius = '10px';
-                        row.style.padding = '8px 12px';
-                        row.className = 'd-flex justify-content-between align-items-center gap-3 mb-1.5';
-
-                        row.innerHTML = `
-                            <div style="font-size: 12.5px; font-weight: 700; color: ${isCompleted ? '#166534' : '#475467'};">
-                                ${isCompleted ? '☑' : '☐'} ${taskText}
+                        projBlock.innerHTML = `
+                            <div class="d-flex align-items-center mb-2 pb-1 border-bottom">
+                                <strong style="font-size: 13px; color: #1e1b4b;"><i class="fas fa-folder text-primary mr-1"></i> ${escapeHtml(proj.project_name || proj.name || 'Project')}</strong>
                             </div>
-                            <span style="font-size: 8.5px; font-weight: 800; padding: 2px 6px; border-radius: 50px; ${isCompleted ? 'background: #DCFCE7; color: #166534;' : 'background: #F3F4F6; color: #6B7280;'}">
-                                ${isCompleted ? 'COMPLETED' : 'PENDING'}
-                            </span>
+                            ${projTasksHtml || '<div class="text-muted small italic p-2">No tasks listed under this project</div>'}
                         `;
-                        tasksList.appendChild(row);
+                        tasksList.appendChild(projBlock);
                     });
                 } else {
-                    tasksList.innerHTML = `
-                        <div class="text-center py-2.5 border rounded-lg bg-white text-muted" style="border-radius: 10px; font-style: italic; font-size: 11.5px;">
-                            <i class="fas fa-info-circle mr-1"></i> No checklist items.
+                    // Normalize requirements/tasks for legacy reports
+                    const items = log.requirements || log.tasks || [];
+                    if (Array.isArray(items) && items.length > 0) {
+                        items.forEach(item => {
+                            let taskText = '';
+                            let isCompleted = true;
+
+                            if (typeof item === 'string') {
+                                taskText = item;
+                                isCompleted = true;
+                            } else if (typeof item === 'object' && item !== null) {
+                                taskText = item.text || item.task || item.task_name || item.title || item.description || 'Task';
+                                if (item.done !== undefined) {
+                                    isCompleted = (item.done === true || item.done === 'true' || item.done === 1 || item.done === '1');
+                                } else if (item.is_completed !== undefined) {
+                                    isCompleted = (item.is_completed === true || item.is_completed === 'true' || item.is_completed === 1 || item.is_completed === '1');
+                                } else if (item.completed !== undefined) {
+                                    isCompleted = (item.completed === true || item.completed === 'true' || item.completed === 1 || item.completed === '1');
+                                } else {
+                                    const tStatus = (item.status || 'completed').toLowerCase();
+                                    isCompleted = (tStatus === 'completed' || tStatus === 'done' || tStatus === 'success');
+                                }
+                            }
+
+                            const row = document.createElement('div');
+                            row.style.background = isCompleted ? '#F0FDF4' : '#F9FAFB';
+                            row.style.border = isCompleted ? '1px solid #BBF7D0' : '1px solid #E5E7EB';
+                            row.style.borderRadius = '10px';
+                            row.style.padding = '8px 12px';
+                            row.className = 'd-flex justify-content-between align-items-center gap-3 mb-1.5';
+
+                            row.innerHTML = `
+                                <div style="font-size: 12.5px; font-weight: 700; color: ${isCompleted ? '#166534' : '#475467'};">
+                                    ${isCompleted ? '☑' : '☐'} ${escapeHtml(taskText)}
+                                </div>
+                                <span style="font-size: 8.5px; font-weight: 800; padding: 2px 6px; border-radius: 50px; ${isCompleted ? 'background: #DCFCE7; color: #166534;' : 'background: #F3F4F6; color: #6B7280;'}">
+                                    ${isCompleted ? 'COMPLETED' : 'PENDING'}
+                                </span>
+                            `;
+                            tasksList.appendChild(row);
+                        });
+                    } else {
+                        tasksList.innerHTML = `
+                            <div class="text-center py-2.5 border rounded-lg bg-white text-muted" style="border-radius: 10px; font-style: italic; font-size: 11.5px;">
+                                <i class="fas fa-info-circle mr-1"></i> No checklist items.
+                            </div>
+                        `;
+                    }
+                }
+            }
+
+            // Issues & Blockers (Array / String / Null safety)
+            const issuesArea = document.getElementById('modal-issues-area');
+            if (issuesArea) {
+                const issues = Array.isArray(log.issues) ? log.issues : (log.issues ? [log.issues] : []);
+
+                let hasIssues = false;
+                let issuesText = '';
+
+                const realIssues = issues.filter(item => {
+                    if (typeof item !== 'string') return true;
+                    const val = item.trim().toLowerCase();
+                    return val !== 'no issues' && val !== 'none' && val.length > 0;
+                });
+
+                if (realIssues.length > 0) {
+                    hasIssues = true;
+                    issuesText = realIssues.join(', ');
+                }
+
+                if (hasIssues) {
+                    issuesArea.innerHTML = `
+                        <div style="background: #FFF5F5; border: 1px solid #FEB2B2; color: #C53030; border-radius: 10px; padding: 8px 12px; font-size: 11.5px; line-height: 1.4; border-left: 3px solid #E53E3E !important;">
+                            <i class="fas fa-exclamation-circle mr-1.5"></i> <strong>Blocker:</strong> ${escapeHtml(issuesText)}
+                        </div>
+                    `;
+                } else {
+                    issuesArea.innerHTML = `
+                        <div style="background: #F0FDF4; border: 1px solid #BBF7D0; color: #166534; border-radius: 10px; padding: 8px; font-size: 11.5px; font-weight: 800; text-align: center; border: 1px dashed #166534;">
+                            <i class="fas fa-check-circle mr-2"></i> NO ISSUES REPORTED
                         </div>
                     `;
                 }
             }
 
-            // Test Verification Status (removed per user directive)
-            const testArea = document.getElementById('modal-test-status-area');
-            if (testArea) {
-                testArea.innerHTML = '';
-            }
-
-            // Issues & Blockers (Array / String / Null safety)
-            const issuesArea = document.getElementById('modal-issues-area');
-            const issues = Array.isArray(log.issues) ? log.issues : (log.issues ? [log.issues] : []);
-
-            let hasIssues = false;
-            let issuesText = '';
-
-            const realIssues = issues.filter(item => {
-                if (typeof item !== 'string') return true;
-                const val = item.trim().toLowerCase();
-                return val !== 'no issues' && val !== 'none' && val.length > 0;
-            });
-
-            if (realIssues.length > 0) {
-                hasIssues = true;
-                issuesText = realIssues.join(', ');
-            }
-
-            if (hasIssues) {
-                issuesArea.innerHTML = `
-                    <div style="background: #FFF5F5; border: 1px solid #FEB2B2; color: #C53030; border-radius: 10px; padding: 8px 12px; font-size: 11.5px; line-height: 1.4; border-left: 3px solid #E53E3E !important;">
-                        <i class="fas fa-exclamation-circle mr-1.5"></i> <strong>Blocker:</strong> ${issuesText}
-                    </div>
-                `;
-            } else {
-                issuesArea.innerHTML = `
-                    <div style="background: #F0FDF4; border: 1px solid #BBF7D0; color: #166534; border-radius: 10px; padding: 8px; font-size: 11.5px; font-weight: 800; text-align: center; border: 1px dashed #166534;">
-                        <i class="fas fa-check-circle mr-2"></i> NO ISSUES REPORTED
-                    </div>
-                `;
-            }
-
             // Developer Notes
             const notesWrapper = document.getElementById('modal-notes-wrapper');
-            if (log.notes && log.notes !== 'null' && log.notes.trim().length > 0) {
-                notesWrapper.classList.remove('d-none');
-                document.getElementById('modal-notes-text').innerText = log.notes;
-            } else {
-                notesWrapper.classList.add('d-none');
+            const notesTextEl = document.getElementById('modal-notes-text');
+            if (notesWrapper && notesTextEl) {
+                if (log.notes && log.notes !== 'null' && String(log.notes).trim().length > 0) {
+                    notesWrapper.classList.remove('d-none');
+                    notesTextEl.innerText = log.notes;
+                } else {
+                    notesWrapper.classList.add('d-none');
+                }
             }
 
             // Save active log references for printing
@@ -357,8 +424,8 @@
                 printBtn.style.display = activeModalWorkLogId ? 'inline-flex' : 'none';
             }
 
-            // Show modal
-            $('#sharedWorkReportModal').modal('show');
+            // Show modal reliably across Bootstrap versions
+            showSharedModal();
 
         } catch (err) {
             console.error('[parseAndOpenWorkReport Error]', err);
@@ -384,21 +451,52 @@
             printBtn.style.display = 'none';
         }
 
-        document.getElementById('modal-emp-name').innerText = 'Work Report';
+        const nameEl = document.getElementById('modal-emp-name');
+        if (nameEl) nameEl.innerText = 'Work Report';
+
         const avatarBox = document.getElementById('modal-emp-avatar');
-        avatarBox.innerHTML = '';
-        avatarBox.innerText = 'R';
-        document.getElementById('modal-emp-code').innerText = '-';
-        document.getElementById('modal-emp-dept').innerText = '-';
-        document.getElementById('modal-emp-desig').innerText = '-';
-        document.getElementById('modal-work-date').innerText = '-';
-        document.getElementById('modal-shift-name').innerText = '-';
+        if (avatarBox) {
+            avatarBox.innerHTML = '';
+            avatarBox.innerText = 'R';
+        }
 
-        document.getElementById('modal-fallback-alert').classList.remove('d-none');
-        document.getElementById('fallback-message').innerText = message;
-        document.getElementById('modal-content-container').classList.add('d-none');
+        const codeEl = document.getElementById('modal-emp-code');
+        if (codeEl) codeEl.innerText = '-';
 
-        $('#sharedWorkReportModal').modal('show');
+        const deptEl = document.getElementById('modal-emp-dept');
+        if (deptEl) deptEl.innerText = '-';
+
+        const desigEl = document.getElementById('modal-emp-desig');
+        if (desigEl) desigEl.innerText = '-';
+
+        const dateEl = document.getElementById('modal-work-date');
+        if (dateEl) dateEl.innerText = '-';
+
+        const shiftEl = document.getElementById('modal-shift-name');
+        if (shiftEl) shiftEl.innerText = '-';
+
+        const fallbackEl = document.getElementById('modal-fallback-alert');
+        if (fallbackEl) fallbackEl.classList.remove('d-none');
+
+        const fallbackMsgEl = document.getElementById('fallback-message');
+        if (fallbackMsgEl) fallbackMsgEl.innerText = message;
+
+        const containerEl = document.getElementById('modal-content-container');
+        if (containerEl) containerEl.classList.add('d-none');
+
+        showSharedModal();
+    }
+
+    function showSharedModal() {
+        const modalEl = document.getElementById('sharedWorkReportModal');
+        if (!modalEl) return;
+
+        if (typeof $ !== 'undefined' && typeof $.fn.modal !== 'undefined') {
+            $('#sharedWorkReportModal').modal('show');
+        } else if (typeof bootstrap !== 'undefined' && typeof bootstrap.Modal !== 'undefined') {
+            const inst = bootstrap.Modal.getOrCreateInstance ? bootstrap.Modal.getOrCreateInstance(modalEl) : new bootstrap.Modal(modalEl);
+            inst.show();
+        }
     }
 
     function escapeHtml(value) {

@@ -1158,11 +1158,22 @@
                 </div>
                 <div class="orb-table-export-buttons eo-toolbar-right">
                     @if(!$isMyAttendance)
+                    @php
+                        $exportParams = request()->query();
+                        if (!isset($exportParams['month_year']) && !isset($exportParams['date']) && !isset($exportParams['from_date']) && !isset($exportParams['month'])) {
+                            if (!empty($selectedMonthYear)) {
+                                $exportParams['month_year'] = $selectedMonthYear;
+                            }
+                        }
+                        if (!isset($exportParams['employee_id']) && !empty($selectedEmployeeId)) {
+                            $exportParams['employee_id'] = $selectedEmployeeId;
+                        }
+                    @endphp
                     <x-ui.export-buttons 
-                        :csvUrl="route('attendances.export-excel', request()->query())" 
-                        :excelUrl="route('attendances.export-excel', request()->query())" 
-                        :pdfUrl="route('attendances.export-pdf', request()->query())" 
-                        :printUrl="route('attendances.print', request()->query())" 
+                        :csvUrl="route('attendances.export-excel', $exportParams)" 
+                        :excelUrl="route('attendances.export-excel', $exportParams)" 
+                        :pdfUrl="route('attendances.export-pdf', $exportParams)" 
+                        :printUrl="route('attendances.print', $exportParams)" 
                     />
                     @endif
                 </div>
@@ -1202,14 +1213,18 @@
                         if (($attendance->is_admin_unlocked || $attendance->unlocked_at || $attendance->unlock_type) && ($rawStatus === 'punch_blocked' || empty($rawStatus))) {
                             $rawStatus = $attendance->punch_in_time ? 'present' : 'unlocked';
                         }
-                        if ($rawStatus === 'absent' || $rawStatus === 'lwp') {
+                        if ($rawStatus === 'absent') {
                             $typeCode = 'absent';
                             $statusName = 'ABSENT';
+                        } elseif ($rawStatus === 'lwp') {
+                            $typeCode = 'lwp';
+                            $statusName = 'LWP';
                         } else {
                             $statusMap = [
                                 'present'           => ['present', 'PRESENT'],
                                 'half_day'          => ['half_day', 'HALF DAY'],
                                 'absent'            => ['absent', 'ABSENT'],
+                                'lwp'               => ['lwp', 'LWP'],
                                 'missed_punch'      => ['missed_punch', 'MISSED PUNCH'],
                                 'leave'             => ['leave', 'LEAVE'],
                                 'holiday'           => ['holiday', 'HOLIDAY'],
@@ -1217,7 +1232,7 @@
                                 'punch_blocked'     => ['punch_blocked', 'PUNCH BLOCKED'],
                                 'unlocked'          => ['unlocked', 'UNLOCKED'],
                                 'awaiting_punch_in' => ['unlocked', 'UNLOCKED'],
-                                'lwp'               => ['absent', 'ABSENT'],
+                                
                             ];
                             $mapped = $statusMap[$rawStatus] ?? null;
                             if ($mapped) {
@@ -1259,7 +1274,7 @@
                         $isBlocked = $attendance->is_blocked ?? $attendance->is_punch_blocked ?? false;
                         $isLate = $attendance->is_late ?? $attendance->late_mark ?? false;
                         $isEarly = $attendance->is_early_out ?? $attendance->early_leave_mark ?? false;
-                        $isMissed = $attendance->missed_punch ?? false;
+                        $isMissed = (bool) ($attendance->missed_punch ?? $attendance->is_missed_punch ?? false);
                         @endphp
 
                         <tr>
@@ -1333,17 +1348,26 @@
 
                             <td>
                                 @php
-                                    $reasonText = $attendance->half_day_reason 
-                                        ?: ($attendance->lwp_reason 
-                                        ?: ($attendance->status_reason 
-                                        ?: ($attendance->remarks 
-                                        ?: ($attendance->blocked_reason
-                                        ?: ($attendance->block_reason
-                                        ?: ($attendance->unlock_remarks 
-                                        ?: ($attendance->approval_remarks ?: null)))))));
+                                    $reasonText = match ($typeCode) {
+                                        'lwp' => $attendance->lwp_reason ?: ($attendance->status_reason ?: ($attendance->remarks ?: ($attendance->half_day_reason ?: null))),
+                                        'half_day' => $attendance->half_day_reason ?: ($attendance->status_reason ?: ($attendance->remarks ?: ($attendance->lwp_reason ?: null))),
+                                        'absent' => $attendance->status_reason ?: ($attendance->remarks ?: ($attendance->lwp_reason ?: null)),
+                                        'punch_blocked' => $attendance->blocked_reason ?: ($attendance->block_reason ?: ($attendance->status_reason ?: ($attendance->remarks ?: null))),
+                                        'missed_punch' => $attendance->missed_punch_reason ?: ($attendance->lwp_reason ?: ($attendance->status_reason ?: ($attendance->remarks ?: null))),
+                                        'unlocked', 'awaiting_punch_in' => $attendance->unlock_remarks ?: ($attendance->approval_remarks ?: ($attendance->status_reason ?: null)),
+                                        default => $attendance->half_day_reason 
+                                            ?: ($attendance->lwp_reason 
+                                            ?: ($attendance->missed_punch_reason
+                                            ?: ($attendance->status_reason 
+                                            ?: ($attendance->remarks 
+                                            ?: ($attendance->blocked_reason
+                                            ?: ($attendance->block_reason
+                                            ?: ($attendance->unlock_remarks 
+                                            ?: ($attendance->approval_remarks ?: null)))))))),
+                                    };
                                 @endphp
                                 @if(!empty($reasonText))
-                                    <div class="text-truncate" style="max-width: 160px; font-size: 12px; color: #475467; font-weight: 500;" title="{{ $reasonText }}">
+                                    <div style="min-width: 180px; max-width: 340px; font-size: 12px; color: #344054; font-weight: 500; line-height: 1.45; white-space: normal; word-break: break-word;" title="{{ $reasonText }}">
                                         {{ $reasonText }}
                                     </div>
                                 @else
@@ -1376,23 +1400,29 @@
                             <td>
                                 @php
                                     $firstLog = $attendance->workLogs->first();
-                                @endphp
-                                @if($firstLog)
-                                    @php
+                                    $logPayload = null;
+                                    $repTitle = 'Work Report Submitted';
+                                    $repDesc = null;
+                                    $repStatus = 'Completed';
+                                    $projectsList = [];
+                                    $requirementsList = [];
+                                    $testStatus = ['tested' => false, 'completed' => false];
+                                    $issues = [];
+                                    $notes = null;
+
+                                    if ($firstLog) {
                                         $tasks = $firstLog->work_summary_json;
                                         if (is_string($tasks)) {
                                             $tasks = json_decode($tasks, true);
                                         }
-                                        $title = 'Work Report Submitted';
-                                        $status = 'Completed';
-                                        $requirementsList = [];
-                                        
+
                                         if (is_array($tasks)) {
                                             if (isset($tasks['projects']) && is_array($tasks['projects'])) {
-                                                foreach ($tasks['projects'] as $p) {
+                                                $projectsList = $tasks['projects'];
+                                                foreach ($projectsList as $p) {
                                                     $pName = $p['project_name'] ?? $p['name'] ?? 'Project';
-                                                    if (!empty($pName) && $title === 'Work Report Submitted') {
-                                                        $title = $pName;
+                                                    if (!empty($pName) && $repTitle === 'Work Report Submitted') {
+                                                        $repTitle = $pName;
                                                     }
                                                     if (isset($p['tasks']) && is_array($p['tasks'])) {
                                                         foreach ($p['tasks'] as $t) {
@@ -1407,40 +1437,112 @@
                                                     }
                                                 }
                                             }
+
                                             if (empty($requirementsList)) {
                                                 $reqItems = $tasks['requirements'] ?? ($tasks['tasks'] ?? []);
                                                 if (is_array($reqItems)) {
                                                     $requirementsList = $reqItems;
                                                 }
                                             }
+
                                             if (isset($tasks['today_work_status']) && !empty($tasks['today_work_status'])) {
-                                                $status = ucfirst($tasks['today_work_status']);
+                                                $repStatus = ucfirst($tasks['today_work_status']);
                                             } elseif (isset($tasks['current_status']) && !empty($tasks['current_status'])) {
-                                                $status = ucfirst($tasks['current_status']);
+                                                $repStatus = ucfirst($tasks['current_status']);
                                             } elseif (isset($tasks['status']) && !empty($tasks['status'])) {
-                                                $status = ucfirst($tasks['status']);
+                                                $repStatus = ucfirst($tasks['status']);
                                             }
-                                            if ($title === 'Work Report Submitted' && !empty($tasks['task_name'])) {
-                                                $title = $tasks['task_name'];
-                                            } elseif ($title === 'Work Report Submitted' && !empty($tasks['title'])) {
-                                                $title = $tasks['title'];
+
+                                            if ($repTitle === 'Work Report Submitted' && !empty($tasks['task_name'])) {
+                                                $repTitle = $tasks['task_name'];
+                                            } elseif ($repTitle === 'Work Report Submitted' && !empty($tasks['title'])) {
+                                                $repTitle = $tasks['title'];
                                             }
+
+                                            $rawDesc = $tasks['description'] ?? ($tasks['today_work_description'] ?? null);
+                                            if ($rawDesc && !str_contains($rawDesc, '☑') && !str_contains($rawDesc, '☐')) {
+                                                $repDesc = $rawDesc;
+                                            } else {
+                                                if ($repStatus) {
+                                                    $repDesc = "Today's Work Status: " . ucfirst($repStatus);
+                                                } else {
+                                                    $repDesc = "Work report submitted with project tasks.";
+                                                }
+                                            }
+
+                                            if (isset($tasks['test_status']) && is_array($tasks['test_status'])) {
+                                                $testStatus = [
+                                                    'tested' => $tasks['test_status']['tested'] ?? false,
+                                                    'completed' => $tasks['test_status']['completed'] ?? false,
+                                                ];
+                                            } else {
+                                                $stLower = strtolower($repStatus);
+                                                $isTested = in_array($stLower, ['testing', 'done', 'completed', 'tested', 'yes'], true);
+                                                $isCompleted = in_array($stLower, ['done', 'completed', 'yes'], true);
+                                                $testStatus = [
+                                                    'tested' => $isTested,
+                                                    'completed' => $isCompleted,
+                                                ];
+                                            }
+
+                                            $rawIssues = $tasks['issues_blockers'] ?? ($tasks['issues'] ?? []);
+                                            if (is_array($rawIssues)) {
+                                                $issues = $rawIssues;
+                                            } elseif (is_string($rawIssues) && trim($rawIssues) !== '' && strtolower(trim($rawIssues)) !== 'no issues' && strtolower(trim($rawIssues)) !== 'none') {
+                                                $issues = [$rawIssues];
+                                            }
+
+                                            $notes = $tasks['additional_notes'] ?? ($tasks['remarks'] ?? ($tasks['notes'] ?? null));
+                                        } else {
+                                            $repDesc = $firstLog->work_summary ?? 'No summary provided.';
                                         }
+
+                                        $logPayload = [
+                                            'id' => $firstLog->id,
+                                            'work_log_id' => $firstLog->id,
+                                            'employee_name' => $employeeName,
+                                            'employee_code' => $employeeCode,
+                                            'passport_photo_url' => resolveEmployeePassportPhoto($attendance->employee ?? $attendance),
+                                            'employee_initial' => resolveEmployeeInitials($attendance->employee ?? $attendance),
+                                            'department' => optional(optional($attendance->employee)->department)->name ?? 'Staff',
+                                            'designation' => optional(optional($attendance->employee)->designation)->name ?? 'Member',
+                                            'work_date' => $attendance->attendance_date ? \Carbon\Carbon::parse($attendance->attendance_date)->format('d M Y') : '-',
+                                            'shift_name' => optional($attendance->attendanceTime)->name ?? 'Default Shift',
+                                            'attendance_status' => ($attendance->attendance_status ?? 'present') === 'absent' && ($attendance->is_lwp ?? false) ? '🔴 ABSENT' : ($attendance->attendance_status ?? 'present'),
+                                            'is_lwp' => (bool) ($attendance->is_lwp ?? false),
+                                            'title' => $repTitle,
+                                            'description' => $repDesc,
+                                            'status' => $repStatus,
+                                            'work_mode' => strtoupper($attendance->work_mode ?? 'WFO'),
+                                            'submitted_time' => $firstLog->created_at ? $firstLog->created_at->format('h:i A') : '-',
+                                            'projects' => $projectsList,
+                                            'requirements' => $requirementsList,
+                                            'test_status' => $testStatus,
+                                            'issues' => $issues,
+                                            'notes' => $notes,
+                                        ];
+                                    }
+                                @endphp
+                                @if($firstLog && $logPayload)
+                                    @php
                                         $taskCount = is_array($requirementsList) ? count($requirementsList) : 0;
                                         $tasksLabel = $taskCount . ' ' . \Illuminate\Support\Str::plural('Task', $taskCount);
-                                        $stLower = strtolower($status);
+                                        $stLower = strtolower($repStatus);
                                         $statusClass = ($stLower === 'completed' || $stLower === 'done') ? 'badge-present' : ($stLower === 'testing' ? 'badge-info' : 'badge-half_day');
                                     @endphp
-                                    <div class="d-flex flex-column gap-1" style="max-width: 200px;">
-                                        <div style="font-size: 12px; font-weight: 700; color: #1D2939; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ $title }}">
-                                            {{ $title }}
+                                    <div role="button" class="d-flex flex-column gap-1" style="max-width: 200px; cursor: pointer;" 
+                                         data-work-log="{{ json_encode($logPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}"
+                                         onclick="parseAndOpenWorkReport(this)"
+                                         title="Click to view work report">
+                                        <div style="font-size: 12px; font-weight: 700; color: #1D2939; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ $repTitle }}">
+                                            {{ $repTitle }}
                                         </div>
                                         <div class="d-flex align-items-center gap-1 mt-1">
                                             <span class="badge-premium-pill badge-wfo" style="font-size: 9px; padding: 3px 8px; font-weight: 800; border-radius: 6px;">
                                                 <i class="fas fa-list-check" style="font-size: 8px;"></i> {{ $tasksLabel }}
                                             </span>
                                             <span class="badge-premium-pill {{ $statusClass }}" style="font-size: 9px; padding: 3px 8px; font-weight: 800; border-radius: 6px; text-transform: uppercase;">
-                                                {{ $status }}
+                                                {{ $repStatus }}
                                             </span>
                                         </div>
                                     </div>
@@ -1456,123 +1558,6 @@
                                     </button>
 
                                     <div class="dropdown-menu dropdown-menu-right att-action-menu">
-                                        @php
-                                            $repTitle = 'Work Report Submitted';
-                                            $repDesc = null;
-                                            $repStatus = 'Completed';
-                                            $projectsList = [];
-                                            $requirementsList = [];
-                                            $testStatus = ['tested' => false, 'completed' => false];
-                                            $issues = [];
-                                            $notes = null;
-
-                                            if ($firstLog) {
-                                                $tasks = $firstLog->work_summary_json;
-                                                if (is_string($tasks)) {
-                                                    $tasks = json_decode($tasks, true);
-                                                }
-                                                
-                                                if (is_array($tasks)) {
-                                                    if (isset($tasks['projects']) && is_array($tasks['projects'])) {
-                                                        $projectsList = $tasks['projects'];
-                                                        foreach ($projectsList as $p) {
-                                                            $pName = $p['project_name'] ?? $p['name'] ?? 'Project';
-                                                            if (isset($p['tasks']) && is_array($p['tasks'])) {
-                                                                foreach ($p['tasks'] as $t) {
-                                                                    $tName = $t['task_name'] ?? $t['description'] ?? $t['task'] ?? $t['title'] ?? 'Task';
-                                                                    $tDone = (isset($t['is_completed']) ? ($t['is_completed'] == 1 || $t['is_completed'] === true || $t['is_completed'] === 'true') : (isset($t['completed']) ? ($t['completed'] == 1 || $t['completed'] === true || $t['completed'] === 'true') : true));
-                                                                    $requirementsList[] = [
-                                                                        'text' => $tName,
-                                                                        'done' => $tDone,
-                                                                        'project' => $pName
-                                                                    ];
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-
-                                                    if (empty($requirementsList)) {
-                                                        $reqItems = $tasks['requirements'] ?? ($tasks['tasks'] ?? []);
-                                                        if (is_array($reqItems)) {
-                                                            $requirementsList = $reqItems;
-                                                        }
-                                                    }
-
-                                                    $repStatus = $tasks['today_work_status'] ?? ($tasks['current_status'] ?? ($tasks['status'] ?? 'Completed'));
-
-                                                    if (!empty($projectsList) && !empty($projectsList[0]['project_name'])) {
-                                                        $repTitle = $projectsList[0]['project_name'];
-                                                    } elseif (!empty($tasks['task_name'])) {
-                                                        $repTitle = $tasks['task_name'];
-                                                    } elseif (!empty($tasks['title'])) {
-                                                        $repTitle = $tasks['title'];
-                                                    }
-
-                                                    $rawDesc = $tasks['description'] ?? ($tasks['today_work_description'] ?? null);
-                                                    if ($rawDesc && !str_contains($rawDesc, '☑') && !str_contains($rawDesc, '☐')) {
-                                                        $repDesc = $rawDesc;
-                                                    } else {
-                                                        if ($repStatus) {
-                                                            $repDesc = "Today's Work Status: " . ucfirst($repStatus);
-                                                        } else {
-                                                            $repDesc = "Work report submitted with project tasks.";
-                                                        }
-                                                    }
-
-                                                    if (isset($tasks['test_status']) && is_array($tasks['test_status'])) {
-                                                        $testStatus = [
-                                                            'tested' => $tasks['test_status']['tested'] ?? false,
-                                                            'completed' => $tasks['test_status']['completed'] ?? false,
-                                                        ];
-                                                    } else {
-                                                        $stLower = strtolower($repStatus);
-                                                        $isTested = in_array($stLower, ['testing', 'done', 'completed', 'tested', 'yes'], true);
-                                                        $isCompleted = in_array($stLower, ['done', 'completed', 'yes'], true);
-                                                        $testStatus = [
-                                                            'tested' => $isTested,
-                                                            'completed' => $isCompleted,
-                                                        ];
-                                                    }
-
-                                                    $rawIssues = $tasks['issues_blockers'] ?? ($tasks['issues'] ?? []);
-                                                    if (is_array($rawIssues)) {
-                                                        $issues = $rawIssues;
-                                                    } elseif (is_string($rawIssues) && trim($rawIssues) !== '' && strtolower(trim($rawIssues)) !== 'no issues' && strtolower(trim($rawIssues)) !== 'none') {
-                                                        $issues = [$rawIssues];
-                                                    }
-
-                                                    $notes = $tasks['additional_notes'] ?? ($tasks['remarks'] ?? ($tasks['notes'] ?? null));
-                                                } else {
-                                                    $repDesc = $firstLog->work_summary ?? 'No summary provided.';
-                                                }
-
-                                                $logPayload = [
-                                                    'id' => $firstLog->id,
-                                                    'work_log_id' => $firstLog->id,
-                                                    'employee_name' => $employeeName,
-                                                    'employee_code' => $employeeCode,
-                                                    'passport_photo_url' => resolveEmployeePassportPhoto($attendance->employee ?? $attendance),
-                                                    'employee_initial' => resolveEmployeeInitials($attendance->employee ?? $attendance),
-                                                    'department' => optional(optional($attendance->employee)->department)->name ?? 'Staff',
-                                                    'designation' => optional(optional($attendance->employee)->designation)->name ?? 'Member',
-                                                    'work_date' => $attendance->attendance_date ? \Carbon\Carbon::parse($attendance->attendance_date)->format('d M Y') : '-',
-                                                    'shift_name' => optional($attendance->attendanceTime)->name ?? 'Default Shift',
-                                                    'attendance_status' => ($attendance->attendance_status ?? 'present') === 'absent' && ($attendance->is_lwp ?? false) ? '🔴 ABSENT' : ($attendance->attendance_status ?? 'present'),
-                                                    'is_lwp' => (bool) ($attendance->is_lwp ?? false),
-                                                    'title' => $repTitle,
-                                                    'description' => $repDesc,
-                                                    'status' => $repStatus,
-                                                    'work_mode' => strtoupper($attendance->work_mode ?? 'WFO'),
-                                                    'submitted_time' => $firstLog->created_at ? $firstLog->created_at->format('h:i A') : '-',
-                                                    'projects' => $projectsList,
-                                                    'requirements' => $requirementsList,
-                                                    'test_status' => $testStatus,
-                                                    'issues' => $issues,
-                                                    'notes' => $notes,
-                                                ];
-                                            }
-                                        @endphp
-
                                         <button type="button"
                                             class="dropdown-item"
                                             data-toggle="modal"
@@ -1581,16 +1566,10 @@
                                             <span>View Details</span>
                                         </button>
 
-                                        @if($firstLog)
+                                        @if($firstLog && $logPayload)
                                             <button type="button"
                                                 class="dropdown-item"
-                                                data-project="{{ $repTitle }}"
-                                                data-desc="{{ $repDesc }}"
-                                                data-status="{{ $repStatus }}"
-                                                data-tasks="{{ json_encode($requirementsList) }}"
-                                                data-test-status="{{ json_encode($testStatus) }}"
-                                                data-issues="{{ json_encode($issues) }}"
-                                                data-notes="{{ $notes ?? '' }}"
+                                                data-work-log="{{ json_encode($logPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}"
                                                 onclick="parseAndOpenWorkReport(this)">
                                                 <i class="fas fa-clipboard-list text-primary"></i>
                                                 <span>View Work Report</span>
@@ -1779,6 +1758,24 @@
             url.searchParams.set('per_page', val);
             url.searchParams.delete('page'); 
             window.location.href = url.toString();
+        });
+
+        // Dynamically sync form filters with export buttons on click
+        $('.orb-table-export-buttons a').on('click', function(e) {
+            var href = $(this).attr('href');
+            if (!href || href === '#' || href.startsWith('javascript:')) return;
+            
+            var url = new URL(href, window.location.origin);
+            var form = $('#dailyAttendanceFilterForm');
+            if (form.length) {
+                var formData = form.serializeArray();
+                formData.forEach(function(item) {
+                    if (item.value && item.value !== 'all' && item.value !== '') {
+                        url.searchParams.set(item.name, item.value);
+                    }
+                });
+                $(this).attr('href', url.toString());
+            }
         });
 
         setTimeout(function() {

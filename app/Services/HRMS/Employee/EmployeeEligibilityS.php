@@ -50,7 +50,11 @@ class EmployeeEligibilityS
             return false;
         }
 
-        if (in_array($empStatus, ['terminated', 'exited', 'resigned_and_exited', 'inactive'], true)) {
+        if (in_array($empStatus, ['terminated', 'exited', 'resigned_and_exited', 'inactive', 'resigned'], true)) {
+            return false;
+        }
+
+        if ($this->isExitCompleted($employee) || $this->isTerminated($employee)) {
             return false;
         }
 
@@ -78,8 +82,7 @@ class EmployeeEligibilityS
             return true;
         }
 
-        $profStatus = strtolower(trim((string) ($profile->profile_status ?? 'pending')));
-        $isCompleted = (bool) ($profile->is_profile_completed ?? false);
+        $profStatus = strtolower(trim((string) ($profile->profile_status ?? $profile->approval_status ?? 'pending')));
 
         if ($profStatus === 'approved') {
             return false;

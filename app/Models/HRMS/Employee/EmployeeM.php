@@ -27,6 +27,8 @@ use App\Models\HRMS\Leave\LeaveAllocationM as LeaveAllocation;
 use App\Models\HRMS\Leave\LeaveRequestM as LeaveRequest;
 use App\Models\HRMS\Payroll\StatutorySettingM as StatutorySetting;
 use App\Models\HRMS\Document\EmployeeDocumentM;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class EmployeeM extends Model
 {
@@ -158,18 +160,55 @@ class EmployeeM extends Model
     public function scopeActiveEligible($query, ?string $date = null)
     {
         $date = $date ?: now()->toDateString();
-        return $query->where('employment_status', 'active')
+
+        static $hasExitTable = null;
+        static $hasCompletedExitCol = null;
+
+        if ($hasExitTable === null) {
+            $hasExitTable = Schema::hasTable('employee_exit_processes');
+        }
+        if ($hasCompletedExitCol === null) {
+            $hasCompletedExitCol = Schema::hasColumn('employees_new', 'has_completed_exit');
+        }
+
+        $exitedEmployeeIds = [];
+        if ($hasExitTable) {
+            $exitedEmployeeIds = DB::table('employee_exit_processes')
+                ->whereNotIn('status', ['cancelled', 'rejected', 'rolled_back'])
+                ->pluck('employee_id')
+                ->filter()
+                ->toArray();
+        }
+
+        return $query->where(function ($q) {
+                $q->where('employees_new.is_active', 1)
+                  ->orWhereNull('employees_new.is_active');
+            })
             ->where(function ($q) {
-                $q->whereNull('is_active')->orWhere('is_active', 1);
+                $q->where('employees_new.employment_status', 'active')
+                  ->orWhereNull('employees_new.employment_status');
+            })
+            ->where(function ($q) {
+                $q->whereNull('employees_new.employment_status')
+                  ->orWhereNotIn('employees_new.employment_status', ['exited', 'inactive', 'terminated', 'resigned', 'resigned_and_exited']);
+            })
+            ->where(function ($q) {
+                $q->whereNull('employees_new.employee_stage')
+                  ->orWhereNotIn('employees_new.employee_stage', ['exited', 'resigned']);
             })
             ->where(function ($q) use ($date) {
-                $q->whereNull('relieving_date')->orWhere('relieving_date', '>', $date);
+                $q->whereNull('employees_new.relieving_date')->orWhere('employees_new.relieving_date', '>', $date);
+            })
+            ->when($hasCompletedExitCol, function ($q) {
+                $q->where(function ($sq) {
+                    $sq->whereNull('employees_new.has_completed_exit')->orWhere('employees_new.has_completed_exit', 0);
+                });
+            })
+            ->when(!empty($exitedEmployeeIds), function ($q) use ($exitedEmployeeIds) {
+                $q->whereNotIn('employees_new.id', $exitedEmployeeIds);
             })
             ->whereHas('profile', function ($p) {
-                $p->where('is_profile_completed', 1)
-                  ->where(function ($st) {
-                      $st->whereNull('profile_status')->orWhere('profile_status', 'approved');
-                  });
+                $p->where('profile_status', 'approved');
             });
     }
 

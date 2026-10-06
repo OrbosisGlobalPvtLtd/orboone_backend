@@ -834,17 +834,30 @@ $disabled = $isReadOnly ? 'disabled' : '';
                     'verified' => 'badge-verified',
                     'rejected' => 'badge-rejected',
                     ][$docStatus] ?? 'badge-pending';
+
+                    $rawExts = is_array($type->allowed_extensions) 
+                        ? $type->allowed_extensions 
+                        : (json_decode($type->allowed_extensions ?? '[]', true) ?: []);
+                    if (empty($rawExts)) {
+                        $isPhoto = str_contains(strtolower($type->code ?? ''), 'photo') || str_contains(strtolower($type->name ?? ''), 'photo');
+                        $rawExts = $isPhoto ? ['jpg', 'jpeg', 'png'] : ['pdf', 'jpg', 'jpeg', 'png'];
+                    }
+                    $allowedExts = array_values(array_unique(array_filter(array_map('strtolower', $rawExts))));
+                    $acceptList = array_map(fn($e) => '.' . ltrim($e, '.'), $allowedExts);
+                    $acceptAttr = implode(',', $acceptList);
+                    $maxMb = (int) ($type->max_file_size_mb ?: 5);
                     @endphp
                     <div class="doc-card" data-applies-to="{{ strtolower(trim($type->applies_to ?? '')) }}">
                         <div class="doc-top">
                             <div>
                                 <div class="doc-name"><i class="fas fa-file-alt text-primary mr-1"></i>{{ $type->name }}</div>
-                                <div class="mt-2">
+                                <div class="mt-2 d-flex align-items-center gap-1 flex-wrap">
                                     @if($type->is_mandatory)
                                     <span class="badge-soft badge-required">Required</span>
                                     @else
                                     <span class="badge-soft badge-optional">Optional</span>
                                     @endif
+                                    <span class="text-muted" style="font-size:11px;font-weight:700;">({{ strtoupper(implode(', ', $allowedExts)) }} • Max {{ $maxMb }}MB)</span>
                                 </div>
                             </div>
                             <span class="badge-soft {{ $statusClass }}" id="doc_badge_{{ $type->id }}">
@@ -879,7 +892,7 @@ $disabled = $isReadOnly ? 'disabled' : '';
 
                         @if(!$isReadOnly)
                         <div class="doc-actions mt-1">
-                            <input type="file" id="file_{{ $type->id }}" class="d-none" onchange="uploadDoc({{ $type->id }})">
+                            <input type="file" id="file_{{ $type->id }}" class="d-none" accept="{{ $acceptAttr }}" data-allowed-extensions="{{ json_encode($allowedExts) }}" data-max-size-mb="{{ $maxMb }}" data-doc-name="{{ $type->name }}" onchange="uploadDoc({{ $type->id }})">
                             <button type="button" class="profile-btn profile-btn-soft w-100" onclick="document.getElementById('file_{{ $type->id }}').click()" id="upload_btn_{{ $type->id }}">
                                 <i class="fas fa-upload"></i> {{ $doc ? 'Re-upload Document' : 'Upload Document' }}
                             </button>
@@ -974,8 +987,34 @@ $disabled = $isReadOnly ? 'disabled' : '';
         let fileInput = document.getElementById('file_' + typeId);
         if (!fileInput.files.length) return;
 
+        let file = fileInput.files[0];
+        let allowedExtensions = [];
+        try {
+            allowedExtensions = JSON.parse(fileInput.getAttribute('data-allowed-extensions') || '[]');
+        } catch(e) {
+            allowedExtensions = [];
+        }
+
+        let maxMb = parseFloat(fileInput.getAttribute('data-max-size-mb') || '5');
+        let docName = fileInput.getAttribute('data-doc-name') || 'Document';
+
+        // Check file extension
+        let ext = file.name.split('.').pop().toLowerCase();
+        if (allowedExtensions.length > 0 && !allowedExtensions.includes(ext)) {
+            alert(`PDF or unsupported file type is not allowed for "${docName}".\nAllowed format(s): ${allowedExtensions.join(', ').toUpperCase()}`);
+            fileInput.value = '';
+            return;
+        }
+
+        // Check file size
+        if (file.size > maxMb * 1024 * 1024) {
+            alert(`File size exceeds maximum limit of ${maxMb}MB.`);
+            fileInput.value = '';
+            return;
+        }
+
         let formData = new FormData();
-        formData.append('file', fileInput.files[0]);
+        formData.append('file', file);
         formData.append('_token', '{{ csrf_token() }}');
         formData.append('document_type_id', typeId);
 
@@ -990,27 +1029,34 @@ $disabled = $isReadOnly ? 'disabled' : '';
                 method: 'POST',
                 body: formData
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
+            .then(response => {
+                return response.json().then(data => ({ status: response.status, body: data }));
+            })
+            .then(({ status, body }) => {
+                if (body.success) {
                     let badge = document.getElementById('doc_badge_' + typeId);
-                    badge.className = 'badge-soft badge-pending';
-                    badge.innerHTML = '<i class="fas fa-hourglass-half"></i> Pending';
+                    if (badge) {
+                        badge.className = 'badge-soft badge-pending';
+                        badge.innerHTML = '<i class="fas fa-hourglass-half"></i> Pending';
+                    }
 
                     let fileContainer = document.getElementById('doc_file_container_' + typeId);
-                    fileContainer.innerHTML = `
-                    <div class="doc-file">
-                        <span class="doc-file-name"><i class="fas fa-paperclip mr-1"></i>${fileInput.files[0].name.substring(0, 30)}...</span>
-                        <span class="badge badge-success px-2 py-1" style="font-size:10px;">New</span>
-                    </div>
-                `;
+                    if (fileContainer) {
+                        fileContainer.innerHTML = `
+                        <div class="doc-file">
+                            <span class="doc-file-name"><i class="fas fa-paperclip mr-1"></i>${file.name.substring(0, 30)}...</span>
+                            <span class="badge badge-success px-2 py-1" style="font-size:10px;">New</span>
+                        </div>
+                        `;
+                    }
 
                     btn.innerHTML = '<i class="fas fa-upload"></i> Re-upload Document';
                     btn.disabled = false;
                 } else {
-                    alert(data.message || 'Error uploading document');
+                    alert(body.message || 'Error uploading document');
                     btn.innerHTML = originalHtml;
                     btn.disabled = false;
+                    fileInput.value = '';
                 }
             })
             .catch(error => {
@@ -1018,6 +1064,7 @@ $disabled = $isReadOnly ? 'disabled' : '';
                 alert('An error occurred during upload.');
                 btn.innerHTML = originalHtml;
                 btn.disabled = false;
+                fileInput.value = '';
             });
     }
 </script>

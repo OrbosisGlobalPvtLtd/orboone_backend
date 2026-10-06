@@ -56,9 +56,7 @@ class EmployeeProfileCompletionS
 
         $isProfileApproved = ($profile?->profile_status ?? 'pending') === 'approved';
 
-        $canPunchAttendance = ! $isEmployee || $isProfileApproved || (
-            ($profile?->is_profile_completed ?? false) && $requiredVerified
-        );
+        $canPunchAttendance = ! $isEmployee || $isProfileApproved;
 
         $docVerificationStatus = 'missing';
 

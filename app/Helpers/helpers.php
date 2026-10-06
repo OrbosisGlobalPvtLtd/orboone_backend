@@ -736,6 +736,32 @@ if (!function_exists('formatWorkReportRow')) {
             $structuredTaskLines = ['[Done] ' . ($title ?: 'Work completed')];
         }
 
+        $rawIssues = is_array($tasks) ? ($tasks['issues_blockers'] ?? ($tasks['issues'] ?? [])) : [];
+        if (is_array($rawIssues)) {
+            $issues = $rawIssues;
+        } elseif (is_string($rawIssues) && trim($rawIssues) !== '' && strtolower(trim($rawIssues)) !== 'no issues' && strtolower(trim($rawIssues)) !== 'none') {
+            $issues = [$rawIssues];
+        } else {
+            $issues = [];
+        }
+
+        $notes = is_array($tasks) ? ($tasks['additional_notes'] ?? ($tasks['remarks'] ?? ($tasks['notes'] ?? null))) : null;
+
+        if (is_array($tasks) && isset($tasks['test_status']) && is_array($tasks['test_status'])) {
+            $testStatus = [
+                'tested' => $tasks['test_status']['tested'] ?? false,
+                'completed' => $tasks['test_status']['completed'] ?? false,
+            ];
+        } else {
+            $stLower = strtolower($status);
+            $isTested = in_array($stLower, ['testing', 'done', 'completed', 'tested', 'yes'], true);
+            $isCompleted = in_array($stLower, ['done', 'completed', 'yes'], true);
+            $testStatus = [
+                'tested' => $isTested,
+                'completed' => $isCompleted,
+            ];
+        }
+
         return [
             'id' => is_object($log) && isset($log->id) ? $log->id : null,
             'employee' => $employeeDisplay,
@@ -757,6 +783,10 @@ if (!function_exists('formatWorkReportRow')) {
             'structured_tasks' => $structuredTasks,
             'structured_task_lines' => $structuredTaskLines,
             'structured_tasks_text' => implode("\n", $structuredTaskLines),
+            'projects' => $projectsList,
+            'issues' => $issues,
+            'notes' => $notes,
+            'test_status' => $testStatus,
         ];
     }
 }

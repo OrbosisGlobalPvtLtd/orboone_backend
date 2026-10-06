@@ -6,13 +6,14 @@ use App\Models\Core\AccessM as Access;
 use App\Models\Core\MenuM as Menu;
 use Closure;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 
 class CheckAccess
 {
     public function handle(Request $request, Closure $next)
     {
-        $user = auth()->user();
+        $user = Auth::user();
 
         if (!$user) {
             return redirect()->route('login');
@@ -43,8 +44,16 @@ class CheckAccess
             return $next($request);
         }
 
-        // Always allow web attendance clock-in, clock-out, today, and my-attendance action routes for authenticated users
-        if (in_array($routeName, ['attendances.today', 'attendances.clock-in', 'attendances.clock-out', 'hrms.attendance.my'], true)) {
+        // Always allow web attendance clock-in, clock-out, today, my-attendance, and export/print action routes for authorized users
+        if (in_array($routeName, [
+            'attendances.today', 
+            'attendances.clock-in', 
+            'attendances.clock-out', 
+            'hrms.attendance.my',
+            'attendances.export-pdf',
+            'attendances.export-excel',
+            'attendances.print',
+        ], true)) {
             return $next($request);
         }
 

@@ -3,6 +3,8 @@
 @section('page_title', 'Team Attendance')
 
 @section('_head')
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
 <style>
 :root {
     --orb-primary: {{ $branding['primary_color'] ?? '#4B00E8' }};
@@ -18,6 +20,7 @@
     padding: 24px 20px 48px;
     background: var(--orb-bg);
     min-height: calc(100vh - 90px);
+    font-family: 'Outfit', sans-serif;
 }
 
 .rep-container {
@@ -116,13 +119,38 @@
 }
 
 .filter-control-sm {
-    height: 36px;
+    height: 38px;
     border-radius: 9px;
     font-size: 12.5px;
     border: 1px solid #CBD5E1;
     background: #FFFFFF;
     padding: 4px 10px;
     outline: none;
+}
+
+/* Select2 Standard Filter Skin */
+.select2-container--default .select2-selection--single {
+    height: 38px !important;
+    border: 1px solid #CBD5E1 !important;
+    border-radius: 10px !important;
+    display: flex !important;
+    align-items: center !important;
+    padding: 0 10px !important;
+    background-color: #fff !important;
+}
+
+.select2-container--default.select2-container--focus .select2-selection--single,
+.select2-container--default.select2-container--open .select2-selection--single {
+    border-color: var(--orb-primary) !important;
+    box-shadow: 0 0 0 3px rgba(75, 0, 232, 0.1) !important;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 36px !important;
+    font-size: 12.5px !important;
+    font-weight: 650 !important;
+    color: #101828 !important;
+    padding-left: 0 !important;
 }
 
 /* Sticky Table Header */
@@ -210,25 +238,29 @@
                 <h3 class="text-white font-weight-bold mb-1"><i class="fas fa-calendar-check mr-2"></i>Team Attendance</h3>
                 <p class="mb-0 opacity-90 small">Monitor attendance, working hours and work status of your team.</p>
             </div>
-            <form method="GET" action="{{ route('reporting.attendance') }}" class="form-inline flex-wrap gap-2">
+            <form method="GET" action="{{ route('reporting.attendance') }}" class="form-inline flex-wrap gap-2 align-items-center">
                 <!-- Team Member Filter -->
-                <select name="employee_id" class="filter-control-sm mr-2 mb-2" style="min-width: 180px;">
-                    <option value="">Team Member</option>
-                    @foreach($teamEmployees as $emp)
-                        <option value="{{ $emp->id }}" {{ request('employee_id') == $emp->id ? 'selected' : '' }}>
-                            {{ $emp->display_name }} ({{ $emp->employee_code }})
-                        </option>
-                    @endforeach
-                </select>
+                <div class="mr-2 mb-2" style="min-width: 220px;">
+                    <select name="employee_id" class="filter-control-sm select2-searchable w-100">
+                        <option value="">-- All Team Members --</option>
+                        @foreach($teamEmployees as $emp)
+                            <option value="{{ $emp->id }}" {{ request('employee_id') == $emp->id ? 'selected' : '' }}>
+                                {{ $emp->display_name }} ({{ $emp->employee_code }})
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
 
                 <!-- Date Filter -->
-                <input type="date" name="date" class="filter-control-sm mr-2 mb-2" value="{{ $date }}">
+                <div class="mr-2 mb-2" style="min-width: 170px;">
+                    <x-form.date-picker name="date" :value="$date" placeholder="Select Date" />
+                </div>
                 
                 <!-- Action Buttons -->
-                <button type="submit" class="btn btn-sm btn-light font-weight-bold mr-2 mb-2" style="height: 36px; border-radius: 9px; color: var(--orb-primary);">
+                <button type="submit" class="btn btn-sm btn-light font-weight-bold mr-2 mb-2" style="height: 38px; border-radius: 9px; color: var(--orb-primary);">
                     <i class="fas fa-filter mr-1"></i> Filter Date
                 </button>
-                <a href="{{ route('reporting.attendance') }}" class="btn btn-sm btn-outline-light font-weight-bold mb-2" style="height: 36px; border-radius: 9px; display: inline-flex; align-items: center; gap: 6px;">
+                <a href="{{ route('reporting.attendance') }}" class="btn btn-sm btn-outline-light font-weight-bold mb-2" style="height: 38px; border-radius: 9px; display: inline-flex; align-items: center; gap: 6px;">
                     <i class="fas fa-undo" style="font-size: 11px;"></i> Reset
                 </a>
             </form>
@@ -335,7 +367,7 @@
                                 <div>
                                     @if(Route::has('employees.show'))
                                         <a href="{{ route('employees.show', $emp->id) }}" class="text-dark font-weight-bold d-block text-hover-primary" style="line-height: 1.25; font-size: 13px;">
-                                            {{ $displayName }}
+                                             {{ $displayName }}
                                         </a>
                                     @else
                                         <strong class="text-dark font-weight-bold d-block" style="line-height: 1.25; font-size: 13px;">{{ $displayName }}</strong>
@@ -492,10 +524,23 @@
 
             @if($employeesPaginator->hasPages())
                 <div class="p-3 bg-light border-top">
-                    {{ $employeesPaginator->links() }}
+                    {{ $employeesPaginator->appends(request()->query())->links('vendor.pagination.orbo') }}
                 </div>
             @endif
         </div>
     </div>
 </div>
+@endsection
+
+@section('_script')
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+$(document).ready(function() {
+    if ($.fn.select2) {
+        $('.select2-searchable').select2({
+            width: '100%'
+        });
+    }
+});
+</script>
 @endsection

@@ -1,92 +1,271 @@
 @extends('layouts.panel', ['active' => 'reporting_dashboard'])
 
-@section('page_title', 'Team Dashboard')
+@section('page_title', 'Team Management Dashboard')
 
 @section('_head')
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
 <style>
 :root {
     --orb-primary: {{ $branding['primary_color'] ?? '#4B00E8' }};
     --orb-secondary: {{ $branding['secondary_color'] ?? '#FF5252' }};
-    --orb-bg: #F8FAFC;
+    --orb-bg: #F6F7FB;
     --orb-card: #FFFFFF;
-    --orb-border: #E2E8F0;
-    --orb-text: #0F172A;
-    --orb-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    --orb-border: #E7EAF3;
+    --orb-text: #101828;
+    --orb-muted: #667085;
+    --orb-soft: #F4F2FF;
+    --orb-shadow: 0 14px 35px rgba(16, 24, 40, .07);
 }
 
 .rep-page {
-    padding: 24px 20px 48px;
+    padding: 14px 16px 36px;
     background: var(--orb-bg);
     min-height: calc(100vh - 90px);
+    font-family: 'Outfit', sans-serif;
 }
 
 .rep-container {
-    max-width: 1550px;
+    max-width: 100% !important;
+    width: 100%;
     margin: 0 auto;
 }
 
+/* Hero Banner */
 .rep-hero {
-    background: linear-gradient(135deg, {{ $branding['primary_color'] ?? '#4B00E8' }} 0%, {{ $branding['secondary_color'] ?? '#FF5252' }} 100%);
-    border-radius: 20px;
+    background: linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%);
+    border-radius: 26px;
     padding: 24px 28px;
-    margin-bottom: 24px;
-    color: #ffffff;
-    box-shadow: 0 14px 34px rgba(75, 0, 232, 0.18);
+    margin-bottom: 20px;
+    box-shadow: 0 16px 40px rgba(75, 0, 232, 0.18);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    flex-wrap: wrap;
     gap: 16px;
+    color: #ffffff;
+    position: relative;
+    overflow: hidden;
+    flex-wrap: wrap;
 }
 
-.rep-metric-card {
-    background: var(--orb-card);
-    border: 1px solid var(--orb-border);
-    border-radius: 16px;
-    padding: 18px 20px;
-    box-shadow: var(--orb-shadow);
+.rep-hero:before {
+    content: "";
+    position: absolute;
+    right: -60px;
+    top: -80px;
+    width: 320px;
+    height: 320px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.12);
+    pointer-events: none;
+}
+
+.rep-hero-kicker {
+    font-size: 11.5px;
+    font-weight: 850;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    opacity: .92;
+    margin-bottom: 6px;
     display: flex;
+    gap: 8px;
     align-items: center;
-    gap: 16px;
-    height: 100%;
+}
+
+.rep-hero-title {
+    font-size: 26px;
+    font-weight: 900;
+    margin: 0;
+    line-height: 1.15;
+    color: #ffffff;
+}
+
+.rep-hero-subtitle {
+    font-size: 13.5px;
+    font-weight: 500;
+    margin-top: 6px;
+    opacity: .92;
+    max-width: 800px;
+}
+
+.rep-btn-glass {
+    background: rgba(255, 255, 255, 0.18) !important;
+    border: 1px solid rgba(255, 255, 255, 0.38) !important;
+    color: #ffffff !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    border-radius: 999px !important;
+    padding: 9px 20px !important;
+    font-size: 13px !important;
+    font-weight: 750 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    text-decoration: none !important;
+    white-space: nowrap !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08) !important;
+    transition: all 0.2s ease !important;
+}
+
+.rep-btn-glass:hover {
+    background: rgba(255, 255, 255, 0.32) !important;
+    border-color: rgba(255, 255, 255, 0.65) !important;
+    color: #ffffff !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Metric KPI Cards Grid */
+.rep-metric-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.rep-metric {
+    background: #fff;
+    border: 1px solid var(--orb-border);
+    border-radius: 18px;
+    padding: 14px 14px 10px;
+    box-shadow: 0 10px 24px rgba(16, 24, 40, .055);
+    position: relative;
+    overflow: hidden;
+    min-height: 92px;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.rep-metric-card:hover {
+.rep-metric:hover {
     transform: translateY(-2px);
-    box-shadow: 0 14px 35px rgba(15, 23, 42, 0.12);
+    box-shadow: 0 12px 28px rgba(16, 24, 40, .09);
+}
+
+.rep-metric:after {
+    content: "";
+    position: absolute;
+    right: -22px;
+    top: -30px;
+    width: 86px;
+    height: 86px;
+    border-radius: 50%;
+    background: var(--metric-soft, #F4F2FF);
+    pointer-events: none;
+}
+
+.rep-metric-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    position: relative;
+    z-index: 1;
 }
 
 .rep-metric-icon {
-    width: 46px;
-    height: 46px;
-    border-radius: 13px;
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    background: var(--metric-soft, #F4F2FF);
+    color: var(--metric-color, var(--orb-primary));
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 19px;
-    flex-shrink: 0;
+    font-size: 15px;
 }
 
+.rep-metric-value {
+    font-size: 24px;
+    font-weight: 900;
+    color: #101828;
+    line-height: 1;
+}
+
+.rep-metric-label {
+    font-size: 11px;
+    font-weight: 850;
+    color: #475467;
+    text-transform: uppercase;
+    margin-top: 12px;
+    position: relative;
+    z-index: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: 0.03em;
+}
+
+.rep-metric-line {
+    height: 3px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--metric-color, var(--orb-primary)), transparent);
+    margin-top: 8px;
+}
+
+/* Card Containers */
 .rep-card {
     background: var(--orb-card);
     border: 1px solid var(--orb-border);
-    border-radius: 16px;
+    border-radius: 20px;
     box-shadow: var(--orb-shadow);
     margin-bottom: 24px;
     overflow: hidden;
 }
 
+.rep-section-head {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--orb-border);
+    background: linear-gradient(180deg, #fff, #FAFBFF);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.rep-section-title {
+    font-size: 16px;
+    font-weight: 850;
+    color: var(--orb-text);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.rep-section-title i {
+    color: var(--orb-primary);
+}
+
+.rep-section-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: var(--orb-soft);
+    color: var(--orb-primary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}
+
+/* Module Shortcuts Grid (Full-width 6 modules) */
+.shortcut-grid-6 {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+}
+
 .shortcut-btn {
     background: #F8FAFC;
     border: 1px solid #E2E8F0;
-    border-radius: 12px;
-    padding: 14px 16px;
+    border-radius: 14px;
+    padding: 12px 14px;
     display: flex;
     align-items: center;
     gap: 12px;
     color: #1E293B;
-    font-weight: 700;
+    font-weight: 750;
     font-size: 13px;
     transition: all 0.2s ease;
     text-decoration: none !important;
@@ -96,60 +275,447 @@
     background: #EEF2FF;
     border-color: #C7D2FE;
     color: var(--orb-primary);
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(75, 0, 232, 0.08);
 }
 
-/* Toolbar & Length Dropdown CSS */
-.orb-table-toolbar {
-    background: #FAFAFA;
-    border-bottom: 1px solid #E2E8F0;
+.shortcut-icon-box {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
 }
 
-.dataTables_length,
-.dataTables_length label {
-    display: flex !important;
-    align-items: center !important;
-    gap: 6px !important;
-    white-space: nowrap !important;
-    margin: 0 !important;
-    font-weight: 600 !important;
-    font-size: 13px !important;
-    color: #475467 !important;
+/* Filter Panel */
+.rep-filter-panel {
+    padding: 14px 20px;
+    background: #FFFFFF;
+    border-bottom: 1px solid var(--orb-border);
 }
 
-.dataTables_length select {
-    width: 72px !important;
-    height: 34px !important;
-    padding: 4px 10px !important;
-    border-radius: 8px !important;
-    border: 1px solid #CBD5E1 !important;
-    outline: none !important;
+.rep-search-form {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    width: 100%;
 }
 
-/* Export button CSS */
-.orb-export-btn {
-    height: 34px !important;
-    padding: 0 12px !important;
-    border-radius: 10px !important;
-    background: #fff !important;
-    border: 1px solid #E7EAF3 !important;
-    font-size: 12px !important;
+.rep-search-input-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 260px;
+    max-width: 420px;
+}
+
+.rep-search-input-wrap i {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94A3B8;
+    font-size: 13px;
+}
+
+.rep-search-input {
+    height: 42px;
+    padding-left: 38px !important;
+    padding-right: 14px;
+    border-radius: 12px;
+    border: 1px solid #E2E8F0;
+    font-size: 13px;
+    font-weight: 600;
+    background: #fff;
+    width: 100%;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.rep-search-input:focus {
+    border-color: var(--orb-primary);
+    box-shadow: 0 0 0 .15rem rgba(75, 0, 232, .10) !important;
+    outline: none;
+}
+
+.rep-filter-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* Brand Theme Search Button */
+.rep-search-btn {
+    background: linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%) !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 12px !important;
     font-weight: 800 !important;
-    margin-left: 6px !important;
-    transition: all 0.2s ease !important;
-    color: #475467 !important;
-}
-
-.orb-export-btn:hover {
-    background: #F1F5F9 !important;
-    color: var(--orb-primary) !important;
-    border-color: rgba(75, 0, 232, 0.2) !important;
-    transform: translateY(-1px) !important;
-}
-
-.dt-buttons {
+    font-size: 13px !important;
+    padding: 0 20px !important;
+    height: 42px !important;
     display: inline-flex !important;
     align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    box-shadow: 0 4px 14px rgba(75, 0, 232, 0.25) !important;
+    transition: all 0.2s ease !important;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.rep-search-btn:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 20px rgba(75, 0, 232, 0.38) !important;
+    color: #ffffff !important;
+    opacity: 0.95;
+}
+
+.rep-reset-btn {
+    background: #F8FAFC !important;
+    color: #475467 !important;
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 12px !important;
+    font-weight: 750 !important;
+    font-size: 13px !important;
+    padding: 0 16px !important;
+    height: 42px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    text-decoration: none !important;
+    transition: all 0.2s ease !important;
+    white-space: nowrap;
+}
+
+.rep-reset-btn:hover {
+    background: #F1F5F9 !important;
+    color: var(--orb-primary) !important;
+    border-color: #CBD5E1 !important;
+}
+
+/* Select2 Per-Page Styling */
+.select2-container--per-page.select2-container--default .select2-selection--single {
+    min-height: 38px !important;
+    height: 38px !important;
+    border: 1px solid var(--orb-border, #E7EAF3) !important;
+    border-radius: 10px !important;
+    padding: 0 6px !important;
+    width: 75px !important;
+    background-color: #fff !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.select2-container--per-page.select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 36px !important;
+    font-size: 13px !important;
+    font-weight: 750 !important;
+    color: var(--orb-text, #101828) !important;
+    padding-left: 4px !important;
+}
+
+.select2-container--per-page.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 36px !important;
+    right: 6px !important;
+}
+
+.select2-dropdown-per-page {
+    min-width: 75px !important;
+    border: 1px solid var(--orb-border, #E7EAF3) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    z-index: 99999 !important;
+}
+
+.select2-dropdown-per-page .select2-results__option {
+    padding: 6px 10px !important;
+    text-align: center !important;
+}
+
+.select2-dropdown-per-page .select2-results__option--highlighted[aria-selected] {
+    background-color: var(--orb-primary, #4B00E8) !important;
+    color: #ffffff !important;
+}
+
+/* Table Tools Bar & Export Buttons (Standard Orbo Theme) */
+.orb-table-tools-bar {
+    padding: 12px 20px;
+    background: #F8FAFC;
+    border-bottom: 1px solid #EAECF0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.orbo-export-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.orbo-export-btn {
+    height: 36px !important;
+    border-radius: 10px !important;
+    padding: 6px 14px !important;
+    font-size: 12.5px !important;
+    font-weight: 750 !important;
+    color: #344054 !important;
+    background: #ffffff !important;
+    border: 1px solid var(--orb-border, #E7EAF3) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    box-shadow: 0 1px 2px rgba(16,24,40,0.04) !important;
+    transition: all 0.2s ease !important;
+    text-decoration: none !important;
+    cursor: pointer;
+}
+
+.orbo-export-btn:hover {
+    background: #F8FAFC !important;
+    color: var(--orb-primary) !important;
+    border-color: #CBD5E1 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.06) !important;
+}
+
+.orbo-export-btn .icon-csv { color: #0284C7; }
+.orbo-export-btn .icon-excel { color: #16A34A; }
+.orbo-export-btn .icon-pdf { color: #DC2626; }
+.orbo-export-btn .icon-print { color: var(--orb-primary); }
+
+/* Table Design */
+.rep-table-wrap {
+    padding: 0 !important;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: #CBD5E1 #F1F5F9;
+}
+
+.rep-table-wrap::-webkit-scrollbar {
+    height: 6px;
+}
+
+.rep-table-wrap::-webkit-scrollbar-track {
+    background: #F1F5F9;
+    border-radius: 999px;
+}
+
+.rep-table-wrap::-webkit-scrollbar-thumb {
+    background: #CBD5E1;
+    border-radius: 999px;
+}
+
+.rep-table {
+    width: 100% !important;
+    min-width: 820px;
+    border-collapse: separate !important;
+    border-spacing: 0;
+    margin: 0 !important;
+}
+
+.rep-table thead th {
+    background: #F8FAFC !important;
+    color: #475467 !important;
+    font-size: 11px !important;
+    font-weight: 850 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 12px 14px !important;
+    border-top: none !important;
+    border-bottom: 1px solid #EAECF0 !important;
+    white-space: nowrap;
+    vertical-align: middle !important;
+}
+
+.rep-table tbody td {
+    background: #fff;
+    border-bottom: 1px solid #F2F4F7 !important;
+    padding: 11px 14px !important;
+    vertical-align: middle !important;
+    white-space: nowrap;
+    font-size: 13px;
+    color: #1E293B;
+}
+
+.rep-table tbody tr:hover td {
+    background: #FCFAFF !important;
+}
+
+/* Status Badges */
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.2px;
+    text-transform: uppercase;
+}
+
+.status-pill.present {
+    background: #DCFCE7;
+    color: #166534;
+    border: 1px solid #86EFAC;
+}
+
+.status-pill.wfh {
+    background: #E0F2FE;
+    color: #0369A1;
+    border: 1px solid #7DD3FC;
+}
+
+.status-pill.half_day {
+    background: #FEF3C7;
+    color: #B45309;
+    border: 1px solid #FCD34D;
+}
+
+.status-pill.late {
+    background: #FFEDD5;
+    color: #C2410C;
+    border: 1px solid #FDBA74;
+}
+
+.status-pill.leave {
+    background: #FAF5FF;
+    color: #7E22CE;
+    border: 1px solid #E9D5FF;
+}
+
+.status-pill.absent {
+    background: #FEF2F2;
+    color: #B91C1C;
+    border: 1px solid #FECACA;
+}
+
+.status-pill.pending {
+    background: #FEF3C7;
+    color: #B45309;
+    border: 1px solid #FCD34D;
+}
+
+.status-pill.submitted {
+    background: #DCFCE7;
+    color: #166534;
+    border: 1px solid #86EFAC;
+}
+
+/* Live Pulse Dot */
+.pulse-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #10B981;
+    display: inline-block;
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    animation: pulse-green 1.6s infinite;
+}
+
+@keyframes pulse-green {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+/* Responsive Grid Rules */
+@media (max-width: 1200px) {
+    .rep-metric-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .shortcut-grid-6 {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .rep-page {
+        padding: 10px 10px 30px;
+    }
+    .rep-hero {
+        padding: 18px 16px;
+        border-radius: 18px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    .rep-hero-title {
+        font-size: 20px;
+    }
+    .rep-metric-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+    .shortcut-grid-6 {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+    .rep-search-form {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .rep-search-input-wrap {
+        max-width: 100%;
+        min-width: 100%;
+    }
+    .rep-filter-actions {
+        width: 100%;
+    }
+    .rep-search-btn,
+    .rep-reset-btn {
+        flex: 1;
+    }
+    .orb-table-tools-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    .orbo-export-group {
+        width: 100%;
+    }
+    .orbo-export-btn {
+        flex: 1;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .rep-metric {
+        padding: 10px 12px;
+        min-height: 80px;
+        border-radius: 14px;
+    }
+    .rep-metric-value {
+        font-size: 20px;
+    }
+    .rep-metric-label {
+        font-size: 10px;
+        margin-top: 6px;
+    }
+    .shortcut-btn {
+        padding: 10px 12px;
+        font-size: 12px;
+    }
+    .shortcut-icon-box {
+        width: 30px;
+        height: 30px;
+        font-size: 13px;
+    }
 }
 </style>
 @endsection
@@ -157,299 +723,254 @@
 @section('_content')
 <div class="rep-page">
     <div class="rep-container">
+        
         <!-- Hero Header -->
         <div class="rep-hero">
             <div>
-                <h3 class="text-white font-weight-bold mb-1" style="font-size: 22px;"><i class="fas fa-tachometer-alt mr-2"></i>Team Management Dashboard</h3>
-                <p class="mb-0 opacity-90 small">Real-time operational monitoring, attendance tracking, daily work logs, and team performance overview.</p>
+                <div class="rep-hero-kicker">
+                    <i class="fas fa-users-cog"></i> TEAM MANAGEMENT & OPERATIONS
+                </div>
+                <h3 class="rep-hero-title">Team Management Dashboard</h3>
+                <div class="rep-hero-subtitle">Real-time operational monitoring, attendance tracking, daily work logs, and team performance overview.</div>
             </div>
             <div class="d-flex align-items-center gap-2 flex-wrap" style="gap: 10px;">
-                <a href="{{ route('reporting.my_employees') }}" class="btn btn-light font-weight-bold px-3.5 py-2" style="border-radius: 10px; color: var(--orb-primary); font-size: 13px;">
-                    <i class="fas fa-users mr-1.5"></i> My Team
+                <a href="{{ route('reporting.my_employees') }}" class="rep-btn-glass">
+                    <i class="fas fa-users mr-1"></i> My Team
                 </a>
-                <a href="{{ route('reporting.work_reports') }}" class="btn btn-light font-weight-bold px-3.5 py-2" style="border-radius: 10px; color: var(--orb-primary); font-size: 13px; background: rgba(255, 255, 255, 0.2); color: #fff; border: 1px solid rgba(255, 255, 255, 0.3);">
-                    <i class="fas fa-file-alt mr-1.5"></i> Daily Work Reports
+                <a href="{{ route('reporting.work_reports') }}" class="rep-btn-glass">
+                    <i class="fas fa-file-alt mr-1"></i> Daily Work Reports
                 </a>
             </div>
         </div>
 
-        <!-- Metric KPI Cards -->
-        <div class="row mb-4">
-            <div class="col-6 col-md-4 col-lg-2 mb-3 mb-lg-0">
-                <div class="rep-metric-card">
-                    <div class="rep-metric-icon" style="background: rgba(75, 0, 232, 0.08); color: #4B00E8;">
-                        <i class="fas fa-users"></i>
-                    </div>
-                    <div>
-                        <div class="text-muted small font-weight-bold text-uppercase" style="font-size: 10px; letter-spacing: 0.05em;">Total Team</div>
-                        <div class="h4 font-weight-extrabold mb-0 text-dark" style="font-size: 22px;">{{ $employeesCount }}</div>
-                    </div>
+        <!-- Metric KPI Cards Grid (Responsive 6 -> 3 -> 2) -->
+        <div class="rep-metric-grid">
+            <div class="rep-metric" style="--metric-color:#4F46E5;--metric-soft:#EEF2FF;">
+                <div class="rep-metric-top">
+                    <div class="rep-metric-icon"><i class="fas fa-users"></i></div>
+                    <div class="rep-metric-value">{{ $employeesCount }}</div>
                 </div>
+                <div class="rep-metric-label">Total Team</div>
+                <div class="rep-metric-line"></div>
             </div>
 
-            <div class="col-6 col-md-4 col-lg-2 mb-3 mb-lg-0">
-                <div class="rep-metric-card">
-                    <div class="rep-metric-icon" style="background: rgba(16, 185, 129, 0.1); color: #10B981;">
+            <div class="rep-metric" style="--metric-color:#059669;--metric-soft:#ECFDF5;">
+                <div class="rep-metric-top">
+                    <div class="rep-metric-icon">
+                        <span class="pulse-dot mr-1"></span>
                         <i class="fas fa-user-check"></i>
                     </div>
-                    <div>
-                        <div class="text-muted small font-weight-bold text-uppercase" style="font-size: 10px; letter-spacing: 0.05em;">Present Today</div>
-                        <div class="h4 font-weight-extrabold mb-0 text-dark" style="font-size: 22px;">{{ $presentCount }}</div>
-                    </div>
+                    <div class="rep-metric-value text-success">{{ $presentCount }}</div>
                 </div>
+                <div class="rep-metric-label">Present Today</div>
+                <div class="rep-metric-line"></div>
             </div>
 
-            <div class="col-6 col-md-4 col-lg-2 mb-3 mb-lg-0">
-                <div class="rep-metric-card">
-                    <div class="rep-metric-icon" style="background: rgba(14, 165, 233, 0.1); color: #0284C7;">
-                        <i class="fas fa-laptop-house"></i>
-                    </div>
-                    <div>
-                        <div class="text-muted small font-weight-bold text-uppercase" style="font-size: 10px; letter-spacing: 0.05em;">WFH Today</div>
-                        <div class="h4 font-weight-extrabold mb-0 text-dark" style="font-size: 22px;">{{ $wfhCount }}</div>
-                    </div>
+            <div class="rep-metric" style="--metric-color:#0284C7;--metric-soft:#E0F2FE;">
+                <div class="rep-metric-top">
+                    <div class="rep-metric-icon"><i class="fas fa-laptop-house"></i></div>
+                    <div class="rep-metric-value" style="color: #0284C7;">{{ $wfhCount }}</div>
                 </div>
+                <div class="rep-metric-label">WFH Today</div>
+                <div class="rep-metric-line"></div>
             </div>
 
-            <div class="col-6 col-md-4 col-lg-2 mb-3 mb-sm-0">
-                <div class="rep-metric-card">
-                    <div class="rep-metric-icon" style="background: rgba(245, 158, 11, 0.1); color: #D97706;">
-                        <i class="fas fa-umbrella-beach"></i>
-                    </div>
-                    <div>
-                        <div class="text-muted small font-weight-bold text-uppercase" style="font-size: 10px; letter-spacing: 0.05em;">On Leave</div>
-                        <div class="h4 font-weight-extrabold mb-0 text-dark" style="font-size: 22px;">{{ $onLeaveCount }}</div>
-                    </div>
+            <div class="rep-metric" style="--metric-color:#D97706;--metric-soft:#FFFBEB;">
+                <div class="rep-metric-top">
+                    <div class="rep-metric-icon"><i class="fas fa-umbrella-beach"></i></div>
+                    <div class="rep-metric-value text-warning">{{ $onLeaveCount }}</div>
                 </div>
+                <div class="rep-metric-label">On Leave</div>
+                <div class="rep-metric-line"></div>
             </div>
 
-            <div class="col-6 col-md-4 col-lg-2 mb-3 mb-sm-0">
-                <div class="rep-metric-card">
-                    <div class="rep-metric-icon" style="background: rgba(168, 85, 247, 0.1); color: #9333EA;">
-                        <i class="fas fa-file-invoice"></i>
-                    </div>
-                    <div>
-                        <div class="text-muted small font-weight-bold text-uppercase" style="font-size: 10px; letter-spacing: 0.05em;">Work Reports</div>
-                        <div class="h4 font-weight-extrabold mb-0 text-dark" style="font-size: 22px;">{{ $workReportsSubmittedToday }}</div>
-                    </div>
+            <div class="rep-metric" style="--metric-color:#9333EA;--metric-soft:#FAF5FF;">
+                <div class="rep-metric-top">
+                    <div class="rep-metric-icon"><i class="fas fa-file-invoice"></i></div>
+                    <div class="rep-metric-value" style="color: #9333EA;">{{ $workReportsSubmittedToday }}</div>
                 </div>
+                <div class="rep-metric-label">Work Reports</div>
+                <div class="rep-metric-line"></div>
             </div>
 
-            <div class="col-6 col-md-4 col-lg-2">
-                <div class="rep-metric-card">
-                    <div class="rep-metric-icon" style="background: rgba(99, 102, 241, 0.1); color: #4F46E5;">
-                        <i class="fas fa-diagram-project"></i>
-                    </div>
-                    <div>
-                        <div class="text-muted small font-weight-bold text-uppercase" style="font-size: 10px; letter-spacing: 0.05em;">Active Projects</div>
-                        <div class="h4 font-weight-extrabold mb-0 text-dark" style="font-size: 22px;">{{ $projectsCount }}</div>
-                    </div>
+            <div class="rep-metric" style="--metric-color:#2563EB;--metric-soft:#EFF6FF;">
+                <div class="rep-metric-top">
+                    <div class="rep-metric-icon"><i class="fas fa-diagram-project"></i></div>
+                    <div class="rep-metric-value text-primary">{{ $projectsCount }}</div>
                 </div>
+                <div class="rep-metric-label">Active Projects</div>
+                <div class="rep-metric-line"></div>
             </div>
         </div>
 
-        <!-- Task Breakdown & Quick Shortcuts Row -->
-        <div class="row mb-4">
-            <!-- Tasks Breakdown Progress Widget -->
-            <div class="col-12 col-lg-7 mb-4 mb-lg-0">
-                <div class="rep-card h-100 mb-0">
-                    <div class="d-flex align-items-center justify-content-between border-bottom bg-white" style="padding: 12px 20px;">
-                        <div class="d-flex align-items-center" style="gap: 10px;">
-                            <span style="width: 34px; height: 34px; border-radius: 9px; background: #EEF2FF; color: #4F46E5; display: inline-flex; align-items: center; justify-content: center; font-size: 15px;">
-                                <i class="fas fa-tasks"></i>
-                            </span>
-                            <div>
-                                <h5 class="font-weight-bold mb-0 text-dark" style="font-size: 15px;">Team Task Completion Health</h5>
-                            </div>
-                        </div>
-                        <span class="badge badge-light border font-weight-bold text-dark px-2.5 py-1" style="font-size: 12px; border-radius: 8px;">
-                            Total Tasks: {{ $taskStats['total'] }}
-                        </span>
-                    </div>
-
-                    <div class="p-4">
-                        @php
-                            $completedPct = $taskStats['total'] > 0 ? round(($taskStats['completed'] / $taskStats['total']) * 100) : 0;
-                            $inProgressPct = $taskStats['total'] > 0 ? round(($taskStats['in_progress'] / $taskStats['total']) * 100) : 0;
-                            $todoPct = $taskStats['total'] > 0 ? round(($taskStats['todo'] / $taskStats['total']) * 100) : 0;
-                            $blockedPct = $taskStats['total'] > 0 ? round(($taskStats['blocked'] / $taskStats['total']) * 100) : 0;
-                        @endphp
-
-                        <!-- Overall Progress Bar -->
-                        <div class="mb-4">
-                            <div class="d-flex align-items-center justify-content-between mb-2">
-                                <span class="font-weight-bold text-dark small">Overall Completion Rate</span>
-                                <span class="font-weight-extrabold text-success" style="font-size: 16px;">{{ $completedPct }}%</span>
-                            </div>
-                            <div class="progress" style="height: 12px; border-radius: 8px; background: #F1F5F9; overflow: hidden;">
-                                <div class="progress-bar bg-success" style="width: {{ $completedPct }}%;"></div>
-                                <div class="progress-bar bg-info" style="width: {{ $inProgressPct }}%;"></div>
-                                <div class="progress-bar bg-secondary" style="width: {{ $todoPct }}%;"></div>
-                                <div class="progress-bar bg-danger" style="width: {{ $blockedPct }}%;"></div>
-                            </div>
-                        </div>
-
-                        <!-- Task Breakdown Badges Grid -->
-                        <div class="row">
-                            <div class="col-6 col-sm-3 mb-2 mb-sm-0">
-                                <div class="p-3 rounded-lg border text-center" style="background: #F0FDF4; border-color: #DCFCE7 !important;">
-                                    <div class="text-muted small font-weight-bold text-uppercase mb-1" style="font-size: 10px; color: #166534;">Completed</div>
-                                    <div class="h5 font-weight-extrabold mb-0 text-success" style="font-size: 18px;">{{ $taskStats['completed'] }}</div>
-                                </div>
-                            </div>
-                            <div class="col-6 col-sm-3 mb-2 mb-sm-0">
-                                <div class="p-3 rounded-lg border text-center" style="background: #F0F9FF; border-color: #E0F2FE !important;">
-                                    <div class="text-muted small font-weight-bold text-uppercase mb-1" style="font-size: 10px; color: #075985;">In Progress</div>
-                                    <div class="h5 font-weight-extrabold mb-0 text-info" style="font-size: 18px;">{{ $taskStats['in_progress'] }}</div>
-                                </div>
-                            </div>
-                            <div class="col-6 col-sm-3">
-                                <div class="p-3 rounded-lg border text-center" style="background: #F8FAFC; border-color: #E2E8F0 !important;">
-                                    <div class="text-muted small font-weight-bold text-uppercase mb-1" style="font-size: 10px; color: #475569;">To Do</div>
-                                    <div class="h5 font-weight-extrabold mb-0 text-secondary" style="font-size: 18px;">{{ $taskStats['todo'] }}</div>
-                                </div>
-                            </div>
-                            <div class="col-6 col-sm-3">
-                                <div class="p-3 rounded-lg border text-center" style="background: #FEF2F2; border-color: #FEE2E2 !important;">
-                                    <div class="text-muted small font-weight-bold text-uppercase mb-1" style="font-size: 10px; color: #991B1B;">Blocked</div>
-                                    <div class="h5 font-weight-extrabold mb-0 text-danger" style="font-size: 18px;">{{ $taskStats['blocked'] }}</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+        <!-- Team Management Quick Access (Responsive 6 -> 3 -> 2) -->
+        <div class="rep-card">
+            <div class="rep-section-head">
+                <div class="rep-section-title">
+                    <span class="rep-section-icon"><i class="fas fa-th-large"></i></span>
+                    <span>Team Management Quick Access</span>
                 </div>
             </div>
 
-            <!-- Team Quick Actions & Shortcuts -->
-            <div class="col-12 col-lg-5">
-                <div class="rep-card h-100 mb-0">
-                    <div class="d-flex align-items-center justify-content-between border-bottom bg-white" style="padding: 12px 20px;">
-                        <div class="d-flex align-items-center" style="gap: 10px;">
-                            <span style="width: 34px; height: 34px; border-radius: 9px; background: #EEF2FF; color: #4F46E5; display: inline-flex; align-items: center; justify-content: center; font-size: 15px;">
-                                <i class="fas fa-th-large"></i>
-                            </span>
-                            <div>
-                                <h5 class="font-weight-bold mb-0 text-dark" style="font-size: 15px;">Team Management Modules</h5>
-                            </div>
+            <div class="p-3">
+                <div class="shortcut-grid-6">
+                    <a href="{{ route('reporting.my_employees') }}" class="shortcut-btn">
+                        <div class="shortcut-icon-box" style="background: #EEF2FF; color: #4F46E5;">
+                            <i class="fas fa-users"></i>
                         </div>
-                    </div>
-
-                    <div class="p-3">
-                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
-                            <a href="{{ route('reporting.my_employees') }}" class="shortcut-btn">
-                                <i class="fas fa-users text-primary" style="font-size: 16px;"></i>
-                                <span>My Team</span>
-                            </a>
-                            <a href="{{ route('reporting.attendance') }}" class="shortcut-btn">
-                                <i class="fas fa-user-clock text-success" style="font-size: 16px;"></i>
-                                <span>Attendance</span>
-                            </a>
-                            <a href="{{ route('reporting.leave') }}" class="shortcut-btn">
-                                <i class="fas fa-plane-departure text-warning" style="font-size: 16px;"></i>
-                                <span>Team Leave</span>
-                            </a>
-                            <a href="{{ route('reporting.work_reports') }}" class="shortcut-btn">
-                                <i class="fas fa-file-invoice text-info" style="font-size: 16px;"></i>
-                                <span>Daily Reports</span>
-                            </a>
-                            <a href="{{ route('reporting.assignments') }}" class="shortcut-btn">
-                                <i class="fas fa-user-shield text-purple" style="color: #9333EA; font-size: 16px;"></i>
-                                <span>Supervision</span>
-                            </a>
-                            <a href="{{ route('reporting.projects') }}" class="shortcut-btn">
-                                <i class="fas fa-project-diagram text-indigo" style="color: #4F46E5; font-size: 16px;"></i>
-                                <span>Projects & Tasks</span>
-                            </a>
+                        <span>My Team</span>
+                    </a>
+                    <a href="{{ route('reporting.attendance') }}" class="shortcut-btn">
+                        <div class="shortcut-icon-box" style="background: #ECFDF5; color: #059669;">
+                            <i class="fas fa-user-clock"></i>
                         </div>
-                    </div>
+                        <span>Attendance</span>
+                    </a>
+                    <a href="{{ route('reporting.leave') }}" class="shortcut-btn">
+                        <div class="shortcut-icon-box" style="background: #FFFBEB; color: #D97706;">
+                            <i class="fas fa-plane-departure"></i>
+                        </div>
+                        <span>Team Leave</span>
+                    </a>
+                    <a href="{{ route('reporting.work_reports') }}" class="shortcut-btn">
+                        <div class="shortcut-icon-box" style="background: #EFF6FF; color: #2563EB;">
+                            <i class="fas fa-file-invoice"></i>
+                        </div>
+                        <span>Daily Reports</span>
+                    </a>
+                    <a href="{{ route('reporting.assignments') }}" class="shortcut-btn">
+                        <div class="shortcut-icon-box" style="background: #FAF5FF; color: #9333EA;">
+                            <i class="fas fa-user-shield"></i>
+                        </div>
+                        <span>Supervision</span>
+                    </a>
+                    <a href="{{ route('reporting.projects') }}" class="shortcut-btn">
+                        <div class="shortcut-icon-box" style="background: #EEF2FF; color: #4B00E8;">
+                            <i class="fas fa-project-diagram"></i>
+                        </div>
+                        <span>Projects & Tasks</span>
+                    </a>
                 </div>
             </div>
         </div>
 
         <!-- Today's Team Operational Live Status Card -->
         <div class="rep-card">
-            <!-- Card Header Title (Compact height) -->
-            <div class="d-flex align-items-center justify-content-between border-bottom bg-white flex-wrap" style="padding: 12px 20px;">
-                <div class="d-flex align-items-center" style="gap: 10px;">
-                    <span style="width: 34px; height: 34px; border-radius: 9px; background: #EEF2FF; color: #4F46E5; display: inline-flex; align-items: center; justify-content: center; font-size: 15px;">
-                        <i class="fas fa-stream"></i>
+            <!-- Card Header -->
+            <div class="rep-section-head">
+                <div class="rep-section-title">
+                    <span class="rep-section-icon"><i class="fas fa-stream"></i></span>
+                    <span>Today's Team Operational Live Status</span>
+                </div>
+                <div>
+                    <span class="badge badge-light border px-2.5 py-1 font-weight-bold text-muted" style="border-radius: 8px; font-size: 11.5px;">
+                        <i class="fas fa-calendar-day mr-1 text-primary"></i> {{ \Carbon\Carbon::now()->format('d M Y') }}
                     </span>
-                    <div>
-                        <h5 class="font-weight-bold mb-0 text-dark" style="font-size: 15px;">Today's Team Operational Live Status</h5>
+                </div>
+            </div>
+
+            <!-- Filter Panel -->
+            <div class="rep-filter-panel">
+                <form method="GET" action="{{ route('reporting.dashboard') }}" id="searchDashboardForm" class="rep-search-form">
+                    <input type="hidden" name="per_page" value="{{ request('per_page', 25) }}">
+                    <div class="rep-search-input-wrap">
+                        <i class="fas fa-search"></i>
+                        <input type="text" name="search" id="filter-search-dashboard" class="rep-search-input" placeholder="Search employee, code, designation..." value="{{ request('search') }}">
+                    </div>
+
+                    <div class="rep-filter-actions">
+                        <button type="submit" class="rep-search-btn">
+                            <i class="fas fa-search"></i>
+                            <span>Search</span>
+                        </button>
+                        <a href="{{ route('reporting.dashboard') }}" class="rep-reset-btn">
+                            <i class="fas fa-undo text-muted" style="font-size: 11px;"></i>
+                            <span>Reset Filter</span>
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Table Tools Bar (Select2 Per Page + Export Buttons) -->
+            <div class="orb-table-tools-bar">
+                <div class="orb-table-length-box d-flex align-items-center" style="gap: 8px;">
+                    <span class="text-muted font-weight-bold" style="font-size: 13px;">Show</span>
+                    <select class="table-per-page-select" id="recordsPerPageSelect">
+                        @foreach([10, 25, 50, 100, 250] as $size)
+                            <option value="{{ $size }}" {{ (int) request('per_page', 25) === $size ? 'selected' : '' }}>{{ $size }}</option>
+                        @endforeach
+                    </select>
+                    <span class="text-muted font-weight-bold" style="font-size: 13px;">entries</span>
+                </div>
+
+                <div class="orb-table-export-buttons">
+                    <div class="orbo-export-group">
+                        <button type="button" class="orbo-export-btn btn-export-csv" id="btnExportCSV" title="Export CSV">
+                            <i class="fas fa-file-csv icon-csv"></i>
+                            <span>CSV</span>
+                        </button>
+                        <button type="button" class="orbo-export-btn btn-export-excel" id="btnExportExcel" title="Export Excel">
+                            <i class="fas fa-file-excel icon-excel"></i>
+                            <span>Excel</span>
+                        </button>
+                        <button type="button" class="orbo-export-btn btn-export-print" id="btnPrint" title="Print">
+                            <i class="fas fa-print icon-print"></i>
+                            <span>Print</span>
+                        </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Embedded Attached Filters inside Card -->
-            <div class="p-3 bg-light border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
-                <div class="form-inline flex-wrap gap-2" style="gap: 12px;">
-                    <input type="text" id="filter-search-dashboard" class="form-control" placeholder="Search employee, designation..." style="border-radius: 10px; font-size: 13px; height: 38px; min-width: 280px;">
-                </div>
-
-                <button type="button" class="btn btn-light border font-weight-bold" id="btn-reset-dashboard-filters" style="border-radius: 10px; font-size: 13px; color: #475467; height: 38px; display: inline-flex; align-items: center; gap: 6px;">
-                    <i class="fas fa-undo text-muted" style="font-size: 11px;"></i> Reset Filter
-                </button>
-            </div>
-
-            <!-- Toolbar for Entries & Export Buttons -->
-            <div class="orb-table-toolbar d-flex align-items-center justify-content-between p-3 border-bottom">
-                <div class="toolbar-left"></div>
-                <div class="toolbar-right d-flex align-items-center"></div>
-            </div>
-
-            <div class="table-responsive">
-                <table class="table table-hover mb-0" id="dashboardTeamTable">
-                    <thead class="bg-light">
+            <!-- Table -->
+            <div class="rep-table-wrap">
+                <table class="rep-table" id="dashboardTeamTable">
+                    <thead>
                         <tr>
-                            <th class="py-3 px-3 text-center" style="width: 55px;">S.No.</th>
-                            <th class="py-3 px-4">Employee Name</th>
-                            <th class="py-3">Designation & Department</th>
-                            <th class="py-3 text-center">Attendance Today</th>
-                            <th class="py-3 text-center">Leave Status</th>
-                            <th class="py-3 text-center">Work Report</th>
-                            <th class="py-3">Tasks & Progress</th>
+                            <th class="text-center" style="width: 55px;">#</th>
+                            <th>Employee Name</th>
+                            <th>Designation & Department</th>
+                            <th class="text-center">Attendance Today</th>
+                            <th class="text-center">Leave Status</th>
+                            <th class="text-center">Work Report</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($recentDevelopers as $item)
                             @php
-                                $emp = $item['employee'];
+                                $emp = $item['employee'] ?? $item->employee ?? null;
                                 $displayName = $emp->display_name ?? (optional($emp->user ?? null)->name ?? 'Employee');
                                 $empCode = $emp->employee_code ?? 'N/A';
-                                $empExportText = $displayName . ' (' . $empCode . ')';
 
-                                $att = $item['attendance'];
-                                $lve = $item['leave'];
-                                $wlog = $item['work_log'];
-                                $totTasks = (int)($item['total_tasks'] ?? 0);
-                                $compTasks = (int)($item['completed_tasks'] ?? 0);
+                                $att = $item['attendance'] ?? $item->attendance ?? null;
+                                $lve = $item['leave'] ?? $item->leave ?? null;
+                                $wlog = $item['work_log'] ?? $item->work_log ?? null;
 
                                 $attText = 'NOT PUNCHED';
-                                $attStyle = 'background: #F1F5F9; color: #475569; border: 1px solid #CBD5E1;';
+                                $attClass = 'absent';
                                 $attIcon = 'far fa-circle';
 
                                 if ($lve) {
                                     $attText = 'ON LEAVE';
-                                    $attStyle = 'background: #FEF3C7; color: #B45309; border: 1px solid #FCD34D;';
+                                    $attClass = 'leave';
                                     $attIcon = 'fas fa-umbrella-beach';
                                 } elseif ($att) {
                                     $st = strtolower($att->attendance_status ?? 'present');
                                     $wm = strtoupper($att->work_mode ?? '');
                                     if ($wm === 'WFH') {
                                         $attText = $st === 'half_day' ? 'WFH (HALF DAY)' : 'WFH';
-                                        $attStyle = 'background: #E0F2FE; color: #0369A1; border: 1px solid #7DD3FC;';
+                                        $attClass = 'wfh';
                                         $attIcon = 'fas fa-laptop-house';
                                     } elseif ($st === 'half_day') {
                                         $attText = 'HALF DAY';
-                                        $attStyle = 'background: #FEF3C7; color: #B45309; border: 1px solid #FCD34D;';
+                                        $attClass = 'half_day';
                                         $attIcon = 'fas fa-adjust';
                                     } elseif ($st === 'late') {
                                         $attText = 'LATE';
-                                        $attStyle = 'background: #FFEDD5; color: #C2410C; border: 1px solid #FDBA74;';
+                                        $attClass = 'late';
                                         $attIcon = 'fas fa-clock';
                                     } else {
                                         $attText = 'PRESENT';
-                                        $attStyle = 'background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC;';
+                                        $attClass = 'present';
                                         $attIcon = 'fas fa-check-circle';
                                     }
                                 }
@@ -457,87 +978,68 @@
                                 $leaveText = $lve ? 'On Leave' : 'No Leave';
 
                                 $reportText = $wlog ? 'Submitted' : 'Pending';
-                                $reportStyle = $wlog 
-                                    ? 'background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC;'
-                                    : 'background: #FEF3C7; color: #B45309; border: 1px solid #FCD34D;';
-
-                                $taskPct = $totTasks > 0 ? round(($compTasks / $totTasks) * 100) : 0;
+                                $reportClass = $wlog ? 'submitted' : 'pending';
                             @endphp
                         <tr>
-                            <!-- S.No. -->
-                            <td class="py-3 px-3 align-middle text-center font-weight-bold text-muted" style="font-size: 12.5px;" data-export="{{ $loop->iteration }}">
-                                {{ $loop->iteration }}
+                            <!-- # (Serial Number) -->
+                            <td class="text-center font-weight-bold text-muted" style="font-size: 12px;">
+                                {{ method_exists($recentDevelopers, 'firstItem') ? ($recentDevelopers->firstItem() + $loop->index) : $loop->iteration }}
                             </td>
 
                             <!-- Employee Name -->
-                            <td class="py-3 px-4 align-middle" data-export="{{ $empExportText }}">
+                            <td>
                                 <div>
-                                    <strong class="text-dark font-weight-bold d-block" style="line-height: 1.25; font-size: 13.5px;">{{ $displayName }}</strong>
-                                    <small class="text-muted" style="font-size: 11px; font-weight: 600;">{{ $empCode }}</small>
+                                    <strong class="text-dark font-weight-bold d-block" style="line-height: 1.3; font-size: 13.5px;">{{ $displayName }}</strong>
+                                    <span class="badge badge-light border text-muted font-weight-bold" style="font-size: 10px; padding: 2px 6px; border-radius: 4px;">{{ $empCode }}</span>
                                 </div>
                             </td>
 
                             <!-- Designation & Department -->
-                            <td class="py-3 align-middle" data-export="{{ optional($emp->designation ?? null)->name ?? 'Staff' }} - {{ optional($emp->department ?? null)->name ?? 'General' }}">
+                            <td>
                                 <div>
                                     <span class="font-weight-bold text-dark d-block" style="font-size: 12.5px; line-height: 1.2;">
                                         {{ optional($emp->designation ?? null)->name ?? 'Employee' }}
                                     </span>
-                                    <small class="text-muted" style="font-size: 11px; font-weight: 600;">
-                                        <i class="fas fa-building text-muted mr-1" style="font-size: 10px;"></i>{{ optional($emp->department ?? null)->name ?? 'General' }}
+                                    <small class="text-muted font-weight-bold" style="font-size: 11px;">
+                                        <i class="fas fa-building text-muted mr-1" style="font-size: 10px; opacity: 0.7;"></i>{{ optional($emp->department ?? null)->name ?? 'General' }}
                                     </small>
                                 </div>
                             </td>
 
                             <!-- Attendance Today -->
-                            <td class="py-3 align-middle text-center" data-export="{{ $attText }}">
-                                <span class="badge font-weight-bold text-uppercase px-2.5 py-1" style="border-radius: 8px; font-size: 10px; letter-spacing: 0.04em; {{ $attStyle }}">
+                            <td class="text-center">
+                                <span class="status-pill {{ $attClass }}">
                                     <i class="{{ $attIcon }} mr-1"></i> {{ $attText }}
                                 </span>
                                 @if($att && isset($att->punch_in_time))
                                     <small class="d-block text-muted mt-1 font-weight-bold" style="font-size: 10.5px;">
-                                        {{ \Carbon\Carbon::parse($att->punch_in_time)->format('h:i A') }}
+                                        In: {{ \Carbon\Carbon::parse($att->punch_in_time)->format('h:i A') }}
                                     </small>
                                 @endif
                             </td>
 
                             <!-- Leave Status -->
-                            <td class="py-3 align-middle text-center" data-export="{{ $leaveText }}">
+                            <td class="text-center">
                                 @if($lve)
-                                    <span class="badge font-weight-bold px-2.5 py-1" style="border-radius: 8px; font-size: 10.5px; background: #FEF3C7; color: #B45309; border: 1px solid #FCD34D;">
+                                    <span class="status-pill leave">
                                         <i class="fas fa-umbrella-beach mr-1"></i> On Leave
                                     </span>
                                 @else
-                                    <span class="small text-muted font-weight-bold">No Leave</span>
+                                    <span class="text-muted font-weight-bold" style="font-size: 12px;">No Leave</span>
                                 @endif
                             </td>
 
                             <!-- Work Report Status -->
-                            <td class="py-3 align-middle text-center" data-export="{{ $reportText }}">
-                                <span class="badge font-weight-bold text-uppercase px-2.5 py-1" style="border-radius: 8px; font-size: 10px; letter-spacing: 0.04em; {{ $reportStyle }}">
+                            <td class="text-center">
+                                <span class="status-pill {{ $reportClass }}">
                                     <i class="fas fa-check-circle mr-1"></i> {{ $reportText }}
                                 </span>
-                            </td>
-
-                            <!-- Task Progress -->
-                            <td class="py-3 align-middle" style="min-width: 170px;" data-export="{{ $totTasks > 0 ? $compTasks . '/' . $totTasks . ' Done (' . $taskPct . '%)' : 'No Tasks' }}">
-                                @if($totTasks > 0)
-                                    <div class="d-flex align-items-center justify-content-between mb-1">
-                                        <span class="small font-weight-bold text-dark" style="font-size: 11.5px;">{{ $compTasks }}/{{ $totTasks }} Done</span>
-                                        <small class="font-weight-extrabold text-primary" style="font-size: 11px;">{{ $taskPct }}%</small>
-                                    </div>
-                                    <div class="progress" style="height: 6px; border-radius: 4px; background: #E2E8F0;">
-                                        <div class="progress-bar bg-success" style="width: {{ $taskPct }}%;"></div>
-                                    </div>
-                                @else
-                                    <span class="small text-muted font-weight-bold">No Active Tasks</span>
-                                @endif
                             </td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="7" class="text-center text-muted py-5">
-                                <i class="fas fa-users fa-3x mb-3 text-muted"></i>
+                            <td colspan="6" class="text-center text-muted py-5">
+                                <i class="fas fa-users-slash fa-3x mb-3 text-muted" style="opacity: 0.4;"></i>
                                 <h5 class="font-weight-bold text-dark">No Active Reporting Employees Found</h5>
                                 <p class="small mb-0">Employees under your supervision will appear here once assigned.</p>
                             </td>
@@ -547,273 +1049,89 @@
                 </table>
             </div>
 
-            <!-- Footer for Pagination & Info (Populated by DataTables) -->
-            <div class="orb-table-footer p-3 bg-light border-top d-flex align-items-center justify-content-between"></div>
+            <!-- Server-side Pagination Bar using Orbo Theme -->
+            @if(method_exists($recentDevelopers, 'links'))
+            <div>
+                {{ $recentDevelopers->appends(request()->query())->links('vendor.pagination.orbo') }}
+            </div>
+            @endif
         </div>
+
     </div>
 </div>
 @endsection
 
 @section('_script')
-<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap4.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap4.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
-
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-    $(function() {
-        $.fn.dataTable.ext.errMode = 'none';
-
-        if ($('#dashboardTeamTable tbody tr td[colspan]').length > 0) {
-            $('#dashboardTeamTable tbody').empty();
-        }
-
-        if ($.fn.DataTable.isDataTable('#dashboardTeamTable')) {
-            $('#dashboardTeamTable').DataTable().destroy();
-        }
-
-        const exportOptionsDefault = {
-            format: {
-                body: function ( data, row, column, node ) {
-                    if (node && node.hasAttribute('data-export')) {
-                        return node.getAttribute('data-export');
-                    }
-                    if (typeof data === 'string') {
-                        var temp = document.createElement("div");
-                        temp.innerHTML = data;
-                        return (temp.textContent || temp.innerText || "").trim();
-                    }
-                    return data;
-                }
-            }
-        };
-
-        var table = $('#dashboardTeamTable').DataTable({
-            pageLength: 25,
-            ordering: false,
-            searching: true, 
-            paging: true,
-            info: true,
-            responsive: false,
-            autoWidth: false,
-            dom: "t<'d-none'ip>",
-            language: {
-                emptyTable: '<div class="text-center text-muted py-5"><i class="fas fa-users-slash fa-3x mb-3 text-muted"></i><h5 class="font-weight-bold text-dark">No Team Members Found</h5></div>',
-                zeroRecords: '<div class="text-center text-muted py-4"><i class="fas fa-search fa-2x mb-2 text-muted"></i><h6 class="font-weight-bold text-dark mb-0">No matching team members found</h6></div>'
-            },
-            buttons: [
-                {
-                    extend: 'csvHtml5',
-                    text: '<i class="fas fa-file-csv text-info"></i> CSV',
-                    className: 'orb-export-btn',
-                    exportOptions: exportOptionsDefault
-                },
-                {
-                    extend: 'excelHtml5',
-                    text: '<i class="fas fa-file-excel text-success"></i> Excel',
-                    className: 'orb-export-btn',
-                    exportOptions: exportOptionsDefault
-                },
-                {
-                    extend: 'pdfHtml5',
-                    text: '<i class="fas fa-file-pdf text-danger"></i> PDF',
-                    className: 'orb-export-btn',
-                    orientation: 'landscape',
-                    pageSize: 'A4',
-                    title: 'OrboOne HRMS - Team Management Dashboard Overview',
-                    exportOptions: exportOptionsDefault,
-                    customize: function (doc) {
-                        doc.pageOrientation = 'landscape';
-                        doc.pageSize = 'A4';
-                        doc.pageMargins = [20, 45, 20, 35];
-
-                        doc['header'] = function(currentPage, pageCount) {
-                            return {
-                                margin: [20, 15, 20, 0],
-                                columns: [
-                                    {
-                                        text: 'ORBOONE HRMS — TEAM MANAGEMENT DASHBOARD',
-                                        fontSize: 9,
-                                        bold: true,
-                                        color: '#4B00E8'
-                                    },
-                                    {
-                                        text: 'Page ' + currentPage.toString() + ' of ' + pageCount,
-                                        alignment: 'right',
-                                        fontSize: 9,
-                                        color: '#64748B'
-                                    }
-                                ]
-                            };
-                        };
-
-                        var objLayout = {};
-                        objLayout['hLineWidth'] = function(i) { return 0.5; };
-                        objLayout['vLineWidth'] = function(i) { return 0; };
-                        objLayout['hLineColor'] = function(i) { return '#CBD5E1'; };
-                        objLayout['paddingLeft'] = function(i) { return 8; };
-                        objLayout['paddingRight'] = function(i) { return 8; };
-                        objLayout['paddingTop'] = function(i) { return 6; };
-                        objLayout['paddingBottom'] = function(i) { return 6; };
-                        doc.content[1].layout = objLayout;
-
-                        var headerRow = doc.content[1].table.body[0];
-                        for (var i = 0; i < headerRow.length; i++) {
-                            headerRow[i].fillColor = '#1E293B';
-                            headerRow[i].color = '#FFFFFF';
-                            headerRow[i].fontSize = 9.5;
-                            headerRow[i].bold = true;
-                        }
-
-                        doc.content[1].table.widths = ['6%', '22%', '22%', '14%', '12%', '12%', '12%'];
-                    }
-                },
-                {
-                    extend: 'print',
-                    text: '<i class="fas fa-print text-primary"></i> Print',
-                    className: 'orb-export-btn',
-                    title: '',
-                    exportOptions: exportOptionsDefault,
-                    customize: function (win) {
-                        var body = $(win.document.body);
-
-                        $(win.document.head).append(`
-                            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-                            <style>
-                                @media print {
-                                    @page {
-                                        size: A4 landscape;
-                                        margin: 10mm 12mm;
-                                    }
-                                }
-                                body {
-                                    font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
-                                    color: #0F172A !important;
-                                    background: #FFFFFF !important;
-                                    padding: 15px !important;
-                                    margin: 0 !important;
-                                }
-                                .print-hero {
-                                    background: linear-gradient(135deg, #4B00E8 0%, #FF5252 100%) !important;
-                                    border-radius: 12px !important;
-                                    padding: 16px 22px !important;
-                                    color: #FFFFFF !important;
-                                    margin-bottom: 20px !important;
-                                    display: flex !important;
-                                    align-items: center !important;
-                                    justify-content: space-between !important;
-                                    -webkit-print-color-adjust: exact !important;
-                                    print-color-adjust: exact !important;
-                                }
-                                .print-hero h2 {
-                                    margin: 0 !important;
-                                    font-size: 20px !important;
-                                    font-weight: 800 !important;
-                                    color: #FFFFFF !important;
-                                }
-                                .print-hero p {
-                                    margin: 2px 0 0 0 !important;
-                                    font-size: 12px !important;
-                                    opacity: 0.92 !important;
-                                    color: #FFFFFF !important;
-                                }
-                                table.dataTable {
-                                    width: 100% !important;
-                                    border-collapse: separate !important;
-                                    border-spacing: 0 !important;
-                                    border-radius: 10px !important;
-                                    overflow: hidden !important;
-                                    border: 1px solid #CBD5E1 !important;
-                                    margin-top: 10px !important;
-                                }
-                                table.dataTable thead th {
-                                    background: #1E293B !important;
-                                    color: #FFFFFF !important;
-                                    font-size: 11px !important;
-                                    font-weight: 800 !important;
-                                    text-transform: uppercase !important;
-                                    padding: 10px 14px !important;
-                                    border: none !important;
-                                    -webkit-print-color-adjust: exact !important;
-                                    print-color-adjust: exact !important;
-                                }
-                                table.dataTable tbody td {
-                                    padding: 10px 14px !important;
-                                    border-bottom: 1px solid #E2E8F0 !important;
-                                    font-size: 11.5px !important;
-                                }
-                                table.dataTable tbody tr:nth-child(even) {
-                                    background: #F8FAFC !important;
-                                    -webkit-print-color-adjust: exact !important;
-                                    print-color-adjust: exact !important;
-                                }
-                            </style>
-                        `);
-
-                        body.find('h1').remove();
-
-                        var printDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-                        body.prepend(`
-                            <div class="print-hero">
-                                <div>
-                                    <h2>OrboOne HRMS</h2>
-                                    <p>Team Management — Live Operational Status Summary</p>
-                                </div>
-                                <div style="background: rgba(255, 255, 255, 0.22); padding: 6px 14px; border-radius: 8px; font-size: 11px; font-weight: 700;">
-                                    Date: ${printDate}
-                                </div>
-                            </div>
-                        `);
-                    }
-                }
-            ],
-            language: {
-                emptyTable: 'No team members currently assigned.',
-                zeroRecords: 'No matching team members found.',
-                lengthMenu: 'Show _MENU_ entries',
-                info: 'Showing _START_ to _END_ of _TOTAL_ team members',
-                paginate: {
-                    previous: 'Prev',
-                    next: 'Next'
-                }
-            }
+document.addEventListener('DOMContentLoaded', function () {
+    // Initialize Per Page Select2
+    if (typeof $ !== 'undefined' && $.fn.select2) {
+        $('.table-per-page-select').select2({
+            minimumResultsForSearch: -1,
+            containerCssClass: 'select2-container--per-page',
+            dropdownCssClass: 'select2-dropdown-per-page',
+            width: '75px'
         });
+    }
 
-        // Inject the entries dropdown on the left, and print/export buttons on the right
-        $('.orb-table-toolbar .toolbar-left').html(`
-            <div class="dataTables_length">
-                <label>Show 
-                    <select class="form-control" id="custom-length-select">
-                        <option value="10">10</option>
-                        <option value="25" selected>25</option>
-                        <option value="50">50</option>
-                        <option value="100">100</option>
-                        <option value="-1">All</option>
-                    </select> entries
-                </label>
-            </div>
-        `);
+    // Per-page change handler
+    const perPageSelect = document.getElementById('recordsPerPageSelect');
+    if (perPageSelect) {
+        $(perPageSelect).on('change', function() {
+            const url = new URL(window.location.href);
+            url.searchParams.set('per_page', this.value);
+            url.searchParams.delete('page');
+            window.location.href = url.toString();
+        });
+    }
+
+    // CSV Export
+    $('#btnExportCSV').on('click', function() {
+        let csvContent = "data:text/csv;charset=utf-8,";
+        csvContent += "S.No,Employee Name,Designation,Department,Attendance Today,Leave Status,Work Report\n";
         
-        $('.orb-table-toolbar .toolbar-right').append(table.buttons().container());
-
-        $('#custom-length-select').on('change', function() {
-            table.page.len($(this).val()).draw();
+        $('#dashboardTeamTable tbody tr').each(function() {
+            let row = [];
+            $(this).find('td').each(function(idx) {
+                let text = $(this).text().replace(/\s+/g, ' ').trim();
+                row.push('"' + text.replace(/"/g, '""') + '"');
+            });
+            if (row.length > 1) {
+                csvContent += row.join(",") + "\n";
+            }
         });
 
-        // Instant Filter search listener
-        $('#filter-search-dashboard').on('keyup change clear', function() {
-            table.search($(this).val()).draw();
-        });
-
-        $('#btn-reset-dashboard-filters').on('click', function() {
-            $('#filter-search-dashboard').val('');
-            table.search('').draw();
-        });
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "Team_Dashboard_Status_" + new Date().toISOString().slice(0,10) + ".csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     });
+
+    // Excel Export (HTML Table format)
+    $('#btnExportExcel').on('click', function() {
+        let tab_text = "<table border='1px'><tr bgcolor='#4B00E8' style='color:#FFFFFF;'>";
+        let table = document.getElementById('dashboardTeamTable');
+        
+        for (let j = 0; j < table.rows.length; j++) {
+            tab_text += table.rows[j].innerHTML + "</tr><tr>";
+        }
+        tab_text += "</tr></table>";
+        tab_text = tab_text.replace(/<A[^>]*>|<\/A>/g, "");
+        tab_text = tab_text.replace(/<img[^>]*>/gi, "");
+        tab_text = tab_text.replace(/<input[^>]*>|<\/input>/gi, "");
+
+        let sa = window.open('data:application/vnd.ms-excel,' + encodeURIComponent(tab_text));
+        return (sa);
+    });
+
+    // Print
+    $('#btnPrint').on('click', function() {
+        window.print();
+    });
+});
 </script>
 @endsection

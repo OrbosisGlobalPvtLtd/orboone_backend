@@ -36,7 +36,13 @@ class CheckEmployeeProfileCompletion
         }
 
         // 1. Check if user exists in employees_new
-        $employee = EmployeeM::with(['profile'])->where('user_id', $user->id)->first();
+        $employee = ($user->relationLoaded('employee') && $user->employee)
+            ? $user->employee
+            : EmployeeM::with(['profile'])->where('user_id', $user->id)->first();
+
+        if ($employee && !$user->relationLoaded('employee')) {
+            $user->setRelation('employee', $employee);
+        }
 
         // Agar user ka record employees_new me nahi hai, to bypass karein
         if (!$employee) {

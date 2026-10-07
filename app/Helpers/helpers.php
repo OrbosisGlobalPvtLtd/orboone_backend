@@ -166,12 +166,14 @@ if (!function_exists('resolveEmployeeAvatar')) {
             if (!$employee && isset($entity->employee_id)) {
                 try {
                     $employee = \App\Models\HRMS\Employee\EmployeeM::find($entity->employee_id);
-                } catch (\Throwable $e) {}
+                } catch (\Throwable $e) {
+                }
             }
             if (!$user && isset($entity->user_id)) {
                 try {
                     $user = \App\Models\Core\UserM::find($entity->user_id);
-                } catch (\Throwable $e) {}
+                } catch (\Throwable $e) {
+                }
             }
         }
 
@@ -185,7 +187,8 @@ if (!function_exists('resolveEmployeeAvatar')) {
                     // Return secure private file server route
                     return route('employee.profile-image', ['employee' => $employee->id]);
                 }
-            } catch (\Throwable $e) {}
+            } catch (\Throwable $e) {
+            }
         }
 
         // 2. Check User Profile Photo
@@ -201,7 +204,8 @@ if (!function_exists('resolveEmployeeAvatar')) {
                         return asset('storage/' . $userImage);
                     }
                 }
-            } catch (\Throwable $e) {}
+            } catch (\Throwable $e) {
+            }
         }
 
         return null;
@@ -246,25 +250,29 @@ if (!function_exists('resolveEmployeePassportPhoto')) {
                 if (!$employee) {
                     $employee = \App\Models\HRMS\Employee\EmployeeM::where('user_id', $employeeOrUser)->first();
                 }
-            } catch (\Throwable $e) {}
+            } catch (\Throwable $e) {
+            }
         } elseif (is_object($employeeOrUser)) {
             if (isset($employeeOrUser->employee) && $employeeOrUser->employee instanceof \App\Models\HRMS\Employee\EmployeeM) {
                 $employee = $employeeOrUser->employee;
             } elseif (isset($employeeOrUser->employee_id) && !empty($employeeOrUser->employee_id)) {
                 try {
                     $employee = \App\Models\HRMS\Employee\EmployeeM::find($employeeOrUser->employee_id);
-                } catch (\Throwable $e) {}
+                } catch (\Throwable $e) {
+                }
             } elseif (isset($employeeOrUser->user_id) && !empty($employeeOrUser->user_id)) {
                 try {
                     $employee = \App\Models\HRMS\Employee\EmployeeM::where('user_id', $employeeOrUser->user_id)->first();
-                } catch (\Throwable $e) {}
+                } catch (\Throwable $e) {
+                }
             } elseif (isset($employeeOrUser->id) && !empty($employeeOrUser->id)) {
                 try {
                     $employee = \App\Models\HRMS\Employee\EmployeeM::find($employeeOrUser->id);
                     if (!$employee) {
                         $employee = \App\Models\HRMS\Employee\EmployeeM::where('user_id', $employeeOrUser->id)->first();
                     }
-                } catch (\Throwable $e) {}
+                } catch (\Throwable $e) {
+                }
             }
         }
 
@@ -282,13 +290,13 @@ if (!function_exists('resolveEmployeePassportPhoto')) {
                 ->whereHas('documentType', function ($query) {
                     $query->where(function ($q) {
                         $q->where('name', 'Passport Size Photo')
-                          ->orWhere('code', 'passport_size_photo')
-                          ->orWhere('name', 'Passport Photo')
-                          ->orWhere('code', 'passport_photo')
-                          ->orWhere('name', 'Photo')
-                          ->orWhere('name', 'Passport')
-                          ->orWhere('name', 'like', '%Passport%Photo%')
-                          ->orWhere('name', 'like', '%Passport%Size%Photo%');
+                            ->orWhere('code', 'passport_size_photo')
+                            ->orWhere('name', 'Passport Photo')
+                            ->orWhere('code', 'passport_photo')
+                            ->orWhere('name', 'Photo')
+                            ->orWhere('name', 'Passport')
+                            ->orWhere('name', 'like', '%Passport%Photo%')
+                            ->orWhere('name', 'like', '%Passport%Size%Photo%');
                     });
                 })
                 ->orderByRaw("CASE WHEN verification_status = 'verified' THEN 0 ELSE 1 END")
@@ -300,7 +308,8 @@ if (!function_exists('resolveEmployeePassportPhoto')) {
                 $passportPhotoCache[$employee->id] = $url;
                 return $url;
             }
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+        }
 
         $passportPhotoCache[$employee->id] = null;
         return null;
@@ -366,7 +375,8 @@ if (!function_exists('branding_name')) {
             if (!empty($branding['company_name'])) {
                 return $branding['company_name'];
             }
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+        }
 
         return config('app.name') ?: 'OrboOne HRMS';
     }
@@ -419,7 +429,8 @@ if (!function_exists('branding_logo_path')) {
                     }
                 }
             }
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+        }
 
         return public_path('images/Picsart_26-04-02_12-19-10-396.png');
     }
@@ -438,7 +449,8 @@ if (!function_exists('company_name')) {
             if ($company && !empty($company->company_name)) {
                 return $company->company_name;
             }
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+        }
 
         return branding_name();
     }
@@ -457,7 +469,8 @@ if (!function_exists('branding_primary_color')) {
             if (!empty($branding['primary_color'])) {
                 return $branding['primary_color'];
             }
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+        }
 
         return '#4B00E8';
     }
@@ -476,7 +489,8 @@ if (!function_exists('branding_secondary_color')) {
             if (!empty($branding['secondary_color'])) {
                 return $branding['secondary_color'];
             }
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+        }
 
         return '#FF5252';
     }
@@ -495,13 +509,14 @@ if (!function_exists('branding_logo_url_or_embed')) {
 
         // If in production or not on a local server, return the public URL directly
         // so that the email client loads it directly without attaching it as a file.
-        $isLocal = app()->environment('local', 'testing') 
+        $isLocal = app()->environment('local', 'testing')
             || preg_match('/(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|::1)/i', $logoUrl);
 
         if ($isLocal && $message) {
             try {
                 return $message->embed(branding_logo_path());
-            } catch (\Throwable $e) {}
+            } catch (\Throwable $e) {
+            }
         }
 
         return $logoUrl;
@@ -524,14 +539,14 @@ if (!function_exists('formatWorkReportRow')) {
         // 1. Employee Name and Code
         $emp = is_object($log) && isset($log->employee) ? $log->employee : null;
         $user = is_object($log) && isset($log->user) ? $log->user : null;
-        
-        $empName = optional($user)->name 
+
+        $empName = optional($user)->name
             ?? (is_object($log) && isset($log->display_name) ? $log->display_name : null)
-            ?? optional($emp)->name 
+            ?? optional($emp)->name
             ?? 'Employee';
 
         $empCode = (is_object($log) && isset($log->employee_code) ? $log->employee_code : null)
-            ?? optional($emp)->employee_code 
+            ?? optional($emp)->employee_code
             ?? 'N/A';
 
         $employeeDisplay = "{$empName} ({$empCode})";
@@ -544,7 +559,8 @@ if (!function_exists('formatWorkReportRow')) {
         } elseif (!empty($workDateRaw)) {
             try {
                 $dateCarbon = \Carbon\Carbon::parse($workDateRaw);
-            } catch (\Throwable $e) {}
+            } catch (\Throwable $e) {
+            }
         }
         $dateDisplay = $dateCarbon ? $dateCarbon->format('d M Y') : '-';
         $dayName = $dateCarbon ? $dateCarbon->format('l') : '';
@@ -558,7 +574,8 @@ if (!function_exists('formatWorkReportRow')) {
         } elseif (!empty($submittedAtRaw)) {
             try {
                 $submittedTime = \Carbon\Carbon::parse($submittedAtRaw)->format('h:i A');
-            } catch (\Throwable $e) {}
+            } catch (\Throwable $e) {
+            }
         }
 
         // 3. Work Mode
@@ -569,7 +586,7 @@ if (!function_exists('formatWorkReportRow')) {
 
         // 4. Shift Context
         $shiftTime = is_object($att) && isset($att->attendanceTime) ? $att->attendanceTime : null;
-        $shiftName = optional($shiftTime)->name 
+        $shiftName = optional($shiftTime)->name
             ?? (is_object($att) && isset($att->shift_name) ? $att->shift_name : null)
             ?? (is_object($log) && isset($log->shift_name) ? $log->shift_name : null)
             ?? 'General Shift';

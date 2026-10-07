@@ -29,13 +29,17 @@ class AccessM extends Model
     }
 
     public function get($only_active_menu = false) {
-        $accesses = $this->with('menu', 'role')->orderBy('menu_id', 'ASC')->get();
+        static $accessCache = [];
+        $userId = auth()->id() ?? 0;
+        $cacheKey = "{$userId}_" . ($only_active_menu ? '1' : '0');
 
-        $menus = $this->sortMenus($accesses, $only_active_menu);
+        if (!isset($accessCache[$cacheKey])) {
+            $accesses = $this->with('menu', 'role')->orderBy('menu_id', 'ASC')->get();
+            $menus = $this->sortMenus($accesses, $only_active_menu);
+            $accessCache[$cacheKey] = $this->checkRole($menus);
+        }
 
-        $checkedMenus = $this->checkRole($menus);
-
-        return $checkedMenus;
+        return $accessCache[$cacheKey];
     }
 
     public function sortMenus ($accesses, $only_active_menu = false) {

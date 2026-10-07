@@ -46,42 +46,52 @@ class AppServiceProvider extends ServiceProvider
         });
 
         View::composer('*', function ($view) {
-            $view->with('branding', BrandingSettingsS::get());
+            static $memoized = null;
+            static $lastUserId = null;
 
-            if (Auth::check()) {
-                $accesses = resolve(Access::class)->get(true);
-                $view->with('accesses', $accesses);
+            $userId = Auth::id();
 
-                $userId = Auth::id();
-                $employee = null;
-                $isEmployeeUser = false;
-                $authEmployeeId = null;
+            if ($memoized === null || $lastUserId !== $userId) {
+                $lastUserId = $userId;
+                $branding = BrandingSettingsS::get();
 
-                try {
-                    // Try using EmployeeM if it exists
-                    if (class_exists(EmployeeM::class)) {
-                        $employee = EmployeeM::where('user_id', $userId)->first();
-                    } else {
-                        // Fallback to DB
-                        $employee = DB::table('employees_new')->where('user_id', $userId)->first();
+                if ($userId) {
+                    $accesses = resolve(Access::class)->get(true);
+
+                    $employee = null;
+                    try {
+                        if (class_exists(EmployeeM::class)) {
+                            $user = Auth::user();
+                            $employee = ($user && $user->relationLoaded('employee'))
+                                ? $user->employee
+                                : EmployeeM::where('user_id', $userId)->first();
+                        } else {
+                            $employee = DB::table('employees_new')->where('user_id', $userId)->first();
+                        }
+                    } catch (\Exception $e) {
+                        // Ignore, fallback to null
                     }
-                } catch (\Exception $e) {
-                    // Ignore, maybe table doesn't exist yet
-                }
 
-                if ($employee) {
-                    $isEmployeeUser = true;
-                    $authEmployeeId = $employee->id ?? null;
+                    $memoized = [
+                        'branding' => $branding,
+                        'accesses' => $accesses,
+                        'isEmployeeUser' => (bool) $employee,
+                        'authEmployee' => $employee,
+                        'authEmployeeId' => $employee->id ?? null,
+                    ];
+                } else {
+                    $memoized = [
+                        'branding' => $branding,
+                        'accesses' => collect(),
+                        'isEmployeeUser' => false,
+                        'authEmployee' => null,
+                        'authEmployeeId' => null,
+                    ];
                 }
-
-                $view->with('isEmployeeUser', $isEmployeeUser);
-                $view->with('authEmployee', $employee);
-                $view->with('authEmployeeId', $authEmployeeId);
-            } else {
-                $view->with('isEmployeeUser', false);
-                $view->with('authEmployee', null);
-                $view->with('authEmployeeId', null);
             }
+
+            $view->with($memoized);
         });
     }
 }
+

@@ -95,8 +95,9 @@ trait HrmsCrudPage
             return $query;
         }
 
-        // 2. If user has team view permission (e.g. Manager / Team Lead)
-        if ($teamPermission && $this->canViewTeam($teamPermission)) {
+        // 2. If user has team view permission (e.g. Manager / Team Lead) or has subordinates
+        $teamIds = $this->teamEmployeeIds(false);
+        if (($teamPermission && $this->canViewTeam($teamPermission)) || ! empty($teamIds) || (method_exists($user, 'hasRole') && $user->hasRole(['manager', 'lead', 'team_lead']))) {
             $ids = $this->teamEmployeeIds(true);
             if (! empty($ids)) {
                 return $query->whereIn($column, $ids);

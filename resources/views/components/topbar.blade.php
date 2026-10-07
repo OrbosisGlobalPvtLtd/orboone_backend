@@ -18,23 +18,35 @@ $unreadCount = 0;
 $topbarNotifications = collect();
 
 if ($topbarUser) {
-try {
-$unreadCount = DB::table('notifications')
-->where('user_id', $topbarUser->id)
-->where(function ($query) {
-$query->where('is_read', 0)->orWhereNull('read_at');
-})
-->count();
+    static $topbarNotifCache = null;
+    if ($topbarNotifCache !== null && ($topbarNotifCache['user_id'] ?? null) === $topbarUser->id) {
+        $unreadCount = $topbarNotifCache['unreadCount'];
+        $topbarNotifications = $topbarNotifCache['notifications'];
+    } else {
+        try {
+            $unreadCount = DB::table('notifications')
+                ->where('user_id', $topbarUser->id)
+                ->where(function ($query) {
+                    $query->where('is_read', 0)->orWhereNull('read_at');
+                })
+                ->count();
 
-$topbarNotifications = DB::table('notifications')
-->where('user_id', $topbarUser->id)
-->latest('created_at')
-->limit(5)
-->get();
-} catch (\Throwable $e) {
-$unreadCount = 0;
-$topbarNotifications = collect();
-}
+            $topbarNotifications = DB::table('notifications')
+                ->where('user_id', $topbarUser->id)
+                ->latest('created_at')
+                ->limit(5)
+                ->get();
+
+            $topbarNotifCache = [
+                'user_id' => $topbarUser->id,
+                'unreadCount' => $unreadCount,
+                'notifications' => $topbarNotifications,
+            ];
+        } catch (\Throwable $e) {
+            $unreadCount = 0;
+            $topbarNotifications = collect();
+        }
+    }
 }
 @endphp
 
@@ -227,8 +239,8 @@ $topbarNotifications = collect();
 
                 @auth
                 @php
-                $topbarAvatar = resolveEmployeeAvatar($topbarUser);
-                $topbarInitial = resolveEmployeeInitials($topbarUser);
+                $topbarAvatar = !empty($authEmployee) ? resolveEmployeeAvatar($authEmployee) : resolveEmployeeAvatar($topbarUser);
+                $topbarInitial = !empty($authEmployee) ? resolveEmployeeInitials($authEmployee) : resolveEmployeeInitials($topbarUser);
                 @endphp
 
                 <div class="dropdown topbar-user-dropdown">

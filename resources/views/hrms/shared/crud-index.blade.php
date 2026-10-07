@@ -1205,18 +1205,35 @@
 
 
             @if(!empty($filters))
+            @php
+                $hasMonthFilter = collect($filters)->contains('name', 'month');
+                $reqMonth = request('month');
+                $hasCustomDates = request()->filled('from') || request()->filled('from_date') || request()->filled('to') || request()->filled('to_date');
+                if ($hasCustomDates || $reqMonth === 'custom') {
+                    $activeMonth = 'custom';
+                } elseif ($reqMonth !== null) {
+                    $activeMonth = $reqMonth;
+                } else {
+                    $activeMonth = $defaultMonth ?? now()->format('Y-m');
+                }
+            @endphp
             <div class="orb-filter">
                 <form method="GET" id="filterForm" class="orb-filter-form">
                     @foreach($filters as $filter)
+                    @php
+                        $filterName = $filter['name'] ?? '';
+                        $isDateField = in_array($filterName, ['from', 'to', 'from_date', 'to_date']) || ($filter['type'] ?? '') === 'date';
+                    @endphp
 
-                    <div class="orb-filter-item">
+                    <div class="orb-filter-item {{ ($isDateField && $hasMonthFilter) ? 'js-custom-date-field' : '' }}" style="{{ ($isDateField && $hasMonthFilter && $activeMonth !== 'custom') ? 'display: none;' : '' }}">
 
                         @if(($filter['type'] ?? 'text') === 'select')
                         @php
                             $selectedVal = request($filter['name'], $filter['default'] ?? ($filter['value'] ?? null));
-                            if ($selectedVal === null && !empty($isEmployee) && $filter['name'] === 'employee_id' && !empty($filter['options']) && count($filter['options']) === 1) {
-                                $selectedVal = array_key_first($filter['options']);
+                            if ($filter['name'] === 'month') {
+                                $selectedVal = $activeMonth;
                             }
+                            $filterPlaceholder = $filter['placeholder'] ?? ($filter['name'] === 'employee_id' ? 'All Employee' : ($filter['name'] === 'month' ? '' : 'All ' . ($filter['label'] ?? '')));
                         @endphp
 
                         <x-form.select 
@@ -1224,9 +1241,10 @@
                             :label="$filter['label']"
                             :options="$filter['options'] ?? []"
                             :selected="$selectedVal"
-                            :placeholder="$filter['placeholder'] ?? 'All'"
+                            :placeholder="$filterPlaceholder"
                             :searchable="true"
                             wrapper-class="mb-0"
+                            id="{{ $filter['name'] === 'month' ? 'filter_month' : 'filter_' . $filterName }}"
                         />
 
                         @elseif(($filter['type'] ?? 'text') === 'date')
@@ -1261,7 +1279,7 @@
                         <button type="submit" class="orb-btn orb-btn-gradient orb-btn-search">
                             <i class="fas fa-search"></i> Search
                         </button>
-                        <a href="{{ url()->current() }}" class="orb-btn orb-btn-light orb-btn-reset" title="Reset Filters">
+                        <a href="{{ url()->current() }}{{ $hasMonthFilter ? '?month=' . now()->format('Y-m') : '' }}" class="orb-btn orb-btn-light orb-btn-reset" title="Reset Filters">
                             <i class="fas fa-undo"></i> Reset
                         </a>
                     </div>
@@ -1834,6 +1852,17 @@
                         width: '100%'
                     });
                 });
+            }
+        });
+
+        // Toggle Custom Date fields based on Month dropdown selection
+        $(document).on('change', '#filter_month, select[name="month"]', function () {
+            const val = $(this).val();
+            if (val === 'custom') {
+                $('.js-custom-date-field').show();
+            } else {
+                $('.js-custom-date-field').hide();
+                $('.js-custom-date-field input').val('');
             }
         });
 

@@ -830,12 +830,10 @@
     }
 </style>
 
-<!-- Global Flatpickr, Select2 & DataTables Styles for Panel -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
+<!-- Global Flatpickr & DataTables Styles for Panel (Select2 & Orbo Components loaded in app.blade.php) -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap4.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap4.min.css">
-<link rel="stylesheet" href="{{ asset('css/orbo-components.css') }}">
 <!-- Early Select2 Core for zero-flicker searchable dropdowns -->
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
@@ -921,9 +919,6 @@
 @endsection
 
 @section('script')
-<!-- Global Select2 Core -->
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-
 <!-- Global Flatpickr Core -->
 <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
 

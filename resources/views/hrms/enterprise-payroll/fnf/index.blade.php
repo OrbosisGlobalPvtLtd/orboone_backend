@@ -38,7 +38,7 @@
             <form method="GET" action="{{ route('enterprise-payroll.fnf.index') }}" class="row align-items-end ep-form" id="filterForm">
                 <div class="col-md-3 mb-2 mb-md-0">
                     <label>Employee</label>
-                    <select name="employee_id" class="form-control select2-searchable">
+                    <select name="employee_id" class="form-control" onchange="this.form.submit()">
                         <option value="">All Employees</option>
                         @foreach($employees ?? [] as $employee)
                         <option value="{{ $employee->id }}" {{ request('employee_id') == $employee->id ? 'selected' : '' }}>{{ $employee->display_name }}</option>
@@ -47,7 +47,7 @@
                 </div>
                 <div class="col-md-3 mb-2 mb-md-0">
                     <label>Status</label>
-                    <select name="status" class="form-control">
+                    <select name="status" class="form-control" onchange="this.form.submit()">
                         <option value="">All Status</option>
                         <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
                         <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Approved</option>
@@ -56,7 +56,7 @@
                 </div>
                 <div class="col-md-2 mb-2 mb-md-0">
                     <label>Month</label>
-                    <select name="month" class="form-control">
+                    <select name="month" class="form-control" onchange="this.form.submit()">
                         <option value="">All Months</option>
                         @for($i=1; $i<=12; $i++)
                             <option value="{{ $i }}" {{ request('month') == $i ? 'selected' : '' }}>{{ \Carbon\Carbon::create()->month($i)->format('F') }}</option>
@@ -65,12 +65,9 @@
                 </div>
                 <div class="col-md-2 mb-2 mb-md-0">
                     <label>Year</label>
-                    <input type="number" name="year" class="form-control" value="{{ request('year') }}" placeholder="Year">
+                    <input type="number" name="year" class="form-control" value="{{ request('year') }}" onkeyup="if(event.keyCode === 13) this.form.submit()" placeholder="Year">
                 </div>
-                <div class="col-md-2 text-right d-flex gap-2">
-                    <button type="submit" class="btn btn-primary font-weight-bold px-2 w-100 mr-1" style="background: var(--orb-primary); border: none; height: 42px; border-radius: 10px;">
-                        <i class="fas fa-search"></i> Search
-                    </button>
+                <div class="col-md-2 text-right">
                     <a href="{{ route('enterprise-payroll.fnf.index') }}" class="ep-btn ep-btn-light w-100"><i class="fas fa-sync-alt"></i> Reset</a>
                 </div>
             </form>

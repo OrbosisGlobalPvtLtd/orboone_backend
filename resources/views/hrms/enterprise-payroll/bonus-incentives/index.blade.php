@@ -38,7 +38,7 @@
             <form method="GET" action="{{ route('enterprise-payroll.bonus-incentives.index') }}" class="row align-items-end ep-form" id="filterForm">
                 <div class="col-md-3 mb-2 mb-md-0">
                     <label>Employee</label>
-                    <select name="employee_id" class="form-control select2-searchable">
+                    <select name="employee_id" class="form-control" onchange="this.form.submit()">
                         <option value="">All Employees</option>
                         @foreach($employees ?? [] as $employee)
                         <option value="{{ $employee->id }}" {{ request('employee_id') == $employee->id ? 'selected' : '' }}>{{ $employee->display_name }}</option>
@@ -47,7 +47,7 @@
                 </div>
                 <div class="col-md-2 mb-2 mb-md-0">
                     <label>Type</label>
-                    <select name="type" class="form-control">
+                    <select name="type" class="form-control" onchange="this.form.submit()">
                         <option value="">All Types</option>
                         <option value="bonus" {{ request('type') == 'bonus' ? 'selected' : '' }}>Bonus</option>
                         <option value="incentive" {{ request('type') == 'incentive' ? 'selected' : '' }}>Incentive</option>
@@ -55,7 +55,7 @@
                 </div>
                 <div class="col-md-2 mb-2 mb-md-0">
                     <label>Month</label>
-                    <select name="month" class="form-control">
+                    <select name="month" class="form-control" onchange="this.form.submit()">
                         <option value="">All Months</option>
                         @for($i=1; $i<=12; $i++)
                             <option value="{{ $i }}" {{ request('month') == $i ? 'selected' : '' }}>{{ \Carbon\Carbon::create()->month($i)->format('F') }}</option>
@@ -64,12 +64,9 @@
                 </div>
                 <div class="col-md-2 mb-2 mb-md-0">
                     <label>Year</label>
-                    <input type="number" name="year" class="form-control" value="{{ request('year') }}" placeholder="Year">
+                    <input type="number" name="year" class="form-control" value="{{ request('year') }}" onkeyup="if(event.keyCode === 13) this.form.submit()" placeholder="Year">
                 </div>
-                <div class="col-md-3 text-right d-flex gap-2">
-                    <button type="submit" class="btn btn-primary font-weight-bold px-3 w-100 mr-2" style="background: var(--orb-primary); border: none; height: 42px; border-radius: 10px;">
-                        <i class="fas fa-search mr-1"></i> Search
-                    </button>
+                <div class="col-md-3 text-right">
                     <a href="{{ route('enterprise-payroll.bonus-incentives.index') }}" class="ep-btn ep-btn-light w-100"><i class="fas fa-sync-alt"></i> Reset</a>
                 </div>
             </form>

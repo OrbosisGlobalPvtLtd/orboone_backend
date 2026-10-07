@@ -32,9 +32,9 @@
             <!-- Attached Filters -->
             <div class="ep-card-filters">
                 <form method="GET" class="row align-items-end ep-form" id="filterForm">
-                    <div class="col-md-4 mb-2 mb-md-0">
+                    <div class="col-md-5 mb-2 mb-md-0">
                         <label>Month</label>
-                        <select name="month" class="form-control">
+                        <select name="month" class="form-control" onchange="this.form.submit()">
                             <option value="">All Months</option>
                             @for($i=1; $i<=12; $i++)
                                 <option value="{{ $i }}" {{ $month == $i ? 'selected' : '' }}>{{ \Carbon\Carbon::create()->month($i)->format('F') }}</option>
@@ -43,12 +43,9 @@
                     </div>
                     <div class="col-md-4 mb-2 mb-md-0">
                         <label>Year</label>
-                        <input type="number" name="year" min="2020" value="{{ $year }}" class="form-control">
+                        <input type="number" name="year" min="2020" value="{{ $year }}" class="form-control" onkeyup="if(event.keyCode === 13) this.form.submit()">
                     </div>
-                    <div class="col-md-4 text-right d-flex gap-2">
-                        <button type="submit" class="btn btn-primary font-weight-bold px-3 w-100 mr-2" style="background: var(--orb-primary); border: none; height: 42px; border-radius: 10px;">
-                            <i class="fas fa-search mr-1"></i> Search
-                        </button>
+                    <div class="col-md-3 text-right">
                         <a href="{{ url()->current() }}" class="ep-btn ep-btn-light w-100"><i class="fas fa-sync-alt"></i> Reset</a>
                     </div>
                 </form>

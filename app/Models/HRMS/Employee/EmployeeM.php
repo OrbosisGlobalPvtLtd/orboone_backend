@@ -181,20 +181,20 @@ class EmployeeM extends Model
         }
 
         return $query->where(function ($q) {
-                $q->where('employees_new.is_active', 1)
-                  ->orWhereNull('employees_new.is_active');
-            })
+            $q->where('employees_new.is_active', 1)
+                ->orWhereNull('employees_new.is_active');
+        })
             ->where(function ($q) {
                 $q->where('employees_new.employment_status', 'active')
-                  ->orWhereNull('employees_new.employment_status');
+                    ->orWhereNull('employees_new.employment_status');
             })
             ->where(function ($q) {
                 $q->whereNull('employees_new.employment_status')
-                  ->orWhereNotIn('employees_new.employment_status', ['exited', 'inactive', 'terminated', 'resigned', 'resigned_and_exited']);
+                    ->orWhereNotIn('employees_new.employment_status', ['exited', 'inactive', 'terminated', 'resigned', 'resigned_and_exited']);
             })
             ->where(function ($q) {
                 $q->whereNull('employees_new.employee_stage')
-                  ->orWhereNotIn('employees_new.employee_stage', ['exited', 'resigned']);
+                    ->orWhereNotIn('employees_new.employee_stage', ['exited', 'resigned']);
             })
             ->where(function ($q) use ($date) {
                 $q->whereNull('employees_new.relieving_date')->orWhere('employees_new.relieving_date', '>', $date);
@@ -349,19 +349,19 @@ class EmployeeM extends Model
 
         return $query->where(function ($q) {
             $q->where('employees_new.is_active', 1)
-              ->orWhereNull('employees_new.is_active');
+                ->orWhereNull('employees_new.is_active');
         })
-        ->where(function ($q) {
-            $q->whereNull('employees_new.employment_status')
-              ->orWhereNotIn('employees_new.employment_status', ['exited', 'inactive', 'terminated', 'resigned']);
-        })
-        ->where(function ($q) {
-            $q->whereNull('employees_new.employee_stage')
-              ->orWhereNotIn('employees_new.employee_stage', ['exited', 'resigned']);
-        })
-        ->when(!empty($exitedEmployeeIds), function ($q) use ($exitedEmployeeIds) {
-            $q->whereNotIn('employees_new.id', $exitedEmployeeIds);
-        });
+            ->where(function ($q) {
+                $q->whereNull('employees_new.employment_status')
+                    ->orWhereNotIn('employees_new.employment_status', ['exited', 'inactive', 'terminated', 'resigned']);
+            })
+            ->where(function ($q) {
+                $q->whereNull('employees_new.employee_stage')
+                    ->orWhereNotIn('employees_new.employee_stage', ['exited', 'resigned']);
+            })
+            ->when(!empty($exitedEmployeeIds), function ($q) use ($exitedEmployeeIds) {
+                $q->whereNotIn('employees_new.id', $exitedEmployeeIds);
+            });
     }
 
     public function scopeActiveApproved($query)

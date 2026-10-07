@@ -11,19 +11,19 @@ class AddDocxSupportToDocumentGenerationTables extends Migration
         if (Schema::hasTable('document_templates')) {
             Schema::table('document_templates', function (Blueprint $table) {
                 if (!Schema::hasColumn('document_templates', 'template_type')) {
-                    $table->string('template_type')->default('html')->after('document_type');
+                    $table->string('template_type')->default('html');
                 }
                 if (!Schema::hasColumn('document_templates', 'docx_file_path')) {
-                    $table->string('docx_file_path')->nullable()->after('html_template');
+                    $table->string('docx_file_path')->nullable();
                 }
                 if (!Schema::hasColumn('document_templates', 'detected_fields')) {
-                    $table->json('detected_fields')->nullable()->after('docx_file_path');
+                    $table->json('detected_fields')->nullable();
                 }
                 if (!Schema::hasColumn('document_templates', 'version')) {
-                    $table->string('version', 50)->default('v1')->after('detected_fields');
+                    $table->string('version', 50)->default('v1');
                 }
                 if (!Schema::hasColumn('document_templates', 'is_archived')) {
-                    $table->boolean('is_archived')->default(false)->after('is_active');
+                    $table->boolean('is_archived')->default(false);
                 }
             });
         }
@@ -31,22 +31,22 @@ class AddDocxSupportToDocumentGenerationTables extends Migration
         if (Schema::hasTable('generated_documents')) {
             Schema::table('generated_documents', function (Blueprint $table) {
                 if (!Schema::hasColumn('generated_documents', 'generated_docx_path')) {
-                    $table->string('generated_docx_path')->nullable()->after('pdf_path');
+                    $table->string('generated_docx_path')->nullable();
                 }
                 if (!Schema::hasColumn('generated_documents', 'generated_pdf_path')) {
-                    $table->string('generated_pdf_path')->nullable()->after('generated_docx_path');
+                    $table->string('generated_pdf_path')->nullable();
                 }
                 if (!Schema::hasColumn('generated_documents', 'template_version')) {
-                    $table->string('template_version', 50)->nullable()->after('template_id');
+                    $table->string('template_version', 50)->nullable();
                 }
                 if (!Schema::hasColumn('generated_documents', 'generation_snapshot')) {
-                    $table->json('generation_snapshot')->nullable()->after('field_values');
+                    $table->json('generation_snapshot')->nullable();
                 }
                 if (!Schema::hasColumn('generated_documents', 'pdf_status')) {
-                    $table->string('pdf_status', 30)->nullable()->after('generated_pdf_path');
+                    $table->string('pdf_status', 30)->nullable();
                 }
                 if (!Schema::hasColumn('generated_documents', 'pdf_error_message')) {
-                    $table->text('pdf_error_message')->nullable()->after('pdf_status');
+                    $table->text('pdf_error_message')->nullable();
                 }
             });
         }

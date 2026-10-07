@@ -48,6 +48,13 @@ class FileController extends Controller
             abort(403, 'Employee not found');
         }
 
+        $isProfileImage = DB::table('employee_profiles')
+            ->where(function ($q) use ($path) {
+                $q->where('profile_image', $path)
+                  ->orWhere('profile_image', preg_replace('/\.(heic|heif)$/i', '.jpg', $path));
+            })
+            ->exists();
+
         $isOwnProfile = DB::table('employee_profiles')
             ->where('employee_id', $employee->id)
             ->where(function ($q) use ($path) {
@@ -66,7 +73,7 @@ class FileController extends Controller
             ->where('file_path', $path)
             ->exists();
 
-        if (! ($isOwnProfile || $isOwnDoc || $isOwnPayslip)) {
+        if (! ($isProfileImage || $isOwnProfile || $isOwnDoc || $isOwnPayslip)) {
             abort(403, 'Unauthorized access');
         }
     }

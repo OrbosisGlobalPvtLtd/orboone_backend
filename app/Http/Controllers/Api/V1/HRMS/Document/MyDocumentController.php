@@ -11,6 +11,7 @@ use App\Services\HRMS\Document\EmployeeDocumentCompletionS;
 use App\Services\HRMS\Notification\NotificationS;
 use App\Services\HRMS\Storage\HrmsFileResolverS;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -25,7 +26,7 @@ class MyDocumentController extends Controller
 
     public function requiredDocuments()
     {
-        $employee = $this->completionService->employeeForUser((int) auth()->id());
+        $employee = $this->completionService->employeeForUser((int) Auth::id());
 
         if (! $employee) {
             return $this->apiResponse(false, 'Employee record not found.', null, 404);
@@ -40,7 +41,7 @@ class MyDocumentController extends Controller
 
     public function myDocuments()
     {
-        $employee = $this->completionService->employeeForUser((int) auth()->id());
+        $employee = $this->completionService->employeeForUser((int) Auth::id());
 
         if (! $employee) {
             return $this->apiResponse(false, 'Employee record not found.', null, 404);
@@ -78,7 +79,7 @@ class MyDocumentController extends Controller
 
     public function upload(Request $request)
     {
-        $employee = $this->completionService->employeeForUser((int) auth()->id());
+        $employee = $this->completionService->employeeForUser((int) Auth::id());
 
         if (! $employee) {
             return $this->apiResponse(false, 'Employee record not found.', null, 404);
@@ -158,7 +159,7 @@ class MyDocumentController extends Controller
         $document = EmployeeDocumentM::updateOrCreate(
             $search,
             [
-                'uploaded_by_user_id' => auth()->id(),
+                'uploaded_by_user_id' => Auth::id(),
                 'title' => $request->input('title') ?: $type->name,
                 'file_path' => $meta['file_path'],
                 'file_original_name' => $meta['original_name'],
@@ -226,7 +227,7 @@ class MyDocumentController extends Controller
     }
     public function submitForVerification()
     {
-        $employee = $this->completionService->employeeForUser((int) auth()->id());
+        $employee = $this->completionService->employeeForUser((int) Auth::id());
 
         if (! $employee) {
             return $this->apiResponse(false, 'Employee record not found.', null, 404);
@@ -265,14 +266,13 @@ class MyDocumentController extends Controller
         $completion = $this->completionService->completion($employee);
 
         $isAlreadySubmitted = $employee->profile
-            && $employee->profile->is_profile_completed
             && $employee->profile->profile_status === 'submitted';
 
         if (! $isAlreadySubmitted) {
             $employee->profile->update([
-                'is_profile_completed' => true,
+                'is_profile_completed' => false,
                 'profile_status'       => 'submitted',
-                'profile_completed_at' => now(),
+                'profile_completed_at' => null,
                 'rejection_reason'     => null,
             ]);
 
@@ -365,9 +365,9 @@ class MyDocumentController extends Controller
     //     ]);
     // }
 
-    public function destroy($id)
+    public function destroy(int|string $id)
     {
-        $employee = $this->completionService->employeeForUser((int) auth()->id());
+        $employee = $this->completionService->employeeForUser((int) Auth::id());
 
         if (! $employee) {
             return $this->apiResponse(false, 'Employee record not found.', null, 404);
@@ -450,9 +450,9 @@ class MyDocumentController extends Controller
         return $this->myDocuments();
     }
 
-    public function downloadGeneratedDocument($id)
+    public function downloadGeneratedDocument(int|string $id)
     {
-        $employee = $this->completionService->employeeForUser((int) auth()->id());
+        $employee = $this->completionService->employeeForUser((int) Auth::id());
 
         if (! $employee) {
             return $this->apiResponse(false, 'Employee record not found.', null, 404);
@@ -471,7 +471,9 @@ class MyDocumentController extends Controller
             return $this->apiResponse(false, 'PDF file is not available.', null, 404);
         }
 
-        return Storage::disk('private')->download($path, basename($path));
+        /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
+        $disk = Storage::disk('private');
+        return $disk->download($path, basename($path));
     }
 
     private function apiResponse(bool $success, string $message, $data = null, int $status = 200, $errors = null)

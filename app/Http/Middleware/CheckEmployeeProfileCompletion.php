@@ -35,10 +35,10 @@ class CheckEmployeeProfileCompletion
             return $next($request);
         }
 
-        // resolve employee by user_id from employees_new/current Employee model
+        // 1. Check if user exists in employees_new
         $employee = EmployeeM::with(['profile'])->where('user_id', $user->id)->first();
 
-        // if no employee found, skip middleware
+        // Agar user ka record employees_new me nahi hai, to bypass karein
         if (!$employee) {
             return $next($request);
         }
@@ -49,15 +49,14 @@ class CheckEmployeeProfileCompletion
             return redirect('/login')->with('fail', 'Your employment has ended. Please contact HR.');
         }
 
-        // if employee found, apply existing completion logic
-        // Only apply to logged-in employees who are not admins
-        if (!method_exists($user, 'isEmployee') || !$user->isEmployee() || $user->isAdmin()) {
+        if (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) {
             return $next($request);
         }
 
+        // 2. Check employee_profiles record
         $profile = $employee->profile;
         if (!$profile) {
-            $profile = EmployeeProfileM::create(['employee_id' => $employee->id]);
+            $profile = EmployeeProfileM::firstOrCreate(['employee_id' => $employee->id]);
             $employee->setRelation('profile', $profile);
         }
 
@@ -69,7 +68,9 @@ class CheckEmployeeProfileCompletion
                              $request->routeIs('hrms.employee.documents.replace') || 
                              $request->routeIs('hrms.employee.documents.destroy') ||
                              $request->routeIs('hrms.employee.documents.file') ||
-                             $request->routeIs('hrms.employee.submit_verification');
+                             $request->routeIs('hrms.employee.submit_verification') ||
+                             $request->routeIs('hrms.documents.file') ||
+                             $request->routeIs('hrms.documents.self.*');
 
         if ($status['must_complete_profile']) {
             if (!$isCompletionRoute && !$request->routeIs('logout')) {

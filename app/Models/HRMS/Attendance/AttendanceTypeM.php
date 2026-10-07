@@ -9,6 +9,11 @@ class AttendanceTypeM extends Model
 {
     use HasFactory;
 
+    protected static function newFactory()
+    {
+        return \Database\Factories\AttendanceTypeFactory::new();
+    }
+
     protected $table = 'attendance_types';
 
     protected $fillable = [

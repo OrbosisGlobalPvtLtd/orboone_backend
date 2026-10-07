@@ -14,23 +14,7 @@ class BrandingSettingsSeeder extends Seeder
     {
         $now = now();
 
-        // 1. Create or Update Company Branding Menu
-        DB::table('menus')->updateOrInsert(
-            ['id' => 84],
-            [
-                'name' => 'Company Branding',
-                'route' => 'settings.branding.index',
-                'icon' => 'fas fa-palette',
-                'module_key' => 'settings',
-                'parent_id' => 80, // Settings Category Parent
-                'sort_order' => 9,
-                'is_active' => 1,
-                'updated_at' => $now,
-                'created_at' => DB::raw('COALESCE(created_at, NOW())'),
-            ]
-        );
-
-        // 2. Register Permissions
+        // 1. Register Permissions
         $permissions = [
             [
                 'key' => 'settings.branding.view',

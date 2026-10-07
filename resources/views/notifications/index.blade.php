@@ -4,9 +4,8 @@
 
 @section('_content')
 <style>
-    /* CSS Variables for design consistency & Dark Mode readiness */
+    /* CSS Variables for design consistency */
     :root {
-
         --orb-bg: linear-gradient(180deg, #F6F7FB 0%, #EEF2FF 100%);
         --orb-card: #ffffff;
         --orb-text: #101828;
@@ -15,94 +14,88 @@
         --orb-unread-bg: rgba(75, 0, 232, 0.02);
         --orb-unread-border: var(--orb-primary);
         --orb-shadow: 0 10px 30px rgba(16, 24, 40, 0.04);
-        --orb-shadow-hover: 0 16px 40px rgba(75, 0, 232, 0.08);
+        --orb-shadow-hover: 0 14px 34px rgba(75, 0, 232, 0.08);
     }
 
     .notif-page {
         min-height: calc(100vh - 90px);
-        padding: 30px 20px 50px;
+        padding: 24px;
         background: var(--orb-bg);
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .notif-container {
-        max-width: 1100px;
+        width: 100%;
+        max-width: 100%;
         margin: 0 auto;
         display: flex;
         flex-direction: column;
-        gap: 24px;
+        gap: 20px;
     }
 
-    /* Premium Header Hero Card */
+    /* Header Hero Card */
     .notif-hero-card {
-        background: rgba(255, 255, 255, 0.8);
+        background: rgba(255, 255, 255, 0.85);
         backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.5);
-        border-radius: 24px;
-        padding: 24px 32px;
+        border: 1px solid rgba(255, 255, 255, 0.6);
+        border-radius: 20px;
+        padding: 20px 24px;
         box-shadow: var(--orb-shadow);
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 20px;
-        transition: all 0.3s ease;
+        gap: 16px;
     }
 
     .notif-hero-left {
         display: flex;
         align-items: center;
-        gap: 20px;
+        gap: 16px;
     }
 
     .notif-hero-icon {
-        width: 58px;
-        height: 58px;
-        border-radius: 18px;
+        width: 48px;
+        height: 48px;
+        min-width: 48px;
+        border-radius: 14px;
         background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary));
         display: flex;
         align-items: center;
         justify-content: center;
         color: #fff;
-        font-size: 24px;
-        box-shadow: 0 8px 20px rgba(75, 0, 232, 0.2);
-        animation: hero-bell-ring 4s infinite ease-in-out;
-    }
-
-    @keyframes hero-bell-ring {
-        0%, 100% { transform: rotate(0deg); }
-        5% { transform: rotate(12deg); }
-        10% { transform: rotate(-12deg); }
-        15% { transform: rotate(8deg); }
-        20% { transform: rotate(-8deg); }
-        25% { transform: rotate(0deg); }
+        font-size: 20px;
+        box-shadow: 0 6px 16px rgba(75, 0, 232, 0.2);
     }
 
     .notif-hero-info h1 {
-        margin: 0 0 4px;
-        font-size: 24px;
-        font-weight: 900;
+        margin: 0 0 2px;
+        font-size: 20px;
+        font-weight: 800;
         color: var(--orb-text);
-        letter-spacing: -0.02em;
+        letter-spacing: -0.01em;
     }
 
     .notif-hero-info p {
         margin: 0;
-        font-size: 13.5px;
+        font-size: 12.5px;
         color: var(--orb-text-muted);
-        font-weight: 600;
+        font-weight: 500;
     }
 
     .notif-hero-actions {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 10px;
+        flex-wrap: wrap;
     }
 
     .unread-badge {
         background: rgba(75, 0, 232, 0.1);
         color: var(--orb-primary);
         font-weight: 800;
-        font-size: 12px;
-        padding: 6px 14px;
+        font-size: 11.5px;
+        padding: 5px 12px;
         border-radius: 999px;
         display: inline-flex;
         align-items: center;
@@ -120,10 +113,10 @@
     .btn-hero-action {
         display: inline-flex;
         align-items: center;
-        gap: 8px;
-        padding: 10px 18px;
-        border-radius: 14px;
-        font-size: 13px;
+        gap: 6px;
+        padding: 8px 14px;
+        border-radius: 12px;
+        font-size: 12px;
         font-weight: 700;
         text-decoration: none !important;
         transition: all 0.2s ease;
@@ -149,114 +142,156 @@
     .btn-hero-action-primary:hover {
         background: linear-gradient(135deg, #3d00be, #7000c9);
         color: #fff;
-        box-shadow: 0 6px 16px rgba(75, 0, 232, 0.25);
     }
 
     /* Notification List Section */
     .notif-list-card {
         background: #fff;
         border: 1px solid var(--orb-border);
-        border-radius: 24px;
-        padding: 24px;
+        border-radius: 20px;
+        padding: 20px;
         box-shadow: var(--orb-shadow);
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .notif-list {
         display: flex;
         flex-direction: column;
-        gap: 14px;
+        gap: 12px;
     }
 
     /* Notification Items */
     .notif-item {
         display: flex;
-        gap: 16px;
-        padding: 20px;
-        border: 1px solid var(--orb-border);
-        border-radius: 18px;
-        background: var(--orb-card);
+        align-items: flex-start;
+        gap: 14px;
+        padding: 16px 18px;
+        border: 1px solid #EEF2F6;
+        border-radius: 14px;
+        background: #ffffff;
         text-decoration: none !important;
         color: inherit !important;
         position: relative;
-        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         cursor: pointer;
     }
 
     .notif-item:hover {
-        transform: translateY(-3px);
-        box-shadow: var(--orb-shadow-hover);
-        border-color: rgba(75, 0, 232, 0.2);
+        background: #F8FAFC;
+        border-color: #E2E8F0;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
     }
 
     /* Unread Card Style */
     .notif-item.unread {
-        background: var(--orb-unread-bg);
-        border-left: 5px solid var(--orb-unread-border);
-        box-shadow: 0 4px 20px rgba(75, 0, 232, 0.02);
+        background: #FAF9FF;
+        border-left: 3.5px solid var(--orb-primary);
     }
 
-    /* Gradient Circular Icons */
+    /* Category Icon */
     .notif-icon-circle {
-        width: 48px;
-        height: 48px;
-        border-radius: 14px;
-        display: flex;
+        width: 42px;
+        height: 42px;
+        min-width: 42px;
+        border-radius: 11px;
+        display: inline-flex;
         align-items: center;
         justify-content: center;
-        color: #fff;
-        font-size: 18px;
+        color: #ffffff;
+        font-size: 15px;
         flex-shrink: 0;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        margin-top: 1px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     }
 
     .notif-body {
-        flex-grow: 1;
+        flex: 1 1 0%;
         min-width: 0;
         display: flex;
         flex-direction: column;
-        gap: 6px;
+        gap: 3px;
     }
 
     .notif-title-row {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: space-between;
-        gap: 12px;
-    }
-
-    .notif-item-title {
-        font-size: 16px;
-        font-weight: 800;
-        color: var(--orb-text);
-        margin: 0;
-        display: flex;
-        align-items: center;
         gap: 8px;
     }
 
-    .notif-item-msg {
+    .notif-item-title {
         font-size: 13.5px;
-        color: var(--orb-text-muted);
-        line-height: 1.55;
+        font-weight: 800;
+        color: #0F172A;
+        margin: 0;
+        line-height: 1.35;
+        word-break: normal;
+        overflow-wrap: break-word;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        flex: 1 1 auto;
+    }
+
+    .notif-header-right {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+        margin-top: 1px;
+    }
+
+    .notif-time-badge {
+        font-size: 11px;
+        font-weight: 700;
+        color: #94A3B8;
+        white-space: nowrap;
+    }
+
+    .pulse-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--orb-primary);
+        box-shadow: 0 0 0 0 rgba(75, 0, 232, 0.4);
+        animation: pulse-dot 1.5s infinite;
+        flex-shrink: 0;
+        display: inline-block;
+    }
+
+    @keyframes pulse-dot {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(75, 0, 232, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 5px rgba(75, 0, 232, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(75, 0, 232, 0); }
+    }
+
+    .notif-item-msg {
+        font-size: 12px;
+        color: #64748B;
+        line-height: 1.45;
         font-weight: 500;
         margin: 0;
-        word-break: break-word;
+        word-break: normal;
+        overflow-wrap: break-word;
     }
 
     /* Attachment Chip */
     .notif-attachment-badge {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
+        gap: 5px;
         background: #F1F5F9;
         border: 1px solid #E2E8F0;
-        padding: 6px 12px;
-        border-radius: 8px;
-        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 6px;
+        font-size: 10.5px;
         font-weight: 700;
         color: #475569;
-        margin-top: 4px;
+        margin-top: 3px;
         width: fit-content;
+        text-decoration: none !important;
         transition: all 0.2s ease;
     }
 
@@ -270,111 +305,60 @@
         border-color: #FEE2E2;
         color: #EF4444;
     }
-    .notif-attachment-badge.pdf:hover { background: #FEE2E2; }
 
     .notif-attachment-badge.image {
         background: #ECFDF5;
         border-color: #D1FAE5;
         color: #10B981;
     }
-    .notif-attachment-badge.image:hover { background: #D1FAE5; }
 
-    /* Metadata Row */
-    .notif-meta-row {
+    /* Footer Row & Meta */
+    .notif-footer-row {
         display: flex;
-        flex-wrap: wrap;
-        gap: 14px;
-        font-size: 11.5px;
-        font-weight: 700;
-        color: #94A3B8;
-        margin-top: 4px;
         align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-top: 5px;
+        flex-wrap: wrap;
     }
 
-    .notif-meta-item {
+    .notif-meta-row {
         display: inline-flex;
         align-items: center;
-        gap: 5px;
-    }
-
-    /* Right column */
-    .notif-right {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        justify-content: space-between;
-        gap: 12px;
-        flex-shrink: 0;
-    }
-
-    .notif-time-ago {
-        font-size: 12px;
-        font-weight: 700;
+        gap: 4px;
+        font-size: 10.5px;
+        font-weight: 600;
         color: #94A3B8;
-        white-space: nowrap;
-    }
-
-    .notif-chevron {
-        color: #CBD5E1;
-        transition: all 0.2s ease;
-        font-size: 14px;
-    }
-
-    .notif-item:hover .notif-chevron {
-        transform: translateX(3px);
-        color: var(--orb-primary);
-    }
-
-    .notif-status-indicator {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .pulse-dot {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        background: var(--orb-primary);
-        box-shadow: 0 0 0 0 rgba(75, 0, 232, 0.4);
-        animation: pulse-dot 1.5s infinite;
-    }
-
-    @keyframes pulse-dot {
-        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(75, 0, 232, 0.7); }
-        70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(75, 0, 232, 0); }
-        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(75, 0, 232, 0); }
-    }
-
-    /* Dynamic Action Pill Buttons Row */
-    .notif-actions {
-        display: flex;
         flex-wrap: wrap;
-        gap: 10px;
-        margin-top: 12px;
-        border-top: 1px dashed var(--orb-border);
-        padding-top: 12px;
+    }
+
+    .notif-actions {
+        display: inline-flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 5px;
     }
 
     .btn-pill {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
-        padding: 6px 14px;
-        border-radius: 999px;
-        font-size: 11.5px;
+        gap: 4px;
+        padding: 3px 8px;
+        border-radius: 6px;
+        font-size: 10.5px;
         font-weight: 700;
         text-decoration: none !important;
         transition: all 0.2s ease;
         border: 1px solid var(--orb-border);
         background: #fff;
-        color: var(--orb-text-muted);
+        color: #64748B;
         cursor: pointer;
+        line-height: 1.2;
     }
 
     .btn-pill:hover {
         background: #F8FAFC;
-        color: var(--orb-text);
+        color: #0F172A;
         border-color: #CBD5E1;
     }
 
@@ -400,240 +384,140 @@
         border-color: #E53E3E;
     }
 
-    /* Premium Empty State */
+    /* Empty State */
     .notif-empty-state {
-        padding: 80px 40px;
+        padding: 60px 20px;
         text-align: center;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 16px;
+        gap: 12px;
     }
 
     .empty-bell-wrapper {
-        width: 100px;
-        height: 100px;
-        border-radius: 30px;
+        width: 80px;
+        height: 80px;
+        border-radius: 24px;
         background: linear-gradient(135deg, rgba(75, 0, 232, 0.05), rgba(134, 0, 238, 0.05));
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-bottom: 8px;
-        position: relative;
-        animation: float-empty 4s ease-in-out infinite;
-    }
-
-    @keyframes float-empty {
-        0%, 100% { transform: translateY(0px); }
-        50% { transform: translateY(-10px); }
+        margin-bottom: 4px;
     }
 
     .empty-bell-icon {
-        font-size: 42px;
-        background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary));
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        font-size: 34px;
+        color: var(--orb-primary);
     }
 
     .notif-empty-state h3 {
         margin: 0;
-        font-size: 20px;
+        font-size: 18px;
         font-weight: 800;
         color: var(--orb-text);
     }
 
     .notif-empty-state p {
         margin: 0;
-        font-size: 14px;
+        font-size: 13px;
         color: var(--orb-text-muted);
-        max-width: 320px;
-        line-height: 1.6;
+        max-width: 300px;
+        line-height: 1.5;
         font-weight: 500;
     }
 
-    /* Pagination Redesign Styling */
+    /* Pagination */
     .pagination-wrapper {
-        margin-top: 30px;
+        margin-top: 20px;
         display: flex;
         justify-content: center;
     }
 
-    .pagination-wrapper .pagination {
-        display: flex;
-        gap: 8px;
-        border-radius: 999px;
-        padding: 6px;
-        background: rgba(255, 255, 255, 0.6);
-        backdrop-filter: blur(10px);
-        border: 1px solid var(--orb-border);
-        width: fit-content;
-        margin: 0 auto;
-    }
-
-    .pagination-wrapper .page-item .page-link {
-        border: none;
-        background: transparent;
-        color: var(--orb-text-muted);
-        font-weight: 700;
-        padding: 8px 16px;
-        border-radius: 999px;
-        transition: all 0.3s ease;
-    }
-
-    .pagination-wrapper .page-item.active .page-link {
-        background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary));
-        color: #fff !important;
-        box-shadow: 0 4px 10px rgba(75, 0, 232, 0.2);
-    }
-
-    .pagination-wrapper .page-item .page-link:hover {
-        background: rgba(75, 0, 232, 0.08);
-        color: var(--orb-primary);
-    }
-
-    /* Responsive Breakpoints & Viewport Wrappings */
-    @media (max-width: 992px) {
-        .notif-hero-card {
-            padding: 20px 24px;
-        }
-    }
-
+    /* Responsive Breakpoints */
     @media (max-width: 768px) {
         .notif-page {
-            padding: 14px 8px 30px;
+            padding: 10px 8px 30px;
+        }
+        .notif-container {
+            gap: 10px;
         }
         .notif-hero-card {
-            padding: 16px 18px;
-            border-radius: 20px;
-            gap: 14px;
+            padding: 12px 14px;
+            border-radius: 14px;
+            gap: 10px;
             flex-direction: column;
             align-items: flex-start;
         }
         .notif-hero-left {
-            display: flex;
-            align-items: center;
-            gap: 14px;
+            width: 100%;
+            gap: 10px;
         }
         .notif-hero-icon {
-            width: 44px;
-            height: 44px;
-            border-radius: 14px;
-            font-size: 18px;
-            flex-shrink: 0;
+            width: 36px;
+            height: 36px;
+            min-width: 36px;
+            border-radius: 10px;
+            font-size: 15px;
         }
         .notif-hero-info h1 {
-            font-size: 20px;
-            margin-bottom: 2px;
+            font-size: 16px;
         }
         .notif-hero-info p {
-            font-size: 12px;
+            font-size: 11px;
         }
         .notif-hero-actions {
             width: 100%;
-            display: flex;
-            flex-direction: row;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-        .btn-hero-action {
-            flex: 1;
-            padding: 8px 12px;
-            font-size: 12px;
-            border-radius: 12px;
-            justify-content: center;
+            gap: 6px;
         }
         .unread-badge {
             width: 100%;
             justify-content: center;
-            padding: 6px 12px;
-        }
-        .notif-list-card {
-            padding: 12px;
-            border-radius: 20px;
-        }
-        .notif-list {
-            gap: 10px;
-        }
-        .notif-item {
-            padding: 14px;
-            border-radius: 16px;
-            gap: 12px;
-            flex-direction: row;
-            align-items: flex-start;
-        }
-        .notif-icon-circle {
-            width: 40px;
-            height: 40px;
-            border-radius: 12px;
-            font-size: 16px;
-        }
-        .notif-item-title {
-            font-size: 14px;
-            font-weight: 800;
-        }
-        .notif-item-msg {
-            font-size: 12.5px;
-            line-height: 1.45;
-        }
-        .notif-right {
-            display: none !important;
-        }
-        .notif-mobile-meta {
-            display: flex !important;
-            align-items: center;
-            gap: 6px;
-        }
-        .notif-actions {
-            margin-top: 10px;
-            padding-top: 10px;
-            gap: 6px;
-        }
-        .btn-pill {
-            padding: 6px 12px;
+            padding: 4px 10px;
             font-size: 11px;
-            border-radius: 10px;
-            flex: 1;
+        }
+        .btn-hero-action {
+            flex: 1 1 80px;
+            padding: 5px 8px;
+            font-size: 10.5px;
+            border-radius: 8px;
             justify-content: center;
         }
-    }
-
-    @media (max-width: 576px) {
-        .notif-page {
-            padding: 12px 6px 25px;
-        }
-        .notif-hero-card {
-            padding: 14px;
-        }
-        .notif-hero-left {
-            gap: 10px;
-        }
-        .notif-hero-icon {
-            width: 40px;
-            height: 40px;
-            font-size: 16px;
-        }
-        .notif-hero-info h1 {
-            font-size: 18px;
-        }
-        .notif-hero-info p {
-            font-size: 11.5px;
+        .notif-list-card {
+            padding: 8px;
+            border-radius: 14px;
         }
         .notif-item {
-            padding: 12px;
+            padding: 10px;
+            border-radius: 11px;
+            gap: 9px;
         }
-        .notif-actions {
-            flex-wrap: wrap;
+        .notif-icon-circle {
+            width: 32px;
+            height: 32px;
+            min-width: 32px;
+            font-size: 13px;
+            border-radius: 8px;
+        }
+        .notif-item-title {
+            font-size: 13px;
+        }
+        .notif-item-msg {
+            font-size: 11.5px;
+        }
+        .notif-footer-row {
+            gap: 6px;
         }
         .btn-pill {
-            min-width: 48%;
+            padding: 3px 6px;
+            font-size: 10px;
         }
     }
 </style>
 
 <div class="notif-page">
     <div class="notif-container">
-        <!-- Premium Hero Header -->
+        <!-- Hero Header -->
         <div class="notif-hero-card">
             <div class="notif-hero-left">
                 <div class="notif-hero-icon">
@@ -641,7 +525,7 @@
                 </div>
                 <div class="notif-hero-info">
                     <h1>Notifications</h1>
-                    <p>Track announcements, approvals, reminders, and system activities.</p>
+                    <p>Track announcements, approvals, reminders, and activities.</p>
                 </div>
             </div>
             
@@ -655,7 +539,7 @@
                         {{ $totalUnread }} New
                     </div>
                     <button class="btn-hero-action btn-hero-action-primary" onclick="markAllNotificationsRead(this)">
-                        <i class="fas fa-check-double"></i> Mark all as read
+                        <i class="fas fa-check-double"></i> Mark all read
                     </button>
                 @endif
                 <button class="btn-hero-action" onclick="window.location.reload()">
@@ -669,35 +553,35 @@
             <div class="notif-list">
                 @forelse($notifications as $notification)
                     @php
-                        // Resolve Type, Icon, and Gradient by type category
-                        $type = strtolower($notification->type ?? $notification->data['type'] ?? 'general');
+                        $searchContext = strtolower(($notification->type ?? '') . ' ' . ($notification->title ?? ''));
                         $icon = 'fa-bell';
-                        $gradient = 'linear-gradient(135deg, var(--orb-primary), var(--orb-secondary))';
+                        $iconBg = 'linear-gradient(135deg, var(--orb-primary), var(--orb-secondary))';
                         
-                        if (str_contains($type, 'announcement')) {
-                            $icon = 'fa-bullhorn';
-                            $gradient = 'linear-gradient(135deg, #06B6D4, #0891B2)';
-                        } elseif (str_contains($type, 'leave')) {
+                        if (str_contains($searchContext, 'leave')) {
                             $icon = 'fa-calendar-alt';
-                            $gradient = 'linear-gradient(135deg, #3B82F6, #1D4ED8)';
-                        } elseif (str_contains($type, 'attendance')) {
+                            $iconBg = '#3B82F6';
+                        } elseif (str_contains($searchContext, 'attendance') || str_contains($searchContext, 'punch') || str_contains($searchContext, 'regularization')) {
                             $icon = 'fa-clock';
-                            $gradient = 'linear-gradient(135deg, #F59E0B, #D97706)';
-                        } elseif (str_contains($type, 'document')) {
+                            $iconBg = '#F59E0B';
+                        } elseif (str_contains($searchContext, 'announcement')) {
+                            $icon = 'fa-bullhorn';
+                            $iconBg = '#06B6D4';
+                        } elseif (str_contains($searchContext, 'document')) {
                             $icon = 'fa-file-alt';
-                            $gradient = 'linear-gradient(135deg, #10B981, #047857)';
-                        } elseif (str_contains($type, 'payroll') || str_contains($type, 'salary')) {
+                            $iconBg = '#10B981';
+                        } elseif (str_contains($searchContext, 'payroll') || str_contains($searchContext, 'salary')) {
                             $icon = 'fa-wallet';
-                            $gradient = 'linear-gradient(135deg, #F97316, #C2410C)';
-                        } elseif (str_contains($type, 'system') || str_contains($type, 'security')) {
+                            $iconBg = '#F97316';
+                        } elseif (str_contains($searchContext, 'system') || str_contains($searchContext, 'security')) {
                             $icon = 'fa-shield-alt';
-                            $gradient = 'linear-gradient(135deg, #EF4444, #B91C1C)';
+                            $iconBg = '#EF4444';
                         }
 
                         // Parse Attachment URL safely
-                        $attUrl = $notification->data['attachment_url'] ?? $notification->data['attachment'] ?? '';
-                        $attName = $notification->data['attachment_name'] ?? basename($attUrl) ?? 'Attachment';
-                        $attType = $notification->data['attachment_type'] ?? '';
+                        $data = is_array($notification->data) ? $notification->data : (json_decode($notification->data, true) ?? []);
+                        $attUrl = $data['attachment_url'] ?? $data['attachment'] ?? '';
+                        $attName = $data['attachment_name'] ?? basename($attUrl) ?? 'Attachment';
+                        $attType = $data['attachment_type'] ?? '';
                         if (empty($attType) && !empty($attUrl)) {
                             $ext = strtolower(pathinfo($attUrl, PATHINFO_EXTENSION));
                             if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'])) $attType = 'image';
@@ -707,7 +591,7 @@
                     @endphp
 
                     <div id="notif-card-{{ $notification->id }}" class="notif-item {{ !$notification->is_read ? 'unread' : '' }}" onclick="handleNotificationClick(event, '{{ route('notifications.open', $notification->id) }}')">
-                        <div class="notif-icon-circle" style="background: {{ $gradient }}">
+                        <div class="notif-icon-circle" style="background: {{ $iconBg }}">
                             <i class="fas {{ $icon }}"></i>
                         </div>
 
@@ -715,14 +599,14 @@
                             <div class="notif-title-row">
                                 <h3 class="notif-item-title">
                                     {{ $notification->title ?? 'Notification' }}
-                                </h3>
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="notif-mobile-meta d-none text-muted font-weight-bold" style="font-size: 11px;">
-                                        {{ $notification->created_at->diffForHumans(null, true) }}
-                                    </span>
                                     @if(!$notification->is_read)
-                                        <span class="pulse-dot d-md-none" style="width:8px;height:8px;"></span>
+                                        <span class="pulse-dot"></span>
                                     @endif
+                                </h3>
+                                <div class="notif-header-right d-none d-md-inline-flex">
+                                    <span class="notif-time-badge">
+                                        {{ $notification->created_at->diffForHumans() }}
+                                    </span>
                                 </div>
                             </div>
 
@@ -734,48 +618,36 @@
                             @if(!empty($attUrl))
                                 <a href="{{ (str_starts_with($attUrl, 'http://') || str_starts_with($attUrl, 'https://') || str_starts_with($attUrl, '/')) ? $attUrl : asset('storage/' . $attUrl) }}" target="_blank" class="notif-attachment-badge {{ $attType }}" onclick="event.stopPropagation()">
                                     @if($attType === 'pdf')
-                                        <i class="fas fa-file-pdf"></i> [PDF Attachment]
+                                        <i class="fas fa-file-pdf"></i> PDF
                                     @elseif($attType === 'image')
-                                        <i class="fas fa-file-image"></i> [Image Attachment]
+                                        <i class="fas fa-file-image"></i> Image
                                     @else
-                                        <i class="fas fa-file-alt"></i> [Document Attachment]
+                                        <i class="fas fa-file-alt"></i> File
                                     @endif
                                 </a>
                             @endif
 
-                            <div class="notif-meta-row">
-                                <span class="notif-meta-item">
-                                    <i class="far fa-clock"></i> {{ $notification->created_at->diffForHumans() }}
-                                </span>
-                                <span class="notif-meta-item">
-                                    <i class="far fa-calendar-alt"></i> {{ $notification->created_at->format('d M Y, h:i A') }}
-                                </span>
-                            </div>
-
-                            <!-- Wrap Layout Action pills -->
-                            <div class="notif-actions" onclick="event.stopPropagation()">
-                                <a href="{{ route('notifications.open', $notification->id) }}" class="btn-pill btn-pill-primary">
-                                    <i class="fas fa-eye"></i> View Details
-                                </a>
-                                @if(!$notification->is_read)
-                                    <button class="btn-pill" onclick="markSingleAsRead('{{ $notification->id }}', this)">
-                                        <i class="fas fa-check"></i> Mark Read
-                                    </button>
-                                @endif
-                                <button class="btn-pill btn-pill-danger" onclick="dismissNotification('{{ $notification->id }}')">
-                                    <i class="fas fa-trash-alt"></i> Dismiss
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="notif-right">
-                            <span class="notif-time-ago">{{ $notification->created_at->diffForHumans(null, true) }}</span>
-                            @if(!$notification->is_read)
-                                <div class="notif-status-indicator">
-                                    <span class="pulse-dot"></span>
+                            <div class="notif-footer-row">
+                                <div class="notif-meta-row">
+                                    <span class="d-md-none"><i class="far fa-clock"></i> {{ $notification->created_at->diffForHumans() }} &bull; </span>
+                                    <span><i class="far fa-calendar-alt"></i> {{ $notification->created_at->format('d M, h:i A') }}</span>
                                 </div>
-                            @endif
-                            <i class="fas fa-chevron-right notif-chevron"></i>
+
+                                <!-- Action pills -->
+                                <div class="notif-actions" onclick="event.stopPropagation()">
+                                    <a href="{{ route('notifications.open', $notification->id) }}" class="btn-pill btn-pill-primary">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                    @if(!$notification->is_read)
+                                        <button class="btn-pill" onclick="markSingleAsRead('{{ $notification->id }}', this)">
+                                            <i class="fas fa-check"></i> Read
+                                        </button>
+                                    @endif
+                                    <button class="btn-pill btn-pill-danger" onclick="dismissNotification('{{ $notification->id }}')" title="Dismiss">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 @empty
@@ -790,10 +662,10 @@
                 @endforelse
             </div>
 
-            <!-- Laravel standard Pagination Links -->
+            <!-- Laravel Pagination Links -->
             @if($notifications->hasPages())
                 <div class="pagination-wrapper">
-                    {{ $notifications->links() }}
+                    {{ $notifications->onEachSide(1)->links() }}
                 </div>
             @endif
         </div>
@@ -854,9 +726,9 @@
         }).catch(err => console.error('Error dismissing notification:', err));
 
         if (card) {
-            card.style.transition = 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)';
+            card.style.transition = 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
             card.style.opacity = '0';
-            card.style.transform = 'scale(0.9) translateY(15px)';
+            card.style.transform = 'scale(0.95) translateY(8px)';
             setTimeout(function() {
                 card.remove();
                 // Check if last element was dismissed to inject empty state
@@ -872,7 +744,7 @@
                         </div>
                     `;
                 }
-            }, 400);
+            }, 300);
         }
     }
 
@@ -894,7 +766,7 @@
                 window.location.reload();
             } else {
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-check-double"></i> Mark all as read';
+                btn.innerHTML = '<i class="fas fa-check-double"></i> Mark all read';
             }
         })
         .catch(error => {

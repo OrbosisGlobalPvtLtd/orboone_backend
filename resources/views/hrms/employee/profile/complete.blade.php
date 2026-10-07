@@ -319,16 +319,18 @@ textarea.form-control{
 
                         <div class="col-xl-3 col-lg-4 col-md-6 profile-field">
                             <label>DOB <span class="required">*</span></label>
-                            <input type="date"
-                                   name="date_of_birth"
-                                   class="form-control"
-                                   value="{{ old('date_of_birth', $employeeData->date_of_birth) }}"
-                                   required>
+                            <x-form.date-picker 
+                                name="date_of_birth"
+                                id="date_of_birth"
+                                value="{{ old('date_of_birth', $employeeData->date_of_birth) }}"
+                                placeholder="dd-mm-yyyy"
+                                required
+                            />
                         </div>
 
                         <div class="col-xl-3 col-lg-4 col-md-6 profile-field">
                             <label>Gender <span class="required">*</span></label>
-                            <select name="gender" class="form-select" required>
+                            <select name="gender" id="gender" class="form-select select2-searchable" data-placeholder="Select Gender" required style="width: 100%;">
                                 <option value="">Select Gender</option>
                                 <option value="male" {{ old('gender', $employeeData->gender) == 'male' ? 'selected' : '' }}>Male</option>
                                 <option value="female" {{ old('gender', $employeeData->gender) == 'female' ? 'selected' : '' }}>Female</option>
@@ -419,7 +421,7 @@ textarea.form-control{
 
                         <div class="col-xl-4 col-lg-4 col-md-6 profile-field">
                             <label>Account Type <span class="required">*</span></label>
-                            <select name="bank_account_type" class="form-select" required>
+                            <select name="bank_account_type" id="bank_account_type" class="form-select select2-searchable" data-placeholder="Select Account Type" required style="width: 100%;">
                                 <option value="">Select Account Type</option>
                                 <option value="saving" {{ old('bank_account_type', $employeeData->bank_account_type) == 'saving' ? 'selected' : '' }}>Saving</option>
                                 <option value="current" {{ old('bank_account_type', $employeeData->bank_account_type) == 'current' ? 'selected' : '' }}>Current</option>

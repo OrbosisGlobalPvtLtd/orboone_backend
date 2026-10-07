@@ -15,18 +15,28 @@ class GenerateLeaveAllocations extends Command
     public function handle(LeaveAllocationService $allocationService): int
     {
         $year = (int) ($this->option('year') ?: Carbon::now('Asia/Kolkata')->year);
-        $employees = EmployeeM::query()
-            ->when($this->option('employee_id'), fn ($query) => $query->where('id', $this->option('employee_id')))
-            ->where(function ($query) {
-                $query->where('is_active', 1)->orWhereNull('is_active');
-            })
-            ->get();
-
-        foreach ($employees as $employee) {
-            $allocationService->generateForEmployee($employee, $year);
+        if ($this->option('employee_id')) {
+            $employee = EmployeeM::query()
+                ->without(['user', 'department', 'designation', 'position', 'systemRole'])
+                ->with('profile')
+                ->where(function ($query) {
+                    $query->where('is_active', 1)->orWhereNull('is_active');
+                })
+                ->find($this->option('employee_id'));
+            $count = $employee ? 1 : 0;
+            if ($employee) {
+                $allocationService->generateForEmployee($employee, $year);
+            }
+        } else {
+            $summary = $allocationService->generateYearly($year);
+            $this->info("Leave allocation batch for {$year}: processed {$summary['total_processed']}, allocated {$summary['successful_allocations']}, skipped {$summary['skipped']}, failed {$summary['failed']}, duration {$summary['duration_seconds']}s.");
+            if ($summary['failed_employee_ids']) {
+                $this->error('Failed employee IDs: ' . implode(', ', $summary['failed_employee_ids']));
+            }
+            return $summary['failed'] > 0 ? self::FAILURE : self::SUCCESS;
         }
 
-        $this->info("Generated leave allocation for {$employees->count()} employee(s) for {$year}.");
+        $this->info("Generated leave allocation for {$count} employee(s) for {$year}.");
         return self::SUCCESS;
     }
 }

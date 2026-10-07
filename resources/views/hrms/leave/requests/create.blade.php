@@ -121,7 +121,7 @@
                         <div class="ep-table-head-left">
                             <div class="ep-icon-box"><i class="fas fa-edit"></i></div>
                             <div>
-                                <h5 class="ep-table-title">Leave Details</h5>
+                                <h5 class="ep-table-title">Leave Details </h5>
                                 <p class="ep-table-subtitle">Fill in your request details carefully.</p>
                             </div>
                         </div>
@@ -130,6 +130,20 @@
                     <div class="ep-card-body" style="padding: 24px;">
                         <form id="applyLeaveForm" method="POST" action="{{ route('leave-requests.store') }}" enctype="multipart/form-data">
                             @csrf
+
+                            @if($isAdminOrHr && $employees->isNotEmpty())
+                            <!-- Employee Selector for Admin/HR -->
+                            <div class="form-group mb-3">
+                                <label class="font-weight-bold text-dark mb-1" style="font-size: 13px;">Select Employee <span class="text-danger">*</span></label>
+                                <select name="employee_id" id="apply_employee_id" class="form-control select2-searchable" style="border-radius: 12px; height: 44px;" onchange="triggerLivePreview()">
+                                    @foreach($employees as $emp)
+                                        <option value="{{ $emp->id }}" {{ ($employee && $employee->id == $emp->id) ? 'selected' : '' }}>
+                                            {{ $emp->display_name }} ({{ $emp->employee_code ?? 'EMP' }}) &bull; {{ optional($emp->department)->name ?? 'General' }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            @endif
 
                             <!-- 1. Duration Mode Selector -->
                             <div class="form-group mb-3">
@@ -149,24 +163,24 @@
                             <div class="form-group mb-3">
                                 <label class="font-weight-bold text-dark mb-1" style="font-size: 13px;">Leave Type <span class="text-danger">*</span></label>
                                 <select name="leave_type_id" id="leave_type_id" class="form-control shadow-none" style="border-radius: 12px; height: 44px; font-weight: 600;" required onchange="triggerLivePreview()">
-                                    <option value="" disabled {{ old('leave_type_id') === null ? '' : 'selected' }}>Select leave type...</option>
+                                    <option value="" disabled {{ old('leave_type_id') !== null ? '' : 'selected' }}>Select leave type...</option>
                                     @foreach($leaveTypes as $type)
                                         @php
-                                            $isConfirmed = $employee->is_permanent;
+                                            $isConfirmed = $employee ? (bool)$employee->is_permanent : true;
                                             $isDisabled = false;
                                             $suffix = '';
                                             
-                                            if (!$isConfirmed && !$type->is_lwp) {
+                                            if (!$isConfirmed && !$type->is_lwp && !$isAdminOrHr) {
                                                 $isDisabled = true;
                                                 $suffix = ' (Confirmed employees only)';
-                                            } elseif ($type->is_comp_off && ($allocation->comp_off_remaining ?? 0) <= 0) {
+                                            } elseif ($type->is_comp_off && ($allocation->comp_off_remaining ?? 0) <= 0 && !$isAdminOrHr) {
                                                 $isDisabled = true;
                                                 $suffix = ' (No balance available)';
                                             }
                                             
                                             $isSelected = old('leave_type_id') !== null 
                                                 ? old('leave_type_id') == $type->id 
-                                                : ($type->is_lwp);
+                                                : ($type->code === 'paid_leave');
                                         @endphp
                                         <option value="{{ $type->id }}" 
                                             {{ $isDisabled ? 'disabled' : '' }} 
@@ -208,7 +222,7 @@
                                             </label>
                                         </div>
 
-                                        <div id="half_day_type_container" style="{{ old('is_half_day') ? '' : 'display: none;' }}">
+                                        <div id="half_day_type_container" style="{{ old('is_half_day') ? 'display: block;' : 'display: none;' }}">
                                             <div class="d-flex align-items-center gap-2">
                                                 <span class="font-weight-bold text-muted small mr-2">Session:</span>
                                                 <div class="custom-control custom-radio custom-control-inline">
@@ -300,12 +314,21 @@
                             </div>
                         </div>
 
+                        <!-- 1b. Advance Notice Warning Badge -->
+                        <div id="noticeWarningBanner" class="alert alert-warning border-0 shadow-sm p-3 mb-3" style="border-radius: 12px; display: none; background: #FFFBEB; border-left: 4px solid #F59E0B !important;">
+                            <div class="d-flex align-items-center gap-2 font-weight-bold text-dark mb-1" style="font-size: 13px; color: #92400E;">
+                                <i class="fas fa-exclamation-triangle text-warning mr-1"></i> Notice Requirement Warning
+                            </div>
+                            <div class="small text-muted mb-0" id="noticeWarningText"></div>
+                        </div>
+
                         <!-- 2. Sandwich Rule Alert Badge -->
                         <div id="sandwichBadge" class="alert alert-warning border-0 shadow-sm p-3 mb-3" style="border-radius: 12px; display: none;">
                             <div class="d-flex align-items-center gap-2 font-weight-bold text-dark mb-1" style="font-size: 13px;">
                                 <i class="fas fa-bread-slice text-warning"></i> Sandwich Rule Applied!
                             </div>
-                            <div class="small text-muted">Intervening holidays/week-offs are included in total leave span (Total Deducted: <strong id="prev_total_ded_text">0.0</strong> Days).</div>
+                            <div id="sandwichBadgeMsg" class="small text-muted mb-1">Intervening holidays/week-offs are included in total leave span.</div>
+                            <div class="small font-weight-bold text-dark">Total Deducted: <span id="prev_total_ded_text">0.0</span> Days</div>
                         </div>
 
                         <!-- 3. Quota Split Breakdown -->
@@ -396,9 +419,12 @@
     function toggleHalfDaySession() {
         var isHalfDay = document.getElementById('is_half_day').checked;
         var sessionContainer = document.getElementById('half_day_type_container');
+        if (!sessionContainer) return;
         if (isHalfDay) {
+            sessionContainer.classList.remove('d-none');
             sessionContainer.style.display = 'block';
         } else {
+            sessionContainer.classList.add('d-none');
             sessionContainer.style.display = 'none';
         }
     }
@@ -410,6 +436,8 @@
         var isHalfDay = document.getElementById('is_half_day').checked;
         var halfDayType = document.querySelector('input[name="half_day_type"]:checked') ? document.querySelector('input[name="half_day_type"]:checked').value : 'first_half';
         var emergencyLeave = document.getElementById('emergency_leave').checked;
+        var employeeIdEl = document.getElementById('apply_employee_id');
+        var employeeId = employeeIdEl ? employeeIdEl.value : null;
 
         if (!leaveTypeId || !startDate || !endDate) {
             return;
@@ -422,6 +450,7 @@
                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
             },
             body: JSON.stringify({
+                employee_id: employeeId,
                 leave_type_id: leaveTypeId,
                 start_date: startDate,
                 end_date: endDate,
@@ -437,7 +466,10 @@
                 document.getElementById('prev_cal_days').textContent = d.requested_calendar_days;
                 document.getElementById('prev_work_days').textContent = d.working_days;
                 document.getElementById('prev_sand_days').textContent = d.sandwich_days;
-                document.getElementById('prev_payable_paid_days').textContent = Number(d.paid_days).toFixed(1);
+                
+                var payablePaidDays = Math.max(0, Number(d.deducted_days || 0) - Number(d.lwp_days || 0));
+                document.getElementById('prev_payable_paid_days').textContent = Number(payablePaidDays).toFixed(1);
+
                 if (document.getElementById('prev_total_ded_text')) {
                     document.getElementById('prev_total_ded_text').textContent = Number(d.deducted_days).toFixed(1);
                 }
@@ -447,10 +479,24 @@
                 document.getElementById('prev_comp_days').textContent = Number(d.comp_off_days).toFixed(1) + ' Days';
                 document.getElementById('prev_lwp_days').textContent = Number(d.lwp_days).toFixed(1) + ' Days';
 
+                // Notice requirement warning badge
+                var noticeBanner = document.getElementById('noticeWarningBanner');
+                var noticeMsgEl = document.getElementById('noticeWarningText');
+                if (d.notice_warning) {
+                    if (noticeBanner) noticeBanner.style.display = 'block';
+                    if (noticeMsgEl) noticeMsgEl.textContent = d.notice_warning;
+                } else {
+                    if (noticeBanner) noticeBanner.style.display = 'none';
+                }
+
                 // Sandwich rule badge
                 var sandwichBadge = document.getElementById('sandwichBadge');
+                var sandwichMsgEl = document.getElementById('sandwichBadgeMsg');
                 if (d.sandwich_applied || d.sandwich_days > 0) {
                     sandwichBadge.style.display = 'block';
+                    if (sandwichMsgEl && d.sandwich_message) {
+                        sandwichMsgEl.textContent = d.sandwich_message;
+                    }
                 } else {
                     sandwichBadge.style.display = 'none';
                 }
@@ -473,6 +519,20 @@
 
     document.addEventListener('DOMContentLoaded', function() {
         setLeaveMode('single');
+
+        if (window.jQuery) {
+            $(document).on('change change.select2 input', '#apply_employee_id, #leave_type_id, #single_date_input, #start_date, #end_date, #is_half_day, input[name="half_day_type"], #emergency_leave', function() {
+                if (this.id === 'single_date_input') {
+                    syncSingleDate();
+                }
+                triggerLivePreview();
+            });
+        }
+
+        setTimeout(function() {
+            syncSingleDate();
+            triggerLivePreview();
+        }, 150);
     });
 </script>
 @endsection

@@ -29,7 +29,7 @@ Route::prefix('enterprise-payroll')->middleware(['auth', 'check.access'])->name(
     Route::get('/runs', [PayrollRunC::class, 'index'])
         ->middleware('permission:enterprise_payroll_run.view')
         ->name('runs.index');
-    Route::post('/runs/preview', [PayrollRunC::class, 'preview'])
+    Route::match(['get', 'post'], '/runs/preview', [PayrollRunC::class, 'preview'])
         ->middleware('permission:enterprise_payroll_run.generate')
         ->name('runs.preview');
     Route::post('/runs/generate', [PayrollRunC::class, 'generate'])
@@ -140,3 +140,8 @@ Route::prefix('enterprise-payroll')->middleware(['auth', 'check.access'])->name(
         ->middleware('permission:enterprise_payroll.policy.update')
         ->name('policies.update');
 });
+
+Route::any('enterprise payroll/{any?}', function ($any = null) {
+    return redirect(url('enterprise-payroll/' . ($any ? $any : '')));
+})->where('any', '.*');
+

@@ -55,7 +55,7 @@
         </div>
     </div>
 
-      @if (collect($accesses)->where('menu_id', 6)->first()->status == 2)
+      @if (auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && (auth()->user()->hasPermission('announcements.edit') || auth()->user()->hasPermission('announcements.manage'))))
         <div class="row">
           <div class="col-12">
             @if ($announcement->created_by == auth()->user()->employee->id)

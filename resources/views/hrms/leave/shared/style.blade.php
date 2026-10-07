@@ -26,6 +26,15 @@ body {
     display: block !important;
 }
 
+.leave-page *,
+.leave-page *::before,
+.leave-page *::after,
+.leave-page-wrap *,
+.leave-page-wrap *::before,
+.leave-page-wrap *::after {
+    box-sizing: border-box;
+}
+
 .leave-container {
     width: 100% !important;
     max-width: 100% !important;
@@ -102,6 +111,8 @@ body {
 .leave-subtitle{font-size:13px;color:var(--orb-muted);margin:5px 0 0;}
 
 .leave-btn{
+    box-sizing: border-box !important;
+    max-width: 100%;
     border:0;
     border-radius:14px;
     padding:10px 16px;

@@ -13,7 +13,7 @@
     <div class="col-12 mb-3">
       <div class="bg-light text-dark card p-3 overflow-auto">
         <div class="d-flex justify-content-between">
-          @if (collect($accesses)->where('menu_id', 8)->first()->status == 2)
+          @if (auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('settings.score_categories.manage')))
             <a href="{{ route('score-categories.create') }}" class="btn btn-outline-dark mb-3 w-25">
               <i class="fas fa-plus mr-1"></i>
                 <span> Create</span>

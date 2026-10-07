@@ -112,11 +112,11 @@ return new class extends Migration
                 }
 
                 if (!Schema::hasColumn('leave_requests', 'manager_note')) {
-                    $table->text('manager_note')->nullable()->after('rejection_reason');
+                    $table->text('manager_note')->nullable();
                 }
 
                 if (!Schema::hasColumn('leave_requests', 'hr_note')) {
-                    $table->text('hr_note')->nullable()->after('manager_note');
+                    $table->text('hr_note')->nullable();
                 }
             });
         }

@@ -135,7 +135,7 @@
 
     .asset-filter-grid {
         display: grid !important;
-        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
         gap: 12px !important;
         align-items: flex-end !important;
     }
@@ -513,6 +513,15 @@
                                 <option value="Active" {{ request('status') == 'Active' ? 'selected' : '' }}>Active</option>
                                 <option value="Returned" {{ request('status') == 'Returned' ? 'selected' : '' }}>Returned</option>
                             </select>
+                        </div>
+
+                        <div class="d-flex align-items-end" style="gap: 8px;">
+                            <button type="button" id="btnAssetFilterSubmit" class="btn text-white font-weight-bold shadow-sm" style="height: 44px; border-radius: 9px; background: var(--orb-primary); border: none; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; flex: 1;">
+                                <i class="fas fa-search"></i> Search
+                            </button>
+                            <button type="button" class="btn btn-light btn-undo border" style="height: 44px; width: 44px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Reset Filters">
+                                <i class="fas fa-undo"></i>
+                            </button>
                         </div>
 
                     </div>
@@ -1020,17 +1029,25 @@
         $('.asset-dt-footer .footer-left').append($('.dataTables_info'));
         $('.asset-dt-footer .footer-right').append($('.dataTables_paginate'));
 
-        // Auto-apply filters
-        $('input[name="employee_name"]').on('keyup', function() {
-            table.column(0).search(this.value).draw();
-        });
+        // Manual filter application via Search Button or Enter
+        function applyAssetFilters() {
+            var empName = $('input[name="employee_name"]').val();
+            var assetType = $('select[name="asset_type"]').val();
+            var status = $('select[name="status"]').val();
 
-        $('select[name="asset_type"]').on('change', function() {
-            table.column(1).search(this.value).draw();
-        });
+            table.column(0).search(empName || '');
+            table.column(1).search(assetType ? '^' + assetType + '$' : '', true, false);
+            table.column(3).search(status ? '^' + status + '$' : '', true, false);
+            table.draw();
+        }
 
-        $('select[name="status"]').on('change', function() {
-            table.column(3).search(this.value).draw();
+        $('#btnAssetFilterSubmit').on('click', applyAssetFilters);
+
+        $('input[name="employee_name"]').on('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                applyAssetFilters();
+            }
         });
 
         // Reset Filters Action

@@ -4,10 +4,15 @@ namespace App\Http\Controllers\Web\HRMS\Attendance;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Web\HRMS\Concerns\HrmsCrudPage;
-use App\Models\Core\UserM;
+use App\Models\Core\UserM as User;
 use App\Models\HRMS\Attendance\WfhRequestM;
+use App\Models\HRMS\Department\DepartmentM;
+use App\Models\HRMS\Designation\DesignationM;
+use App\Models\HRMS\Employee\EmployeeM;
 use App\Services\HRMS\Attendance\WfhRequestService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class WfhRequestC extends Controller
@@ -20,20 +25,43 @@ class WfhRequestC extends Controller
 
     public function index(Request $request)
     {
-        $canView = $this->userHasPermission('attendance.wfh.view');
-        $canOwn = $this->userHasPermission('attendance.wfh.own');
-        abort_unless($canView || $canOwn, 403);
+        /** @var User|null $user */
+        $user = Auth::user();
+        $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
+        $isHrOrAdmin = $isSuperAdmin
+            || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin())
+            || (method_exists($user, 'isAdmin') && $user->isAdmin())
+            || (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin']))
+            || in_array((int) ($user->system_role_id ?? $user->role_id ?? 0), [1, 2, 3], true);
 
+        $teamEmpIds = $this->teamEmployeeIds(false);
+        $isManager = (! empty($teamEmpIds) || (method_exists($user, 'hasRole') && $user->hasRole('manager'))) && ! $isHrOrAdmin;
+        $isEmployee = ! $isHrOrAdmin && ! $isManager;
+
+        $canOwn = $this->userHasPermission('attendance.wfh.own')
+            || (method_exists($user, 'isEmployee') && $user->isEmployee())
+            || $this->userHasPermission('attendance.wfh.view')
+            || in_array((int) ($user->system_role_id ?? $user->role_id ?? 0), [7, 8], true);
+
+        abort_unless($isHrOrAdmin || $isManager || $canOwn, 403);
+
+        $ownEmployeeId = $this->ownEmployeeId();
         $query = $this->employeeJoinedQuery('wfh_requests');
 
-        if (! $canView && $canOwn) {
-            $ownEmployeeId = $this->ownEmployeeId();
-            abort_unless($ownEmployeeId, 403);
+        if ($isHrOrAdmin) {
+            // Global view for Super Admin / Admin / HR Admin
+        } elseif ($isManager) {
+            // Scoped strictly to supervised team members + own
+            $allowedEmpIds = array_merge($teamEmpIds, array_filter([$ownEmployeeId]));
+            $query->whereIn('wfh_requests.employee_id', array_filter($allowedEmpIds));
+        } else {
+            // Self only
+            abort_unless($ownEmployeeId, 403, 'Employee profile not found.');
             $query->where('wfh_requests.employee_id', $ownEmployeeId);
+            $request->merge(['employee_id' => $ownEmployeeId]);
         }
 
         $this->applyCommonFilters($query, $request, [
-            'dateColumn' => 'wfh_requests.request_date',
             'filterMap' => [
                 'employee_id' => 'wfh_requests.employee_id',
                 'status' => 'wfh_requests.status',
@@ -42,9 +70,76 @@ class WfhRequestC extends Controller
             ],
         ]);
 
+        $fromDate = $request->input('from_date') ?: $request->input('from');
+        $toDate = $request->input('to_date') ?: $request->input('to');
+        $currentMonthKey = Carbon::now('Asia/Kolkata')->format('Y-m');
+        $month = $request->input('month');
+
+        // Default to current month if no filter params specified and not a reset request
+        if ($month === null && ! $fromDate && ! $toDate && ! $request->has('reset')) {
+            $month = $currentMonthKey;
+            $request->merge(['month' => $month]);
+        }
+
+        if ($fromDate || $toDate) {
+            if ($fromDate) {
+                $query->where(function ($q) use ($fromDate) {
+                    $q->whereDate('wfh_requests.to_date', '>=', $fromDate)
+                      ->orWhere(function ($sub) use ($fromDate) {
+                          $sub->whereNull('wfh_requests.to_date')
+                              ->whereDate('wfh_requests.request_date', '>=', $fromDate);
+                      });
+                });
+            }
+            if ($toDate) {
+                $query->where(function ($q) use ($toDate) {
+                    $q->whereDate('wfh_requests.from_date', '<=', $toDate)
+                      ->orWhere(function ($sub) use ($toDate) {
+                          $sub->whereNull('wfh_requests.from_date')
+                              ->whereDate('wfh_requests.request_date', '<=', $toDate);
+                      });
+                });
+            }
+        } elseif ($month && $month !== 'all' && $month !== 'custom') {
+            try {
+                $monthDate = Carbon::parse($month . '-01');
+                $startOfMonth = $monthDate->copy()->startOfMonth()->toDateString();
+                $endOfMonth = $monthDate->copy()->endOfMonth()->toDateString();
+
+                if ($month === $currentMonthKey) {
+                    // Current month selected: show current month requests + all future applied requests
+                    $query->where(function ($q) use ($startOfMonth) {
+                        $q->whereDate('wfh_requests.to_date', '>=', $startOfMonth)
+                          ->orWhereDate('wfh_requests.from_date', '>=', $startOfMonth)
+                          ->orWhereDate('wfh_requests.request_date', '>=', $startOfMonth)
+                          ->orWhereDate('wfh_requests.created_at', '>=', $startOfMonth);
+                    });
+                } else {
+                    $query->where(function ($q) use ($startOfMonth, $endOfMonth) {
+                        $q->where(function ($sub) use ($startOfMonth, $endOfMonth) {
+                            $sub->whereDate('wfh_requests.from_date', '<=', $endOfMonth)
+                                ->whereDate('wfh_requests.to_date', '>=', $startOfMonth);
+                        })->orWhere(function ($sub) use ($startOfMonth, $endOfMonth) {
+                            $sub->whereNull('wfh_requests.from_date')
+                                ->whereBetween('wfh_requests.request_date', [$startOfMonth, $endOfMonth]);
+                        })->orWhere(function ($sub) use ($startOfMonth, $endOfMonth) {
+                            $sub->whereBetween(DB::raw('DATE(wfh_requests.created_at)'), [$startOfMonth, $endOfMonth]);
+                        });
+                    });
+                }
+            } catch (\Throwable $e) {
+                // Ignore parse errors
+            }
+        }
+
         $statsQuery = clone $query;
 
-        $rows = $query->latest('wfh_requests.id')->paginate(50);
+        $perPage = (int) $request->input('per_page', 25);
+        if (!in_array($perPage, [10, 25, 50, 100], true)) {
+            $perPage = 25;
+        }
+
+        $rows = $query->latest('wfh_requests.id')->paginate($perPage)->withQueryString();
         $approverIds = $rows->getCollection()
             ->flatMap(fn ($row) => [(int) ($row->manager_approved_by ?? 0), (int) ($row->hr_approved_by ?? 0), (int) ($row->assigned_by ?? 0)])
             ->filter()
@@ -53,7 +148,7 @@ class WfhRequestC extends Controller
             ->all();
         $approverMap = empty($approverIds)
             ? []
-            : UserM::query()->whereIn('id', $approverIds)->pluck('name', 'id')->toArray();
+            : User::query()->whereIn('id', $approverIds)->pluck('name', 'id')->toArray();
 
         $policy = $this->service->policy();
         $monthlyLimit = (int) ($policy['wfh_monthly_limit'] ?? 2);
@@ -93,21 +188,77 @@ class WfhRequestC extends Controller
             return $row;
         });
 
+        if ($isHrOrAdmin) {
+            $allEmployees = $this->employeeOptions();
+            $employees = $allEmployees->filter(function ($emp) {
+                $mode = strtolower(trim((string) ($emp->work_mode ?? 'wfo')));
+                return $mode === 'wfo' || (! in_array($mode, ['wfh', 'permanent_wfh', 'permanent wfh'], true));
+            })->values();
+        } elseif ($isManager) {
+            $allowedEmpIds = array_merge($teamEmpIds, array_filter([$ownEmployeeId]));
+            $employees = DB::table('employees_new')
+                ->leftJoin('users', 'users.id', '=', 'employees_new.user_id')
+                ->whereIn('employees_new.id', $allowedEmpIds)
+                ->where(function ($q) {
+                    $q->where('employees_new.work_mode', 'wfo')
+                      ->orWhere(function ($sub) {
+                          $sub->whereNull('employees_new.work_mode')
+                              ->orWhereRaw("LOWER(TRIM(employees_new.work_mode)) NOT IN ('wfh', 'permanent_wfh', 'permanent wfh')");
+                      });
+                })
+                ->select(
+                    'employees_new.id',
+                    'employees_new.employee_code',
+                    'employees_new.work_mode',
+                    DB::raw("COALESCE(users.name, employees_new.employee_code, 'N/A') as display_name")
+                )
+                ->orderByRaw("COALESCE(users.name, employees_new.employee_code)")
+                ->get();
+        } else {
+            $employees = DB::table('employees_new')
+                ->leftJoin('users', 'users.id', '=', 'employees_new.user_id')
+                ->where('employees_new.id', $ownEmployeeId)
+                ->select(
+                    'employees_new.id',
+                    'employees_new.employee_code',
+                    'employees_new.work_mode',
+                    DB::raw("COALESCE(users.name, employees_new.employee_code, 'N/A') as display_name")
+                )
+                ->get();
+        }
+
+        $monthOptions = [
+            'all' => 'All Months',
+            'custom' => 'Custom Date Range',
+        ];
+        $cursorMonth = Carbon::now('Asia/Kolkata')->addMonths(2);
+        for ($i = 0; $i < 15; $i++) {
+            $m = $cursorMonth->copy()->subMonths($i);
+            $monthOptions[$m->format('Y-m')] = $m->format('F Y');
+        }
+
         return view('hrms.attendance.wfh.index', [
             'rows' => $rows,
-            'employees' => $this->employeeOptions(),
-            'departments' => \App\Models\HRMS\Department\DepartmentM::query()->orderBy('name')->get(['id', 'name']),
-            'designations' => \App\Models\HRMS\Designation\DesignationM::query()->orderBy('name')->get(['id', 'name']),
+            'employees' => $employees,
+            'monthOptions' => $monthOptions,
+            'activeMonth' => $month ?? $currentMonthKey,
+            'departments' => DepartmentM::query()->orderBy('name')->get(['id', 'name']),
+            'designations' => DesignationM::query()->orderBy('name')->get(['id', 'name']),
             'accesses' => $this->accesses(),
             'active' => 'attendance',
-            'canApprove' => $this->userHasPermission('attendance.wfh.approve'),
-            'canReject' => $this->userHasPermission('attendance.wfh.reject'),
-            'canMarkLwp' => $this->userHasPermission('attendance.wfh.mark_lwp'),
-            'canAssign' => $this->userHasPermission('attendance.wfh.assign'),
-            'canOverrideQuota' => $this->canOverrideQuota(),
+            'isSuperAdmin' => $isSuperAdmin,
+            'isHrOrAdmin' => $isHrOrAdmin,
+            'isManager' => $isManager,
+            'isEmployee' => $isEmployee,
+            'userEmpId' => $ownEmployeeId,
+            'canApprove' => $isHrOrAdmin || ($isManager && $this->userHasPermission('attendance.wfh.approve')),
+            'canReject' => $isHrOrAdmin || ($isManager && $this->userHasPermission('attendance.wfh.reject')),
+            'canMarkLwp' => $isHrOrAdmin && $this->userHasPermission('attendance.wfh.mark_lwp'),
+            'canAssign' => $isHrOrAdmin && $this->userHasPermission('attendance.wfh.assign'),
+            'canOverrideQuota' => $isHrOrAdmin && $this->canOverrideQuota(),
             'stats' => [
                 'total' => (clone $statsQuery)->count(),
-                'pending' => (clone $statsQuery)->whereIn('wfh_requests.status', ['pending', 'manager_approved', 'hr_approved'])->count(),
+                'pending' => (clone $statsQuery)->whereIn('wfh_requests.status', ['pending', 'manager_approved'])->count(),
                 'approved' => (clone $statsQuery)->where('wfh_requests.status', 'approved')->count(),
                 'rejected' => (clone $statsQuery)->where('wfh_requests.status', 'rejected')->count(),
                 'company_assigned' => (clone $statsQuery)->where('wfh_requests.request_type', 'company_assigned_wfh')->count(),
@@ -118,33 +269,82 @@ class WfhRequestC extends Controller
 
     public function approve(int $id, Request $request)
     {
+        /** @var User|null $user */
+        $user = Auth::user();
+        $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
+        $isHrOrAdmin = $isSuperAdmin
+            || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin())
+            || (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin']))
+            || $this->userHasPermission('attendance.wfh.approve');
+
+        $supervisorEmpId = $this->ownEmployeeId();
         $row = WfhRequestM::findOrFail($id);
-        $partialRange = null;
-        if ($request->filled('approved_from_date') && $request->filled('approved_to_date')) {
-            $partialRange = [
-                'approved_from_date' => $request->input('approved_from_date'),
-                'approved_to_date' => $request->input('approved_to_date'),
-            ];
+        $employee = EmployeeM::find($row->employee_id);
+        $managerEmpId = $employee?->reporting_manager_employee_id;
+        $hasManager = ! empty($managerEmpId);
+        $isAssignedManager = ($supervisorEmpId && $managerEmpId && (int) $supervisorEmpId === (int) $managerEmpId);
+        $isManagerApproved = ! empty($row->manager_approved_at) || $row->status === 'manager_approved';
+
+        // Stage 1: Reporting Manager Approval
+        if ($isAssignedManager && ! $isHrOrAdmin) {
+            if ($isManagerApproved) {
+                return back()->with('error', 'You have already approved this request at Manager stage. Awaiting HR Admin final approval.');
+            }
+            $note = $request->input('remarks');
+            try {
+                $this->service->approveManagerStage($row, (int) $this->actorId(), $note);
+                return back()->with('success', 'WFH request approved at Manager stage. Sent to HR Admin for final approval.');
+            } catch (\Throwable $e) {
+                return back()->with('error', $e->getMessage());
+            }
         }
 
-        $canOverride = $this->canOverrideQuota();
-        $allowOverride = $canOverride && ($request->boolean('override_quota') || $request->has('override_quota'));
+        // Stage 2: HR Admin / Super Admin Final Approval
+        if ($isHrOrAdmin) {
+            $partialRange = null;
+            if ($request->filled('approved_from_date') && $request->filled('approved_to_date')) {
+                $partialRange = [
+                    'approved_from_date' => $request->input('approved_from_date'),
+                    'approved_to_date' => $request->input('approved_to_date'),
+                ];
+            }
 
-        try {
-            $this->service->approve($row, (int) $this->actorId(), $partialRange, $allowOverride || $canOverride);
-            return back()->with('success', 'WFH request approved successfully.');
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            $msg = collect($e->errors())->flatten()->first() ?: $e->getMessage();
-            return back()->with('error', $msg)->withErrors($e->errors());
-        } catch (\Throwable $e) {
-            return back()->with('error', $e->getMessage());
+            $canOverride = $this->canOverrideQuota();
+            $allowOverride = $canOverride && ($request->boolean('override_quota') || $request->has('override_quota'));
+
+            try {
+                $this->service->approve($row, (int) $this->actorId(), $partialRange, $allowOverride || $canOverride);
+                return back()->with('success', 'WFH request approved & finalized.');
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                $msg = collect($e->errors())->flatten()->first() ?: $e->getMessage();
+                return back()->with('error', $msg)->withErrors($e->errors());
+            } catch (\Throwable $e) {
+                return back()->with('error', $e->getMessage());
+            }
         }
+
+        abort(403, 'Unauthorized to approve this WFH request.');
     }
 
     public function reject(int $id, Request $request)
     {
-        $data = $request->validate(['rejection_reason' => 'required|string|max:2000']);
+        /** @var User|null $user */
+        $user = Auth::user();
+        $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
+        $isHrOrAdmin = $isSuperAdmin
+            || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin())
+            || (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin']))
+            || $this->userHasPermission('attendance.wfh.reject');
+
+        $supervisorEmpId = $this->ownEmployeeId();
         $row = WfhRequestM::findOrFail($id);
+        $employee = EmployeeM::find($row->employee_id);
+        $managerEmpId = $employee?->reporting_manager_employee_id;
+        $isAssignedManager = ($supervisorEmpId && $managerEmpId && (int) $supervisorEmpId === (int) $managerEmpId);
+
+        abort_unless($isSuperAdmin || $isHrOrAdmin || $isAssignedManager, 403);
+
+        $data = $request->validate(['rejection_reason' => 'required|string|max:2000']);
         $this->service->reject($row, (int) $this->actorId(), $data['rejection_reason']);
         return back()->with('success', 'WFH request rejected.');
     }
@@ -164,17 +364,88 @@ class WfhRequestC extends Controller
         return back()->with('success', 'WFH request marked as LWP.');
     }
 
+    public function update(Request $request, int $id)
+    {
+        /** @var User|null $user */
+        $user = Auth::user();
+        $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
+        $isHrOrAdmin = $isSuperAdmin
+            || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin())
+            || (method_exists($user, 'isAdmin') && $user->isAdmin())
+            || (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin']))
+            || in_array((int) ($user->system_role_id ?? $user->role_id ?? 0), [1, 2, 3], true);
+
+        $record = WfhRequestM::findOrFail($id);
+        $ownEmployeeId = $this->ownEmployeeId();
+
+        if (! $isHrOrAdmin) {
+            abort_unless((int) $record->employee_id === (int) $ownEmployeeId, 403, 'Unauthorized to edit this WFH request.');
+            if (! in_array($record->status, ['pending', 'manager_approved'], true)) {
+                return back()->with('error', 'Only pending requests can be modified.');
+            }
+        }
+
+        $payload = $request->validate([
+            'from_date' => 'required|date',
+            'to_date' => 'required|date|after_or_equal:from_date',
+            'request_type' => 'nullable|string|max:100',
+            'reason_category' => 'required|string|max:100',
+            'reason' => 'required|string|max:2000',
+            'status' => 'nullable|string|in:pending,approved,rejected,cancelled',
+            'payroll_impact' => 'nullable|string|in:none,lwp',
+        ]);
+
+        $employee = EmployeeM::find($record->employee_id);
+        if ($employee) {
+            try {
+                $stats = $this->service->calculateRangeStats($employee, (string) $payload['from_date'], (string) $payload['to_date']);
+                $record->from_date = $payload['from_date'];
+                $record->to_date = $payload['to_date'];
+                $record->request_date = $payload['from_date'];
+                $record->total_days = $stats['total_days'] ?? 1;
+                $record->working_days = $stats['working_days'] ?? 1;
+                $record->weekoff_days = $stats['weekoff_days'] ?? 0;
+                $record->holiday_days = $stats['holiday_days'] ?? 0;
+            } catch (\Throwable $e) {
+                $record->from_date = $payload['from_date'];
+                $record->to_date = $payload['to_date'];
+                $record->request_date = $payload['from_date'];
+            }
+        } else {
+            $record->from_date = $payload['from_date'];
+            $record->to_date = $payload['to_date'];
+            $record->request_date = $payload['from_date'];
+        }
+
+        $record->reason_category = $payload['reason_category'];
+        $record->reason = $payload['reason'];
+        if (!empty($payload['request_type'])) {
+            $record->request_type = $payload['request_type'];
+        }
+
+        if ($isHrOrAdmin) {
+            if (!empty($payload['status'])) {
+                $record->status = $payload['status'];
+            }
+            if (!empty($payload['payroll_impact'])) {
+                $record->payroll_impact = $payload['payroll_impact'];
+            }
+        }
+
+        $record->save();
+
+        return back()->with('success', 'WFH request updated successfully.');
+    }
+
     public function assign(Request $request)
     {
         abort_unless($this->userHasPermission('attendance.wfh.assign'), 403);
 
         $payload = $request->validate([
-            'assignment_scope' => 'required|in:single,multiple,department,designation,all',
-            'employee_id' => 'nullable|integer|exists:employees_new,id',
-            'employee_ids' => 'nullable|array',
+            'assignment_scope' => 'required|in:single,multiple,all',
+            'employee_id' => 'required_if:assignment_scope,single|nullable|integer|exists:employees_new,id',
+            'employee_ids' => 'required_if:assignment_scope,multiple|nullable|array|min:1',
             'employee_ids.*' => 'integer|exists:employees_new,id',
-            'department_id' => 'nullable|integer|exists:departments,id',
-            'designation_id' => 'nullable|integer|exists:designations,id',
             'date_from' => 'required|date',
             'date_to' => 'required|date',
             'reason' => 'required|string|max:2000',
@@ -195,7 +466,7 @@ class WfhRequestC extends Controller
 
     public function myWfh(Request $request)
     {
-        $employee = \App\Models\HRMS\Employee\EmployeeM::where('user_id', auth()->id())->first();
+        $employee = EmployeeM::where('user_id', Auth::id())->first();
         if (! $employee) {
             abort(403, 'Employee profile not found.');
         }
@@ -222,14 +493,14 @@ class WfhRequestC extends Controller
 
         $approverMap = empty($approverIds)
             ? []
-            : UserM::query()->whereIn('id', $approverIds)->pluck('name', 'id')->toArray();
+            : User::query()->whereIn('id', $approverIds)->pluck('name', 'id')->toArray();
 
         $rows->getCollection()->transform(function ($row) use ($approverMap) {
             $fromDate = $row->from_date ?: $row->request_date;
             $toDate = $row->to_date ?: $fromDate;
 
-            $fromCarbon = \Carbon\Carbon::parse($fromDate);
-            $toCarbon = \Carbon\Carbon::parse($toDate);
+            $fromCarbon = Carbon::parse($fromDate);
+            $toCarbon = Carbon::parse($toDate);
 
             $row->from_date_formatted = $fromCarbon->format('d M Y');
             $row->to_date_formatted = $toCarbon->format('d M Y');
@@ -254,14 +525,6 @@ class WfhRequestC extends Controller
             return $row;
         });
 
-        $rows->getCollection()->transform(function ($row) use ($approverMap) {
-            $approvedById = (int) ($row->hr_approved_by ?: $row->manager_approved_by ?: $row->assigned_by ?: 0);
-            $row->approved_by_label = $approvedById > 0 ? ($approverMap[$approvedById] ?? ('User #' . $approvedById)) : '-';
-            $assignedById = (int) ($row->assigned_by ?? 0);
-            $row->assigned_by_label = $assignedById > 0 ? ($approverMap[$assignedById] ?? ('User #' . $assignedById)) : '-';
-            return $row;
-        });
-
         $now = now();
         $balance = $this->service->balance($employee, (int) $now->month, (int) $now->year);
         $isPermanentWfh = $employee ? $employee->isPermanentWfh() : false;
@@ -277,7 +540,7 @@ class WfhRequestC extends Controller
 
     public function calculateDays(Request $request)
     {
-        $employee = \App\Models\HRMS\Employee\EmployeeM::where('user_id', auth()->id())->first();
+        $employee = EmployeeM::where('user_id', Auth::id())->first();
         if (! $employee) {
             return response()->json(['status' => false, 'message' => 'Employee profile not found.'], 403);
         }
@@ -299,7 +562,7 @@ class WfhRequestC extends Controller
 
     public function apply(Request $request)
     {
-        $employee = \App\Models\HRMS\Employee\EmployeeM::where('user_id', auth()->id())->first();
+        $employee = EmployeeM::where('user_id', Auth::id())->first();
         if (! $employee) {
             abort(403, 'Employee profile not found.');
         }
@@ -316,7 +579,7 @@ class WfhRequestC extends Controller
 
         try {
             $this->service->apply($employee, $payload);
-            return redirect()->route('hrms.attendance.my-wfh.index')->with('success', 'WFH request submitted successfully.');
+            return redirect()->back()->with('success', 'WFH request submitted successfully.');
         } catch (\Illuminate\Validation\ValidationException $e) {
             return redirect()->back()->withErrors($e->errors())->withInput();
         }
@@ -324,7 +587,7 @@ class WfhRequestC extends Controller
 
     public function cancel(int $id)
     {
-        $employee = \App\Models\HRMS\Employee\EmployeeM::where('user_id', auth()->id())->first();
+        $employee = EmployeeM::where('user_id', Auth::id())->first();
         if (! $employee) {
             abort(403, 'Employee profile not found.');
         }
@@ -333,7 +596,7 @@ class WfhRequestC extends Controller
 
         try {
             $this->service->cancel($requestRecord);
-            return redirect()->route('hrms.attendance.my-wfh.index')->with('success', 'WFH request cancelled successfully.');
+            return redirect()->back()->with('success', 'WFH request cancelled successfully.');
         } catch (\Illuminate\Validation\ValidationException $e) {
             return redirect()->back()->withErrors($e->errors());
         }
@@ -341,7 +604,8 @@ class WfhRequestC extends Controller
 
     private function actorSource(): string
     {
-        $user = auth()->user();
+        /** @var User|null $user */
+        $user = Auth::user();
         if ($user && method_exists($user, 'hasRole')) {
             if ($user->hasRole('super_admin') || $user->hasRole('admin')) return 'admin_assigned';
             if ($user->hasRole('hr_admin')) return 'hr_assigned';
@@ -375,7 +639,8 @@ class WfhRequestC extends Controller
 
     private function canOverrideQuota(): bool
     {
-        $user = auth()->user();
+        /** @var User|null $user */
+        $user = Auth::user();
         if (! $user) {
             return false;
         }

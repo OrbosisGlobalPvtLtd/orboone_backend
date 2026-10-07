@@ -3,61 +3,107 @@
 namespace App\Http\Controllers\Web\HRMS\Document;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-
-use App\Models\HRMS\Employee\EmployeeM;
-use App\Models\HRMS\Document\EmployeeDocumentM;
 use App\Models\HRMS\Document\DocumentTypeM;
+use App\Models\HRMS\Document\EmployeeDocumentM;
+use App\Models\HRMS\Employee\EmployeeM;
+use App\Services\HRMS\Document\HrmsFileStorageS;
 use App\Services\HRMS\Employee\EmployeeProfileCompletionS;
+use App\Services\HRMS\Notification\NotificationS;
 use App\Services\HRMS\Storage\HrmsStoragePathS;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Validator;
 
 class EmployeeSelfDocumentC extends Controller
 {
-    public function __construct(private HrmsStoragePathS $paths)
-    {
+    public function __construct(
+        private HrmsStoragePathS $paths,
+        private HrmsFileStorageS $storageService,
+        private EmployeeProfileCompletionS $completionService,
+        private NotificationS $notificationService
+    ) {
     }
 
-    private function getCurrentEmployee()
+    private function getCurrentEmployee(): ?EmployeeM
     {
         return EmployeeM::with(['user', 'profile'])->where('user_id', Auth::id())->first();
     }
-    
-    private function checkAccess($employee)
+
+    private function checkAccess(?EmployeeM $employee): void
     {
         if (!$employee) {
             abort(404, 'Employee not found');
         }
-        
-        $status = app(EmployeeProfileCompletionS::class)->buildCompletionStatus($employee, $employee->profile);
-        
-        // Cannot edit if submitted or approved
+
+        $status = $this->completionService->buildCompletionStatus($employee, $employee->profile);
+
         if (!$status['must_complete_profile']) {
             abort(403, 'Profile already submitted/approved. Documents cannot be modified.');
         }
     }
 
-    public function upload(Request $request)
+    private function getAllowedExtensions(DocumentTypeM $docType): array
+    {
+        $extensions = $docType->allowed_extensions;
+        if (is_string($extensions)) {
+            $decoded = json_decode($extensions, true);
+            $extensions = is_array($decoded) ? $decoded : [];
+        }
+
+        if (empty($extensions)) {
+            $isPhoto = str_contains(strtolower($docType->code ?? ''), 'photo') 
+                || str_contains(strtolower($docType->name ?? ''), 'photo');
+            $extensions = $isPhoto ? ['jpg', 'jpeg', 'png'] : ['pdf', 'jpg', 'jpeg', 'png'];
+        }
+
+        return collect($extensions)
+            ->map(fn($ext) => strtolower(trim((string) $ext, " \t\n\r\0\x0B.")))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    public function upload(Request $request): JsonResponse
     {
         $employee = $this->getCurrentEmployee();
         $this->checkAccess($employee);
-        
-        $request->validate([
-            'document_type_id' => 'required|exists:document_types,id',
-            'file' => 'required|file|max:5120'
-        ]);
-        
+
         $docType = DocumentTypeM::findOrFail($request->document_type_id);
-        
+        $allowedExtensions = $this->getAllowedExtensions($docType);
+        $maxFileSizeMb = (int) ($docType->max_file_size_mb ?: 5);
+        $maxFileSizeKb = max($maxFileSizeMb, 1) * 1024;
+
+        $validator = Validator::make($request->all(), [
+            'document_type_id' => 'required|exists:document_types,id',
+            'file' => [
+                'required',
+                'file',
+                'mimes:' . implode(',', $allowedExtensions),
+                'max:' . $maxFileSizeKb,
+            ]
+        ], [
+            'file.mimes' => 'Invalid file format. Allowed format(s) for ' . $docType->name . ': ' . strtoupper(implode(', ', $allowedExtensions)) . '.',
+            'file.max' => 'File size must not exceed ' . $maxFileSizeMb . 'MB.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first('file') ?: 'Validation failed.'
+            ], 422);
+        }
+
         $file = $request->file('file');
-        $storageService = app(\App\Services\HRMS\Document\HrmsFileStorageS::class);
-        $meta = $storageService->archiveOrReplaceEmployeeDocument($employee, $docType, $file);
-        
+        $meta = $this->storageService->archiveOrReplaceEmployeeDocument($employee, $docType, $file);
+
         $search = [
             'employee_id' => $employee->id,
             'document_type_id' => $docType->id,
         ];
-        if (\Illuminate\Support\Facades\Schema::hasColumn('employee_documents_new', 'is_active')) {
+        if (Schema::hasColumn('employee_documents_new', 'is_active')) {
             $search['is_active'] = 1;
         }
 
@@ -85,7 +131,7 @@ class EmployeeSelfDocumentC extends Controller
 
         if ($isReupload) {
             $employeeName = $employee->user->name ?? $employee->employee_code;
-            app(\App\Services\HRMS\Notification\NotificationS::class)->notifyHrAndSuperAdmin(
+            $this->notificationService->notifyHrAndSuperAdmin(
                 'Document Re-uploaded',
                 $employeeName . ' has re-uploaded ' . ($oldDocument->title ?: $docType->name) . ' for verification.',
                 'document_reuploaded',
@@ -102,26 +148,44 @@ class EmployeeSelfDocumentC extends Controller
                 ]
             );
         }
-        
+
         return response()->json(['success' => true, 'message' => 'Document uploaded successfully.']);
     }
-    
-    public function replace(Request $request, $id)
+
+    public function replace(Request $request, $id): JsonResponse
     {
         $employee = $this->getCurrentEmployee();
         $this->checkAccess($employee);
-        
+
         $document = EmployeeDocumentM::where('employee_id', $employee->id)->findOrFail($id);
-        
-        $request->validate([
-            'file' => 'required|file|max:5120'
-        ]);
-        
-        $file = $request->file('file');
         $docType = DocumentTypeM::findOrFail($document->document_type_id);
-        $storageService = app(\App\Services\HRMS\Document\HrmsFileStorageS::class);
-        $meta = $storageService->archiveOrReplaceEmployeeDocument($employee, $docType, $file);
-        
+
+        $allowedExtensions = $this->getAllowedExtensions($docType);
+        $maxFileSizeMb = (int) ($docType->max_file_size_mb ?: 5);
+        $maxFileSizeKb = max($maxFileSizeMb, 1) * 1024;
+
+        $validator = Validator::make($request->all(), [
+            'file' => [
+                'required',
+                'file',
+                'mimes:' . implode(',', $allowedExtensions),
+                'max:' . $maxFileSizeKb,
+            ]
+        ], [
+            'file.mimes' => 'Invalid file format. Allowed format(s) for ' . $docType->name . ': ' . strtoupper(implode(', ', $allowedExtensions)) . '.',
+            'file.max' => 'File size must not exceed ' . $maxFileSizeMb . 'MB.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first('file') ?: 'Validation failed.'
+            ], 422);
+        }
+
+        $file = $request->file('file');
+        $meta = $this->storageService->archiveOrReplaceEmployeeDocument($employee, $docType, $file);
+
         $isReupload = $document->verification_status === 'rejected';
 
         if ($document->verification_status === 'verified') {
@@ -157,7 +221,7 @@ class EmployeeSelfDocumentC extends Controller
 
         if ($isReupload) {
             $employeeName = $employee->user->name ?? $employee->employee_code;
-            app(\App\Services\HRMS\Notification\NotificationS::class)->notifyHrAndSuperAdmin(
+            $this->notificationService->notifyHrAndSuperAdmin(
                 'Document Re-uploaded',
                 $employeeName . ' has re-uploaded ' . ($document->title ?: $docType->name) . ' for verification.',
                 'document_reuploaded',
@@ -174,23 +238,23 @@ class EmployeeSelfDocumentC extends Controller
                 ]
             );
         }
-        
+
         return response()->json(['success' => true, 'message' => 'Document replaced successfully.']);
     }
-    
-    public function destroy($id)
+
+    public function destroy($id): JsonResponse
     {
         $employee = $this->getCurrentEmployee();
         $this->checkAccess($employee);
-        
+
         $document = EmployeeDocumentM::where('employee_id', $employee->id)->findOrFail($id);
-        
+
         if ($document->verification_status === 'verified') {
             return response()->json(['success' => false, 'message' => 'Cannot delete a verified document.'], 403);
         }
-        
+
         $document->delete();
-        
+
         return response()->json(['success' => true, 'message' => 'Document deleted successfully.']);
     }
 }

@@ -98,32 +98,40 @@
         </div>
 
         <div class="ep-card-filters">
-            <form method="GET" class="row align-items-end ep-form">
-                <div class="col-md-3 mb-2 mb-md-0">
-                    <label>Status</label>
-                    <select name="status" class="form-control js-auto-filter">
+            <form method="GET" action="{{ route('hrms.attendance.my-wfh.index') }}" class="row align-items-end ep-form">
+                <div class="col-xl-3 col-lg-3 col-md-6 col-12 mb-3 mb-xl-0">
+                    <label class="font-weight-bold text-muted small">Status</label>
+                    <select name="status" class="form-control select2-searchable" style="height: 42px; border-radius: 12px;">
                         <option value="">All Status</option>
                         @foreach(['pending','manager_approved','hr_approved','approved','rejected','cancelled'] as $s)
                         <option value="{{ $s }}" @selected(request('status') === $s)>{{ ucwords(str_replace('_', ' ', $s)) }}</option>
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-3 mb-2 mb-md-0">
-                    <label>Reason Category</label>
-                    <select name="reason_category" class="form-control js-auto-filter">
+                <div class="col-xl-3 col-lg-3 col-md-6 col-12 mb-3 mb-xl-0">
+                    <label class="font-weight-bold text-muted small">Reason Category</label>
+                    <select name="reason_category" class="form-control select2-searchable" style="height: 42px; border-radius: 12px;">
                         <option value="">All Reason</option>
                         @foreach(['normal','personal_reason','internet_issue','electricity_issue','other'] as $r)
                         <option value="{{ $r }}" @selected(request('reason_category') === $r)>{{ ucwords(str_replace('_', ' ', $r)) }}</option>
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-3 mb-2 mb-md-0">
-                    <label>Date From</label>
-                    <input type="date" name="from" value="{{ request('from') }}" class="form-control js-auto-filter">
+                <div class="col-xl-2 col-lg-2 col-md-4 col-sm-6 col-12 mb-3 mb-xl-0">
+                    <label class="font-weight-bold text-muted small">Date From</label>
+                    <x-form.date-picker name="from" id="wfh_filter_from" :value="request('from')" placeholder="dd-mm-yyyy" class="form-control" style="height: 42px; border-radius: 12px;" />
                 </div>
-                <div class="col-md-3 mb-2 mb-md-0">
-                    <label>Date To</label>
-                    <input type="date" name="to" value="{{ request('to') }}" class="form-control js-auto-filter">
+                <div class="col-xl-2 col-lg-2 col-md-4 col-sm-6 col-12 mb-3 mb-xl-0">
+                    <label class="font-weight-bold text-muted small">Date To</label>
+                    <x-form.date-picker name="to" id="wfh_filter_to" :value="request('to')" placeholder="dd-mm-yyyy" class="form-control" style="height: 42px; border-radius: 12px;" />
+                </div>
+                <div class="col-xl-2 col-lg-2 col-md-4 col-12 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn text-white font-weight-bold mr-2 shadow-sm d-flex align-items-center justify-content-center" style="background: linear-gradient(135deg, var(--orb-primary, #4B00E8) 0%, var(--orb-secondary, #FF5252) 100%); border: none; height: 42px; border-radius: 12px; flex: 1;" title="Search Filters">
+                        <i class="fas fa-search mr-1"></i> Search
+                    </button>
+                    <a href="{{ route('hrms.attendance.my-wfh.index') }}" class="btn btn-outline-secondary font-weight-bold d-flex align-items-center justify-content-center shadow-sm" style="border-radius: 12px; height: 42px; width: 42px; flex-shrink: 0;" title="Reset All Filters">
+                        <i class="fas fa-undo"></i>
+                    </a>
                 </div>
             </form>
         </div>
@@ -193,7 +201,7 @@
         </div>
     </div>
 
-    <div class="mt-3">{{ $rows->withQueryString()->links() }}</div>
+    <div class="mt-3">{{ $rows->withQueryString()->links('vendor.pagination.orbo') }}</div>
 </div>
 
 <div class="modal fade" id="applyWfhModal" tabindex="-1">
@@ -209,11 +217,11 @@
                 <div class="row">
                     <div class="col-md-6 mb-2">
                         <label>From Date</label>
-                        <input type="date" name="from_date" id="wfh_from_date" class="form-control" required value="{{ date('Y-m-d') }}">
+                        <input type="text" data-date-picker name="from_date" id="wfh_from_date" class="form-control orbo-date-picker" placeholder="dd-mm-yyyy" required value="{{ date('Y-m-d') }}">
                     </div>
                     <div class="col-md-6 mb-2">
                         <label>To Date</label>
-                        <input type="date" name="to_date" id="wfh_to_date" class="form-control" required value="{{ date('Y-m-d') }}">
+                        <input type="text" data-date-picker name="to_date" id="wfh_to_date" class="form-control orbo-date-picker" placeholder="dd-mm-yyyy" required value="{{ date('Y-m-d') }}">
                     </div>
                 </div>
 
@@ -243,7 +251,7 @@
 
                 <div class="ep-form-group">
                     <label>Reason Category</label>
-                    <select name="reason_category" class="form-control" required style="border-radius: 10px;">
+                    <select name="reason_category" class="form-control select2-modal-searchable" required style="border-radius: 10px;">
                         <option value="" disabled selected>-- Select WFH Reason Category --</option>
                         <option value="personal_reason">Personal / Family Work</option>
                         <option value="health_medical">Health & Medical Care</option>
@@ -340,13 +348,6 @@
                 document.getElementById('d_rej_at').textContent = fmt(row.rejected_at);
                 document.getElementById('d_rej_reason').textContent = fmt(row.rejection_reason);
                 $('#wfhDetailsModal').modal('show');
-            });
-        });
-
-        document.querySelectorAll('.js-auto-filter').forEach(function(el) {
-            el.addEventListener('change', function() {
-                var form = this.closest('form');
-                if (form) form.submit();
             });
         });
 

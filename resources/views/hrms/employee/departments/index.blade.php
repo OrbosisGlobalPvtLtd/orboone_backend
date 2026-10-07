@@ -11,7 +11,7 @@
             <p class="text-muted m-0">Define and manage your organizational organizational structure</p>
         </div>
         <div class="col-lg-6 text-lg-right mt-3 mt-lg-0">
-            @if (collect($accesses)->where('menu_id', 11)->first()->status == 10)
+            @if (auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('departments.manage')))
                 <a href="{{ route('hrms.departments.create') }}" class="btn btn-orb mr-2">
                     <i class="fas fa-plus-circle mr-2"></i> New Department
                 </a>

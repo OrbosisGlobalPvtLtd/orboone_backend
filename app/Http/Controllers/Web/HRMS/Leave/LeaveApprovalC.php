@@ -35,7 +35,7 @@ class LeaveApprovalC extends Controller
             403
         );
 
-        app(\App\Services\HRMS\Leave\AutoExpireLeaveService::class)->expirePastPendingRequests();
+        // app(\App\Services\HRMS\Leave\AutoExpireLeaveService::class)->expirePastPendingRequests();
 
         $supervisorEmpId = $this->scopeS->getOwnEmployeeId();
         $supervisedEmpIds = $this->scopeS->getActiveSupervisedEmployeeIds($supervisorEmpId);
@@ -49,7 +49,12 @@ class LeaveApprovalC extends Controller
             ->leftJoin('users as mu', 'mu.id', '=', 'leave_requests.manager_approved_by')
             ->leftJoin('users as hru', 'hru.id', '=', 'leave_requests.hr_approved_by')
             ->leftJoin('employees_new as rm', 'rm.id', '=', 'e.reporting_manager_employee_id')
-            ->leftJoin('users as rmu', 'rmu.id', '=', 'rm.user_id');
+            ->leftJoin('users as rmu', 'rmu.id', '=', 'rm.user_id')
+            ->leftJoin('users as reju', 'reju.id', '=', 'leave_requests.approved_by_user_id')
+            ->leftJoin('leave_allocations as la', function ($join) {
+                $join->on('la.employee_id', '=', 'leave_requests.employee_id')
+                    ->whereRaw('la.year = YEAR(leave_requests.start_date)');
+            });
 
         $query = $this->scopeS->scopeLeaveQuery($query, $supervisorEmpId);
 
@@ -61,9 +66,11 @@ class LeaveApprovalC extends Controller
             $query->where('e.reporting_manager_employee_id', $request->reporting_manager_id);
         }
 
-        if ($request->filled('status')) {
+        if ($request->filled('status') && strtolower($request->status) !== 'all') {
             $st = strtolower($request->status);
-            if ($st === 'pending_manager') {
+            if ($st === 'pending') {
+                $query->where('leave_requests.status', 'pending');
+            } elseif ($st === 'pending_manager') {
                 $query->where('leave_requests.status', 'pending')
                     ->whereNotNull('e.reporting_manager_employee_id')
                     ->whereNull('leave_requests.manager_approved_at');
@@ -74,14 +81,9 @@ class LeaveApprovalC extends Controller
                             ->orWhereNotNull('leave_requests.manager_approved_at')
                             ->orWhere('leave_requests.approval_level', 'manager_approved');
                     });
-            } elseif ($st === 'all') {
-                // Show all statuses (pending, approved, rejected)
             } else {
                 $query->where('leave_requests.status', $st);
             }
-        } else {
-            // Default to PENDING leaves only
-            $query->where('leave_requests.status', 'pending');
         }
 
         if ($request->filled('leave_type_id')) {
@@ -89,18 +91,22 @@ class LeaveApprovalC extends Controller
         }
 
         if ($request->filled('start_date')) {
-            $query->whereDate('leave_requests.start_date', '>=', $request->start_date);
+            $query->whereDate('leave_requests.end_date', '>=', $request->start_date);
         }
 
         if ($request->filled('end_date')) {
-            $query->whereDate('leave_requests.end_date', '<=', $request->end_date);
+            $query->whereDate('leave_requests.start_date', '<=', $request->end_date);
         }
 
         if ($request->filled('search')) {
             $search = '%' . trim($request->search) . '%';
             $query->where(function ($q) use ($search) {
                 $q->where('eu.name', 'like', $search)
-                    ->orWhere('e.employee_code', 'like', $search);
+                    ->orWhere('e.employee_code', 'like', $search)
+                    ->orWhere('lt.name', 'like', $search)
+                    ->orWhere('d.name', 'like', $search)
+                    ->orWhere('dept.name', 'like', $search)
+                    ->orWhere('leave_requests.reason', 'like', $search);
             });
         }
 
@@ -114,40 +120,62 @@ class LeaveApprovalC extends Controller
             'lt.name as leave_type_name',
             'mu.name as manager_approver_name',
             'hru.name as hr_approver_name',
-            'rmu.name as reporting_manager_name'
+            'rmu.name as reporting_manager_name',
+            'reju.name as rejected_by_name',
+            'la.paid_allocated',
+            'la.paid_remaining',
+            'la.paid_used',
+            'la.sick_allocated',
+            'la.sick_remaining',
+            'la.sick_used',
+            'la.comp_off_allocated',
+            'la.comp_off_remaining',
+            'la.comp_off_used',
+            'la.lwp_used as total_lwp_used',
+            'la.total_allocated',
+            'la.total_remaining',
+            'la.total_used',
+            'la.monthly_quota',
+            'la.monthly_used_this_month',
+            'la.monthly_carry_forward',
+            'la.total_monthly_remaining_paid'
         )
             ->orderByDesc('leave_requests.id')
             ->paginate(20)
             ->appends($request->query());
 
-        // Base query for summary counts
+        // High-performance single aggregated query for summary metric counts
         $baseCountQuery = DB::table('leave_requests')
             ->join('employees_new as e', 'e.id', '=', 'leave_requests.employee_id');
         $baseCountQuery = $this->scopeS->scopeLeaveQuery($baseCountQuery, $supervisorEmpId);
 
-        $totalPendingCount = (clone $baseCountQuery)->where('leave_requests.status', 'pending')->count();
-        $managerPendingCount = (clone $baseCountQuery)
-            ->where('leave_requests.status', 'pending')
-            ->whereNotNull('e.reporting_manager_employee_id')
-            ->whereNull('leave_requests.manager_approved_at')
-            ->count();
-        $hrPendingCount = (clone $baseCountQuery)
-            ->where('leave_requests.status', 'pending')
-            ->where(function ($q) {
-                $q->whereNull('e.reporting_manager_employee_id')
-                    ->orWhereNotNull('leave_requests.manager_approved_at')
-                    ->orWhere('leave_requests.approval_level', 'manager_approved');
-            })
-            ->count();
-        $approvedLeaveCount = (clone $baseCountQuery)->where('leave_requests.status', 'approved')->count();
-        $rejectedLeaveCount = (clone $baseCountQuery)->where('leave_requests.status', 'rejected')->count();
+        $counts = (clone $baseCountQuery)->selectRaw("
+            COUNT(*) as total_all,
+            SUM(CASE WHEN leave_requests.status = 'pending' THEN 1 ELSE 0 END) as total_pending,
+            SUM(CASE WHEN leave_requests.status = 'pending' AND e.reporting_manager_employee_id IS NOT NULL AND leave_requests.manager_approved_at IS NULL THEN 1 ELSE 0 END) as manager_pending,
+            SUM(CASE WHEN leave_requests.status = 'pending' AND (e.reporting_manager_employee_id IS NULL OR leave_requests.manager_approved_at IS NOT NULL OR leave_requests.approval_level = 'manager_approved') THEN 1 ELSE 0 END) as hr_pending,
+            SUM(CASE WHEN leave_requests.status = 'approved' THEN 1 ELSE 0 END) as approved_count,
+            SUM(CASE WHEN leave_requests.status = 'rejected' THEN 1 ELSE 0 END) as rejected_count
+        ")->first();
+
+        $totalAllCount = (int) ($counts->total_all ?? 0);
+        $totalPendingCount = (int) ($counts->total_pending ?? 0);
+        $managerPendingCount = (int) ($counts->manager_pending ?? 0);
+        $hrPendingCount = (int) ($counts->hr_pending ?? 0);
+        $approvedLeaveCount = (int) ($counts->approved_count ?? 0);
+        $rejectedLeaveCount = (int) ($counts->rejected_count ?? 0);
 
         $user = auth()->user();
-        $roleId = (int)($user->system_role_id ?? $user->role_id ?? 0);
-        $roleName = strtolower($user->role->name ?? '');
-
-        $isSuperAdmin = method_exists($user, 'isSuperAdmin') ? $user->isSuperAdmin() : in_array($roleId, [1, 2], true);
-        $isHrOrAdmin = $isSuperAdmin || in_array($roleId, [1, 2, 3, 5], true) || in_array($roleName, ['admin', 'super_admin', 'hr_admin', 'hr admin', 'manager', 'hr'], true) || ($user->can('leave.approvals.view_all') || $user->can('leave.approvals.view'));
+        $userRoleId = (int) ($user->system_role_id ?? $user->role_id ?? 0);
+        $userRoleName = strtolower($user->role->name ?? '');
+        $isSuperAdmin = method_exists($user, 'isSuperAdmin') ? $user->isSuperAdmin() : in_array($userRoleId, [1, 2], true);
+        $isHrOrAdmin = $isSuperAdmin
+            || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin())
+            || (method_exists($user, 'isAdmin') && $user->isAdmin())
+            || in_array($userRoleId, [1, 2, 3], true)
+            || in_array($userRoleName, ['admin', 'super_admin', 'hr_admin', 'hr admin', 'hr'], true)
+            || $this->userHasPermission('leave.approvals.view_all')
+            || $this->userHasPermission('leave.approvals.approve');
 
         if ($isHrOrAdmin || $isSuperAdmin) {
             $employees = EmployeeM::with(['user'])->active()->get();
@@ -160,8 +188,14 @@ class LeaveApprovalC extends Controller
             $q->select('reporting_manager_employee_id')->from('employees_new')->whereNotNull('reporting_manager_employee_id');
         })->with(['user'])->get();
 
+        $authEmpId = $supervisorEmpId ?: EmployeeM::where('user_id', $user->id)->value('id');
+        $canApprovePermission = $this->userHasPermission('leave.approvals.approve');
+        $canRejectPermission = $this->userHasPermission('leave.approvals.reject');
+        $canViewTeamPermission = $this->userHasPermission('leave.approvals.view_team');
+
         return view('hrms.leave.approvals.index', compact(
             'leaveRequests',
+            'totalAllCount',
             'totalPendingCount',
             'managerPendingCount',
             'hrPendingCount',
@@ -171,8 +205,12 @@ class LeaveApprovalC extends Controller
             'leaveTypes',
             'reportingManagers',
             'supervisorEmpId',
+            'authEmpId',
             'isHrOrAdmin',
-            'isSuperAdmin'
+            'isSuperAdmin',
+            'canApprovePermission',
+            'canRejectPermission',
+            'canViewTeamPermission'
         ));
     }
 
@@ -180,11 +218,15 @@ class LeaveApprovalC extends Controller
     {
         $referer = $request->header('referer') ?: route('reporting.leave');
         $user = auth()->user();
-        $isSuperAdmin = method_exists($user, 'isSuperAdmin') ? $user->isSuperAdmin() : (in_array((int)($user->system_role_id ?? $user->role_id ?? 0), [1, 2], true));
+        $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
+        $isHrOrAdmin = $isSuperAdmin
+            || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin())
+            || (method_exists($user, 'isAdmin') && $user->isAdmin())
+            || (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin']))
+            || in_array((int) ($user->system_role_id ?? $user->role_id ?? 0), [1, 2, 3], true);
 
         $supervisorEmpId = $this->scopeS->getOwnEmployeeId();
         $isReportingManager = ! empty($supervisorEmpId) && \Illuminate\Support\Facades\DB::table('employees_new')->where('reporting_manager_employee_id', $supervisorEmpId)->exists();
-        $isHrOrAdmin = $isSuperAdmin || ($user->can('leave.approvals.view_all') || $user->can('leave.approvals.view'));
 
         abort_unless($isSuperAdmin || $isHrOrAdmin || $isReportingManager, 403);
 
@@ -204,29 +246,25 @@ class LeaveApprovalC extends Controller
 
             $isAssignedManager = ($supervisorEmpId && $managerEmpId && (int)$supervisorEmpId === (int)$managerEmpId);
 
-            // CASE 1: Super Admin Override
-            if ($isSuperAdmin) {
-                if ($hasManager && ! $managerApproved) {
-                    $leaveRequest->manager_approved_by = Auth::id();
-                    $leaveRequest->manager_approved_at = \Carbon\Carbon::now('Asia/Kolkata');
-                    $leaveRequest->manager_note = 'Super Admin Override Approval';
-                    $leaveRequest->save();
-                }
-                $this->approvalService->approve($leaveRequest, Auth::id(), $note ?: 'Approved by Super Admin');
-                return redirect()->to($referer)->with('success', 'Leave request approved & finalized by Super Admin.');
-            }
-
-            // CASE 2: Employee HAS a Reporting Manager and Manager stage is pending
-            if ($hasManager && ! $managerApproved) {
-                if (! $isAssignedManager) {
-                    return redirect()->to($referer)->with('error', 'Awaiting Reporting Manager approval. HR Admin cannot approve before the Reporting Manager.');
-                }
-
-                $this->approvalService->approveManagerStage($leaveRequest, Auth::id(), $note);
+            // CASE 1: Assigned Reporting Manager approving Manager Stage
+            if ($hasManager && ! $managerApproved && $isAssignedManager) {
+                $this->approvalService->approveManagerStage($leaveRequest, Auth::id(), $note ?: 'Approved by Reporting Manager');
                 return redirect()->to($referer)->with('success', 'Leave request approved by Manager. Sent to HR for final approval.');
             }
 
-            // CASE 3: HR Stage Approval (Manager approved or No Manager assigned)
+            // CASE 2: Super Admin or HR Admin Full Approval (Direct / Override)
+            if ($isSuperAdmin || $isHrOrAdmin) {
+                if ($hasManager && ! $managerApproved) {
+                    $leaveRequest->manager_approved_by = Auth::id();
+                    $leaveRequest->manager_approved_at = \Carbon\Carbon::now('Asia/Kolkata');
+                    $leaveRequest->manager_note = $isSuperAdmin ? 'Super Admin Override Approval' : 'HR Admin Direct Approval';
+                    $leaveRequest->save();
+                }
+                $this->approvalService->approve($leaveRequest, Auth::id(), $note ?: ($isSuperAdmin ? 'Approved by Super Admin' : 'Approved by HR Admin'));
+                return redirect()->to($referer)->with('success', 'Leave request approved & finalized.');
+            }
+
+            // CASE 3: HR Stage Approval
             if (! $isHrOrAdmin && ! $isAssignedManager) {
                 abort(403, 'Unauthorized. HR Admin permission is required for final leave approval.');
             }
@@ -237,7 +275,7 @@ class LeaveApprovalC extends Controller
 
             $this->approvalService->approve($leaveRequest, Auth::id(), $note);
 
-            return redirect()->to($referer)->with('success', 'Leave request approved by HR Admin and attendance synced.');
+            return redirect()->to($referer)->with('success', 'Leave request approved and attendance synced.');
         } catch (\Illuminate\Validation\ValidationException $e) {
             $firstError = collect($e->errors())->flatten()->first() ?: 'Validation failed for leave approval.';
             return redirect()->to($referer)->with('error', $firstError);
@@ -251,11 +289,15 @@ class LeaveApprovalC extends Controller
     {
         $referer = $request->header('referer') ?: route('reporting.leave');
         $user = auth()->user();
-        $isSuperAdmin = method_exists($user, 'isSuperAdmin') ? $user->isSuperAdmin() : (in_array((int)($user->system_role_id ?? $user->role_id ?? 0), [1, 2], true));
+        $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
+        $isHrOrAdmin = $isSuperAdmin
+            || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin())
+            || (method_exists($user, 'isAdmin') && $user->isAdmin())
+            || (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin']))
+            || in_array((int) ($user->system_role_id ?? $user->role_id ?? 0), [1, 2, 3], true);
 
         $supervisorEmpId = $this->scopeS->getOwnEmployeeId();
         $isReportingManager = ! empty($supervisorEmpId) && \Illuminate\Support\Facades\DB::table('employees_new')->where('reporting_manager_employee_id', $supervisorEmpId)->exists();
-        $isHrOrAdmin = $isSuperAdmin || ($user->can('leave.approvals.view_all') || $user->can('leave.approvals.view'));
 
         abort_unless($isSuperAdmin || $isHrOrAdmin || $isReportingManager, 403);
 
@@ -264,7 +306,7 @@ class LeaveApprovalC extends Controller
             if (! in_array($leaveRequest->status, ['pending', 'manager_approved', 'approved'], true)) {
                 return redirect()->to($referer)->with('error', 'Only pending or approved leave requests can be rejected.');
             }
-            $reason = $request->input('reason') ?: $request->input('remark') ?: $request->input('admin_remark') ?: 'Rejected by approver.';
+            $reason = $request->input('rejection_reason') ?: $request->input('reason') ?: $request->input('remark') ?: $request->input('admin_remark') ?: 'Rejected by approver.';
             $this->authorizeLeaveRequestForApproval($leaveRequest);
             $this->approvalService->reject($leaveRequest, Auth::id(), $reason);
 
@@ -278,11 +320,61 @@ class LeaveApprovalC extends Controller
         }
     }
 
+    public function void(Request $request, $id)
+    {
+        $referer = $request->header('referer') ?: route('leave-approvals.index');
+        $user = auth()->user();
+        $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
+        $userRoleName = strtolower($user->role->name ?? '');
+        $isHrOrAdmin = $isSuperAdmin
+            || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin())
+            || (method_exists($user, 'isAdmin') && $user->isAdmin())
+            || (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin']))
+            || in_array((int) ($user->system_role_id ?? $user->role_id ?? 0), [1, 2, 3], true)
+            || in_array($userRoleName, ['admin', 'super_admin', 'hr_admin', 'hr admin', 'hr'], true)
+            || $this->userHasPermission('leave.approvals.view_all')
+            || $this->userHasPermission('leave.approvals.approve');
+
+        abort_unless($isSuperAdmin || $isHrOrAdmin, 403, 'Only HR Administrators or Super Admins can make approved leaves Null & Void.');
+
+        $request->validate([
+            'note' => 'required|string|min:3|max:1000',
+        ], [
+            'note.required' => 'Please provide a note/reason explaining why this approved leave is being marked Null & Void.',
+        ]);
+
+        try {
+            $leaveRequest = LeaveRequestM::findOrFail($id);
+            if ($leaveRequest->status !== 'approved') {
+                return redirect()->to($referer)->with('error', 'Only approved leave requests can be marked as Null & Void.');
+            }
+
+            $note = $request->input('note');
+            $this->approvalService->voidLeave($leaveRequest, Auth::id(), $note);
+
+            return redirect()->to($referer)->with('success', "Leave request #{$leaveRequest->id} has been marked as Null & Void. Leave balance has been refunded and attendance unlocked.");
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $firstError = collect($e->errors())->flatten()->first() ?: 'Validation failed for marking leave Null & Void.';
+            return redirect()->to($referer)->with('error', $firstError);
+        } catch (\Throwable $e) {
+            Log::error('Leave void failed', ['leave_request_id' => $id, 'error' => $e->getMessage()]);
+            return redirect()->to($referer)->with('error', $e->getMessage());
+        }
+    }
+
     private function authorizeLeaveRequestForApproval(LeaveRequestM $leaveRequest): void
     {
         $user = auth()->user();
-        $isSuperAdmin = method_exists($user, 'isSuperAdmin') ? $user->isSuperAdmin() : (in_array((int)($user->system_role_id ?? $user->role_id ?? 0), [1, 2], true));
-        if ($isSuperAdmin || $this->canViewAll('leave.approvals.view_all') || $this->userHasPermission('leave.approvals.view')) {
+        $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
+        $isHrOrAdmin = $isSuperAdmin
+            || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin())
+            || (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin']))
+            || $this->userHasPermission('leave.approvals.view_all')
+            || $this->userHasPermission('leave.approvals.view')
+            || $this->userHasPermission('leave.approvals.approve')
+            || $this->userHasPermission('leave.approvals.reject');
+
+        if ($isHrOrAdmin || $this->canViewAll('leave.approvals.view_all') || $this->userHasPermission('leave.approvals.view')) {
             return;
         }
 

@@ -46,13 +46,17 @@ class DepartmentModuleAccessSeeder extends Seeder
             $departmentId = $departments[$departmentName];
 
             foreach ($modules as $moduleKey) {
-                DB::table('department_module_access')->insert([
-                    'department_id' => $departmentId,
-                    'module_key' => $moduleKey,
-                    'is_enabled' => true,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ]);
+                DB::table('department_module_access')->updateOrInsert(
+                    [
+                        'department_id' => $departmentId,
+                        'module_key' => $moduleKey,
+                    ],
+                    [
+                        'is_enabled' => true,
+                        'updated_at' => $now,
+                        'created_at' => DB::raw('COALESCE(created_at, NOW())'),
+                    ]
+                );
             }
         }
     }

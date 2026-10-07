@@ -128,6 +128,8 @@
             @endforelse
         </section>
 
+        @include('dashboard.partials.birthday-widget', ['dashboard' => $dashboard])
+
         <section class="orb-two">
             <div class="orb-panel">
                 <div class="orb-panel-head">

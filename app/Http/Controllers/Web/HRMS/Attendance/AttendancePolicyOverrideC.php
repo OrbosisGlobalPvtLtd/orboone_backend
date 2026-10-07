@@ -17,7 +17,7 @@ class AttendancePolicyOverrideC extends Controller
             ->leftJoin('attendance_policy_rules', 'attendance_policy_rules.id', '=', 'attendance_policy_employee_overrides.attendance_policy_rule_id')
             ->addSelect('attendance_policy_rules.policy_name');
         $this->applyCommonFilters($query, $request, ['filterMap' => ['employee_id' => 'attendance_policy_employee_overrides.employee_id', 'policy_id' => 'attendance_policy_employee_overrides.attendance_policy_rule_id', 'active' => 'attendance_policy_employee_overrides.is_active']]);
-        return view('hrms.attendance.policy_overrides.index', $this->pageData($query->latest('attendance_policy_employee_overrides.id')->paginate(50)));
+        return view('hrms.attendance.policies.overrides', $this->pageData($query->latest('attendance_policy_employee_overrides.id')->paginate(50)));
     }
 
     public function store(Request $request)

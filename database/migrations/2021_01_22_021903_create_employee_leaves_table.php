@@ -25,7 +25,9 @@ class CreateEmployeeLeavesTable extends Migration
             $table->timestamps();
 
             $table->foreign('employee_id')->references('id')->on('employees')->onDelete('cascade');
-            $table->foreign('leave_type_id')->references('id')->on('leave_types')->onDelete('cascade');
+            if (Schema::hasTable('leave_types')) {
+                $table->foreign('leave_type_id')->references('id')->on('leave_types')->onDelete('cascade');
+            }
         });
 
     }

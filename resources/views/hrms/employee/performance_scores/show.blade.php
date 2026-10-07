@@ -127,7 +127,7 @@
                 </div>
 
                 <div class="text-right mt-5 pt-4 border-top">
-                    @if (collect($accesses)->where('menu_id', 3)->first()->status == 2 && ($employeeScore->scored_by == (auth()->user()->employee ? auth()->user()->employee->id : null) || auth()->user()->isAdmin()))
+                    @if ((auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('performance_scores.manage'))) && ($employeeScore->scored_by == (auth()->user()->employee ? auth()->user()->employee->id : null) || auth()->user()->isAdmin()))
                     <a href="{{ route('hrms.employees.performance_scores.edit', ['employeeScore' => $employeeScore->group_id]) }}" class="btn btn-warning btn-action mr-2 mb-2 mb-md-0 shadow-sm font-weight-bold text-dark">
                         <i class="fas fa-edit mr-2"></i> Edit Record
                     </a>

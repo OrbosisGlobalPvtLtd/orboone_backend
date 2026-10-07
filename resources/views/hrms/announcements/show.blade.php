@@ -204,8 +204,7 @@
 
         <!-- Action Row (Admin specific buttons if they have privileges) -->
         @php
-            $hasAccessControl = isset($accesses) && collect($accesses)->where('menu_id', 6)->first();
-            $canEdit = $hasAccessControl ? collect($accesses)->where('menu_id', 6)->first()->status == 2 : auth()->user()->hasPermission('announcements.edit');
+            $canEdit = auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && (auth()->user()->hasPermission('announcements.edit') || auth()->user()->hasPermission('announcements.manage')));
         @endphp
 
         @if($canEdit && (auth()->user()->isAdmin() || $announcement->created_by_user_id == auth()->id()))

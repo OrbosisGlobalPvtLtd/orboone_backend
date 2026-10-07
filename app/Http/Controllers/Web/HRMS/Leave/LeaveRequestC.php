@@ -35,62 +35,86 @@ class LeaveRequestC extends Controller
 
     public function index(Request $request)
     {
-        $employee = EmployeeM::where('user_id', Auth::id())->first();
-        abort_if(! $employee, 403, 'No employee profile linked to your account.');
+        $user = Auth::user();
+        $employee = EmployeeM::where('user_id', $user->id)->first();
+        $isAdminOrHr = $user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin();
 
-        // Auto-expire past pending leaves
-        app(\App\Services\HRMS\Leave\AutoExpireLeaveService::class)->expirePastPendingRequests();
-
-        $requests = LeaveRequestM::with(['leaveType', 'dates'])
-            ->when($request->status, fn ($query) => $query->where('status', $request->status));
-
-        if ($this->canViewAll('leave.approvals.view_all')) {
-            $requests->when($request->employee_id, fn ($query) => $query->where('employee_id', $request->employee_id));
-        } elseif ($this->canViewTeam('leave.approvals.view_team')) {
-            $requests->whereIn('employee_id', $this->teamEmployeeIds(true));
-        } else {
-            $requests->where('employee_id', $employee->id);
+        if (! $employee && ! $isAdminOrHr) {
+            abort(403, 'No employee profile linked to your account.');
         }
 
-        $requests = $requests->latest()->paginate(20);
+        $query = LeaveRequestM::with(['leaveType', 'dates', 'employee.user', 'employee.department', 'employee.designation', 'approver'])
+            ->when($request->status, fn ($q) => $q->where('status', $request->status))
+            ->when($request->leave_type_id, fn ($q) => $q->where('leave_type_id', $request->leave_type_id));
 
-        $allocation = $employee->leaveAllocations()->where('year', Carbon::now('Asia/Kolkata')->year)->latest()->first();
+        if ($isAdminOrHr && $request->filled('employee_id')) {
+            $query->where('employee_id', $request->employee_id);
+        } elseif (! $isAdminOrHr) {
+            $query->where('employee_id', $employee?->id);
+        }
+
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $query->where(function ($q) use ($search) {
+                $q->where('reason', 'like', "%{$search}%")
+                  ->orWhereHas('employee.user', fn ($uq) => $uq->where('name', 'like', "%{$search}%"))
+                  ->orWhereHas('employee', fn ($eq) => $eq->where('employee_code', 'like', "%{$search}%"))
+                  ->orWhereHas('leaveType', fn ($tq) => $tq->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        $perPage = (int) $request->input('per_page', 25);
+        $requests = $perPage > 0 ? $query->latest()->paginate($perPage) : $query->latest()->paginate(1000);
+
+        $allocation = $employee ? $employee->leaveAllocations()->where('year', Carbon::now('Asia/Kolkata')->year)->latest()->first() : null;
         $leaveTypes = LeaveTypeM::where('is_active', true)->orderBy('name')->get();
+        $employees = $isAdminOrHr ? EmployeeM::where('is_active', true)->get()->sortBy(fn ($e) => strtolower($e->display_name))->values() : collect();
         $accesses = $this->accesses();
 
-        return view('hrms.leave.requests.index', compact('requests', 'allocation', 'leaveTypes', 'employee', 'accesses'))
+        return view('hrms.leave.requests.index', compact('requests', 'allocation', 'leaveTypes', 'employee', 'employees', 'isAdminOrHr', 'accesses'))
             ->with('active', 'leave_management');
     }
 
     public function create()
     {
-        $employee = EmployeeM::where('user_id', Auth::id())->first();
-        abort_if(! $employee, 403, 'No employee profile linked to your account.');
+        $user = Auth::user();
+        $employee = EmployeeM::where('user_id', $user->id)->first();
+        $isAdminOrHr = $user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin();
 
-        if (! $this->isEligibleForLeaveRequest($employee)) {
+        if (! $employee && ! $isAdminOrHr) {
+            abort(403, 'No employee profile linked to your account.');
+        }
+
+        if ($employee && ! $this->isEligibleForLeaveRequest($employee) && ! $isAdminOrHr) {
             return back()->with('error', 'Leave applications are currently restricted to Engineering/Development and QA/Testing team members.');
         }
 
         $year = Carbon::now('Asia/Kolkata')->year;
-        $allocation = resolve(\App\Services\HRMS\Leave\LeaveAllocationService::class)->getOrGenerate($employee, $year, auth()->id());
+        $allocation = $employee ? resolve(\App\Services\HRMS\Leave\LeaveAllocationService::class)->getOrGenerate($employee, $year, auth()->id()) : null;
 
         $leaveTypes = LeaveTypeM::where('is_active', true)->orderBy('name')->get();
+        $employees = $isAdminOrHr ? EmployeeM::where('is_active', true)->get()->sortBy(fn ($e) => strtolower($e->display_name))->values() : collect();
         $accesses = $this->accesses();
 
-        return view('hrms.leave.requests.create', compact('leaveTypes', 'employee', 'accesses', 'allocation'))
+        return view('hrms.leave.requests.create', compact('leaveTypes', 'employee', 'employees', 'isAdminOrHr', 'accesses', 'allocation'))
             ->with('active', 'leave_management');
     }
 
     public function store(StoreLeaveRequestRequest $request)
     {
         try {
-            abort_unless($this->userHasPermission('leave.my_requests.create'), 403);
+            $user = Auth::user();
+            $isAdminOrHr = $user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin();
 
-            $employee = $request->filled('employee_id') && $this->canViewAll('leave.approvals.view_all')
+            $employee = $request->filled('employee_id') && $isAdminOrHr
                 ? EmployeeM::findOrFail($request->employee_id)
-                : EmployeeM::where('user_id', Auth::id())->firstOrFail();
+                : EmployeeM::where('user_id', Auth::id())->first();
 
-            if (! $this->isEligibleForLeaveRequest($employee)) {
+            if (! $employee) {
+                return back()->with('error', 'No employee profile selected or linked to your account.')->withInput();
+            }
+
+            if (! $this->isEligibleForLeaveRequest($employee) && ! $isAdminOrHr) {
                 return back()->with('error', 'Leave applications are currently restricted to Engineering/Development and QA/Testing team members.')->withInput();
             }
 
@@ -143,9 +167,15 @@ class LeaveRequestC extends Controller
     public function update(Request $request, $id)
     {
         try {
+            $user = Auth::user();
+            $isAdminOrHr = $user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin();
+
             $leaveRequest = LeaveRequestM::findOrFail($id);
-            $employee = EmployeeM::where('user_id', Auth::id())->first();
-            abort_unless($employee && (int) $leaveRequest->employee_id === (int) $employee->id, 403);
+            $employee = $isAdminOrHr ? $leaveRequest->employee : EmployeeM::where('user_id', Auth::id())->first();
+
+            if (! $isAdminOrHr) {
+                abort_unless($employee && (int) $leaveRequest->employee_id === (int) $employee->id, 403);
+            }
             abort_unless($leaveRequest->status === 'pending', 400, 'Cannot edit request after approval or rejection.');
 
             $request->validate([
@@ -198,7 +228,13 @@ class LeaveRequestC extends Controller
     public function preview(Request $request)
     {
         try {
-            $employee = EmployeeM::where('user_id', Auth::id())->first();
+            $user = Auth::user();
+            $isAdminOrHr = $user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin();
+
+            $employee = $request->filled('employee_id') && $isAdminOrHr
+                ? EmployeeM::find($request->employee_id)
+                : EmployeeM::where('user_id', Auth::id())->first();
+
             if (! $employee) {
                 return response()->json(['success' => false, 'message' => 'Employee profile not found.'], 400);
             }
@@ -223,9 +259,24 @@ class LeaveRequestC extends Controller
                 'is_half_day' => $request->boolean('is_half_day'),
                 'half_day_type' => $request->input('half_day_type', 'first_half'),
                 'emergency_leave' => $request->boolean('emergency_leave'),
+                'bypass_notice_period' => true,
             ];
 
             $calc = $this->calculationService->calculate($employee, $leaveType, $sanitized);
+
+            $isSick = (bool) $leaveType->is_sick;
+            $isLwp = (bool) $leaveType->is_lwp;
+            $isEmergency = $request->boolean('emergency_leave');
+            $isHalfDay = $request->boolean('is_half_day');
+
+            $noticeWarning = null;
+            if (! $isSick && ! $isLwp && ! $isEmergency && ! $isHalfDay) {
+                $today = Carbon::now('Asia/Kolkata')->startOfDay();
+                $startCarbon = Carbon::parse($startDate, 'Asia/Kolkata')->startOfDay();
+                if ($startCarbon->gte($today) && $today->diffInDays($startCarbon, false) < 2) {
+                    $noticeWarning = 'Normal leaves must be applied at least 2 days in advance. Check "Emergency Leave" if applying due to urgent emergency.';
+                }
+            }
 
             return response()->json([
                 'success' => true,
@@ -235,10 +286,20 @@ class LeaveRequestC extends Controller
                     'sandwich_days' => $calc['sandwich_days'],
                     'deducted_days' => $calc['deducted_days'],
                     'sandwich_applied' => $calc['sandwich_applied'],
+                    'sandwich_details' => $calc['sandwich_details'] ?? [],
+                    'sandwich_message' => $calc['sandwich_message'] ?? null,
+                    'notice_warning' => $noticeWarning,
                     'paid_days' => $calc['paid_days'],
                     'sick_days' => $calc['sick_days'],
                     'comp_off_days' => $calc['comp_off_days'],
                     'lwp_days' => $calc['lwp_days'],
+                    'current_balance' => [
+                        'paid_remaining' => (float) ($calc['allocation']->paid_remaining ?? 0),
+                        'sick_remaining' => (float) ($calc['allocation']->sick_remaining ?? 0),
+                        'comp_off_remaining' => (float) ($calc['allocation']->comp_off_remaining ?? 0),
+                        'total_remaining' => (float) ($calc['allocation']->total_remaining ?? 0),
+                    ],
+                    'balance_after_split' => $calc['balance_after_split'] ?? [],
                 ],
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -252,11 +313,16 @@ class LeaveRequestC extends Controller
     public function cancel(Request $request, $id)
     {
         try {
-            abort_unless($this->userHasPermission('leave.my_requests.cancel'), 403);
+            $user = Auth::user();
+            $isAdminOrHr = $user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin();
 
             $leaveRequest = LeaveRequestM::findOrFail($id);
             $employeeId = $this->ownEmployeeId();
-            abort_unless($employeeId && (int) $leaveRequest->employee_id === (int) $employeeId, 403);
+
+            if (! $isAdminOrHr) {
+                abort_unless($employeeId && (int) $leaveRequest->employee_id === (int) $employeeId, 403);
+            }
+
             $this->approvalService->cancel($leaveRequest, Auth::id(), $request->input('reason'));
 
             return back()->with('success', 'Leave request cancelled successfully.');
@@ -358,7 +424,7 @@ class LeaveRequestC extends Controller
     private function isEligibleForLeaveRequest(EmployeeM $employee): bool
     {
         $user = auth()->user();
-        if ($this->canViewAll('leave.approvals.view_all') || ($user->role_id ?? null) == 1 || ($user->system_role_id ?? null) == 1) {
+        if ($user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin() || ($user->role_id ?? null) == 1 || ($user->system_role_id ?? null) == 1) {
             return true;
         }
 

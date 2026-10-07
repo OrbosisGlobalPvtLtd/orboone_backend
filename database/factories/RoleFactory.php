@@ -21,9 +21,12 @@ class RoleFactory extends Factory
      */
     public function definition()
     {
+        $name = $this->faker->unique()->word();
         return [
-            'name' => $this->faker->word(),
-            'is_super_user' => false
+            'name' => ucfirst($name),
+            'slug' => strtolower($name) . '_' . uniqid(),
+            'is_system' => false,
+            'status' => true,
         ];
     }
 
@@ -31,7 +34,9 @@ class RoleFactory extends Factory
         return $this->state(function($attributes) {
             return [
                 'name' => 'Administrator',
-                'is_super_user' => true,
+                'slug' => 'admin',
+                'is_system' => true,
+                'status' => true,
             ];
         });
     }
@@ -39,7 +44,10 @@ class RoleFactory extends Factory
     public function user() {
         return $this->state(function($attributes) {
             return [
-                'name' => 'User'
+                'name' => 'Employee',
+                'slug' => 'employee',
+                'is_system' => true,
+                'status' => true,
             ];
         });
     }

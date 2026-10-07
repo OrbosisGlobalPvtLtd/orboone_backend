@@ -9,6 +9,7 @@ class ScoreCategoryM extends Model
 {
     use HasFactory;
 
+    protected $table = 'score_categories';
     protected $guarded = [];
 
     protected static function newFactory()

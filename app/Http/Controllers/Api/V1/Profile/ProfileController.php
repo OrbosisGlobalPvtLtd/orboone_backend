@@ -438,8 +438,8 @@ class ProfileController extends Controller
                     },
                 ],
 
-                'profile_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
-                'resume_file' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:5120'],
+                'profile_image' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,heic,heif', 'max:10240'],
+                'resume_file' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:10240'],
             ], [
                 'bank_account_no.regex' => 'Bank account number must contain digits only (8 to 20 digits).',
                 'ifsc_code.regex' => 'Invalid IFSC code format (e.g. SBIN00010168).',

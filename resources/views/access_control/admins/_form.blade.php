@@ -1,8 +1,6 @@
 @csrf
 @php
-    $selectedRoleIds = old('role_ids', $admin->assigned_role_ids ?? []);
-    $selectedRoleIds = is_array($selectedRoleIds) ? $selectedRoleIds : [$selectedRoleIds];
-    $selectedRoleIds = array_map('intval', $selectedRoleIds);
+    $selectedRoleId = (int) old('role_id', $admin->system_role_id ?? $admin->role_id ?? ($admin->assigned_role_ids[0] ?? 0));
 @endphp
 
 <div class="ac-grid mb-4">
@@ -22,11 +20,11 @@
     </div>
 
     <div style="grid-column: 1 / -1;">
-        <label class="ac-label mb-2">Assign Admin Roles <span class="text-danger">*</span></label>
+        <label class="ac-label mb-2">Assign Admin Role <span class="text-danger">*</span></label>
         <div class="ac-check-list">
             @foreach($roles as $role)
-                <label class="ac-check d-flex align-items-start">
-                    <input type="checkbox" name="role_ids[]" value="{{ $role->id }}" {{ in_array((int) $role->id, $selectedRoleIds, true) ? 'checked' : '' }}>
+                <label class="ac-check d-flex align-items-start" style="cursor: pointer;">
+                    <input type="radio" name="role_id" value="{{ $role->id }}" {{ (int) $role->id === $selectedRoleId ? 'checked' : '' }} required class="mr-2">
                     <span>
                         <strong>{{ $role->name }}</strong>
                         <span>{{ $role->slug }}</span>
@@ -34,10 +32,7 @@
                 </label>
             @endforeach
         </div>
-        @error('role_ids')
-            <div class="text-danger small mt-2 font-weight-bold">{{ $message }}</div>
-        @enderror
-        @error('role_ids.*')
+        @error('role_id')
             <div class="text-danger small mt-2 font-weight-bold">{{ $message }}</div>
         @enderror
     </div>

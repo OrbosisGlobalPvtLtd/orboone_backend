@@ -268,11 +268,11 @@
 
     .profile-control {
         width: 100%;
-        min-height: 42px;
-        border-radius: 13px !important;
-        border: 1px solid var(--orb-border) !important;
-        background: #fff !important;
-        color: var(--orb-text) !important;
+        min-height: 40px;
+        border-radius: 12px;
+        border: 1px solid var(--orb-border);
+        background-color: #fff;
+        color: var(--orb-text);
         font-size: 13px;
         font-weight: 700;
         padding: 9px 13px;
@@ -281,7 +281,7 @@
 
     .profile-control:focus {
         border-color: var(--orb-primary) !important;
-        box-shadow: 0 0 0 4px rgba(75, 0, 232, .08) !important;
+        box-shadow: 0 0 0 3px rgba(75, 0, 232, .1) !important;
     }
 
     textarea.profile-control {
@@ -711,11 +711,19 @@ $disabled = $isReadOnly ? 'disabled' : '';
                             </div>
                             <div class="col-md-4 mb-3">
                                 <label class="profile-label">DOB *</label>
-                                <input type="date" name="date_of_birth" class="profile-control" value="{{ old('date_of_birth', $dobFormatted) }}" required {{ $disabled }}>
+                                <x-form.date-picker 
+                                    name="date_of_birth" 
+                                    id="date_of_birth" 
+                                    value="{{ old('date_of_birth', $dobFormatted) }}" 
+                                    placeholder="dd-mm-yyyy"
+                                    class="profile-control"
+                                    :required="!$isReadOnly"
+                                    :disabled="$isReadOnly"
+                                />
                             </div>
                             <div class="col-md-4 mb-3">
                                 <label class="profile-label">Gender *</label>
-                                <select name="gender" class="profile-control" required {{ $disabled }}>
+                                <select name="gender" id="gender" class="profile-control select2-searchable" data-placeholder="Select Gender" required {{ $disabled }} style="width: 100%;">
                                     <option value="">Select Gender</option>
                                     <option value="male" {{ old('gender', $genderVal) === 'male' ? 'selected' : '' }}>Male</option>
                                     <option value="female" {{ old('gender', $genderVal) === 'female' ? 'selected' : '' }}>Female</option>
@@ -739,7 +747,7 @@ $disabled = $isReadOnly ? 'disabled' : '';
                         <div class="row">
                             <div class="col-md-4 mb-3">
                                 <label class="profile-label">Experience Type *</label>
-                                <select name="experience_type" id="experience_type" class="profile-control" required onchange="toggleExperience(this.value)" {{ $disabled }}>
+                                <select name="experience_type" id="experience_type" class="profile-control select2-searchable" data-placeholder="Select Experience Type" required onchange="toggleExperience(this.value)" {{ $disabled }} style="width: 100%;">
                                     <option value="fresher" {{ old('experience_type', $profile?->experience_type ?? 'fresher') === 'fresher' ? 'selected' : '' }}>Fresher</option>
                                     <option value="experienced" {{ old('experience_type', $profile?->experience_type) === 'experienced' ? 'selected' : '' }}>Experienced</option>
                                 </select>
@@ -782,7 +790,7 @@ $disabled = $isReadOnly ? 'disabled' : '';
                             </div>
                             <div class="col-md-4 mb-3">
                                 <label class="profile-label">Account Type *</label>
-                                <select name="bank_account_type" class="profile-control" required {{ $disabled }}>
+                                <select name="bank_account_type" id="bank_account_type" class="profile-control select2-searchable" data-placeholder="Select Account Type" required {{ $disabled }} style="width: 100%;">
                                     <option value="">Select Account Type</option>
                                     <option value="saving" {{ old('bank_account_type', $profile?->bank_account_type) === 'saving' ? 'selected' : '' }}>Savings</option>
                                     <option value="current" {{ old('bank_account_type', $profile?->bank_account_type) === 'current' ? 'selected' : '' }}>Current</option>
@@ -826,17 +834,30 @@ $disabled = $isReadOnly ? 'disabled' : '';
                     'verified' => 'badge-verified',
                     'rejected' => 'badge-rejected',
                     ][$docStatus] ?? 'badge-pending';
+
+                    $rawExts = is_array($type->allowed_extensions) 
+                        ? $type->allowed_extensions 
+                        : (json_decode($type->allowed_extensions ?? '[]', true) ?: []);
+                    if (empty($rawExts)) {
+                        $isPhoto = str_contains(strtolower($type->code ?? ''), 'photo') || str_contains(strtolower($type->name ?? ''), 'photo');
+                        $rawExts = $isPhoto ? ['jpg', 'jpeg', 'png'] : ['pdf', 'jpg', 'jpeg', 'png'];
+                    }
+                    $allowedExts = array_values(array_unique(array_filter(array_map('strtolower', $rawExts))));
+                    $acceptList = array_map(fn($e) => '.' . ltrim($e, '.'), $allowedExts);
+                    $acceptAttr = implode(',', $acceptList);
+                    $maxMb = (int) ($type->max_file_size_mb ?: 5);
                     @endphp
                     <div class="doc-card" data-applies-to="{{ strtolower(trim($type->applies_to ?? '')) }}">
                         <div class="doc-top">
                             <div>
                                 <div class="doc-name"><i class="fas fa-file-alt text-primary mr-1"></i>{{ $type->name }}</div>
-                                <div class="mt-2">
+                                <div class="mt-2 d-flex align-items-center gap-1 flex-wrap">
                                     @if($type->is_mandatory)
                                     <span class="badge-soft badge-required">Required</span>
                                     @else
                                     <span class="badge-soft badge-optional">Optional</span>
                                     @endif
+                                    <span class="text-muted" style="font-size:11px;font-weight:700;">({{ strtoupper(implode(', ', $allowedExts)) }} • Max {{ $maxMb }}MB)</span>
                                 </div>
                             </div>
                             <span class="badge-soft {{ $statusClass }}" id="doc_badge_{{ $type->id }}">
@@ -871,7 +892,7 @@ $disabled = $isReadOnly ? 'disabled' : '';
 
                         @if(!$isReadOnly)
                         <div class="doc-actions mt-1">
-                            <input type="file" id="file_{{ $type->id }}" class="d-none" onchange="uploadDoc({{ $type->id }})">
+                            <input type="file" id="file_{{ $type->id }}" class="d-none" accept="{{ $acceptAttr }}" data-allowed-extensions="{{ json_encode($allowedExts) }}" data-max-size-mb="{{ $maxMb }}" data-doc-name="{{ $type->name }}" onchange="uploadDoc({{ $type->id }})">
                             <button type="button" class="profile-btn profile-btn-soft w-100" onclick="document.getElementById('file_{{ $type->id }}').click()" id="upload_btn_{{ $type->id }}">
                                 <i class="fas fa-upload"></i> {{ $doc ? 'Re-upload Document' : 'Upload Document' }}
                             </button>
@@ -940,14 +961,60 @@ $disabled = $isReadOnly ? 'disabled' : '';
             countBadge.textContent = visibleCount + ' Items';
         }
     }
-    toggleExperience('{{ old("experience_type", $profile?->experience_type ?? "fresher") }}');
+
+    document.addEventListener('DOMContentLoaded', function() {
+        toggleExperience('{{ old("experience_type", $profile?->experience_type ?? "fresher") }}');
+
+        if (window.jQuery && $.fn.select2) {
+            $('.select2-searchable').select2({
+                width: '100%',
+                placeholder: function() {
+                    return $(this).data('placeholder') || 'Select option';
+                }
+            });
+
+            $('#experience_type').on('change select2:select', function() {
+                toggleExperience(this.value);
+            });
+        }
+
+        if (window.initOrboDatePickers) {
+            window.initOrboDatePickers();
+        }
+    });
 
     function uploadDoc(typeId) {
         let fileInput = document.getElementById('file_' + typeId);
         if (!fileInput.files.length) return;
 
+        let file = fileInput.files[0];
+        let allowedExtensions = [];
+        try {
+            allowedExtensions = JSON.parse(fileInput.getAttribute('data-allowed-extensions') || '[]');
+        } catch(e) {
+            allowedExtensions = [];
+        }
+
+        let maxMb = parseFloat(fileInput.getAttribute('data-max-size-mb') || '5');
+        let docName = fileInput.getAttribute('data-doc-name') || 'Document';
+
+        // Check file extension
+        let ext = file.name.split('.').pop().toLowerCase();
+        if (allowedExtensions.length > 0 && !allowedExtensions.includes(ext)) {
+            alert(`PDF or unsupported file type is not allowed for "${docName}".\nAllowed format(s): ${allowedExtensions.join(', ').toUpperCase()}`);
+            fileInput.value = '';
+            return;
+        }
+
+        // Check file size
+        if (file.size > maxMb * 1024 * 1024) {
+            alert(`File size exceeds maximum limit of ${maxMb}MB.`);
+            fileInput.value = '';
+            return;
+        }
+
         let formData = new FormData();
-        formData.append('file', fileInput.files[0]);
+        formData.append('file', file);
         formData.append('_token', '{{ csrf_token() }}');
         formData.append('document_type_id', typeId);
 
@@ -962,27 +1029,34 @@ $disabled = $isReadOnly ? 'disabled' : '';
                 method: 'POST',
                 body: formData
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
+            .then(response => {
+                return response.json().then(data => ({ status: response.status, body: data }));
+            })
+            .then(({ status, body }) => {
+                if (body.success) {
                     let badge = document.getElementById('doc_badge_' + typeId);
-                    badge.className = 'badge-soft badge-pending';
-                    badge.innerHTML = '<i class="fas fa-hourglass-half"></i> Pending';
+                    if (badge) {
+                        badge.className = 'badge-soft badge-pending';
+                        badge.innerHTML = '<i class="fas fa-hourglass-half"></i> Pending';
+                    }
 
                     let fileContainer = document.getElementById('doc_file_container_' + typeId);
-                    fileContainer.innerHTML = `
-                    <div class="doc-file">
-                        <span class="doc-file-name"><i class="fas fa-paperclip mr-1"></i>${fileInput.files[0].name.substring(0, 30)}...</span>
-                        <span class="badge badge-success px-2 py-1" style="font-size:10px;">New</span>
-                    </div>
-                `;
+                    if (fileContainer) {
+                        fileContainer.innerHTML = `
+                        <div class="doc-file">
+                            <span class="doc-file-name"><i class="fas fa-paperclip mr-1"></i>${file.name.substring(0, 30)}...</span>
+                            <span class="badge badge-success px-2 py-1" style="font-size:10px;">New</span>
+                        </div>
+                        `;
+                    }
 
                     btn.innerHTML = '<i class="fas fa-upload"></i> Re-upload Document';
                     btn.disabled = false;
                 } else {
-                    alert(data.message || 'Error uploading document');
+                    alert(body.message || 'Error uploading document');
                     btn.innerHTML = originalHtml;
                     btn.disabled = false;
+                    fileInput.value = '';
                 }
             })
             .catch(error => {
@@ -990,6 +1064,7 @@ $disabled = $isReadOnly ? 'disabled' : '';
                 alert('An error occurred during upload.');
                 btn.innerHTML = originalHtml;
                 btn.disabled = false;
+                fileInput.value = '';
             });
     }
 </script>

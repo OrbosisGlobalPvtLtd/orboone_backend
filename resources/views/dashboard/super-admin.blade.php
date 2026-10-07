@@ -124,24 +124,33 @@ $announcementCards = [
         background: var(--orb-bg);
         padding: 22px;
         min-height: calc(100vh - 80px);
+        max-width: 100%;
+        overflow-x: hidden;
+        box-sizing: border-box;
     }
 
     .sa-hero {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        gap: 20px;
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
         align-items: center;
-        padding: 24px;
-        border-radius: 20px;
+        gap: 18px;
+        padding: 20px 22px;
+        border-radius: 18px;
         background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary));
         color: #fff;
         overflow: hidden;
-        margin-bottom: 22px;
+        margin-bottom: 20px;
+        box-shadow: var(--orb-shadow-sm);
+        height: auto;
+        min-height: auto;
     }
 
     .sa-hero-content {
-        min-width: 0;
-        max-width: 720px;
+        flex: 1 1 auto;
+        min-width: 240px;
+        max-width: 520px;
+        margin: 0;
     }
 
     .sa-kicker {
@@ -160,8 +169,8 @@ $announcementCards = [
 
     .sa-hero h1 {
         margin: 0;
-        font-size: 32px;
-        line-height: 1.1;
+        font-size: 24px;
+        line-height: 1.2;
         font-weight: 800;
         letter-spacing: -0.02em;
         white-space: normal;
@@ -170,62 +179,78 @@ $announcementCards = [
     }
 
     .sa-hero p {
-        max-width: 620px;
-        margin: 8px 0 0;
-        font-size: 14px;
-        line-height: 1.6;
+        max-width: 520px;
+        margin: 6px 0 0;
+        font-size: 13px;
+        line-height: 1.45;
         color: rgba(255, 255, 255, .9);
     }
 
+    .sa-hero-meta {
+        margin-top: 8px;
+        font-weight: 700;
+        font-size: 12px;
+        color: rgba(255, 255, 255, .9);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
     .sa-hero-actions {
+        flex: 0 1 auto;
         display: flex;
         flex-wrap: wrap;
         justify-content: flex-end;
-        gap: 10px;
-        max-width: 720px;
+        align-items: center;
+        gap: 8px;
+        max-width: 460px;
+        margin: 0;
     }
 
     .sa-hero-btn {
         display: inline-flex;
         align-items: center;
-        gap: 8px;
-        min-height: 40px;
-        padding: 10px 16px;
-        border-radius: 12px;
+        justify-content: center;
+        gap: 6px;
+        min-height: 36px;
+        padding: 6px 12px;
+        border-radius: 10px;
         background: rgba(255, 255, 255, .15);
         border: 1px solid rgba(255, 255, 255, .28);
         color: #fff;
         text-decoration: none;
         font-weight: 700;
         white-space: nowrap;
-        font-size: 13px;
+        font-size: 12px;
         transition: all 0.2s ease;
     }
 
     .sa-hero-btn:hover {
         background: #fff;
         color: var(--orb-primary);
+        text-decoration: none;
     }
 
     .sa-section {
         margin-bottom: 22px;
+        max-width: 100%;
     }
 
     .sa-section-head {
         display: flex;
-        align-items: end;
+        align-items: flex-end;
         justify-content: space-between;
         gap: 16px;
-        margin-bottom: 10px;
+        margin-bottom: 12px;
     }
 
     .sa-section-title {
         margin: 0;
-        font-size: 18px;
-        font-weight: 950;
+        font-size: 17px;
+        font-weight: 900;
         color: var(--orb-text);
         display: flex;
-        gap: 10px;
+        gap: 8px;
         align-items: center;
         letter-spacing: -.02em;
     }
@@ -271,6 +296,8 @@ $announcementCards = [
         border-radius: 18px;
         box-shadow: var(--orb-shadow-sm);
         height: 100%;
+        max-width: 100%;
+        overflow: hidden;
         transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
@@ -280,13 +307,14 @@ $announcementCards = [
     }
 
     .sa-stat {
-        padding: 16px 18px;
+        padding: 14px 16px;
         display: flex;
-        gap: 14px;
+        gap: 12px;
         align-items: center;
         text-decoration: none;
         color: inherit;
         min-height: auto;
+        min-width: 0;
         position: relative;
         overflow: hidden;
     }
@@ -315,13 +343,14 @@ $announcementCards = [
     .sa-stat:has(.tone-neutral)::after { background: #667085; }
 
     .sa-stat-icon {
-        width: 42px;
-        height: 42px;
+        width: 38px;
+        height: 38px;
+        min-width: 38px;
         border-radius: 50% !important;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 16px;
+        font-size: 15px;
         flex: 0 0 auto;
     }
 
@@ -356,23 +385,26 @@ $announcementCards = [
     }
 
     .sa-stat-value {
-        font-size: 28px;
+        font-size: 24px;
         font-weight: 950;
         line-height: 1.1;
         color: var(--orb-text);
+        word-break: break-word;
+        min-width: 0;
     }
 
     .sa-stat-label {
-        margin-top: 4px;
+        margin-top: 3px;
         font-size: 11px;
         color: var(--orb-muted);
         font-weight: 900;
         text-transform: uppercase;
-        letter-spacing: .04em;
+        letter-spacing: .03em;
+        line-height: 1.25;
     }
 
     .sa-panel-head {
-        padding: 18px 20px;
+        padding: 16px 18px;
         border-bottom: 1px solid var(--orb-border);
         display: flex;
         align-items: center;
@@ -382,26 +414,29 @@ $announcementCards = [
 
     .sa-panel-title {
         margin: 0;
-        font-size: 17px;
+        font-size: 16px;
         font-weight: 900;
         color: var(--orb-text);
     }
 
     .sa-panel-sub {
-        margin: 4px 0 0;
+        margin: 3px 0 0;
         color: var(--orb-muted);
         font-size: 12px;
         font-weight: 600;
     }
 
     .sa-panel-body {
-        padding: 18px 20px;
+        padding: 16px 18px;
+        max-width: 100%;
+        overflow-x: hidden;
+        box-sizing: border-box;
     }
 
     .sa-action-list {
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 10px;
     }
 
     .sa-action {
@@ -409,18 +444,20 @@ $announcementCards = [
         align-items: center;
         justify-content: space-between;
         gap: 12px;
-        padding: 14px;
-        border-radius: 18px;
+        padding: 12px 14px;
+        border-radius: 14px;
         background: #F8FAFC;
         border: 1px solid #EEF2F7;
         color: inherit;
         text-decoration: none;
+        transition: all .2s ease;
     }
 
     .sa-action:hover {
         background: #fff;
         box-shadow: var(--orb-shadow-sm);
         color: inherit;
+        text-decoration: none;
     }
 
     .sa-action-left {
@@ -431,35 +468,37 @@ $announcementCards = [
     }
 
     .sa-action-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 14px;
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
         background: var(--orb-soft);
         color: var(--orb-primary);
         flex: 0 0 auto;
+        font-size: 14px;
     }
 
     .sa-action-title {
-        font-size: 14px;
+        font-size: 13.5px;
         font-weight: 900;
         margin: 0;
     }
 
     .sa-action-sub {
-        margin: 3px 0 0;
-        font-size: 12px;
+        margin: 2px 0 0;
+        font-size: 11.5px;
         color: var(--orb-muted);
     }
 
     .sa-badge {
-        padding: 7px 11px;
+        padding: 5px 10px;
         border-radius: 999px;
         background: var(--orb-soft);
         color: var(--orb-primary);
-        font-size: 12px;
+        font-size: 11.5px;
         font-weight: 900;
         white-space: nowrap;
     }
@@ -480,9 +519,14 @@ $announcementCards = [
     }
 
     .sa-table-wrap {
-        overflow: auto;
-        border-radius: 18px;
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 14px;
         border: 1px solid var(--orb-border);
+        margin: 0;
+        box-sizing: border-box;
     }
 
     .sa-table {
@@ -496,19 +540,20 @@ $announcementCards = [
         background: #F8FAFC;
         color: var(--orb-muted);
         text-transform: uppercase;
-        font-size: 12px;
+        font-size: 11px;
         letter-spacing: .03em;
         font-weight: 900;
         border-bottom: 1px solid var(--orb-border);
-        padding: 13px 14px;
+        padding: 12px 14px;
     }
 
     .sa-table tbody td {
-        padding: 14px;
+        padding: 12px 14px;
         border-bottom: 1px solid #F1F3F8;
         vertical-align: middle;
         font-weight: 600;
         color: #344054;
+        font-size: 13px;
     }
 
     .sa-table tbody tr:last-child td {
@@ -521,10 +566,11 @@ $announcementCards = [
     }
 
     .sa-empty {
-        padding: 30px;
+        padding: 24px;
         text-align: center;
         color: var(--orb-muted);
         font-weight: 700;
+        font-size: 13px;
     }
 
     .sa-chart {
@@ -534,7 +580,7 @@ $announcementCards = [
     .sa-activity {
         display: flex;
         gap: 12px;
-        padding: 13px 0;
+        padding: 12px 0;
         border-bottom: 1px solid #F1F3F8;
     }
 
@@ -547,7 +593,7 @@ $announcementCards = [
         height: 10px;
         border-radius: 50%;
         background: var(--orb-primary);
-        margin-top: 7px;
+        margin-top: 6px;
         flex: 0 0 auto;
     }
 
@@ -560,31 +606,37 @@ $announcementCards = [
     .sa-quick-grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 12px;
+        gap: 10px;
     }
 
     .sa-quick {
-        padding: 16px 10px;
-        border-radius: 18px;
+        padding: 14px 8px;
+        border-radius: 14px;
         background: #F8FAFC;
         border: 1px solid #EEF2F7;
         color: var(--orb-text);
         text-decoration: none;
         text-align: center;
-        font-weight: 900;
-        font-size: 12px;
+        font-weight: 800;
+        font-size: 11.5px;
+        transition: all .2s ease;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
     }
 
     .sa-quick i {
         display: block;
         color: var(--orb-primary);
-        font-size: 22px;
-        margin-bottom: 8px;
+        font-size: 20px;
+        margin-bottom: 6px;
     }
 
     .sa-quick:hover {
         color: #fff;
         background: linear-gradient(135deg, var(--orb-primary), var(--orb-secondary));
+        text-decoration: none;
     }
 
     .sa-quick:hover i {
@@ -617,49 +669,135 @@ $announcementCards = [
         .sa-grid-4,
         .sa-grid-3 {
             grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 14px;
+            gap: 12px;
         }
 
         .sa-grid-main,
         .sa-grid-half {
             grid-template-columns: 1fr;
+            gap: 14px;
         }
     }
 
-    @media(max-width:768px) {
+    @media(max-width:991.98px) {
         .sa-page {
             padding: 14px;
         }
 
         .sa-hero {
-            grid-template-columns: 1fr;
-            padding: 22px;
-            border-radius: 22px;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: flex-start;
+            padding: 18px 16px;
+            border-radius: 18px;
+            gap: 14px;
+            height: auto;
+            min-height: auto;
+        }
+
+        .sa-hero-content {
+            width: 100%;
+            max-width: 100%;
+            flex: 0 0 auto;
         }
 
         .sa-hero h1 {
-            font-size: 26px;
+            font-size: 22px;
         }
 
         .sa-hero-actions {
             justify-content: flex-start;
+            width: 100%;
+            max-width: 100%;
+            gap: 8px;
+            flex: 0 0 auto;
+        }
+    }
+
+    @media(max-width:767.98px) {
+        .sa-page {
+            padding: 12px 10px;
         }
 
         .sa-grid-4,
         .sa-grid-3 {
             grid-template-columns: 1fr;
-            gap: 14px;
+            gap: 10px;
         }
 
         .sa-quick-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
-        .sa-table-wrap {
-            border-radius: 0;
-            border-left: 0;
-            border-right: 0;
-            margin: 0 -20px;
+        .sa-panel-head {
+            padding: 14px;
+        }
+
+        .sa-panel-body {
+            padding: 14px;
+        }
+    }
+
+    @media(max-width:575.98px) {
+        .sa-page {
+            padding: 8px 6px;
+        }
+
+        .sa-hero {
+            padding: 16px 12px;
+            border-radius: 14px;
+            gap: 14px;
+        }
+
+        .sa-hero h1 {
+            font-size: 20px;
+        }
+
+        .sa-hero-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 8px;
+            width: 100%;
+        }
+
+        .sa-hero-btn {
+            width: 100%;
+            justify-content: center;
+            text-align: center;
+            white-space: normal;
+            font-size: 12px;
+            padding: 8px 10px;
+        }
+
+        .sa-stat {
+            padding: 12px 10px;
+            gap: 10px;
+        }
+
+        .sa-stat-value {
+            font-size: 20px;
+        }
+
+        .sa-panel-head {
+            padding: 12px 10px;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 6px;
+        }
+
+        .sa-panel-body {
+            padding: 12px 10px;
+        }
+
+        .sa-quick-grid {
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+    }
+
+    @media(max-width:359.98px) {
+        .sa-hero-actions {
+            grid-template-columns: 1fr;
         }
     }
 </style>
@@ -725,6 +863,8 @@ $announcementCards = [
             @endforeach
         </div>
     </div>
+
+    @include('dashboard.partials.birthday-widget', ['dashboard' => $dashboard])
 
     {{-- SECTION 3: EMPLOYEE LIFECYCLE OVERVIEW --}}
     <div class="sa-section">
@@ -820,7 +960,7 @@ $announcementCards = [
     <div class="sa-section">
         <div class="sa-section-head">
             <div>
-                <h2 class="sa-section-title"><i class="fas fa-money-check-alt"></i> Payroll Overview</h2>
+                <h2 class="sa-section-title"><i class="fas fa-wallet"></i> Payroll Overview</h2>
                 <p class="sa-section-sub">Enterprise payroll and salary processing summary.</p>
             </div>
         </div>
@@ -1128,6 +1268,10 @@ $announcementCards = [
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script id="data-monthly-attendance" type="application/json">@json($charts['monthly_attendance'] ?? [])</script>
+<script id="data-payroll-trend" type="application/json">@json($payroll['monthly_trend'] ?? [])</script>
+<script id="data-employee-lifecycle" type="application/json">@json($charts['employee_lifecycle'] ?? [])</script>
+<script id="data-leave-distribution" type="application/json">@json($charts['leave_distribution'] ?? [])</script>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -1147,7 +1291,7 @@ $announcementCards = [
         }
 
         // 1. Attendance Trend Chart
-        var attData = @json($charts['monthly_attendance'] ?? []);
+        var attData = JSON.parse(document.getElementById('data-monthly-attendance') ? document.getElementById('data-monthly-attendance').textContent : '{}');
         if (attData.labels && attData.labels.length > 0) {
             new ApexCharts(document.querySelector("#attendanceTrendChart"), {
                 chart: {
@@ -1194,7 +1338,7 @@ $announcementCards = [
         }
 
         // 2. Payroll Trend Chart
-        var payData = @json($payroll['monthly_trend'] ?? []);
+        var payData = JSON.parse(document.getElementById('data-payroll-trend') ? document.getElementById('data-payroll-trend').textContent : '{}');
         if (payData.labels && payData.labels.length > 0) {
             new ApexCharts(document.querySelector("#payrollTrendChart"), {
                 chart: {
@@ -1231,7 +1375,7 @@ $announcementCards = [
         }
 
         // 3. Employee Lifecycle Distribution
-        var lcData = @json($charts['employee_lifecycle'] ?? []);
+        var lcData = JSON.parse(document.getElementById('data-employee-lifecycle') ? document.getElementById('data-employee-lifecycle').textContent : '{}');
         if (lcData.labels && lcData.labels.length > 0) {
             new ApexCharts(document.querySelector("#employeeLifecycleChart"), {
                 chart: {
@@ -1255,7 +1399,7 @@ $announcementCards = [
         }
 
         // 4. Leave Distribution Chart
-        var leaveData = @json($charts['leave_distribution'] ?? []);
+        var leaveData = JSON.parse(document.getElementById('data-leave-distribution') ? document.getElementById('data-leave-distribution').textContent : '{}');
         if (leaveData.labels && leaveData.labels.length > 0) {
             new ApexCharts(document.querySelector("#leaveDistributionChart"), {
                 chart: {

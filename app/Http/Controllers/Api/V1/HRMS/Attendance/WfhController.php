@@ -79,7 +79,7 @@ class WfhController extends Controller
         }
 
         $rows = WfhRequestM::query()
-            ->where('employee_id', $employee->id)
+            ->with(['managerApprover:id,name', 'hrApprover:id,name', 'rejector:id,name'])->where('employee_id', $employee->id)
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
             ->latest('id')
             ->paginate((int) $request->input('per_page', 20));
@@ -134,7 +134,7 @@ class WfhController extends Controller
             return $this->err('Employee profile not found.', 404);
         }
 
-        $row = WfhRequestM::query()->where('employee_id', $employee->id)->find($id);
+        $row = WfhRequestM::query()->with(['managerApprover:id,name', 'hrApprover:id,name', 'rejector:id,name'])->where('employee_id', $employee->id)->find($id);
         if (! $row) {
             return $this->err('WFH request not found.', 404);
         }
@@ -171,7 +171,7 @@ class WfhController extends Controller
             return $this->err('Employee profile not found.', 404);
         }
 
-        $row = WfhRequestM::query()->where('employee_id', $employee->id)->find($id);
+        $row = WfhRequestM::query()->with(['managerApprover:id,name', 'hrApprover:id,name', 'rejector:id,name'])->where('employee_id', $employee->id)->find($id);
         if (! $row) {
             return $this->err('WFH request not found.', 404);
         }
@@ -182,7 +182,7 @@ class WfhController extends Controller
     public function requests(Request $request)
     {
         $rows = WfhRequestM::query()
-            ->with('employee.user')
+            ->with(['employee.user', 'managerApprover:id,name', 'hrApprover:id,name', 'rejector:id,name'])
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
             ->when($request->filled('employee_id'), fn ($q) => $q->where('employee_id', $request->employee_id))
             ->when($request->filled('request_type'), fn ($q) => $q->where('request_type', $request->request_type))

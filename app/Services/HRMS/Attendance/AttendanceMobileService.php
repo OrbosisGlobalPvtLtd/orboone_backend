@@ -12,7 +12,9 @@ class AttendanceMobileService
         private AttendanceS $attendanceService,
         private AttendanceRuleResolverService $resolver,
         private ?WfhRequestService $wfhRequestService = null
-    ) {}
+    ) {
+        $this->wfhRequestService = $wfhRequestService ?: app(WfhRequestService::class);
+    }
 
     public function profileStatus(int $userId): array
     {
@@ -111,11 +113,31 @@ class AttendanceMobileService
             $payload['can_punch_out'] = false;
         }
         $payload['next_action'] = $attendanceData['next_action'] ?? ($payload['ui']['next_action'] ?? 'none');
+
+        $eligibilityService = app(\App\Services\HRMS\Employee\EmployeeEligibilityS::class);
+        if (! $eligibilityService->canUseAttendance($employee)) {
+            $payload['can_punch_in'] = false;
+            $payload['can_punch_out'] = false;
+            $payload['next_action'] = 'none';
+            if (isset($payload['ui']) && is_array($payload['ui'])) {
+                $payload['ui']['can_punch_in'] = false;
+                $payload['ui']['can_punch_out'] = false;
+                $payload['ui']['next_action'] = 'none';
+            }
+        }
+
         $payload['office_location'] = $this->attendanceService->officeLocationPayload();
 
+        $wfhService = $this->wfhRequestService ?: app(WfhRequestService::class);
         $wfhApproved = false;
-        if ($employee && $this->wfhRequestService) {
-            $wfhApproved = (bool) $this->wfhRequestService->approvedForDate((int) $employee->id, Carbon::now(AttendanceRuleResolverService::TIMEZONE)->toDateString());
+        if ($employee) {
+            $approvedHolidayWfh = \App\Models\HRMS\Attendance\HolidayWorkRequestM::where('employee_id', $employee->id)
+                ->whereDate('worked_date', Carbon::now(AttendanceRuleResolverService::TIMEZONE)->toDateString())
+                ->where('status', 'approved')
+                ->where('work_mode', 'wfh')
+                ->exists();
+
+            $wfhApproved = $approvedHolidayWfh || (bool) $wfhService->approvedForDate((int) $employee->id, Carbon::now(AttendanceRuleResolverService::TIMEZONE)->toDateString());
         }
 
         $isPermanentWfh = $employee ? $employee->isPermanentWfh() : false;
@@ -291,10 +313,10 @@ class AttendanceMobileService
         $hasPunchIn = ! empty($data['punch_in_time']);
         $hasPunchOut = ! empty($data['punch_out_time']);
 
-        $empForPolicy = null;
-        if (! empty($data['user_id'])) {
+        $empForPolicy = is_object($attendance) && $attendance->relationLoaded('employee') ? $attendance->employee : null;
+        if (! $empForPolicy && ! empty($data['user_id'])) {
             $empForPolicy = Employee::where('user_id', $data['user_id'])->first();
-        } elseif (! empty($data['employee_id'])) {
+        } elseif (! $empForPolicy && ! empty($data['employee_id'])) {
             $empForPolicy = Employee::find($data['employee_id']);
         }
         $dateForPolicy = Carbon::parse($rawDate ?: date('Y-m-d'), AttendanceRuleResolverService::TIMEZONE);
@@ -480,7 +502,7 @@ class AttendanceMobileService
 
     public function history(int $userId, array $filters = []): array
     {
-        $query = Attendance::with(['attendanceType', 'attendanceTime', 'workLogs'])
+        $query = Attendance::with(['attendanceType', 'attendanceTime', 'workLogs', 'employee'])
             ->where('user_id', $userId)
             ->when($filters['date'] ?? null, fn($q, $date) => $q->whereDate('attendance_date', $date))
             ->when($filters['month'] ?? null, fn($q, $month) => $q->whereMonth('attendance_date', (int) $month))

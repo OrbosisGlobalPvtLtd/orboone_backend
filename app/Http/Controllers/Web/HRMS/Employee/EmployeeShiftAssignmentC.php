@@ -7,46 +7,89 @@ use App\Models\HRMS\Attendance\AttendanceTimeM;
 use App\Models\HRMS\Department\DepartmentM;
 use App\Models\HRMS\Employee\EmployeeM;
 use App\Models\HRMS\Employee\EmployeeShiftTimingM;
+use App\Services\HRMS\Employee\EmployeeShiftAssignmentService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class EmployeeShiftAssignmentC extends Controller
 {
+    private EmployeeShiftAssignmentService $shiftAssignmentService;
+
+    public function __construct(EmployeeShiftAssignmentService $shiftAssignmentService)
+    {
+        $this->shiftAssignmentService = $shiftAssignmentService;
+    }
+
     public function index(Request $request)
     {
         $search = trim((string) $request->input('search', ''));
         $departmentId = $request->input('department_id');
         $employeeId = $request->input('employee_id');
 
-        $query = EmployeeM::active()->with(['user', 'department', 'designation', 'currentShiftTiming.attendanceTime']);
+        $query = EmployeeM::query()
+            ->select('employees_new.*')
+            ->join('users', 'users.id', '=', 'employees_new.user_id')
+            ->join('employee_profiles', 'employee_profiles.employee_id', '=', 'employees_new.id')
+            ->leftJoin('departments', 'departments.id', '=', 'employees_new.department_id')
+            ->leftJoin('designations', 'designations.id', '=', 'employees_new.designation_id')
+            ->where('employees_new.employment_status', 'active')
+            ->where(function ($q) {
+                $q->where('employees_new.is_active', 1)
+                  ->orWhereNull('employees_new.is_active');
+            })
+            ->where(function ($q) {
+                $q->whereNull('employees_new.employee_stage')
+                  ->orWhereNotIn('employees_new.employee_stage', ['exited', 'resigned']);
+            })
+            ->where('employee_profiles.is_profile_completed', 1)
+            ->where('employee_profiles.profile_status', 'approved')
+            ->with(['user', 'department', 'designation', 'currentShiftTiming.attendanceTime', 'profile']);
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
-                $q->where('employee_code', 'like', "%{$search}%")
-                    ->orWhereHas('user', function ($u) use ($search) {
-                        $u->where('name', 'like', "%{$search}%")
-                            ->orWhere('email', 'like', "%{$search}%");
-                    });
+                $q->where('employees_new.employee_code', 'like', "%{$search}%")
+                    ->orWhere('users.name', 'like', "%{$search}%")
+                    ->orWhere('users.email', 'like', "%{$search}%")
+                    ->orWhere('departments.name', 'like', "%{$search}%")
+                    ->orWhere('designations.name', 'like', "%{$search}%");
             });
         }
 
         if (!empty($departmentId)) {
-            $query->where('department_id', $departmentId);
+            $query->where('employees_new.department_id', $departmentId);
         }
 
         if (!empty($employeeId)) {
-            $query->where('id', $employeeId);
+            $query->where('employees_new.id', $employeeId);
         }
 
-        $employees = $query->orderBy('id', 'desc')->paginate(15)->withQueryString();
+        $perPage = (int) $request->input('per_page', 15);
+        if ($perPage < 5 || $perPage > 500) {
+            $perPage = 15;
+        }
 
-        $allEmployeesList = EmployeeM::active()->with('user')->orderBy('id', 'desc')->get();
+        $employees = $query->orderBy('users.name', 'asc')->paginate($perPage)->withQueryString();
+
+        $allEmployeesList = EmployeeM::query()
+            ->select('employees_new.*')
+            ->join('users', 'users.id', '=', 'employees_new.user_id')
+            ->join('employee_profiles', 'employee_profiles.employee_id', '=', 'employees_new.id')
+            ->where('employees_new.employment_status', 'active')
+            ->where('employee_profiles.is_profile_completed', 1)
+            ->where('employee_profiles.profile_status', 'approved')
+            ->with('user')
+            ->orderBy('users.name', 'asc')
+            ->get();
         $attendanceTimes = AttendanceTimeM::where('is_active', 1)->orderBy('name')->get();
         $departments = DepartmentM::orderBy('name')->get();
 
         $defaultShift = AttendanceTimeM::where('is_default', 1)->first() ?? AttendanceTimeM::first();
 
         $allShiftAssignments = EmployeeShiftTimingM::whereHas('employee', function ($q) {
-                $q->active();
+                $q->join('employee_profiles', 'employee_profiles.employee_id', '=', 'employees_new.id')
+                  ->where('employees_new.employment_status', 'active')
+                  ->where('employee_profiles.is_profile_completed', 1)
+                  ->where('employee_profiles.profile_status', 'approved');
             })
             ->with(['employee.user', 'attendanceTime'])
             ->orderByDesc('id')
@@ -80,48 +123,23 @@ class EmployeeShiftAssignmentC extends Controller
             'lunch_minutes' => 'nullable|integer',
         ]);
 
-        $isActive = $request->boolean('is_active', true);
+        $data['is_active'] = $request->boolean('is_active', true);
 
-        if ($isActive) {
-            EmployeeShiftTimingM::where('employee_id', $data['employee_id'])
-                ->where('is_active', 1)
-                ->update(['is_active' => 0]);
+        $result = $this->shiftAssignmentService->assignShift(
+            (int) $data['employee_id'],
+            $data,
+            Auth::id() ?: 1
+        );
+
+        if (!empty($result['warning'])) {
+            session()->flash('warning', $result['warning']);
         }
-
-        $shiftTime = AttendanceTimeM::find($data['attendance_time_id']);
-
-        $punchAllowedFrom = $request->filled('punch_allowed_from') ? $request->input('punch_allowed_from') : $shiftTime->punch_allowed_from;
-        $shiftStartTime   = $request->filled('shift_start_time') ? $request->input('shift_start_time') : $shiftTime->shift_start_time;
-        $lateAfterTime    = $request->filled('late_after_time') ? $request->input('late_after_time') : $shiftTime->late_after_time;
-        $blockAfterTime   = $request->filled('block_after_time') ? $request->input('block_after_time') : ($shiftTime->block_after_time ?? $shiftTime->half_day_after_time ?? $shiftTime->shift_end_time);
-        $halfDayAfterTime = $request->filled('half_day_after_time') ? $request->input('half_day_after_time') : $shiftTime->half_day_after_time;
-        $shiftEndTime     = $request->filled('shift_end_time') ? $request->input('shift_end_time') : $shiftTime->shift_end_time;
-        $requiredMinutes  = $request->filled('required_work_minutes') ? (int) $request->input('required_work_minutes') : $shiftTime->required_work_minutes;
-        $lunchMinutes     = $request->filled('lunch_minutes') ? (int) $request->input('lunch_minutes') : ($shiftTime->lunch_break_minutes ?? 0);
-
-        EmployeeShiftTimingM::create([
-            'employee_id' => $data['employee_id'],
-            'attendance_time_id' => $data['attendance_time_id'],
-            'punch_allowed_from' => $punchAllowedFrom,
-            'shift_start_time' => $shiftStartTime,
-            'late_after_time' => $lateAfterTime,
-            'block_after_time' => $blockAfterTime,
-            'half_day_after_time' => $halfDayAfterTime,
-            'shift_end_time' => $shiftEndTime,
-            'required_work_minutes' => $requiredMinutes,
-            'lunch_minutes' => $lunchMinutes,
-            'effective_from' => $data['effective_from'],
-            'effective_to' => $data['effective_to'] ?? null,
-            'is_active' => $isActive,
-        ]);
 
         return back()->with('status', 'Employee shift assignment created successfully.');
     }
 
     public function update(Request $request, $id)
     {
-        $assignment = EmployeeShiftTimingM::findOrFail($id);
-
         $data = $request->validate([
             'attendance_time_id' => 'required|exists:attendance_times,id',
             'effective_from' => 'required|date',
@@ -137,40 +155,9 @@ class EmployeeShiftAssignmentC extends Controller
             'lunch_minutes' => 'nullable|integer',
         ]);
 
-        $isActive = $request->boolean('is_active', true);
+        $data['is_active'] = $request->boolean('is_active', true);
 
-        if ($isActive && !$assignment->is_active) {
-            EmployeeShiftTimingM::where('employee_id', $assignment->employee_id)
-                ->where('id', '!=', $assignment->id)
-                ->where('is_active', 1)
-                ->update(['is_active' => 0]);
-        }
-
-        $shiftTime = AttendanceTimeM::find($data['attendance_time_id']);
-
-        $punchAllowedFrom = $request->filled('punch_allowed_from') ? $request->input('punch_allowed_from') : $shiftTime->punch_allowed_from;
-        $shiftStartTime   = $request->filled('shift_start_time') ? $request->input('shift_start_time') : $shiftTime->shift_start_time;
-        $lateAfterTime    = $request->filled('late_after_time') ? $request->input('late_after_time') : $shiftTime->late_after_time;
-        $blockAfterTime   = $request->filled('block_after_time') ? $request->input('block_after_time') : ($shiftTime->block_after_time ?? $shiftTime->half_day_after_time ?? $shiftTime->shift_end_time);
-        $halfDayAfterTime = $request->filled('half_day_after_time') ? $request->input('half_day_after_time') : $shiftTime->half_day_after_time;
-        $shiftEndTime     = $request->filled('shift_end_time') ? $request->input('shift_end_time') : $shiftTime->shift_end_time;
-        $requiredMinutes  = $request->filled('required_work_minutes') ? (int) $request->input('required_work_minutes') : $shiftTime->required_work_minutes;
-        $lunchMinutes     = $request->filled('lunch_minutes') ? (int) $request->input('lunch_minutes') : ($shiftTime->lunch_break_minutes ?? 0);
-
-        $assignment->update([
-            'attendance_time_id' => $data['attendance_time_id'],
-            'punch_allowed_from' => $punchAllowedFrom,
-            'shift_start_time' => $shiftStartTime,
-            'late_after_time' => $lateAfterTime,
-            'block_after_time' => $blockAfterTime,
-            'half_day_after_time' => $halfDayAfterTime,
-            'shift_end_time' => $shiftEndTime,
-            'required_work_minutes' => $requiredMinutes,
-            'lunch_minutes' => $lunchMinutes,
-            'effective_from' => $data['effective_from'],
-            'effective_to' => $data['effective_to'] ?? null,
-            'is_active' => $isActive,
-        ]);
+        $this->shiftAssignmentService->updateShiftAssignment((int) $id, $data, Auth::id() ?: 1);
 
         return back()->with('status', 'Employee shift assignment updated successfully.');
     }

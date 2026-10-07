@@ -4,15 +4,28 @@ namespace App\Http\Controllers\Web\HRMS\Employee;
 
 use App\Http\Controllers\Controller;
 use App\Mail\EmployeeCredentialMail;
+use App\Models\Core\UserM;
+use App\Models\HRMS\Employee\EmployeeM;
+use App\Models\HRMS\Leave\LeaveAllocationM;
+use App\Services\HRMS\Employee\EmployeeProfileS;
+use App\Services\HRMS\Notification\NotificationS;
 use App\Services\HRMS\Employee\EmployeeFileS;
 use App\Services\HRMS\Employee\EmployeeExitProcessS;
 use App\Services\HRMS\Employee\EmployeeLifecycleService;
 use App\Services\HRMS\Employee\EmployeePermanentDeleteS;
 use App\Services\HRMS\Employee\EmployeeSalaryHistoryService;
 use App\Services\HRMS\Employee\EmployeeS;
+use App\Services\HRMS\Employee\EmployeeShiftAssignmentService;
+use App\Services\HRMS\Leave\LeaveAllocationService;
+use App\Services\HRMS\Reporting\ReportingScopeS;
+use App\Http\Requests\Web\HRMS\Employee\InitiateExitRequest;
+use App\Http\Requests\Web\HRMS\Employee\StoreEmployeeOnboardingRequest;
+use App\Http\Requests\Web\HRMS\Employee\UpdateManageEmployeeRequest;
 use Carbon\Carbon;
+use RuntimeException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log as FacadesLog;
 use Illuminate\Support\Facades\Mail;
@@ -31,19 +44,25 @@ class EmployeeC extends Controller
     private EmployeeSalaryHistoryService $salaryHistoryService;
     private EmployeePermanentDeleteS $permanentDeleteService;
     private EmployeeExitProcessS $exitProcessService;
+    private EmployeeShiftAssignmentService $shiftAssignmentService;
+    private LeaveAllocationService $leaveAllocationService;
 
     public function __construct(
         EmployeeS $employeeService,
         EmployeeLifecycleService $lifecycleService,
         EmployeeSalaryHistoryService $salaryHistoryService,
         EmployeePermanentDeleteS $permanentDeleteService,
-        EmployeeExitProcessS $exitProcessService
+        EmployeeExitProcessS $exitProcessService,
+        EmployeeShiftAssignmentService $shiftAssignmentService,
+        LeaveAllocationService $leaveAllocationService,
     ) {
         $this->employeeService = $employeeService;
         $this->lifecycleService = $lifecycleService;
         $this->salaryHistoryService = $salaryHistoryService;
         $this->permanentDeleteService = $permanentDeleteService;
         $this->exitProcessService = $exitProcessService;
+        $this->shiftAssignmentService = $shiftAssignmentService;
+        $this->leaveAllocationService = $leaveAllocationService;
     }
 
     public function index(Request $request)
@@ -73,22 +92,57 @@ class EmployeeC extends Controller
         }
 
         $today = Carbon::now('Asia/Kolkata')->toDateString();
+
+        $latestShiftSub = DB::table('employee_shift_timings')
+            ->where('is_active', 1)
+            ->where(function ($q) use ($today) {
+                $q->whereNull('effective_from')
+                    ->orWhereDate('effective_from', '<=', $today);
+            })
+            ->where(function ($q) use ($today) {
+                $q->whereNull('effective_to')
+                    ->orWhereDate('effective_to', '>=', $today);
+            })
+            ->select('employee_id', DB::raw('MAX(id) as max_id'))
+            ->groupBy('employee_id');
+
+        $activeShiftTimingSub = DB::table('employee_shift_timings')
+            ->joinSub($latestShiftSub, 'latest_shift', function ($join) {
+                $join->on('employee_shift_timings.id', '=', 'latest_shift.max_id');
+            })
+            ->leftJoin('attendance_times', 'attendance_times.id', '=', 'employee_shift_timings.attendance_time_id')
+            ->select(
+                'employee_shift_timings.employee_id',
+                'attendance_times.name as timing_shift_name',
+                'attendance_times.shift_type as timing_shift_type'
+            );
+
+        $latestPolicySub = DB::table('employee_policy_assignments')
+            ->where('policy_type', 'attendance')
+            ->where('is_active', 1)
+            ->where(function ($q) use ($today) {
+                $q->whereNull('effective_from')
+                    ->orWhereDate('effective_from', '<=', $today);
+            })
+            ->where(function ($q) use ($today) {
+                $q->whereNull('effective_to')
+                    ->orWhereDate('effective_to', '>=', $today);
+            })
+            ->select('employee_id', DB::raw('MAX(id) as max_id'))
+            ->groupBy('employee_id');
+
         $activeAssignmentsSub = DB::table('employee_policy_assignments')
+            ->joinSub($latestPolicySub, 'latest_policy', function ($join) {
+                $join->on('employee_policy_assignments.id', '=', 'latest_policy.max_id');
+            })
             ->join('attendance_policy_rules', 'attendance_policy_rules.id', '=', 'employee_policy_assignments.policy_id')
-            ->where('employee_policy_assignments.policy_type', 'attendance')
-            ->where('employee_policy_assignments.is_active', 1)
-            ->where(function ($q) use ($today) {
-                $q->whereNull('employee_policy_assignments.effective_from')
-                    ->orWhereDate('employee_policy_assignments.effective_from', '<=', $today);
-            })
-            ->where(function ($q) use ($today) {
-                $q->whereNull('employee_policy_assignments.effective_to')
-                    ->orWhereDate('employee_policy_assignments.effective_to', '>=', $today);
-            })
             ->select('employee_policy_assignments.employee_id', 'attendance_policy_rules.policy_name');
 
         $baseQuery = DB::table($employeeTable)
             ->join('users', 'users.id', '=', $employeeTable . '.user_id')
+            ->leftJoinSub($activeShiftTimingSub, 'active_shift_timing', function ($join) use ($employeeTable) {
+                $join->on('active_shift_timing.employee_id', '=', $employeeTable . '.id');
+            })
             ->leftJoinSub($activeAssignmentsSub, 'active_attendance_policy', function ($join) use ($employeeTable) {
                 $join->on('active_attendance_policy.employee_id', '=', $employeeTable . '.id');
             })
@@ -130,6 +184,9 @@ class EmployeeC extends Controller
             $profileTable . '.profile_status',
             $profileTable . '.is_profile_completed',
             DB::raw("CASE 
+                WHEN active_shift_timing.timing_shift_type = 'dynamic_hours' THEN 'Dynamic Hours'
+                WHEN active_shift_timing.timing_shift_type = 'flexible_part_time' THEN 'Flexible Part Time'
+                WHEN active_shift_timing.timing_shift_name IS NOT NULL THEN active_shift_timing.timing_shift_name
                 WHEN active_attendance_policy.policy_name = 'Flexible Part Time Policy' THEN 'Flexible Part Time'
                 WHEN active_attendance_policy.policy_name = 'Default Attendance Policy' THEN 'General Shift'
                 WHEN active_attendance_policy.policy_name = 'General Shift Policy' THEN 'General Shift'
@@ -139,6 +196,7 @@ class EmployeeC extends Controller
                 WHEN active_attendance_policy.policy_name = 'Half Day Morning Policy' THEN 'Half Day Morning Shift'
                 WHEN active_attendance_policy.policy_name = 'Half Day Evening Policy' THEN 'Half Day Evening Shift'
                 WHEN active_attendance_policy.policy_name IS NOT NULL THEN TRIM(REPLACE(active_attendance_policy.policy_name, 'Policy', ''))
+                " . ($hasAttendanceTime ? "WHEN attendance_times.name IS NOT NULL THEN attendance_times.name" : "") . "
                 ELSE 'General Shift'
             END as shift_name"),
             DB::raw($documentStats ? 'COALESCE(doc_stats.uploaded_documents_count, 0) as uploaded_documents_count' : '0 as uploaded_documents_count'),
@@ -191,7 +249,6 @@ class EmployeeC extends Controller
                             ->orWhere($employeeTable . '.employee_code', 'like', "%{$searchValue}%")
                             ->orWhere('departments.name', 'like', "%{$searchValue}%")
                             ->orWhere('designations.name', 'like', "%{$searchValue}%")
-                            ->orWhere('manager_user.name', 'like', "%{$searchValue}%")
                             ->orWhere($employeeTable . '.employment_type', 'like', "%{$searchValue}%")
                             ->orWhere($employeeTable . '.employee_stage', 'like', "%{$searchValue}%")
                             ->orWhere($employeeTable . '.work_mode', 'like', "%{$searchValue}%")
@@ -207,20 +264,21 @@ class EmployeeC extends Controller
                 $recordsFiltered = $filteredQuery->count();
 
                 $columns = [
-                    0  => 'users.name',
-                    1  => 'departments.name',
-                    2  => 'designations.name',
-                    3  => $employeeTable . '.employment_type',
-                    4  => 'manager_user.name',
-                    5  => $hasAttendanceTime ? 'attendance_times.name' : $employeeTable . '.id',
-                    6  => $profileTable . '.profile_status',
-                    7  => $employeeTable . '.employee_stage',
-                    8  => $employeeTable . '.joining_date',
-                    9  => $employeeTable . '.employment_status',
-                    10 => $employeeTable . '.id',
+                    0  => $employeeTable . '.id',
+                    1  => 'users.name',
+                    2  => 'departments.name',
+                    3  => 'designations.name',
+                    4  => $employeeTable . '.employment_type',
+                    5  => 'manager_user.name',
+                    6  => $hasAttendanceTime ? 'attendance_times.name' : $employeeTable . '.id',
+                    7  => $profileTable . '.profile_status',
+                    8  => $employeeTable . '.employee_stage',
+                    9  => $employeeTable . '.joining_date',
+                    10 => $employeeTable . '.employment_status',
+                    11 => $employeeTable . '.id',
                 ];
 
-                $orderColumnIndex = (int) $request->input('order.0.column', 11);
+                $orderColumnIndex = (int) $request->input('order.0.column', 1);
                 $orderDirection = $request->input('order.0.dir', 'desc') === 'asc' ? 'asc' : 'desc';
                 $orderColumn = $columns[$orderColumnIndex] ?? $employeeTable . '.id';
 
@@ -330,20 +388,24 @@ class EmployeeC extends Controller
                     </a>';
                     }
 
-                    $canInitiateExit = auth()->user() && method_exists(auth()->user(), 'hasPermission')
-                        && (auth()->user()->hasPermission('employee_exit.initiate') || auth()->user()->hasPermission('employees.update'));
+                    /** @var UserM|null $authUser */
+                    $authUser = Auth::user();
+                    $canInitiateExit = $authUser && method_exists($authUser, 'hasPermission')
+                        && ($authUser->hasPermission('employee_exit.initiate') || $authUser->hasPermission('employees.update'));
                     if ($canInitiateExit && Route::has('hrms.employees.exit.initiate')) {
                         $actions .= '
                         <button type="button" class="dropdown-item text-warning btn-open-initiate-exit-modal" 
                             data-employee-id="' . $employee->id . '" 
                             data-employee-name="' . e($name) . '" 
                             data-employee-code="' . e($employeeCode) . '" 
+                            data-employee-stage="' . e($employee->employee_stage ?? '') . '"
+                            data-employment-type="' . e($employee->employment_type ?? '') . '"
                             data-action-url="' . route('hrms.employees.exit.initiate', $employee->id) . '">
                             <i class="fas fa-sign-out-alt"></i> Initiate Exit
                         </button>';
                     }
 
-                    if (auth()->user() && method_exists(auth()->user(), 'isSuperAdmin') && auth()->user()->isSuperAdmin() && Route::has('hrms.employees.destroy')) {
+                    if ($authUser && method_exists($authUser, 'isSuperAdmin') && $authUser->isSuperAdmin() && Route::has('hrms.employees.destroy')) {
                         $actions .= '
                         <form action="' . route('hrms.employees.destroy', $employee->id) . '" method="POST" style="margin:0;" onsubmit="var c=prompt(\'Type DELETE EMPLOYEE to permanently delete this wrong/test/duplicate employee.\'); if(c===null){return false;} this.querySelector(\'input[name=confirm_text]\').value=c; return c===\'DELETE EMPLOYEE\';">
                             ' . csrf_field() . '
@@ -381,6 +443,24 @@ class EmployeeC extends Controller
                             : '-',
                         'status' => e($status),
                         'actions' => $actions,
+
+                        // Clean raw fields for precise export column mapping
+                        'raw_name' => (string) $name,
+                        'raw_employee_code' => (string) $employeeCode,
+                        'raw_email' => (string) ($employee->email ?? '-'),
+                        'raw_department' => (string) ($employee->department_name ?? 'General'),
+                        'raw_designation' => (string) ($employee->designation_name ?? 'Executive'),
+                        'raw_employment_type' => (string) $employmentType,
+                        'raw_work_mode' => (string) $workMode,
+                        'raw_manager_name' => (string) ($employee->manager_name ?? 'Not assigned'),
+                        'raw_manager_code' => (string) ($employee->manager_code ?? '-'),
+                        'raw_shift' => (string) ($employee->shift_name ?? 'General Shift'),
+                        'raw_verification_status' => (string) $verificationStatus,
+                        'raw_stage' => (string) $stage,
+                        'raw_joining_date' => ! empty($employee->joining_date)
+                            ? Carbon::parse($employee->joining_date)->format('d M Y')
+                            : '-',
+                        'raw_status' => (string) $status,
                     ];
                 });
 
@@ -433,6 +513,12 @@ class EmployeeC extends Controller
             'remote' => Schema::hasColumn($employeeTable, 'work_mode')
                 ? (clone $statsBase)->whereIn($employeeTable . '.work_mode', ['wfh', 'hybrid'])->count()
                 : 0,
+            'internship' => Schema::hasColumn($employeeTable, 'employee_stage')
+                ? (clone $statsBase)->where(function ($q) use ($employeeTable) {
+                    $q->where($employeeTable . '.employee_stage', 'internship')
+                        ->orWhere($employeeTable . '.employment_type', 'intern');
+                })->count()
+                : 0,
             'docs_pending' => Schema::hasTable('employee_documents_new')
                 ? DB::table('employee_documents_new')
                 ->join($employeeTable, $employeeTable . '.id', '=', 'employee_documents_new.employee_id')
@@ -445,7 +531,7 @@ class EmployeeC extends Controller
                 : 0,
         ];
 
-        return view('hrms.employee.index', compact('employees', 'departments', 'stats'));
+        return view('hrms.employee.employee_directory.index', compact('employees', 'departments', 'stats'));
     }
 
     public function create()
@@ -459,7 +545,7 @@ class EmployeeC extends Controller
         $attendanceTimes = $formData['attendanceTimes'];
         $nextEmployeeCode = $this->employeeService->generateEmployeeCode($this->employeeTable);
 
-        return view('hrms.employee.create', compact(
+        return view('hrms.employee.employee_onboarding.create', compact(
             'departments',
             'designations',
             'reportingManagers',
@@ -469,31 +555,8 @@ class EmployeeC extends Controller
         ));
     }
 
-    public function store(Request $request)
+    public function store(StoreEmployeeOnboardingRequest $request)
     {
-        $request->validate([
-            'name' => ['required'],
-            'email' => ['required', 'email', 'unique:users,email'],
-            'phone' => ['required'],
-            'employment_type' => ['required', Rule::in(['full_time', 'part_time', 'intern', 'freelancer', 'contract'])],
-            'work_mode' => ['required', Rule::in(['wfo', 'wfh', 'hybrid'])],
-            'work_schedule_type' => ['nullable', Rule::in(['full_day', 'part_day', 'hourly', 'shift_based', 'general', 'general_shift', 'wfh', 'wfh_shift', 'part_time', 'part_time_shift', 'part_time_morning', 'part_time_evening', 'half_day', 'half_day_shift', 'half_day_morning', 'half_day_evening', 'flexible_part_time'])],
-            'department_id' => ['required'],
-            'designation_id' => ['required'],
-            'system_role_id' => ['required'],
-            'actual_salary' => ['nullable', 'numeric', 'min:0'],
-            'salary_effective_from' => ['nullable', 'date'],
-            'salary_change_reason' => ['nullable', 'string', 'max:255'],
-            'punch_allowed_from' => ['required_if:work_schedule_type,flexible_part_time', 'nullable'],
-            'shift_start_time' => ['required_if:work_schedule_type,flexible_part_time', 'nullable'],
-            'late_after_time' => ['required_if:work_schedule_type,flexible_part_time', 'nullable'],
-            'half_day_after_time' => ['required_if:work_schedule_type,flexible_part_time', 'nullable'],
-            'block_after_time' => ['required_if:work_schedule_type,flexible_part_time', 'nullable'],
-            'shift_end_time' => ['required_if:work_schedule_type,flexible_part_time', 'nullable'],
-            'required_work_minutes' => ['required_if:work_schedule_type,flexible_part_time', 'nullable', 'integer'],
-            'lunch_minutes' => ['required_if:work_schedule_type,flexible_part_time', 'nullable', 'integer'],
-        ]);
-
         $lifecyclePayload = $this->lifecycleService->buildLifecyclePayload($request->all());
 
         if ($lifecyclePayload['employee_stage'] !== 'internship' && ! $request->joining_date) {
@@ -561,37 +624,50 @@ class EmployeeC extends Controller
                 'attendance_policy_rule_id' => $policyId,
                 'joining_date' => $lifecyclePayload['joining_date'],
                 'employment_status' => 'active',
-                'probation_months' => 3,
-                'probation_start_date' => $lifecyclePayload['probation_start_date'],
-                'probation_end_date' => $lifecyclePayload['probation_end_date'],
-                'probation_status' => $lifecyclePayload['probation_status'],
+                'probation_months' => $lifecyclePayload['employee_stage'] === 'internship' ? null : ($lifecyclePayload['probation_months'] ?? 3),
+                'probation_start_date' => $lifecyclePayload['employee_stage'] === 'internship' ? null : $lifecyclePayload['probation_start_date'],
+                'probation_end_date' => $lifecyclePayload['employee_stage'] === 'internship' ? null : $lifecyclePayload['probation_end_date'],
+                'confirmation_effective_date' => $lifecyclePayload['employee_stage'] === 'internship' ? null : ($lifecyclePayload['confirmation_effective_date'] ?? null),
+                'probation_status' => $lifecyclePayload['employee_stage'] === 'internship' ? null : $lifecyclePayload['probation_status'],
                 'internship_start_date' => $lifecyclePayload['internship_start_date'],
                 'internship_end_date' => $lifecyclePayload['internship_end_date'],
                 'is_paid_intern' => $lifecyclePayload['is_paid_intern'],
                 'actual_salary' => $lifecyclePayload['actual_salary'],
                 'is_active' => 1,
-                'created_by' => auth()->id(),
-                'updated_by' => auth()->id(),
+                'created_by' => Auth::id(),
+                'updated_by' => Auth::id(),
                 'created_at' => now(),
                 'updated_at' => now(),
             ];
+
+            if (Schema::hasColumn($this->employeeTable, 'probation_duration_type')) {
+                $employeeInsertData['probation_duration_type'] = $lifecyclePayload['employee_stage'] === 'internship' ? null : ($lifecyclePayload['probation_duration_type'] ?? 'months');
+            }
+
+            if (Schema::hasColumn($this->employeeTable, 'probation_duration_value')) {
+                $employeeInsertData['probation_duration_value'] = $lifecyclePayload['employee_stage'] === 'internship' ? null : ($lifecyclePayload['probation_duration_value'] ?? 3);
+            }
 
             if (Schema::hasColumn($this->employeeTable, 'internship_status')) {
                 $employeeInsertData['internship_status'] = $lifecyclePayload['employee_stage'] === 'internship' ? 'active' : null;
             }
 
             if (Schema::hasColumn($this->employeeTable, 'is_permanent')) {
-                $employeeInsertData['is_permanent'] = 0;
+                $employeeInsertData['is_permanent'] = $lifecyclePayload['employee_stage'] === 'permanent' ? 1 : 0;
             }
 
             if (Schema::hasColumn($this->employeeTable, 'permanent_at')) {
-                $employeeInsertData['permanent_at'] = null;
+                $employeeInsertData['permanent_at'] = $lifecyclePayload['employee_stage'] === 'permanent' ? ($lifecyclePayload['confirmation_effective_date'] ?? null) : null;
+            }
+
+            if (Schema::hasColumn($this->employeeTable, 'confirmation_date')) {
+                $employeeInsertData['confirmation_date'] = $lifecyclePayload['employee_stage'] === 'permanent' ? ($lifecyclePayload['confirmation_effective_date'] ?? null) : null;
             }
 
             $employeeId = DB::table($this->employeeTable)->insertGetId($employeeInsertData);
 
             if ($request->filled('reporting_manager_employee_id')) {
-                app(\App\Services\HRMS\Reporting\ReportingScopeS::class)->assignSupervisor([
+                app(ReportingScopeS::class)->assignSupervisor([
                     'supervisor_employee_id' => (int)$request->reporting_manager_employee_id,
                     'employee_id' => (int)$employeeId,
                     'start_date' => $lifecyclePayload['joining_date'] ?: now()->toDateString(),
@@ -605,42 +681,32 @@ class EmployeeC extends Controller
                     'policy_id' => $policyId,
                     'effective_from' => $lifecyclePayload['joining_date'] ?: Carbon::now('Asia/Kolkata')->toDateString(),
                     'is_active' => 1,
-                    'assigned_by_user_id' => auth()->id() ?: 1,
+                    'assigned_by_user_id' => Auth::id() ?: 1,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
             }
 
             if ($shift) {
-                $isFlexible = $request->work_schedule_type === 'flexible_part_time';
-
-                $punchAllowed = $isFlexible ? $request->punch_allowed_from : $shift->punch_allowed_from;
-                $shiftStart = $isFlexible ? $request->shift_start_time : $shift->shift_start_time;
-                $lateAfter = $isFlexible ? $request->late_after_time : $shift->late_after_time;
-                $halfDayAfter = $isFlexible ? $request->half_day_after_time : $shift->half_day_after_time;
-                $blockAfter = $isFlexible ? $request->block_after_time : $shift->block_after_time;
-                $shiftEnd = $isFlexible ? $request->shift_end_time : $shift->shift_end_time;
-                $reqMinutes = $isFlexible ? $request->required_work_minutes : $shift->required_work_minutes;
-                $lunchMinutes = $isFlexible ? $request->lunch_minutes : $shift->lunch_break_minutes;
-
-                DB::table('employee_shift_timings')->insert([
-                    'employee_id' => $employeeId,
-                    'attendance_time_id' => $shift->id,
-                    'attendance_policy_rule_id' => $request->attendance_policy_rule_id ?? $request->attendance_policy_id ?? DB::table('employees_new')->where('id', $employeeId)->value('attendance_policy_rule_id'),
-                    'punch_allowed_from' => $punchAllowed ? Carbon::parse($punchAllowed)->format('H:i:s') : null,
-                    'shift_start_time' => $shiftStart ? Carbon::parse($shiftStart)->format('H:i:s') : null,
-                    'late_after_time' => $lateAfter ? Carbon::parse($lateAfter)->format('H:i:s') : null,
-                    'half_day_after_time' => $halfDayAfter ? Carbon::parse($halfDayAfter)->format('H:i:s') : null,
-                    'block_after_time' => $blockAfter ? Carbon::parse($blockAfter)->format('H:i:s') : null,
-                    'shift_end_time' => $shiftEnd ? Carbon::parse($shiftEnd)->format('H:i:s') : null,
-                    'required_work_minutes' => $reqMinutes,
-                    'lunch_minutes' => $lunchMinutes,
-                    'effective_from' => $lifecyclePayload['joining_date'] ?: Carbon::now('Asia/Kolkata')->toDateString(),
-                    'is_active' => 1,
-                    'created_by' => auth()->id() ?: 1,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                $this->shiftAssignmentService->assignShift(
+                    (int) $employeeId,
+                    [
+                        'attendance_time_id' => $shift->id,
+                        'attendance_policy_rule_id' => $request->attendance_policy_rule_id ?? $request->attendance_policy_id ?? DB::table('employees_new')->where('id', $employeeId)->value('attendance_policy_rule_id'),
+                        'work_schedule_type' => $request->work_schedule_type,
+                        'punch_allowed_from' => $request->punch_allowed_from,
+                        'shift_start_time' => $request->shift_start_time,
+                        'late_after_time' => $request->late_after_time,
+                        'half_day_after_time' => $request->half_day_after_time,
+                        'block_after_time' => $request->block_after_time,
+                        'shift_end_time' => $request->shift_end_time,
+                        'required_work_minutes' => $request->required_work_minutes,
+                        'lunch_minutes' => $request->lunch_minutes,
+                        'effective_from' => $lifecyclePayload['joining_date'] ?: Carbon::now('Asia/Kolkata')->toDateString(),
+                        'is_active' => 1,
+                    ],
+                    Auth::id() ?: 1
+                );
             }
 
             $this->salaryHistoryService->syncSalary(
@@ -649,7 +715,7 @@ class EmployeeC extends Controller
                 $lifecyclePayload['actual_salary'],
                 $request->salary_effective_from ?: $this->salaryEffectiveDate($lifecyclePayload),
                 $this->salaryHistoryReason($lifecyclePayload, $request->salary_change_reason, 'Initial salary'),
-                auth()->id()
+                Auth::id()
             );
 
             DB::table($this->profileTable)->insert([
@@ -682,7 +748,7 @@ class EmployeeC extends Controller
                 (int) $employeeId,
                 $lifecyclePayload['employee_stage'],
                 $allocationEffectiveDate,
-                auth()->id()
+                Auth::id()
             );
 
             DB::commit();
@@ -724,14 +790,20 @@ class EmployeeC extends Controller
                 }
             }
 
+            if ($request->action === 'save_profile') {
+                return redirect()
+                    ->route('hrms.employees.profile.complete', $employeeId)
+                    ->with('success', 'Employee created successfully. Please complete the profile details.');
+            }
+
             return redirect()
-                ->route('hrms.employees.index')
+                ->route('hrms.employees.pending_profiles')
                 ->with('success', 'Employee created. Login credentials sent to email.');
         } catch (\Throwable $e) {
             DB::rollBack();
 
             return back()->withInput()->with('error', $e->getMessage());
-        }
+        }   
     }
 
     public function manage($employee)
@@ -889,7 +961,7 @@ class EmployeeC extends Controller
             ->orderByDesc('employee_shift_timings.id')
             ->get();
 
-        return view('hrms.employee.manage', compact(
+        return view('hrms.employee.employee_directory.manage', compact(
             'employeeData',
             'departments',
             'designations',
@@ -903,75 +975,61 @@ class EmployeeC extends Controller
         ));
     }
 
-    public function manageUpdate(Request $request, $employee)
+    public function manageUpdate(UpdateManageEmployeeRequest $request, $employee)
     {
         $employeeData = DB::table($this->employeeTable)->where('id', $employee)->first();
         abort_if(! $employeeData, 404);
 
-        $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email,' . $employeeData->user_id],
-            'phone' => ['nullable', 'string', 'max:20'],
-            'department_id' => ['required', 'exists:departments,id'],
-            'designation_id' => ['required', 'exists:designations,id'],
-            'reporting_manager_employee_id' => ['nullable', 'exists:employees_new,id'],
-            'system_role_id' => ['required', 'exists:roles,id'],
-
-            'employment_type' => ['required', Rule::in(['full_time', 'part_time', 'intern', 'freelancer', 'contract'])],
-            'work_mode' => ['required', Rule::in(['wfo', 'wfh', 'hybrid'])],
-            'work_schedule_type' => ['nullable', Rule::in(['full_day', 'part_day', 'hourly', 'shift_based', 'general', 'general_shift', 'wfh', 'wfh_shift', 'part_time', 'part_time_shift', 'part_time_morning', 'part_time_evening', 'half_day', 'half_day_shift', 'half_day_morning', 'half_day_evening', 'flexible_part_time'])],
-            'employment_status' => ['required', Rule::in(['active', 'resigned', 'terminated', 'inactive'])],
-
-            'joining_date' => ['nullable', 'date'],
-            'relieving_date' => ['nullable', 'date'],
-
-            'internship_start_date' => ['nullable', 'date'],
-            'internship_end_date' => ['nullable', 'date', 'after_or_equal:internship_start_date'],
-            'is_paid_intern' => ['nullable', Rule::in(['0', '1', 0, 1])],
-
-            'probation_months' => ['nullable', 'integer', 'min:1'],
-            'probation_start_date' => ['nullable', 'date'],
-            'probation_end_date' => ['nullable', 'date'],
-            'confirmation_date' => ['nullable', 'date'],
-            'permanent_at' => ['nullable', 'date'],
-
-            'punch_allowed_from' => ['required_if:work_schedule_type,flexible_part_time', 'nullable'],
-            'shift_start_time' => ['required_if:work_schedule_type,flexible_part_time', 'nullable'],
-            'late_after_time' => ['required_if:work_schedule_type,flexible_part_time', 'nullable'],
-            'half_day_after_time' => ['required_if:work_schedule_type,flexible_part_time', 'nullable'],
-            'block_after_time' => ['required_if:work_schedule_type,flexible_part_time', 'nullable'],
-            'shift_end_time' => ['required_if:work_schedule_type,flexible_part_time', 'nullable'],
-            'required_work_minutes' => ['required_if:work_schedule_type,flexible_part_time', 'nullable', 'integer'],
-            'lunch_minutes' => ['required_if:work_schedule_type,flexible_part_time', 'nullable', 'integer'],
-
-            'actual_salary' => ['nullable', 'numeric', 'min:0'],
-            'salary_effective_from' => ['nullable', 'date'],
-            'salary_change_reason' => ['nullable', 'string', 'max:255'],
-
-            'date_of_birth' => ['nullable', 'date'],
-            'gender' => ['nullable', Rule::in(['male', 'female', 'other'])],
-            'address' => ['nullable', 'string'],
-            'highest_qualification' => ['nullable', 'string'],
-            'cgpa_percentage' => ['nullable', 'string'],
-            'total_experience' => ['nullable', 'string'],
-            'emergency_contact_number' => ['nullable', 'string', 'max:255'],
-
-            'bank_account_no' => ['nullable', 'string'],
-            'bank_account_type' => ['nullable', 'string'],
-            'bank_holder_name' => ['nullable', 'string'],
-            'ifsc_code' => ['nullable', 'string'],
-            'bank_branch' => ['nullable', 'string'],
-
-            'profile_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
-            'resume_file' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:5120'],
-        ]);
+        $input = $request->all();
+        $probOption = $input['probation_duration_option'] ?? null;
+        if ($probOption === '6_months') {
+            $input['probation_duration_type'] = 'months';
+            $input['probation_duration_value'] = 6;
+            $input['probation_months'] = 6;
+        } elseif ($probOption === '3_months') {
+            $input['probation_duration_type'] = 'months';
+            $input['probation_duration_value'] = 3;
+            $input['probation_months'] = 3;
+        } elseif ($probOption === 'custom' || !empty($input['probation_duration_value']) || !empty($input['custom_duration_value'])) {
+            $val = max(1, (int) ($input['probation_duration_value'] ?? ($input['custom_duration_value'] ?? 1)));
+            $unit = strtolower((string) ($input['probation_duration_type'] ?? ($input['custom_duration_unit'] ?? 'months')));
+            $input['probation_duration_value'] = $val;
+            $input['probation_duration_type'] = $unit;
+            $input['probation_months'] = $val;
+        }
 
         $lifecyclePayload = $this->lifecycleService->buildLifecyclePayload(
-            $request->all(),
+            $input,
             $employeeData->probation_status,
             $employeeData->employee_stage ?? null,
             true
         );
+
+        if (($employeeData->employee_stage ?? null) === 'permanent') {
+            $persistedPermanentDate = $employeeData->confirmation_effective_date
+                ?: $employeeData->confirmation_date
+                ?: $employeeData->permanent_at;
+            if ($persistedPermanentDate) {
+                $lifecyclePayload['confirmation_effective_date'] = Carbon::parse(
+                    $persistedPermanentDate,
+                    'Asia/Kolkata'
+                )->toDateString();
+            }
+        }
+
+        $wasOnProbation = ($employeeData->employee_stage ?? null) === 'probation';
+        $activationRequested = $wasOnProbation && $lifecyclePayload['employee_stage'] === 'permanent';
+        $expiryStatusEligible = ! in_array($employeeData->probation_status, ['completed', 'confirmed', 'extended', 'scheduled_permanent'], true);
+        $expiryDate = $lifecyclePayload['probation_end_date'] ?: ($employeeData->probation_end_date ?? null);
+        $autoExpiryActivation = $wasOnProbation
+            && ! $activationRequested
+            && $expiryStatusEligible
+            && $expiryDate
+            && Carbon::parse($expiryDate, 'Asia/Kolkata')->lt(Carbon::today('Asia/Kolkata'));
+        $activationThroughLifecycle = $activationRequested || $autoExpiryActivation;
+        $activationEffectiveDate = $activationRequested
+            ? ($lifecyclePayload['confirmation_effective_date'] ?: $employeeData->confirmation_effective_date ?: $employeeData->confirmation_date)
+            : null;
 
         if ($lifecyclePayload['employee_stage'] !== 'internship' && ! $request->joining_date) {
             return back()->withErrors(['joining_date' => 'Joining date is required.'])->withInput();
@@ -986,6 +1044,18 @@ class EmployeeC extends Controller
         DB::beginTransaction();
 
         try {
+            $lockedLifecycleState = DB::table($this->employeeTable)
+                ->where('id', $employee)
+                ->lockForUpdate()
+                ->first(['employee_stage', 'probation_status', 'probation_end_date', 'confirmation_effective_date']);
+            if (! $lockedLifecycleState
+                || ($lockedLifecycleState->employee_stage ?? null) !== ($employeeData->employee_stage ?? null)
+                || ($lockedLifecycleState->probation_status ?? null) !== ($employeeData->probation_status ?? null)
+                || ($lockedLifecycleState->probation_end_date ?? null) !== ($employeeData->probation_end_date ?? null)
+                || ($lockedLifecycleState->confirmation_effective_date ?? null) !== ($employeeData->confirmation_effective_date ?? null)) {
+                throw new RuntimeException('Employee lifecycle changed while this profile was being edited. Reload the employee and try again.');
+            }
+
             $userUpdateData = [
                 'name' => $request->name,
                 'email' => $request->email,
@@ -1030,6 +1100,28 @@ class EmployeeC extends Controller
             list($newShift, $newPolicyId) = $this->resolveShiftAndPolicyBySchedule($request->work_schedule_type, $request->work_mode, $request->employment_type);
             $dbScheduleType = $this->mapScheduleTypeForDb($request->work_schedule_type ?: ($request->work_mode === 'wfh' ? 'wfh' : ($request->employment_type === 'part_time' ? 'part_time' : 'general')));
 
+            $isInternshipStage = $lifecyclePayload['employee_stage'] === 'internship';
+
+            if ($isInternshipStage) {
+              
+                $probationStartDate = null;
+                $probationEndDate = null;
+                $confirmationEffectiveDate = null;
+                $probationStatus = null;
+                $probationMonths = null;
+                $probationDurationType = null;
+                $probationDurationValue = null;
+            } else {
+
+                $probationStartDate = $lifecyclePayload['probation_start_date'] ?: ($employeeData->probation_start_date ?? null);
+                $probationEndDate = $lifecyclePayload['probation_end_date'] ?: ($employeeData->probation_end_date ?? null);
+                $confirmationEffectiveDate = $lifecyclePayload['confirmation_effective_date'] ?: ($employeeData->confirmation_effective_date ?? null);
+                $probationStatus = $lifecyclePayload['probation_status'] ?: ($employeeData->probation_status ?? 'pending');
+                $probationMonths = $lifecyclePayload['probation_months'] ?? ($employeeData->probation_months ?? null);
+                $probationDurationType = $lifecyclePayload['probation_duration_type'] ?? ($employeeData->probation_duration_type ?? 'months');
+                $probationDurationValue = $lifecyclePayload['probation_duration_value'] ?? ($employeeData->probation_duration_value ?? null);
+            }
+
             $employeeUpdateData = [
                 'system_role_id' => $request->system_role_id,
                 'department_id' => $request->department_id,
@@ -1042,24 +1134,32 @@ class EmployeeC extends Controller
                 'employment_status' => $request->employment_status,
                 'joining_date' => $request->filled('joining_date') ? $request->joining_date : ($lifecyclePayload['joining_date'] ?: $employeeData->joining_date),
                 'relieving_date' => $request->filled('relieving_date') ? $request->relieving_date : ($lifecyclePayload['relieving_date'] ?: $employeeData->relieving_date),
-                'probation_start_date' => $request->filled('probation_start_date') ? $request->probation_start_date : ($lifecyclePayload['probation_start_date'] ?: $employeeData->probation_start_date),
-                'probation_end_date' => $request->filled('probation_end_date') ? $request->probation_end_date : ($lifecyclePayload['probation_end_date'] ?: $employeeData->probation_end_date),
-                'probation_status' => $request->filled('probation_status') ? $request->probation_status : ($lifecyclePayload['probation_status'] ?: $employeeData->probation_status),
-                'internship_start_date' => $request->filled('internship_start_date') ? $request->internship_start_date : ($lifecyclePayload['internship_start_date'] ?: $employeeData->internship_start_date),
-                'internship_end_date' => $request->filled('internship_end_date') ? $request->internship_end_date : ($lifecyclePayload['internship_end_date'] ?: $employeeData->internship_end_date),
+                'probation_start_date' => $probationStartDate,
+                'probation_end_date' => $probationEndDate,
+                'confirmation_effective_date' => $confirmationEffectiveDate,
+                'probation_status' => $probationStatus,
+                'probation_months' => $probationMonths,
+                'internship_start_date' => $lifecyclePayload['internship_start_date'],
+                'internship_end_date' => $lifecyclePayload['internship_end_date'],
                 'is_paid_intern' => $request->has('is_paid_intern') && $request->is_paid_intern !== null ? $request->is_paid_intern : ($lifecyclePayload['is_paid_intern'] ?? $employeeData->is_paid_intern),
                 'actual_salary' => $request->filled('actual_salary') ? $request->actual_salary : ($lifecyclePayload['actual_salary'] ?: $employeeData->actual_salary),
                 'is_active' => $request->employment_status === 'active' ? 1 : 0,
-                'updated_by' => auth()->id(),
+                'updated_by' => Auth::id(),
                 'updated_at' => now(),
             ];
 
-            if ($request->filled('probation_months')) {
-                $employeeUpdateData['probation_months'] = (int) $request->probation_months;
+            if (Schema::hasColumn($this->employeeTable, 'probation_duration_type')) {
+                $employeeUpdateData['probation_duration_type'] = $probationDurationType;
             }
 
-            if ($request->filled('confirmation_date')) {
-                $employeeUpdateData['confirmation_date'] = $request->confirmation_date;
+            if (Schema::hasColumn($this->employeeTable, 'probation_duration_value')) {
+                $employeeUpdateData['probation_duration_value'] = $probationDurationValue;
+            }
+
+            if (Schema::hasColumn($this->employeeTable, 'confirmation_date')) {
+                if (! $activationRequested) {
+                    $employeeUpdateData['confirmation_date'] = $lifecyclePayload['employee_stage'] === 'permanent' ? ($confirmationEffectiveDate ?? null) : null;
+                }
             }
 
             if (Schema::hasColumn($this->employeeTable, 'internship_status')) {
@@ -1069,19 +1169,12 @@ class EmployeeC extends Controller
             }
 
             if (Schema::hasColumn($this->employeeTable, 'is_permanent')) {
-                $employeeUpdateData['is_permanent'] = $lifecyclePayload['employee_stage'] === 'permanent'
-                    ? 1
-                    : ((int)($employeeData->is_permanent ?? 0));
+                $employeeUpdateData['is_permanent'] = $lifecyclePayload['employee_stage'] === 'permanent' ? 1 : 0;
             }
 
             if (Schema::hasColumn($this->employeeTable, 'permanent_at')) {
-                $permDate = $request->filled('confirmation_date')
-                    ? $request->confirmation_date
-                    : ($request->filled('permanent_at')
-                        ? $request->permanent_at
-                        : ($employeeData->permanent_at ?? ($lifecyclePayload['employee_stage'] === 'permanent' ? now()->toDateString() : null)));
-                if ($permDate) {
-                    $employeeUpdateData['permanent_at'] = $permDate;
+                if (! $activationRequested) {
+                    $employeeUpdateData['permanent_at'] = $lifecyclePayload['employee_stage'] === 'permanent' ? ($confirmationEffectiveDate ?? null) : null;
                 }
             }
 
@@ -1092,27 +1185,37 @@ class EmployeeC extends Controller
                 $employeeUpdateData['reporting_manager_employee_id'] = $newManagerId;
 
                 if ($newManagerId && $newManagerId !== (int)$oldManagerId) {
-                    app(\App\Services\HRMS\Reporting\ReportingScopeS::class)->assignSupervisor([
+                    app(ReportingScopeS::class)->assignSupervisor([
                         'supervisor_employee_id' => $newManagerId,
                         'employee_id' => (int)$employee,
                         'start_date' => now()->toDateString(),
                     ]);
                 } elseif (!$newManagerId && $oldManagerId) {
-                    app(\App\Services\HRMS\Reporting\ReportingScopeS::class)->relieveEmployeeByEmpId((int)$employee);
+                    app(ReportingScopeS::class)->relieveEmployeeByEmpId((int)$employee);
                 }
             }
 
             DB::table($this->employeeTable)->where('id', $employee)->update($employeeUpdateData);
 
-            // Regenerate / sync leave allocation after employee profile update
-            $empModel = \App\Models\HRMS\Employee\EmployeeM::find($employee);
-            if ($empModel) {
-                app(\App\Services\HRMS\Leave\LeaveAllocationService::class)->generateForEmployee(
-                    $empModel,
-                    (int) now()->year,
-                    auth()->id(),
-                    $empModel->employee_stage
-                );
+           
+            $empModel = EmployeeM::find($employee);
+            if ($empModel && ! $activationThroughLifecycle) {
+                $allocationYear = (int) Carbon::now('Asia/Kolkata')->year;
+                $isPermanent = strtolower((string) $empModel->employee_stage) === 'permanent';
+                $currentAllocationExists = LeaveAllocationM::query()
+                    ->where('employee_id', $empModel->id)
+                    ->where('year', $allocationYear)
+                    ->exists();
+
+                
+                if (! $isPermanent || ! $currentAllocationExists) {
+                    $this->leaveAllocationService->generateForEmployee(
+                        $empModel,
+                        $allocationYear,
+                        Auth::id(),
+                        $empModel->employee_stage
+                    );
+                }
             }
 
             if (($oldPolicyId !== $newPolicyId || !DB::table('employee_policy_assignments')->where('employee_id', $employee)->where('policy_type', 'attendance')->where('is_active', 1)->exists()) && $newPolicyId) {
@@ -1133,10 +1236,11 @@ class EmployeeC extends Controller
                             ->where('id', $assignment->id)
                             ->delete();
                     } else {
-                        // Ends yesterday
+                        // Ends yesterday and deactivated
                         DB::table('employee_policy_assignments')
                             ->where('id', $assignment->id)
                             ->update([
+                                'is_active' => 0,
                                 'effective_to' => $yesterday,
                                 'updated_at' => now(),
                             ]);
@@ -1150,162 +1254,35 @@ class EmployeeC extends Controller
                     'policy_id' => $newPolicyId,
                     'effective_from' => $today,
                     'is_active' => 1,
-                    'assigned_by_user_id' => auth()->id() ?: 1,
+                    'assigned_by_user_id' => Auth::id() ?: 1,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
             }
 
             if ($newShift) {
-                $isFlexible = $request->work_schedule_type === 'flexible_part_time';
+                $shiftResult = $this->shiftAssignmentService->assignShift(
+                    (int) $employee,
+                    [
+                        'attendance_time_id' => $newShift->id,
+                        'attendance_policy_rule_id' => $request->attendance_policy_rule_id ?? $request->attendance_policy_id ?? DB::table('employees_new')->where('id', $employee)->value('attendance_policy_rule_id'),
+                        'work_schedule_type' => $request->work_schedule_type,
+                        'punch_allowed_from' => $request->punch_allowed_from,
+                        'shift_start_time' => $request->shift_start_time,
+                        'late_after_time' => $request->late_after_time,
+                        'half_day_after_time' => $request->half_day_after_time,
+                        'block_after_time' => $request->block_after_time,
+                        'shift_end_time' => $request->shift_end_time,
+                        'required_work_minutes' => $request->required_work_minutes,
+                        'lunch_minutes' => $request->lunch_minutes,
+                        'effective_from' => $request->shift_effective_from,
+                        'is_active' => 1,
+                    ],
+                    Auth::id() ?: 1
+                );
 
-                $punchAllowed = $isFlexible ? ($request->punch_allowed_from ? Carbon::parse($request->punch_allowed_from)->format('H:i:s') : null) : $newShift->punch_allowed_from;
-                $shiftStart = $isFlexible ? ($request->shift_start_time ? Carbon::parse($request->shift_start_time)->format('H:i:s') : null) : $newShift->shift_start_time;
-                $lateAfter = $isFlexible ? ($request->late_after_time ? Carbon::parse($request->late_after_time)->format('H:i:s') : null) : $newShift->late_after_time;
-                $halfDayAfter = $isFlexible ? ($request->half_day_after_time ? Carbon::parse($request->half_day_after_time)->format('H:i:s') : null) : $newShift->half_day_after_time;
-                $blockAfter = $isFlexible ? ($request->block_after_time ? Carbon::parse($request->block_after_time)->format('H:i:s') : null) : $newShift->block_after_time;
-                $shiftEnd = $isFlexible ? ($request->shift_end_time ? Carbon::parse($request->shift_end_time)->format('H:i:s') : null) : $newShift->shift_end_time;
-                $reqMinutes = $isFlexible ? ($request->required_work_minutes !== null ? (int) $request->required_work_minutes : null) : $newShift->required_work_minutes;
-                $lunchMinutes = $isFlexible ? ($request->lunch_minutes !== null ? (int) $request->lunch_minutes : null) : $newShift->lunch_break_minutes;
-
-                $activeTiming = DB::table('employee_shift_timings')
-                    ->where('employee_id', $employee)
-                    ->where('is_active', 1)
-                    ->first();
-
-                // Format values for active timing comparison
-                $activePunchAllowed = $activeTiming ? ($activeTiming->punch_allowed_from ? Carbon::parse($activeTiming->punch_allowed_from)->format('H:i:s') : null) : null;
-                $activeShiftStart = $activeTiming ? ($activeTiming->shift_start_time ? Carbon::parse($activeTiming->shift_start_time)->format('H:i:s') : null) : null;
-                $activeLateAfter = $activeTiming ? ($activeTiming->late_after_time ? Carbon::parse($activeTiming->late_after_time)->format('H:i:s') : null) : null;
-                $activeHalfDayAfter = $activeTiming ? ($activeTiming->half_day_after_time ? Carbon::parse($activeTiming->half_day_after_time)->format('H:i:s') : null) : null;
-                $activeBlockAfter = $activeTiming ? ($activeTiming->block_after_time ? Carbon::parse($activeTiming->block_after_time)->format('H:i:s') : null) : null;
-                $activeShiftEnd = $activeTiming ? ($activeTiming->shift_end_time ? Carbon::parse($activeTiming->shift_end_time)->format('H:i:s') : null) : null;
-
-                $hasChanges = !$activeTiming
-                    || (int)$activeTiming->attendance_time_id !== (int)$newShift->id
-                    || $activePunchAllowed !== $punchAllowed
-                    || $activeShiftStart !== $shiftStart
-                    || $activeLateAfter !== $lateAfter
-                    || $activeHalfDayAfter !== $halfDayAfter
-                    || $activeBlockAfter !== $blockAfter
-                    || $activeShiftEnd !== $shiftEnd
-                    || (int)$activeTiming->required_work_minutes !== $reqMinutes
-                    || (int)$activeTiming->lunch_minutes !== $lunchMinutes;
-
-                if ($hasChanges) {
-                    $targetEffectiveFrom = $request->shift_effective_from ?: Carbon::now('Asia/Kolkata')->toDateString();
-
-                    $hasPunchedIn = DB::table('attendances')
-                        ->where('employee_id', $employee)
-                        ->whereDate('attendance_date', $targetEffectiveFrom)
-                        ->whereNotNull('punch_in_time')
-                        ->exists();
-
-                    if ($hasPunchedIn) {
-                        $newEffectiveFrom = Carbon::parse($targetEffectiveFrom)->addDay()->toDateString();
-
-                        if ($activeTiming) {
-                            if ($activeTiming->effective_from && Carbon::parse($activeTiming->effective_from)->gt(Carbon::parse($targetEffectiveFrom))) {
-                                DB::table('employee_shift_timings')
-                                    ->where('id', $activeTiming->id)
-                                    ->delete();
-                            } else {
-                                DB::table('employee_shift_timings')
-                                    ->where('id', $activeTiming->id)
-                                    ->update([
-                                        'is_active' => 1,
-                                        'effective_to' => $targetEffectiveFrom,
-                                        'updated_at' => now(),
-                                    ]);
-                            }
-                        }
-
-                        DB::table('employee_shift_timings')->insert([
-                            'employee_id' => $employee,
-                            'attendance_time_id' => $newShift->id,
-                            'attendance_policy_rule_id' => $request->attendance_policy_rule_id ?? $request->attendance_policy_id ?? DB::table('employees_new')->where('id', $employee)->value('attendance_policy_rule_id'),
-                            'punch_allowed_from' => $punchAllowed,
-                            'shift_start_time' => $shiftStart,
-                            'late_after_time' => $lateAfter,
-                            'half_day_after_time' => $halfDayAfter,
-                            'block_after_time' => $blockAfter,
-                            'shift_end_time' => $shiftEnd,
-                            'required_work_minutes' => $reqMinutes,
-                            'lunch_minutes' => $lunchMinutes,
-                            'effective_from' => $newEffectiveFrom,
-                            'is_active' => 1,
-                            'created_by' => auth()->id() ?: 1,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-
-                        session()->flash('warning', "The employee has already punched in today. The current day's attendance will remain on the existing shift. The new shift will automatically become effective from tomorrow.");
-                    } else {
-                        $newEffectiveFrom = $targetEffectiveFrom;
-                        $yesterday = Carbon::parse($targetEffectiveFrom)->subDay()->toDateString();
-
-                        $isFlexibleNew = $request->work_schedule_type === 'flexible_part_time';
-                        $isFlexibleOld = false;
-                        if ($activeTiming) {
-                            $oldShiftType = DB::table('attendance_times')->where('id', $activeTiming->attendance_time_id)->value('shift_type');
-                            $isFlexibleOld = ($oldShiftType === 'flexible_part_time');
-                        }
-
-                        if ($activeTiming && $isFlexibleOld && $isFlexibleNew && ($activeTiming->effective_from && Carbon::parse($activeTiming->effective_from)->eq(Carbon::parse($newEffectiveFrom)))) {
-                            // CASE 4: Flexible -> Flexible. Update timing fields of current active Flexible assignment in place.
-                            DB::table('employee_shift_timings')
-                                ->where('id', $activeTiming->id)
-                                ->update([
-                                    'punch_allowed_from' => $punchAllowed,
-                                    'shift_start_time' => $shiftStart,
-                                    'late_after_time' => $lateAfter,
-                                    'half_day_after_time' => $halfDayAfter,
-                                    'block_after_time' => $blockAfter,
-                                    'shift_end_time' => $shiftEnd,
-                                    'required_work_minutes' => $reqMinutes,
-                                    'lunch_minutes' => $lunchMinutes,
-                                    'updated_at' => now(),
-                                ]);
-                        } else {
-                            if ($activeTiming) {
-                                if ($activeTiming->effective_from && Carbon::parse($activeTiming->effective_from)->gte(Carbon::parse($newEffectiveFrom))) {
-                                    // Overwriting timing changed today/future - delete old row to avoid date overlap
-                                    DB::table('employee_shift_timings')
-                                        ->where('id', $activeTiming->id)
-                                        ->delete();
-                                } else {
-                                    // Deactivate old row: is_active = 0, effective_to = yesterday
-                                    DB::table('employee_shift_timings')
-                                        ->where('id', $activeTiming->id)
-                                        ->update([
-                                            'is_active' => 0,
-                                            'effective_to' => $yesterday,
-                                            'updated_at' => now(),
-                                        ]);
-                                }
-                            }
-
-                            // Insert new row: is_active = 1, effective_from = newEffectiveFrom, effective_to = null
-                            DB::table('employee_shift_timings')->insert([
-                                'employee_id' => $employee,
-                                'attendance_time_id' => $newShift->id,
-                                'attendance_policy_rule_id' => $request->attendance_policy_rule_id ?? $request->attendance_policy_id ?? DB::table('employees_new')->where('id', $employee)->value('attendance_policy_rule_id'),
-                                'punch_allowed_from' => $punchAllowed,
-                                'shift_start_time' => $shiftStart,
-                                'late_after_time' => $lateAfter,
-                                'half_day_after_time' => $halfDayAfter,
-                                'block_after_time' => $blockAfter,
-                                'shift_end_time' => $shiftEnd,
-                                'required_work_minutes' => $reqMinutes,
-                                'lunch_minutes' => $lunchMinutes,
-                                'effective_from' => $newEffectiveFrom,
-                                'is_active' => 1,
-                                'created_by' => auth()->id() ?: 1,
-                                'created_at' => now(),
-                                'updated_at' => now(),
-                            ]);
-                        }
-                    }
+                if (!empty($shiftResult['warning'])) {
+                    session()->flash('warning', $shiftResult['warning']);
                 }
             }
 
@@ -1317,14 +1294,23 @@ class EmployeeC extends Controller
                 || $request->filled('salary_effective_from')
                 || $request->filled('salary_change_reason');
 
-            if ($shouldSyncSalary) {
+            if ($shouldSyncSalary && ! $activationThroughLifecycle) {
                 $this->salaryHistoryService->syncSalary(
                     (int) $employee,
                     $lifecyclePayload['employee_stage'],
                     $lifecyclePayload['actual_salary'],
                     $request->salary_effective_from ?: $this->salaryEffectiveDate($lifecyclePayload),
                     $this->salaryHistoryReason($lifecyclePayload, $request->salary_change_reason, 'Salary update'),
-                    auth()->id()
+                    Auth::id()
+                );
+            }
+
+            if ($activationThroughLifecycle) {
+                $this->lifecycleService->activatePermanent(
+                    new EmployeeM(['id' => (int) $employee]),
+                    (string) ($activationEffectiveDate ?: ''),
+                    $activationRequested ? 'manual' : 'auto_expiry',
+                    Auth::id()
                 );
             }
 
@@ -1518,7 +1504,7 @@ class EmployeeC extends Controller
 
         $documents = collect($documentsList);
 
-        return view('hrms.employee.show', compact('employeeData', 'salaryHistories', 'documents'));
+        return view('hrms.employee.employee_directory.show', compact('employeeData', 'salaryHistories', 'documents'));
     }
 
     public function edit($employee)
@@ -1542,7 +1528,7 @@ class EmployeeC extends Controller
             ->where('is_active', 1)
             ->first();
 
-        return view('hrms.employee.edit', compact(
+        return view('hrms.employee.employee_onboarding.edit', compact(
             'employeeData',
             'departments',
             'designations',
@@ -1553,12 +1539,12 @@ class EmployeeC extends Controller
         ));
     }
 
-    public function update(Request $request, $employee)
+    public function update(UpdateManageEmployeeRequest $request, $employee)
     {
         return $this->manageUpdate($request, $employee);
     }
 
-    public function pendingProfiles()
+    public function pendingProfiles(Request $request)
     {
         $documentStats = DB::table('employee_documents_new')
             ->select(
@@ -1570,7 +1556,7 @@ class EmployeeC extends Controller
             )
             ->groupBy('employee_id');
 
-        $employees = DB::table($this->employeeTable)
+        $baseQuery = DB::table($this->employeeTable)
             ->join('users', 'users.id', '=', $this->employeeTable . '.user_id')
             ->leftJoin('departments', 'departments.id', '=', $this->employeeTable . '.department_id')
             ->leftJoin('designations', 'designations.id', '=', $this->employeeTable . '.designation_id')
@@ -1600,9 +1586,162 @@ class EmployeeC extends Controller
                 DB::raw('COALESCE(doc_stats.pending_documents_count, 0) as pending_documents_count'),
                 DB::raw('COALESCE(doc_stats.rejected_documents_count, 0) as rejected_documents_count'),
                 $this->profileTable . '.updated_at'
-            )
-            ->orderByDesc($this->employeeTable . '.id')
-            ->get();
+            );
+
+        if ($request->has('ajax_table') || $request->ajax()) {
+            try {
+                $query = clone $baseQuery;
+
+                if ($request->filled('department')) {
+                    $query->where($this->employeeTable . '.department_id', $request->department);
+                }
+
+                if ($request->filled('status')) {
+                    $status = $request->status;
+                    if ($status === 'pending') {
+                        $query->where(function ($q) {
+                            $q->whereNull($this->profileTable . '.profile_status')
+                                ->orWhere($this->profileTable . '.profile_status', 'pending');
+                        });
+                    } else {
+                        $query->where($this->profileTable . '.profile_status', $status);
+                    }
+                }
+
+                $totalQuery = clone $baseQuery;
+                $recordsTotal = $totalQuery->count();
+
+                $searchValue = $request->input('search.value');
+                if (!empty($searchValue)) {
+                    $query->where(function ($q) use ($searchValue) {
+                        $q->where('users.name', 'like', "%{$searchValue}%")
+                            ->orWhere('users.email', 'like', "%{$searchValue}%")
+                            ->orWhere($this->employeeTable . '.employee_code', 'like', "%{$searchValue}%")
+                            ->orWhere('departments.name', 'like', "%{$searchValue}%")
+                            ->orWhere('designations.name', 'like', "%{$searchValue}%");
+                    });
+                }
+
+                $filteredQuery = clone $query;
+                $recordsFiltered = $filteredQuery->count();
+
+                $columns = [
+                    0 => $this->employeeTable . '.id',
+                    1 => 'users.name',
+                    2 => $this->employeeTable . '.employee_code',
+                    3 => 'departments.name',
+                    4 => 'designations.name',
+                    5 => DB::raw("COALESCE({$this->profileTable}.profile_status, 'pending')"),
+                    6 => $this->profileTable . '.is_profile_completed',
+                    7 => $this->profileTable . '.updated_at',
+                    8 => $this->employeeTable . '.id',
+                ];
+
+                $orderColumnIndex = (int) $request->input('order.0.column', 0);
+                $orderDirection = $request->input('order.0.dir', 'desc') === 'asc' ? 'asc' : 'desc';
+                $orderColumn = $columns[$orderColumnIndex] ?? $this->employeeTable . '.id';
+
+                $start = (int) $request->input('start', 0);
+                $length = (int) $request->input('length', 25);
+
+                $employees = $query
+                    ->orderBy($orderColumn, $orderDirection)
+                    ->offset($start)
+                    ->limit($length)
+                    ->get();
+
+                $data = $employees->map(function ($emp, $idx) use ($start) {
+                    $status = $emp->profile_status ?? 'pending';
+                    $statusClass = match ($status) {
+                        'submitted' => 'status-submitted',
+                        'approved' => 'status-approved',
+                        'rejected' => 'status-rejected',
+                        default => 'status-pending',
+                    };
+                    $statusLabel = match ($status) {
+                        'submitted' => 'Submitted',
+                        'approved' => 'Approved',
+                        'rejected' => 'Rejected',
+                        default => 'Pending',
+                    };
+
+                    $name = $emp->name ?? 'Employee';
+                    $email = $emp->email ?? '-';
+                    $code = $emp->employee_code ?? '-';
+                    $department = $emp->department_name ?? '-';
+                    $designation = $emp->designation_name ?? '-';
+                    $updated = !empty($emp->updated_at) ? \Carbon\Carbon::parse($emp->updated_at)->diffForHumans() : 'Not updated';
+
+                    // Employee cell (name & email)
+                    $employeeHtml = '<div class="emp-cell"><div class="emp-info"><div class="emp-name">' . e($name) . '</div><div class="emp-email">' . e($email) . '</div></div></div>';
+
+                    // Code badge
+                    $codeHtml = '<span class="code-badge">' . e($code) . '</span>';
+
+                    // Status badge
+                    $statusHtml = '<span class="status-badge ' . $statusClass . '"><i class="fas fa-circle"></i> ' . $statusLabel . '</span>';
+
+                    // Approve Cell
+                    if ($status === 'approved') {
+                        $approveHtml = '<span class="lock-badge"><i class="fas fa-lock"></i> Approved</span>';
+                    } elseif ($status === 'submitted') {
+                        $approveHtml = '<div class="complete-cell"><label class="complete-switch" title="Approve Profile"><input type="checkbox" class="profile-approve-toggle" data-form-id="approveForm' . $emp->id . '"><span class="slider"></span></label><form id="approveForm' . $emp->id . '" action="' . route('hrms.employees.profile.approve', $emp->id) . '" method="POST" class="d-none">' . csrf_field() . '</form></div>';
+                    } else {
+                        $approveHtml = '<span class="lock-badge"><i class="fas fa-clock"></i> Pending</span>';
+                    }
+
+                    // Actions Cell
+                    $actionsHtml = '<div class="actions">';
+                    if (Route::has('hrms.employees.profile.view')) {
+                        $actionsHtml .= '<a href="' . route('hrms.employees.profile.view', $emp->id) . '" class="action-btn action-view" title="View Profile"><i class="fas fa-eye"></i></a>';
+                    }
+                    if (Route::has('hrms.employees.edit')) {
+                        $actionsHtml .= '<a href="' . route('hrms.employees.edit', $emp->id) . '" class="action-btn action-edit" title="Edit Onboarding"><i class="fas fa-edit"></i></a>';
+                    }
+                    if ($status !== 'approved' && Route::has('hrms.employees.profile.reject')) {
+                        $actionsHtml .= '<button type="button" class="action-btn action-reject reject-profile-btn" title="Reject Profile" data-form-id="rejectForm' . $emp->id . '"><i class="fas fa-times"></i></button><form id="rejectForm' . $emp->id . '" action="' . route('hrms.employees.profile.reject', $emp->id) . '" method="POST" class="d-none">' . csrf_field() . '<input type="hidden" name="rejection_reason" class="reject-reason-input"></form>';
+                    }
+                    $actionsHtml .= '</div>';
+
+                    return [
+                        's_no' => $start + $idx + 1,
+                        'employee' => $employeeHtml,
+                        'code' => $codeHtml,
+                        'department' => '<span class="font-weight-bold" style="color: var(--orb-text);">' . e($department) . '</span>',
+                        'designation' => '<span style="color: var(--orb-muted); font-weight: 600;">' . e($designation) . '</span>',
+                        'status' => $statusHtml,
+                        'approve' => $approveHtml,
+                        'updated' => $updated,
+                        'actions' => $actionsHtml,
+                        // Raw fields for export & mobile render
+                        'raw_id' => $emp->id,
+                        'raw_name' => $name,
+                        'raw_email' => $email,
+                        'raw_code' => $code,
+                        'raw_department' => $department,
+                        'raw_designation' => $designation,
+                        'raw_status' => $statusLabel,
+                        'raw_status_class' => $statusClass,
+                        'raw_updated' => $updated,
+                    ];
+                });
+
+                return response()->json([
+                    'draw' => intval($request->input('draw', 1)),
+                    'recordsTotal' => $recordsTotal,
+                    'recordsFiltered' => $recordsFiltered,
+                    'data' => $data,
+                ]);
+            } catch (\Throwable $e) {
+                return response()->json([
+                    'draw' => intval($request->input('draw', 1)),
+                    'recordsTotal' => 0,
+                    'recordsFiltered' => 0,
+                    'data' => [],
+                    'error' => $e->getMessage(),
+                ], 500);
+            }
+        }
 
         $allCounts = DB::table($this->employeeTable)
             ->leftJoin($this->profileTable, $this->profileTable . '.employee_id', '=', $this->employeeTable . '.id')
@@ -1616,13 +1755,15 @@ class EmployeeC extends Controller
             )
             ->first();
 
+        $departments = DB::table('departments')->orderBy('name')->get();
+
         return view('hrms.employee.profile.pending', [
-            'employees' => $employees,
             'total' => $allCounts->total ?? 0,
             'pending' => $allCounts->pending ?? 0,
             'submitted' => $allCounts->submitted ?? 0,
             'approved' => $allCounts->approved ?? 0,
             'rejected' => $allCounts->rejected ?? 0,
+            'departments' => $departments,
         ]);
     }
 
@@ -1759,7 +1900,7 @@ class EmployeeC extends Controller
                 $empName = DB::table('users')->where('id', $employeeData->user_id)->value('name') ?: $empCode;
                 $subDate = now()->toFormattedDateString();
 
-                app(\App\Services\HRMS\Notification\NotificationS::class)->notifyHrAndSuperAdmin(
+                app(NotificationS::class)->notifyHrAndSuperAdmin(
                     'Employee Profile Submitted for Verification',
                     "Profile submitted for verification.\nEmployee: {$empName} ({$empCode})\nDepartment: {$deptName}\nDate: {$subDate}",
                     'profile_submitted',
@@ -1791,53 +1932,81 @@ class EmployeeC extends Controller
     }
 
     public function approveProfile($employee)
-    {
-        $employeeData = DB::table($this->employeeTable)->where('id', $employee)->first();
-        abort_if(! $employeeData, 404);
+   {
+    $employeeData = DB::table($this->employeeTable)
+        ->where('id', $employee)
+        ->first();
 
-        DB::beginTransaction();
+    abort_if(! $employeeData, 404);
 
-        try {
-            $oldProfile = DB::table($this->profileTable)
-                ->where('employee_id', $employee)
-                ->first();
+    DB::beginTransaction();
 
-            DB::table($this->profileTable)->updateOrInsert(
-                ['employee_id' => $employee],
-                [
-                    'profile_status' => 'approved',
-                    'is_profile_completed' => 1,
-                    'profile_completed_at' => now(),
-                    'approved_by_user_id' => auth()->id(),
-                    'approved_at' => now(),
-                    'rejection_reason' => null,
-                    'updated_at' => now(),
-                ]
+    try {
+        $oldProfile = DB::table($this->profileTable)
+            ->where('employee_id', $employee)
+            ->first();
+
+        
+        DB::table($this->profileTable)->updateOrInsert(
+            ['employee_id' => $employee],
+            [
+                'profile_status' => 'approved',
+                'is_profile_completed' => 1,
+                'profile_completed_at' => now(),
+                'approved_by_user_id' => Auth::id(),
+                'approved_at' => now(),
+                'rejection_reason' => null,
+                'updated_at' => now(),
+            ]
+        );
+
+        
+        DB::table('employee_documents_new')
+            ->where('employee_id', $employee)
+            ->update([
+                'verification_status' => 'verified',
+                'verified_by_user_id' => Auth::id(),
+                'verified_at' => now(),
+                'rejection_reason' => null,
+                'updated_at' => now(),
+            ]);
+
+        
+        $this->logLifecycle(
+            $employee,
+            'profile approved',
+            $oldProfile,
+            [
+                'profile_status' => 'approved',
+                'is_profile_completed' => 1,
+                'documents_status' => 'verified',
+            ],
+            'Profile and all uploaded documents approved by HR'
+        );
+
+        
+        $employeeModel = EmployeeM::query()
+            ->with('profile')
+            ->find($employee);
+
+        if (! $employeeModel) {
+            throw new \RuntimeException(
+                "Employee #{$employee} could not be loaded after profile approval."
+            );
+        }
+
+        
+        app(LeaveAllocationService::class)
+            ->generateForEmployee(
+                $employeeModel,
+                (int) now()->year,
+                Auth::id()
             );
 
-            DB::table('employee_documents_new')
-                ->where('employee_id', $employee)
-                ->update([
-                    'verification_status' => 'verified',
-                    'verified_by_user_id' => auth()->id(),
-                    'verified_at' => now(),
-                    'rejection_reason' => null,
-                    'updated_at' => now(),
-                ]);
-
-            $this->logLifecycle(
-                $employee,
-                'profile approved',
-                $oldProfile,
-                [
-                    'profile_status' => 'approved',
-                    'is_profile_completed' => 1,
-                    'documents_status' => 'verified',
-                ],
-                'Profile and all uploaded documents approved by HR'
-            );
-
-            app(\App\Services\HRMS\Notification\NotificationS::class)->notifyEmployee(
+        
+        DB::commit();
+        app(NotificationS::class)
+            ->notifyEmployee(
                 'Profile Approved',
                 'Your profile has been approved. You can now Punch In/Out and mark attendance.',
                 'profile_approved',
@@ -1851,19 +2020,25 @@ class EmployeeC extends Controller
                 $employeeData->user_id
             );
 
-            DB::commit();
+        
+        app(EmployeeProfileS::class)
+            ->checkAndSendAllDocumentsVerifiedEmail((int) $employee);
 
-            app(\App\Services\HRMS\Employee\EmployeeProfileS::class)->checkAndSendAllDocumentsVerifiedEmail((int)$employee);
-
-            return redirect()
-                ->route('hrms.employees.pending_profiles')
-                ->with('success', 'Profile approved and all uploaded documents verified successfully.');
-        } catch (\Throwable $e) {
-            DB::rollBack();
-
-            return back()->with('error', $e->getMessage());
-        }
+        return redirect()
+            ->route('hrms.employees.pending_profiles')
+            ->with(
+                'success',
+                'Profile approved and all uploaded documents verified successfully.'
+            );
+    } catch (\Throwable $e) {
+        DB::rollBack();
+        report($e);
+        return back()->with(
+            'error',
+            $e->getMessage()
+        );
     }
+   }
 
     public function rejectProfile(Request $request, $employee)
     {
@@ -1903,7 +2078,7 @@ class EmployeeC extends Controller
                 $request->rejection_reason ?: 'Profile rejected by HR'
             );
 
-            app(\App\Services\HRMS\Notification\NotificationS::class)->notifyEmployee(
+            app(NotificationS::class)->notifyEmployee(
                 'Profile Rejected',
                 'Your profile/documents were rejected. Please update and resubmit.',
                 'profile_rejected',
@@ -1954,6 +2129,10 @@ class EmployeeC extends Controller
                 $this->employeeTable . '.joining_date',
                 $this->employeeTable . '.probation_start_date',
                 $this->employeeTable . '.probation_end_date',
+                $this->employeeTable . '.probation_duration_type',
+                $this->employeeTable . '.probation_duration_value',
+                $this->employeeTable . '.probation_months',
+                $this->employeeTable . '.confirmation_effective_date',
                 $this->employeeTable . '.probation_status',
                 $this->employeeTable . '.internship_start_date',
                 $this->employeeTable . '.internship_end_date',
@@ -2033,7 +2212,8 @@ class EmployeeC extends Controller
                 'employee_exit_processes.handover_status',
                 'employee_exit_processes.asset_handover_status',
                 'employee_exit_processes.fnf_status',
-                'employee_exit_processes.last_working_day'
+                'employee_exit_processes.last_working_day',
+                $this->employeeTable . '.reporting_manager_employee_id'
             )
             ->where(function ($q) {
                 $q->where(function ($sq) {
@@ -2045,28 +2225,36 @@ class EmployeeC extends Controller
             ->orderByDesc($this->employeeTable . '.id')
             ->get();
 
+        $exitProcessIds = $employees->pluck('exit_process_id')->filter()->unique()->values()->all();
+        $employeeIds = $employees->pluck('id')->filter()->unique()->values()->all();
+
+       
+        $allClearances = DB::table('employee_exit_clearances')
+            ->whereIn('exit_process_id', $exitProcessIds)
+            ->get()
+            ->groupBy('exit_process_id');
+
+       
+        $exitRecordsByEmpId = $employees->keyBy('id')->all();
+        $allSummaries = $this->exitProcessService->getModuleSummaryBatch($employeeIds, $exitRecordsByEmpId);
+
         foreach ($employees as $emp) {
             if ($emp->exit_process_id) {
-                // Fetch clearance list
-                $clearanceList = DB::table('employee_exit_clearances')
-                    ->where('exit_process_id', $emp->exit_process_id)
-                    ->get();
+                $empClearances = $allClearances->get($emp->exit_process_id) ?? collect();
 
-                // If it's empty, initialize them dynamically for safety
-                if ($clearanceList->isEmpty()) {
+                
+                if ($empClearances->isEmpty()) {
                     $this->exitProcessService->initializeClearances($emp->exit_process_id);
-                    $clearanceList = DB::table('employee_exit_clearances')
+                    $empClearances = DB::table('employee_exit_clearances')
                         ->where('exit_process_id', $emp->exit_process_id)
                         ->get();
                 }
 
-                $emp->clearances = $clearanceList->keyBy('department_key');
-
-                // Fetch module summary for auto verification display
-                $emp->module_summary = $this->exitProcessService->getModuleSummary($emp->id, $emp);
+                $emp->clearances = $empClearances->keyBy('department_key');
+                $emp->module_summary = $allSummaries[$emp->id] ?? $this->exitProcessService->getModuleSummary($emp->id, $emp);
             } else {
                 $emp->clearances = collect();
-                $emp->module_summary = [];
+                $emp->module_summary = $allSummaries[$emp->id] ?? [];
             }
         }
 
@@ -2121,16 +2309,28 @@ class EmployeeC extends Controller
         abort_if(! $employeeData, 404);
 
         $request->validate([
+            'permanent_effective_date' => ['nullable', 'date'],
             'actual_salary' => ['nullable', 'numeric', 'min:0'],
             'salary_change_reason' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $probationEnd = $employeeData->probation_end_date
-            ? \Carbon\Carbon::parse($employeeData->probation_end_date)
-            : \Carbon\Carbon::now();
+        if ($request->filled('permanent_effective_date')) {
+            $permanentEffectiveDate = \Carbon\Carbon::parse($request->permanent_effective_date, 'Asia/Kolkata')->toDateString();
+        } elseif ($employeeData->probation_end_date) {
+            $permanentEffectiveDate = \Carbon\Carbon::parse($employeeData->probation_end_date, 'Asia/Kolkata')->addDay()->toDateString();
+        } else {
+            $startDate = $employeeData->probation_start_date ?: $employeeData->joining_date;
+            if ($startDate) {
+                $durationType = $employeeData->probation_duration_type ?? 'months';
+                $durationValue = (int) ($employeeData->probation_duration_value ?? $employeeData->probation_months ?? 3);
+                $calc = app(EmployeeLifecycleService::class)->calculateProbationDates($startDate, $durationType, $durationValue);
+                $permanentEffectiveDate = $calc['permanent_effective_date'];
+            } else {
+                $permanentEffectiveDate = \Carbon\Carbon::today('Asia/Kolkata')->addDay()->toDateString();
+            }
+        }
 
-        $permanentEffectiveDate = $probationEnd->copy()->addDay()->toDateString();
-        $isFuture = $employeeData->probation_end_date && \Carbon\Carbon::now()->lt(\Carbon\Carbon::parse($employeeData->probation_end_date));
+        $isFuture = \Carbon\Carbon::parse($permanentEffectiveDate, 'Asia/Kolkata')->gt(\Carbon\Carbon::today('Asia/Kolkata'));
 
         DB::beginTransaction();
 
@@ -2140,37 +2340,32 @@ class EmployeeC extends Controller
                 $updateData = [
                     'probation_status' => 'scheduled_permanent',
                     'confirmation_effective_date' => $permanentEffectiveDate,
-                    'permanent_scheduled_by_user_id' => auth()->id(),
+                    'permanent_scheduled_by_user_id' => Auth::id(),
                     'permanent_scheduled_at' => now(),
-                    'updated_by' => auth()->id(),
+                    'updated_by' => Auth::id(),
                     'updated_at' => now(),
                 ];
 
                 DB::table($this->employeeTable)->where('id', $employee)->update($updateData);
 
-                // Notify HR/Super Admin & Employee
                 $empName = DB::table('users')->where('id', $employeeData->user_id)->value('name') ?: 'Employee';
-
-                app(\App\Services\HRMS\Notification\NotificationS::class)
-                    ->notifyEmployee(
+                DB::afterCommit(function () use ($employeeData, $employee, $empName, $permanentEffectiveDate) {
+                    $notifications = app(NotificationS::class);
+                    $formattedDate = \Carbon\Carbon::parse($permanentEffectiveDate, 'Asia/Kolkata')->format('d M Y');
+                    $notifications->notifyEmployee(
                         'Permanent Confirmation Scheduled',
-                        'Your permanent confirmation has been scheduled from ' . \Carbon\Carbon::parse($permanentEffectiveDate)->format('d M Y') . '.',
-                        'permanent_scheduled',
-                        null,
-                        [],
-                        [],
+                        'Your permanent confirmation has been scheduled from ' . $formattedDate . '.',
+                        'permanent_scheduled', null, [],
+                        ['employee_id' => $employee, 'target_date' => $permanentEffectiveDate],
                         $employeeData->user_id
                     );
-
-                app(\App\Services\HRMS\Notification\NotificationS::class)
-                    ->notifyHrAndSuperAdmin(
+                    $notifications->notifyHrAndSuperAdmin(
                         'Permanent Confirmation Scheduled',
-                        'Permanent confirmation has been scheduled for ' . $empName . ' from ' . \Carbon\Carbon::parse($permanentEffectiveDate)->format('d M Y') . '.',
-                        'permanent_scheduled',
-                        null,
-                        [],
-                        ['employee_id' => $employee]
+                        'Permanent confirmation has been scheduled for ' . $empName . ' from ' . $formattedDate . '.',
+                        'permanent_scheduled', null, [],
+                        ['employee_id' => $employee, 'target_date' => $permanentEffectiveDate]
                     );
+                });
 
                 $this->logLifecycle(
                     $employee,
@@ -2190,9 +2385,10 @@ class EmployeeC extends Controller
                 $updateData = [
                     'probation_status' => 'completed',
                     'employee_stage' => 'permanent',
-                    'confirmation_date' => today()->toDateString(),
+                    'confirmation_date' => $permanentEffectiveDate,
+                    'confirmation_effective_date' => $permanentEffectiveDate,
                     'permanent_activated_at' => now(),
-                    'updated_by' => auth()->id(),
+                    'updated_by' => Auth::id(),
                     'updated_at' => now(),
                 ];
 
@@ -2201,63 +2397,18 @@ class EmployeeC extends Controller
                 }
 
                 if (Schema::hasColumn($this->employeeTable, 'permanent_at')) {
-                    $updateData['permanent_at'] = today()->toDateString();
+                    $updateData['permanent_at'] = $permanentEffectiveDate;
                 }
 
-                DB::table($this->employeeTable)->where('id', $employee)->update($updateData);
-
-                // Run leave allocation immediately
-                $empModel = \App\Models\HRMS\Employee\EmployeeM::find($employee);
-                if ($empModel) {
-                    $empModel->confirmation_date = $updateData['confirmation_date'];
-                    $empModel->employee_stage = 'permanent';
-                    app(\App\Services\HRMS\Leave\LeaveAllocationService::class)->generateForEmployee(
-                        $empModel,
-                        (int) now()->year,
-                        auth()->id(),
-                        'permanent',
-                        \Carbon\Carbon::parse($updateData['confirmation_date'], 'Asia/Kolkata')
-                    );
-                }
-
-                if ($request->filled('actual_salary')) {
-                    $this->salaryHistoryService->syncSalary(
-                        (int) $employee,
-                        'permanent',
-                        $request->actual_salary,
-                        today()->toDateString(),
-                        $request->salary_change_reason ?: 'Permanent salary update',
-                        auth()->id()
-                    );
-                }
-
-                app(\App\Services\HRMS\Notification\NotificationS::class)
-                    ->markEmployeeLifecycleNotificationsResolved((int) $employee, ['probation_ending_soon', 'probation_ending_reminder']);
+                app(EmployeeLifecycleService::class)->activatePermanent(
+                    EmployeeM::findOrFail((int) $employee),
+                    $permanentEffectiveDate,
+                    'manual',
+                    Auth::id(),
+                    $request->filled('actual_salary') ? (float) $request->actual_salary : null
+                );
 
                 // Notify HR/Super Admin & Employee
-                $empName = DB::table('users')->where('id', $employeeData->user_id)->value('name') ?: 'Employee';
-
-                app(\App\Services\HRMS\Notification\NotificationS::class)
-                    ->notifyEmployee(
-                        'Permanent Confirmation Activated',
-                        'Your permanent confirmation has been activated successfully.',
-                        'permanent_activated',
-                        null,
-                        [],
-                        [],
-                        $employeeData->user_id
-                    );
-
-                app(\App\Services\HRMS\Notification\NotificationS::class)
-                    ->notifyHrAndSuperAdmin(
-                        'Permanent Confirmation Activated',
-                        'Permanent confirmation has been activated for ' . $empName . '.',
-                        'permanent_activated',
-                        null,
-                        [],
-                        ['employee_id' => $employee]
-                    );
-
                 $this->logLifecycle(
                     $employee,
                     'marked permanent',
@@ -2280,8 +2431,8 @@ class EmployeeC extends Controller
 
     public function extendInternship(Request $request, $employee)
     {
-        $employeeData = DB::table($this->employeeTable)->where('id', $employee)->first();
-        abort_if(! $employeeData, 404);
+        $employeeModel = EmployeeM::find((int) $employee);
+        abort_if(! $employeeModel, 404);
 
         $request->validate([
             'internship_extended_to' => ['required', 'date'],
@@ -2290,201 +2441,60 @@ class EmployeeC extends Controller
             'salary_change_reason' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $currentEndDate = $employeeData->internship_extended_to ?: $employeeData->internship_end_date;
-
-        if (! empty($currentEndDate) && Carbon::parse($request->internship_extended_to)->lte(Carbon::parse($currentEndDate))) {
-            return back()->with(
-                'error',
-                'Extension date must be after current internship end date ' . Carbon::parse($currentEndDate)->format('d M Y') . '.'
-            );
-        }
-
-        $oldEndDate = $currentEndDate ?: now()->toDateString();
-        $newEndDate = Carbon::parse($request->internship_extended_to)->toDateString();
-        $salaryEffectiveFrom = Carbon::parse($oldEndDate)->addDay()->toDateString();
-
-        DB::beginTransaction();
-
         try {
-            if (Schema::hasTable('employee_internship_extensions')) {
-                DB::table('employee_internship_extensions')->insert([
-                    'employee_id' => $employee,
-                    'old_end_date' => $oldEndDate,
-                    'new_end_date' => $newEndDate,
-                    'reason' => $request->reason,
-                    'extended_by_user_id' => auth()->id(),
-                    'extended_at' => now(),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            }
-
-            $updateData = [
-                'employee_stage' => 'internship',
-                'updated_by' => auth()->id(),
-                'updated_at' => now(),
-            ];
-
-            if (Schema::hasColumn($this->employeeTable, 'internship_extended_to')) {
-                $updateData['internship_extended_to'] = $newEndDate;
-            } else {
-                $updateData['internship_end_date'] = $newEndDate;
-            }
-
-            if (Schema::hasColumn($this->employeeTable, 'internship_status')) {
-                $updateData['internship_status'] = 'extended';
-            }
-
-            DB::table($this->employeeTable)->where('id', $employee)->update($updateData);
-
-            if ($request->filled('actual_salary')) {
-                $this->salaryHistoryService->syncSalary(
-                    (int) $employee,
-                    'internship',
-                    $request->actual_salary,
-                    $salaryEffectiveFrom,
-                    $request->salary_change_reason ?: 'Internship stipend updated during extension',
-                    auth()->id()
-                );
-            }
-
-            app(\App\Services\HRMS\Notification\NotificationS::class)
-                ->markEmployeeLifecycleNotificationsResolved((int) $employee, ['internship_ending_soon', 'internship_ending_reminder']);
-
-            $this->logLifecycle(
-                $employee,
-                'internship extended',
-                ['old_end_date' => $oldEndDate],
-                ['new_end_date' => $newEndDate],
-                $request->reason ?: 'Internship extended'
+            $result = $this->lifecycleService->extendInternship(
+                $employeeModel,
+                $request->all(),
+                (int) Auth::id()
             );
-
-            DB::commit();
 
             return redirect()
                 ->route('hrms.employees.probation_internship')
-                ->with('success', 'Internship extended successfully.');
+                ->with('success', $result['message'] ?? 'Internship extended successfully.');
+        } catch (\InvalidArgumentException $e) {
+            return back()->with('error', $e->getMessage());
         } catch (\Throwable $e) {
-            DB::rollBack();
             return back()->with('error', $e->getMessage());
         }
     }
 
     public function completeInternship(Request $request, $employee)
     {
-        $employeeData = DB::table($this->employeeTable)->where('id', $employee)->first();
-        abort_if(! $employeeData, 404);
+        $employeeModel = EmployeeM::find((int) $employee);
+        abort_if(! $employeeModel, 404);
 
         $request->validate([
             'next_stage' => ['required', Rule::in(['completed', 'probation'])],
             'actual_salary' => ['nullable', 'numeric', 'min:0'],
             'salary_change_reason' => ['nullable', 'string', 'max:255'],
+            'probation_duration_option' => ['nullable', 'string', Rule::in(['3_months', '6_months', 'custom'])],
+            'custom_duration_value' => ['nullable', 'integer', 'min:1', 'max:365'],
+            'custom_duration_unit' => ['nullable', 'string', Rule::in(['days', 'months'])],
         ]);
 
-        $internshipEndDate = $employeeData->internship_extended_to ?: $employeeData->internship_end_date;
-
-        $effectiveDate = $internshipEndDate
-            ? Carbon::parse($internshipEndDate)->addDay()->toDateString()
-            : now()->toDateString();
-
-        DB::beginTransaction();
-
         try {
-            $updateData = [
-                'updated_by' => auth()->id(),
-                'updated_at' => now(),
-            ];
-
-            if (Schema::hasColumn($this->employeeTable, 'internship_completed_at')) {
-                $updateData['internship_completed_at'] = now();
-            }
-
-            if ($request->next_stage === 'completed') {
-                if (Schema::hasColumn($this->employeeTable, 'internship_status')) {
-                    $updateData['internship_status'] = 'completed';
-                }
-            }
-
-            if ($request->next_stage === 'probation') {
-                $probationMonths = (int) ($employeeData->probation_months ?: 3);
-                $probationMonths = $probationMonths > 0 ? $probationMonths : 3;
-
-                $updateData['employment_type'] = 'full_time';
-                $updateData['employee_stage'] = 'probation';
-                $updateData['joining_date'] = $effectiveDate;
-                $updateData['probation_start_date'] = $effectiveDate;
-                $updateData['probation_end_date'] = Carbon::parse($effectiveDate)->addMonthsNoOverflow($probationMonths)->subDay()->toDateString();
-                $updateData['probation_status'] = 'active';
-
-                if (Schema::hasColumn($this->employeeTable, 'internship_status')) {
-                    $updateData['internship_status'] = 'converted_to_probation';
-                }
-            }
-
-            DB::table($this->employeeTable)->where('id', $employee)->update($updateData);
-
-            if ($request->next_stage === 'probation') {
-                $this->lifecycleService->autoAllocateForStage(
-                    (int) $employee,
-                    'probation',
-                    $effectiveDate,
-                    auth()->id()
-                );
-            }
-
-            if ($request->filled('actual_salary') && $request->next_stage === 'probation') {
-                $this->salaryHistoryService->syncSalary(
-                    (int) $employee,
-                    'probation',
-                    $request->actual_salary,
-                    $effectiveDate,
-                    $request->salary_change_reason ?: 'Internship converted to probation',
-                    auth()->id()
-                );
-            }
-
-            app(\App\Services\HRMS\Notification\NotificationS::class)
-                ->markEmployeeLifecycleNotificationsResolved((int) $employee, ['internship_ending_soon', 'internship_ending_reminder']);
-
-            $this->logLifecycle(
-                $employee,
-                'internship completed',
-                $employeeData,
-                $updateData,
-                'Internship action applied effective from ' . $effectiveDate
+            $result = $this->lifecycleService->handleInternshipCompletion(
+                $employeeModel,
+                $request->all(),
+                (int) Auth::id()
             );
-
-            DB::commit();
 
             return redirect()
                 ->route('hrms.employees.probation_internship')
-                ->with('success', 'Internship action completed. Effective from ' . Carbon::parse($effectiveDate)->format('d M Y') . '.');
+                ->with('success', $result['message'] ?? 'Internship action completed successfully.');
         } catch (\Throwable $e) {
-            DB::rollBack();
-
             return back()->with('error', $e->getMessage());
         }
     }
-    public function markExit(Request $request, $employee)
+    public function markExit(InitiateExitRequest $request, $employee)
     {
-        $actor = auth()->user();
+        /** @var UserM|null $actor */
+        $actor = Auth::user();
         abort_if(! $actor, 401);
 
         $isSuperAdmin = method_exists($actor, 'isSuperAdmin') && $actor->isSuperAdmin();
-
-        $request->validate([
-            'exit_type' => ['required', Rule::in(['resignation', 'termination', 'discontinued', 'retirement', 'contract_end', 'mutual_separation', 'layoff_redundancy', 'absconding', 'deceased', 'other', 'internship_completed', 'internship_exit'])],
-            'resignation_date' => ['nullable', 'date'],
-            'termination_date' => ['nullable', 'date'],
-            'last_working_day' => ['nullable', 'date'],
-            'notice_period_days' => ['nullable', 'integer', 'min:0', 'max:365'],
-            'reason' => ['nullable', 'string', 'max:1000'],
-            'remarks' => ['nullable', 'string', 'max:1000'],
-            'notice_waived' => ['nullable', 'boolean'],
-            'immediate_exit' => ['nullable', 'boolean'],
-            'buyout_recovery' => ['nullable', 'boolean'],
-            'immediate_disable_login' => ['nullable', 'boolean'],
-        ]);
+        $isHrAdmin = method_exists($actor, 'isHrAdmin') ? $actor->isHrAdmin() : (method_exists($actor, 'hasRole') && $actor->hasRole(['super_admin', 'admin', 'hr_admin', 'hr', 'human resources']));
+        $isAdminOrHr = $isSuperAdmin || $isHrAdmin;
 
         try {
             $this->exitProcessService->initiate(
@@ -2500,10 +2510,10 @@ class EmployeeC extends Controller
                     'notice_waived' => (bool) $request->boolean('notice_waived'),
                     'immediate_exit' => (bool) $request->boolean('immediate_exit'),
                     'buyout_recovery' => (bool) $request->boolean('buyout_recovery'),
-                    'actor_is_super_admin' => $isSuperAdmin,
+                    'actor_is_super_admin' => $isAdminOrHr,
                     'immediate_disable_login' => (bool) $request->boolean('immediate_disable_login'),
                 ],
-                (int) auth()->id()
+                (int) Auth::id()
             );
 
             return redirect()
@@ -2523,7 +2533,7 @@ class EmployeeC extends Controller
 
         $this->exitProcessService->complete(
             (int) $request->exit_process_id,
-            (int) auth()->id(),
+            (int) Auth::id(),
             (bool) $request->boolean('waive_incomplete')
         );
 
@@ -2539,7 +2549,7 @@ class EmployeeC extends Controller
 
         $this->exitProcessService->cancel(
             (int) $request->exit_process_id,
-            (int) auth()->id(),
+            (int) Auth::id(),
             $request->remarks
         );
 
@@ -2556,17 +2566,19 @@ class EmployeeC extends Controller
             'checklist' => ['nullable', 'array'],
         ]);
 
-        $actor = auth()->user();
+        /** @var UserM|null $actor */
+        $actor = Auth::user();
         abort_if(! $actor, 401);
 
         $dept = $request->department_key;
 
         // Check Permissions
         $isSuperAdmin = method_exists($actor, 'isSuperAdmin') && $actor->isSuperAdmin();
-        $isHrAdmin = method_exists($actor, 'hasRole') && $actor->hasRole('hr_admin');
+        $isHrAdmin = method_exists($actor, 'isHrAdmin') ? $actor->isHrAdmin() : (method_exists($actor, 'hasRole') && $actor->hasRole(['super_admin', 'admin', 'hr_admin', 'hr', 'human resources']));
+        $hasExitPerm = method_exists($actor, 'hasPermission') && ($actor->hasPermission('employee_exit.update') || $actor->hasPermission('employees.update'));
 
         $canApprove = false;
-        if ($isSuperAdmin || $isHrAdmin) {
+        if ($isSuperAdmin || $isHrAdmin || $hasExitPerm) {
             $canApprove = true;
         } else {
             // Check dynamic reporting manager authorization
@@ -2590,7 +2602,7 @@ class EmployeeC extends Controller
                     'accounts' => 'employee_exit.clearance.accounts',
                 ];
 
-                if (isset($permissionMap[$dept]) && $actor->hasPermission($permissionMap[$dept])) {
+                if (isset($permissionMap[$dept]) && method_exists($actor, 'hasPermission') && $actor->hasPermission($permissionMap[$dept])) {
                     $canApprove = true;
                 }
             }
@@ -2625,48 +2637,113 @@ class EmployeeC extends Controller
             }
         }
 
-        $this->exitProcessService->updateDepartmentClearance(
+        $updatedProcess = $this->exitProcessService->updateDepartmentClearance(
             (int) $request->exit_process_id,
             $dept,
             $request->status,
             $request->remarks,
             $checklistItems,
-            (int) auth()->id()
+            (int) Auth::id()
         );
 
-        if ($request->ajax() || $request->wantsJson()) {
-            $updatedClearances = DB::table('employee_exit_clearances')
+        if ($request->ajax() || $request->expectsJson() || $request->wantsJson()) {
+            $clearanceRecord = DB::table('employee_exit_clearances')
                 ->where('exit_process_id', $request->exit_process_id)
-                ->pluck('status', 'department_key');
-
-            $exitProcessRecord = DB::table('employee_exit_processes')
-                ->where('id', $request->exit_process_id)
+                ->where('department_key', $dept)
                 ->first();
 
-            $mandatoryDepts = ['hr', 'manager', 'it', 'admin', 'finance', 'asset'];
-            $allApproved = true;
-            foreach ($mandatoryDepts as $mDept) {
-                if (($updatedClearances[$mDept] ?? 'pending') !== 'approved') {
-                    $allApproved = false;
-                    break;
-                }
+            $approvedByName = null;
+            if ($clearanceRecord && $clearanceRecord->approved_by_user_id) {
+                $approvedByName = DB::table('users')->where('id', $clearanceRecord->approved_by_user_id)->value('name');
             }
+
+            $mandatoryKeys = ['hr', 'manager', 'it', 'admin', 'finance', 'asset'];
+            $allMandatoryApproved = !DB::table('employee_exit_clearances')
+                ->where('exit_process_id', $request->exit_process_id)
+                ->whereIn('department_key', $mandatoryKeys)
+                ->where('status', '!=', 'approved')
+                ->exists();
 
             return response()->json([
                 'success' => true,
-                'message' => strtoupper($dept) . ' clearance status updated successfully.',
-                'department_key' => $dept,
+                'message' => 'Clearance updated for ' . strtoupper($dept) . '.',
                 'status' => $request->status,
                 'status_label' => ucfirst($request->status),
-                'approved_by' => $actor->name ?? 'User',
-                'approved_at' => now()->format('d M Y, h:i A'),
-                'all_mandatory_approved' => $allApproved,
-                'clearances' => $updatedClearances,
-                'process' => $exitProcessRecord,
+                'approved_by' => $approvedByName,
+                'approved_at' => $clearanceRecord && $clearanceRecord->approved_at ? Carbon::parse($clearanceRecord->approved_at)->format('d M Y, h:i A') : null,
+                'process' => $updatedProcess,
+                'all_mandatory_approved' => $allMandatoryApproved,
             ]);
         }
 
-        return back()->with('success', strtoupper($dept) . ' clearance status updated successfully.');
+        return back()->with('success', 'Clearance status updated for ' . strtoupper($dept) . '.');
+    }
+
+    public function refreshExitClearance(Request $request, $employee)
+    {
+        $request->validate([
+            'exit_process_id' => ['required', 'integer'],
+        ]);
+
+        /** @var UserM|null $actor */
+        $actor = Auth::user();
+        abort_if(! $actor, 401);
+
+        $isSuperAdmin = method_exists($actor, 'isSuperAdmin') && $actor->isSuperAdmin();
+        $isHrAdmin = method_exists($actor, 'isHrAdmin') ? $actor->isHrAdmin() : (method_exists($actor, 'hasRole') && $actor->hasRole(['super_admin', 'admin', 'hr_admin', 'hr', 'human resources']));
+
+        abort_if(! ($isSuperAdmin || $isHrAdmin), 403, 'Only HR or Super Admin can refresh exit clearance items.');
+
+        $this->exitProcessService->initializeClearances(
+            (int) $request->exit_process_id
+        );
+
+        return back()->with('success', 'Exit clearance items refreshed with latest missing records.');
+    }
+
+    public function updateExitClearance(Request $request, $employee)
+    {
+        $request->validate([
+            'exit_process_id' => ['required', 'integer'],
+            'exit_type' => ['nullable', 'string'],
+            'asset_status' => ['nullable', 'string'],
+            'fnf_status' => ['nullable', 'string'],
+            'document_status' => ['nullable', 'string'],
+            'handover_status' => ['nullable', 'string'],
+            'remarks' => ['nullable', 'string', 'max:1000'],
+            'clearance_items' => ['nullable', 'array'],
+        ]);
+
+        /** @var UserM|null $actor */
+        $actor = Auth::user();
+        abort_if(! $actor, 401);
+
+        $isSuperAdmin = method_exists($actor, 'isSuperAdmin') && $actor->isSuperAdmin();
+        $isHrAdmin = method_exists($actor, 'isHrAdmin') ? $actor->isHrAdmin() : (method_exists($actor, 'hasRole') && $actor->hasRole(['super_admin', 'admin', 'hr_admin', 'hr', 'human resources']));
+        $hasExitPerm = method_exists($actor, 'hasPermission') && ($actor->hasPermission('employee_exit.update') || $actor->hasPermission('employees.update'));
+
+        abort_if(! ($isSuperAdmin || $isHrAdmin || $hasExitPerm), 403, 'Only HR or Super Admin can update clearance items.');
+
+        $payload = $request->except(['_token', 'exit_process_id']);
+        if ($request->has('clearance_items') && is_array($request->clearance_items)) {
+            $payload = array_merge($payload, $request->clearance_items);
+        }
+
+        $updatedProcess = $this->exitProcessService->updateClearance(
+            (int) $request->exit_process_id,
+            $payload,
+            (int) Auth::id()
+        );
+
+        if ($request->ajax() || $request->expectsJson() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Exit clearance updated successfully.',
+                'process' => $updatedProcess,
+            ]);
+        }
+
+        return back()->with('success', 'Exit clearance updated.');
     }
 
     public function refreshExit(Request $request, $employee)
@@ -2680,65 +2757,9 @@ class EmployeeC extends Controller
         return back()->with('success', 'Exit checklist refreshed.');
     }
 
-    public function updateExitClearance(Request $request, $employee)
-    {
-        $request->validate([
-            'exit_process_id' => ['required', 'integer'],
-            'exit_type' => ['nullable', Rule::in(['resignation', 'termination', 'retirement', 'contract_end', 'mutual_separation', 'layoff_redundancy', 'absconding', 'discontinued', 'deceased', 'other', 'internship_completed', 'internship_exit'])],
-            'asset_status' => ['nullable', Rule::in(['pending', 'cleared', 'waived'])],
-            'fnf_status' => ['nullable', Rule::in(['pending', 'processing', 'approved', 'paid', 'completed', 'waived'])],
-            'document_status' => ['nullable', Rule::in(['pending', 'generated', 'sent', 'completed', 'waived'])],
-            'handover_status' => ['nullable', Rule::in(['pending', 'cleared', 'completed', 'waived'])],
-            'remarks' => ['nullable', 'string', 'max:1000'],
-        ]);
-
-        $actor = auth()->user();
-        abort_if(! $actor, 401);
-
-        $exitType = $request->input('exit_type');
-        $assetStatus = $request->input('asset_status');
-        $fnfStatus = $request->input('fnf_status');
-        $documentStatus = $request->input('document_status');
-        $handoverStatus = $request->input('handover_status');
-
-        $isSuperAdmin = method_exists($actor, 'isSuperAdmin') && $actor->isSuperAdmin();
-        $canFnf = $isSuperAdmin || (method_exists($actor, 'hasPermission') && $actor->hasPermission('employee_exit.fnf_process'));
-        $canAsset = $isSuperAdmin || (method_exists($actor, 'hasPermission') && $actor->hasPermission('employee_exit.asset_clearance'));
-        $canDocument = $isSuperAdmin || (method_exists($actor, 'hasPermission') && $actor->hasPermission('employee_exit.document_generate'));
-        $canUpdate = $isSuperAdmin || (method_exists($actor, 'hasPermission') && $actor->hasPermission('employee_exit.update'));
-
-        abort_if(! $canUpdate, 403, 'You are not allowed to update exit clearance.');
-        abort_if($assetStatus !== null && ! $canAsset, 403, 'You are not allowed to update asset clearance.');
-        abort_if($documentStatus !== null && ! $canDocument, 403, 'You are not allowed to update document clearance.');
-        abort_if($fnfStatus !== null && ! $canFnf, 403, 'You are not allowed to update FnF clearance.');
-
-        $updatedProcess = $this->exitProcessService->updateClearance(
-            (int) $request->exit_process_id,
-            [
-                'exit_type' => $exitType,
-                'asset_status' => $assetStatus,
-                'fnf_status' => $fnfStatus,
-                'document_status' => $documentStatus,
-                'handover_status' => $handoverStatus,
-                'remarks' => $request->remarks,
-            ],
-            (int) auth()->id()
-        );
-
-        if ($request->ajax() || $request->wantsJson()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Exit clearance status updated successfully.',
-                'process' => $updatedProcess,
-            ]);
-        }
-
-        return back()->with('success', 'Exit clearance updated successfully.');
-    }
-
     public function destroy(Request $request, $employee)
     {
-        $actor = auth()->user();
+        $actor = Auth::user();
         abort_if(! $actor, 401);
 
         $mode = strtolower((string) $request->input('delete_mode', ''));
@@ -2834,7 +2855,11 @@ class EmployeeC extends Controller
                 $this->profileTable . '.highest_qualification',
                 $this->profileTable . '.cgpa_percentage',
                 $this->profileTable . '.total_experience',
-                $this->profileTable . '.experience_type',
+                DB::raw(
+                    Schema::hasColumn($this->employeeTable, 'experience_type')
+                        ? "COALESCE(" . $this->profileTable . ".experience_type, " . $this->employeeTable . ".experience_type, 'experienced') as experience_type"
+                        : "COALESCE(" . $this->profileTable . ".experience_type, 'experienced') as experience_type"
+                ),
                 $this->profileTable . '.emergency_contact_number',
                 $this->profileTable . '.bank_account_no',
                 $this->profileTable . '.bank_account_type',
@@ -2853,23 +2878,22 @@ class EmployeeC extends Controller
             ->first();
     }
 
-    private function logLifecycle($employeeId, string $action, $oldValue = null, $newValue = null, ?string $remarks = null): void
+    public function logLifecycle($employeeId, string $action, $before = null, $after = null, ?string $reason = null): void
     {
-        if (! Schema::hasTable('employee_lifecycle_logs')) {
-            return;
+        try {
+            DB::table('employee_lifecycle_logs')->insert([
+                'employee_id' => $employeeId,
+                'action' => $action,
+                'before_state' => $before ? json_encode($before) : null,
+                'after_state' => $after ? json_encode($after) : null,
+                'reason' => $reason,
+                'performed_by_user_id' => Auth::id(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        } catch (\Throwable $e) {
+            // Log lifecycle error silently
         }
-
-        DB::table('employee_lifecycle_logs')->insert([
-            'employee_id' => $employeeId,
-            'action' => $action,
-            'old_value' => $oldValue ? json_encode($oldValue) : null,
-            'new_value' => $newValue ? json_encode($newValue) : null,
-            'remarks' => $remarks,
-            'performed_by_user_id' => auth()->id(),
-            'performed_at' => now(),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
     }
 
     public function getDesignationsByDepartment($department)
@@ -2993,7 +3017,7 @@ class EmployeeC extends Controller
             ->where('id', $document)
             ->update([
                 'verification_status' => 'verified',
-                'verified_by_user_id' => auth()->id(),
+                'verified_by_user_id' => Auth::id(),
                 'verified_at' => now(),
                 'rejection_reason' => null,
                 'updated_at' => now(),
@@ -3126,10 +3150,13 @@ class EmployeeC extends Controller
             if ($scheduleKey === 'flexible_part_time') {
                 $shiftCode = 'flexible_part_time';
                 $policyName = 'Flexible Part Time Policy';
+            } elseif ($scheduleKey === 'dynamic_hours') {
+                $shiftCode = 'dynamic_hours';
+                $policyName = 'Dynamic Hours Policy';
             } elseif ($scheduleKey === 'general_shift' || $scheduleKey === 'general' || $scheduleKey === 'full_day') {
                 $shiftCode = 'general_shift';
                 $policyName = 'General Shift Policy';
-            } elseif ($workMode === 'wfh' || $scheduleKey === 'wfh_shift' || $scheduleKey === 'wfh') {
+            } elseif ($scheduleKey === 'wfh_shift' || $scheduleKey === 'wfh' || ($workMode === 'wfh' && empty($scheduleKey))) {
                 $shiftCode = 'wfh_shift';
                 $policyName = 'WFH Attendance Policy';
             } elseif ($scheduleKey === 'part_time_shift' || $scheduleKey === 'part_time' || $scheduleKey === 'part_day') {
@@ -3189,10 +3216,59 @@ class EmployeeC extends Controller
         return $schedule;
     }
 
-    private function adjustWorkScheduleTypeForView($employeeData): void
+    private function adjustWorkScheduleTypeForView(&$employeeData): void
     {
         if (!$employeeData) {
             return;
+        }
+
+        $today = Carbon::now('Asia/Kolkata')->toDateString();
+        $activeShiftTiming = DB::table('employee_shift_timings')
+            ->leftJoin('attendance_times', 'attendance_times.id', '=', 'employee_shift_timings.attendance_time_id')
+            ->where('employee_shift_timings.employee_id', $employeeData->id)
+            ->where('employee_shift_timings.is_active', 1)
+            ->where(function ($q) use ($today) {
+                $q->whereNull('employee_shift_timings.effective_from')
+                    ->orWhereDate('employee_shift_timings.effective_from', '<=', $today);
+            })
+            ->where(function ($q) use ($today) {
+                $q->whereNull('employee_shift_timings.effective_to')
+                    ->orWhereDate('employee_shift_timings.effective_to', '>=', $today);
+            })
+            ->select('employee_shift_timings.*', 'attendance_times.shift_type as template_shift_type', 'attendance_times.code as template_code')
+            ->orderByDesc('employee_shift_timings.effective_from')
+            ->orderByDesc('employee_shift_timings.id')
+            ->first();
+
+        if ($activeShiftTiming) {
+            $shiftType = strtolower((string) ($activeShiftTiming->shift_type ?? $activeShiftTiming->template_shift_type ?? $activeShiftTiming->template_code ?? ''));
+            $templateCode = strtolower((string) ($activeShiftTiming->template_code ?? ''));
+
+            if ($shiftType === 'dynamic_hours' || $templateCode === 'dynamic_hours') {
+                $employeeData->work_schedule_type = 'dynamic_hours';
+                return;
+            } elseif ($shiftType === 'flexible_part_time' || stripos($templateCode, 'flexible') !== false) {
+                $employeeData->work_schedule_type = 'flexible_part_time';
+                return;
+            } elseif ($templateCode === 'wfh_shift') {
+                $employeeData->work_schedule_type = 'wfh';
+                return;
+            } elseif ($templateCode === 'part_time_shift') {
+                $employeeData->work_schedule_type = 'part_time';
+                return;
+            } elseif ($templateCode === 'half_day_shift') {
+                $employeeData->work_schedule_type = 'half_day';
+                return;
+            } elseif ($templateCode === 'half_day_morning') {
+                $employeeData->work_schedule_type = 'half_day_morning';
+                return;
+            } elseif ($templateCode === 'half_day_evening') {
+                $employeeData->work_schedule_type = 'half_day_evening';
+                return;
+            } else {
+                $employeeData->work_schedule_type = 'general';
+                return;
+            }
         }
 
         $activePolicy = DB::table('employee_policy_assignments')

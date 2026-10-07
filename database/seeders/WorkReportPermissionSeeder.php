@@ -117,48 +117,7 @@ class WorkReportPermissionSeeder extends Seeder
             );
         }
 
-        // 4. Ensure Menus exist under parent_id 20 (Attendance & Time Tracking)
-        $menus = [
-            [
-                'id' => 180,
-                'name' => 'Work Reports',
-                'route' => 'hrms.attendance.work-reports',
-                'icon' => 'fas fa-clipboard-list',
-                'module_key' => 'attendance',
-                'parent_id' => 20,
-                'sort_order' => 9,
-                'is_active' => 1,
-            ],
-            [
-                'id' => 181,
-                'name' => 'My Work Reports',
-                'route' => 'hrms.attendance.my-work-reports',
-                'icon' => 'fas fa-user-edit',
-                'module_key' => 'my.attendance',
-                'parent_id' => 20,
-                'sort_order' => 3,
-                'is_active' => 1,
-            ]
-        ];
-
-        foreach ($menus as $menu) {
-            DB::table('menus')->updateOrInsert(
-                ['id' => $menu['id']],
-                [
-                    'name' => $menu['name'],
-                    'route' => $menu['route'],
-                    'icon' => $menu['icon'],
-                    'module_key' => $menu['module_key'],
-                    'parent_id' => $menu['parent_id'],
-                    'sort_order' => $menu['sort_order'],
-                    'is_active' => $menu['is_active'],
-                    'updated_at' => $now,
-                    'created_at' => DB::raw('COALESCE(created_at, NOW())'),
-                ]
-            );
-        }
-
-        // 5. Assign Menus to Roles (role_menu_access)
+        // 4. Assign Menus to Roles (role_menu_access)
         $roleMenuAssignments = [
             $superAdminId => [180, 181],
             $adminId => [180],

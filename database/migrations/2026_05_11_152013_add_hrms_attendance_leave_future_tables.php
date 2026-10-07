@@ -99,7 +99,7 @@ return new class extends Migration
                 }
 
                 if (!Schema::hasColumn('leave_requests', 'cancel_reason')) {
-                    $table->longText('cancel_reason')->nullable()->after('rejection_reason');
+                    $table->longText('cancel_reason')->nullable();
                 }
 
                 if (!Schema::hasColumn('leave_requests', 'cancelled_by_user_id')) {

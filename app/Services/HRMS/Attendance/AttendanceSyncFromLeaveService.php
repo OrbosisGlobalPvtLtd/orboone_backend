@@ -5,102 +5,163 @@ namespace App\Services\HRMS\Attendance;
 use App\Models\HRMS\Attendance\AttendanceDailyStatusLogM;
 use App\Models\HRMS\Attendance\AttendanceM;
 use App\Models\HRMS\Attendance\AttendanceTypeM;
+use App\Models\HRMS\Employee\EmployeeM;
+use App\Models\HRMS\Leave\LeaveAllocationM;
+use App\Models\HRMS\Leave\LeaveRequestDateM;
 use App\Models\HRMS\Leave\LeaveRequestM;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class AttendanceSyncFromLeaveService
 {
-    public function syncApprovedLeave(LeaveRequestM $leaveRequest, ?int $userId = null): void
+    /**
+     * Sync approved leave request to attendance records.
+     * Only syncs for past/current dates (<= today). Future dates will be synced on the actual leave date.
+     */
+    public function syncApprovedLeave(LeaveRequestM $leaveRequest, ?int $userId = null, bool $allowFuture = false): void
+    {
+        $today = Carbon::now('Asia/Kolkata')->toDateString();
+
+        foreach ($leaveRequest->dates()->where('deduct_as_leave', true)->get() as $dateRow) {
+            $leaveDateStr = Carbon::parse($dateRow->leave_date)->toDateString();
+            
+            // Do not insert future attendance records in advance unless explicitly allowed
+            if (!$allowFuture && $leaveDateStr > $today) {
+                continue;
+            }
+
+            $this->syncSingleLeaveDate($leaveRequest, $dateRow, $userId);
+        }
+
+        $leaveRequest->forceFill(['attendance_synced' => true])->save();
+    }
+
+    /**
+     * Sync all approved leaves for a specific date (e.g. today).
+     */
+    public function syncDailyApprovedLeaves(?string $date = null): int
+    {
+        $targetDate = $date ?: Carbon::now('Asia/Kolkata')->toDateString();
+
+        $leaveDates = LeaveRequestDateM::whereDate('leave_date', $targetDate)
+            ->where('deduct_as_leave', true)
+            ->whereHas('leaveRequest', function ($q) {
+                $q->where('status', 'approved');
+            })
+            ->with(['leaveRequest.employee', 'leaveRequest.leaveType'])
+            ->get();
+
+        $count = 0;
+        foreach ($leaveDates as $dateRow) {
+            $leaveRequest = $dateRow->leaveRequest;
+            if (!$leaveRequest || !$leaveRequest->employee_id) {
+                continue;
+            }
+
+            // Check if employee is eligible
+            if (!EmployeeM::activeEligible($targetDate)->where('id', $leaveRequest->employee_id)->exists()) {
+                continue;
+            }
+
+            $this->syncSingleLeaveDate($leaveRequest, $dateRow);
+            $count++;
+        }
+
+        return $count;
+    }
+
+    /**
+     * Helper to sync a single approved leave date to attendance table.
+     */
+    public function syncSingleLeaveDate(LeaveRequestM $leaveRequest, LeaveRequestDateM $dateRow, ?int $userId = null): void
     {
         $leaveTypeId = AttendanceTypeM::where('code', 'leave')->value('id');
         $halfDayTypeId = AttendanceTypeM::where('code', 'half_day')->value('id') ?: $leaveTypeId;
         $lwpTypeId = AttendanceTypeM::where('code', 'lwp')->value('id') ?: $leaveTypeId;
 
-        foreach ($leaveRequest->dates()->where('deduct_as_leave', true)->get() as $dateRow) {
-            try {
-                $attendance = AttendanceM::firstOrNew([
-                    'employee_id' => $leaveRequest->employee_id,
-                    'attendance_date' => $dateRow->leave_date->toDateString(),
-                ]);
+        $leaveDateStr = Carbon::parse($dateRow->leave_date)->toDateString();
 
-                if ($attendance->exists && ($attendance->is_locked || $attendance->payroll_processed)) {
-                    continue;
-                }
+        try {
+            $attendance = AttendanceM::firstOrNew([
+                'employee_id' => $leaveRequest->employee_id,
+                'attendance_date' => $leaveDateStr,
+            ]);
 
-                $oldStatus = $attendance->attendance_status;
-                $paidDay = (float) ($dateRow->paid_day ?? 0);
-                $lwpDay = (float) ($dateRow->lwp_day ?? 0);
-                $dayValue = $paidDay + (float) ($dateRow->sick_day ?? 0) + (float) ($dateRow->comp_off_day ?? 0) + $lwpDay;
-                $isHalfDay = ($dayValue > 0 && $dayValue < 1) || (bool) $leaveRequest->is_half_day;
+            if ($attendance->exists && ($attendance->is_locked || $attendance->payroll_processed)) {
+                return;
+            }
 
-                $isLwpHalfDay = false;
-                if ($isHalfDay) {
-                    if ($lwpDay > 0) {
+            $oldStatus = $attendance->attendance_status;
+            $paidDay = (float) ($dateRow->paid_day ?? 0);
+            $lwpDay = (float) ($dateRow->lwp_day ?? 0);
+            $dayValue = $paidDay + (float) ($dateRow->sick_day ?? 0) + (float) ($dateRow->comp_off_day ?? 0) + $lwpDay;
+            $isHalfDay = ($dayValue > 0 && $dayValue < 1) || (bool) $leaveRequest->is_half_day;
+
+            $isLwpHalfDay = false;
+            if ($isHalfDay) {
+                if ($lwpDay > 0) {
+                    $isLwpHalfDay = true;
+                } elseif ($paidDay <= 0 && (float) ($dateRow->sick_day ?? 0) <= 0 && (float) ($dateRow->comp_off_day ?? 0) <= 0) {
+                    $isLwpHalfDay = true;
+                } else {
+                    $year = Carbon::parse($dateRow->leave_date)->year;
+                    $allocation = LeaveAllocationM::where('employee_id', $leaveRequest->employee_id)
+                        ->where('year', $year)
+                        ->first();
+                    if ($allocation && (float) $allocation->paid_remaining <= 0 && (float) $allocation->sick_remaining <= 0 && (float) $allocation->comp_off_remaining <= 0) {
                         $isLwpHalfDay = true;
-                    } elseif ($paidDay <= 0 && (float) ($dateRow->sick_day ?? 0) <= 0 && (float) ($dateRow->comp_off_day ?? 0) <= 0) {
-                        $isLwpHalfDay = true;
-                    } else {
-                        $year = Carbon::parse($dateRow->leave_date)->year;
-                        $allocation = \App\Models\HRMS\Leave\LeaveAllocationM::where('employee_id', $leaveRequest->employee_id)
-                            ->where('year', $year)
-                            ->first();
-                        if ($allocation && (float) $allocation->paid_remaining <= 0 && (float) $allocation->sick_remaining <= 0 && (float) $allocation->comp_off_remaining <= 0) {
-                            $isLwpHalfDay = true;
-                        }
                     }
                 }
-
-                $attendanceStatus = $isHalfDay ? ($isLwpHalfDay ? 'lwp' : 'half_day') : 'leave';
-                $attendanceTypeId = $isHalfDay ? ($isLwpHalfDay ? $lwpTypeId : $halfDayTypeId) : $leaveTypeId;
-
-                $attendance->fill([
-                    'user_id' => $leaveRequest->user_id,
-                    'employee_id' => $leaveRequest->employee_id,
-                    'attendance_type_id' => $attendanceTypeId,
-                    'leave_request_id' => $leaveRequest->id,
-                    'attendance_date' => $dateRow->leave_date->toDateString(),
-                    'attendance_status' => $attendanceStatus,
-                    'attendance_source' => 'leave_auto',
-                    'is_lwp' => $isLwpHalfDay,
-                    'lwp_reason' => $isLwpHalfDay ? 'Half day leave applied but paid leave balance unavailable.' : null,
-                    'is_half_day' => $isHalfDay,
-                    'half_day_reason' => $isHalfDay ? ($isLwpHalfDay ? 'Half day leave applied but paid leave balance unavailable.' : 'Approved half-day leave') : null,
-                    'total_work_minutes' => 0,
-                    'gross_work_minutes' => 0,
-                    'is_late' => false,
-                    'late_minutes' => 0,
-                    'is_early_out' => false,
-                    'early_out_minutes' => 0,
-                    'missed_punch' => false,
-                    'is_missed_punch' => false,
-                    'is_punch_blocked' => false,
-                    'is_blocked' => false,
-                ]);
-
-                $attendance->save();
-
-                AttendanceDailyStatusLogM::create([
-                    'employee_id' => $leaveRequest->employee_id,
-                    'attendance_id' => $attendance->id,
-                    'status_date' => $dateRow->leave_date->toDateString(),
-                    'old_status' => $oldStatus,
-                    'new_status' => $attendance->attendance_status,
-                    'source' => 'leave_auto',
-                    'remarks' => 'Synced from approved leave request #' . $leaveRequest->id,
-                    'created_by_user_id' => $userId,
-                ]);
-            } catch (\Throwable $e) {
-                Log::error('Leave attendance sync failed', [
-                    'leave_request_id' => $leaveRequest->id,
-                    'date' => $dateRow->leave_date,
-                    'error' => $e->getMessage(),
-                ]);
-                throw $e;
             }
-        }
 
-        $leaveRequest->forceFill(['attendance_synced' => true])->save();
+            $attendanceStatus = $isHalfDay ? ($isLwpHalfDay ? 'lwp' : 'half_day') : 'leave';
+            $attendanceTypeId = $isHalfDay ? ($isLwpHalfDay ? $lwpTypeId : $halfDayTypeId) : $leaveTypeId;
+
+            $attendance->fill([
+                'user_id' => $leaveRequest->user_id,
+                'employee_id' => $leaveRequest->employee_id,
+                'attendance_type_id' => $attendanceTypeId,
+                'leave_request_id' => $leaveRequest->id,
+                'attendance_date' => $leaveDateStr,
+                'attendance_status' => $attendanceStatus,
+                'attendance_source' => 'leave_auto',
+                'is_lwp' => $isLwpHalfDay,
+                'lwp_reason' => $isLwpHalfDay ? 'Half day leave applied but paid leave balance unavailable.' : null,
+                'is_half_day' => $isHalfDay,
+                'half_day_reason' => $isHalfDay ? ($isLwpHalfDay ? 'Half day leave applied but paid leave balance unavailable.' : 'Approved half-day leave') : null,
+                'remarks' => 'Approved Leave (' . ($leaveRequest->leaveType->name ?? 'Leave') . ')',
+                'total_work_minutes' => 0,
+                'gross_work_minutes' => 0,
+                'is_late' => false,
+                'late_minutes' => 0,
+                'is_early_out' => false,
+                'early_out_minutes' => 0,
+                'missed_punch' => false,
+                'is_missed_punch' => false,
+                'is_punch_blocked' => false,
+                'is_blocked' => false,
+            ]);
+
+            $attendance->save();
+
+            AttendanceDailyStatusLogM::create([
+                'employee_id' => $leaveRequest->employee_id,
+                'attendance_id' => $attendance->id,
+                'status_date' => $leaveDateStr,
+                'old_status' => $oldStatus,
+                'new_status' => $attendance->attendance_status,
+                'source' => 'leave_auto',
+                'remarks' => 'Synced from approved leave request #' . $leaveRequest->id,
+                'created_by_user_id' => $userId,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Leave attendance sync failed', [
+                'leave_request_id' => $leaveRequest->id,
+                'date' => $dateRow->leave_date,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
+        }
     }
 
     public function reverseLeaveSync(LeaveRequestM $leaveRequest, ?int $userId = null): void
@@ -108,15 +169,20 @@ class AttendanceSyncFromLeaveService
         $attendances = AttendanceM::where('leave_request_id', $leaveRequest->id)->get();
 
         foreach ($attendances as $attendance) {
-            if ($attendance->is_locked || $attendance->payroll_processed) {
-                throw new \RuntimeException('Attendance is locked or payroll processed for ' . Carbon::parse($attendance->attendance_date)->toDateString());
+            if ($attendance->payroll_processed) {
+                throw new \RuntimeException('Payroll has already been processed for ' . Carbon::parse($attendance->attendance_date)->toDateString() . '. Please unlock payroll before voiding leave.');
             }
 
             $oldStatus = $attendance->attendance_status;
+            $hasPunched = !empty($attendance->punch_in_time);
+            $newStatus = $hasPunched ? 'present' : 'pending';
+            $newSource = $hasPunched ? ($attendance->attendance_source === 'leave_auto' ? 'web' : $attendance->attendance_source) : 'leave_reversed';
+
             $attendance->leave_request_id = null;
             $attendance->attendance_type_id = null;
-            $attendance->attendance_status = 'pending';
-            $attendance->attendance_source = 'leave_reversed';
+            $attendance->attendance_status = $newStatus;
+            $attendance->attendance_source = $newSource;
+            $attendance->is_locked = false;
             $attendance->is_lwp = false;
             $attendance->lwp_reason = null;
             $attendance->is_half_day = false;
@@ -128,9 +194,9 @@ class AttendanceSyncFromLeaveService
                 'attendance_id' => $attendance->id,
                 'status_date' => Carbon::parse($attendance->attendance_date)->toDateString(),
                 'old_status' => $oldStatus,
-                'new_status' => 'pending',
+                'new_status' => $newStatus,
                 'source' => 'leave_reversal',
-                'remarks' => 'Leave sync reversed for request #' . $leaveRequest->id,
+                'remarks' => 'Leave sync reversed for request #' . $leaveRequest->id . ($hasPunched ? ' (Employee worked on this date)' : ''),
                 'created_by_user_id' => $userId,
             ]);
         }

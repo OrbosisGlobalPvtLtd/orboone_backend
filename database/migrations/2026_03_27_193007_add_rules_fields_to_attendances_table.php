@@ -13,6 +13,10 @@ class AddRulesFieldsToAttendancesTable extends Migration
      */
     public function up()
     {
+        if (!Schema::hasTable('attendances')) {
+            return;
+        }
+
         Schema::table('attendances', function (Blueprint $table) {
             $table->boolean('is_late')->default(false)->after('clock_in');
             $table->boolean('is_early_out')->default(false)->after('clock_out');
@@ -35,6 +39,10 @@ class AddRulesFieldsToAttendancesTable extends Migration
      */
     public function down()
     {
+        if (!Schema::hasTable('attendances')) {
+            return;
+        }
+
         Schema::table('attendances', function (Blueprint $table) {
             $table->dropForeign(['manual_unlock_by']);
             $table->dropColumn([

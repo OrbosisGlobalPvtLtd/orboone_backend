@@ -4,19 +4,13 @@ namespace App\Services\HRMS\Employee;
 
 use App\Models\HRMS\Employee\EmployeeM;
 use App\Models\Core\UserM;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class EmployeeEligibilityS
 {
-    /**
-     * Check if an employee is operational and fully eligible.
-     * Eligible Employee =
-     *  - is_active == 1 (or employment_status == 'active')
-     *  - profile_status == 'approved' / is_profile_completed == 1
-     *  - exit_status != 'exit_completed' / employment_status != 'exited'
-     *  - employment_status != 'terminated'
-     */
+    
     public function isEligible($employee): bool
     {
         if (!$employee) {
@@ -42,9 +36,7 @@ class EmployeeEligibilityS
         return true;
     }
 
-    /**
-     * Check if employee record is active.
-     */
+    
     public function isActive($employee): bool
     {
         if (!$employee) {
@@ -58,16 +50,18 @@ class EmployeeEligibilityS
             return false;
         }
 
-        if (in_array($empStatus, ['terminated', 'exited', 'resigned_and_exited', 'inactive'], true)) {
+        if (in_array($empStatus, ['terminated', 'exited', 'resigned_and_exited', 'inactive', 'resigned'], true)) {
+            return false;
+        }
+
+        if ($this->isExitCompleted($employee) || $this->isTerminated($employee)) {
             return false;
         }
 
         return true;
     }
 
-    /**
-     * Check if employee profile is pending completion / approval.
-     */
+   
     public function isProfilePending($employee): bool
     {
         if (!$employee) {
@@ -88,14 +82,9 @@ class EmployeeEligibilityS
             return true;
         }
 
-        $profStatus = strtolower(trim((string) ($profile->profile_status ?? 'pending')));
-        $isCompleted = (bool) ($profile->is_profile_completed ?? false);
+        $profStatus = strtolower(trim((string) ($profile->profile_status ?? $profile->approval_status ?? 'pending')));
 
         if ($profStatus === 'approved') {
-            return false;
-        }
-
-        if ($isCompleted && in_array($profStatus, ['approved', 'submitted'], true)) {
             return false;
         }
 
@@ -109,6 +98,11 @@ class EmployeeEligibilityS
     {
         if (!$employee) {
             return true;
+        }
+
+        if ($employee instanceof EmployeeM
+            && array_key_exists('has_completed_exit', $employee->getAttributes())) {
+            return (bool) $employee->getAttribute('has_completed_exit');
         }
 
         $empId = is_object($employee) ? ($employee->id ?? null) : null;
@@ -151,7 +145,6 @@ class EmployeeEligibilityS
     {
         $employee = null;
         $user = null;
-
         if ($userOrEmployee instanceof UserM) {
             $user = $userOrEmployee;
             $employee = EmployeeM::where('user_id', $user->id)->first();
@@ -206,11 +199,45 @@ class EmployeeEligibilityS
     }
 
     /**
-     * Payroll Eligibility: Skips Profile Pending, Exit Completed, Terminated.
+     * Payroll Eligibility: Skips Profile Pending, Exit Completed, Terminated, Unpaid Interns,
+     * and employees whose onboarding/hire date is after the specified payroll period.
      */
-    public function canUsePayroll($employee): bool
+    public function canUsePayroll($employee, ?int $month = null, ?int $year = null): bool
     {
-        return $this->isEligible($employee);
+        if (! $this->isEligible($employee)) {
+            return false;
+        }
+
+        if (is_object($employee)) {
+            $stage = strtolower(trim((string) ($employee->employee_stage ?? '')));
+            $isPaidIntern = (int) ($employee->is_paid_intern ?? 1);
+            $actualSalary = (float) ($employee->actual_salary ?? 0);
+
+            if ($stage === 'internship' && ($isPaidIntern === 0 || $actualSalary <= 0)) {
+                return false;
+            }
+
+            if ($month !== null && $year !== null) {
+                $periodEnd = Carbon::create($year, $month, 1)->endOfMonth()->toDateString();
+                $periodStart = Carbon::create($year, $month, 1)->startOfMonth()->toDateString();
+
+                $effectiveStartDate = $employee->internship_start_date 
+                    ?? $employee->joining_date 
+                    ?? ($employee->created_at ? Carbon::parse($employee->created_at)->toDateString() : null);
+
+                // If the employee onboarded/joined after the payroll month, skip them
+                if ($effectiveStartDate && $effectiveStartDate > $periodEnd) {
+                    return false;
+                }
+
+                // If the employee was relieved/exited before the payroll month, skip them
+                if (!empty($employee->relieving_date) && $employee->relieving_date < $periodStart) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -234,17 +261,13 @@ class EmployeeEligibilityS
         return $this->isEligible($employee);
     }
 
-    /**
-     * Team Management & Approval Chain Eligibility.
-     */
+   
     public function canUseTeamManagement($employee): bool
     {
         return $this->isEligible($employee);
     }
 
-    /**
-     * Document Module Visibility.
-     */
+    
     public function canAccessDocuments($employee, string $context = 'general'): bool
     {
         if (!$employee) {

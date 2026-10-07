@@ -7,6 +7,7 @@ use App\Http\Requests\Web\HRMS\Organization\StoreDepartmentRequest;
 use App\Models\HRMS\Department\DepartmentM as Department;
 use App\Models\Core\LogM as Log;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class DepartmentsC extends Controller
 {
@@ -62,8 +63,12 @@ class DepartmentsC extends Controller
     {
         Department::create($request->validated());
 
+        /** @var \App\Models\Core\UserM|null $user */
+        $user = Auth::user();
+        $actorName = $user?->employee?->name ?? $user?->name ?? 'User';
+
         Log::create([
-            'description' => (optional(auth()->user()->employee)->name ?? auth()->user()->name) . " created an department named '" . $request->input('name') . "'"
+            'description' => $actorName . " created an department named '" . $request->input('name') . "'"
         ]);
 
         return redirect()->route('hrms.departments.index')->with('status', 'Successfully created a department.');
@@ -102,8 +107,12 @@ class DepartmentsC extends Controller
     {
         Department::where('id', $department->id)->update($request->validated());
 
+        /** @var \App\Models\Core\UserM|null $user */
+        $user = Auth::user();
+        $actorName = $user?->employee?->name ?? $user?->name ?? 'User';
+
         Log::create([
-            'description' => (optional(auth()->user()->employee)->name ?? auth()->user()->name) . " updated an department named '" . $department->name . "'"
+            'description' => $actorName . " updated an department named '" . $department->name . "'"
         ]);
 
         return redirect()->route('hrms.departments.index')->with('status', 'Successfully updated department.');
@@ -119,8 +128,12 @@ class DepartmentsC extends Controller
     {
         Department::where('id', $department->id)->delete();
         
+        /** @var \App\Models\Core\UserM|null $user */
+        $user = Auth::user();
+        $actorName = $user?->employee?->name ?? $user?->name ?? 'User';
+
         Log::create([
-            'description' => (optional(auth()->user()->employee)->name ?? auth()->user()->name) . " deleted an department named '" . $department->name . "'"
+            'description' => $actorName . " deleted an department named '" . $department->name . "'"
         ]);
 
         return redirect()->route('hrms.departments.index')->with('status', 'Successfully deleted department.');

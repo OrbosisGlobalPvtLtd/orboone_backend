@@ -20,12 +20,12 @@ class AttendanceSeeder extends Seeder
 
         foreach($attendanceTimes as $time) 
         {
-            AttendanceTime::factory()->create(['name' => $time]);
+            AttendanceTime::firstOrCreate(['code' => strtolower($time)], ['name' => $time]);
         }
 
         foreach($attendanceTypes as $type)
         {
-            AttendanceType::factory()->create(['name' => $type]);
+            AttendanceType::firstOrCreate(['code' => strtolower($type)], ['name' => $type]);
         }
     }
 }

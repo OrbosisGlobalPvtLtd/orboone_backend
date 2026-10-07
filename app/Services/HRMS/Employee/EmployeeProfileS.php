@@ -27,9 +27,12 @@ class EmployeeProfileS
             ->select('is_profile_completed', 'profile_status')
             ->first();
 
+        // Profile is only considered complete when HR has explicitly approved it.
+        // 'submitted' means the employee filled the form and sent it for review, NOT that HR approved it.
+        // Treating 'submitted' as complete would let unapproved employees bypass the profile gate.
         $isComplete = $profile
             && (int) ($profile->is_profile_completed ?? 0) === 1
-            && in_array($profile->profile_status, ['submitted', 'approved', null], true);
+            && $profile->profile_status === 'approved';
 
         return $isComplete ? null : (int) $employee->id;
     }

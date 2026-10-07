@@ -171,13 +171,40 @@ class AttendanceViolationResolverService
                     'remarks' => $mAtt->punch_out_note ?: 'Early logout detected.',
                 ]);
             }
-            if ($mAtt->missed_punch || $mAtt->is_missed_punch || $mAtt->attendance_status === 'missed_punch') {
+            $isMissedByLateCutoff = false;
+            $lateCutoffMinutes = 0;
+            $lateCutoffRemark = null;
+            if (!$mAtt->missed_punch && !$mAtt->is_missed_punch && $mAtt->attendance_status !== 'missed_punch' && $mAtt->punch_in_time && $mAtt->punch_out_time) {
+                $attDateStr = Carbon::parse($mAtt->attendance_date, self::TIMEZONE)->toDateString();
+                $mIn = Carbon::parse($attDateStr . ' ' . $this->ruleResolver->timeString($mAtt->punch_in_time), self::TIMEZONE);
+                $mOut = Carbon::parse($attDateStr . ' ' . $this->ruleResolver->timeString($mAtt->punch_out_time), self::TIMEZONE);
+                if ($mOut->lt($mIn)) {
+                    $mOut->addDay();
+                }
+                $mShift = $this->ruleResolver->resolveShiftPolicy($employee, $attDateStr, $mAtt->attendance_time_id);
+                $mTargetStr = $mAtt->target_punch_out_time ?: ($this->ruleResolver->timeString($mShift?->shift_end_time ?? '19:00:00'));
+                $mTarget = Carbon::parse($attDateStr . ' ' . $this->ruleResolver->timeString($mTargetStr), self::TIMEZONE);
+                if ($mTarget->lt($mIn)) {
+                    $mTarget->addDay();
+                }
+                $mPolicyRule = $mShift ?: $this->ruleResolver->getPolicyForEmployee($employee, $attDateStr);
+                $mMissedPunchAfterMins = (int) ($mPolicyRule?->missed_punch_after_minutes ?? 60);
+                $mMissedPunchCutoff = $mTarget->copy()->addMinutes($mMissedPunchAfterMins);
+
+                if ($mOut->gt($mMissedPunchCutoff)) {
+                    $isMissedByLateCutoff = true;
+                    $lateCutoffMinutes = $mOut->diffInMinutes($mMissedPunchCutoff);
+                    $lateCutoffRemark = 'Punch out exceeded missed punch cutoff of ' . $mMissedPunchCutoff->format('H:i:s') . '.';
+                }
+            }
+
+            if ($mAtt->missed_punch || $mAtt->is_missed_punch || $mAtt->attendance_status === 'missed_punch' || $isMissedByLateCutoff) {
                 $this->recordOrSyncViolation($mAtt, 'missed_punch', [
-                    'minutes' => 0,
+                    'minutes' => $lateCutoffMinutes,
                     'source' => $mAtt->attendance_source ?: 'system_auto',
                     'policy_action' => $mAtt->is_lwp ? 'lwp' : 'warning',
                     'converted_to_lwp' => (bool) $mAtt->is_lwp,
-                    'remarks' => $mAtt->missed_punch_reason ?: 'Missed punch detected.',
+                    'remarks' => $lateCutoffRemark ?: ($mAtt->missed_punch_reason ?: 'Missed punch detected.'),
                 ]);
             }
         }

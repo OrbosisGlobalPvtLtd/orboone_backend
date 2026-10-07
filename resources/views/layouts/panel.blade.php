@@ -21,11 +21,12 @@
         --text:#111827;
         --muted:#6B7280;
 
-        --sidebar-width:290px;
-        --sidebar-collapsed:92px;
-        --topbar-height:74px;
-        --radius:18px;
-        --shadow:0 14px 34px rgba(15,23,42,.08);
+        --sidebar-width: 260px;
+        --sidebar-collapsed: 72px;
+        --topbar-height: 56px;
+        --mobile-sidebar-width: min(86vw, 290px);
+        --radius: 14px;
+        --shadow: 0 8px 24px rgba(15,23,42,.06);
     }
 
     html, body{
@@ -39,6 +40,9 @@
     .panel-layout{
         min-height:100vh;
         background:var(--bg);
+        width: 100%;
+        max-width: 100vw;
+        overflow-x: clip;
     }
 
     /* ========== SIDEBAR ========== */
@@ -48,6 +52,7 @@
         position:fixed;
         top:0;
         left:0;
+        bottom:0;
         width:var(--sidebar-width);
         height:100vh;
         background:
@@ -67,63 +72,39 @@
         flex-direction:column;
     }
 
-    /* .sidebar-header{
-        position:relative;
-        z-index:2;
-        height:86px;
-        padding:14px 16px 12px;
-        display:flex;
-        align-items:flex-start;
-        justify-content:space-between;
-        gap:12px;
-    } */
     .sidebar-header{
-    position: relative;
-    z-index: 5;
-    height: 74px;
-    padding: 0 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center; /* center layout */
-    background: #ffffff;
-    border-bottom: 1px solid #eef1f7;
-}
+        position: relative;
+        z-index: 5;
+        height: 60px;
+        padding: 0 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #ffffff;
+        border-bottom: 1px solid #eef1f7;
+    }
 
     .brand{
-    width: 100%;
-    display: flex;
-    justify-content: center; /* center logo */
-    align-items: center;
-}
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
 
-    /* .brand-logo-box{
-        width:100%;
-        min-height:58px;
-        background:#fff;
-        border-radius:18px;
-        display:flex;
-        align-items:center;
-        padding:8px 14px;
-        box-shadow:
-            0 10px 24px rgba(17,24,39,0.10),
-            inset 0 1px 0 rgba(255,255,255,0.7);
-    } */
     .brand-logo-box{
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
     
-/* LOGO IMAGE */
-.brand-logo{
-    max-height: 120px;   /* 🔥 increase height */
-    max-width: 180px;   /* 🔥 increase width */
-    object-fit: contain;
-    display: block;
-    margin: 0 auto;
-}
+    .brand-logo{
+        max-height: 40px;
+        max-width: 155px;
+        object-fit: contain;
+        display: block;
+        margin: 0 auto;
+    }
 
     .brand-text{
         min-width:0;
@@ -256,24 +237,45 @@
         gap:4px;
     }
 
+    .sidebar a,
+    .sidebar a:hover,
+    .sidebar a:focus,
+    .sidebar a:active,
+    .menu > a,
+    .menu > a:hover,
+    .menu > a:focus,
+    .menu > a:active,
+    .sidebar-group-toggle,
+    .sidebar-group-toggle:hover,
+    .sidebar-group-toggle:focus,
+    .sidebar-group-toggle:active,
+    .sub-link,
+    .sub-link:hover,
+    .sub-link:focus,
+    .sub-link:active {
+        text-decoration: none !important;
+    }
+
     .menu > a,
     .sidebar-group-toggle{
         width:100%;
-        min-height:48px;
+        min-width:0;
+        min-height:40px;
         border:none;
-        border-radius:14px;
+        border-radius:10px;
         display:flex;
         align-items:center;
-        gap:12px;
-        padding:0 14px;
+        gap:8px;
+        padding:0 8px;
+        box-sizing:border-box;
         background:transparent;
         color:rgba(255,255,255,0.92);
         font-weight:700;
         text-align:left;
-        transition:.2s ease;
+        transition:color .2s ease, background .2s ease, transform .2s ease;
         position:relative;
         overflow:hidden;
-        text-decoration:none;
+        text-decoration:none !important;
     }
 
     .menu > a::before,
@@ -296,6 +298,7 @@
     .sidebar-group-toggle:hover{
         color:#fff;
         transform:translateX(2px);
+        text-decoration:none !important;
     }
 
     .menu > a.active{
@@ -309,25 +312,71 @@
     }
 
     .menu-icon{
+        flex:0 0 20px;
         width:20px;
         min-width:20px;
+        max-width:20px;
+        height:20px;
         text-align:center;
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        flex-shrink:0;
         font-size:15px;
         position:relative;
         z-index:1;
     }
 
+    .menu-icon i,
+    .menu-icon svg{
+        font-size:15px;
+        width:18px;
+        max-width:18px;
+        max-height:16px;
+        text-align:center;
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        line-height:1;
+        margin:0 auto;
+    }
+
     .menu-text{
+        flex:1 1 0;
+        min-width:0;
         white-space:nowrap;
-        font-size:14px;
+        overflow:hidden;
+        text-overflow:ellipsis;
+        font-size:13px;
+        font-weight:700;
+        line-height:1.25;
         transition:opacity 0.2s ease;
     }
 
-    .menu-badge{
+    .group-chevron{
+        flex:0 0 16px;
+        width:16px;
+        min-width:16px;
+        margin-left:auto;
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        flex-shrink:0;
         font-size:11px;
+        transition:transform .24s ease;
+        position:relative;
+        z-index:1;
+    }
+
+    .sidebar-group.open .group-chevron{
+        transform:rotate(180deg);
+    }
+
+    .menu-badge{
+        font-size:10px;
         font-weight:900;
-        padding:4px 8px;
-        border-radius:8px;
+        padding:2px 6px;
+        border-radius:6px;
         background:rgba(255,255,255,0.15);
         color:#fff;
         position:relative;
@@ -352,18 +401,9 @@
         background:rgba(255,255,255,0.05);
     }
 
-    .group-chevron{
-        font-size:11px;
-        transition:transform .24s ease;
-    }
-
-    .sidebar-group.open .group-chevron{
-        transform:rotate(90deg);
-    }
-
     .sidebar-submenu{
         display:none;
-        padding-left:14px;
+        padding:2px 0 2px 8px;
     }
 
     .sidebar-group.open .sidebar-submenu,
@@ -374,15 +414,18 @@
     .sub-link{
         display:flex;
         align-items:center;
-        gap:10px;
-        height:38px;
-        padding:0 14px;
-        border-radius:10px;
-        color:rgba(255,255,255,0.76);
-        font-size:13px;
-        font-weight:600;
+        gap:8px;
+        min-height:32px;
+        padding:0 8px;
+        border-radius:8px;
+        color:rgba(255,255,255,0.92);
+        font-size:12.5px;
+        font-weight:700;
         transition:.2s ease;
         text-decoration:none;
+        box-sizing:border-box;
+        width:100%;
+        min-width:0;
     }
 
     .sub-link:hover{
@@ -393,20 +436,47 @@
     .sub-link.active{
         background:rgba(255,255,255,0.95);
         color:var(--orb-primary);
+        font-weight:800;
         box-shadow:0 8px 18px rgba(17,24,39,0.12);
     }
 
     .sub-link-icon{
+        flex:0 0 16px;
         width:16px;
         min-width:16px;
+        max-width:16px;
+        height:16px;
         text-align:center;
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        flex-shrink:0;
         font-size:12px;
     }
 
+    .sub-link-icon i,
+    .sub-link-icon svg{
+        font-size:12px;
+        width:14px;
+        max-width:14px;
+        max-height:14px;
+        text-align:center;
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        line-height:1;
+        margin:0 auto;
+    }
+
     .sub-link-text{
+        flex:1 1 0;
+        min-width:0;
         white-space:nowrap;
         overflow:hidden;
         text-overflow:ellipsis;
+        font-size:12.5px;
+        font-weight:700;
+        line-height:1.25;
     }
 
     .submenu-divider{
@@ -474,14 +544,10 @@
     }
 
     body.desktop-collapsed .brand-logo-box{
-        width:58px;
-        min-height:58px;
-        padding:8px;
+        width:100%;
+        min-height:40px;
+        padding:4px;
         justify-content:center;
-    }
-
-    body.desktop-collapsed .brand-logo{
-        max-height:30px;
     }
 
     body.desktop-collapsed .module-switcher{
@@ -500,7 +566,7 @@
         display:flex;
         align-items:center;
         justify-content:center;
-        min-height:58px;
+        min-height:50px;
         padding:10px;
     }
 
@@ -509,6 +575,8 @@
         min-height:100vh;
         margin-left:var(--sidebar-width);
         transition:margin-left .28s ease;
+        max-width: 100%;
+        overflow-x: clip;
     }
 
     .topbar{
@@ -524,7 +592,7 @@
         display:flex;
         align-items:center;
         justify-content:space-between;
-        padding:0 22px;
+        padding:0 16px;
         z-index:1100;
         transition:left .28s ease;
     }
@@ -591,9 +659,11 @@
         flex-shrink:0;
     }
 
-    /* .page-content{
-        padding:calc(var(--topbar-height) + 20px) 20px 20px;
-    } */
+    .page-content{
+        min-height: 100vh;
+        width: 100%;
+        box-sizing: border-box;
+    }
 
     .overlay{
         position:fixed;
@@ -613,8 +683,10 @@
     @media (max-width: 992px){
         .sidebar{
             transform:translateX(-100%);
-            width:min(86vw, 320px);
-            box-shadow:0 20px 50px rgba(0,0,0,.28);
+            width:min(88vw, 300px) !important;
+            min-width:min(280px, 94vw) !important;
+            max-width:100vw;
+            box-shadow:0 20px 50px rgba(0,0,0,.35);
         }
 
         .sidebar.show{
@@ -622,12 +694,8 @@
         }
 
         .sidebar-close{
-        display: flex;
-    }
-    .brand-logo{
-        max-height: 120px;
-        max-width: 150px;
-    }
+            display: flex !important;
+        }
 
         .panel-main{
             margin-left:0 !important;
@@ -635,39 +703,19 @@
 
         .topbar{
             left:0 !important;
+            width:100%;
         }
 
-        .brand-text,
-        .menu-label,
-        .menu-text,
-        .module-switch-text,
-        .group-chevron,
-        .menu-badge,
-        .sidebar-footer-title,
-        .sidebar-footer-sub{
-            display:initial !important;
+        .menu-label{
+            display: block !important;
         }
 
-        /* .sidebar-submenu{
-            display:block !important;
-        } */
-         .sidebar-submenu{
-        display: none; /* default closed */
-    }
-
-    .sidebar-submenu.show{
-        display: block; /* open only when clicked */
-    }
-
-        .module-switcher{
-            grid-template-columns:repeat(2, minmax(0,1fr));
+        .sidebar-submenu{
+            display: none;
         }
 
-        .module-switch-item,
-        .menu > a,
-        .sidebar-group-toggle{
-            justify-content:flex-start !important;
-            padding:0 14px !important;
+        .sidebar-submenu.show{
+            display: block !important;
         }
     }
 
@@ -701,7 +749,7 @@
 
         .menu > a,
         .sidebar-group-toggle{
-            min-height:46px;
+            min-height:38px;
         }
     }
 
@@ -781,6 +829,78 @@
         font-size: 12px !important;
     }
 </style>
+
+<!-- Global Flatpickr, Select2 & DataTables Styles for Panel -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap4.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap4.min.css">
+<link rel="stylesheet" href="{{ asset('css/orbo-components.css') }}">
+<!-- Early Select2 Core for zero-flicker searchable dropdowns -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    window.initSearchableSelects = function(context, force) {
+        if (typeof window.jQuery === 'undefined' || typeof jQuery.fn.select2 === 'undefined') return;
+        const $target = context ? jQuery(context).find('select.select2-searchable, select.js-searchable, select.auto-filter, select.js-auto-filter, select.select2-modal-searchable') : jQuery('select.select2-searchable, select.js-searchable, select.auto-filter, select.js-auto-filter, select.select2-modal-searchable');
+        $target.each(function() {
+            if (jQuery(this).hasClass('select2-hidden-accessible')) {
+                if (force) {
+                    jQuery(this).select2('destroy');
+                } else {
+                    return;
+                }
+            }
+            const $modalParent = jQuery(this).closest('.modal');
+            const rawMin = jQuery(this).attr('data-minimum-results-for-search') ?? jQuery(this).data('minimum-results-for-search');
+            let minResults = 7;
+            if (rawMin !== undefined && rawMin !== null) {
+                if (rawMin === 'Infinity' || rawMin === Infinity || rawMin === '-1' || rawMin === -1) {
+                    minResults = Infinity;
+                } else {
+                    let parsed = parseInt(rawMin, 10);
+                    minResults = isNaN(parsed) ? 7 : parsed;
+                }
+            }
+            jQuery(this).select2({
+                placeholder: jQuery(this).data('placeholder') || jQuery(this).attr('placeholder') || jQuery(this).find('option:first').text() || 'Search or select...',
+                allowClear: true,
+                minimumResultsForSearch: minResults,
+                width: '100%',
+                dropdownParent: $modalParent.length ? $modalParent : undefined
+            });
+        });
+    };
+
+    // Global MutationObserver to automatically initialize any select2-searchable as soon as it enters the DOM
+    if (typeof MutationObserver !== 'undefined') {
+        const selectObserver = new MutationObserver(function(mutations) {
+            let hasNewSelect = false;
+            for (let i = 0; i < mutations.length; i++) {
+                const added = mutations[i].addedNodes;
+                for (let j = 0; j < added.length; j++) {
+                    const node = added[j];
+                    if (node.nodeType === 1) {
+                        if (node.matches && node.matches('select.select2-searchable:not(.select2-hidden-accessible), select.js-searchable:not(.select2-hidden-accessible), select.select2-modal-searchable:not(.select2-hidden-accessible)')) {
+                            hasNewSelect = true;
+                            break;
+                        }
+                        if (node.querySelector && node.querySelector('select.select2-searchable:not(.select2-hidden-accessible), select.js-searchable:not(.select2-hidden-accessible), select.select2-modal-searchable:not(.select2-hidden-accessible)')) {
+                            hasNewSelect = true;
+                            break;
+                        }
+                    }
+                }
+                if (hasNewSelect) break;
+            }
+            if (hasNewSelect) {
+                window.initSearchableSelects();
+            }
+        });
+        selectObserver.observe(document.documentElement, { childList: true, subtree: true });
+    }
+</script>
+
+@stack('styles')
 @yield('_head')
 @endsection
 
@@ -801,6 +921,23 @@
 @endsection
 
 @section('script')
+<!-- Global Select2 Core -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<!-- Global Flatpickr Core -->
+<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+
+<!-- Global DataTables Core & HTML5 Export Tools -->
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap4.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap4.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+
 <script>
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('overlay');
@@ -837,6 +974,114 @@
             closeSidebar();
         }
     });
+
+    // Global DataTable Length Select Dropdown Initializer
+    window.initGlobalDataTableLengthSelects = function() {
+        if (typeof window.jQuery === 'undefined' || typeof jQuery.fn.select2 === 'undefined') return;
+        jQuery('div.dataTables_length select, .orb-table-length-box select, [id$="LengthBox"] select, .eo-entries-select, .table-per-page-select, .orb-per-page-select, #recordsPerPageSelect').each(function() {
+            if (!jQuery(this).hasClass('select2-hidden-accessible')) {
+                jQuery(this).select2({
+                    minimumResultsForSearch: Infinity,
+                    width: '75px',
+                    dropdownCssClass: 'select2-dropdown-per-page',
+                    containerCssClass: 'select2-container--per-page'
+                });
+            }
+        });
+    };
+    function initGlobalDataTableLengthSelects() {
+        window.initGlobalDataTableLengthSelects();
+    }
+
+    // Global DataTables Configuration: Suppress browser alert popups application-wide
+    if (typeof $ !== 'undefined' && $.fn && $.fn.dataTable) {
+        $.fn.dataTable.ext.errMode = 'none';
+    }
+
+    $(document).ready(function() {
+        if (typeof $ !== 'undefined' && $.fn && $.fn.dataTable) {
+            $.fn.dataTable.ext.errMode = 'none';
+        }
+        if (typeof window.initSearchableSelects === 'function') {
+            window.initSearchableSelects();
+        }
+        initGlobalDataTableLengthSelects();
+    });
+
+    $(document).on('init.dt draw.dt', function () {
+        initGlobalDataTableLengthSelects();
+    });
+
+    $(document).on('shown.bs.modal', '.modal', function () {
+        if (typeof window.initSearchableSelects === 'function') {
+            window.initSearchableSelects(this);
+        }
+        initGlobalDataTableLengthSelects();
+    });
+
+    // Global DataTable Export Buttons Trigger
+    $(document).on('click', '[data-export], .js-export-btn, .orbo-export-btn', function(e) {
+        if ($(this).closest('#shiftAssignmentExportButtons').length || e.isImmediatePropagationStopped()) {
+            return;
+        }
+
+        const exportType = $(this).attr('data-export') || 
+                           ($(this).hasClass('btn-export-csv') || $(this).hasClass('js-export-csv') ? 'csv' :
+                           $(this).hasClass('btn-export-excel') || $(this).hasClass('js-export-excel') ? 'excel' :
+                           $(this).hasClass('btn-export-pdf') || $(this).hasClass('js-export-pdf') ? 'pdf' :
+                           $(this).hasClass('btn-export-print') || $(this).hasClass('js-export-print') ? 'print' : null);
+        
+        if (!exportType || $(this).is('a[href]:not([href="#"]):not([href="javascript:void(0)"])')) {
+            return;
+        }
+
+        const group = $(this).closest('[data-export-group], .orbo-export-group, [id$="ExportButtons"], .orb-table-export-buttons');
+        const targetTableId = group.data('target-table') || $(this).data('target-table');
+        let dtInstance = null;
+
+        if (targetTableId) {
+            const $tbl = $('#' + targetTableId);
+            if ($tbl.length && $.fn.DataTable && $.fn.DataTable.isDataTable($tbl)) {
+                dtInstance = $tbl.DataTable();
+            }
+        }
+
+        if (!dtInstance) {
+            const $container = $(this).closest('.orb-table-card, .eo-card, .card, .container-fluid, .eo-container, body');
+            const $tbl = $container.find('table.dataTable, table.eo-table');
+            if ($tbl.length && $.fn.DataTable && $.fn.DataTable.isDataTable($tbl.first())) {
+                dtInstance = $tbl.first().DataTable();
+            }
+        }
+
+        if (dtInstance && typeof dtInstance.button === 'function') {
+            const btn = dtInstance.button('.buttons-' + exportType);
+            if (btn && btn.length) {
+                e.preventDefault();
+                btn.trigger();
+            }
+        }
+    });
+
+    // Global Datepicker Auto-Dismiss on Scroll (Prevent floating popup in modals & page)
+    function dismissOpenFlatpickrs(e) {
+        if (e && e.target && (e.target.closest && e.target.closest('.flatpickr-calendar'))) {
+            return;
+        }
+        document.querySelectorAll('.flatpickr-calendar.open').forEach(function(cal) {
+            if (cal._flatpickr) {
+                cal._flatpickr.close();
+            } else {
+                cal.classList.remove('open');
+            }
+        });
+    }
+
+    window.addEventListener('scroll', dismissOpenFlatpickrs, { capture: true, passive: true });
+    document.addEventListener('scroll', dismissOpenFlatpickrs, { capture: true, passive: true });
 </script>
+
+@stack('scripts')
 @yield('_script')
 @endsection
+

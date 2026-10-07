@@ -103,7 +103,7 @@ class WfhRequestService
         ];
     }
 
-    public function validateRange(EmployeeM $employee, string $fromDateStr, string $toDateStr): array
+    public function validateRange(EmployeeM $employee, string $fromDateStr, string $toDateStr, ?int $ignoreRequestId = null): array
     {
         $policy = $this->policy();
         if (! ($policy['wfh_enabled'] ?? true)) {
@@ -125,6 +125,7 @@ class WfhRequestService
         $duplicate = WfhRequestM::query()
             ->where('employee_id', $employee->id)
             ->whereNotIn('status', ['rejected', 'cancelled'])
+            ->when($ignoreRequestId, fn ($q) => $q->where('id', '!=', $ignoreRequestId))
             ->where(function ($q) use ($from, $to) {
                 $q->where(function ($q2) use ($from, $to) {
                     $q2->whereDate('from_date', '<=', $to->toDateString())
@@ -244,7 +245,7 @@ class WfhRequestService
 
         $employee = EmployeeM::find($requestRecord->employee_id);
         $stats = $employee
-            ? $this->validateRange($employee, (string) $fromDateStr, (string) $toDateStr)
+            ? $this->validateRange($employee, (string) $fromDateStr, (string) $toDateStr, (int) $requestRecord->id)
             : [
                 'total_days' => 1,
                 'working_days' => 1,
@@ -375,6 +376,46 @@ class WfhRequestService
         }
 
         return ['created' => $created, 'skipped' => $skipped];
+    }
+
+    public function approveManagerStage(WfhRequestM $request, int $actorId, ?string $note = null): WfhRequestM
+    {
+        if ($request->status === 'rejected' || $request->status === 'cancelled' || $request->status === 'approved') {
+            throw ValidationException::withMessages(['status' => 'Only pending requests can be approved at manager stage.']);
+        }
+
+        DB::transaction(function () use ($request, $actorId, $note) {
+            $request->status = 'manager_approved';
+            $request->manager_approved_by = $actorId;
+            $request->manager_approved_at = now();
+            if ($note) {
+                $existingRemarks = trim((string) ($request->remarks ?? ''));
+                $mgrNote = 'Manager Note: ' . $note;
+                $request->remarks = trim($existingRemarks . ($existingRemarks !== '' ? ' | ' : '') . $mgrNote);
+            }
+            $request->save();
+        });
+
+        // Notify Employee that Manager Approved and sent to HR
+        try {
+            $notificationService = app(NotificationS::class);
+            $user = $request->employee?->user;
+            if ($user) {
+                $notificationService->notifyEmployee(
+                    'WFH Request Manager Approved',
+                    "Your Work From Home request has been approved by your Reporting Manager and sent to HR Admin for final approval.",
+                    'wfh_manager_approved',
+                    'my-wfh.index',
+                    [],
+                    ['employee_id' => $request->employee_id, 'wfh_request_id' => $request->id],
+                    $user->id
+                );
+            }
+        } catch (\Throwable $e) {
+            Log::warning('WFH manager approval notification skipped: ' . $e->getMessage());
+        }
+
+        return $request->fresh();
     }
 
     public function approve(WfhRequestM $request, int $actorId, ?array $partialRange = null, bool $canOverrideQuota = false): WfhRequestM
@@ -651,18 +692,33 @@ class WfhRequestService
     private function resolveTargetEmployees(array $payload): array
     {
         $scope = (string) ($payload['assignment_scope'] ?? 'single');
-        $query = EmployeeM::query()->where('is_active', 1);
+        $query = EmployeeM::query()
+            ->where('is_active', 1)
+            ->where(function ($q) {
+                $q->where('work_mode', 'wfo')
+                  ->orWhere(function ($sub) {
+                      $sub->whereNull('work_mode')
+                          ->orWhereRaw("LOWER(TRIM(work_mode)) NOT IN ('wfh', 'permanent_wfh', 'permanent wfh')");
+                  });
+            });
 
         return match ($scope) {
-            'single' => ! empty($payload['employee_id']) ? [(int) $payload['employee_id']] : [],
-            'multiple' => collect($payload['employee_ids'] ?? [])->map(fn($id) => (int) $id)->filter()->unique()->values()->all(),
+            'single' => ! empty($payload['employee_id'])
+                ? (clone $query)->where('id', (int) $payload['employee_id'])->pluck('id')->map(fn($id) => (int) $id)->all()
+                : [],
+            'multiple' => collect($payload['employee_ids'] ?? [])
+                ->map(fn($id) => (int) $id)
+                ->filter()
+                ->unique()
+                ->values()
+                ->pipe(fn($ids) => (clone $query)->whereIn('id', $ids)->pluck('id')->map(fn($id) => (int) $id)->all()),
             'department' => ! empty($payload['department_id'])
-                ? $query->where('department_id', (int) $payload['department_id'])->pluck('id')->map(fn($id) => (int) $id)->all()
+                ? (clone $query)->where('department_id', (int) $payload['department_id'])->pluck('id')->map(fn($id) => (int) $id)->all()
                 : [],
             'designation' => ! empty($payload['designation_id'])
-                ? $query->where('designation_id', (int) $payload['designation_id'])->pluck('id')->map(fn($id) => (int) $id)->all()
+                ? (clone $query)->where('designation_id', (int) $payload['designation_id'])->pluck('id')->map(fn($id) => (int) $id)->all()
                 : [],
-            'all' => $query->pluck('id')->map(fn($id) => (int) $id)->all(),
+            'all' => (clone $query)->pluck('id')->map(fn($id) => (int) $id)->all(),
             default => [],
         };
     }

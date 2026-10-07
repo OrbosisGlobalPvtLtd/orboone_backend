@@ -61,7 +61,7 @@ class WfhPolicyService
             'wfh_enabled' => true,
             'wfh_monthly_limit' => 2,
             'wfh_requires_manager_approval' => true,
-            'wfh_requires_hr_approval' => false,
+            'wfh_requires_hr_approval' => true,
             'wfh_allow_on_weekoff' => true,
             'wfh_allow_on_holiday' => true,
             'wfh_internet_issue_to_lwp' => true,

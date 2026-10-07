@@ -38,6 +38,26 @@ class AttendanceTimeSeeder extends Seeder
                 'absent_below_minutes' => 135, 'lunch_break_minutes' => 0,
                 'is_default' => 0, 'is_active' => 1,
             ],
+            [
+                'name' => 'Flexible Part Time', 'code' => 'flexible_part_time',
+                'shift_type' => 'flexible_part_time',
+                'punch_allowed_from' => null, 'shift_start_time' => null,
+                'late_after_time' => null, 'warning_after_time' => null,
+                'block_after_time' => null, 'shift_end_time' => null,
+                'required_work_minutes' => 300, 'half_day_min_minutes' => 180,
+                'absent_below_minutes' => 90, 'lunch_break_minutes' => 0,
+                'is_default' => 0, 'is_active' => 1,
+            ],
+            [
+                'name' => 'Dynamic Hours Shift', 'code' => 'dynamic_hours',
+                'shift_type' => 'dynamic_hours',
+                'punch_allowed_from' => null, 'shift_start_time' => null,
+                'late_after_time' => null, 'warning_after_time' => null,
+                'block_after_time' => null, 'shift_end_time' => null,
+                'required_work_minutes' => 480, 'half_day_min_minutes' => 240,
+                'absent_below_minutes' => 120, 'lunch_break_minutes' => 60,
+                'is_default' => 0, 'is_active' => 1,
+            ],
         ];
 
         foreach ($shifts as $shift) {

@@ -394,6 +394,8 @@
         @endforeach
     </div>
 
+    @include('dashboard.partials.birthday-widget', ['dashboard' => $dashboard])
+
     @php
         $hasBlocked = !empty($dashboard['tables']['blocked_employees']);
         $hasLeaves = !empty($dashboard['tables']['pending_leaves']);

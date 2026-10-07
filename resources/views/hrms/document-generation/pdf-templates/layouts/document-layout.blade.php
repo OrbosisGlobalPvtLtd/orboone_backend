@@ -63,12 +63,15 @@
             background: white;
             width: 210mm;
             min-height: 297mm;
+            height: 297mm;
+            max-height: 297mm;
             padding: 100px 42px 78px 42px;
             box-sizing: border-box;
             position: relative;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
             border: 1px solid #cbd5e1;
             border-radius: 4px;
+            overflow: hidden;
         }
 
         .a4-page:empty {
@@ -477,11 +480,22 @@
 
             let currentPage = createNewPage();
             let currentContent = currentPage.querySelector(".a4-content");
+            const maxPageHeight = 880;
 
-            let children = [];
-            if (raw.children.length === 1 && raw.children[0].className === "letter-body") {
-                children = Array.from(raw.children[0].children);
-            } else {
+            function extractBlocks(node) {
+                const blocks = [];
+                Array.from(node.children).forEach(child => {
+                    if (child.classList.contains("letter-body") || child.classList.contains("pdf-content")) {
+                        blocks.push(...extractBlocks(child));
+                    } else {
+                        blocks.push(child);
+                    }
+                });
+                return blocks;
+            }
+
+            let children = extractBlocks(raw);
+            if (children.length === 0) {
                 children = Array.from(raw.children);
             }
 
@@ -495,6 +509,13 @@
                 }
 
                 currentContent.appendChild(el);
+
+                if (currentContent.offsetHeight > maxPageHeight && currentContent.children.length > 1) {
+                    currentContent.removeChild(el);
+                    currentPage = createNewPage();
+                    currentContent = currentPage.querySelector(".a4-content");
+                    currentContent.appendChild(el);
+                }
             });
 
             Array.from(container.children).forEach(page => {

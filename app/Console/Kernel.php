@@ -2,8 +2,13 @@
 
 namespace App\Console;
 
+use App\Console\Commands\AccrueMonthlyLeaveCommand;
 use App\Console\Commands\AttendanceAbsent;
+use App\Console\Commands\AttendanceBackfillShiftAssignments;
 use App\Console\Commands\AttendanceLeave;
+use App\Console\Commands\DispatchPermanentActivationNotifications;
+use App\Console\Commands\ActivateScheduledProbationEmployees;
+use App\Console\Commands\ActivateScheduledPermanentEmployees;
 use App\Console\Commands\HRMS\AutoBlockMissedPunchIns;
 use App\Console\Commands\HRMS\AutoCloseBlockedAttendance;
 use App\Console\Commands\HRMS\ExpireCompOffs;
@@ -25,6 +30,7 @@ class Kernel extends ConsoleKernel
      * @var array
      */
     protected $commands = [
+        AccrueMonthlyLeaveCommand::class,
         AttendanceAbsent::class,
         AttendanceLeave::class,
         AutoBlockMissedPunchIns::class,
@@ -37,7 +43,10 @@ class Kernel extends ConsoleKernel
         LapseYearEndLeaves::class,
         RecalculateLeaveBalances::class,
         GenerateMonthlyAttendanceSummary::class,
-        \App\Console\Commands\AttendanceBackfillShiftAssignments::class,
+        DispatchPermanentActivationNotifications::class,
+        AttendanceBackfillShiftAssignments::class,
+        ActivateScheduledProbationEmployees::class,
+        ActivateScheduledPermanentEmployees::class,
     ];
 
     /**
@@ -59,6 +68,10 @@ class Kernel extends ConsoleKernel
         $schedule->command('hrms:process-missed-punches')->everyMinute()->timezone('Asia/Kolkata')->withoutOverlapping();
         $schedule->command('attendance:process-lwp')->dailyAt('23:55')->timezone('Asia/Kolkata');
         $schedule->command('hrms:auto-close-blocked-attendance')->everyMinute()->timezone('Asia/Kolkata')->withoutOverlapping();
+        $schedule->command('hrms:accrue-monthly-leave')
+            ->monthlyOn(1, '00:01')
+            ->timezone('Asia/Kolkata')
+            ->withoutOverlapping();
         $schedule->command('hrms:leave-generate-allocations')->yearlyOn(1, 1, '00:05')->timezone('Asia/Kolkata');
         $schedule->command('hrms:comp-offs-expire')->dailyAt('00:20')->timezone('Asia/Kolkata');
         $schedule->command('hrms:process-holiday-work-comp-offs')->everyMinute()->timezone('Asia/Kolkata')->withoutOverlapping();
@@ -69,7 +82,9 @@ class Kernel extends ConsoleKernel
             ->timezone('Asia/Kolkata')
             ->withoutOverlapping();
         $schedule->command('hrms:lifecycle-reminders')->dailyAt('09:00')->timezone('Asia/Kolkata')->withoutOverlapping();
+        $schedule->command('hrms:activate-scheduled-probation')->dailyAt('00:08')->timezone('Asia/Kolkata')->withoutOverlapping();
         $schedule->command('hrms:activate-scheduled-permanent')->dailyAt('00:10')->timezone('Asia/Kolkata')->withoutOverlapping();
+        $schedule->command('hrms:dispatch-permanent-activation-notifications')->everyMinute()->timezone('Asia/Kolkata')->withoutOverlapping();
         $schedule->command('hrms:leave-lapse-year-end')->yearlyOn(12, 31, '23:50')->timezone('Asia/Kolkata');
         $schedule->command('hrms:attendance-monthly-summary')->monthlyOn(1, '01:00')->timezone('Asia/Kolkata');
     }

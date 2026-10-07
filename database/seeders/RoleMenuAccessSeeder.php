@@ -49,7 +49,6 @@ class RoleMenuAccessSeeder extends Seeder
 
             30,     // Leave Management
             32,     // Apply for Leave
-            36,    // Leave History
             34,     // Balance Tracker
             132,    // Holiday List
 
@@ -108,6 +107,7 @@ class RoleMenuAccessSeeder extends Seeder
             'hr_admin' => [
                 1,
                 300,311,
+                // Employee Management parent (10) + all children (11-13, 15-19)
                 10,11,12,13,15,16,17,18,19,
                 20,21,22,145,23,28,29,156,26,134,135,24,25,136,152,153,27,164,350,351,
                 30,31,32,137,33,36,146,34,35,130,131,132,138,133,139,140,
@@ -146,14 +146,14 @@ class RoleMenuAccessSeeder extends Seeder
                 1,
             ],
             'employee' => [
-                1,
-                20,145,350,28,163,26,29,332,
-                30,32,137,36,34,133,
-                300,309,310,
-                50,52,53,161,
-                154,
-                80,83,
-                309,310,
+                1, // Dashboard
+                20, 349, 145, 163, 332, 181, 28, 26, // Attendance Self-Service
+                30, 137, 32, 34, // Leave Self-Service
+                300, 309, 310, // Enterprise Payroll Self-Service
+                50, 52, 161, 53, // Document Management Self-Service
+                60, 154, // Announcements
+                330, 331, // Assets
+                80, 83, // Profile & Settings
             ],
         ];
 

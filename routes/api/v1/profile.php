@@ -11,5 +11,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/update-fcm-token', [ProfileController::class, 'updateFcmToken']);
     Route::get('/holidays', [ProfileController::class, 'listHolidays']);
 
+    Route::get('/birthday/share-info', [\App\Http\Controllers\Api\V1\Birthday\BirthdayShareApiController::class, 'shareInfo']);
     Route::get('/file', [FileController::class, 'view']);
 });

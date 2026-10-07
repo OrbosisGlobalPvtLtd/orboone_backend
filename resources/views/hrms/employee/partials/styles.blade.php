@@ -10,7 +10,7 @@
         --orb-shadow: 0 14px 35px rgba(16, 24, 40, .07);
     }
 
-    /* Core Page Layout and Spacing Rules */
+    /* Core Page Layout and Spacing Rules - 100% Fluid Full Fit */
     .eo-page,
     .em-page,
     .ev-page {
@@ -20,22 +20,29 @@
         font-family: 'Outfit', 'Inter', sans-serif !important;
         box-sizing: border-box !important;
         width: 100% !important;
-        max-width: 1500px !important;
-        margin: 0 auto !important;
-        overflow-x: hidden !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+    }
+
+    .eo-container,
+    .em-container,
+    .ev-container {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
     }
 
     @media (max-width: 991px) {
-
         .eo-page,
         .em-page,
         .ev-page {
-            padding: 18px !important;
+            padding: 16px !important;
         }
     }
 
     @media (max-width: 575px) {
-
         .eo-page,
         .em-page,
         .ev-page {
@@ -533,31 +540,7 @@
         text-transform: uppercase !important;
     }
 
-    /* DataTables length entries and export toolbar styling */
-    #employeeLengthBox .dataTables_length select {
-        border-radius: 9px !important;
-        padding: 4px 22px 4px 8px !important;
-        border-color: var(--orb-border) !important;
-    }
 
-    #employeeExportButtons .dt-buttons .btn {
-        border-radius: 50px !important;
-        font-size: 12px !important;
-        font-weight: 800 !important;
-        margin-right: 6px !important;
-        margin-bottom: 6px !important;
-        border: 1px solid var(--orb-border) !important;
-        background: #fff !important;
-        color: #475467 !important;
-        padding: 6px 14px !important;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05) !important;
-    }
-
-    #employeeExportButtons .dt-buttons .btn:hover {
-        background: var(--orb-soft) !important;
-        color: var(--orb-primary) !important;
-        border-color: rgba(75, 0, 232, 0.2) !important;
-    }
 
     .eo-table-footer {
         padding: 16px 24px !important;

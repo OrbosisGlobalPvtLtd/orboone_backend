@@ -46,7 +46,14 @@ class AttendanceRegularizationService
         // 2. Day Context Checks (Holiday, Week Off, Approved Leave)
         $dayContext = $this->ruleResolver->getDayContext($employee, $carbonDate);
 
-        if ($dayContext['is_holiday']) {
+        $hasApprovedHolidayWork = DB::table('holiday_work_requests')
+            ->where('employee_id', $employee->id)
+            ->whereDate('worked_date', $dateStr)
+            ->where('status', 'approved')
+            ->whereNull('deleted_at')
+            ->exists();
+
+        if ($dayContext['is_holiday'] && ! $hasApprovedHolidayWork) {
             return [
                 'success' => false,
                 'can_regularize' => false,
@@ -57,7 +64,7 @@ class AttendanceRegularizationService
             ];
         }
 
-        if ($dayContext['is_weekoff']) {
+        if ($dayContext['is_weekoff'] && ! $hasApprovedHolidayWork) {
             return [
                 'success' => false,
                 'can_regularize' => false,
@@ -404,6 +411,24 @@ class AttendanceRegularizationService
         $attendance->block_reason = null;
         $attendance->is_locked = false;
 
+        $presentType = DB::table('attendance_types')->where('code', 'present')->first();
+        if ($attendance->punch_in_time && ! $attendance->punch_out_time) {
+            $attendance->attendance_status = 'present';
+            if ($presentType) {
+                $attendance->attendance_type_id = $presentType->id;
+            }
+        } elseif (! $attendance->punch_in_time && ! $attendance->punch_out_time) {
+            $attendance->attendance_status = 'unlocked';
+            if ($presentType) {
+                $attendance->attendance_type_id = $presentType->id;
+            }
+        } elseif ($attendance->attendance_status === 'punch_blocked') {
+            $attendance->attendance_status = 'unlocked';
+            if ($presentType) {
+                $attendance->attendance_type_id = $presentType->id;
+            }
+        }
+
         // Step 3: Delete/resolve stale violations belonging strictly to this attendance record
         if (Schema::hasTable('attendance_violations')) {
             DB::table('attendance_violations')
@@ -461,6 +486,13 @@ class AttendanceRegularizationService
         // Step 6: Execute AttendanceS::calculateAttendanceStats() and rebuild violation cycles
         $attendanceService->calculateAttendanceStats($attendance);
         $attendanceService->rebuildEmployeeViolationCycles($employee->id, $attDateStr);
+
+        // Step 6b: Trigger Comp-Off credit reconciliation if this date is an approved Holiday/Weekoff Work Request
+        try {
+            app(\App\Services\HRMS\Leave\CompOffService::class)->reconcileForEmployeeAndDate($employee, $carbonAttDate);
+        } catch (\Throwable $e) {
+            \Log::error('Comp-Off reconciliation failed during regularization approval: ' . $e->getMessage());
+        }
 
         // 4. Rebuild Monthly Attendance Summary
         $summaryService = app(PayrollAttendanceSummaryService::class);

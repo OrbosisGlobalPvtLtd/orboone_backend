@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Web\HRMS\Document;
 
 use App\Http\Controllers\Controller;
+use App\Models\HRMS\Department\DepartmentM;
 use App\Models\HRMS\Document\DocumentTypeM;
 use App\Models\HRMS\Document\EmployeeDocumentM;
 use App\Models\HRMS\Employee\EmployeeM;
+use App\Services\HRMS\Document\HrmsFileStorageS;
 use App\Services\HRMS\Storage\HrmsStoragePathS;
 use App\Services\HRMS\Storage\HrmsFileResolverS;
 use Illuminate\Http\Request;
@@ -25,7 +27,7 @@ class EmployeeDocumentsC extends Controller
     public function index(Request $request)
     {
         $documentTypes = DocumentTypeM::where('scope', 'employee')->where('is_active', 1)->get();
-        $departments = \App\Models\HRMS\Department\DepartmentM::where('is_active', 1)->orderBy('name')->get();
+        $departments = DepartmentM::where('is_active', 1)->orderBy('name')->get();
         $query = EmployeeM::with(['user', 'profile', 'department', 'documents.documentType'])
             ->where('is_active', 1)
             ->whereNotIn('employment_status', ['exited', 'terminated', 'resigned_and_exited']);
@@ -487,16 +489,32 @@ class EmployeeDocumentsC extends Controller
 
     public function uploadFromProfile(Request $request, $employee, $documentType)
     {
-        $request->validate([
-            'file' => ['required', 'file', 'max:5120', 'mimes:pdf,jpg,jpeg,png,webp'],
-            'expiry_date' => ['nullable', 'date'],
-        ]);
-
         $employeeModel = EmployeeM::findOrFail($employee);
         $typeModel = DocumentTypeM::findOrFail($documentType);
 
+        $allowedExtensions = $typeModel->allowed_extensions;
+        if (is_string($allowedExtensions)) {
+            $decoded = json_decode($allowedExtensions, true);
+            $allowedExtensions = is_array($decoded) ? $decoded : [];
+        }
+        if (empty($allowedExtensions)) {
+            $isPhoto = str_contains(strtolower($typeModel->code ?? ''), 'photo') || str_contains(strtolower($typeModel->name ?? ''), 'photo');
+            $allowedExtensions = $isPhoto ? ['jpg', 'jpeg', 'png'] : ['pdf', 'jpg', 'jpeg', 'png'];
+        }
+        $allowedExtensions = array_values(array_unique(array_filter(array_map('strtolower', $allowedExtensions))));
+        $maxMb = (int) ($typeModel->max_file_size_mb ?: 5);
+        $maxKb = max($maxMb, 1) * 1024;
+
+        $request->validate([
+            'file' => ['required', 'file', 'max:' . $maxKb, 'mimes:' . implode(',', $allowedExtensions)],
+            'expiry_date' => ['nullable', 'date'],
+        ], [
+            'file.mimes' => 'Invalid file format. Allowed format(s) for ' . $typeModel->name . ': ' . strtoupper(implode(', ', $allowedExtensions)) . '.',
+            'file.max' => 'File size must not exceed ' . $maxMb . 'MB.',
+        ]);
+
         $file = $request->file('file');
-        $storageService = app(\App\Services\HRMS\Document\HrmsFileStorageS::class);
+        $storageService = app(HrmsFileStorageS::class);
         $meta = $storageService->archiveOrReplaceEmployeeDocument($employeeModel, $typeModel, $file);
 
         $data = [

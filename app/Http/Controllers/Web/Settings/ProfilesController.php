@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Web\Settings;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
@@ -22,14 +23,16 @@ class ProfilesController extends Controller
             return view('auth.change-password');
         }
 
-        $profile = auth()->user()->load([
+        /** @var \App\Models\Core\UserM|null $user */
+        $user = Auth::user();
+        $profile = $user ? $user->load([
             'role',
             'primaryRole',
             'employee.department',
             'employee.designation',
             'employee.reportingManager.user',
             'employee.profile',
-        ]);
+        ]) : null;
 
         $editableFields = [
             "profile_image",
@@ -105,7 +108,8 @@ class ProfilesController extends Controller
 
     public function update(Request $request)
     {
-        $user = auth()->user();
+        /** @var \App\Models\Core\UserM $user */
+        $user = Auth::user();
 
         $data = $request->validate([
             'name' => ['nullable', 'string', 'max:150'],
@@ -273,7 +277,8 @@ class ProfilesController extends Controller
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
-        $user = auth()->user();
+        /** @var \App\Models\Core\UserM $user */
+        $user = Auth::user();
 
         if (! Hash::check($request->current_password, $user->password)) {
             return back()
@@ -302,9 +307,10 @@ class ProfilesController extends Controller
             ->with('success', 'Password updated successfully.');
     }
 
-    public function profileImage($employeeId)
+    public function profileImage(int|string|null $employeeId = null)
     {
-        $user = auth()->user();
+        /** @var \App\Models\Core\UserM|null $user */
+        $user = Auth::user();
         
         $employeeIdNum = is_object($employeeId) && isset($employeeId->id) ? (int)$employeeId->id : (int)$employeeId;
 
@@ -390,7 +396,8 @@ class ProfilesController extends Controller
 
     public function submitForVerification()
     {
-        $user = auth()->user();
+        /** @var \App\Models\Core\UserM $user */
+        $user = Auth::user();
         $employee = DB::table('employees_new')->where('user_id', $user->id)->first();
 
         if (!$employee) {
@@ -447,7 +454,7 @@ class ProfilesController extends Controller
             ['employee_id' => $employee->id],
             [
                 'profile_status' => 'submitted',
-                'is_profile_completed' => 1,
+                'is_profile_completed' => 0,
                 'updated_at' => now(),
             ]
         );

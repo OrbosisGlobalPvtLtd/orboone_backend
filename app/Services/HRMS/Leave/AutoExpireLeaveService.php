@@ -18,29 +18,21 @@ class AutoExpireLeaveService
         $todayStr = Carbon::today('Asia/Kolkata')->toDateString();
 
         $query = LeaveRequestM::where('status', 'pending')
-            ->whereDate('start_date', '<', $todayStr);
+            ->whereDate('end_date', '<', $todayStr);
 
         if ($employeeId) {
             $query->where('employee_id', $employeeId);
         }
 
-        $pendingRequests = $query->get();
-        $expiredCount = 0;
+        $affectedCount = $query->update([
+            'status' => 'expired',
+            'rejection_reason' => 'Auto-expired due to non-approval prior to leave date.',
+        ]);
 
-        foreach ($pendingRequests as $req) {
-            try {
-                $req->status = 'expired';
-                $req->rejection_reason = 'Auto-expired due to non-approval prior to leave date.';
-                $req->save();
-
-                $expiredCount++;
-
-                Log::info("LeaveRequest #{$req->id} for Employee #{$req->employee_id} auto-expired (start_date: {$req->start_date?->toDateString()}).");
-            } catch (\Throwable $e) {
-                Log::error("Failed to auto-expire LeaveRequest #{$req->id}: " . $e->getMessage());
-            }
+        if ($affectedCount > 0) {
+            Log::info("AutoExpireLeaveService: {$affectedCount} pending leave requests marked as expired (< {$todayStr}).");
         }
 
-        return $expiredCount;
+        return $affectedCount;
     }
 }

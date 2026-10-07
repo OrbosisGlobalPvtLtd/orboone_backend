@@ -49,7 +49,10 @@ class EmployeeExitProcessS
         }
 
         $lastWorkingDay = now()->toDateString();
-        if (in_array($exitType, ['resignation', 'contract_end', 'internship_exit', 'internship_completed'], true)) {
+        if (in_array($exitType, ['internship_completed', 'internship_exit'], true)) {
+            $noticeDays = 0;
+            $lastWorkingDay = $payload['last_working_day'] ?? $resignationDate;
+        } elseif (in_array($exitType, ['resignation', 'contract_end'], true)) {
             if ($noticeWaived && $policyFlags['allow_waiver']) {
                 $lastWorkingDay = $payload['last_working_day'] ?? $resignationDate;
                 $noticeDays = 0;
@@ -206,25 +209,35 @@ class EmployeeExitProcessS
         $fnfDone = $this->isFnfCompleted($employeeId, $exitId);
         $documentDone = $this->isDocumentCompleted($employeeId, (string) $exit->exit_type);
 
-        $assetStatus = in_array((string) $exit->asset_status, ['waived'], true) ? 'waived' : ($assetPending ? 'pending' : 'cleared');
+        $managerApproved = DB::table('employee_exit_clearances')->where('exit_process_id', $exitId)->where('department_key', 'manager')->where('status', 'approved')->exists();
+        $assetApproved = DB::table('employee_exit_clearances')->where('exit_process_id', $exitId)->where('department_key', 'asset')->where('status', 'approved')->exists();
+        $financeApproved = DB::table('employee_exit_clearances')->where('exit_process_id', $exitId)->where('department_key', 'finance')->where('status', 'approved')->exists();
+        $hrApproved = DB::table('employee_exit_clearances')->where('exit_process_id', $exitId)->where('department_key', 'hr')->where('status', 'approved')->exists();
+
+        $assetStatus = in_array((string) $exit->asset_status, ['waived', 'cleared'], true)
+            ? (string) $exit->asset_status
+            : ($assetApproved ? 'cleared' : ($assetPending ? 'pending' : 'cleared'));
+
         $fnfStatus = in_array((string) $exit->fnf_status, ['waived', 'approved', 'paid', 'completed'], true)
             ? (string) $exit->fnf_status
-            : ($fnfDone ? 'completed' : 'pending');
+            : ($financeApproved || $fnfDone ? 'completed' : 'pending');
+
         $documentStatus = in_array((string) $exit->document_status, ['waived', 'generated', 'sent', 'completed'], true)
             ? (string) $exit->document_status
-            : ($documentDone ? 'completed' : 'pending');
+            : ($hrApproved || $documentDone ? 'completed' : 'pending');
+
         $handoverStatus = in_array((string) $exit->handover_status, ['cleared', 'completed', 'waived'], true)
             ? (string) $exit->handover_status
-            : 'pending';
+            : ($managerApproved ? 'completed' : 'pending');
 
         $overall = 'ready_for_final_approval';
         if ($assetStatus !== 'cleared' && $assetStatus !== 'waived') {
             $overall = 'asset_pending';
-        } elseif (! in_array($fnfStatus, ['completed', 'waived'], true)) {
+        } elseif (! in_array($fnfStatus, ['completed', 'approved', 'paid', 'waived'], true)) {
             $overall = 'fnf_pending';
-        } elseif (! in_array($documentStatus, ['completed', 'waived'], true)) {
+        } elseif (! in_array($documentStatus, ['completed', 'generated', 'sent', 'waived'], true)) {
             $overall = 'document_pending';
-        } elseif (! in_array($handoverStatus, ['completed', 'waived'], true)) {
+        } elseif (! in_array($handoverStatus, ['completed', 'cleared', 'waived'], true)) {
             $overall = 'handover_pending';
         }
 
@@ -287,15 +300,36 @@ class EmployeeExitProcessS
             abort(422, 'Exit checklist is not fully completed.' . $suffix);
         }
 
-        DB::transaction(function () use ($exit, $actorUserId) {
-            DB::table($this->exitTable)->where('id', $exit->id)->update([
+        DB::transaction(function () use ($exit, $actorUserId, $waive) {
+            $exitUpdates = [
                 'status' => 'exit_completed',
                 'final_status' => 'completed',
                 'completed_by_user_id' => $actorUserId,
                 'approved_by_user_id' => $actorUserId,
                 'completed_at' => now(),
                 'updated_at' => now(),
-            ]);
+            ];
+
+            if ($waive) {
+                $currentExit = DB::table($this->exitTable)->where('id', $exit->id)->first();
+                if ($currentExit) {
+                    if (! in_array($currentExit->asset_status, ['cleared', 'waived'], true)) {
+                        $exitUpdates['asset_status'] = 'waived';
+                        $exitUpdates['asset_handover_status'] = 'waived';
+                    }
+                    if (! in_array($currentExit->fnf_status, ['completed', 'approved', 'paid', 'waived'], true)) {
+                        $exitUpdates['fnf_status'] = 'waived';
+                    }
+                    if (! in_array($currentExit->document_status, ['completed', 'generated', 'sent', 'waived'], true)) {
+                        $exitUpdates['document_status'] = 'waived';
+                    }
+                    if (! in_array($currentExit->handover_status, ['cleared', 'completed', 'waived'], true)) {
+                        $exitUpdates['handover_status'] = 'waived';
+                    }
+                }
+            }
+
+            DB::table($this->exitTable)->where('id', $exit->id)->update($exitUpdates);
 
             if (Schema::hasTable($this->employeeTable)) {
                 $finalStatus = in_array((string) $exit->exit_type, ['termination'], true) ? 'terminated' : 'exited';
@@ -474,7 +508,33 @@ class EmployeeExitProcessS
 
         DB::table($this->exitTable)->where('id', $exitId)->update($updates);
 
-        return $this->refreshStatus($exitId);
+        $currentExit = DB::table($this->exitTable)->where('id', $exitId)->first();
+        $assetStatus = $currentExit->asset_status;
+        $fnfStatus = $currentExit->fnf_status;
+        $documentStatus = $currentExit->document_status;
+        $handoverStatus = $currentExit->handover_status;
+
+        $overall = 'ready_for_final_approval';
+        if ($assetStatus !== 'cleared' && $assetStatus !== 'waived') {
+            $overall = 'asset_pending';
+        } elseif (! in_array($fnfStatus, ['completed', 'approved', 'paid', 'waived'], true)) {
+            $overall = 'fnf_pending';
+        } elseif (! in_array($documentStatus, ['completed', 'generated', 'sent', 'waived'], true)) {
+            $overall = 'document_pending';
+        } elseif (! in_array($handoverStatus, ['completed', 'cleared', 'waived'], true)) {
+            $overall = 'handover_pending';
+        }
+
+        if ((string) $currentExit->exit_type === 'absconding') {
+            $overall = 'absconded';
+        }
+
+        DB::table($this->exitTable)->where('id', $exitId)->update([
+            'status' => $overall,
+            'updated_at' => now(),
+        ]);
+
+        return (array) DB::table($this->exitTable)->where('id', $exitId)->first();
     }
 
     private function hasPendingAssets(int $employeeId): bool
@@ -625,7 +685,25 @@ class EmployeeExitProcessS
             ->where('exit_process_id', $exitId)
             ->where('department_key', $dept)
             ->first();
-        abort_if(! $clearance, 404, 'Clearance record not found for department.');
+
+        if (! $clearance) {
+            $this->initializeClearances($exitId);
+            $clearance = DB::table('employee_exit_clearances')
+                ->where('exit_process_id', $exitId)
+                ->where('department_key', $dept)
+                ->first();
+        }
+
+        if (! $clearance) {
+            DB::table('employee_exit_clearances')->insert([
+                'exit_process_id' => $exitId,
+                'department_key' => $dept,
+                'status' => $status,
+                'checklist' => $checklistItems ? json_encode($checklistItems) : null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
 
         $update = [
             'status' => $status,
@@ -842,5 +920,179 @@ class EmployeeExitProcessS
         }
 
         return $summary;
+    }
+
+    
+    public function getModuleSummaryBatch(array $employeeIds, array $exitRecordsByEmpId = []): array
+    {
+        if (empty($employeeIds)) {
+            return [];
+        }
+
+        $results = [];
+        $default = [
+            'attendance_pending' => 0,
+            'leave_remaining' => 0,
+            'assets_assigned' => 0,
+            'payroll_pending' => 0,
+            'documents_count' => 0,
+            'loans_pending' => 0,
+            'wfh_pending' => 0,
+            'holiday_work_pending' => 0,
+            'notice_days_remaining' => 0,
+        ];
+
+        foreach ($employeeIds as $eId) {
+            $results[$eId] = $default;
+            if (isset($exitRecordsByEmpId[$eId])) {
+                $exit = $exitRecordsByEmpId[$eId];
+                if (!empty($exit->last_working_day)) {
+                    $lastWorking = \Carbon\Carbon::parse($exit->last_working_day)->startOfDay();
+                    $today = now()->startOfDay();
+                    if ($lastWorking->isAfter($today)) {
+                        $results[$eId]['notice_days_remaining'] = (int) $today->diffInDays($lastWorking);
+                    }
+                }
+            }
+        }
+
+        // 1. Attendance Regularizations
+        if (Schema::hasTable('attendance_regularizations')) {
+            $counts = DB::table('attendance_regularizations')
+                ->select('employee_id', DB::raw('count(*) as aggregate'))
+                ->whereIn('employee_id', $employeeIds)
+                ->where('status', 'pending')
+                ->groupBy('employee_id')
+                ->pluck('aggregate', 'employee_id');
+            foreach ($counts as $eId => $cnt) {
+                if (isset($results[$eId])) $results[$eId]['attendance_pending'] += (int) $cnt;
+            }
+        }
+
+        // 2. Attendance Violations
+        if (Schema::hasTable('attendance_violations')) {
+            $counts = DB::table('attendance_violations')
+                ->select('employee_id', DB::raw('count(*) as aggregate'))
+                ->whereIn('employee_id', $employeeIds)
+                ->groupBy('employee_id')
+                ->pluck('aggregate', 'employee_id');
+            foreach ($counts as $eId => $cnt) {
+                if (isset($results[$eId])) $results[$eId]['attendance_pending'] += (int) $cnt;
+            }
+        }
+
+        // 3. Leave Allocations
+        if (Schema::hasTable('leave_allocations')) {
+            $leaves = DB::table('leave_allocations')
+                ->whereIn('employee_id', $employeeIds)
+                ->orderByDesc('year')
+                ->get()
+                ->unique('employee_id')
+                ->pluck('total_remaining', 'employee_id');
+            foreach ($leaves as $eId => $rem) {
+                if (isset($results[$eId])) $results[$eId]['leave_remaining'] = (float) $rem;
+            }
+        }
+
+        // 4. Asset Allocations
+        if (Schema::hasTable('asset_allocations')) {
+            $counts = DB::table('asset_allocations')
+                ->select('employee_id', DB::raw('count(*) as aggregate'))
+                ->whereIn('employee_id', $employeeIds)
+                ->where(function ($q) {
+                    $q->whereNull('status')->orWhere('status', '!=', 'Returned');
+                })
+                ->groupBy('employee_id')
+                ->pluck('aggregate', 'employee_id');
+            foreach ($counts as $eId => $cnt) {
+                if (isset($results[$eId])) $results[$eId]['assets_assigned'] = (int) $cnt;
+            }
+        }
+
+        // 5. Enterprise Payrolls / Payrolls
+        if (Schema::hasTable('enterprise_payrolls')) {
+            $counts = DB::table('enterprise_payrolls')
+                ->select('employee_id', DB::raw('count(*) as aggregate'))
+                ->whereIn('employee_id', $employeeIds)
+                ->whereNotIn('status', ['paid', 'approved', 'completed'])
+                ->groupBy('employee_id')
+                ->pluck('aggregate', 'employee_id');
+            foreach ($counts as $eId => $cnt) {
+                if (isset($results[$eId])) $results[$eId]['payroll_pending'] += (int) $cnt;
+            }
+        } elseif (Schema::hasTable('payrolls')) {
+            $counts = DB::table('payrolls')
+                ->select('employee_id', DB::raw('count(*) as aggregate'))
+                ->whereIn('employee_id', $employeeIds)
+                ->whereNotIn('status', ['paid', 'approved', 'completed'])
+                ->groupBy('employee_id')
+                ->pluck('aggregate', 'employee_id');
+            foreach ($counts as $eId => $cnt) {
+                if (isset($results[$eId])) $results[$eId]['payroll_pending'] += (int) $cnt;
+            }
+        }
+
+        // 6. Generated Documents
+        if (Schema::hasTable('generated_documents')) {
+            $counts = DB::table('generated_documents')
+                ->select('employee_id', DB::raw('count(*) as aggregate'))
+                ->whereIn('employee_id', $employeeIds)
+                ->groupBy('employee_id')
+                ->pluck('aggregate', 'employee_id');
+            foreach ($counts as $eId => $cnt) {
+                if (isset($results[$eId])) $results[$eId]['documents_count'] = (int) $cnt;
+            }
+        }
+
+        // 7. Loans / Adjustments
+        if (Schema::hasTable('enterprise_payroll_adjustments')) {
+            $counts = DB::table('enterprise_payroll_adjustments')
+                ->select('employee_id', DB::raw('count(*) as aggregate'))
+                ->whereIn('employee_id', $employeeIds)
+                ->where('status', 'pending')
+                ->groupBy('employee_id')
+                ->pluck('aggregate', 'employee_id');
+            foreach ($counts as $eId => $cnt) {
+                if (isset($results[$eId])) $results[$eId]['loans_pending'] += (int) $cnt;
+            }
+        } elseif (Schema::hasTable('payroll_adjustments')) {
+            $counts = DB::table('payroll_adjustments')
+                ->select('employee_id', DB::raw('count(*) as aggregate'))
+                ->whereIn('employee_id', $employeeIds)
+                ->where('status', 'pending')
+                ->groupBy('employee_id')
+                ->pluck('aggregate', 'employee_id');
+            foreach ($counts as $eId => $cnt) {
+                if (isset($results[$eId])) $results[$eId]['loans_pending'] += (int) $cnt;
+            }
+        }
+
+        // 8. WFH Requests
+        if (Schema::hasTable('wfh_requests')) {
+            $counts = DB::table('wfh_requests')
+                ->select('employee_id', DB::raw('count(*) as aggregate'))
+                ->whereIn('employee_id', $employeeIds)
+                ->where('status', 'pending')
+                ->groupBy('employee_id')
+                ->pluck('aggregate', 'employee_id');
+            foreach ($counts as $eId => $cnt) {
+                if (isset($results[$eId])) $results[$eId]['wfh_pending'] = (int) $cnt;
+            }
+        }
+
+        // 9. Holiday Work
+        if (Schema::hasTable('holiday_work_requests')) {
+            $counts = DB::table('holiday_work_requests')
+                ->select('employee_id', DB::raw('count(*) as aggregate'))
+                ->whereIn('employee_id', $employeeIds)
+                ->where('status', 'pending')
+                ->groupBy('employee_id')
+                ->pluck('aggregate', 'employee_id');
+            foreach ($counts as $eId => $cnt) {
+                if (isset($results[$eId])) $results[$eId]['holiday_work_pending'] += (int) $cnt;
+            }
+        }
+
+        return $results;
     }
 }

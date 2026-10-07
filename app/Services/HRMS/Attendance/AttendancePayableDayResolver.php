@@ -3,13 +3,54 @@
 namespace App\Services\HRMS\Attendance;
 
 use App\Models\HRMS\Attendance\AttendanceM;
+use App\Models\HRMS\Employee\EmployeeM;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class AttendancePayableDayResolver
 {
+    public function __construct(private AttendanceRuleResolverService $ruleResolver)
+    {
+    }
+
+    public function isCompOffWorkedDay(AttendanceM $attendance): bool
+    {
+        if (strtolower((string) $attendance->attendance_source) === 'comp_off_work') {
+            return true;
+        }
+
+        if (!$attendance->employee_id || !$attendance->attendance_date) {
+            return false;
+        }
+
+        $dateStr = Carbon::parse($attendance->attendance_date)->toDateString();
+
+        $employee = $attendance->employee ?: EmployeeM::find($attendance->employee_id);
+        if (!$employee) {
+            return false;
+        }
+
+        $dayContext = $this->ruleResolver->getDayContext($employee, $dateStr);
+        if (!($dayContext['is_holiday'] || $dayContext['is_weekoff'])) {
+            return false;
+        }
+
+        return DB::table('holiday_work_requests')
+            ->where('employee_id', $attendance->employee_id)
+            ->whereDate('worked_date', $dateStr)
+            ->where('status', 'approved')
+            ->whereNull('deleted_at')
+            ->exists();
+    }
+
     public function resolve(AttendanceM $attendance): array
     {
+        
+        if ($this->isCompOffWorkedDay($attendance)) {
+            return $this->row(1.0, 'paid', false, 'Holiday/Weekoff Comp-Off worked day (no payroll deduction).');
+        }
+
         $code = strtolower((string) optional($attendance->attendanceType)->code);
         $status = strtolower((string) ($attendance->attendance_status ?? ''));
         $effective = $code !== '' ? $code : $status;
@@ -22,8 +63,11 @@ class AttendancePayableDayResolver
             return $this->row(0.0, 'unpaid', true, 'Punch blocked attendance is unresolved.');
         }
 
+        if ((bool) $attendance->is_lwp || in_array($effective, ['lwp', 'absent'], true)) {
+            return $this->row(0.0, 'unpaid', false, 'Unpaid attendance.');
+        }
+
         if ($isPendingHr || $isMissedPunch) {
-            // Check if an approved regularization exists for this attendance
             $hasApprovedReg = DB::table('attendance_regularizations')
                 ->where('attendance_id', $attendance->id)
                 ->where('status', 'approved')
@@ -33,12 +77,7 @@ class AttendancePayableDayResolver
                 return $this->row(1.0, 'paid', false, 'Missed punch regularized and approved.');
             }
 
-            // Unapproved, pending, or rejected missed punch is automatically treated as LWP for payroll calculation (NO payroll block)
-            return $this->row(0.0, 'unpaid', false, 'Missed punch treated as LWP for payroll calculation.');
-        }
-
-        if ((bool) $attendance->is_lwp || in_array($effective, ['lwp', 'absent'], true)) {
-            return $this->row(0.0, 'unpaid', false, 'Unpaid attendance.');
+            return $this->row(1.0, 'paid', false, 'Missed punch within monthly grace limit (Warning - No salary deduction).');
         }
 
         if ((bool) $attendance->is_half_day || $effective === 'half_day') {
@@ -67,4 +106,3 @@ class AttendancePayableDayResolver
         ];
     }
 }
-

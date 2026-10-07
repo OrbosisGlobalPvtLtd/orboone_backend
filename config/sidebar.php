@@ -221,15 +221,6 @@ return [
                 'badge' => 'Soon',
             ],
             [
-                'title' => 'Project Management',
-                'icon' => 'fa-solid fa-diagram-project',
-                'route' => 'module.project-mgmt',
-                'permission' => 'project_management.view',
-                'module' => 'project_management',
-                'roles' => ['super_admin', 'admin', 'project_admin', 'custom_admin'],
-                'badge' => 'Soon',
-            ],
-            [
                 'title' => 'Finance',
                 'icon' => 'fa-solid fa-file-invoice-dollar',
                 'route' => 'module.finance',

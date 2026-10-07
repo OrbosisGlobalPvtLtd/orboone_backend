@@ -2,6 +2,10 @@
 .modal {
     z-index: 30000 !important;
 }
+.modal:not(.show) {
+    display: none !important;
+    pointer-events: none !important;
+}
 .modal-backdrop {
     z-index: 29990 !important;
 }
@@ -22,6 +26,9 @@
     box-shadow: 0 24px 70px rgba(16, 24, 40, 0.25) !important;
     background: #ffffff !important;
     max-height: calc(100vh - 40px) !important;
+}
+.modal.show .orb-modal,
+.modal.show.orb-modal {
     display: flex !important;
     flex-direction: column !important;
 }

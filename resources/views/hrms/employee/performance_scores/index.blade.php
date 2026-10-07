@@ -15,7 +15,7 @@
                 </p>
             </div>
             <div class="col-lg-6 col-md-12 text-center text-lg-right">
-                @if (collect($accesses)->where('menu_id', 3)->first()->status == 2)
+                @if (auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('performance_scores.manage')))
                 <a href="{{ route('hrms.employees.performance_scores.create') }}" class="btn btn-light rounded-pill px-4 py-2 font-weight-bold shadow-sm" style="color: var(--orb-primary);">
                     <i class="fas fa-plus-circle mr-2"></i> Create Assessment
                 </a>
@@ -137,7 +137,7 @@
                                 <a href="{{ route('hrms.employees.performance_scores.show', ['employeeScore' => $score->group_id]) }}" class="btn-action btn-view shadow-sm" title="View Details">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                @if (collect($accesses)->where('menu_id', 3)->first()->status == 2)
+                                @if (auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('performance_scores.manage')))
                                 <a href="{{ route('hrms.employees.performance_scores.edit', ['employeeScore' => $score->group_id]) }}" class="btn-action btn-edit shadow-sm" title="Edit Assessment">
                                     <i class="fas fa-pen"></i>
                                 </a>
@@ -158,7 +158,7 @@
                             <i class="fas fa-clipboard-list mb-3" style="font-size: 4rem; color: var(--orb-primary); opacity: 0.15;"></i>
                             <h5 class="font-weight-bold text-dark mt-2">No Assessments Found</h5>
                             <p class="text-muted mb-4">You haven't recorded any performance scores matching your criteria.</p>
-                            @if (collect($accesses)->where('menu_id', 3)->first()->status == 2)
+                            @if (auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('performance_scores.manage')))
                             <a href="{{ route('hrms.employees.performance_scores.create') }}" class="btn btn-premium mt-2">
                                 <i class="fas fa-plus mr-2"></i> Create First Assessment
                             </a>

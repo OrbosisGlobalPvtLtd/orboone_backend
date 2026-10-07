@@ -21,16 +21,16 @@ Route::middleware(['auth', 'check.access', 'check.profile.complete'])
     ->group(function () {
         Route::get('/', [AttendancesC::class, 'index'])->middleware('permission:attendance.dashboard.view')->name('index');
         Route::get('/today', [AttendancesC::class, 'today'])->middleware('permission:attendance.my.view|attendance.records.view_all')->name('today');
-
+        Route::get('/team', [AttendancesC::class, 'teamAttendance'])->name('team');
         Route::get('/daily', [AttendancesC::class, 'daily'])->middleware('permission:attendance.records.view_all|attendance.my.view')->name('daily');
         Route::get('/record', [AttendancesC::class, 'attendanceRecord'])->middleware('permission:attendance.records.view_all')->name('record');
         Route::get('/pending-approval', [AttendancesC::class, 'pendingApproval'])->middleware('permission:attendance.blocked.view')->name('pending-approval');
         Route::get('/pending_approval', [AttendancesC::class, 'pendingApproval'])->middleware('permission:attendance.blocked.view');
         Route::get('/monthly-report', [AttendancesC::class, 'monthlyReport'])->middleware('permission:attendance.monthly_report.view_all|attendance.monthly_report.view_team|attendance.monthly_report.view_own|attendance.monthly_report.view')->name('monthly-report');
 
-        Route::get('/print', [AttendancesC::class, 'print'])->middleware('permission:attendance.export')->name('print');
-        Route::get('/export-pdf', [AttendancesC::class, 'exportPdf'])->middleware('permission:attendance.export')->name('export-pdf');
-        Route::get('/export-excel', [AttendancesC::class, 'exportExcel'])->middleware('permission:attendance.export')->name('export-excel');
+        Route::get('/print', [AttendancesC::class, 'print'])->middleware('permission:attendance.export|attendance.records.view_all|attendance.monthly_report.view_all')->name('print');
+        Route::get('/export-pdf', [AttendancesC::class, 'exportPdf'])->middleware('permission:attendance.export|attendance.records.view_all|attendance.monthly_report.view_all')->name('export-pdf');
+        Route::get('/export-excel', [AttendancesC::class, 'exportExcel'])->middleware('permission:attendance.export|attendance.records.view_all|attendance.monthly_report.view_all')->name('export-excel');
 
         Route::post('/', [AttendancesC::class, 'store'])->name('store');
         Route::put('/', [AttendancesC::class, 'update'])->name('update');
@@ -85,11 +85,11 @@ Route::middleware(['auth', 'check.access'])
         Route::post('/regularizations/{id}/reject', [AttendanceRegularizationC::class, 'reject'])->middleware('permission:attendance.regularization.reject')->name('regularizations.reject');
 
         Route::get('/holiday-work', [HolidayWorkRequestC::class, 'index'])->middleware('permission:attendance.holiday_work.view|attendance.holiday_work.manage')->name('holiday_work.index');
-        Route::post('/holiday-work', [HolidayWorkRequestC::class, 'store'])->middleware('permission:attendance.holiday_work.manage')->name('holiday_work.store');
-        Route::put('/holiday-work/{id}', [HolidayWorkRequestC::class, 'update'])->middleware('permission:attendance.holiday_work.manage')->name('holiday_work.update');
-        Route::delete('/holiday-work/{id}', [HolidayWorkRequestC::class, 'destroy'])->middleware('permission:attendance.holiday_work.manage')->name('holiday_work.destroy');
-        Route::post('/holiday-work/{id}/approve', [HolidayWorkRequestC::class, 'approve'])->middleware('permission:attendance.holiday_work.manage')->name('holiday_work.approve');
-        Route::post('/holiday-work/{id}/reject', [HolidayWorkRequestC::class, 'reject'])->middleware('permission:attendance.holiday_work.manage')->name('holiday_work.reject');
+        Route::post('/holiday-work', [HolidayWorkRequestC::class, 'store'])->middleware('permission:attendance.holiday_work.view|attendance.holiday_work.manage')->name('holiday_work.store');
+        Route::put('/holiday-work/{id}', [HolidayWorkRequestC::class, 'update'])->middleware('permission:attendance.holiday_work.view|attendance.holiday_work.manage')->name('holiday_work.update');
+        Route::delete('/holiday-work/{id}', [HolidayWorkRequestC::class, 'destroy'])->middleware('permission:attendance.holiday_work.view|attendance.holiday_work.manage')->name('holiday_work.destroy');
+        Route::post('/holiday-work/{id}/approve', [HolidayWorkRequestC::class, 'approve'])->middleware('permission:attendance.holiday_work.manage|attendance.holiday_work.approve')->name('holiday_work.approve');
+        Route::post('/holiday-work/{id}/reject', [HolidayWorkRequestC::class, 'reject'])->middleware('permission:attendance.holiday_work.manage|attendance.holiday_work.reject')->name('holiday_work.reject');
         Route::get('/my-holiday-work', [\App\Http\Controllers\Web\HRMS\Attendance\MyHolidayWorkRequestC::class, 'index'])->name('my-holiday-work.index');
         Route::post('/my-holiday-work', [\App\Http\Controllers\Web\HRMS\Attendance\MyHolidayWorkRequestC::class, 'store'])->name('my-holiday-work.store');
         Route::put('/my-holiday-work/{id}', [\App\Http\Controllers\Web\HRMS\Attendance\MyHolidayWorkRequestC::class, 'update'])->name('my-holiday-work.update');
@@ -111,15 +111,20 @@ Route::middleware(['auth', 'check.access'])
         Route::put('/policy-overrides/{id}', [AttendancePolicyOverrideC::class, 'update'])->middleware('permission:attendance.policy_overrides.manage')->name('policy_overrides.update');
 
         Route::get('/work-reports', [\App\Http\Controllers\Web\HRMS\Attendance\WorkReportC::class, 'index'])->middleware('permission:attendance.work_reports.view_all|attendance.work_reports.view_team|attendance.work_reports.view_own')->name('work-reports');
+        Route::get('/work-reports/employee/{employee}', [\App\Http\Controllers\Web\HRMS\Attendance\WorkReportC::class, 'employeeHistory'])->middleware('permission:attendance.work_reports.view_all|attendance.work_reports.view_team|attendance.work_reports.view_own')->name('work-reports.employee-history');
+        Route::get('/work-reports/employee/{employee}/print', [\App\Http\Controllers\Web\HRMS\Attendance\WorkReportC::class, 'printEmployeeHistory'])->middleware('permission:attendance.work_reports.view_all|attendance.work_reports.view_team|attendance.work_reports.view_own')->name('work-reports.employee-history.print');
+        Route::get('/work-reports/{id}/print-single', [\App\Http\Controllers\Web\HRMS\Attendance\WorkReportC::class, 'printSingleWorkReport'])->middleware('permission:attendance.work_reports.view_all|attendance.work_reports.view_team|attendance.work_reports.view_own')->name('work-reports.single.print');
         Route::get('/my-work-reports', [\App\Http\Controllers\Web\HRMS\Attendance\WorkReportC::class, 'index'])->middleware('permission:attendance.work_reports.view_own')->name('my-work-reports');
 
         Route::get('/wfh', [WfhRequestC::class, 'index'])->middleware('permission:attendance.wfh.view|attendance.wfh.own')->name('wfh.index');
         Route::post('/wfh/assign', [WfhRequestC::class, 'assign'])->middleware('permission:attendance.wfh.assign')->name('wfh.assign');
+        Route::post('/wfh/{id}/update', [WfhRequestC::class, 'update'])->middleware('permission:attendance.wfh.view|attendance.wfh.own')->name('wfh.update');
         Route::post('/wfh/{id}/approve', [WfhRequestC::class, 'approve'])->middleware('permission:attendance.wfh.approve')->name('wfh.approve');
         Route::post('/wfh/{id}/reject', [WfhRequestC::class, 'reject'])->middleware('permission:attendance.wfh.reject')->name('wfh.reject');
         Route::post('/wfh/{id}/mark-lwp', [WfhRequestC::class, 'markLwp'])->middleware('permission:attendance.wfh.mark_lwp')->name('wfh.mark-lwp');
 
         Route::get('/my-wfh', [WfhRequestC::class, 'myWfh'])->middleware('permission:attendance.wfh.own')->name('my-wfh.index');
+        Route::get('/wfh/my', [WfhRequestC::class, 'myWfh'])->middleware('permission:attendance.wfh.own')->name('wfh.my');
         Route::get('/my-wfh/calculate-days', [WfhRequestC::class, 'calculateDays'])->middleware('permission:attendance.wfh.own')->name('my-wfh.calculate-days');
         Route::post('/my-wfh/apply', [WfhRequestC::class, 'apply'])->middleware('permission:attendance.wfh.own')->name('my-wfh.apply');
         Route::post('/my-wfh/{id}/cancel', [WfhRequestC::class, 'cancel'])->middleware('permission:attendance.wfh.own')->name('my-wfh.cancel');

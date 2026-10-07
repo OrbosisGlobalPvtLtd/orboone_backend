@@ -20,7 +20,9 @@ class CreateAccessesTable extends Migration
             $table->integer('status');
             $table->timestamps();
 
-            $table->foreign('role_id')->references('id')->on('roles')->onDelete('cascade');
+            if (Schema::hasTable('roles')) {
+                $table->foreign('role_id')->references('id')->on('roles')->onDelete('cascade');
+            }
             $table->foreign('menu_id')->references('id')->on('menus')->onDelete('cascade');
         });
     }

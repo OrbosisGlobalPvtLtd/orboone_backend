@@ -45,12 +45,29 @@ class LeaveValidationService
     }
 
     /**
-     * Validate raw request payload and return sanitized validated data.
-     * Throws ValidationException with standard error message if validation fails.
+     * Validate raw request payload for leave application submission.
      */
     public static function validate(array $data): array
     {
         $validator = Validator::make($data, self::rules($data), self::messages());
+
+        if ($validator->fails()) {
+            throw new ValidationException($validator);
+        }
+
+        return self::sanitizePayload($validator->validated());
+    }
+
+    /**
+     * Validate raw request payload for leave calculation preview.
+     * Note: Reason is optional during preview estimation before user submits.
+     */
+    public static function validateCalculation(array $data): array
+    {
+        $rules = self::rules($data);
+        $rules['reason'] = 'nullable|string|max:2000';
+
+        $validator = Validator::make($data, $rules, self::messages());
 
         if ($validator->fails()) {
             throw new ValidationException($validator);

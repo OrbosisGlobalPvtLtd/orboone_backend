@@ -331,7 +331,7 @@ return new class extends Migration
 
     private function syncMenus(): void
     {
-        if (! Schema::hasTable('menus')) {
+        if (! Schema::hasTable('menus') || ! Schema::hasColumn('menus', 'route')) {
             return;
         }
 

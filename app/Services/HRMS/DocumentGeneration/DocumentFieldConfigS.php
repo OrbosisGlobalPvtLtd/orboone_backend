@@ -102,7 +102,7 @@ class DocumentFieldConfigS
                 'fields' => [
                     // Recipient Section
                     ['name' => 'employee_name', 'label' => 'Employee Name', 'type' => 'text', 'required' => true, 'default' => 'Employee Name', 'autofill' => 'name', 'section' => 'recipient'],
-                    ['name' => 'employee_code', 'label' => 'Employee Code', 'type' => 'text', 'required' => true, 'default' => 'EMP001', 'autofill' => 'code', 'section' => 'recipient'],
+                    ['name' => 'employee_code', 'label' => 'Employee Code', 'type' => 'text', 'required' => true, 'default' => 'OG-EMP-000', 'autofill' => 'code', 'section' => 'recipient'],
 
                     // Details Section
                     ['name' => 'issue_date', 'label' => 'Issue Date', 'type' => 'date', 'required' => true, 'default' => 'today', 'section' => 'details'],
@@ -134,7 +134,7 @@ class DocumentFieldConfigS
                     ['name' => 'work_location', 'label' => 'Work Location', 'type' => 'text', 'required' => true, 'default' => 'Indore, Madhya Pradesh, India', 'autofill' => 'location', 'section' => 'details'],
                     ['name' => 'probation_period', 'label' => 'Probation Period', 'type' => 'text', 'required' => true, 'default' => '6 Months', 'section' => 'details'],
                     ['name' => 'notice_period_probation', 'label' => 'Notice Period (Probation)', 'type' => 'text', 'required' => true, 'default' => '15 Days', 'section' => 'details'],
-                    ['name' => 'notice_period_confirmed', 'label' => 'Notice Period (Confirmed)', 'type' => 'text', 'required' => true, 'default' => '30 Days', 'section' => 'details'],
+                    ['name' => 'notice_period_confirmed', 'label' => 'Notice Period (Confirmed)', 'type' => 'text', 'required' => true, 'default' => '2 Months', 'section' => 'details'],
                     ['name' => 'working_hours', 'label' => 'Working Hours', 'type' => 'text', 'required' => false, 'default' => '10:00 AM – 7:00 PM IST', 'section' => 'details'],
 
                     // Salary Section
@@ -142,14 +142,13 @@ class DocumentFieldConfigS
                     ['name' => 'salary_in_words', 'label' => 'Salary In Words', 'type' => 'text', 'required' => true, 'default' => 'Sixty Thousand Rupees Only', 'section' => 'salary'],
                     ['name' => 'basic_salary', 'label' => 'Basic Salary', 'type' => 'number', 'required' => false, 'default' => '30000', 'section' => 'salary'],
                     ['name' => 'hra', 'label' => 'HRA', 'type' => 'number', 'required' => false, 'default' => '12000', 'section' => 'salary'],
-                    ['name' => 'conveyance', 'label' => 'Conveyance', 'type' => 'number', 'required' => false, 'default' => '1600', 'section' => 'salary'],
-                    ['name' => 'allowances', 'label' => 'Allowances', 'type' => 'number', 'required' => false, 'default' => '16400', 'section' => 'salary'],
+                    ['name' => 'allowances', 'label' => 'Allowances', 'type' => 'number', 'required' => false, 'default' => '18000', 'section' => 'salary'],
 
                     // Signatory Section
                     ['name' => 'reporting_manager_name', 'label' => 'Reporting Manager Name', 'type' => 'text', 'required' => true, 'default' => 'Authorized Signatory', 'autofill' => 'reporting_manager_name', 'section' => 'signatory'],
                     ['name' => 'project_manager_name', 'label' => 'Project Manager Name', 'type' => 'text', 'required' => true, 'default' => 'HR Manager', 'section' => 'signatory'],
-                    ['name' => 'hr_manager_name', 'label' => 'HR Manager Name', 'type' => 'text', 'required' => true, 'default' => 'HR Manager', 'section' => 'signatory'],
-                    ['name' => 'signatory_designation', 'label' => 'Signatory Designation', 'type' => 'text', 'required' => true, 'default' => 'Chief Executive Officer', 'section' => 'signatory'],
+                    ['name' => 'hr_manager_name', 'label' => 'HR Manager Name', 'type' => 'text', 'required' => true, 'default' => 'HR Manager Name', 'section' => 'signatory'],
+                    ['name' => 'signatory_designation', 'label' => 'Signatory Designation', 'type' => 'text', 'required' => true, 'default' => 'Human Resource Manager', 'section' => 'signatory'],
                     ['name' => 'company_name', 'label' => 'Company Name', 'type' => 'text', 'required' => true, 'default' => 'company_name', 'section' => 'signatory'],
                 ]
             ],
@@ -237,7 +236,7 @@ class DocumentFieldConfigS
                 'fields' => [
                     // Recipient Section
                     ['name' => 'employee_name', 'label' => 'Employee Name', 'type' => 'text', 'required' => true, 'default' => 'Employee Name', 'autofill' => 'name', 'section' => 'recipient'],
-                    ['name' => 'employee_code', 'label' => 'Employee Code', 'type' => 'text', 'required' => true, 'default' => 'EMP001', 'autofill' => 'code', 'section' => 'recipient'],
+                    ['name' => 'employee_code', 'label' => 'Employee Code', 'type' => 'text', 'required' => true, 'default' => 'OG-EMP-000', 'autofill' => 'code', 'section' => 'recipient'],
                     ['name' => 'designation', 'label' => 'Designation', 'type' => 'text', 'required' => true, 'default' => 'Software Engineer', 'autofill' => 'designation', 'section' => 'details'],
                     ['name' => 'department', 'label' => 'Department', 'type' => 'text', 'required' => true, 'default' => 'Engineering', 'autofill' => 'department', 'section' => 'details'],
 
@@ -262,7 +261,7 @@ class DocumentFieldConfigS
                 'fields' => [
                     // Recipient Section
                     ['name' => 'employee_name', 'label' => 'Employee Name', 'type' => 'text', 'required' => true, 'default' => 'Employee Name', 'autofill' => 'name', 'section' => 'recipient'],
-                    ['name' => 'employee_code', 'label' => 'Employee Code', 'type' => 'text', 'required' => true, 'default' => 'EMP001', 'autofill' => 'code', 'section' => 'recipient'],
+                    ['name' => 'employee_code', 'label' => 'Employee Code', 'type' => 'text', 'required' => true, 'default' => 'OG-EMP-000', 'autofill' => 'code', 'section' => 'recipient'],
                     ['name' => 'designation', 'label' => 'Designation', 'type' => 'text', 'required' => true, 'default' => 'Software Engineer', 'autofill' => 'designation', 'section' => 'details'],
                     ['name' => 'department', 'label' => 'Department', 'type' => 'text', 'required' => true, 'default' => 'Engineering', 'autofill' => 'department', 'section' => 'details'],
 
@@ -287,7 +286,7 @@ class DocumentFieldConfigS
                 'fields' => [
                     // Recipient Section
                     ['name' => 'employee_name', 'label' => 'Employee Name', 'type' => 'text', 'required' => true, 'default' => 'Employee Name', 'autofill' => 'name', 'section' => 'recipient'],
-                    ['name' => 'employee_code', 'label' => 'Employee Code', 'type' => 'text', 'required' => true, 'default' => 'EMP001', 'autofill' => 'code', 'section' => 'recipient'],
+                    ['name' => 'employee_code', 'label' => 'Employee Code', 'type' => 'text', 'required' => true, 'default' => 'OG-EMP-000', 'autofill' => 'code', 'section' => 'recipient'],
                     ['name' => 'designation', 'label' => 'Designation', 'type' => 'text', 'required' => true, 'default' => 'Software Engineer', 'autofill' => 'designation', 'section' => 'details'],
                     ['name' => 'department', 'label' => 'Department', 'type' => 'text', 'required' => true, 'default' => 'Engineering', 'autofill' => 'department', 'section' => 'details'],
 
@@ -353,7 +352,7 @@ class DocumentFieldConfigS
                 'fields' => [
                     // Recipient Section
                     ['name' => 'employee_name', 'label' => 'Employee Name', 'type' => 'text', 'required' => true, 'default' => 'Employee Name', 'autofill' => 'name', 'section' => 'recipient'],
-                    ['name' => 'employee_code', 'label' => 'Employee Code', 'type' => 'text', 'required' => true, 'default' => 'EMP001', 'autofill' => 'code', 'section' => 'recipient'],
+                    ['name' => 'employee_code', 'label' => 'Employee Code', 'type' => 'text', 'required' => true, 'default' => 'OG-EMP-000', 'autofill' => 'code', 'section' => 'recipient'],
 
                     // Details Section
                     ['name' => 'issue_date', 'label' => 'Issue Date', 'type' => 'date', 'required' => true, 'default' => 'today', 'section' => 'details'],
@@ -381,7 +380,7 @@ class DocumentFieldConfigS
                 'fields' => [
                     // Recipient Section
                     ['name' => 'employee_name', 'label' => 'Employee Name', 'type' => 'text', 'required' => true, 'default' => 'Employee Name', 'autofill' => 'name', 'section' => 'recipient'],
-                    ['name' => 'employee_code', 'label' => 'Employee Code', 'type' => 'text', 'required' => true, 'default' => 'EMP001', 'autofill' => 'code', 'section' => 'recipient'],
+                    ['name' => 'employee_code', 'label' => 'Employee Code', 'type' => 'text', 'required' => true, 'default' => 'OG-EMP-000', 'autofill' => 'code', 'section' => 'recipient'],
 
                     // Details Section
                     ['name' => 'issue_date', 'label' => 'Issue Date', 'type' => 'date', 'required' => true, 'default' => 'today', 'section' => 'details'],
@@ -404,7 +403,7 @@ class DocumentFieldConfigS
                 'fields' => [
                     // Recipient Section
                     ['name' => 'employee_name', 'label' => 'Employee Name', 'type' => 'text', 'required' => true, 'default' => 'Employee Name', 'autofill' => 'name', 'section' => 'recipient'],
-                    ['name' => 'employee_code', 'label' => 'Employee Code', 'type' => 'text', 'required' => true, 'default' => 'EMP001', 'autofill' => 'code', 'section' => 'recipient'],
+                    ['name' => 'employee_code', 'label' => 'Employee Code', 'type' => 'text', 'required' => true, 'default' => 'OG-EMP-000', 'autofill' => 'code', 'section' => 'recipient'],
 
                     // Details Section
                     ['name' => 'issue_date', 'label' => 'Issue Date', 'type' => 'date', 'required' => true, 'default' => 'today', 'section' => 'details'],
@@ -425,7 +424,7 @@ class DocumentFieldConfigS
                 'fields' => [
                     // Recipient Section
                     ['name' => 'employee_name', 'label' => 'Employee Name', 'type' => 'text', 'required' => true, 'default' => 'Employee Name', 'autofill' => 'name', 'section' => 'recipient'],
-                    ['name' => 'employee_code', 'label' => 'Employee Code', 'type' => 'text', 'required' => true, 'default' => 'EMP001', 'autofill' => 'code', 'section' => 'recipient'],
+                    ['name' => 'employee_code', 'label' => 'Employee Code', 'type' => 'text', 'required' => true, 'default' => 'OG-EMP-000', 'autofill' => 'code', 'section' => 'recipient'],
 
                     // Details Section
                     ['name' => 'issue_date', 'label' => 'Issue Date', 'type' => 'date', 'required' => true, 'default' => 'today', 'section' => 'details'],
@@ -448,7 +447,7 @@ class DocumentFieldConfigS
                 'fields' => [
                     // Recipient Section
                     ['name' => 'employee_name', 'label' => 'Employee Name', 'type' => 'text', 'required' => true, 'default' => 'Employee Name', 'autofill' => 'name', 'section' => 'recipient'],
-                    ['name' => 'employee_code', 'label' => 'Employee Code', 'type' => 'text', 'required' => true, 'default' => 'EMP001', 'autofill' => 'code', 'section' => 'recipient'],
+                    ['name' => 'employee_code', 'label' => 'Employee Code', 'type' => 'text', 'required' => true, 'default' => 'OG-EMP-000', 'autofill' => 'code', 'section' => 'recipient'],
 
                     // Details Section
                     ['name' => 'issue_date', 'label' => 'Issue Date', 'type' => 'date', 'required' => true, 'default' => 'today', 'section' => 'details'],
@@ -474,7 +473,7 @@ class DocumentFieldConfigS
                 'fields' => [
                     // Recipient Section
                     ['name' => 'employee_name', 'label' => 'Employee Name', 'type' => 'text', 'required' => true, 'default' => 'Employee Name', 'autofill' => 'name', 'section' => 'recipient'],
-                    ['name' => 'employee_code', 'label' => 'Employee Code', 'type' => 'text', 'required' => true, 'default' => 'EMP001', 'autofill' => 'code', 'section' => 'recipient'],
+                    ['name' => 'employee_code', 'label' => 'Employee Code', 'type' => 'text', 'required' => true, 'default' => 'OG-EMP-000', 'autofill' => 'code', 'section' => 'recipient'],
 
                     // Details Section
                     ['name' => 'issue_date', 'label' => 'Issue Date', 'type' => 'date', 'required' => true, 'default' => 'today', 'section' => 'details'],
@@ -498,7 +497,7 @@ class DocumentFieldConfigS
                 'fields' => [
                     // Recipient Section
                     ['name' => 'employee_name', 'label' => 'Employee Name', 'type' => 'text', 'required' => true, 'default' => 'Employee Name', 'autofill' => 'name', 'section' => 'recipient'],
-                    ['name' => 'employee_code', 'label' => 'Employee Code', 'type' => 'text', 'required' => true, 'default' => 'EMP001', 'autofill' => 'code', 'section' => 'recipient'],
+                    ['name' => 'employee_code', 'label' => 'Employee Code', 'type' => 'text', 'required' => true, 'default' => 'OG-EMP-000', 'autofill' => 'code', 'section' => 'recipient'],
 
                     // Details Section
                     ['name' => 'issue_date', 'label' => 'Issue Date', 'type' => 'date', 'required' => true, 'default' => 'today', 'section' => 'details'],
@@ -521,7 +520,7 @@ class DocumentFieldConfigS
                 'fields' => [
                     // Recipient Section
                     ['name' => 'employee_name', 'label' => 'Employee Name', 'type' => 'text', 'required' => true, 'default' => 'Employee Name', 'autofill' => 'name', 'section' => 'recipient'],
-                    ['name' => 'employee_code', 'label' => 'Employee ID / Code', 'type' => 'text', 'required' => true, 'default' => 'EMP001', 'autofill' => 'code', 'section' => 'recipient'],
+                    ['name' => 'employee_code', 'label' => 'Employee ID / Code', 'type' => 'text', 'required' => true, 'default' => 'OG-EMP-000', 'autofill' => 'code', 'section' => 'recipient'],
                     ['name' => 'designation', 'label' => 'Designation', 'type' => 'text', 'required' => true, 'default' => 'Software Engineer', 'autofill' => 'designation', 'section' => 'recipient'],
                     ['name' => 'department', 'label' => 'Department', 'type' => 'text', 'required' => true, 'default' => 'Engineering', 'autofill' => 'department', 'section' => 'recipient'],
                     ['name' => 'employee_city', 'label' => 'City', 'type' => 'text', 'required' => false, 'default' => 'Indore', 'autofill' => 'city', 'section' => 'recipient'],

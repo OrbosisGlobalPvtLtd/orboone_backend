@@ -20,24 +20,42 @@ class DocumentDataResolverS
     public function resolve(?int $employeeId, array $formData): array
     {
         $employee = $employeeId ? EmployeeM::find($employeeId) : null;
+        $defaultNames = ['Employee Name', 'Intern Name', 'Candidate Name', ''];
         
-        // If employee is selected, force candidate_name and employee_name to match employee name
+      
         if ($employee) {
             $empName = $employee->employee_name ?: $employee->full_name ?: $employee->display_name ?: '';
             $formData['candidate_name'] = $empName;
             $formData['employee_name'] = $empName;
+            $formData['intern_name'] = $empName;
+        } else {
+            
+            $manualName = null;
+            if (!empty($formData['candidate_name']) && !in_array(trim($formData['candidate_name']), $defaultNames, true)) {
+                $manualName = trim($formData['candidate_name']);
+            } elseif (!empty($formData['employee_name']) && !in_array(trim($formData['employee_name']), $defaultNames, true)) {
+                $manualName = trim($formData['employee_name']);
+            } elseif (!empty($formData['intern_name']) && !in_array(trim($formData['intern_name']), $defaultNames, true)) {
+                $manualName = trim($formData['intern_name']);
+            }
+
+            if ($manualName !== null) {
+                $formData['candidate_name'] = $manualName;
+                $formData['employee_name'] = $manualName;
+                $formData['intern_name'] = $manualName;
+            }
         }
         
         // Resolve company settings, employee profile defaults, and other static details
         $resolved = $this->placeholderResolver->resolve($employee, $formData, Auth::user());
 
-        // Explicitly merge all raw form data keys to ensure they take top priority in Blade views
+        
         foreach ($formData as $key => $value) {
             if ($value === null || (is_string($value) && trim($value) === '')) {
                 if ($this->isParagraphField($key)) {
                     $resolved[$key] = ' ';
                 } else {
-                    // Skip empty/null values for other fields to prevent breaking calculations
+                    
                     continue;
                 }
             } else {
@@ -49,22 +67,28 @@ class DocumentDataResolverS
             }
         }
 
-        // Additional safety fallbacks for candidate vs employee names
-        if (empty($resolved['candidate_name']) && !empty($formData['candidate_name'])) {
-            $resolved['candidate_name'] = $formData['candidate_name'];
-        }
-        
-        if (empty($resolved['employee_name']) && !empty($resolved['candidate_name'])) {
+        // Additional safety normalization for recipient names
+        if (isset($manualName) && $manualName !== null) {
+            $resolved['candidate_name'] = $manualName;
+            $resolved['employee_name'] = $manualName;
+            $resolved['intern_name'] = $manualName;
+            $parts = explode(' ', trim($manualName));
+            $resolved['employee_first_name'] = !empty($parts[0]) ? $parts[0] : $manualName;
+            $resolved['candidate_first_name'] = $resolved['employee_first_name'];
+            $resolved['intern_first_name'] = $resolved['employee_first_name'];
+        } elseif (!empty($resolved['employee_name'])) {
+            $resolved['candidate_name'] = $resolved['candidate_name'] ?: $resolved['employee_name'];
+            $resolved['intern_name'] = $resolved['intern_name'] ?: $resolved['employee_name'];
+        } elseif (!empty($resolved['candidate_name'])) {
             $resolved['employee_name'] = $resolved['candidate_name'];
-        }
-
-        if (empty($resolved['candidate_name']) && !empty($resolved['employee_name'])) {
-            $resolved['candidate_name'] = $resolved['employee_name'];
+            $resolved['intern_name'] = $resolved['candidate_name'];
         }
 
         if (empty($resolved['employee_first_name']) && !empty($resolved['employee_name'])) {
             $parts = explode(' ', trim($resolved['employee_name']));
             $resolved['employee_first_name'] = !empty($parts[0]) ? $parts[0] : null;
+            $resolved['candidate_first_name'] = $resolved['employee_first_name'];
+            $resolved['intern_first_name'] = $resolved['employee_first_name'];
         }
 
         return $resolved;

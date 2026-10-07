@@ -159,6 +159,8 @@ class DepartmentSeeder extends Seeder
             ],
         ];
 
-        DB::table('departments')->insert($departments);
+        foreach ($departments as $dept) {
+            DB::table('departments')->updateOrInsert(['id' => $dept['id']], $dept);
+        }
     }
 }

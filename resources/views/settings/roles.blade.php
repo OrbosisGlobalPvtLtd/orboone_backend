@@ -18,7 +18,7 @@
             <p class="text-muted small mb-0">Define and manage system permissions and user levels</p>
         </div>
         <div class="col-12 col-md-6 text-md-right mt-3 mt-md-0">
-            @if (collect($accesses)->where('menu_id', 10)->first()->status == 2)
+            @if (auth()->user()->isAdmin() || (method_exists(auth()->user(), 'hasPermission') && auth()->user()->hasPermission('roles.manage')))
                 <a href="{{ route('roles.create') }}" class="btn btn-orb mr-2">
                     <i class="fas fa-plus mr-2"></i> Create New Role
                 </a>

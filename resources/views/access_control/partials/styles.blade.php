@@ -20,24 +20,25 @@
 
     /* Page container spacing */
     .ac-page {
-        min-height: calc(100vh - 90px);
-        padding: 24px;
+        min-height: calc(100vh - 56px);
+        padding: 14px 16px;
         background: var(--ac-bg);
     }
 
     .ac-container {
-        max-width: 1320px;
+        width: 100%;
+        max-width: 100%;
         margin: 0 auto;
     }
 
     /* Hero Header Banner */
     .ac-header {
         background: linear-gradient(135deg, var(--ac-primary), var(--ac-secondary));
-        border-radius: 26px;
-        padding: 24px 30px;
+        border-radius: 16px;
+        padding: 14px 20px;
         box-shadow: var(--ac-shadow);
         color: #fff;
-        margin-bottom: 24px;
+        margin-bottom: 14px;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -45,7 +46,7 @@
         position: relative;
         overflow: hidden;
         flex-wrap: wrap;
-        gap: 16px;
+        gap: 12px;
     }
 
     .ac-header::after {
@@ -60,12 +61,12 @@
     }
 
     .ac-kicker {
-        font-size: 11px;
+        font-size: 10px;
         font-weight: 850;
         text-transform: uppercase;
-        letter-spacing: 1.5px;
+        letter-spacing: 1.2px;
         color: rgba(255, 255, 255, 0.78);
-        margin-bottom: 6px;
+        margin-bottom: 4px;
         display: inline-flex;
         align-items: center;
         gap: 6px;
@@ -74,15 +75,15 @@
     .ac-title {
         margin: 0;
         color: #fff !important;
-        font-size: 26px !important;
+        font-size: 20px !important;
         font-weight: 900 !important;
         line-height: 1.2;
     }
 
     .ac-subtitle {
-        margin: 4px 0 0;
+        margin: 2px 0 0;
         color: rgba(255, 255, 255, 0.85) !important;
-        font-size: 13px !important;
+        font-size: 12px !important;
         font-weight: 700 !important;
     }
 
@@ -90,15 +91,15 @@
     .ac-card {
         background: #fff;
         border: 1px solid var(--ac-border);
-        border-radius: 22px;
+        border-radius: 14px;
         box-shadow: var(--ac-shadow);
         overflow: hidden;
-        margin-bottom: 24px;
+        margin-bottom: 14px;
         transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
     .ac-card-body {
-        padding: 24px;
+        padding: 14px 16px;
     }
 
     /* Table Header Alignment */
@@ -106,29 +107,29 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 20px 24px;
+        padding: 12px 16px;
         border-bottom: 1px solid var(--ac-border);
         background: #fff;
         flex-wrap: wrap;
-        gap: 12px;
+        gap: 10px;
     }
 
     .ac-table-head-left {
         display: flex;
         align-items: center;
-        gap: 14px;
+        gap: 10px;
     }
 
     .ac-icon-box {
-        width: 44px;
-        height: 44px;
-        border-radius: 12px;
+        width: 36px;
+        height: 36px;
+        border-radius: 9px;
         background: var(--ac-soft);
         color: var(--ac-primary);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 18px;
+        font-size: 15px;
         box-shadow: inset 0 2px 6px rgba(75, 0, 232, 0.05);
     }
 
@@ -136,19 +137,19 @@
         margin: 0;
         font-weight: 900;
         color: var(--ac-text);
-        font-size: 15px;
+        font-size: 14px;
     }
 
     .ac-table-subtitle {
-        margin: 3px 0 0;
-        font-size: 12px;
+        margin: 2px 0 0;
+        font-size: 11px;
         color: var(--ac-muted);
         font-weight: 700;
     }
 
     /* Attached filter styling */
     .ac-filter-wrapper {
-        padding: 16px 24px;
+        padding: 10px 16px;
         background: #F8FAFC;
         border-bottom: 1px solid var(--ac-border);
     }
@@ -156,12 +157,12 @@
     .ac-filter-row {
         display: flex;
         align-items: flex-end;
-        gap: 12px;
+        gap: 10px;
         flex-wrap: wrap;
     }
 
     .ac-filter-col {
-        flex: 1 1 200px;
+        flex: 1 1 180px;
         min-width: 0;
     }
 
@@ -170,18 +171,18 @@
         font-weight: 800;
         color: var(--ac-muted);
         text-transform: uppercase;
-        margin-bottom: 6px;
+        margin-bottom: 4px;
         display: block;
     }
 
     .ac-filter-control {
         width: 100%;
-        height: 38px;
-        border-radius: 9px;
+        height: 34px;
+        border-radius: 8px;
         border: 1px solid var(--ac-border);
         background: #fff;
-        padding: 0 12px;
-        font-size: 13px;
+        padding: 0 10px;
+        font-size: 12px;
         font-weight: 700;
         color: var(--ac-text);
         outline: none;
@@ -196,62 +197,63 @@
     /* Metric Aggregation Cards */
     .ac-metric-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 16px;
-        margin-bottom: 24px;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+        margin-bottom: 14px;
     }
 
     .ac-metric-card {
         background: #fff;
         border: 1px solid var(--ac-border);
-        border-radius: 18px;
-        padding: 16px 20px;
+        border-radius: 12px;
+        padding: 10px 14px;
         display: flex;
         align-items: center;
-        gap: 14px;
-        box-shadow: 0 10px 28px rgba(16, 24, 40, 0.04);
+        gap: 10px;
+        box-shadow: 0 6px 18px rgba(16, 24, 40, 0.04);
         position: relative;
         overflow: hidden;
     }
 
     .ac-metric-icon {
-        width: 42px;
-        height: 42px;
-        border-radius: 10px;
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
         background: var(--ac-soft);
         color: var(--ac-primary);
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        font-size: 16px;
+        font-size: 14px;
     }
 
     .ac-metric-value {
-        font-size: 20px;
+        font-size: 17px;
         font-weight: 900;
         color: var(--ac-text);
         line-height: 1.2;
     }
 
     .ac-metric-label {
-        font-size: 11px;
+        font-size: 10px;
         font-weight: 800;
         color: var(--ac-muted);
         text-transform: uppercase;
-        margin-top: 2px;
+        margin-top: 1px;
     }
 
     /* Buttons & Actions */
     .ac-btn {
-        min-height: 38px;
-        border-radius: 12px;
-        padding: 8px 16px;
+        min-height: 34px;
+        height: 34px;
+        border-radius: 8px;
+        padding: 0 14px;
         font-size: 12px;
         font-weight: 800;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 8px;
+        gap: 6px;
         text-decoration: none !important;
         cursor: pointer;
         transition: all 0.2s ease;
@@ -323,7 +325,7 @@
         font-weight: 850 !important;
         text-transform: uppercase !important;
         letter-spacing: 0.5px !important;
-        padding: 14px 20px !important;
+        padding: 8px 12px !important;
         border-bottom: 1px solid var(--ac-border) !important;
         border-top: none !important;
         white-space: nowrap !important;
@@ -332,9 +334,9 @@
     .ac-table td {
         vertical-align: middle !important;
         color: var(--ac-text) !important;
-        font-size: 13px !important;
+        font-size: 12px !important;
         font-weight: 700 !important;
-        padding: 14px 20px !important;
+        padding: 7px 12px !important;
         border-bottom: 1px solid #F1F3F8 !important;
         background: #fff !important;
     }
@@ -456,10 +458,10 @@
     .ac-check {
         display: flex;
         align-items: flex-start;
-        gap: 10px;
-        padding: 14px 16px;
+        gap: 8px;
+        padding: 10px 12px;
         border: 1px solid var(--ac-border);
-        border-radius: 14px;
+        border-radius: 10px;
         background: #FCFCFD;
         cursor: pointer;
         margin: 0 !important;
@@ -472,9 +474,9 @@
     }
 
     .ac-check input[type="checkbox"] {
-        margin-top: 4px;
-        width: 16px;
-        height: 16px;
+        margin-top: 2px;
+        width: 15px;
+        height: 15px;
         accent-color: var(--ac-primary);
         cursor: pointer;
     }
@@ -482,7 +484,7 @@
     .ac-check strong {
         display: block;
         color: var(--ac-text);
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 800;
     }
 
@@ -490,33 +492,33 @@
         display: block;
         color: var(--ac-muted);
         font-size: 11px;
-        font-weight: 700;
-        margin-top: 2px;
-        line-height: 1.4;
+        font-weight: 600;
+        margin-top: 1px;
+        line-height: 1.3;
     }
 
     .ac-section-title {
-        margin: 0 0 14px;
+        margin: 0 0 10px;
         color: var(--ac-text);
-        font-size: 15px;
+        font-size: 14px;
         font-weight: 900;
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
     }
 
     /* Collapsible card groups styling */
     .ac-group-card {
         border: 1px solid var(--ac-border);
-        border-radius: 18px;
+        border-radius: 12px;
         background: #fff;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
-        margin-bottom: 16px;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.02);
+        margin-bottom: 12px;
         overflow: hidden;
     }
 
     .ac-group-header {
-        padding: 16px 20px;
+        padding: 10px 16px;
         background: #F8FAFC;
         border-bottom: 1px solid var(--ac-border);
         display: flex;
@@ -526,7 +528,7 @@
     }
 
     .ac-group-body {
-        padding: 20px;
+        padding: 14px 16px;
     }
 
     @media (max-width: 768px) {

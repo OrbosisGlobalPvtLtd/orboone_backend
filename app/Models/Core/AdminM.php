@@ -10,6 +10,9 @@ class AdminM extends Model
 {
     use HasFactory;
 
+    protected $table = 'admins';
+    protected $guarded = [];
+
     public function role() 
     {
         return $this->belongsTo(Role::class);

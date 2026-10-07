@@ -9,6 +9,11 @@ class AttendanceTimeM extends Model
 {
     use HasFactory;
 
+    protected static function newFactory()
+    {
+        return \Database\Factories\AttendanceTimeFactory::new();
+    }
+
     protected $table = 'attendance_times';
 
     protected $fillable = [
@@ -37,6 +42,22 @@ class AttendanceTimeM extends Model
         'is_default' => 'boolean',
         'is_active' => 'boolean',
     ];
+
+    public function isDynamicHours(): bool
+    {
+        return strtolower($this->shift_type ?? '') === 'dynamic_hours';
+    }
+
+    public function isFlexiblePartTime(): bool
+    {
+        return strtolower($this->shift_type ?? '') === 'flexible_part_time';
+    }
+
+    public function isDynamicShift(): bool
+    {
+        return in_array(strtolower($this->shift_type ?? ''), ['dynamic_hours', 'flexible_part_time'], true);
+    }
+
 
     public function attendances()
     {

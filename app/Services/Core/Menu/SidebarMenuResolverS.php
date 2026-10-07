@@ -2,6 +2,8 @@
 
 namespace App\Services\Core\Menu;
 
+use App\Services\AccessControl\PermissionMapS;
+use App\Services\HRMS\Team\TeamManagementScopeS;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -11,13 +13,19 @@ use Illuminate\Support\Facades\Schema;
 
 class SidebarMenuResolverS
 {
+    public function __construct(
+        protected ?TeamManagementScopeS $teamScope = null
+    ) {
+        $this->teamScope = $teamScope ?? app(TeamManagementScopeS::class);
+    }
     public function resolveForUser(?Authenticatable $user): Collection
     {
         if (! $user) {
             return collect();
         }
 
-        return Cache::remember($this->cacheKey((int) $user->id), 3600, function () use ($user) {
+        $ttl = (int) config('authorization.sidebar_cache_ttl', 3600);
+        return Cache::remember($this->cacheKey((int) $user->id), $ttl, function () use ($user) {
             $menus = $this->loadBaseMenus();
             if ($menus->isEmpty()) {
                 return collect();
@@ -27,41 +35,37 @@ class SidebarMenuResolverS
             $isSuperAdmin = (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin())
                 || (method_exists($user, 'hasRole') && $user->hasRole('super_admin'));
 
-            $hasEmployeeRole = method_exists($user, 'hasRole') && $user->hasRole('employee');
-            $hasAdminRole = $isSuperAdmin || (method_exists($user, 'hasRole') && $user->hasRole([
-                'admin',
-                'hr_admin',
-                'finance_admin',
-                'project_admin',
-                'operations_admin',
-                'custom_admin',
-                'manager',
-            ]));
+            $userRoles = ! empty($roleIds) ? DB::table('roles')->whereIn('id', $roleIds)->get(['id', 'slug', 'is_system']) : collect();
+            $isOnlyEmployee = $userRoles->isNotEmpty() && $userRoles->every(fn($r) => $r->slug === 'employee');
+            $hasAdminRole = $isSuperAdmin || ! $isOnlyEmployee;
 
-            // Fallback for user without roles
-            if (!$hasEmployeeRole && !$hasAdminRole) {
-                $hasEmployeeRole = true;
+            $userEmp = Schema::hasTable('employees_new')
+                ? DB::table('employees_new')->where('user_id', $user->id)->first(['id', 'work_mode', 'department_id', 'designation_id'])
+                : null;
+            $hasEmployeeRecord = $userEmp !== null;
+            $hasEmployeeRole = $hasEmployeeRecord;
+
+            $hrSlugs = config('authorization.hr_admin_slugs', ['super_admin', 'admin', 'hr_admin', 'hr admin', 'hr', 'human resources']);
+            $isHrAdmin = $isSuperAdmin || ($userRoles->isNotEmpty() && $userRoles->contains(fn($r) => in_array(strtolower((string) $r->slug), $hrSlugs, true))) || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin());
+
+            // Pre-compute in-memory permission checker to eliminate N+1 database queries during filtering
+            $permissionChecker = $this->buildUserPermissionChecker($user, $userEmp, $roleIds, $isSuperAdmin, $isHrAdmin);
+
+            // Compute user management/work context once per resolution pass
+            $userContext = $this->buildUserContext($user, $userEmp, $roleIds, $isSuperAdmin, $userRoles, $menus, $permissionChecker);
+
+            // Resolve menus dynamically based on role menu access, permissions & user context
+            $merged = $this->resolveForContext($menus, $user, $roleIds, $isSuperAdmin, $userContext, $permissionChecker, $userRoles);
+
+            // If user has NO corresponding employee record in employees_new, strictly hide all Employee Self-Service menus
+            if (! $hasEmployeeRecord) {
+                $merged = $merged->reject(fn($m) => $this->isEmployeeOnlyMenu($m));
             }
 
-            $employeeMenus = collect();
-            $adminMenus = collect();
-
-            if ($hasEmployeeRole) {
-                $employeeMenus = $this->resolveForContext($menus, $user, $roleIds, $isSuperAdmin, true);
-            }
-
-            if ($hasAdminRole) {
-                $adminMenus = $this->resolveForContext($menus, $user, $roleIds, $isSuperAdmin, false);
-            }
-
-            $merged = $employeeMenus->concat($adminMenus)
-                ->reject(function ($m) {
-                    // Filter out legacy standalone top-level Projects menu (ID 91) when Project Management container exists
-                    return (int) ($m->id ?? 0) === 91;
-                })
-                ->unique('id');
-            $merged = $this->repairParentVisibility($merged);
+            // Post-merge repair and normalization pipeline
+            $merged = $this->repairParentVisibility($merged, $user, $roleIds, $isSuperAdmin, $permissionChecker);
             $merged = $this->deduplicateMenus($merged);
+            $merged = $this->filterByRouteValidity($merged);
             $merged = $this->removeEmptyParents($merged);
 
             return $merged
@@ -75,110 +79,189 @@ class SidebarMenuResolverS
         });
     }
 
-    private function resolveForContext(Collection $menus, Authenticatable $user, array $roleIds, bool $isSuperAdmin, bool $isEmployeeContext): Collection
+    private function buildUserContext(Authenticatable $user, ?object $userEmp, array $roleIds, bool $isSuperAdmin, Collection $userRoles, Collection $menus, callable $permissionChecker): array
+    {
+        $empId = null;
+        $workMode = 'wfo';
+        if ($userEmp) {
+            $empId = (int) $userEmp->id;
+            $workMode = strtolower((string) ($userEmp->work_mode ?? 'wfo'));
+        }
+
+        $isPermanentWfh = in_array($workMode, ['wfh', 'permanent_wfh', 'permanent wfh'], true);
+
+        $isTeamManager = false;
+        $isProjectManager = false;
+
+        if ($empId) {
+            $teamIds = $this->teamScope->getTeamEmployeeIds($empId);
+            $isTeamManager = ! empty($teamIds);
+
+            if ($isTeamManager) {
+                $isProjectManager = true;
+            } else {
+                $isTeamLead = DB::table('project_teams')->where('team_lead_employee_id', $empId)->where('is_active', 1)->exists();
+                $isDeliveryHead = DB::table('projects')->where('delivery_head_employee_id', $empId)->exists();
+                $isProjectLead = DB::table('project_assignments')
+                    ->where('employee_id', $empId)
+                    ->where('is_active', 1)
+                    ->where(function ($q) {
+                        $q->whereIn(DB::raw('LOWER(project_role)'), [
+                            'team_lead',
+                            'team lead',
+                            'project_lead',
+                            'project lead',
+                            'project_manager',
+                            'project manager',
+                            'lead',
+                            'manager',
+                            'delivery_head',
+                            'delivery head',
+                        ]);
+                    })->exists();
+
+                $isProjectManager = $isTeamLead || $isDeliveryHead || $isProjectLead;
+            }
+        }
+
+        if (! $isProjectManager) {
+            $hasRoleMenuAccess = false;
+            if (! empty($roleIds) && Schema::hasTable('role_menu_access')) {
+                $projectMenuIds = $menus->where('module_key', 'project_management')->pluck('id')->all();
+
+                if (! empty($projectMenuIds)) {
+                    $hasRoleMenuAccess = DB::table('role_menu_access')
+                        ->whereIn('role_id', $roleIds)
+                        ->whereIn('menu_id', $projectMenuIds)
+                        ->exists();
+                }
+            }
+
+            $hasManagerRole = $userRoles->contains(fn($r) => in_array(strtolower((string) $r->slug), ['super_admin', 'admin', 'hr_admin', 'project_admin', 'operations_admin', 'custom_admin'], true));
+
+            $hasProjectPerm = $permissionChecker('projects.view_all') || $permissionChecker('projects.manage');
+
+            if ($isSuperAdmin || $hasRoleMenuAccess || $hasManagerRole || $hasProjectPerm) {
+                $isProjectManager = true;
+            }
+        }
+
+        return [
+            'emp_id' => $empId,
+            'is_permanent_wfh' => $isPermanentWfh,
+            'is_team_manager' => $isTeamManager,
+            'is_project_manager' => $isProjectManager,
+        ];
+    }
+
+    private function resolveForContext(Collection $menus, Authenticatable $user, array $roleIds, bool $isSuperAdmin, array $userContext, callable $permissionChecker, Collection $userRoles): Collection
     {
         $filtered = $this->filterByRoleMenuAccess($menus, $user, $roleIds, $isSuperAdmin);
-        $filtered = $this->filterByPermission($filtered, $user, $isSuperAdmin);
-        $filtered = $this->filterReportingManagementVisibility($filtered, $user, $roleIds, $isSuperAdmin);
-        $isProjectManager = $this->checkIsProjectManager($user, $roleIds, $isSuperAdmin);
-        $filtered = $this->filterByEmployeeOnlyVisibility($filtered, $isEmployeeContext, $isProjectManager);
-        $filtered = $this->filterByWebAttendancePermission($filtered, $user, $isSuperAdmin);
-        $filtered = $this->filterRetiredLegacyPayrollMenus($filtered);
-        $filtered = $this->filterByPermanentWfhVisibility($filtered, $user);
+        $filtered = $this->filterByPermission($filtered, $user, $isSuperAdmin, $permissionChecker);
+        $filtered = $this->filterReportingManagementVisibility($filtered, $user, $roleIds, $isSuperAdmin, $userContext, $userRoles);
         $filtered = $this->filterByRouteValidity($filtered);
 
         return $filtered;
     }
 
-    private function filterByPermanentWfhVisibility(Collection $menus, Authenticatable $user): Collection
+    private function filterByPermanentWfhVisibility(Collection $menus, bool $isPermanentWfh): Collection
     {
-        $emp = DB::table('employees_new')->where('user_id', $user->id)->first(['id', 'work_mode']);
-        if (!$emp) {
-            return $menus;
-        }
-
-        $workMode = strtolower((string)($emp->work_mode ?? 'wfo'));
-        $isPermanentWfh = in_array($workMode, ['wfh', 'permanent_wfh', 'permanent wfh'], true);
-
-        if (!$isPermanentWfh) {
+        if (! $isPermanentWfh) {
             return $menus;
         }
 
         return $menus->reject(function ($menu) {
-            $r = strtolower((string)($menu->route ?? ''));
-            $n = strtolower((string)($menu->name ?? ''));
+            $r = strtolower((string) ($menu->route ?? ''));
+            $n = strtolower((string) ($menu->name ?? ''));
+
             return in_array($r, ['hrms.attendance.my-wfh.index', 'attendances.my-wfh', 'attendance.my-wfh'], true)
                 || str_contains($n, 'my wfh');
         });
     }
 
-    private function filterReportingManagementVisibility(Collection $menus, Authenticatable $user, array $roleIds, bool $isSuperAdmin): Collection
+    private function filterReportingManagementVisibility(Collection $menus, Authenticatable $user, array $roleIds, bool $isSuperAdmin, array $userContext, Collection $userRoles): Collection
     {
-        $empId = null;
-        $userEmp = DB::table('employees_new')->where('user_id', $user->id)->first(['id']);
-        if ($userEmp) {
-            $empId = (int)$userEmp->id;
-        }
+        $isTeamManager = $userContext['is_team_manager'];
+        $isProjectManager = $userContext['is_project_manager'];
+        $hasReportingAdminAccess = $isSuperAdmin;
+        $hasReportingAdminMenus = $menus->contains(function ($menu) {
+            $id = (int) ($menu->id ?? 0);
+            $parentId = ! is_null($menu->parent_id) ? (int) $menu->parent_id : null;
+            $route = strtolower(trim((string) ($menu->route ?? '')));
 
-        $isTeamManager = false;
-        if ($empId) {
-            $teamScope = app(\App\Services\HRMS\Team\TeamManagementScopeS::class);
-            $teamIds = $teamScope->getTeamEmployeeIds($empId);
-            $isTeamManager = !empty($teamIds);
-        }
+            return $id === 350 || $parentId === 350 || in_array($route, [
+                'reporting.structure',
+                'reporting.supervisors',
+                'reporting.assignments',
+                'reporting.history',
+            ], true);
+        });
 
-        $isProjectManager = $this->checkIsProjectManager($user, $roleIds, $isSuperAdmin);
-        $hasAdminAccess = $isSuperAdmin || (method_exists($user, 'hasRole') && $user->hasRole(['admin', 'hr_admin', 'manager'])) || (method_exists($user, 'hasPermission') && $user->hasPermission('reporting.structure.manage'));
+        if (! $hasReportingAdminAccess && $hasReportingAdminMenus && ! empty($roleIds)) {
+            $hasReportingAdminAccess = $userRoles->contains(fn($r) => in_array(strtolower((string) $r->slug), ['super_admin', 'admin', 'hr_admin'], true));
+        }
 
         return $menus->map(function ($m) use ($isProjectManager) {
-            $id = (int)($m->id ?? 0);
+            $route = strtolower(trim((string) ($m->route ?? '')));
 
-            // Remap Projects menu (321) to real projects.index route instead of generic coming-soon module.project-mgmt route
-            if (($id === 321 || ($m->route ?? '') === 'module.project-mgmt') && $isProjectManager) {
-                $m = clone $m;
-                $m->route = 'projects.index';
+            // If user is a project lead/manager, point Tasks menu to the comprehensive project tasks view
+            if ($isProjectManager && ($route === 'project_management.tasks.index' || $route === 'projects.tasks.index')) {
+                $clone = clone $m;
+                $clone->route = 'projects.tasks.index';
+
+                return $clone;
             }
 
             return $m;
-        })->reject(function ($m) use ($isTeamManager, $isProjectManager, $hasAdminAccess) {
-            $id = (int)($m->id ?? 0);
-            $parentId = (int)($m->parent_id ?? 0);
+        })->reject(function ($menu) use ($isTeamManager, $isProjectManager, $isSuperAdmin, $hasReportingAdminAccess) {
+            $route = strtolower(trim((string) ($menu->route ?? '')));
+            $moduleKey = strtolower(trim((string) ($menu->module_key ?? '')));
+            $id = (int) ($menu->id ?? 0);
+            $parentId = ! is_null($menu->parent_id) ? (int) $menu->parent_id : null;
 
-            // 1. Legacy operational submenus under 350 are deprecated
-            if (in_array($id, [355, 356, 357, 358, 359], true)) {
+            // 1. Inactive items are hidden
+            if (isset($menu->is_active) && (int) $menu->is_active === 0) {
                 return true;
             }
 
-            // 2. Team Management container (370) and operational submenus (371..377):
-            // Show ONLY if employee is an active Reporting Manager (has team members assigned under them)
-            if (($id === 370 || $parentId === 370 || in_array($id, [371, 372, 373, 374, 375, 376, 377], true)) && !$isTeamManager) {
+            // 2. Team Management container (ID 370) and operational submenus:
+            // Strictly visible ONLY if user is an actual reporting manager (manages a team with reportees) 
+            $name = strtolower(trim((string) ($menu->name ?? '')));
+            $isTeamMenu = $id === 370 || $parentId === 370 || str_starts_with($route, 'team.') || in_array($route, [
+                'attendances.team',
+                'reporting.dashboard',
+                'reporting.my_employees',
+                'reporting.attendance',
+                'reporting.leave',
+                'reporting.work_reports',
+                'reporting.projects',
+            ], true) || (str_contains($name, 'team') && $moduleKey === 'reporting');
+            // if ($isTeamMenu && ! $isTeamManager && ! $isSuperAdmin) {
+            if ($isTeamMenu && ! $isTeamManager) {
                 return true;
             }
 
-            // 3. Project Management lead/management menus (321, 322, 9901, 9903):
+            // 3. Project Management lead/management menus:
             // If user is NOT a project manager/lead, reject project management lead menus
-            if (in_array($id, [321, 322, 9901, 9903], true) && !$isProjectManager) {
+            $isProjectLeadMenu = $moduleKey === 'project_management' && ! in_array($route, ['projects.my', 'projects.tasks.index'], true);
+            if ($isProjectLeadMenu && ! $isProjectManager && ! $isSuperAdmin) {
                 return true;
             }
 
-            // 4. Reporting Management container (350) and configuration submenus (352, 353, 354, 360):
-            // Show ONLY if user has Admin access
-            if (($id === 350 || $parentId === 350) && !$hasAdminAccess) {
+            // 4. Reporting Management admin container (ID 350) and configuration submenus:
+            // Restricted to Super Admin, Admin, and HR Admin roles.
+            $isReportingAdminMenu = $id === 350 || $parentId === 350 || in_array($route, [
+                'reporting.structure',
+                'reporting.supervisors',
+                'reporting.assignments',
+                'reporting.history',
+            ], true) || ($moduleKey === 'reporting' && ! $isTeamMenu);
+            if ($isReportingAdminMenu && ! $hasReportingAdminAccess) {
                 return true;
             }
 
             return false;
         })->values();
-    }
-
-    public function clearCache(int $userId): void
-    {
-        Cache::forget($this->cacheKey($userId));
-    }
-
-    private function cacheKey(int $userId): string
-    {
-        return 'sidebar_resolved_user_' . $userId;
     }
 
     private function loadBaseMenus(): Collection
@@ -189,57 +272,32 @@ class SidebarMenuResolverS
 
         $base = DB::table('menus')
             ->where('is_active', 1)
-            ->select('id', 'name', 'route', 'icon', 'module_key', 'parent_id', 'sort_order', 'is_active')
+            ->select([
+                'id',
+                'name',
+                'route',
+                'icon',
+                'module_key',
+                'permission_key',
+                'parent_id',
+                'sort_order',
+                'is_active',
+            ])
+            ->orderBy('sort_order')
+            ->orderBy('id')
             ->get();
 
-        $menus = collect($base);
+        $mapped = $base->map(function ($menu) {
+            $m = clone $menu;
+            $m->id = (int) $m->id;
+            $m->parent_id = ! is_null($m->parent_id) ? (int) $m->parent_id : null;
+            $m->sort_order = (int) $m->sort_order;
+            $m->is_active = (bool) $m->is_active;
 
-        // Dynamically inject "My Tasks" submenu item for Employees
-        $menus->push((object)[
-            'id' => 9999,
-            'name' => 'My Tasks',
-            'route' => 'project_management.tasks.my',
-            'icon' => 'fas fa-user-check',
-            'module_key' => 'employee.tasks',
-            'parent_id' => 320,
-            'sort_order' => 2,
-            'is_active' => 1
-        ]);
+            return $m;
+        });
 
-        $menus->push((object)[
-            'id' => 9901,
-            'name' => 'Projects Directory',
-            'route' => 'projects.index',
-            'icon' => 'fas fa-project-diagram',
-            'module_key' => 'projects.directory',
-            'parent_id' => 320,
-            'sort_order' => 1,
-            'is_active' => 1
-        ]);
-
-        $menus->push((object)[
-            'id' => 9902,
-            'name' => 'My Projects',
-            'route' => 'projects.my',
-            'icon' => 'fas fa-tasks',
-            'module_key' => 'employee.projects',
-            'parent_id' => 320,
-            'sort_order' => 3,
-            'is_active' => 1
-        ]);
-
-        $menus->push((object)[
-            'id' => 9903,
-            'name' => 'Project Tasks',
-            'route' => 'projects.tasks.index',
-            'icon' => 'fas fa-list-check',
-            'module_key' => 'projects.tasks',
-            'parent_id' => 320,
-            'sort_order' => 4,
-            'is_active' => 1
-        ]);
-
-        return $menus;
+        return $mapped;
     }
 
     private function resolveRoleIds(Authenticatable $user): array
@@ -257,7 +315,7 @@ class SidebarMenuResolverS
         if (method_exists($user, 'roles')) {
             $roleIds = array_merge(
                 $roleIds,
-                $user->roles()->pluck('roles.id')->map(fn ($id) => (int) $id)->all()
+                $user->roles()->pluck('roles.id')->map(fn($id) => (int) $id)->all()
             );
         }
 
@@ -266,78 +324,176 @@ class SidebarMenuResolverS
 
     private function filterByRoleMenuAccess(Collection $menus, Authenticatable $user, array $roleIds, bool $isSuperAdmin): Collection
     {
-        if ($isSuperAdmin) {
-            return $menus;
+        if (empty($roleIds) || ! Schema::hasTable('role_menu_access')) {
+            return $isSuperAdmin ? $menus : collect();
         }
 
-        if (empty($roleIds) || ! Schema::hasTable('role_menu_access')) {
-            return collect();
+        if ($isSuperAdmin) {
+            $superAdminRoleId = DB::table('roles')->where('slug', 'super_admin')->value('id');
+            $hasExplicitRoleMenus = $superAdminRoleId ? DB::table('role_menu_access')->where('role_id', $superAdminRoleId)->exists() : false;
+
+            if (! $hasExplicitRoleMenus) {
+                return $menus;
+            }
         }
 
         $allowedIds = DB::table('role_menu_access')
             ->whereIn('role_id', $roleIds)
             ->pluck('menu_id')
-            ->map(fn ($id) => (int) $id)
+            ->map(fn($id) => (int) $id)
             ->all();
 
-        // Always allow Project Management container, Projects menu, Tasks menu, My Tasks, Projects Directory, etc.
-        $allowedIds[] = 320;
-        $allowedIds[] = 321;
-        $allowedIds[] = 322;
-        $allowedIds[] = 9999;
-        $allowedIds[] = 9901;
-        $allowedIds[] = 9902;
-        $allowedIds[] = 9903;
-        $allowedIds[] = 9950;
-        $allowedIds[] = 9951;
-        $allowedIds[] = 9952;
-        $allowedIds[] = 9953;
-        $allowedIds[] = 9954;
-        $allowedIds[] = 9955;
-        $allowedIds[] = 9956;
-        $allowedIds[] = 9957;
-        $allowedIds[] = 9958;
-
-        // Always allow Reporting Management (350..360) and Team Management (370..377) containers to pass role filtering
-        for ($i = 350; $i <= 377; $i++) {
-            $allowedIds[] = $i;
-        }
-
-        // Always allow Today's Attendance menu (349 / attendances.today)
-        $todayMenu = $menus->firstWhere('route', 'attendances.today');
-        if ($todayMenu) {
-            $allowedIds[] = (int) $todayMenu->id;
-        } else {
-            $allowedIds[] = 349;
-        }
-
         if (empty($allowedIds)) {
-            return collect();
+            return $isSuperAdmin ? $menus : collect();
         }
 
         return $menus->whereIn('id', $allowedIds)->values();
     }
 
-    private function filterByPermission(Collection $menus, Authenticatable $user, bool $isSuperAdmin): Collection
+    private function buildUserPermissionChecker(Authenticatable $user, ?object $userEmp, array $roleIds, bool $isSuperAdmin, bool $isHrAdmin): callable
     {
-        if ($isSuperAdmin || ! method_exists($user, 'hasPermission')) {
+        if ($isSuperAdmin) {
+            return fn(string $key) => true;
+        }
+
+        $userOverrides = [];
+        if (Schema::hasTable('user_module_access')) {
+            $userOverrides = DB::table('user_module_access')
+                ->where('user_id', $user->id)
+                ->whereNotNull('permission_key')
+                ->get(['permission_key', 'is_allowed', 'is_enabled'])
+                ->keyBy('permission_key')
+                ->map(fn($row) => (bool) ($row->is_allowed ?? $row->is_enabled))
+                ->all();
+        }
+
+        $grantedKeys = [];
+        if (! empty($roleIds) && Schema::hasTable('role_permissions') && Schema::hasTable('permissions')) {
+            $rolePerms = DB::table('role_permissions')
+                ->join('permissions', 'permissions.id', '=', 'role_permissions.permission_id')
+                ->whereIn('role_permissions.role_id', $roleIds)
+                ->pluck('permissions.key')
+                ->all();
+
+            foreach ($rolePerms as $k) {
+                if ($k) {
+                    $grantedKeys[$k] = true;
+                }
+            }
+        }
+
+        if ($userEmp) {
+            if (! empty($userEmp->designation_id) && Schema::hasTable('designation_module_access')) {
+                $desigPerms = DB::table('designation_module_access')
+                    ->where('designation_id', $userEmp->designation_id)
+                    ->where(function ($q) {
+                        $q->where('is_allowed', 1)->orWhere('is_enabled', 1);
+                    })
+                    ->pluck('permission_key')
+                    ->all();
+
+                foreach ($desigPerms as $k) {
+                    if ($k) {
+                        $grantedKeys[$k] = true;
+                    }
+                }
+            }
+
+            if (! empty($userEmp->department_id) && Schema::hasTable('department_module_access')) {
+                $deptPerms = DB::table('department_module_access')
+                    ->where('department_id', $userEmp->department_id)
+                    ->where(function ($q) {
+                        $q->where('is_allowed', 1)->orWhere('is_enabled', 1);
+                    })
+                    ->pluck('permission_key')
+                    ->all();
+
+                foreach ($deptPerms as $k) {
+                    if ($k) {
+                        $grantedKeys[$k] = true;
+                    }
+                }
+            }
+        }
+
+        $hrAdminPrefixes = PermissionMapS::getHrAdminPrefixes();
+        $permissionAliases = PermissionMapS::getPermissionAliases();
+        $attendanceExpansions = PermissionMapS::getAttendanceAliasExpansions();
+
+        $checkSingleKey = function (string $key) use ($userOverrides, $grantedKeys, $isHrAdmin, $hrAdminPrefixes, $permissionAliases, $attendanceExpansions): bool {
+            if ($key === '') {
+                return false;
+            }
+
+            if ($isHrAdmin) {
+                foreach ($hrAdminPrefixes as $prefix) {
+                    if (str_starts_with($key, $prefix)) {
+                        return true;
+                    }
+                }
+            }
+
+            if (isset($permissionAliases[$key])) {
+                $key = $permissionAliases[$key];
+            }
+
+            if (array_key_exists($key, $userOverrides)) {
+                return $userOverrides[$key];
+            }
+
+            if (isset($attendanceExpansions[$key])) {
+                foreach ($attendanceExpansions[$key] as $expandedKey) {
+                    if (! empty($grantedKeys[$expandedKey])) {
+                        return true;
+                    }
+                }
+            }
+
+            return ! empty($grantedKeys[$key]);
+        };
+
+        return function (string $permissionKey) use ($checkSingleKey): bool {
+            if (str_contains($permissionKey, '|')) {
+                $keys = array_filter(array_map('trim', explode('|', $permissionKey)));
+                foreach ($keys as $k) {
+                    if ($checkSingleKey($k)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            return $checkSingleKey($permissionKey);
+        };
+    }
+
+    private function filterByPermission(Collection $menus, Authenticatable $user, bool $isSuperAdmin, callable $permissionChecker): Collection
+    {
+        if ($isSuperAdmin) {
             return $menus;
         }
 
         $menuPermissionMap = $this->menuPermissionMap();
 
-        return $menus->filter(function ($menu) use ($user, $menuPermissionMap) {
-            $route = (string) ($menu->route ?? '');
-            if ($route === '' || ! isset($menuPermissionMap[$route])) {
-                return true;
+        return $menus->filter(function ($menu) use ($menuPermissionMap, $permissionChecker) {
+            $permKey = (string) ($menu->permission_key ?? '');
+            if ($permKey !== '') {
+                if ($permissionChecker($permKey)) {
+                    return true;
+                }
             }
 
-            if ($route === 'projects.my' || $route === 'projects.tasks.index' || $route === 'projects.index') {
+            $route = (string) ($menu->route ?? '');
+            if ($route === '' || ! isset($menuPermissionMap[$route])) {
+                return $permKey === '' || $permissionChecker($permKey);
+            }
+
+            if ($route === 'projects.my' || $route === 'projects.tasks.index' || $route === 'projects.index' || $route === 'employee.announcements.index') {
                 return true;
             }
 
             foreach ($menuPermissionMap[$route] as $permissionKey) {
-                if ($user->hasPermission($permissionKey)) {
+                if ($permissionChecker($permissionKey)) {
                     return true;
                 }
             }
@@ -346,95 +502,41 @@ class SidebarMenuResolverS
         })->values();
     }
 
-    private function checkIsProjectManager(Authenticatable $user, array $roleIds, bool $isSuperAdmin): bool
-    {
-        $empId = null;
-        $userEmp = DB::table('employees_new')->where('user_id', $user->id)->first(['id']);
-        if ($userEmp) {
-            $empId = (int)$userEmp->id;
-        }
-
-        $isTeamManager = false;
-        $isProjectManager = false;
-
-        if ($empId) {
-            $teamScope = app(\App\Services\HRMS\Team\TeamManagementScopeS::class);
-            $teamIds = $teamScope->getTeamEmployeeIds($empId);
-            $isTeamManager = !empty($teamIds);
-
-            $isTeamLead = DB::table('project_teams')->where('team_lead_employee_id', $empId)->where('is_active', 1)->exists();
-            $isDeliveryHead = DB::table('projects')->where('delivery_head_employee_id', $empId)->exists();
-            $isProjectLead = DB::table('project_assignments')
-                ->where('employee_id', $empId)
-                ->where('is_active', 1)
-                ->where(function($q) {
-                    $q->whereIn(DB::raw('LOWER(project_role)'), [
-                        'team_lead', 'team lead',
-                        'project_lead', 'project lead',
-                        'project_manager', 'project manager',
-                        'lead', 'manager',
-                        'delivery_head', 'delivery head'
-                    ]);
-                })->exists();
-
-            $isProjectManager = $isTeamLead || $isDeliveryHead || $isProjectLead || $isTeamManager;
-        }
-
-        $hasRoleMenuAccess = false;
-        if (!empty($roleIds) && Schema::hasTable('role_menu_access')) {
-            $hasRoleMenuAccess = DB::table('role_menu_access')
-                ->whereIn('role_id', $roleIds)
-                ->whereIn('menu_id', [320, 321, 322, 9901, 9903])
-                ->exists();
-        }
-
-        if ($isSuperAdmin || $hasRoleMenuAccess || (method_exists($user, 'hasRole') && $user->hasRole(['admin', 'hr_admin', 'project_admin', 'operations_admin', 'custom_admin'])) || in_array(($user->system_role_id ?? $user->role_id ?? 0), [1, 2, 3, 5], true) || (method_exists($user, 'hasPermission') && ($user->hasPermission('projects.view_all') || $user->hasPermission('projects.manage')))) {
-            $isProjectManager = true;
-        }
-
-        return $isProjectManager;
-    }
-
     private function filterByEmployeeOnlyVisibility(Collection $menus, bool $isEmployeeContext, bool $isProjectManager = false): Collection
     {
         return $menus->filter(function ($menu) use ($isEmployeeContext, $isProjectManager) {
+            $route = strtolower(trim((string) ($menu->route ?? '')));
+            $moduleKey = strtolower(trim((string) ($menu->module_key ?? '')));
+
             // Dashboard is always visible to everyone
-            if ($menu->id === 1 || ($menu->route ?? '') === 'dashboard') {
+            if ($route === 'dashboard' || strtolower(trim((string) ($menu->name ?? ''))) === 'dashboard') {
                 return true;
             }
 
-            // Exclude My Tasks for non-employee contexts
-            if (! $isEmployeeContext && $menu->id == 9999) {
-                return false;
-            }
-
-            // Always allow Reporting Management (350) and its submenus (351..360) in employee context
-            $id = (int)($menu->id ?? 0);
-            $parentId = (int)($menu->parent_id ?? 0);
-            $route = strtolower(trim((string) ($menu->route ?? '')));
-            if ($id === 350 || $parentId === 350 || $id === 370 || $parentId === 370 || str_starts_with($route, 'reporting.') || str_starts_with($route, 'team.')) {
+            // Always allow Reporting Management and Team Management submenus in employee context
+            if ($moduleKey === 'reporting' || str_starts_with($route, 'reporting.') || str_starts_with($route, 'team.')) {
                 return true;
             }
 
             $isEmployeeOnly = $this->isEmployeeOnlyMenu($menu);
 
             if ($isEmployeeContext) {
-                $route = strtolower(trim((string) ($menu->route ?? '')));
-
-                if (in_array($id, [321, 9901], true)) {
+                $isProjectLeadMenu = $moduleKey === 'project_management' && ! in_array($route, ['projects.my', 'projects.tasks.index'], true);
+                if ($isProjectLeadMenu) {
                     return $isProjectManager;
                 }
 
-                if ($id === 9903 || $route === 'projects.tasks.index') {
+                if ($route === 'projects.tasks.index') {
                     return true;
                 }
 
                 // Exclude admin-only attendance & HR management routes from Employee Self Service panel
                 $adminOnlyRoutes = [
                     'projects.index',
-                    'module.project-mgmt',
                     'hrms.attendance.holiday_work.index',
                     'attendances.index',
+                    'attendances.team',
+                    'reporting.attendance',
                     'attendances.record',
                     'attendances.pending-approval',
                     'attendances.monthly-report',
@@ -448,6 +550,8 @@ class SidebarMenuResolverS
                     'hrms.attendance.policy_overrides.index',
                     'attendances.export-pdf',
                     'hrms.attendance.wfh.index',
+                    'hrms.comp_offs.index',
+                    'hrms.leave.history',
                 ];
 
                 if (in_array($route, $adminOnlyRoutes, true)) {
@@ -456,7 +560,6 @@ class SidebarMenuResolverS
 
                 if (in_array($route, [
                     'hrms.leave.dashboard',
-                    'hrms.leave.history',
                     'leave-requests.create',
                     'leave-requests.index',
                     'hrms.leave.balances.index',
@@ -465,6 +568,7 @@ class SidebarMenuResolverS
                 ], true)) {
                     return true;
                 }
+
                 return $isEmployeeOnly || $this->isEmployeeParentContainer($menu);
             }
 
@@ -472,50 +576,107 @@ class SidebarMenuResolverS
         })->values();
     }
 
-
     private function filterByRouteValidity(Collection $menus): Collection
     {
-        $validIds = [];
+        $valid = collect();
 
         foreach ($menus as $menu) {
             $route = (string) ($menu->route ?? '');
-            if ($route === '' || $route === '#' || $this->resolveRouteName($route) !== null) {
-                $validIds[] = (int) $menu->id;
+            if ($route === '' || $route === '#') {
+                $valid->push($menu);
+                continue;
             }
+
+            $resolved = $this->resolveRouteName($route);
+
+            $cloned = clone $menu;
+            $cloned->route = $resolved !== null ? $resolved : '#';
+            $valid->push($cloned);
         }
 
-        return $menus->whereIn('id', $validIds)->values();
+        return $valid->values();
     }
 
-    private function filterRetiredLegacyPayrollMenus(Collection $menus): Collection
-    {
-        // Legacy Payroll retired. Enterprise Payroll is the only active payroll engine.
-        return $menus->filter(function ($menu) {
-            $route = strtolower(trim((string) ($menu->route ?? '')));
-            if ($route === '') {
-                return true;
-            }
 
-            return ! str_starts_with($route, 'pages.payroll.')
-                && ! str_starts_with($route, 'hrms.payroll.');
-        })->values();
-    }
-
-    private function repairParentVisibility(Collection $menus): Collection
-    {
+    private function repairParentVisibility(
+        Collection $menus,
+        Authenticatable $user,
+        array $roleIds,
+        bool $isSuperAdmin,
+        callable $permissionChecker
+    ): Collection {
         $indexed = $menus->keyBy('id');
 
-        foreach ($menus as $menu) {
-            $parentId = (int) ($menu->parent_id ?? 0);
-            if ($parentId > 0 && ! $indexed->has($parentId)) {
-                $parent = DB::table('menus')
-                    ->where('id', $parentId)
-                    ->where('is_active', 1)
-                    ->first(['id', 'name', 'route', 'icon', 'module_key', 'parent_id', 'sort_order', 'is_active']);
+        $allowedRoleMenuIds = [];
+        if (! $isSuperAdmin && ! empty($roleIds) && Schema::hasTable('role_menu_access')) {
+            $allowedRoleMenuIds = DB::table('role_menu_access')
+                ->whereIn('role_id', $roleIds)
+                ->pluck('menu_id')
+                ->map(fn($id) => (int) $id)
+                ->all();
+        }
 
-                if ($parent) {
-                    $indexed->put((int) $parent->id, $parent);
+        $menuPermissionMap = $this->menuPermissionMap();
+
+        while (true) {
+            $missingParentIds = [];
+            foreach ($indexed as $menu) {
+                $parentId = (int) ($menu->parent_id ?? 0);
+                if ($parentId > 0 && ! $indexed->has($parentId)) {
+                    $missingParentIds[$parentId] = $parentId;
                 }
+            }
+
+            if (empty($missingParentIds)) {
+                break;
+            }
+
+            $parents = DB::table('menus')
+                ->whereIn('id', array_values($missingParentIds))
+                ->where('is_active', 1)
+                ->get(['id', 'name', 'route', 'icon', 'module_key', 'permission_key', 'parent_id', 'sort_order', 'is_active']);
+
+            if ($parents->isEmpty()) {
+                break;
+            }
+
+            foreach ($parents as $parent) {
+                $parent->id = (int) $parent->id;
+                $parent->parent_id = ! is_null($parent->parent_id) ? (int) $parent->parent_id : null;
+                $parent->sort_order = (int) $parent->sort_order;
+                $parent->is_active = (bool) $parent->is_active;
+
+                $isRoleAuthorized = $isSuperAdmin || in_array($parent->id, $allowedRoleMenuIds, true);
+
+                $isPermAuthorized = $isSuperAdmin;
+                if (! $isPermAuthorized) {
+                    $permKey = (string) ($parent->permission_key ?? '');
+                    if ($permKey !== '') {
+                        $isPermAuthorized = $permissionChecker($permKey);
+                    } else {
+                        $route = (string) ($parent->route ?? '');
+                        if ($route === '' || ! isset($menuPermissionMap[$route])) {
+                            $isPermAuthorized = true;
+                        } else {
+                            foreach ($menuPermissionMap[$route] as $pk) {
+                                if ($permissionChecker($pk)) {
+                                    $isPermAuthorized = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if ($isRoleAuthorized && $isPermAuthorized) {
+                    $parent->route = $this->resolveRouteName((string) ($parent->route ?? '')) ?? '#';
+                } else {
+                    // Restored strictly as a non-navigable structural container for authorized children.
+                    // Strips any unauthorized route so it can NEVER be exposed as a clickable navigation item.
+                    $parent->route = '#';
+                }
+
+                $indexed->put($parent->id, $parent);
             }
         }
 
@@ -526,19 +687,19 @@ class SidebarMenuResolverS
     {
         $seenIds = [];
         $seenSignatures = [];
-        $seenRoutes = [];
-        $deduped = collect();
 
-        // Sort so that child menus (parent_id > 0) are evaluated before standalone top-level duplicate routes,
-        // and lower IDs (e.g. DB menu ID 321) are evaluated before dynamic menu IDs (e.g. 9901)
+        // Prefer child entries to top-level duplicates while preserving stable database ordering.
         $sortedForDedup = $menus->sort(function ($a, $b) {
-            $aParent = !empty($a->parent_id) ? 1 : 0;
-            $bParent = !empty($b->parent_id) ? 1 : 0;
+            $aParent = ! empty($a->parent_id) ? 1 : 0;
+            $bParent = ! empty($b->parent_id) ? 1 : 0;
             if ($aParent !== $bParent) {
                 return $bParent <=> $aParent;
             }
-            return ((int)($a->id ?? 0)) <=> ((int)($b->id ?? 0));
+
+            return ((int) ($a->id ?? 0)) <=> ((int) ($b->id ?? 0));
         });
+
+        $deduped = collect();
 
         foreach ($sortedForDedup as $menu) {
             $id = (int) ($menu->id ?? 0);
@@ -550,10 +711,6 @@ class SidebarMenuResolverS
             $route = strtolower(trim((string) ($menu->route ?? '')));
             $name = strtolower(trim((string) ($menu->name ?? '')));
 
-            if ($route !== '' && isset($seenRoutes[$route])) {
-                continue;
-            }
-
             $signature = $parentId . '|' . $route . '|' . $name;
 
             if (isset($seenSignatures[$signature])) {
@@ -562,9 +719,6 @@ class SidebarMenuResolverS
 
             if ($id > 0) {
                 $seenIds[$id] = true;
-            }
-            if ($route !== '') {
-                $seenRoutes[$route] = true;
             }
             $seenSignatures[$signature] = true;
             $deduped->push($menu);
@@ -576,12 +730,12 @@ class SidebarMenuResolverS
     private function removeEmptyParents(Collection $menus): Collection
     {
         $idsWithChildren = $menus->pluck('parent_id')
-            ->filter(fn ($id) => ! is_null($id))
-            ->map(fn ($id) => (int) $id)
+            ->filter(fn($id) => ! is_null($id))
+            ->map(fn($id) => (int) $id)
             ->all();
 
         return $menus->filter(function ($menu) use ($idsWithChildren) {
-            $hasRoute = ! empty((string) ($menu->route ?? ''));
+            $hasRoute = ! empty((string) ($menu->route ?? '')) && (string) ($menu->route ?? '') !== '#';
             if ($hasRoute) {
                 return true;
             }
@@ -592,7 +746,7 @@ class SidebarMenuResolverS
 
     private function resolveRouteName(string $routeName): ?string
     {
-        if ($routeName === '') {
+        if ($routeName === '' || $routeName === '#') {
             return null;
         }
 
@@ -614,165 +768,35 @@ class SidebarMenuResolverS
         return null;
     }
 
-    private function filterByWebAttendancePermission(Collection $menus, Authenticatable $user, bool $isSuperAdmin): Collection
-    {
-        return $menus;
-    }
-
     private function menuPermissionMap(): array
     {
-        return [
-            'employee.shift-assignment.index' => ['employee.shift.assign.manage'],
-            'attendances.today' => ['attendance.my.view', 'attendance.records.view_all', 'attendance.dashboard.view'],
-            'attendance.policies.index' => ['attendance.rules.manage'],
-            'attendance.rules.index' => ['attendance.rules.manage'],
-            'attendances.access-control' => ['attendance.blocked.view', 'attendance.access_control.manage', 'attendance.records.view_all', 'attendance.dashboard.view'],
-            'documents.compliance.index' => ['documents.compliance.view'],
-            'documents.verification.index' => ['documents.verification.view'],
-            'documents.types.index' => ['documents.types.manage'],
-            'documents.policies.index' => ['documents.company.view'],
-            'hrms.documents.self.index' => ['documents.upload.self', 'documents_self.view'],
-            'hrms.document-generation.dashboard' => ['document_generation.view'],
-            'hrms.document-generation.self.index' => ['document_generation.view', 'employee_documents.view', 'documents.upload.self', 'documents_self.view'],
-            'settings.hrms_exit_policies.index' => ['hrms_exit_policy.view', 'hrms_exit_policy.manage', 'hrms_exit_policy.update'],
-            'settings.system.index' => ['settings.system.manage'],
-            'settings.company.index' => ['settings.company.manage'],
-            'settings.branding.index' => ['settings.branding.view', 'settings.branding.update'],
-            'hrms.mobile-app-versions.index' => ['mobile_app_versions.view', 'mobile_app_versions.manage'],
-            'roles.index' => ['roles.manage', 'access.roles.manage'],
-            'permissions.index' => ['permissions.manage', 'access.permissions.manage'],
-            'admins.index' => ['admins.manage', 'access.admins.manage'],
-            'hrms.attendance.work-reports' => ['attendance.work_reports.view_all', 'attendance.work_reports.view_team'],
-            'hrms.attendance.my-work-reports' => ['attendance.work_reports.view_own'],
-            'enterprise-payroll.policies.index' => ['enterprise_payroll.policy.view'],
-            'hrms.organization.index' => ['departments.manage', 'designations.manage', 'employees.organization.manage'],
-            'hrms.attendance.wfh.index' => ['attendance.wfh.view', 'attendance.wfh.own'],
-            'hrms.attendance.my-wfh.index' => ['attendance.wfh.own'],
-            'hrms.leave.dashboard' => ['leave.dashboard.view', 'leave.my_requests.view'],
-            'leave-approvals.index' => ['leave.approvals.view_all', 'leave.approvals.view_team', 'leave.approvals.view', 'leave.approve'],
-            'hrms.leave.history' => ['leave.history.view', 'leave.my_requests.view', 'leave.approvals.view_all', 'leave.approvals.view_team'],
-            'leave-requests.create' => ['leave.my_requests.create', 'leave.my_requests.view', 'leave.apply', 'leave_self.apply'],
-            'leave-allocations.index' => ['leave.allocation.manage', 'leave.allocation.view_all', 'leave.allocation.view'],
-            'hrms.leave.balances.index' => ['leave.balance.view_all', 'leave.balance.view_team', 'leave.balance.view_own', 'leave.balance.view', 'leave_self.view_balance'],
-            'employees-leave-request.summary' => ['leave.balance.view_all', 'leave.balance.view_team', 'leave.balance.view_own', 'leave.balance.view', 'leave_self.view_balance'],
-            'hrms.holidays.index' => ['leave.holidays.manage', 'leave.team_calendar.view'],
-            'projects.index' => ['projects.view_all', 'projects.my_projects.view', 'projects.delivery_head.view', 'projects.team_lead.view'],
-            'projects.my' => ['projects.my_projects.view'],
-            'projects.tasks.index' => ['projects.tasks.view', 'projects.view_all'],
-            'projects.team.attendance' => ['projects.team_attendance.view', 'attendance.records.view_all', 'projects.team_lead.view', 'projects.delivery_head.view'],
-            'projects.team.work_reports' => ['projects.team_work_reports.view', 'attendance.work_reports.view_all', 'projects.team_lead.view', 'projects.delivery_head.view'],
-            'projects.team.leave' => ['projects.team_leave.view', 'leave.approvals.view_all', 'projects.team_lead.view', 'projects.delivery_head.view'],
-            'projects.templates.index' => ['projects.work_report.templates.manage', 'projects.manage'],
-        ];
-    }
-
-    private function isEmployeeContext(Authenticatable $user): bool
-    {
-        $hasEmployeeRole = method_exists($user, 'hasRole') && $user->hasRole('employee');
-        if (! $hasEmployeeRole) {
-            return false;
-        }
-
-        $hasAdminRole = method_exists($user, 'hasRole') && $user->hasRole([
-            'super_admin',
-            'admin',
-            'hr_admin',
-            'finance_admin',
-            'project_admin',
-            'operations_admin',
-            'custom_admin',
-            'manager',
-        ]);
-
-        return ! $hasAdminRole;
+        return PermissionMapS::getSidebarRoutePermissionMap();
     }
 
     private function isEmployeeOnlyMenu(object $menu): bool
     {
-        $route = strtolower(trim((string) ($menu->route ?? '')));
-        $name = strtolower(trim((string) ($menu->name ?? '')));
-        $moduleKey = strtolower(trim((string) ($menu->module_key ?? '')));
-
-        $employeeRoutePrefixes = [
-            'hrms.attendance.my-wfh.',
-            'hrms.attendance.my-holiday-work.',
-            'hrms.documents.self.',
-            'employee.announcements.',
-            'enterprise-payroll.self.',
-            'enterprise-payroll.my_',
-            'enterprise_payroll.my_',
-            'hrms.attendance.my',
-            'hrms.employee.',
-            'profile.',
-            'leave-requests.',
-        ];
-
-        $employeeRouteExact = [
-            'profile.index',
-            'attendances.today',
-            'hrms.document-generation.self.index',
-            'hrms.attendance.my',
-            'hrms.attendance.my-holiday-work.index',
-            'employee.announcements.index',
-            'enterprise-payroll.self.payslips',
-            'enterprise-payroll.self.reimbursements',
-            'enterprise_payroll.my_payslips.view',
-            'enterprise_payroll.my_reimbursements.view',
-        ];
-
-        $employeeNames = [
-            'my attendance',
-            'my holiday work',
-            'my work requests',
-            'my leave requests',
-            'my documents',
-            'upload documents',
-            'my payslips',
-            'my salary slips',
-            'my reimbursements',
-            'my announcements',
-            'my profile',
-            'complete profile',
-        ];
-
-        $employeeModulePrefixes = [
-            'employee.',
-            'my.',
-            'my_',
-            'employee_',
-        ];
-
-        if (in_array($route, $employeeRouteExact, true) || in_array($name, $employeeNames, true) || $route === 'project_management.tasks.my' || $name === 'my tasks') {
-            return true;
-        }
-
-        foreach ($employeeRoutePrefixes as $prefix) {
-            if ($prefix !== '' && str_starts_with($route, $prefix)) {
-                return true;
-            }
-        }
-
-        foreach ($employeeModulePrefixes as $prefix) {
-            if ($prefix !== '' && str_starts_with($moduleKey, $prefix)) {
-                return true;
-            }
-        }
-
-        return false;
+        return PermissionMapS::isEmployeeSelfServiceMenu($menu);
     }
 
     private function isEmployeeParentContainer(object $menu): bool
     {
-
         $moduleKey = strtolower(trim((string) ($menu->module_key ?? '')));
         $name = strtolower(trim((string) ($menu->name ?? '')));
 
         if ($moduleKey === 'my.profile' || $name === 'settings') {
-
             return true;
         }
 
-        return in_array($moduleKey, ['documents', 'attendance', 'leave', 'enterprise_payroll', 'assets', 'project_management'], true)
-            || $menu->id == 320;
+        return in_array($moduleKey, ['documents', 'attendance', 'leave', 'enterprise_payroll', 'assets', 'project_management', 'announcements', 'notice'], true);
+    }
+
+    public function clearCache(int $userId): void
+    {
+        Cache::forget($this->cacheKey($userId));
+    }
+
+    private function cacheKey(int $userId): string
+    {
+        return config('authorization.sidebar_cache_prefix', 'user_menus_v2_') . $userId;
     }
 }

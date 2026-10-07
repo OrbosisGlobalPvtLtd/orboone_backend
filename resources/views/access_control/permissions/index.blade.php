@@ -9,6 +9,7 @@
 @section('_content')
 <div class="ac-page">
     <div class="ac-container">
+        @include('access_control.partials.nav')
         <!-- Premium Purple Gradient Hero -->
         <div class="ac-header">
             <div>

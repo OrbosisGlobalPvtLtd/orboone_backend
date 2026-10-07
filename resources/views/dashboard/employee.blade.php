@@ -435,6 +435,8 @@
             </div>
         </div>
 
+        @include('dashboard.partials.birthday-widget', ['dashboard' => $dashboard, 'show_upcoming' => false])
+
         {{-- Flash Messages & Validation Alerts --}}
         @if (session('error') || session('danger'))
             <div class="alert alert-danger border-0 shadow-lg mb-4 mt-3" style="border-radius: 18px; background: #fef2f2; border-left: 6px solid #ef4444 !important; padding: 18px 22px;">
@@ -838,7 +840,7 @@
                             <span class="small font-weight-bold text-primary">{{ $profileCompletion }}%</span>
                         </div>
                         <div class="progress" style="height: 8px; border-radius: 99px; background:#F1F5F9;">
-                            <div class="progress-bar" role="progressbar" style="width: {{ $profileCompletion }}%; border-radius:99px; background: linear-gradient(90deg, var(--orb-primary), var(--orb-secondary));" aria-valuenow="{{ $profileCompletion }}" aria-valuemin="0" aria-valuemax="100"></div>
+                            <div class="progress-bar" role="progressbar" style="--completion: {{ $profileCompletion }}%; width: var(--completion, 0%); border-radius:99px; background: linear-gradient(90deg, var(--orb-primary), var(--orb-secondary));" aria-valuenow="{{ $profileCompletion }}" aria-valuemin="0" aria-valuemax="100"></div>
                         </div>
                     </div>
 
@@ -875,7 +877,7 @@
 
 {{-- Floating Bottom-Right Fixed Web Punch Button Overlay --}}
 @if ($canWebPunch)
-    <div style="position: fixed; bottom: 32px; right: 32px; z-index: 9999;">
+    <div style="position: fixed; bottom: 32px; right: 32px; z-index: 990;">
         @if ($isPunchBlocked)
             <button type="button" class="btn font-weight-bold px-4 py-3 shadow-lg d-flex align-items-center" data-toggle="modal" data-target="#webPunchInModal" style="border-radius: 50px; font-size: 15px; font-weight: 900; background: linear-gradient(135deg, #64748b 0%, #475569 100%) !important; color: #fff; border: 2px solid #ffffff; cursor: pointer;">
                 <i class="fas fa-ban fa-lg mr-2"></i> PUNCH BLOCKED
@@ -892,8 +894,11 @@
     </div>
 @endif
 
-{{-- Include Punch In & Punch Out Modals and Scripts --}}
-@include('dashboard.partials.employee-dashboard', ['only_modals' => true])
+{{-- Modals for Web Punch In & Punch Out --}}
+@if ($canWebPunch)
+    @include('hrms.attendance.partials.web-punch-modals')
+@endif
+
 
 <script>
 function fetchCalData() {

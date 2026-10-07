@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Web\AccessControl;
 
 use App\Http\Controllers\Controller;
+use App\Services\AccessControl\PermissionSyncService;
 use App\Services\AccessControl\SidebarS;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -10,6 +11,10 @@ use Illuminate\Support\Facades\Schema;
 
 class RoleMenuC extends Controller
 {
+    public function __construct(
+        protected PermissionSyncService $permissionSyncService,
+        protected SidebarS $sidebarService
+    ) {}
     public function index()
     {
         $roles = DB::table('roles')
@@ -42,7 +47,7 @@ class RoleMenuC extends Controller
             ->map(fn ($id) => (int) $id)
             ->all();
 
-        if ($roleData->slug === 'super_admin') {
+        if ($roleData->slug === 'super_admin' && empty($selectedMenuIds)) {
             $selectedMenuIds = DB::table('menus')
                 ->where('is_active', 1)
                 ->pluck('id')
@@ -52,7 +57,7 @@ class RoleMenuC extends Controller
 
         return view('access_control.role_menus.edit', [
             'role' => $roleData,
-            'menus' => $menus,
+            'allMenus' => $menus,
             'selectedMenuIds' => $selectedMenuIds,
         ]);
     }
@@ -72,17 +77,32 @@ class RoleMenuC extends Controller
             ->unique()
             ->values();
 
-        if ($roleData->slug === 'super_admin') {
-            $menuIds = DB::table('menus')->where('is_active', 1)->pluck('id')->map(fn ($id) => (int) $id);
+        // Preserve the complete ancestor chain for any future nested DB menu hierarchy.
+        $pendingIds = $menuIds->all();
+        while (! empty($pendingIds)) {
+            // $parentMenuIds = DB::table('menus')
+            // ->whereIn('id', $menuIds)
+            // ->whereNotNull('parent_id')
+            // ->pluck('parent_id')
+            // ->map(fn ($id) => (int) $id);
+
+            // $menuIds = $menuIds->merge($parentMenuIds)->unique()->values();
+            $parentMenuIds = DB::table('menus')
+                ->whereIn('id', $pendingIds)
+                ->whereNotNull('parent_id')
+                ->pluck('parent_id')
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values();
+
+            $newParentIds = $parentMenuIds->diff($menuIds)->values();
+            if ($newParentIds->isEmpty()) {
+                break;
+            }
+
+            $menuIds = $menuIds->merge($newParentIds)->unique()->values();
+            $pendingIds = $newParentIds->all();
         }
-
-        $parentMenuIds = DB::table('menus')
-            ->whereIn('id', $menuIds)
-            ->whereNotNull('parent_id')
-            ->pluck('parent_id')
-            ->map(fn ($id) => (int) $id);
-
-        $menuIds = $menuIds->merge($parentMenuIds)->unique()->values();
 
         $validMenuIds = DB::table('menus')
             ->whereIn('id', $menuIds)
@@ -107,9 +127,17 @@ class RoleMenuC extends Controller
             }
 
             // Dynamically synchronize role permissions for assigned menus
-            $permissionSyncService = app(\App\Services\AccessControl\PermissionSyncService::class);
-            $permissionSyncService->syncRolePermissionsFromMenus((int) $roleData->id, $validMenuIds);
+            $this->permissionSyncService->syncRolePermissionsFromMenus((int) $roleData->id, $validMenuIds);
         });
+
+        // Clear sidebar cache for users assigned to this role
+        $userIds = DB::table('users')->where('system_role_id', $roleData->id)->pluck('id');
+        if (Schema::hasTable('user_roles')) {
+            $userIds = $userIds->merge(DB::table('user_roles')->where('role_id', $roleData->id)->pluck('user_id'));
+        }
+        foreach ($userIds->unique() as $uid) {
+            $this->sidebarService->clearCache((int) $uid);
+        }
 
         return redirect()
             ->route('role_menus.index')

@@ -22,12 +22,14 @@ class AddEmployeeIdToEmployeeDocuments extends Migration
             });
         }
 
-        // Sync existing data
-        $documents = EmployeeDocumentModal::all();
-        foreach ($documents as $doc) {
-            $employee = Employee::where('user_id', $doc->user_id)->first();
-            if ($employee) {
-                $doc->update(['employee_id' => $employee->id]);
+        // Sync existing data if table exists
+        if (Schema::hasTable('employee_documents_new')) {
+            $documents = EmployeeDocumentModal::all();
+            foreach ($documents as $doc) {
+                $employee = Employee::where('user_id', $doc->user_id)->first();
+                if ($employee) {
+                    $doc->update(['employee_id' => $employee->id]);
+                }
             }
         }
     }

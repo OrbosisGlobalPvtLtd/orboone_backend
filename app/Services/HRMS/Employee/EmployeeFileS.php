@@ -32,34 +32,35 @@ class EmployeeFileS
             throw new \Exception('Invalid file upload.');
         }
 
-        $allowedExtensions = match ($type) {
-            'profile' => ['jpg', 'jpeg', 'png', 'webp'],
-            'resume' => ['pdf', 'doc', 'docx'],
-            'document' => ['pdf', 'jpg', 'jpeg', 'png'],
-            default => ['*'],
-        };
+        $extension = strtolower($file->getClientOriginalExtension() ?: ($file->guessExtension() ?: ''));
+        $mime = strtolower($file->getMimeType() ?: '');
 
-        $extension = strtolower($file->getClientOriginalExtension());
+        if ($type === 'profile') {
+            $allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'heic', 'heif'];
+            $isImageMime = str_starts_with($mime, 'image/') || in_array($mime, ['application/octet-stream', 'binary/octet-stream']);
 
-        if (!in_array($extension, $allowedExtensions) && $allowedExtensions !== ['*']) {
-            throw new \Exception('Invalid file type.');
+            if (!in_array($extension, $allowedExts) && !$isImageMime) {
+                throw new \Exception('Invalid file type. Allowed profile image formats: JPG, JPEG, PNG, WEBP.');
+            }
+        } elseif ($type === 'resume') {
+            $allowedExts = ['pdf', 'doc', 'docx'];
+            $isDocMime = in_array($mime, ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/octet-stream', 'text/plain']);
+
+            if (!in_array($extension, $allowedExts) && !$isDocMime) {
+                throw new \Exception('Invalid file type. Allowed resume formats: PDF, DOC, DOCX.');
+            }
+        } elseif ($type === 'document') {
+            $allowedExts = ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'doc', 'docx', 'heic', 'heif'];
+            $isAllowedMime = str_starts_with($mime, 'image/') || in_array($mime, ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/octet-stream']);
+
+            if (!in_array($extension, $allowedExts) && !$isAllowedMime) {
+                throw new \Exception('Invalid file type. Allowed document formats: PDF, JPG, JPEG, PNG, WEBP, DOC, DOCX.');
+            }
         }
 
-        $detectedMime = $file->getMimeType();
-        $allowedMimes = match ($type) {
-            'profile' => ['image/jpeg', 'image/png', 'image/webp'],
-            'resume' => ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
-            'document' => ['application/pdf', 'image/jpeg', 'image/png'],
-            default => [],
-        };
-
-        if (!empty($allowedMimes) && !in_array($detectedMime, $allowedMimes)) {
-            throw new \Exception('Invalid file content MIME type.');
-        }
-
-        // 5MB max safety
-        if ($file->getSize() > 5 * 1024 * 1024) {
-            throw new \Exception('File size too large.');
+        // 10MB max safety
+        if ($file->getSize() > 10 * 1024 * 1024) {
+            throw new \Exception('File size too large (max 10MB).');
         }
 
         /* =========================

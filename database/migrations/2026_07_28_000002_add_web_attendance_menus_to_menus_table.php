@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (! Schema::hasTable('menus')) {
+        if (! Schema::hasTable('menus') || ! Schema::hasColumn('menus', 'route')) {
             return;
         }
 
@@ -101,7 +101,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (Schema::hasTable('menus')) {
+        if (Schema::hasTable('menus') && Schema::hasColumn('menus', 'route')) {
             DB::table('menus')->whereIn('route', ['attendances.today', 'attendances.access-control'])->delete();
         }
     }

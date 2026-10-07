@@ -6,93 +6,227 @@ use App\Models\HRMS\Employee\EmployeeM;
 use App\Models\HRMS\Leave\LeaveAllocationM;
 use App\Models\HRMS\Leave\LeaveBalanceLogM;
 use App\Models\HRMS\Leave\LeavePolicyM;
+use App\Services\HRMS\Employee\EmployeeEligibilityS;
 use Carbon\Carbon;
+use DomainException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Log;
 
 class LeaveAllocationService
 {
-    private const PERMANENT_PRORATION_BY_MONTH = [
-        1 => 25,
-        2 => 23,
-        3 => 21,
-        4 => 19,
-        5 => 17,
-        6 => 15,
-        7 => 13,
-        8 => 10,
-        9 => 8,
-        10 => 6,
-        11 => 4,
-        12 => 2,
-    ];
+    public const TIMEZONE = 'Asia/Kolkata';
 
-    public function __construct(private LeavePolicyService $policyService)
-    {
+    public const STAGE_PERMANENT = 'permanent';
+    public const STAGE_PROBATION = 'probation';
+    public const STAGE_INTERNSHIP = 'internship';
+
+    public function __construct(
+        private LeavePolicyService $policyService,
+        private EmployeeEligibilityS $eligibilityService
+    ) {
     }
 
+    /**
+     * Central Authoritative Entitlement Calculation Engine.
+     * Single Source of Truth for all leave quota calculations across the HRMS.
+     */
+    public function calculateEntitlement(
+        LeavePolicyM $policy,
+        string $stage,
+        ?Carbon $fromDate = null,
+        ?Carbon $toDate = null,
+        bool $isPaidIntern = true
+    ): LeaveEntitlementResult {
+        $this->validatePolicy($policy);
+
+        $normalizedStage = $this->normalizeStage($stage);
+
+        return match ($normalizedStage) {
+            self::STAGE_PROBATION => $this->calculateProbationEntitlement($policy, $fromDate, $toDate),
+            self::STAGE_INTERNSHIP => $this->calculateInternshipEntitlement($policy, $isPaidIntern, $fromDate, $toDate),
+            self::STAGE_PERMANENT => $this->calculatePermanentEntitlement($policy, $fromDate, $toDate),
+            default => throw new DomainException("Unsupported leave allocation stage: '{$normalizedStage}'."),
+        };
+    }
+
+    /**
+     * Backward-compatible helper returning [$total, $paid, $sick] array.
+     */
+    public function calculateAllocationAmounts(
+        ?LeavePolicyM $policy,
+        string $stage,
+        ?Carbon $fromDate,
+        ?Carbon $toDate = null,
+        ?bool $isPaidIntern = true
+    ): array {
+        if (! $policy) {
+            return [0.0, 0.0, 0.0];
+        }
+
+        $result = $this->calculateEntitlement(
+            $policy,
+            $stage,
+            $fromDate,
+            $toDate,
+            (bool) $isPaidIntern
+        );
+
+        return [
+            $result->totalAllocated,
+            $result->paidAllocated,
+            $result->sickAllocated,
+        ];
+    }
+
+    /**
+     * Generate or regenerate leave allocation for an individual employee.
+     */
     public function generateForEmployee(
         EmployeeM $employee,
         int $year,
         ?int $userId = null,
         ?string $forceStage = null,
         ?Carbon $effectiveDate = null
-    ): LeaveAllocationM
-    {
-        if (!app(\App\Services\HRMS\Employee\EmployeeEligibilityS::class)->canUseLeave($employee)) {
-            return LeaveAllocationM::firstOrNew(['employee_id' => $employee->id, 'year' => $year]);
+    ): LeaveAllocationM {
+        $stage = $forceStage !== null
+            ? $this->normalizeStage($forceStage)
+            : $this->stageFor($employee);
+        if ($stage === self::STAGE_PERMANENT) {
+            $effectiveDate = $this->effectiveDateForAllocationYear($employee, $year, $effectiveDate);
+            if ($effectiveDate === false) {
+                return LeaveAllocationM::firstOrNew([
+                    'employee_id' => $employee->id,
+                    'year' => $year,
+                ]);
+            }
         }
 
-        return DB::transaction(function () use ($employee, $year, $userId, $forceStage, $effectiveDate) {
-            $policy = $this->policyService->forEmployee($employee, Carbon::create($year, 1, 1, 0, 0, 0, 'Asia/Kolkata'));
-            $stage = $forceStage ? strtolower($forceStage) : $this->stageFor($employee);
-            $fromDate = $this->allocationStartDate($employee, $stage, $year, $effectiveDate);
-            $toDate = Carbon::create($year, 12, 31, 0, 0, 0, 'Asia/Kolkata');
-
-            [$total, $paid, $sick] = $this->allocationAmounts($policy, $stage, $fromDate, $toDate);
-
-            $allocation = LeaveAllocationM::firstOrNew([
+        if (! $this->eligibilityService->canUseLeave($employee)) {
+            return LeaveAllocationM::firstOrNew([
                 'employee_id' => $employee->id,
                 'year' => $year,
-                'employment_stage' => $stage,
             ]);
+        }
 
-            if ($allocation->exists && $allocation->is_locked) {
+        try {
+            return DB::transaction(function () use (
+            $employee,
+            $year,
+            $userId,
+            $stage,
+            $effectiveDate
+        ) {
+            $allocation = LeaveAllocationM::query()
+                ->where('employee_id', $employee->id)
+                ->where('year', $year)
+                ->lockForUpdate()
+                ->first();
+
+            // Lock protection: if allocation is locked, preserve it untouched
+            if ($allocation?->is_locked) {
                 return $allocation;
             }
+            $policyDate = $this->yearStart($year);
+            $policy = $this->policyService->forEmployee($employee, $policyDate);
 
-            $before = (float) ($allocation->total_remaining ?? 0);
+            if (! $policy) {
+                throw new DomainException("No active leave policy found for employee #{$employee->id} in year {$year}.");
+            }
 
-            $currentSystemYear = (int) Carbon::now('Asia/Kolkata')->year;
-            $isPastYear = $year < $currentSystemYear;
+            $this->validatePolicy($policy);
+
+            $fromDate = $this->allocationStartDate(
+                $employee,
+                $stage,
+                $year,
+                $effectiveDate
+            );
+
+            $toDate = $this->yearEnd($year);
+
+            $isPaidIntern = $stage !== self::STAGE_INTERNSHIP
+                || ! $this->isUnpaidInternEmployee($employee);
+
+            $entitlement = $this->calculateEntitlement(
+                $policy,
+                $stage,
+                $fromDate,
+                $toDate,
+                $isPaidIntern
+            );
+
+            $isExisting = $allocation?->exists ?? false;
+
+            if (! $allocation) {
+                $allocation = new LeaveAllocationM([
+                    'employee_id' => $employee->id,
+                    'year' => $year,
+                ]);
+            }
+
+            $before = (float) ($allocation->total_remaining ?? 0.0);
+
+            $currentYear = $this->now()->year;
+            $isPastYear = $year < $currentYear;
+
+            // Preserve historical usage and balances strictly
+            $paidUsed = (float) ($allocation->paid_used ?? 0.0);
+            $sickUsed = (float) ($allocation->sick_used ?? 0.0);
+            $compOffUsed = (float) ($allocation->comp_off_used ?? 0.0);
+            $lwpUsed = (float) ($allocation->lwp_used ?? 0.0);
+            $compOffAllocated = (float) ($allocation->comp_off_allocated ?? 0.0);
+            $monthlyUsed = (float) ($allocation->monthly_used_this_month ?? 0.0);
+            $monthlyCarry = (float) ($allocation->monthly_carry_forward ?? 0.0);
+
+            $allocationReason = $allocation->allocation_reason ?: "Annual Allocation for {$year}";
+            $createdByUserId = $allocation->created_by_user_id ?? $userId;
+            $isLocked = $isExisting ? (bool) $allocation->is_locked : $isPastYear;
 
             $allocation->fill([
+                'employment_stage' => $stage,
                 'policy_id' => $policy->id,
                 'confirmation_date' => $employee->confirmation_date,
                 'allocation_from_date' => $fromDate?->toDateString(),
                 'allocation_to_date' => $toDate->toDateString(),
-                'total_allocated' => $total,
-                'paid_allocated' => $paid,
-                'sick_allocated' => $sick,
-                'comp_off_allocated' => (float) ($allocation->comp_off_allocated ?? 0),
-                'monthly_used_this_month' => 0.0,
-                'monthly_carry_forward' => 0.0,
-                'last_month_processed' => sprintf('%04d-%02d', $year, 1),
-                'allocation_reason' => "Annual Allocation for {$year}",
-                'is_locked' => $isPastYear,
-                'created_by_user_id' => $userId,
+                'total_allocated' => $entitlement->totalAllocated,
+                'paid_allocated' => $entitlement->paidAllocated,
+                'sick_allocated' => $entitlement->sickAllocated,
+                'monthly_quota' => $entitlement->monthlyQuota,
+                'paid_used' => $paidUsed,
+                'sick_used' => $sickUsed,
+                'comp_off_used' => $compOffUsed,
+                'lwp_used' => $lwpUsed,
+                'comp_off_allocated' => $compOffAllocated,
+                'monthly_used_this_month' => $monthlyUsed,
+                'monthly_carry_forward' => $monthlyCarry,
+                'last_month_processed' => $allocation->last_month_processed,
+                'allocation_reason' => $allocationReason,
+                'is_locked' => $isLocked,
+                'created_by_user_id' => $createdByUserId,
             ]);
 
-            $this->recalculateAllocationFields($allocation);
-            $allocation->save();
+            $this->recalculateAllocationFields(
+                $allocation,
+                $policy,
+                $employee
+            );
 
-            $after = (float) $allocation->total_remaining;
-            if (round($after - $before, 2) !== 0.0) {
+            if ($allocation->isDirty()) {
+                $allocation->save();
+            }
+
+            $after = (float) ($allocation->total_remaining ?? 0.0);
+            $balanceDifference = round($after - $before, 2);
+
+            if ($allocation->wasRecentlyCreated || abs($balanceDifference) >= 0.01) {
                 LeaveBalanceLogM::create([
                     'employee_id' => $employee->id,
                     'leave_allocation_id' => $allocation->id,
                     'action' => 'allocation_generated',
-                    'credit' => max(0, $after - $before),
-                    'debit' => max(0, $before - $after),
+                    'credit' => max(0.0, $balanceDifference),
+                    'debit' => max(0.0, -$balanceDifference),
                     'balance_before' => $before,
                     'balance_after' => $after,
                     'remarks' => 'Leave allocation generated from DB policy.',
@@ -101,187 +235,997 @@ class LeaveAllocationService
             }
 
             return $allocation;
+            });
+        } catch (QueryException $e) {
+            // Concurrent first-time generators can both observe no row. The unique
+            // employee/year index chooses a winner; return that committed row safely.
+            $message = strtolower($e->getMessage());
+            $sqlState = (string) ($e->errorInfo[0] ?? $e->getCode());
+            $driverCode = (int) ($e->errorInfo[1] ?? 0);
+            $isExpectedUniqueCollision = (
+                $sqlState === '23505'
+                && (str_contains($message, 'leave_allocations_emp_year_unique')
+                    || str_contains($message, 'leave_allocations_employee_id_year_unique'))
+            ) || (
+                $sqlState === '23000'
+                && $driverCode === 1062
+                && (str_contains($message, 'leave_allocations_emp_year_unique')
+                    || str_contains($message, 'leave_allocations_employee_id_year_unique'))
+            ) || (
+                $sqlState === '23000'
+                && $driverCode === 19
+                && str_contains($message, 'unique constraint failed: leave_allocations.employee_id, leave_allocations.year')
+            );
+            if (! $isExpectedUniqueCollision) {
+                throw $e;
+            }
+            $existing = LeaveAllocationM::query()
+                ->where('employee_id', $employee->id)
+                ->where('year', $year)
+                ->first();
+            if ($existing) {
+                return $existing;
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * Single employee allocation generation with eligibility enforcement.
+     */
+    public function generateSingle(int $employeeId, int $year, ?int $userId = null): LeaveAllocationM
+    {
+        $employee = EmployeeM::findOrFail($employeeId);
+
+        if (! $this->eligibilityService->canUseLeave($employee)) {
+            throw new DomainException(
+                'Cannot generate leave allocation: Employee profile is pending verification or employee is not active/eligible for leave management.'
+            );
+        }
+
+        $allocation = $this->generateForEmployee($employee, $year, $userId);
+
+        if (! $allocation->exists) {
+            throw new DomainException("Leave allocation could not be generated for year {$year}.");
+        }
+
+        return $allocation;
+    }
+
+    /**
+     * Bulk yearly allocation generation with bounded memory and batched profile loading.
+     */
+    public function generateYearly(int $year, ?int $userId = null): array
+    {
+        $startedAt = microtime(true);
+        $summary = [
+            'total_processed' => 0,
+            'successful_allocations' => 0,
+            'skipped' => 0,
+            'failed' => 0,
+            'failed_employee_ids' => [],
+        ];
+        $query = EmployeeM::query()
+            ->without(['user', 'department', 'designation', 'position', 'systemRole'])
+            ->with('profile')
+            ->where(function ($query) {
+                $query->where('is_active', 1)->orWhereNull('is_active');
+            });
+        if (Schema::hasTable('employee_exit_processes')) {
+            $query->addSelect([
+                'has_completed_exit' => DB::table('employee_exit_processes')
+                    ->selectRaw('1')
+                    ->whereColumn('employee_exit_processes.employee_id', 'employees_new.id')
+                    ->where('employee_exit_processes.status', 'exit_completed')
+                    ->limit(1),
+            ]);
+        }
+        $query->chunkById(250, function ($employees) use ($year, $userId, &$summary) {
+                $employeeIds = $employees->pluck('id')->all();
+                $existingAllocations = LeaveAllocationM::query()
+                    ->where('year', $year)
+                    ->whereIn('employee_id', $employeeIds)
+                    ->get(['employee_id', 'is_locked'])
+                    ->keyBy('employee_id');
+
+                foreach ($employees as $employee) {
+                    $summary['total_processed']++;
+                    try {
+                        if (! $this->eligibilityService->canUseLeave($employee)) {
+                            $summary['skipped']++;
+                            continue;
+                        }
+
+                        $stage = $this->stageFor($employee);
+                        if ($stage === self::STAGE_PERMANENT) {
+                            $permanentDate = $employee->confirmation_effective_date
+                                ?: $employee->confirmation_date
+                                ?: $employee->permanent_at;
+                            if ($permanentDate && Carbon::parse($permanentDate, self::TIMEZONE)->year > $year) {
+                                $summary['skipped']++;
+                                continue;
+                            }
+                        }
+
+                        if ((bool) ($existingAllocations->get($employee->id)?->is_locked ?? false)) {
+                            $summary['skipped']++;
+                            continue;
+                        }
+
+                        $allocation = $this->generateForEmployee($employee, $year, $userId);
+                        if ($allocation->exists) {
+                            $summary['successful_allocations']++;
+                        } else {
+                            $summary['skipped']++;
+                        }
+                    } catch (\Throwable $e) {
+                        $summary['failed']++;
+                        $summary['failed_employee_ids'][] = (int) $employee->id;
+                        Log::error('Annual leave allocation failed for employee', [
+                            'employee_id' => (int) $employee->id,
+                            'year' => $year,
+                            'stage' => $employee->employee_stage ?? $employee->employment_type ?? null,
+                            'exception' => get_class($e),
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+            });
+
+        $summary['duration_seconds'] = round(microtime(true) - $startedAt, 3);
+        return $summary;
+    }
+
+    /**
+     * Manual allocation update by admin with server-side validation and balance derivation.
+     */
+    public function updateAllocation(int $id, array $data, ?int $userId = null): LeaveAllocationM
+    {
+        return DB::transaction(function () use ($id, $data, $userId) {
+            $allocation = LeaveAllocationM::lockForUpdate()->findOrFail($id);
+
+            $before = (float) ($allocation->total_remaining ?? 0.0);
+
+            $allocation->year = (int) $data['year'];
+            $allocation->policy_id = ! empty($data['policy_id']) ? (int) $data['policy_id'] : null;
+            $allocation->employment_stage = strtolower(trim($data['employment_stage']));
+            
+            // Explicitly set quotas
+            $allocation->paid_allocated = round(max(0.0, (float) $data['paid_allocated']), 2);
+            $allocation->sick_allocated = round(max(0.0, (float) $data['sick_allocated']), 2);
+            $allocation->comp_off_allocated = round(max(0.0, (float) ($data['comp_off_allocated'] ?? $allocation->comp_off_allocated ?? 0.0)), 2);
+            $allocation->total_allocated = round($allocation->paid_allocated + $allocation->sick_allocated, 2);
+
+            // Preserve historical usage or apply sanitized updates
+            $allocation->paid_used = round(max(0.0, (float) ($data['paid_used'] ?? $allocation->paid_used ?? 0.0)), 2);
+            $allocation->sick_used = round(max(0.0, (float) ($data['sick_used'] ?? $allocation->sick_used ?? 0.0)), 2);
+            $allocation->comp_off_used = round(max(0.0, (float) ($data['comp_off_used'] ?? $allocation->comp_off_used ?? 0.0)), 2);
+            $allocation->lwp_used = round(max(0.0, (float) ($data['lwp_used'] ?? $allocation->lwp_used ?? 0.0)), 2);
+            
+            if (array_key_exists('monthly_quota', $data)) {
+                $allocation->monthly_quota = round(max(0.0, (float) $data['monthly_quota']), 2);
+            }
+            if (array_key_exists('monthly_carry_forward', $data)) {
+                $allocation->monthly_carry_forward = round(max(0.0, (float) $data['monthly_carry_forward']), 2);
+            }
+            if (array_key_exists('monthly_used_this_month', $data)) {
+                $allocation->monthly_used_this_month = round(max(0.0, (float) $data['monthly_used_this_month']), 2);
+            }
+            if (array_key_exists('allocation_from_date', $data)) {
+                $allocation->allocation_from_date = $data['allocation_from_date'];
+            }
+            if (array_key_exists('allocation_to_date', $data)) {
+                $allocation->allocation_to_date = $data['allocation_to_date'];
+            }
+            if (array_key_exists('allocation_reason', $data)) {
+                $allocation->allocation_reason = $data['allocation_reason'];
+            }
+
+            if (array_key_exists('is_locked', $data)) {
+                $allocation->is_locked = (bool) $data['is_locked'];
+            }
+
+            // Recalculate remaining balances entirely server-side (ignoring any client-forged remaining values)
+            $this->recalculateAllocationFields($allocation);
+
+            if ($allocation->isDirty()) {
+                $allocation->save();
+            }
+
+            $after = (float) ($allocation->total_remaining ?? 0.0);
+            $diff = round($after - $before, 2);
+
+            if (abs($diff) >= 0.01) {
+                LeaveBalanceLogM::create([
+                    'employee_id' => $allocation->employee_id,
+                    'leave_allocation_id' => $allocation->id,
+                    'action' => 'allocation_manual_edit',
+                    'credit' => max(0.0, $diff),
+                    'debit' => max(0.0, -$diff),
+                    'balance_before' => $before,
+                    'balance_after' => $after,
+                    'remarks' => 'Leave allocation updated manually by admin.',
+                    'created_by_user_id' => $userId,
+                ]);
+            }
+
+            return $allocation;
         });
     }
 
-    public function getOrGenerate(EmployeeM $employee, int $year, ?int $userId = null): LeaveAllocationM
-    {
-        $allocation = LeaveAllocationM::where('employee_id', $employee->id)
-            ->where('year', $year)
-            ->first();
+    /**
+     * Preview quota calculation for UI/AJAX.
+     * Uses the EXACT same entitlement calculation pipeline as actual generation.
+     */
+    public function previewQuota(
+        ?int $policyId,
+        string $stage,
+        ?string $fromDateStr = null,
+        ?string $toDateStr = null,
+        ?int $employeeId = null
+    ): array {
+        $policy = $policyId ? LeavePolicyM::find($policyId) : $this->policyService->activeDefault();
+        
+        if (! $policy) {
+            return [
+                'total_allocated' => 0.0,
+                'paid_allocated' => 0.0,
+                'sick_allocated' => 0.0,
+                'monthly_quota' => 0.0,
+            ];
+        }
 
-        return $allocation ?: $this->generateForEmployee($employee, $year, $userId);
+        $fromDate = $fromDateStr ? Carbon::parse($fromDateStr, self::TIMEZONE) : null;
+        $toDate = $toDateStr ? Carbon::parse($toDateStr, self::TIMEZONE) : null;
+
+        $isPaidIntern = true;
+        $normalizedStage = $this->normalizeStage($stage);
+
+        if ($normalizedStage === self::STAGE_INTERNSHIP && $employeeId) {
+            $employee = EmployeeM::find($employeeId);
+            if ($employee) {
+                $isPaidIntern = ! $this->isUnpaidInternEmployee($employee);
+            }
+        }
+
+        $entitlement = $this->calculateEntitlement(
+            $policy,
+            $normalizedStage,
+            $fromDate,
+            $toDate,
+            $isPaidIntern
+        );
+
+        return [
+            'total_allocated' => $entitlement->totalAllocated,
+            'paid_allocated' => $entitlement->paidAllocated,
+            'sick_allocated' => $entitlement->sickAllocated,
+            'monthly_quota' => $entitlement->monthlyQuota,
+        ];
     }
 
-    public function recalculateForEmployee(EmployeeM $employee, int $year): ?LeaveAllocationM
+    /**
+     * Retrieve employee leave balance summary.
+     */
+    public function getEmployeeBalance(int $userId, int $year): ?array
     {
-        $allocation = LeaveAllocationM::where('employee_id', $employee->id)
+        $employee = EmployeeM::where('user_id', $userId)->first();
+        if (! $employee) {
+            return null;
+        }
+
+        $allocation = $this->getOrGenerate($employee, $year, $userId);
+
+        return [
+            'total_allocated' => (float) $allocation->total_allocated,
+            'total_remaining' => (float) $allocation->total_remaining,
+            'paid_allocated' => (float) $allocation->paid_allocated,
+            'sick_allocated' => (float) $allocation->sick_allocated,
+            'comp_off_remaining' => (float) $allocation->comp_off_remaining,
+            'lwp_used' => (float) $allocation->lwp_used,
+        ];
+    }
+
+    /**
+     * Get existing allocation or generate fresh allocation if missing.
+     */
+    public function getOrGenerate(
+        EmployeeM $employee,
+        int $year,
+        ?int $userId = null
+    ): LeaveAllocationM {
+        $allocation = LeaveAllocationM::query()
+            ->where('employee_id', $employee->id)
             ->where('year', $year)
             ->first();
 
-        if (! $allocation || $allocation->is_locked) {
+        if ($allocation) {
             return $allocation;
         }
 
-        $approvedRequests = $employee->leaveRequests()
-            ->whereYear('start_date', $year)
-            ->where('status', 'approved')
-            ->get();
+        return $this->generateForEmployee(
+            $employee,
+            $year,
+            $userId
+        );
+    }
 
-        $allocation->paid_used = $approvedRequests->sum('paid_days');
-        $allocation->sick_used = $approvedRequests->sum('sick_days');
-        $allocation->comp_off_used = $approvedRequests->sum('comp_off_days');
-        $allocation->lwp_used = $approvedRequests->sum('lwp_days');
+    /**
+     * Recalculate allocation fields for a specific employee and year.
+     */
+    public function recalculateForEmployee(
+        EmployeeM $employee,
+        int $year
+    ): ?LeaveAllocationM {
+        return DB::transaction(function () use ($employee, $year) {
+            $allocation = LeaveAllocationM::query()
+                ->where('employee_id', $employee->id)
+                ->where('year', $year)
+                ->lockForUpdate()
+                ->first();
 
-        $this->recalculateAllocationFields($allocation);
-        $allocation->save();
+            if (! $allocation || $allocation->is_locked) {
+                return $allocation;
+            }
+
+            $policy = $this->policyService->forEmployee(
+                $employee,
+                $this->yearStart($year)
+            );
+
+            if (! $policy) {
+                return $allocation;
+            }
+
+            $this->validatePolicy($policy);
+
+            $this->recalculateAllocationFields(
+                $allocation,
+                $policy,
+                $employee
+            );
+
+            if ($allocation->isDirty()) {
+                $allocation->save();
+            }
+
+            return $allocation;
+        });
+    }
+
+    /**
+     * Recalculate derived fields (remaining balances, totals, monthly quota)
+     * on an existing allocation without modifying base allocated quotas or usage.
+     */
+    public function recalculateAllocationFields(
+        LeaveAllocationM $allocation,
+        ?LeavePolicyM $policy = null,
+        ?EmployeeM $employee = null
+    ): LeaveAllocationM {
+        $policy ??= $this->resolvePolicyForAllocation($allocation);
+        $this->validatePolicy($policy);
+
+        $employee ??= $this->resolveEmployeeForAllocation($allocation);
+        $rawStage = trim((string) ($allocation->employment_stage ?? $employee?->employee_stage ?? $employee?->employment_type ?? self::STAGE_PERMANENT));
+        if ($rawStage === '') {
+            $rawStage = self::STAGE_PERMANENT;
+        }
+        $stage = $this->normalizeStage($rawStage);
+
+        if ($stage === self::STAGE_INTERNSHIP) {
+            $this->recalculateInternshipAllocation(
+                $allocation,
+                $policy,
+                $employee
+            );
+        } elseif ($stage === self::STAGE_PROBATION) {
+            $this->recalculateStandardAllocation(
+                $allocation,
+                true
+            );
+        } else {
+            $this->recalculatePermanentAllocation(
+                $allocation,
+                $policy
+            );
+        }
 
         return $allocation;
     }
 
-    public function recalculateAllocationFields(LeaveAllocationM $allocation): LeaveAllocationM
-    {
-        $allocation->paid_remaining = round(max(0.0, (float) $allocation->paid_allocated - (float) $allocation->paid_used), 2);
-        $allocation->sick_remaining = round(max(0.0, (float) $allocation->sick_allocated - (float) $allocation->sick_used), 2);
-        $allocation->comp_off_remaining = round(max(0.0, (float) $allocation->comp_off_allocated - (float) $allocation->comp_off_used), 2);
+    /*
+    |--------------------------------------------------------------------------
+    | Stage-Specific Entitlement Calculations
+    |--------------------------------------------------------------------------
+    */
 
-        $allocation->total_allocated = round((float) $allocation->paid_allocated + (float) $allocation->sick_allocated, 2);
-        $allocation->total_used = round((float) $allocation->paid_used + (float) $allocation->sick_used + (float) $allocation->comp_off_used, 2);
-        $allocation->total_remaining = round((float) $allocation->paid_remaining + (float) $allocation->sick_remaining + (float) $allocation->comp_off_remaining, 2);
+    private function calculateProbationEntitlement(
+        LeavePolicyM $policy,
+        ?Carbon $fromDate,
+        ?Carbon $toDate
+    ): LeaveEntitlementResult {
+        $limit = round(max(0.0, (float) $policy->probation_leave_limit), 2);
 
-        $stage = strtolower((string) ($allocation->employment_stage ?? ''));
-        $isInternOrProbation = str_contains($stage, 'intern') || str_contains($stage, 'probation');
+        return new LeaveEntitlementResult(
+            stage: self::STAGE_PROBATION,
+            totalAllocated: $limit,
+            paidAllocated: $limit,
+            sickAllocated: 0.0,
+            monthlyQuota: 0.0,
+            allocationFromDate: $fromDate?->toDateString(),
+            allocationToDate: $toDate?->toDateString(),
+            policyId: $policy->id,
+            isPaidIntern: true
+        );
+    }
 
-        $rawQuota = (float) ($allocation->monthly_quota ?? 2.0);
-        if ($isInternOrProbation || (float) $allocation->paid_allocated < $rawQuota) {
-            $allocation->monthly_quota = round(min($rawQuota, (float) $allocation->paid_allocated), 2);
-        } else {
-            $allocation->monthly_quota = round($rawQuota, 2);
+    private function calculateInternshipEntitlement(
+        LeavePolicyM $policy,
+        bool $isPaidIntern,
+        ?Carbon $fromDate,
+        ?Carbon $toDate
+    ): LeaveEntitlementResult {
+        $limit = round(max(0.0, (float) $policy->internship_leave_limit), 2);
+
+        if (! $isPaidIntern) {
+            return new LeaveEntitlementResult(
+                stage: self::STAGE_INTERNSHIP,
+                totalAllocated: $limit,
+                paidAllocated: 0.0,
+                sickAllocated: 0.0,
+                monthlyQuota: 0.0,
+                allocationFromDate: $fromDate?->toDateString(),
+                allocationToDate: $toDate?->toDateString(),
+                policyId: $policy->id,
+                isPaidIntern: false
+            );
         }
 
-        $allocation->monthly_carry_forward = round(max(0.0, min((float) ($allocation->monthly_carry_forward ?? 0.0), (float) $allocation->paid_remaining)), 2);
+        return new LeaveEntitlementResult(
+            stage: self::STAGE_INTERNSHIP,
+            totalAllocated: $limit,
+            paidAllocated: $limit,
+            sickAllocated: 0.0,
+            monthlyQuota: 0.0,
+            allocationFromDate: $fromDate?->toDateString(),
+            allocationToDate: $toDate?->toDateString(),
+            policyId: $policy->id,
+            isPaidIntern: true
+        );
+    }
+
+    private function calculatePermanentEntitlement(
+        LeavePolicyM $policy,
+        ?Carbon $fromDate,
+        ?Carbon $toDate
+    ): LeaveEntitlementResult {
+        if (! $fromDate || ($toDate && $fromDate->gt($toDate))) {
+            return new LeaveEntitlementResult(
+                stage: self::STAGE_PERMANENT,
+                totalAllocated: 0.0,
+                paidAllocated: 0.0,
+                sickAllocated: 0.0,
+                monthlyQuota: 0.0,
+                allocationFromDate: $fromDate?->toDateString(),
+                allocationToDate: $toDate?->toDateString(),
+                policyId: $policy->id,
+                isPaidIntern: true
+            );
+        }
+
+        [$total, $paid, $sick] = $this->calculatePermanentProration($policy, $fromDate, $toDate);
+        $monthlyLimit = round(max(0.0, (float) $policy->monthly_leave_limit), 2);
+        $monthlyQuota = round(min($monthlyLimit, $paid), 2);
+
+        return new LeaveEntitlementResult(
+            stage: self::STAGE_PERMANENT,
+            totalAllocated: $total,
+            paidAllocated: $paid,
+            sickAllocated: $sick,
+            monthlyQuota: $monthlyQuota,
+            allocationFromDate: $fromDate?->toDateString(),
+            allocationToDate: $toDate?->toDateString(),
+            policyId: $policy->id,
+            isPaidIntern: true
+        );
+    }
+
+    /**
+     * Authoritative Proration Calculation for Permanent Employees.
+     */
+    public function calculatePermanentProration(
+        LeavePolicyM $policy,
+        Carbon $fromDate,
+        ?Carbon $toDate = null
+    ): array {
+        $startYear = (int) $fromDate->year;
+        $startMonth = (int) $fromDate->month;
+
+        if ($toDate) {
+            $endYear = (int) $toDate->year;
+            $endMonth = (int) $toDate->month;
+        } else {
+            $endYear = $startYear;
+            $endMonth = 12;
+        }
+
+        if ($endYear < $startYear || ($endYear === $startYear && $startMonth > $endMonth)) {
+            return [0.0, 0.0, 0.0];
+        }
+
+        if ($endYear === $startYear) {
+            $remainingMonths = max(0, min(12, $endMonth - $startMonth + 1));
+        } else {
+            $remainingMonths = max(0, min(12, 13 - $startMonth));
+        }
+
+        $total = (float) round(
+            ((float) $policy->annual_total_leaves / 12.0) * $remainingMonths
+        );
+
+        $annualTotal = (float) $policy->annual_total_leaves;
+
+        $paidRatio = $annualTotal > 0
+            ? ((float) $policy->annual_paid_leaves / $annualTotal)
+            : 0.0;
+
+        $paid = (float) round($total * $paidRatio);
+
+        $sick = (float) round(
+            max(0.0, $total - $paid),
+            2
+        );
+
+        return [
+            $total,
+            $paid,
+            $sick,
+        ];
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Internal Recalculation Sub-Methods
+    |--------------------------------------------------------------------------
+    */
+
+    private function recalculateBaseBalances(LeaveAllocationM $allocation): void
+    {
+        $allocation->paid_remaining = round(
+            max(
+                0.0,
+                (float) $allocation->paid_allocated
+                - (float) $allocation->paid_used
+            ),
+            2
+        );
+
+        $allocation->sick_remaining = round(
+            max(
+                0.0,
+                (float) $allocation->sick_allocated
+                - (float) $allocation->sick_used
+            ),
+            2
+        );
+
+        $allocation->comp_off_remaining = $this->calculateCompOffRemaining($allocation);
+
+        $allocation->total_allocated = round(
+            (float) $allocation->paid_allocated
+            + (float) $allocation->sick_allocated,
+            2
+        );
+
+        $allocation->total_used = round(
+    (float) $allocation->paid_used
+    + (float) $allocation->sick_used
+    + (float) $allocation->comp_off_used
+    + (float) $allocation->lwp_used,
+    2
+);
+
+        $allocation->total_remaining = round(
+            (float) $allocation->paid_remaining
+            + (float) $allocation->sick_remaining
+            + (float) $allocation->comp_off_remaining,
+            2
+        );
+    }
+
+    private function recalculateInternshipAllocation(
+        LeaveAllocationM $allocation,
+        LeavePolicyM $policy,
+        ?EmployeeM $employee
+    ): void {
+        $isUnpaid = $this->isUnpaidIntern(
+            $allocation,
+            $employee
+        );
+
+        $internLimit = round(
+            max(0.0, (float) $policy->internship_leave_limit),
+            2
+        );
+
+        if ($isUnpaid) {
+            $this->recalculateUnpaidInternAllocation(
+                $allocation,
+                $internLimit
+            );
+
+            return;
+        }
+
+        $this->recalculateStandardAllocation(
+            $allocation,
+            true
+        );
+    }
+
+    private function recalculateUnpaidInternAllocation(
+        LeaveAllocationM $allocation,
+        float $internLimit
+    ): void {
+        $allocation->paid_allocated = 0.0;
+        $allocation->sick_allocated = 0.0;
+        $allocation->total_allocated = $internLimit;
+
+        $allocation->paid_remaining = 0.0;
+        $allocation->sick_remaining = 0.0;
+
+        $allocation->comp_off_remaining = $this->calculateCompOffRemaining($allocation);
+
+        $allocation->total_used = round(
+            (float) $allocation->paid_used
+            + (float) $allocation->sick_used
+            + (float) $allocation->comp_off_used
+            + (float) $allocation->lwp_used,
+            2
+        );
+
+        $allocation->total_remaining = round(
+            max(
+                0.0,
+                $internLimit - (float) $allocation->lwp_used
+            ),
+            2
+        );
+
+        $this->resetMonthlyFields($allocation);
+    }
+
+    private function recalculateStandardAllocation(
+        LeaveAllocationM $allocation,
+        bool $includeMonthlyReset = true
+    ): void {
+        $this->recalculateBaseBalances($allocation);
+
+        if ($includeMonthlyReset) {
+            $this->resetMonthlyFields($allocation);
+        }
+    }
+
+    private function recalculatePermanentAllocation(
+        LeaveAllocationM $allocation,
+        LeavePolicyM $policy
+    ): void {
+        $this->recalculateBaseBalances($allocation);
+
+        $monthlyLimit = round(
+            max(0.0, (float) $policy->monthly_leave_limit),
+            2
+        );
+
+        $allocation->monthly_quota = round(
+            min(
+                $monthlyLimit,
+                (float) $allocation->paid_allocated
+            ),
+            2
+        );
+
+        $allocation->monthly_carry_forward = round(
+            max(
+                0.0,
+                min(
+                    (float) ($allocation->monthly_carry_forward ?? 0.0),
+                    (float) $allocation->paid_remaining
+                )
+            ),
+            2
+        );
 
         $carry = (float) $allocation->monthly_carry_forward;
         $quota = (float) $allocation->monthly_quota;
-        $usedThisMonth = (float) ($allocation->monthly_used_this_month ?? 0.0);
+        $usedThisMonth = max(
+            0.0,
+            (float) ($allocation->monthly_used_this_month ?? 0.0)
+        );
 
-        $monthlyRemainingRaw = max(0.0, ($quota + $carry) - $usedThisMonth);
-        $allocation->total_monthly_remaining_paid = round(min($monthlyRemainingRaw, (float) $allocation->paid_remaining), 2);
+        $monthlyRemainingRaw = max(
+            0.0,
+            ($quota + $carry) - $usedThisMonth
+        );
 
-        return $allocation;
+        $allocation->total_monthly_remaining_paid = round(
+            min(
+                $monthlyRemainingRaw,
+                (float) $allocation->paid_remaining
+            ),
+            2
+        );
     }
 
-    public function calculateAllocationAmounts(?LeavePolicyM $policy, string $stage, ?Carbon $fromDate, ?Carbon $toDate = null): array
+    private function resetMonthlyFields(
+        LeaveAllocationM $allocation
+    ): void {
+        $allocation->monthly_quota = 0.0;
+        $allocation->monthly_carry_forward = 0.0;
+        $allocation->total_monthly_remaining_paid = 0.0;
+    }
+
+    private function calculateCompOffRemaining(
+        LeaveAllocationM $allocation
+    ): float {
+        return round(
+            max(
+                0.0,
+                (float) ($allocation->comp_off_allocated ?? 0.0)
+                - (float) ($allocation->comp_off_used ?? 0.0)
+            ),
+            2
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Policy & Stage Helpers
+    |--------------------------------------------------------------------------
+    */
+
+    private function validatePolicy(
+        LeavePolicyM $policy
+    ): void {
+        $total = (float) $policy->annual_total_leaves;
+        $paid = (float) $policy->annual_paid_leaves;
+        $sick = (float) $policy->annual_sick_leaves;
+
+        $monthly = $policy->monthly_leave_limit;
+        $probation = $policy->probation_leave_limit;
+        $internship = $policy->internship_leave_limit;
+
+        if ($total <= 0) {
+            throw new DomainException(
+                "Invalid leave policy #{$policy->id}: annual_total_leaves must be greater than 0."
+            );
+        }
+
+        if ($paid < 0 || $sick < 0) {
+            throw new DomainException(
+                "Invalid leave policy #{$policy->id}: annual_paid_leaves and annual_sick_leaves must not be negative."
+            );
+        }
+
+        if (round($paid + $sick, 2) !== round($total, 2)) {
+            throw new DomainException(
+                "Invalid leave policy #{$policy->id}: annual_paid_leaves ({$paid}) + annual_sick_leaves ({$sick}) must equal annual_total_leaves ({$total})."
+            );
+        }
+
+        if ($monthly === null || (float) $monthly < 0) {
+            throw new DomainException(
+                "Invalid leave policy #{$policy->id}: monthly_leave_limit must be present and non-negative."
+            );
+        }
+
+        if ($probation === null || (float) $probation < 0) {
+            throw new DomainException(
+                "Invalid leave policy #{$policy->id}: probation_leave_limit must be present and non-negative."
+            );
+        }
+
+        if ($internship === null || (float) $internship < 0) {
+            throw new DomainException(
+                "Invalid leave policy #{$policy->id}: internship_leave_limit must be present and non-negative."
+            );
+        }
+    }
+
+    public function normalizeStage(string $rawStage): string
     {
+        $stage = strtolower(trim($rawStage));
+
+        if ($stage === '') {
+            throw new DomainException('Employee stage cannot be empty.');
+        }
+
+        if (in_array($stage, ['permanent', 'confirmed', 'full_time', 'full-time'], true)) {
+            return self::STAGE_PERMANENT;
+        }
+
+        if (in_array($stage, ['probation', 'on_probation'], true) || str_contains($stage, 'probation')) {
+            return self::STAGE_PROBATION;
+        }
+
+        if (in_array($stage, ['internship', 'intern', 'paid_intern', 'unpaid_intern', 'intern_paid', 'intern_unpaid'], true) || str_contains($stage, 'intern')) {
+            return self::STAGE_INTERNSHIP;
+        }
+
+        throw new DomainException(
+            "Unsupported or unknown employee stage: '{$rawStage}'. Valid stages are: permanent, probation, internship."
+        );
+    }
+
+    public function stageFor(EmployeeM $employee): string
+    {
+        $rawStage = trim(
+            (string) (
+                $employee->employee_stage
+                ?: $employee->employment_type
+                ?: ''
+            )
+        );
+
+        if ($rawStage === '') {
+            throw new DomainException(
+                "Employee #{$employee->id} has no valid employee_stage or employment_type assigned."
+            );
+        }
+
+        return $this->normalizeStage($rawStage);
+    }
+
+    public function isUnpaidInternEmployee(
+        EmployeeM $employee
+    ): bool {
+        return (int) ($employee->is_paid_intern ?? 1) === 0
+            || (
+                (float) ($employee->actual_salary ?? 0.0) <= 0
+                && (int) ($employee->is_paid_intern ?? 0) === 0
+            );
+    }
+
+    public function isUnpaidIntern(
+        LeaveAllocationM $allocation,
+        ?EmployeeM $employee = null
+    ): bool {
+        $stage = strtolower((string) ($allocation->employment_stage ?: ''));
+        if ($stage !== '' && $stage !== self::STAGE_INTERNSHIP && $stage !== 'intern') {
+            return false;
+        }
+
+        $employee ??= $this->resolveEmployeeForAllocation($allocation);
+        if (! $employee) {
+            return false;
+        }
+
+        $empStage = strtolower((string) ($employee->employee_stage ?: $employee->employment_type ?: ''));
+        if ($stage === '' && $empStage !== self::STAGE_INTERNSHIP && $empStage !== 'intern') {
+            return false;
+        }
+
+        return $this->isUnpaidInternEmployee($employee);
+    }
+
+    private function resolveEmployeeForAllocation(
+        LeaveAllocationM $allocation
+    ): ?EmployeeM {
+        if ($allocation->relationLoaded('employee') && $allocation->employee) {
+            return $allocation->employee;
+        }
+
+        return EmployeeM::find($allocation->employee_id);
+    }
+
+    private function resolvePolicyForAllocation(
+        LeaveAllocationM $allocation
+    ): LeavePolicyM {
+        if ($allocation->policy_id) {
+            $policy = LeavePolicyM::find($allocation->policy_id);
+            if ($policy) {
+                return $policy;
+            }
+        }
+
+        $employee = $this->resolveEmployeeForAllocation($allocation);
+
+        if ($employee) {
+            $year = (int) ($allocation->year ?: $this->now()->year);
+            $policy = $this->policyService->forEmployee($employee, $this->yearStart($year));
+
+            if (! $policy) {
+                throw new DomainException("No active leave policy found for employee #{$employee->id} for year {$year}.");
+            }
+
+            return $policy;
+        }
+
+        $policy = $this->policyService->activeDefault();
+
         if (! $policy) {
-            return [0.0, 0.0, 0.0];
+            throw new DomainException('No active default leave policy found.');
         }
 
-        $stage = strtolower($stage);
-
-        if ($stage === 'probation') {
-            $limit = (float) $policy->probation_leave_limit;
-            return [$limit, $limit, 0.0];
-        }
-
-        if ($stage === 'internship') {
-            $limit = (float) $policy->internship_leave_limit;
-            return [$limit, $limit, 0.0];
-        }
-
-        if (! $fromDate || ($toDate && $fromDate->gt($toDate))) {
-            return [0.0, 0.0, 0.0];
-        }
-
-        if ($toDate) {
-            $monthsCount = ($toDate->year - $fromDate->year) * 12 + ($toDate->month - $fromDate->month) + 1;
-            $monthsCount = max(1, min(12, $monthsCount));
-            $monthsToTotalMap = [
-                12 => 25, 11 => 23, 10 => 21, 9 => 19, 8 => 17, 7 => 15,
-                6 => 13, 5 => 10, 4 => 8, 3 => 6, 2 => 4, 1 => 2,
-            ];
-            $baseTotal = (float) ($monthsToTotalMap[$monthsCount] ?? 25);
-        } else {
-            $month = (int) $fromDate->month;
-            $baseTotal = (float) (self::PERMANENT_PRORATION_BY_MONTH[$month] ?? 0);
-        }
-
-        $annualTotal = (float) $policy->annual_total_leaves;
-        $total = ($annualTotal == 25) ? $baseTotal : round(($baseTotal / 25.0) * $annualTotal, 2);
-
-        $paidRatio = (float) $policy->annual_paid_leaves / max(1.0, $annualTotal);
-        $paid = (float) round($total * $paidRatio);
-        $sick = (float) max(0.0, $total - $paid);
-
-        return [$total, $paid, $sick];
+        return $policy;
     }
 
-    private function allocationAmounts(LeavePolicyM $policy, string $stage, ?Carbon $fromDate, Carbon $toDate): array
-    {
-        return $this->calculateAllocationAmounts($policy, $stage, $fromDate, $toDate);
-    }
+    private function allocationStartDate(
+        EmployeeM $employee,
+        string $stage,
+        int $year,
+        ?Carbon $effectiveDate = null
+    ): ?Carbon {
+        $date = match ($stage) {
+            self::STAGE_PERMANENT => $effectiveDate?->toDateString() ?: $this->yearStart($year)->toDateString(),
 
-    private function allocationStartDate(EmployeeM $employee, string $stage, int $year, ?Carbon $effectiveDate = null): ?Carbon
-    {
-        if ($stage === 'permanent') {
-            $date = $effectiveDate?->toDateString()
-                ?: $employee->confirmation_date
-                ?: $employee->confirmation_effective_date
-                ?: $employee->permanent_at
-                ?: (property_exists($employee, 'permanent_effective_date') ? $employee->permanent_effective_date : null)
-                ?: ($employee->probation_end_date ? Carbon::parse($employee->probation_end_date, 'Asia/Kolkata')->addDay()->toDateString() : null)
-                ?: ($employee->joining_date && (int) ($employee->probation_months ?? 0) > 0 ? Carbon::parse($employee->joining_date, 'Asia/Kolkata')->addMonthsNoOverflow((int) $employee->probation_months)->toDateString() : null)
-                ?: $employee->joining_date;
-        } elseif ($stage === 'internship') {
-            $date = $effectiveDate?->toDateString()
+            self::STAGE_INTERNSHIP =>
+                $effectiveDate?->toDateString()
                 ?: $employee->internship_start_date
-                ?: $employee->joining_date;
-        } else {
-            $date = $effectiveDate?->toDateString()
+                ?: $employee->joining_date,
+
+            self::STAGE_PROBATION =>
+                $effectiveDate?->toDateString()
                 ?: $employee->probation_start_date
-                ?: $employee->joining_date;
-        }
+                ?: $employee->joining_date,
+
+            default => null,
+        };
 
         if (! $date) {
             return null;
         }
 
-        $start = Carbon::parse($date, 'Asia/Kolkata')->startOfMonth();
-        $yearStart = Carbon::create($year, 1, 1, 0, 0, 0, 'Asia/Kolkata');
+        $parsedDate = Carbon::parse($date, self::TIMEZONE)->copy();
+        $yearStart = $this->yearStart($year);
 
-        return $start->lt($yearStart) ? $yearStart : $start;
+        return $parsedDate->lt($yearStart) ? $yearStart : $parsedDate;
     }
 
-    private function stageFor(EmployeeM $employee): string
-    {
-        $stage = strtolower((string) ($employee->employee_stage ?: $employee->employment_type));
+    /**
+     * Permanent effective dates affect only the allocation in that same year.
+     * A later allocation year starts on January 1 under that year's full annual policy.
+     * false means the requested allocation predates the employee's permanent effective year.
+     */
+    private function effectiveDateForAllocationYear(
+        EmployeeM $employee,
+        int $year,
+        ?Carbon $requestedEffectiveDate
+    ): Carbon|false|null {
+        $lifecycleDate = $employee->confirmation_effective_date
+            ?: $employee->confirmation_date
+            ?: $employee->permanent_at;
+        $effectiveDate = $lifecycleDate
+            ? Carbon::parse($lifecycleDate, self::TIMEZONE)->startOfDay()
+            : $requestedEffectiveDate?->copy()->startOfDay();
 
-        if (str_contains($stage, 'intern')) {
-            return 'internship';
+        if (! $effectiveDate) {
+            // Legacy permanent records without a confirmation date receive the
+            // normal full annual allocation; joining_date is not a proxy here.
+            return null;
         }
 
-        if (str_contains($stage, 'probation')) {
-            return 'probation';
+        if ($year < $effectiveDate->year) {
+            return false;
         }
 
-        return 'permanent';
+        return $year === $effectiveDate->year
+            ? $effectiveDate
+            : null;
     }
 
-    private function roundByPolicy(float $value, ?string $method): float
+    private function now(): Carbon
     {
-        return match ($method) {
-            'floor' => floor($value * 2) / 2,
-            'ceil' => ceil($value * 2) / 2,
-            default => round($value, 2),
-        };
+        return Carbon::now(self::TIMEZONE);
     }
 
-    private function allocationReason(string $stage): string
+    private function yearStart(int $year): Carbon
     {
-        return match ($stage) {
-            'internship' => 'Auto allocation for internship',
-            'probation' => 'Auto allocation for probation',
-            default => 'Auto allocation after confirmation',
-        };
+        return Carbon::create($year, 1, 1, 0, 0, 0, self::TIMEZONE);
+    }
+
+    private function yearEnd(int $year): Carbon
+    {
+        return Carbon::create($year, 12, 31, 0, 0, 0, self::TIMEZONE);
     }
 }

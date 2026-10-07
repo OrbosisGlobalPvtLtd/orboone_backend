@@ -45,9 +45,19 @@
                             @endif
                             @foreach($optionsList as $val => $lbl)
                                 @php
-                                    $isSelected = ($filterName === 'month')
-                                        ? ((string) $activeMonth === (string) $val)
-                                        : ((string) $filterVal === (string) $val);
+                                    $isSelected = false;
+                                    if ($filterName === 'month') {
+                                        $isSelected = ((string) $activeMonth === (string) $val);
+                                    } elseif ($filterName === 'employee_id') {
+                                        if (request()->has('employee_id')) {
+                                            $isSelected = ((string) request('employee_id') === (string) $val);
+                                        } else {
+                                            $selectedDefault = $defaultEmployeeId ?? (auth()->user()->employee->id ?? null);
+                                            $isSelected = (!empty($selectedDefault) && (string) $selectedDefault === (string) $val);
+                                        }
+                                    } else {
+                                        $isSelected = ((string) $filterVal === (string) $val);
+                                    }
                                 @endphp
                                 <option value="{{ $val }}" {{ $isSelected ? 'selected' : '' }}>
                                     {{ $lbl }}

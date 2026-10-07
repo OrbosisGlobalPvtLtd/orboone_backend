@@ -96,11 +96,50 @@
             if (val === 'custom') {
                 $('#customFromWrap').slideDown(150);
                 $('#customToWrap').slideDown(150);
+                $('#filterDate').val('');
             } else {
                 $('#customFromWrap').slideUp(150);
                 $('#customToWrap').slideUp(150);
                 $('#fromDateInput, #filterFromDate').val('');
                 $('#toDateInput, #filterToDate').val('');
+            }
+        });
+
+        function extractYearMonth(dateStr) {
+            if (!dateStr) return null;
+            dateStr = dateStr.trim();
+            var parts = dateStr.split(/[-/]/);
+            if (parts.length === 3) {
+                if (parts[0].length === 4) {
+                    // YYYY-MM-DD
+                    return parts[0] + '-' + parts[1].padStart(2, '0');
+                } else if (parts[2].length === 4) {
+                    // DD-MM-YYYY
+                    return parts[2] + '-' + parts[1].padStart(2, '0');
+                }
+            }
+            return null;
+        }
+
+        // Mutual reset and auto-sync Month when single Date is chosen
+        $('#filterDate').on('change input', function() {
+            var dateVal = $(this).val();
+            if (dateVal) {
+                $('#filterFromDate, #filterToDate, #fromDateInput, #toDateInput').val('');
+                $('#customFromWrap, #customToWrap').slideUp(150);
+                
+                var ym = extractYearMonth(dateVal);
+                if (ym) {
+                    if ($('#monthFilterSelect option[value="' + ym + '"]').length > 0) {
+                        $('#monthFilterSelect').val(ym).trigger('change.select2');
+                    }
+                }
+            }
+        });
+
+        $('#filterFromDate, #filterToDate').on('change input', function() {
+            if ($(this).val()) {
+                $('#filterDate').val('');
             }
         });
 

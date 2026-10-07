@@ -265,10 +265,10 @@ class AttendanceS
         $isHalfDayPunch = ($window['is_half_day_punch'] ?? false) && ! $isFirstHalfLeave;
         $isLate = ! $isDynamicOrFlexible && ! $approvedLeave && ! optional($existing)->is_late_exempted && $this->isLatePunch($now, $shift);
         $lateMinutes = $isLate ? $this->lateMinutes($now, $shift) : 0;
-        
+
         $presentType = $this->attendanceType('present');
         $halfDayType = $this->attendanceType('half_day');
-        
+
         $attendanceStatusForPunchIn = 'present';
         if ($isHalfDayPunch || $isFirstHalfLeave || $isSecondHalfLeave) {
             $attendanceStatusForPunchIn = 'half_day';
@@ -942,7 +942,7 @@ class AttendanceS
         $workStats = $this->ruleResolver->calculateWorkMinutes($attendance, $shift);
 
         $approvedLeaveOnAttDate = $employee ? $this->ruleResolver->getApprovedLeaveOnDate($employee, $date) : null;
-        $isPreExistingHalfDay = (bool) $attendance->is_half_day 
+        $isPreExistingHalfDay = (bool) $attendance->is_half_day
             || in_array(strtolower((string) $attendance->attendance_status), ['half_day', 'half_leave', 'first_half_leave', 'second_half_leave'], true)
             || ! empty($attendance->half_day_reason);
         $isHalfDayContext = $isPreExistingHalfDay || ($approvedLeaveOnAttDate && $approvedLeaveOnAttDate['is_half_day']);
@@ -988,11 +988,11 @@ class AttendanceS
             ? $absentBelowMinutes
             : (int)($effectiveHalfDayMin / 2);
 
-        $isPreExistingLwp = (bool) $attendance->is_lwp 
+        $isPreExistingLwp = (bool) $attendance->is_lwp
             || strtolower((string) $attendance->attendance_status) === 'lwp'
             || ! empty($attendance->lwp_reason);
 
-        $isPreExistingHalfDay = (bool) $attendance->is_half_day 
+        $isPreExistingHalfDay = (bool) $attendance->is_half_day
             || in_array(strtolower((string) $attendance->attendance_status), ['half_day', 'half_leave', 'first_half_leave', 'second_half_leave'], true)
             || ! empty($attendance->half_day_reason);
 
@@ -2239,4 +2239,3 @@ class AttendanceS
         return in_array(strtolower((string) $type), ['dynamic_hours', 'flexible_part_time'], true);
     }
 }
-

@@ -38,7 +38,7 @@ class AttendanceViolationService
         $halfDayQuery = DB::table('attendances')
             ->where(function ($q) {
                 $q->where('is_half_day', 1)
-                  ->orWhere('attendance_status', 'half_day');
+                    ->orWhere('attendance_status', 'half_day');
             });
         if (Schema::hasColumn('attendances', 'deleted_at')) {
             $halfDayQuery->whereNull('deleted_at');
@@ -47,7 +47,7 @@ class AttendanceViolationService
         $lwpQuery = DB::table('attendances')
             ->where(function ($q) {
                 $q->where('is_lwp', 1)
-                  ->orWhere('attendance_status', 'lwp');
+                    ->orWhere('attendance_status', 'lwp');
             });
         if (Schema::hasColumn('attendances', 'deleted_at')) {
             $lwpQuery->whereNull('deleted_at');
@@ -70,11 +70,11 @@ class AttendanceViolationService
                 $mEnd = $mDate->copy()->endOfMonth()->toDateString();
 
                 $violationsQuery->whereDate('violation_date', '>=', $mStart)
-                                ->whereDate('violation_date', '<=', $mEnd);
+                    ->whereDate('violation_date', '<=', $mEnd);
                 $halfDayQuery->whereDate('attendance_date', '>=', $mStart)
-                             ->whereDate('attendance_date', '<=', $mEnd);
+                    ->whereDate('attendance_date', '<=', $mEnd);
                 $lwpQuery->whereDate('attendance_date', '>=', $mStart)
-                         ->whereDate('attendance_date', '<=', $mEnd);
+                    ->whereDate('attendance_date', '<=', $mEnd);
             } catch (\Throwable $e) {
             }
         } elseif (!empty($from) || !empty($to)) {
@@ -122,7 +122,7 @@ class AttendanceViolationService
     /**
      * Compute row-level employee active cycle counter string (e.g. "2 / 3" or "1 / 3").
      */
-    
+
     public function getActiveCounterString(int $employeeId, string $date, string $violationType, int $limit = 3): string
     {
         $rawType = strtolower((string) $violationType);

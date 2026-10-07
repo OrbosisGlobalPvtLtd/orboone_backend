@@ -7,7 +7,7 @@
 
 <!-- Server-side Multi Filters Panel (Positioned Below Table Header) -->
 <div class="att-filter-panel">
-    <form method="GET" action="{{ route('hrms.attendance.work-reports') }}" id="reportFilterForm">
+    <form method="GET" action="{{ url()->current() }}" id="reportFilterForm">
         <input type="hidden" name="per_page" value="{{ request('per_page', $filters['per_page'] ?? 25) }}">
         <div class="att-filter-grid">
             @if($isAdminOrManager)
@@ -39,12 +39,22 @@
             </div>
 
             <div>
+                <label><i class="fas fa-calendar-day text-primary mr-1"></i> Date</label>
+                <x-form.date-picker name="date" id="filterDate" :value="request('date', $filters['date'] ?? '')" placeholder="dd-mm-yyyy" class="form-control" />
+            </div>
+
+            <div>
                 <label>Month</label>
                 <select name="month" id="monthFilterSelect" class="form-control select2-searchable">
                     @php
                         $currM = $filters['current_month'] ?? date('Y-m');
                         $selM = $filters['selected_month'] ?? $currM;
-                        $isCustom = ($selM === 'custom' || (!request()->has('month') && (request()->filled('from_date') || request()->filled('to_date'))));
+                        if (request()->filled('date')) {
+                            try {
+                                $selM = \Carbon\Carbon::parse(request('date'))->format('Y-m');
+                            } catch (\Throwable $e) {}
+                        }
+                        $isCustom = ($selM === 'custom' || (!request()->has('month') && !request()->filled('date') && (request()->filled('from_date') || request()->filled('to_date'))));
                     @endphp
                     <option value="custom" {{ $isCustom ? 'selected' : '' }}>Custom Date Range</option>
                     @foreach($filters['months'] ?? [] as $val => $lbl)
@@ -69,7 +79,7 @@
                     <button type="submit" id="btnFilterSubmit" class="att-search-btn">
                         <i class="fas fa-search"></i> Search
                     </button>
-                    <a href="{{ route('hrms.attendance.work-reports') }}" class="att-reset-btn" title="Reset Filters">
+                    <a href="{{ url()->current() }}" class="att-reset-btn" title="Reset Filters">
                         <i class="fas fa-undo"></i>
                     </a>
                 </div>

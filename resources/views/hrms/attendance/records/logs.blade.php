@@ -425,24 +425,6 @@
                                 <tr>
                                     <td>
                                         <div class="att-emp">
-                                            @php
-                                                $passportPhotoUrl = resolveEmployeeAdminAvatar($attendance);
-                                                $employeeName = optional($attendance->user)->name ?? 'N/A';
-                                                $initial = resolveEmployeeInitials($attendance);
-                                            @endphp
-                                            @if($passportPhotoUrl)
-                                                <img src="{{ $passportPhotoUrl }}"
-                                                     class="att-avatar-img"
-                                                     alt="{{ $employeeName }}"
-                                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                                <div class="att-avatar fallback-initial" style="display:none;">
-                                                    {{ $initial }}
-                                                </div>
-                                            @else
-                                                <div class="att-avatar">
-                                                    {{ $initial }}
-                                                </div>
-                                            @endif
                                             <div>
                                                 <div class="att-emp-name">{{ optional($attendance->user)->name ?? 'N/A' }}
                                                 </div>
@@ -538,24 +520,6 @@
                 <div class="mobile-att-card">
                     <div class="d-flex justify-content-between align-items-start">
                         <div class="att-emp">
-                                            @php
-                                                $passportPhotoUrl = resolveEmployeeAdminAvatar($attendance);
-                                                $employeeName = optional($attendance->user)->name ?? 'N/A';
-                                                $initial = resolveEmployeeInitials($attendance);
-                                            @endphp
-                                            @if($passportPhotoUrl)
-                                                <img src="{{ $passportPhotoUrl }}"
-                                                     class="att-avatar-img"
-                                                     alt="{{ $employeeName }}"
-                                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                                <div class="att-avatar fallback-initial" style="display:none;">
-                                                    {{ $initial }}
-                                                </div>
-                                            @else
-                                                <div class="att-avatar">
-                                                    {{ $initial }}
-                                                </div>
-                                            @endif
                             <div>
                                 <div class="att-emp-name">{{ optional($attendance->user)->name ?? 'N/A' }}</div>
                                 <div class="att-emp-code">{{ optional($attendance->employee)->employee_code ?? 'N/A' }}

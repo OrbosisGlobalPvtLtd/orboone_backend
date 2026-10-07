@@ -55,14 +55,11 @@ class AttendanceRegularizationC extends Controller
 
         /** @var \App\Models\Core\UserM|null $user */
         $user = Auth::user();
-        $roleId = (int) ($user->system_role_id ?? $user->role_id ?? 0);
-        $roleName = strtolower($user->role->name ?? '');
-        $isSuperAdmin = method_exists($user, 'isSuperAdmin') ? $user->isSuperAdmin() : in_array($roleId, [1, 2], true);
-        $isHrOrAdmin = $isSuperAdmin || in_array($roleId, [1, 2, 3], true) || in_array($roleName, ['admin', 'super_admin', 'hr_admin', 'hr admin', 'hr'], true) || $this->userHasPermission('attendance.regularization.view_all') || $this->userHasPermission('attendance.regularization.approve');
+        $isHrOrAdmin = $this->isHrOrAdminUser();
 
         if ($isHrOrAdmin) {
             // Global visibility for HR Admin & Super Admin
-        } elseif ($this->canViewTeam('attendance.regularization.view_team')) {
+        } elseif ($this->canViewTeam('attendance.regularization.view_team') || (method_exists($user, 'hasRole') && $user->hasRole(['manager', 'lead', 'team_lead']))) {
             $this->scopeEmployeeVisibility($query, 'attendance.regularization.view_all', 'attendance.regularization.view_team', 'attendance_regularizations.employee_id');
         } else {
             $ownEmpId = $this->ownEmployeeId();
@@ -71,9 +68,22 @@ class AttendanceRegularizationC extends Controller
             }
         }
 
+        $ownEmp = $user->employee ?? $this->currentEmployee();
+        $ownEmpId = $ownEmp?->id ?: $this->ownEmployeeId();
+
+        $hasEmpFilter = $request->has('employee_id');
+        $defaultEmpId = (! $hasEmpFilter && ! $request->has('reset') && $ownEmpId) ? (int) $ownEmpId : null;
+
+        if ($hasEmpFilter) {
+            if ($request->filled('employee_id') && $request->input('employee_id') !== 'all') {
+                $query->where('attendance_regularizations.employee_id', $request->input('employee_id'));
+            }
+        } elseif ($defaultEmpId) {
+            $query->where('attendance_regularizations.employee_id', $defaultEmpId);
+        }
+
         $this->applyCommonFilters($query, $request, [
             'filterMap' => [
-                'employee_id' => 'attendance_regularizations.employee_id',
                 'status' => 'attendance_regularizations.status',
                 'request_type' => 'attendance_regularizations.request_type',
             ],
@@ -150,11 +160,11 @@ class AttendanceRegularizationC extends Controller
                 ]);
             }
 
-            $employeeId = $request->input('employee_id');
-
-            if (! $this->canViewAll('attendance.regularization.view_all') && ! $this->canViewTeam('attendance.regularization.view_team')) {
-                $employeeId = $this->ownEmployeeId();
-            } elseif (empty($employeeId)) {
+            $isHrOrAdmin = $this->isHrOrAdminUser();
+            if ($isHrOrAdmin) {
+                $employeeId = $request->input('employee_id') ?: $this->ownEmployeeId();
+            } else {
+                // Reporting Managers and Employees can only regularize for themselves
                 $employeeId = $this->ownEmployeeId();
             }
 
@@ -202,8 +212,10 @@ class AttendanceRegularizationC extends Controller
     {
         abort_unless($this->userHasPermission('attendance.regularization.create'), 403);
 
+        $isHrOrAdmin = $this->isHrOrAdminUser();
+
         $data = $request->validate([
-            'employee_id' => 'required|exists:employees_new,id',
+            'employee_id' => $isHrOrAdmin ? 'required|exists:employees_new,id' : 'nullable',
             'attendance_date' => 'required|date|before_or_equal:today',
             'request_type' => 'required|string|in:' . implode(',', self::REQUEST_TYPES),
             'requested_punch_in' => 'nullable|date_format:H:i',
@@ -212,9 +224,11 @@ class AttendanceRegularizationC extends Controller
             'status' => 'nullable|in:pending,approved,rejected,cancelled',
         ]);
 
-        if (! $this->canViewAll('attendance.regularization.view_all')) {
+        if (! $isHrOrAdmin) {
             $employeeId = $this->ownEmployeeId();
-            abort_if(! $employeeId, 403);
+            if (! $employeeId) {
+                return back()->with('error', 'Your employee profile was not found.')->withInput();
+            }
             $data['employee_id'] = $employeeId;
         }
 
@@ -553,22 +567,49 @@ class AttendanceRegularizationC extends Controller
         ]);
     }
 
+    private function isHrOrAdminUser(): bool
+    {
+        /** @var \App\Models\Core\UserM|null $user */
+        $user = Auth::user();
+        if (! $user) {
+            return false;
+        }
+
+        $roleId = (int) ($user->system_role_id ?? $user->role_id ?? 0);
+        $roleName = strtolower($user->role->name ?? '');
+
+        return (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin())
+            || in_array($roleId, [1, 2, 3], true)
+            || in_array($roleName, ['admin', 'super_admin', 'super admin', 'hr_admin', 'hr admin', 'hr', 'human resources'], true)
+            || (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin', 'hr']))
+            || $this->userHasPermission('attendance.regularization.view_all');
+    }
+
     private function pageData(mixed $rows, Request $request): array
     {
         /** @var \App\Models\Core\UserM|null $user */
         $user = Auth::user();
-        $roleId = (int) ($user->system_role_id ?? $user->role_id ?? 0);
-        $roleName = strtolower($user->role->name ?? '');
-        $isSuperAdmin = method_exists($user, 'isSuperAdmin') ? $user->isSuperAdmin() : in_array($roleId, [1, 2], true);
-        $isHrOrAdmin = $isSuperAdmin || in_array($roleId, [1, 2, 3], true) || in_array($roleName, ['admin', 'super_admin', 'hr_admin', 'hr admin', 'hr'], true) || $this->userHasPermission('attendance.regularization.view_all') || $this->userHasPermission('attendance.regularization.approve');
-        $isEmployeeRole = ! $isHrOrAdmin && ! $this->canViewTeam('attendance.regularization.view_team') && ! $this->userHasPermission('attendance.regularization.approve');
+        $isHrOrAdmin = $this->isHrOrAdminUser();
+        $canViewTeam = ! $isHrOrAdmin && ($this->canViewTeam('attendance.regularization.view_team') || (method_exists($user, 'hasRole') && $user->hasRole(['manager', 'lead', 'team_lead'])));
+        $isEmployeeRole = ! $isHrOrAdmin && ! $canViewTeam && ! $this->userHasPermission('attendance.regularization.approve');
 
+        $ownEmp = $user->employee ?? $this->currentEmployee();
+        $ownEmpId = $ownEmp?->id;
+
+        // Filter dropdown on index page (Admin: all, Manager: team, Employee: self)
         if ($isEmployeeRole) {
-            $ownEmp = $user->employee ?? $this->currentEmployee();
-            $employees = $ownEmp ? [$ownEmp->id => ($user->name ?? $ownEmp->employee_code)] : [];
+            $filterEmployees = $ownEmp ? [$ownEmp->id => ($user->name ?? $ownEmp->employee_code)] : [];
         } else {
-            $employees = $this->scopedEmployeeOptions('attendance.regularization.view_all', 'attendance.regularization.view_team')->pluck('display_name', 'id')->toArray();
+            $filterEmployees = $this->scopedEmployeeOptions('attendance.regularization.view_all', 'attendance.regularization.view_team')->pluck('display_name', 'id')->toArray();
         }
+
+        // Create modal employee options (Admin: all, Manager/Employee: self only)
+        if ($isHrOrAdmin) {
+            $createEmployees = $filterEmployees;
+        } else {
+            $createEmployees = $ownEmp ? [$ownEmp->id => ($user->name ?? $ownEmp->employee_code)] : [];
+        }
+
         $requestTypes = DB::table('attendance_regularizations')->whereNull('deleted_at')->whereNotNull('request_type')->distinct()->pluck('request_type', 'request_type')->toArray();
 
         $months = [
@@ -589,8 +630,8 @@ class AttendanceRegularizationC extends Controller
             ['name' => 'request_type', 'label' => 'Request Type', 'type' => 'select', 'options' => $requestTypes],
         ];
 
-        if (! $isEmployeeRole && ($this->canViewAll('attendance.regularization.view_all') || $this->canViewTeam('attendance.regularization.view_team'))) {
-            array_unshift($filters, ['name' => 'employee_id', 'label' => 'Employee', 'type' => 'select', 'options' => $employees]);
+        if (! $isEmployeeRole && ($isHrOrAdmin || $canViewTeam)) {
+            array_unshift($filters, ['name' => 'employee_id', 'label' => 'Employee', 'type' => 'select', 'options' => $filterEmployees]);
         }
 
         $baseStatsQuery = DB::table('attendance_regularizations')
@@ -598,19 +639,25 @@ class AttendanceRegularizationC extends Controller
             ->whereNull('attendance_regularizations.deleted_at');
 
         if (! $isHrOrAdmin) {
-            if ($this->canViewTeam('attendance.regularization.view_team')) {
-                $teamEmpIds = $this->teamEmployeeIds(false);
+            if ($canViewTeam) {
+                $teamEmpIds = $this->teamEmployeeIds(true);
                 $baseStatsQuery->whereIn('attendance_regularizations.employee_id', $teamEmpIds);
             } else {
-                $ownEmpId = $this->ownEmployeeId();
                 if ($ownEmpId) {
                     $baseStatsQuery->where('attendance_regularizations.employee_id', $ownEmpId);
                 }
             }
         }
 
-        if ($request->filled('employee_id')) {
-            $baseStatsQuery->where('attendance_regularizations.employee_id', $request->input('employee_id'));
+        $hasEmpFilter = $request->has('employee_id');
+        $defaultEmpId = (! $hasEmpFilter && ! $request->has('reset') && $ownEmpId) ? (int) $ownEmpId : null;
+
+        if ($hasEmpFilter) {
+            if ($request->filled('employee_id') && $request->input('employee_id') !== 'all') {
+                $baseStatsQuery->where('attendance_regularizations.employee_id', $request->input('employee_id'));
+            }
+        } elseif ($defaultEmpId) {
+            $baseStatsQuery->where('attendance_regularizations.employee_id', $defaultEmpId);
         }
 
         $fromDate = $request->input('from_date') ?: $request->input('from');
@@ -674,9 +721,13 @@ class AttendanceRegularizationC extends Controller
             'pageSubtitle' => 'Review, create, approve, and reject attendance correction requests.',
             'rows' => $rows,
             'stats' => $stats,
-            'canViewAll' => $isEmployeeRole ? false : $this->canViewAll('attendance.regularization.view_all'),
-            'canViewTeam' => $isEmployeeRole ? false : $this->canViewTeam('attendance.regularization.view_team'),
+            'canViewAll' => $isHrOrAdmin,
+            'canViewTeam' => $canViewTeam,
             'isEmployeeRole' => $isEmployeeRole,
+            'canApplyForOthers' => $isHrOrAdmin,
+            'isSelfOnly' => ! $isHrOrAdmin,
+            'defaultEmployeeId' => $defaultEmpId ?? $ownEmpId,
+            'modalOwnEmpId' => $ownEmpId,
             'columns' => [
                 ['key' => 'employee_display_name', 'label' => 'Employee'],
                 ['key' => 'employee_code', 'label' => 'Code'],
@@ -692,7 +743,7 @@ class AttendanceRegularizationC extends Controller
             ],
             'filters' => $filters,
             'formFields' => [
-                ['name' => 'employee_id', 'label' => 'Employee', 'type' => 'select', 'options' => $employees],
+                ['name' => 'employee_id', 'label' => 'Employee', 'type' => 'select', 'options' => $createEmployees],
                 ['name' => 'attendance_date', 'label' => 'Attendance Date', 'type' => 'date'],
                 ['name' => 'request_type', 'label' => 'Request Type', 'type' => 'select', 'options' => [
                     'missed_punch_in' => 'Missed Punch In',
@@ -711,8 +762,8 @@ class AttendanceRegularizationC extends Controller
             'canCreate' => true,
             'canEdit' => true,
             'canDelete' => true,
-            'canApprove' => ! $isEmployeeRole && ($this->userHasPermission('attendance.regularization.approve') || $this->canViewAll('attendance.regularization.view_all') || $this->canViewTeam('attendance.regularization.view_team')),
-            'canReject' => ! $isEmployeeRole && ($this->userHasPermission('attendance.regularization.approve') || $this->canViewAll('attendance.regularization.view_all') || $this->canViewTeam('attendance.regularization.view_team')),
+            'canApprove' => ! $isEmployeeRole && ($this->userHasPermission('attendance.regularization.approve') || $isHrOrAdmin || $canViewTeam),
+            'canReject' => ! $isEmployeeRole && ($this->userHasPermission('attendance.regularization.approve') || $isHrOrAdmin || $canViewTeam),
             'storeRoute' => 'hrms.attendance.regularizations.store',
             'updateRoute' => 'hrms.attendance.regularizations.update',
             'deleteRoute' => 'hrms.attendance.regularizations.destroy',
@@ -728,7 +779,7 @@ class AttendanceRegularizationC extends Controller
         $row = DB::table('attendance_regularizations')->where('id', $id)->first();
         abort_if(! $row, 404);
 
-        if ($this->canViewAll('attendance.regularization.view_all')) {
+        if ($this->isHrOrAdminUser()) {
             return;
         }
 

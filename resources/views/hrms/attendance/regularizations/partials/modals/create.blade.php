@@ -12,26 +12,26 @@
                 @csrf
                 <div class="modal-body">
                     @php
-                        $modalOwnEmpId = auth()->user()->employee->id ?? '';
-                        $isSelfOnly = !empty($isEmployeeRole) || (empty($canViewAll) && empty($canViewTeam)) || (auth()->user()->role_id ?? null) == 7;
+                        $modalEmpId = $modalOwnEmpId ?? auth()->user()->employee->id ?? '';
+                        $isSelfOnlyMode = isset($isSelfOnly) ? (bool)$isSelfOnly : (!empty($isEmployeeRole) || empty($canApplyForOthers));
                     @endphp
 
                     <!-- Dynamic Status Alert Box -->
                     <div id="js-regularization-alert" class="alert d-none mb-3" style="border-radius: 12px; font-size: 13px;"></div>
 
                     <div class="reg-form-grid">
-                        @if(!$isSelfOnly)
+                        @if(!$isSelfOnlyMode)
                             <div class="form-group mb-0">
                                 <label class="font-weight-bold text-dark small text-uppercase">Employee <span class="text-danger">*</span></label>
                                 <select name="employee_id" class="form-control custom-select select2-modal-searchable" style="border-radius: 10px;" required>
                                     <option value="">Select Employee</option>
                                     @foreach($formFields[0]['options'] ?? [] as $empId => $empName)
-                                        <option value="{{ $empId }}" {{ (string)$empId === (string)$modalOwnEmpId ? 'selected' : '' }}>{{ $empName }}</option>
+                                        <option value="{{ $empId }}" {{ (string)$empId === (string)$modalEmpId ? 'selected' : '' }}>{{ $empName }}</option>
                                     @endforeach
                                 </select>
                             </div>
                         @else
-                            <input type="hidden" name="employee_id" value="{{ $modalOwnEmpId }}">
+                            <input type="hidden" name="employee_id" value="{{ $modalEmpId }}">
                         @endif
 
                         <div class="form-group mb-0">

@@ -19,12 +19,12 @@
             </button>
         </div>
 
-        @if($isAdminOrManager)
+        {{-- @if($isAdminOrManager)
         <a href="{{ route('attendances.daily') }}" class="report-btn-pill">
             <i class="fas fa-calendar-check"></i>
             Daily Attendance
         </a>
-        @endif
+        @endif --}}
     </div>
 </div>
 

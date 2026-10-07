@@ -54,8 +54,8 @@ class WorkReportC extends Controller
 
         $isMyWorkReportsRoute = request()->routeIs('hrms.attendance.my-work-reports') || request()->routeIs('my-work-reports');
 
-        if ($isEmployee || $isMyWorkReportsRoute) {
-            // Strictly self only
+        if ($isEmployee) {
+            // Strictly self only (for regular employees)
             $query->where(function ($q) use ($ownEmployeeId, $userId) {
                 if ($ownEmployeeId && $userId) {
                     $q->where('employee_id', $ownEmployeeId)->orWhere('user_id', $userId);
@@ -71,9 +71,10 @@ class WorkReportC extends Controller
         } elseif ($isManager) {
             // Scoped strictly to supervised team members + own
             $allowedEmpIds = array_values(array_unique(array_filter(array_merge($teamEmpIds, array_filter([$ownEmployeeId])))));
-            $query->whereIn('employee_id', $allowedEmpIds);
             if ($request->filled('employee_id') && in_array((int) $request->employee_id, $allowedEmpIds, true)) {
                 $query->where('employee_id', $request->employee_id);
+            } else {
+                $query->whereIn('employee_id', $allowedEmpIds);
             }
         } elseif ($isHrOrAdmin) {
             // Admin can view all or filter by selected employee
@@ -91,15 +92,25 @@ class WorkReportC extends Controller
             $cursor->subMonth();
         }
 
-        // Determine active month / custom date filtering
+        // Determine active month / single date / custom date filtering
         $selectedMonth = $request->input('month');
-        $isCustomDate = ($selectedMonth === 'custom') || (! $request->has('month') && ($request->filled('from_date') || $request->filled('to_date')));
+        $hasSingleDate = $request->filled('date');
+        $hasDateRange = $request->filled('from_date') || $request->filled('to_date');
+        $isCustomDate = ($selectedMonth === 'custom') || (! $request->has('month') && ! $hasSingleDate && $hasDateRange);
 
-        if (! $request->has('month') && ! $request->filled('from_date') && ! $request->filled('to_date')) {
-            $selectedMonth = \Carbon\Carbon::now()->format('Y-m');
-        }
-
-        if (! $isCustomDate && $selectedMonth && $selectedMonth !== 'all') {
+        if ($hasSingleDate) {
+            $query->whereDate('work_date', $request->date);
+            try {
+                $selectedMonth = \Carbon\Carbon::parse($request->date)->format('Y-m');
+            } catch (\Throwable $e) {
+                $selectedMonth = \Carbon\Carbon::now()->format('Y-m');
+            }
+            if (! isset($monthOptions[$selectedMonth])) {
+                try {
+                    $monthOptions[$selectedMonth] = \Carbon\Carbon::createFromFormat('Y-m', $selectedMonth)->format('F Y');
+                } catch (\Throwable $e) {}
+            }
+        } elseif (! $isCustomDate && $selectedMonth && $selectedMonth !== 'all') {
             try {
                 $mDate = \Carbon\Carbon::createFromFormat('Y-m', $selectedMonth);
                 $query->whereBetween('work_date', [
@@ -120,6 +131,12 @@ class WorkReportC extends Controller
             if ($request->filled('to_date')) {
                 $query->whereDate('work_date', '<=', $request->to_date);
             }
+        } else {
+            $selectedMonth = \Carbon\Carbon::now()->format('Y-m');
+            $query->whereBetween('work_date', [
+                \Carbon\Carbon::now()->startOfMonth()->toDateString(),
+                \Carbon\Carbon::now()->endOfMonth()->toDateString()
+            ]);
         }
 
         // Apply additional request filters
@@ -269,9 +286,10 @@ class WorkReportC extends Controller
 
         $filters = [
             'months' => $monthOptions,
-            'selected_month' => $selectedMonth,
+            'selected_month' => $hasSingleDate ? '' : $selectedMonth,
             'current_month' => \Carbon\Carbon::now()->format('Y-m'),
             'is_custom' => $isCustomDate,
+            'date' => $request->date,
             'from_date' => $request->from_date,
             'to_date' => $request->to_date,
             'per_page' => $perPageParam,
@@ -317,8 +335,23 @@ class WorkReportC extends Controller
 
     public function employeeHistory(int|string $employeeId, Request $request)
     {
+        /** @var User|null $user */
+        $user = Auth::user();
+        $roleId = (int) ($user->system_role_id ?? $user->role_id ?? 0);
+        $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
+        $isHrOrAdmin = $isSuperAdmin
+            || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin())
+            || (method_exists($user, 'isAdmin') && $user->isAdmin())
+            || (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin']))
+            || in_array($roleId, [1, 2, 3], true);
+
+        $teamEmpIds = $this->teamEmployeeIds(false);
+        $isManager = (! empty($teamEmpIds) || (method_exists($user, 'hasRole') && $user->hasRole('manager'))) && ! $isHrOrAdmin;
+        $ownEmpId = $this->ownEmployeeId();
+
         abort_unless(
-            $this->userHasPermission('attendance.work_reports.view_all')
+            $isHrOrAdmin || $isManager
+            || $this->userHasPermission('attendance.work_reports.view_all')
             || $this->userHasPermission('attendance.work_reports.view_team')
             || $this->userHasPermission('attendance.work_reports.view_own'),
             403
@@ -326,11 +359,18 @@ class WorkReportC extends Controller
 
         $employee = \App\Models\HRMS\Employee\EmployeeM::with(['user', 'department', 'designation', 'reportingManager.user'])->find($employeeId);
         if (! $employee) {
-            $user = User::with(['employee.department', 'employee.designation', 'employee.reportingManager.user'])->find($employeeId);
-            if ($user && $user->employee) {
-                $employee = $user->employee;
+            $u = User::with(['employee.department', 'employee.designation', 'employee.reportingManager.user'])->find($employeeId);
+            if ($u && $u->employee) {
+                $employee = $u->employee;
             } else {
                 abort(404, 'Employee not found');
+            }
+        }
+
+        if (! $isHrOrAdmin) {
+            $allowedIds = $isManager ? array_values(array_unique(array_filter(array_merge($teamEmpIds, array_filter([$ownEmpId]))))) : array_filter([$ownEmpId]);
+            if (! in_array((int) $employee->id, $allowedIds, true)) {
+                abort(403, 'Unauthorized to view this employee work reports.');
             }
         }
 
@@ -543,8 +583,23 @@ class WorkReportC extends Controller
 
     public function printSingleWorkReport(int|string $id, Request $request)
     {
+        /** @var User|null $user */
+        $user = Auth::user();
+        $roleId = (int) ($user->system_role_id ?? $user->role_id ?? 0);
+        $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
+        $isHrOrAdmin = $isSuperAdmin
+            || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin())
+            || (method_exists($user, 'isAdmin') && $user->isAdmin())
+            || (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin']))
+            || in_array($roleId, [1, 2, 3], true);
+
+        $teamEmpIds = $this->teamEmployeeIds(false);
+        $isManager = (! empty($teamEmpIds) || (method_exists($user, 'hasRole') && $user->hasRole('manager'))) && ! $isHrOrAdmin;
+        $ownEmpId = $this->ownEmployeeId();
+
         abort_unless(
-            $this->userHasPermission('attendance.work_reports.view_all')
+            $isHrOrAdmin || $isManager
+            || $this->userHasPermission('attendance.work_reports.view_all')
             || $this->userHasPermission('attendance.work_reports.view_team')
             || $this->userHasPermission('attendance.work_reports.view_own'),
             403
@@ -561,6 +616,13 @@ class WorkReportC extends Controller
         $employee = $workLog->employee;
         if (! $employee && $workLog->user) {
             $employee = $workLog->user->employee;
+        }
+
+        if (! $isHrOrAdmin && $employee) {
+            $allowedIds = $isManager ? array_values(array_unique(array_filter(array_merge($teamEmpIds, array_filter([$ownEmpId]))))) : array_filter([$ownEmpId]);
+            if (! in_array((int) $employee->id, $allowedIds, true)) {
+                abort(403, 'Unauthorized to view this work report.');
+            }
         }
 
         $reportingManager = optional($employee)->reportingManager;

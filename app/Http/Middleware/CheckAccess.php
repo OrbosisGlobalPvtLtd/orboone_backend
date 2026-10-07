@@ -44,7 +44,7 @@ class CheckAccess
             return $next($request);
         }
 
-        // Always allow web attendance clock-in, clock-out, today, my-attendance, and export/print action routes for authorized users
+        // Always allow web attendance clock-in, clock-out, today, my-attendance, work-reports and export/print action routes for authorized users
         if (in_array($routeName, [
             'attendances.today', 
             'attendances.clock-in', 
@@ -53,6 +53,11 @@ class CheckAccess
             'attendances.export-pdf',
             'attendances.export-excel',
             'attendances.print',
+            'hrms.attendance.work-reports',
+            'hrms.attendance.work-reports.employee-history',
+            'hrms.attendance.work-reports.employee-history.print',
+            'hrms.attendance.work-reports.single.print',
+            'hrms.attendance.my-work-reports',
         ], true)) {
             return $next($request);
         }

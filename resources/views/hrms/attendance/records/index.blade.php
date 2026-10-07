@@ -1283,27 +1283,6 @@
                             @if(!$isMyAttendance)
                             <td>
                                 <div class="att-emp">
-                                    @php
-                                        $passportPhotoUrl = resolveEmployeePassportPhoto($attendance->employee ?? $attendance);
-                                        $employeeInitial = resolveEmployeeInitials($attendance->employee ?? $attendance);
-                                    @endphp
-                                    <span class="hrms-emp-avatar hrms-emp-avatar-sm mr-2">
-                                        @if($passportPhotoUrl)
-                                            <img
-                                                src="{{ $passportPhotoUrl }}"
-                                                alt="{{ $employeeName }}"
-                                                class="hrms-emp-avatar-img"
-                                                onerror="this.style.display='none'; this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.remove('is-hidden'); this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.add('is-visible');"
-                                            >
-                                            <span class="hrms-emp-avatar-fallback is-hidden">
-                                                {{ $employeeInitial }}
-                                            </span>
-                                        @else
-                                            <span class="hrms-emp-avatar-fallback is-visible">
-                                                {{ $employeeInitial }}
-                                            </span>
-                                        @endif
-                                    </span>
                                     <div>
                                         <div class="att-emp-name" title="{{ $employeeName }}">
                                             {{ $employeeName }}
@@ -1502,7 +1481,7 @@
                                             'work_log_id' => $firstLog->id,
                                             'employee_name' => $employeeName,
                                             'employee_code' => $employeeCode,
-                                            'passport_photo_url' => resolveEmployeePassportPhoto($attendance->employee ?? $attendance),
+                                            'passport_photo_url' => null,
                                             'employee_initial' => resolveEmployeeInitials($attendance->employee ?? $attendance),
                                             'department' => optional(optional($attendance->employee)->department)->name ?? 'Staff',
                                             'designation' => optional(optional($attendance->employee)->designation)->name ?? 'Member',

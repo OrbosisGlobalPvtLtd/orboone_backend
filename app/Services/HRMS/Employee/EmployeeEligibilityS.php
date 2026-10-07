@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Schema;
 
 class EmployeeEligibilityS
 {
-    
+
     public function isEligible($employee): bool
     {
         if (!$employee) {
@@ -36,7 +36,7 @@ class EmployeeEligibilityS
         return true;
     }
 
-    
+
     public function isActive($employee): bool
     {
         if (!$employee) {
@@ -61,7 +61,7 @@ class EmployeeEligibilityS
         return true;
     }
 
-   
+
     public function isProfilePending($employee): bool
     {
         if (!$employee) {
@@ -100,8 +100,10 @@ class EmployeeEligibilityS
             return true;
         }
 
-        if ($employee instanceof EmployeeM
-            && array_key_exists('has_completed_exit', $employee->getAttributes())) {
+        if (
+            $employee instanceof EmployeeM
+            && array_key_exists('has_completed_exit', $employee->getAttributes())
+        ) {
             return (bool) $employee->getAttribute('has_completed_exit');
         }
 
@@ -221,8 +223,8 @@ class EmployeeEligibilityS
                 $periodEnd = Carbon::create($year, $month, 1)->endOfMonth()->toDateString();
                 $periodStart = Carbon::create($year, $month, 1)->startOfMonth()->toDateString();
 
-                $effectiveStartDate = $employee->internship_start_date 
-                    ?? $employee->joining_date 
+                $effectiveStartDate = $employee->internship_start_date
+                    ?? $employee->joining_date
                     ?? ($employee->created_at ? Carbon::parse($employee->created_at)->toDateString() : null);
 
                 // If the employee onboarded/joined after the payroll month, skip them
@@ -261,13 +263,13 @@ class EmployeeEligibilityS
         return $this->isEligible($employee);
     }
 
-   
+
     public function canUseTeamManagement($employee): bool
     {
         return $this->isEligible($employee);
     }
 
-    
+
     public function canAccessDocuments($employee, string $context = 'general'): bool
     {
         if (!$employee) {

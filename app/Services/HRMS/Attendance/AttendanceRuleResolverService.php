@@ -15,6 +15,15 @@ class AttendanceRuleResolverService
     public const TIMEZONE = 'Asia/Kolkata';
 
     protected array $policyCache = [];
+    protected array $dayContextCache = [];
+    protected array $holidayCache = [];
+    protected array $weekoffCache = [];
+    protected array $leaveCache = [];
+    protected array $regPendingCache = [];
+    protected array $regApprovedCache = [];
+    protected array $violationBlockedCache = [];
+    protected array $attendanceTypeIdCache = [];
+    protected array $holidayWorkRequestCache = [];
 
     public function getPolicyForEmployee(Employee $employee, Carbon|string|null $date = null): ?object
     {
@@ -299,8 +308,12 @@ class AttendanceRuleResolverService
 
     public function getAttendanceTypeId(string $code): ?int
     {
+        if (isset($this->attendanceTypeIdCache[$code])) {
+            return $this->attendanceTypeIdCache[$code];
+        }
+
         if (! Schema::hasTable('attendance_types')) {
-            return null;
+            return $this->attendanceTypeIdCache[$code] = null;
         }
 
         $query = AttendanceTypeM::where('code', $code);
@@ -308,28 +321,36 @@ class AttendanceRuleResolverService
             $query->where('is_active', true);
         }
 
-        return $query->value('id');
+        return $this->attendanceTypeIdCache[$code] = $query->value('id');
     }
 
     public function getDayContext(Employee $employee, Carbon|string|null $date = null): array
     {
         $date = $this->date($date);
         $dateStr = $date->toDateString();
+        $cacheKey = $employee->id . '_' . $dateStr;
+        if (isset($this->dayContextCache[$cacheKey])) {
+            return $this->dayContextCache[$cacheKey];
+        }
+
         $holiday = $this->holidayForDate($date);
         $isHoliday = (bool) $holiday;
         $isWeekoff = $this->isWeekoff($date);
         $approvedLeave = $this->getApprovedLeaveOnDate($employee, $date);
 
-        $hasApprovedWorkRequest = DB::table('holiday_work_requests')
-            ->where('employee_id', $employee->id)
-            ->whereDate('worked_date', $dateStr)
-            ->whereIn('status', ['approved', 'completed'])
-            ->exists();
+        if (! isset($this->holidayWorkRequestCache[$cacheKey])) {
+            $this->holidayWorkRequestCache[$cacheKey] = DB::table('holiday_work_requests')
+                ->where('employee_id', $employee->id)
+                ->whereDate('worked_date', $dateStr)
+                ->whereIn('status', ['approved', 'completed'])
+                ->exists();
+        }
+        $hasApprovedWorkRequest = $this->holidayWorkRequestCache[$cacheKey];
 
         $isHalfDayLeave = $approvedLeave && (bool) ($approvedLeave['is_half_day'] ?? false);
         $isFullLeave = $approvedLeave && ! $isHalfDayLeave;
 
-        return [
+        return $this->dayContextCache[$cacheKey] = [
             'is_working_day' => (! $isHoliday && ! $isWeekoff && ! $isFullLeave) || $hasApprovedWorkRequest,
             'is_holiday' => $isHoliday && ! $hasApprovedWorkRequest,
             'is_weekoff' => $isWeekoff && ! $hasApprovedWorkRequest,
@@ -350,6 +371,10 @@ class AttendanceRuleResolverService
 
         $dateStr = $this->date($dateTime)->toDateString();
         $attendanceId = $attendance?->id;
+        $cacheKey = $employee->id . '_' . $dateStr . '_' . ($attendanceId ?: '0');
+        if (isset($this->regPendingCache[$cacheKey])) {
+            return $this->regPendingCache[$cacheKey];
+        }
 
         $query = DB::table('attendance_regularizations')
             ->where('employee_id', $employee->id)
@@ -381,7 +406,7 @@ class AttendanceRuleResolverService
             }
         });
 
-        return $query->exists();
+        return $this->regPendingCache[$cacheKey] = $query->exists();
     }
 
     public function hasApprovedRegularizationForDate(Employee $employee, Carbon|string|null $dateTime = null, ?Attendance $attendance = null): bool
@@ -392,6 +417,10 @@ class AttendanceRuleResolverService
 
         $dateStr = $this->date($dateTime)->toDateString();
         $attendanceId = $attendance?->id;
+        $cacheKey = $employee->id . '_' . $dateStr . '_' . ($attendanceId ?: '0');
+        if (isset($this->regApprovedCache[$cacheKey])) {
+            return $this->regApprovedCache[$cacheKey];
+        }
 
         $query = DB::table('attendance_regularizations')
             ->where('employee_id', $employee->id)
@@ -423,7 +452,7 @@ class AttendanceRuleResolverService
             }
         });
 
-        return $query->exists();
+        return $this->regApprovedCache[$cacheKey] = $query->exists();
     }
 
     public function resolveMobileState(Employee $employee, Carbon|string|null $dateTime = null, ?Attendance $attendance = null, ?object $policy = null): array
@@ -453,11 +482,15 @@ class AttendanceRuleResolverService
         $hasPunchIn = (bool) $attendance?->punch_in_time;
         $hasPunchOut = (bool) $attendance?->punch_out_time;
 
-        $blockedViolation = DB::table('attendance_violations')
-            ->where('employee_id', $employee->id)
-            ->where('type', 'blocked_punch')
-            ->whereDate('violation_date', $today)
-            ->first();
+        $cacheKeyViolation = $employee->id . '_' . $today;
+        if (! array_key_exists($cacheKeyViolation, $this->violationBlockedCache)) {
+            $this->violationBlockedCache[$cacheKeyViolation] = DB::table('attendance_violations')
+                ->where('employee_id', $employee->id)
+                ->where('type', 'blocked_punch')
+                ->whereDate('violation_date', $today)
+                ->first();
+        }
+        $blockedViolation = $this->violationBlockedCache[$cacheKeyViolation];
 
         $isUnlocked = (bool) ($attendance?->is_admin_unlocked ?? false)
             || $hasApprovedReg
@@ -1263,32 +1296,42 @@ class AttendanceRuleResolverService
 
     private function holidayForDate(Carbon $date): ?object
     {
+        $dateStr = $date->toDateString();
+        if (array_key_exists($dateStr, $this->holidayCache)) {
+            return $this->holidayCache[$dateStr];
+        }
+
         if (! Schema::hasTable('holidays')) {
-            return null;
+            return $this->holidayCache[$dateStr] = null;
         }
 
         $dateColumn = Schema::hasColumn('holidays', 'holiday_date') ? 'holiday_date' : (Schema::hasColumn('holidays', 'date') ? 'date' : null);
         if (! $dateColumn) {
-            return null;
+            return $this->holidayCache[$dateStr] = null;
         }
 
-        $query = DB::table('holidays')->whereDate($dateColumn, $date->toDateString());
+        $query = DB::table('holidays')->whereDate($dateColumn, $dateStr);
         if (Schema::hasColumn('holidays', 'is_active')) {
             $query->where('is_active', 1);
         }
 
         $holiday = $query->first();
         if ($holiday && isset($holiday->is_working_day_override) && (int) $holiday->is_working_day_override === 1) {
-            return null;
+            return $this->holidayCache[$dateStr] = null;
         }
 
-        return $holiday;
+        return $this->holidayCache[$dateStr] = $holiday;
     }
 
     private function isWeekoff(Carbon $date): bool
     {
+        $dateStr = $date->toDateString();
+        if (isset($this->weekoffCache[$dateStr])) {
+            return $this->weekoffCache[$dateStr];
+        }
+
         if (! Schema::hasTable('weekoff_rules')) {
-            return false;
+            return $this->weekoffCache[$dateStr] = false;
         }
 
         $dayName = strtolower($date->format('l'));
@@ -1300,13 +1343,13 @@ class AttendanceRuleResolverService
             $query->where('is_active', 1);
         }
         if (Schema::hasColumn('weekoff_rules', 'effective_from')) {
-            $query->where(function ($q) use ($date) {
-                $q->whereNull('effective_from')->orWhereDate('effective_from', '<=', $date->toDateString());
+            $query->where(function ($q) use ($dateStr) {
+                $q->whereNull('effective_from')->orWhereDate('effective_from', '<=', $dateStr);
             });
         }
         if (Schema::hasColumn('weekoff_rules', 'effective_to')) {
-            $query->where(function ($q) use ($date) {
-                $q->whereNull('effective_to')->orWhereDate('effective_to', '>=', $date->toDateString());
+            $query->where(function ($q) use ($dateStr) {
+                $q->whereNull('effective_to')->orWhereDate('effective_to', '>=', $dateStr);
             });
         }
 
@@ -1334,19 +1377,23 @@ class AttendanceRuleResolverService
 
         $rule = $query->first();
         if (! $rule) {
-            return false;
+            return $this->weekoffCache[$dateStr] = false;
         }
 
         if (isset($rule->is_working) && (int) $rule->is_working === 1) {
-            return false;
+            return $this->weekoffCache[$dateStr] = false;
         }
 
-        return isset($rule->is_off) ? (int) $rule->is_off === 1 : true;
+        return $this->weekoffCache[$dateStr] = (isset($rule->is_off) ? (int) $rule->is_off === 1 : true);
     }
 
     public function getApprovedLeaveOnDate(Employee $employee, Carbon|string $date): ?array
     {
         $dateStr = $date instanceof Carbon ? $date->toDateString() : (string) $date;
+        $cacheKey = $employee->id . '_' . $dateStr;
+        if (array_key_exists($cacheKey, $this->leaveCache)) {
+            return $this->leaveCache[$cacheKey];
+        }
 
         if (Schema::hasTable('leave_requests')) {
             $query = DB::table('leave_requests')
@@ -1361,7 +1408,7 @@ class AttendanceRuleResolverService
                     ->where('leave_requests.status', 'approved')
                     ->whereDate('leave_request_dates.leave_date', $dateStr)
                     ->select('leave_requests.*');
-                
+
                 $leaveReq = $queryOrDates->first() ?: $query->first();
             } else {
                 $leaveReq = $query->first();
@@ -1378,7 +1425,7 @@ class AttendanceRuleResolverService
                     ?? $leaveReq->slot
                     ?? ($isHalfDay ? 'first_half' : null);
 
-                return [
+                return $this->leaveCache[$cacheKey] = [
                     'id' => $leaveReq->id,
                     'leave_request_id' => $leaveReq->id,
                     'leave_type' => $leaveReq->leave_type ?? 'leave',
@@ -1409,7 +1456,7 @@ class AttendanceRuleResolverService
                     ?? $app->slot
                     ?? ($isHalfDay ? 'first_half' : null);
 
-                return [
+                return $this->leaveCache[$cacheKey] = [
                     'id' => $app->id,
                     'leave_application_id' => $app->id,
                     'leave_type' => $app->type ?? $app->leave_type ?? 'leave',
@@ -1421,7 +1468,7 @@ class AttendanceRuleResolverService
             }
         }
 
-        return null;
+        return $this->leaveCache[$cacheKey] = null;
     }
 
     private function isOnLeave(Employee $employee, Carbon $date): bool

@@ -61,6 +61,20 @@ class AttendancesC extends Controller
         ]);
     }
 
+    private function recordsQuery()
+    {
+        return Attendance::with([
+            'user',
+            'employee.department',
+            'employee.designation',
+            'attendanceType',
+            'attendanceTime',
+            'workLogs',
+            'unlockedBy',
+            'hrApprovedBy',
+        ]);
+    }
+
     private function applyFilters(mixed $query, Request $request)
     {
         if ($request->filled('search')) {
@@ -470,10 +484,10 @@ class AttendancesC extends Controller
             $teamEmpIds = EmployeeM::active()->pluck('id')->toArray();
         }
 
-        $hasAccess = $isGlobal 
-            || $canTeam 
+        $hasAccess = $isGlobal
+            || $canTeam
             || !empty($teamEmpIds)
-            || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin()) 
+            || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin())
             || (method_exists($user, 'isAdmin') && $user->isAdmin())
             || (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin())
             || (method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin', 'hr_admin', 'manager', 'lead', 'team_lead']))
@@ -601,7 +615,7 @@ class AttendancesC extends Controller
         $completedShiftCount = $todayAttendanceRows->whereNotNull('punch_in_time')->whereNotNull('punch_out_time')->count();
         $lateTodayCount = $todayAttendanceRows->where('is_late', 1)->count();
         $wfhTodayCount = $todayAttendanceRows->where('work_mode', 'wfh')->count();
-        $blockedCount = $todayAttendanceRows->filter(fn ($r) => $r->is_blocked || $r->is_punch_blocked)->count();
+        $blockedCount = $todayAttendanceRows->filter(fn($r) => $r->is_blocked || $r->is_punch_blocked)->count();
 
         // Approved Leaves today
         $leaveEmpQuery = DB::table('leave_requests')
@@ -890,15 +904,15 @@ class AttendancesC extends Controller
         $monthYear = $request->input('month_year');
         $month = $request->input('month');
 
-        $hasDateFilter = !empty($singleDate) 
-            || !empty($fromDate) 
-            || !empty($toDate) 
-            || (!empty($monthYear) && $monthYear !== 'all' && $monthYear !== 'custom') 
+        $hasDateFilter = !empty($singleDate)
+            || !empty($fromDate)
+            || !empty($toDate)
+            || (!empty($monthYear) && $monthYear !== 'all' && $monthYear !== 'custom')
             || (!empty($month) && $month !== 'all' && $month !== 'custom');
 
         $currentMonthYear = Carbon::now($this->attendanceService->attendanceTimezone())->format('Y-m');
-        $selectedMonthYear = $hasDateFilter 
-            ? ($monthYear ?: '') 
+        $selectedMonthYear = $hasDateFilter
+            ? ($monthYear ?: '')
             : $currentMonthYear;
 
         $isMyAttendance = request()->routeIs('hrms.attendance.my') || ($request->input('view_scope') === 'my');
@@ -912,7 +926,7 @@ class AttendancesC extends Controller
                 $filterRequest->merge(['month_year' => $currentMonthYear]);
             }
 
-            $query = $this->applyFilters($this->baseQuery(), $filterRequest);
+            $query = $this->applyFilters($this->recordsQuery(), $filterRequest);
             $query->where(function ($q) use ($currentEmployeeId, $userId) {
                 if ($currentEmployeeId && $userId) {
                     $q->where('employee_id', $currentEmployeeId)->orWhere('user_id', $userId);
@@ -944,10 +958,10 @@ class AttendancesC extends Controller
                 $filterRequest->merge(['month_year' => $currentMonthYear]);
             }
 
-            $query = $this->scopeAttendanceQuery($this->applyFilters($this->baseQuery(), $filterRequest), 'attendance.records.view_all', 'attendance.regularization.view_team');
+            $query = $this->scopeAttendanceQuery($this->applyFilters($this->recordsQuery(), $filterRequest), 'attendance.records.view_all', 'attendance.regularization.view_team');
         }
 
-        
+
         $periodLabel = 'All Records';
         if ($filterRequest->filled('from_date') && $filterRequest->filled('to_date')) {
             $periodLabel = Carbon::parse($filterRequest->from_date)->format('d M Y') . ' - ' . Carbon::parse($filterRequest->to_date)->format('d M Y');
@@ -972,15 +986,22 @@ class AttendancesC extends Controller
 
     public function attendanceRecord(Request $request)
     {
-        $isMyAttendance = request()->routeIs('hrms.attendance.my');
+        $isMyAttendance = request()->routeIs('hrms.attendance.my') || ($request->input('view_scope') === 'my');
 
-        abort_unless(
-            $this->userHasPermission('attendance.records.view_all')
-                || $this->userHasPermission('attendance.my.view')
-                || $this->userHasPermission('attendance.regularization.view_team')
-                || $this->canViewAll('attendance.records.view_all'),
-            403
-        );
+        if ($isMyAttendance) {
+            abort_unless(
+                $this->userHasPermission('attendance.my.view')
+                    || $this->canViewAll('attendance.records.view_all'),
+                403
+            );
+        } else {
+            abort_unless(
+                $this->canViewAll('attendance.records.view_all')
+                    || $this->userHasPermission('attendance.records.view_all'),
+                403,
+                'Access denied. Only authorized HR/Admin can view all employee attendance records.'
+            );
+        }
 
         $currentEmployee = \App\Models\HRMS\Employee\EmployeeM::where('user_id', Auth::id())->first();
         $currentEmployeeId = $currentEmployee ? $currentEmployee->id : ($this->ownEmployeeId() ?: null);
@@ -1309,12 +1330,12 @@ class AttendancesC extends Controller
             $violationQuery->whereHas('employee', fn($eq) => $eq->where('department_id', $request->department_id));
         }
 
-        $hasDateFilter = $request->filled('date') 
-            || $request->filled('from_date') 
-            || $request->filled('to_date') 
-            || $request->filled('month_year') 
-            || $request->filled('month') 
-            || $request->filled('from') 
+        $hasDateFilter = $request->filled('date')
+            || $request->filled('from_date')
+            || $request->filled('to_date')
+            || $request->filled('month_year')
+            || $request->filled('month')
+            || $request->filled('from')
             || $request->filled('to');
 
         $currentMonthYear = Carbon::now($this->attendanceService->attendanceTimezone())->format('Y-m');
@@ -1776,10 +1797,10 @@ class AttendancesC extends Controller
     public function print(Request $request)
     {
         abort_unless(
-            $this->userHasPermission('attendance.export') 
-                || $this->userHasPermission('attendance.records.view_all') 
+            $this->userHasPermission('attendance.export')
+                || $this->userHasPermission('attendance.records.view_all')
                 || $this->userHasPermission('attendance.monthly_report.view_all')
-                || $this->canViewAll('attendance.records.view_all'), 
+                || $this->canViewAll('attendance.records.view_all'),
             403
         );
 
@@ -1794,10 +1815,10 @@ class AttendancesC extends Controller
     public function exportPdf(Request $request)
     {
         abort_unless(
-            $this->userHasPermission('attendance.export') 
-                || $this->userHasPermission('attendance.records.view_all') 
+            $this->userHasPermission('attendance.export')
+                || $this->userHasPermission('attendance.records.view_all')
                 || $this->userHasPermission('attendance.monthly_report.view_all')
-                || $this->canViewAll('attendance.records.view_all'), 
+                || $this->canViewAll('attendance.records.view_all'),
             403
         );
 
@@ -1819,7 +1840,7 @@ class AttendancesC extends Controller
         foreach ($rawRows as $index => $a) {
             $typeCode = optional($a->attendanceType)->code ?? 'default';
             $typeName = optional($a->attendanceType)->name ?? ucwords(str_replace('_', ' ', $a->attendance_status ?? 'N/A'));
-            
+
             if ($typeCode === 'present' || $a->attendance_status === 'present') {
                 $presentCount++;
             }
@@ -1834,15 +1855,15 @@ class AttendancesC extends Controller
             }
             $totalMinutes += (int) ($a->total_work_minutes ?? 0);
 
-            $reasonText = $a->half_day_reason 
-                ?: ($a->lwp_reason 
-                ?: ($a->status_reason 
-                ?: ($a->remarks 
-                ?: ($a->blocked_reason
-                ?: ($a->block_reason
-                ?: ($a->auto_block_reason
-                ?: ($a->unlock_remarks 
-                ?: ($a->approval_remarks ?: '-'))))))));
+            $reasonText = $a->half_day_reason
+                ?: ($a->lwp_reason
+                    ?: ($a->status_reason
+                        ?: ($a->remarks
+                            ?: ($a->blocked_reason
+                                ?: ($a->block_reason
+                                    ?: ($a->auto_block_reason
+                                        ?: ($a->unlock_remarks
+                                            ?: ($a->approval_remarks ?: '-'))))))));
 
             $flags = [];
             if ($a->is_late) {
@@ -1906,10 +1927,10 @@ class AttendancesC extends Controller
     public function exportExcel(Request $request)
     {
         abort_unless(
-            $this->userHasPermission('attendance.export') 
-                || $this->userHasPermission('attendance.records.view_all') 
+            $this->userHasPermission('attendance.export')
+                || $this->userHasPermission('attendance.records.view_all')
                 || $this->userHasPermission('attendance.monthly_report.view_all')
-                || $this->canViewAll('attendance.records.view_all'), 
+                || $this->canViewAll('attendance.records.view_all'),
             403
         );
 
@@ -1969,15 +1990,15 @@ class AttendancesC extends Controller
                 }
                 $flagStr = !empty($flags) ? implode(', ', $flags) : 'Clear';
 
-                $reasonText = $row->half_day_reason 
-                    ?: ($row->lwp_reason 
-                    ?: ($row->status_reason 
-                    ?: ($row->remarks 
-                    ?: ($row->blocked_reason
-                    ?: ($row->block_reason
-                    ?: ($row->auto_block_reason
-                    ?: ($row->unlock_remarks 
-                    ?: ($row->approval_remarks ?: '-'))))))));
+                $reasonText = $row->half_day_reason
+                    ?: ($row->lwp_reason
+                        ?: ($row->status_reason
+                            ?: ($row->remarks
+                                ?: ($row->blocked_reason
+                                    ?: ($row->block_reason
+                                        ?: ($row->auto_block_reason
+                                            ?: ($row->unlock_remarks
+                                                ?: ($row->approval_remarks ?: '-'))))))));
 
                 fputcsv($handle, [
                     $index + 1,
@@ -2020,7 +2041,7 @@ class AttendancesC extends Controller
     {
         /** @var User|null $user */
         $user = Auth::user();
-        $isEmployeeRole = ($user->role_id ?? null) == 7 
+        $isEmployeeRole = ($user->role_id ?? null) == 7
             || ($user->system_role_id ?? null) == 7;
 
         $query = User::whereHas('employee', function ($eq) {
@@ -2131,7 +2152,11 @@ class AttendancesC extends Controller
 
     private function normalizeAttendanceCollection(Collection $items): void
     {
-        $typeCache = [];
+        if ($items->isEmpty()) {
+            return;
+        }
+
+        $typeCache = AttendanceType::all()->keyBy('code');
 
         foreach ($items as $attendance) {
             $resolved = $this->attendanceService->resolveFinalStatus($attendance);
@@ -2144,11 +2169,7 @@ class AttendancesC extends Controller
             $attendance->status_code = $resolvedCode;
             $attendance->status_name = $resolved['status_name'] ?? ucwords(str_replace('_', ' ', $resolvedCode));
 
-            if (! isset($typeCache[$resolvedCode])) {
-                $typeCache[$resolvedCode] = AttendanceType::where('code', $resolvedCode)->first();
-            }
-
-            if ($typeCache[$resolvedCode]) {
+            if (isset($typeCache[$resolvedCode])) {
                 $attendance->setRelation('attendanceType', $typeCache[$resolvedCode]);
             }
         }
@@ -2168,28 +2189,40 @@ class AttendancesC extends Controller
             ->leftJoin('designations', 'designations.id', '=', 'employees_new.designation_id')
             ->where(function ($q) {
                 $q->where('employees_new.is_active', 1)
-                  ->orWhereNull('employees_new.is_active');
+                    ->orWhereNull('employees_new.is_active');
             })
             ->where(function ($q) {
                 $q->whereNull('employees_new.employment_status')
-                  ->orWhere('employees_new.employment_status', '')
-                  ->orWhereNotIn(DB::raw('LOWER(TRIM(employees_new.employment_status))'), [
-                      'exited', 'exit', 'resigned', 'resigned_and_exited', 'terminated', 'inactive', 'relieved', 'absconded', 'suspended'
-                  ]);
+                    ->orWhere('employees_new.employment_status', '')
+                    ->orWhereNotIn(DB::raw('LOWER(TRIM(employees_new.employment_status))'), [
+                        'exited',
+                        'exit',
+                        'resigned',
+                        'resigned_and_exited',
+                        'terminated',
+                        'inactive',
+                        'relieved',
+                        'absconded',
+                        'suspended'
+                    ]);
             })
             ->where(function ($q) {
                 $q->whereNull('employees_new.employee_stage')
-                  ->orWhereNotIn(DB::raw('LOWER(TRIM(employees_new.employee_stage))'), [
-                      'exited', 'exit', 'resigned', 'terminated', 'relieved'
-                  ]);
+                    ->orWhereNotIn(DB::raw('LOWER(TRIM(employees_new.employee_stage))'), [
+                        'exited',
+                        'exit',
+                        'resigned',
+                        'terminated',
+                        'relieved'
+                    ]);
             })
             ->where(function ($q) {
                 $q->whereNull('employees_new.relieving_date')
-                  ->orWhere('employees_new.relieving_date', '>', now()->toDateString());
+                    ->orWhere('employees_new.relieving_date', '>', now()->toDateString());
             })
             ->where(function ($q) {
                 $q->whereNull('users.is_active')
-                  ->orWhere('users.is_active', 1);
+                    ->orWhere('users.is_active', 1);
             })
             ->when(!empty($exitedEmployeeIds), function ($q) use ($exitedEmployeeIds) {
                 $q->whereNotIn('employees_new.id', $exitedEmployeeIds);
@@ -2315,24 +2348,36 @@ class AttendancesC extends Controller
         $query = DB::table('employees_new')
             ->where(function ($q) {
                 $q->where('employees_new.is_active', 1)
-                  ->orWhereNull('employees_new.is_active');
+                    ->orWhereNull('employees_new.is_active');
             })
             ->where(function ($q) {
                 $q->whereNull('employees_new.employment_status')
-                  ->orWhere('employees_new.employment_status', '')
-                  ->orWhereNotIn(DB::raw('LOWER(TRIM(employees_new.employment_status))'), [
-                      'exited', 'exit', 'resigned', 'resigned_and_exited', 'terminated', 'inactive', 'relieved', 'absconded', 'suspended'
-                  ]);
+                    ->orWhere('employees_new.employment_status', '')
+                    ->orWhereNotIn(DB::raw('LOWER(TRIM(employees_new.employment_status))'), [
+                        'exited',
+                        'exit',
+                        'resigned',
+                        'resigned_and_exited',
+                        'terminated',
+                        'inactive',
+                        'relieved',
+                        'absconded',
+                        'suspended'
+                    ]);
             })
             ->where(function ($q) {
                 $q->whereNull('employees_new.employee_stage')
-                  ->orWhereNotIn(DB::raw('LOWER(TRIM(employees_new.employee_stage))'), [
-                      'exited', 'exit', 'resigned', 'terminated', 'relieved'
-                  ]);
+                    ->orWhereNotIn(DB::raw('LOWER(TRIM(employees_new.employee_stage))'), [
+                        'exited',
+                        'exit',
+                        'resigned',
+                        'terminated',
+                        'relieved'
+                    ]);
             })
             ->where(function ($q) {
                 $q->whereNull('employees_new.relieving_date')
-                  ->orWhere('employees_new.relieving_date', '>', now()->toDateString());
+                    ->orWhere('employees_new.relieving_date', '>', now()->toDateString());
             })
             ->when(!empty($exitedEmployeeIds), function ($q) use ($exitedEmployeeIds) {
                 $q->whereNotIn('employees_new.id', $exitedEmployeeIds);

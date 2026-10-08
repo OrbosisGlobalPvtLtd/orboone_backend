@@ -3,6 +3,7 @@
 namespace App\Services\HRMS\Storage;
 
 use App\Models\HRMS\Employee\EmployeeM;
+use Illuminate\Support\Facades\DB;
 
 class HrmsStoragePathS
 {
@@ -23,7 +24,7 @@ class HrmsStoragePathS
             if (isset(self::$codeCache[$id])) {
                 return self::$codeCache[$id];
             }
-            $code = \Illuminate\Support\Facades\DB::table('employees_new')
+            $code = DB::table('employees_new')
                 ->where('id', $id)
                 ->value('employee_code');
 

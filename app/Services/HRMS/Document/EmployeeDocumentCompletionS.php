@@ -9,6 +9,7 @@ use App\Models\HRMS\Employee\EmployeeProfileM;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use App\Models\HRMS\DocumentGeneration\GeneratedDocument;
 
 class EmployeeDocumentCompletionS
 {
@@ -119,7 +120,7 @@ class EmployeeDocumentCompletionS
         $query = EmployeeDocumentM::with(['type', 'uploadedBy', 'verifiedBy'])
             ->where('employee_id', $employee->id);
 
-        if (\Illuminate\Support\Facades\Schema::hasColumn('employee_documents_new', 'is_active')) {
+        if (Schema::hasColumn('employee_documents_new', 'is_active')) {
             $query->where('is_active', 1);
         }
 
@@ -183,7 +184,7 @@ class EmployeeDocumentCompletionS
         $optionalTypes = $this->optionalTypes($experienceType);
         $documents = $this->uploadedDocuments($employee);
 
-        $generatedDocuments = \App\Models\HRMS\DocumentGeneration\GeneratedDocument::where('employee_id', $employee->id)
+        $generatedDocuments = GeneratedDocument::where('employee_id', $employee->id)
             ->whereIn('status', ['generated', 'sent', 'reviewed'])
             ->latest()
             ->get()

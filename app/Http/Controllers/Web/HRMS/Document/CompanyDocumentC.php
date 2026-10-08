@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Services\HRMS\Storage\HrmsStoragePathS;
 use Illuminate\Http\Request;
 use App\Models\HRMS\Document\CompanyDocumentM as CompanyDocumentModal;
+use App\Models\Core\AccessM;
+use Illuminate\Support\Facades\Storage;
 
 class CompanyDocumentC extends Controller
 {
@@ -16,7 +18,7 @@ class CompanyDocumentC extends Controller
     public function index()
     {
         $policies = CompanyDocumentModal::latest()->get();
-        $accesses = \App\Models\Core\AccessM::where('role_id', auth()->user()->role_id)->get();
+        $accesses = AccessM::where('role_id', auth()->user()->role_id)->get();
         return view('hrms.documents.company-documents.index', compact('policies', 'accesses'));
     }
 
@@ -45,7 +47,7 @@ class CompanyDocumentC extends Controller
     {
         $doc = CompanyDocumentModal::findOrFail($id);
         // Optionally delete file from storage if you want:
-        // \Illuminate\Support\Facades\Storage::disk('public')->delete($doc->file_path);
+        // Storage::disk('public')->delete($doc->file_path);
         $doc->delete();
         return back()->with('success', 'Policy removed successfully.');
     }
@@ -54,11 +56,11 @@ class CompanyDocumentC extends Controller
     {
         $policy = CompanyDocumentModal::findOrFail($id);
 
-        if (!$policy->file_path || !\Illuminate\Support\Facades\Storage::disk('private')->exists($policy->file_path)) {
+        if (!$policy->file_path || !Storage::disk('private')->exists($policy->file_path)) {
             abort(404, 'File not found or missing.');
         }
 
-        $absolutePath = \Illuminate\Support\Facades\Storage::disk('private')->path($policy->file_path);
+        $absolutePath = Storage::disk('private')->path($policy->file_path);
         $mime = mime_content_type($absolutePath) ?: 'application/octet-stream';
 
         return response()->file($absolutePath, [
@@ -71,11 +73,11 @@ class CompanyDocumentC extends Controller
     {
         $policy = CompanyDocumentModal::findOrFail($id);
 
-        if (!$policy->file_path || !\Illuminate\Support\Facades\Storage::disk('private')->exists($policy->file_path)) {
+        if (!$policy->file_path || !Storage::disk('private')->exists($policy->file_path)) {
             abort(404, 'File not found or missing.');
         }
 
-        $absolutePath = \Illuminate\Support\Facades\Storage::disk('private')->path($policy->file_path);
+        $absolutePath = Storage::disk('private')->path($policy->file_path);
 
         return response()->download($absolutePath, basename($absolutePath));
     }

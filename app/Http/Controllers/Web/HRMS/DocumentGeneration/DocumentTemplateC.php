@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Models\HRMS\DocumentGeneration\GeneratedDocument;
 
 class DocumentTemplateC extends Controller
 {
@@ -46,7 +47,7 @@ class DocumentTemplateC extends Controller
         $totalTemplates = DocumentTemplate::count();
         $activeTemplates = DocumentTemplate::where('is_active', true)->count();
         $docxTemplates = 0; // DOCX deprecated
-        $generatedCount = \App\Models\HRMS\DocumentGeneration\GeneratedDocument::count();
+        $generatedCount = GeneratedDocument::count();
         $archivedCount = Schema::hasColumn('document_templates', 'is_archived')
             ? DocumentTemplate::where('is_archived', true)->count()
             : 0;

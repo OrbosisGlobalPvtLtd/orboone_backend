@@ -9,6 +9,8 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Models\HRMS\DocumentGeneration\DocumentTemplate;
+use Illuminate\Support\Facades\Log;
 
 class HtmlDocumentGenerationS
 {
@@ -244,11 +246,11 @@ class HtmlDocumentGenerationS
                 
                 $finalInternName = $data['employee_name'] ?? $data['candidate_name'] ?? 'Intern Name';
                 
-                $template = \App\Models\HRMS\DocumentGeneration\DocumentTemplate::where('slug', $documentType)
+                $template = DocumentTemplate::where('slug', $documentType)
                     ->orWhere('template_key', str_replace('_', '-', $documentType))
                     ->first();
                 
-                \Illuminate\Support\Facades\Log::info("INTERNSHIP CERTIFICATE GENERATION LOG", [
+                Log::info("INTERNSHIP CERTIFICATE GENERATION LOG", [
                     'latest_generated_document_id' => $document->id,
                     'document_type_id' => $template ? $template->id : null,
                     'document_type_name' => $template ? $template->name : ucwords(str_replace('_', ' ', $documentType)),
@@ -263,7 +265,7 @@ class HtmlDocumentGenerationS
                     'pdf_page_count' => $pdfPageCount
                 ]);
             } catch (\Throwable $logEx) {
-                \Illuminate\Support\Facades\Log::error("Failed to log certificate details: " . $logEx->getMessage());
+                Log::error("Failed to log certificate details: " . $logEx->getMessage());
             }
         }
 

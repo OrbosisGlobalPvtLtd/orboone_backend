@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web\AccessControl;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Services\AccessControl\SidebarS;
 
 class RolePermissionC extends Controller
 {
@@ -96,7 +97,7 @@ class RolePermissionC extends Controller
             ->merge(DB::table('user_roles')->where('role_id', $roleData->id)->pluck('user_id'))
             ->unique();
 
-        $sidebarService = app(\App\Services\AccessControl\SidebarS::class);
+        $sidebarService = app(SidebarS::class);
         foreach ($userIds as $userId) {
             $sidebarService->clearCache($userId);
         }

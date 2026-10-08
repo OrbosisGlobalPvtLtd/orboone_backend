@@ -10,6 +10,7 @@ use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Http\RedirectResponse;
 
 class LoginC extends Controller
 {
@@ -35,7 +36,7 @@ class LoginC extends Controller
     /**
      * Validate login request.
      *
-     * @param \Illuminate\Http\Request $request
+     * @param Request $request
      * @return void
      */
     protected function validateLogin(Request $request): void
@@ -49,9 +50,9 @@ class LoginC extends Controller
     /**
      * Handle post-authentication logic.
      *
-     * @param \Illuminate\Http\Request $request
+     * @param Request $request
      * @param mixed $user
-     * @return \Illuminate\Http\RedirectResponse|null
+     * @return RedirectResponse|null
      */
     protected function authenticated(Request $request, $user)
     {

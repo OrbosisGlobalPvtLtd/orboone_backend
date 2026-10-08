@@ -32,6 +32,20 @@ use App\Services\HRMS\Storage\HrmsFileResolverS;
 use App\Services\HRMS\Storage\HrmsStoragePathS;
 
 use App\Services\Shared\AttendanceService;
+use App\Services\Shared\MobileApiMessageS;
+use Carbon\Carbon;
+use App\Models\HRMS\Leave\HolidayM;
+use App\Models\HRMS\Leave\NationalHolidayM;
+use App\Services\HRMS\Birthday\BirthdayService;
+use App\Models\HRMS\Employee\EmployeeM;
+use App\Models\HRMS\Employee\EmployeeProfileM;
+use Illuminate\Validation\ValidationException;
+use App\Models\HRMS\Leave\LeaveApplicationM;
+use App\Models\HRMS\Leave\LeaveTypeM;
+use App\Models\HRMS\Leave\LeaveAllocationM;
+use App\Services\HRMS\Leave\LeaveAllocationService;
+use App\Http\Controllers\Web\HRMS\Leave\LeaveAllocationC;
+use App\Models\HRMS\Document\DocumentTypeM;
 
 class ApiController extends Controller
 {
@@ -121,7 +135,7 @@ class ApiController extends Controller
         );
 
         $isSuccess = ($result['status'] ?? null) === true || ($result['status'] ?? null) === 'success' || (($result['status'] ?? null) !== 'error' && ($result['status'] ?? null) !== false);
-        $cleanMsg = app(\App\Services\Shared\MobileApiMessageS::class)->cleanMessage($result['message'] ?? ($isSuccess ? 'Punch in recorded successfully.' : 'Punch in failed.'));
+        $cleanMsg = app(MobileApiMessageS::class)->cleanMessage($result['message'] ?? ($isSuccess ? 'Punch in recorded successfully.' : 'Punch in failed.'));
 
         return response()->json([
             'status'  => $isSuccess ? 'success' : 'error',
@@ -157,7 +171,7 @@ class ApiController extends Controller
         );
 
         $isSuccess = ($result['status'] ?? null) === true || ($result['status'] ?? null) === 'success' || (($result['status'] ?? null) !== 'error' && ($result['status'] ?? null) !== false);
-        $cleanMsg = app(\App\Services\Shared\MobileApiMessageS::class)->cleanMessage($result['message'] ?? ($isSuccess ? 'Punch out recorded successfully.' : 'Punch out failed.'));
+        $cleanMsg = app(MobileApiMessageS::class)->cleanMessage($result['message'] ?? ($isSuccess ? 'Punch out recorded successfully.' : 'Punch out failed.'));
 
         return response()->json([
             'status'  => $isSuccess ? 'success' : 'error',
@@ -199,14 +213,14 @@ class ApiController extends Controller
         //-----------------------------
         // TODAY STATUS
         //-----------------------------
-        $today = \Carbon\Carbon::now();
+        $today = Carbon::now();
         
-        $holidays = \App\Models\HRMS\Leave\HolidayM::whereDate('date', $today->format('Y-m-d'))->get();
-        $nationalHolidays = \App\Models\HRMS\Leave\NationalHolidayM::whereDate('holiday_date', $today->format('Y-m-d'))->get();
+        $holidays = HolidayM::whereDate('date', $today->format('Y-m-d'))->get();
+        $nationalHolidays = NationalHolidayM::whereDate('holiday_date', $today->format('Y-m-d'))->get();
         
         $allHolidays = $holidays->pluck('name')->merge($nationalHolidays->pluck('name'));
         
-        $birthdays = app(\App\Services\HRMS\Birthday\BirthdayService::class)->getTodayBirthdays();
+        $birthdays = app(BirthdayService::class)->getTodayBirthdays();
 
         $todayStatus = [
             'is_holiday' => $allHolidays->isNotEmpty(),
@@ -232,7 +246,7 @@ class ApiController extends Controller
                 'emergency_contact_number' => $detail->emergency_contact_number,
                 'address'                  => $detail->address,
                 'gender'                   => $detail->gender,
-                'date_of_birth'            => $detail->date_of_birth ? \Carbon\Carbon::parse($detail->date_of_birth)->format('Y-m-d') : null,
+                'date_of_birth'            => $detail->date_of_birth ? Carbon::parse($detail->date_of_birth)->format('Y-m-d') : null,
                 'last_education'           => $detail->last_education,
                 'gpa'                      => $detail->gpa,
                 'work_experience_in_years' => $detail->work_experience_in_years,
@@ -253,13 +267,13 @@ class ApiController extends Controller
     {
         try {
             $user     = auth()->user();
-            $employee = \App\Models\HRMS\Employee\EmployeeM::where('user_id', $user->id)->first();
+            $employee = EmployeeM::where('user_id', $user->id)->first();
 
             if (!$employee) {
                 return response()->json(['status' => false, 'message' => 'Employee profile not found.'], 404);
             }
 
-            $detail = \App\Models\HRMS\Employee\EmployeeProfileM::where('employee_id', $employee->id)->first();
+            $detail = EmployeeProfileM::where('employee_id', $employee->id)->first();
 
             // -----------------------------------------------
             // 1. VALIDATION
@@ -436,7 +450,7 @@ class ApiController extends Controller
             } elseif (!empty($detailChanges)) {
                 // Auto-create employee_details row if missing
                 $detailChanges['employee_id'] = $employee->id;
-                $detail = \App\Models\HRMS\Employee\EmployeeProfileM::create($detailChanges);
+                $detail = EmployeeProfileM::create($detailChanges);
             }
 
             DB::commit();
@@ -515,7 +529,7 @@ class ApiController extends Controller
                     'emergency_contact_number' => $detail?->emergency_contact_number,
                     'address'                  => $detail?->address,
                     'gender'                   => $detail?->gender,
-                    'date_of_birth'            => $detail?->date_of_birth ? \Carbon\Carbon::parse($detail->date_of_birth)->format('Y-m-d') : null,
+                    'date_of_birth'            => $detail?->date_of_birth ? Carbon::parse($detail->date_of_birth)->format('Y-m-d') : null,
                     'last_education'           => $detail?->last_education,
                     'gpa'                      => $detail?->gpa,
                     'work_experience_in_years' => $detail?->work_experience_in_years,
@@ -530,17 +544,17 @@ class ApiController extends Controller
                 ],
             ], 200);
 
-        } catch (\Illuminate\Validation\ValidationException $ve) {
+        } catch (ValidationException $ve) {
             return response()->json([
                 'status'  => false,
-                'message' => app(\App\Services\Shared\MobileApiMessageS::class)->friendly($ve),
+                'message' => app(MobileApiMessageS::class)->friendly($ve),
                 'errors'  => $ve->errors(),
             ], 422);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
                 'status'  => false,
-                'message' => app(\App\Services\Shared\MobileApiMessageS::class)->friendly($e),
+                'message' => app(MobileApiMessageS::class)->friendly($e),
             ], 500);
         }
     }
@@ -581,24 +595,24 @@ class ApiController extends Controller
     }
 
     
-    private function calculateLeaveDays(\Carbon\Carbon $start, \Carbon\Carbon $end): array
+    private function calculateLeaveDays(Carbon $start, Carbon $end): array
     {
-        $holidays = \App\Models\HRMS\Leave\NationalHolidayM::whereBetween('holiday_date', [
+        $holidays = NationalHolidayM::whereBetween('holiday_date', [
             $start->format('Y-m-d'), $end->format('Y-m-d'),
-        ])->pluck('holiday_date')->map(fn($d) => \Carbon\Carbon::parse($d)->format('Y-m-d'))->toArray();
+        ])->pluck('holiday_date')->map(fn($d) => Carbon::parse($d)->format('Y-m-d'))->toArray();
 
         // Weekend extension
         $extendedEnd = $end->copy();
-        if ($extendedEnd->dayOfWeek === \Carbon\Carbon::SATURDAY && $start->lte($extendedEnd->copy()->subDay())) {
+        if ($extendedEnd->dayOfWeek === Carbon::SATURDAY && $start->lte($extendedEnd->copy()->subDay())) {
             $extendedEnd->addDay(); // include Sunday
-        } elseif ($extendedEnd->dayOfWeek === \Carbon\Carbon::FRIDAY && $start->lte($extendedEnd->copy()->subDay())) {
+        } elseif ($extendedEnd->dayOfWeek === Carbon::FRIDAY && $start->lte($extendedEnd->copy()->subDay())) {
             $extendedEnd->addDays(2); // include Sat+Sun
         }
 
         $days = 0;
         $temp = $start->copy();
         while ($temp->lte($extendedEnd)) {
-            if ($temp->dayOfWeek !== \Carbon\Carbon::SUNDAY && !in_array($temp->format('Y-m-d'), $holidays)) {
+            if ($temp->dayOfWeek !== Carbon::SUNDAY && !in_array($temp->format('Y-m-d'), $holidays)) {
                 $days++;
             }
             $temp->addDay();
@@ -609,7 +623,7 @@ class ApiController extends Controller
     /** Private Helper: Monthly leave used by an employee */
     private function getMonthlyLeaveUsed(int $employeeId, int $month, int $year): float
     {
-        return \App\Models\HRMS\Leave\LeaveApplicationM::where('employee_id', $employeeId)
+        return LeaveApplicationM::where('employee_id', $employeeId)
             ->whereIn('status', ['approved', 'pending'])
             ->whereYear('start_date', $year)
             ->whereMonth('start_date', $month)
@@ -630,23 +644,23 @@ class ApiController extends Controller
                 'yearly_quota' => 'required|numeric|min:0',
                 'accrual_type' => 'nullable|in:monthly,yearly,prorated',
             ]);
-            $type = \App\Models\HRMS\Leave\LeaveTypeM::create([
+            $type = LeaveTypeM::create([
                 'name'         => $request->name,
                 'yearly_quota' => $request->yearly_quota,
                 'accrual_type' => $request->accrual_type ?? 'yearly',
             ]);
             return response()->json(['status' => true, 'message' => 'Leave type created.', 'data' => $type], 201);
-        } catch (\Illuminate\Validation\ValidationException $ve) {
-            return response()->json(['status' => false, 'message' => app(\App\Services\Shared\MobileApiMessageS::class)->friendly($ve), 'errors' => $ve->errors()], 422);
+        } catch (ValidationException $ve) {
+            return response()->json(['status' => false, 'message' => app(MobileApiMessageS::class)->friendly($ve), 'errors' => $ve->errors()], 422);
         } catch (\Exception $e) {
-            return response()->json(['status' => false, 'message' => app(\App\Services\Shared\MobileApiMessageS::class)->friendly($e)], 500);
+            return response()->json(['status' => false, 'message' => app(MobileApiMessageS::class)->friendly($e)], 500);
         }
     }
 
     /** GET /api/leave/types */
     public function listLeaveTypes()
     {
-        return response()->json(['status' => true, 'data' => \App\Models\HRMS\Leave\LeaveTypeM::orderBy('name')->get()], 200);
+        return response()->json(['status' => true, 'data' => LeaveTypeM::orderBy('name')->get()], 200);
     }
 
     // ------------------------------------------------
@@ -658,35 +672,35 @@ class ApiController extends Controller
     {
         try {
             $user     = auth()->user();
-            $employee = \App\Models\HRMS\Employee\EmployeeM::where('user_id', $user->id)->first();
+            $employee = EmployeeM::where('user_id', $user->id)->first();
             if (!$employee) {
                 return response()->json(['status' => false, 'message' => 'Employee profile not found.'], 404);
             }
 
-            $now   = \Carbon\Carbon::now();
+            $now   = Carbon::now();
             $year  = $now->year;
             $month = $now->month;
 
             // ── 1. Allocation (quota) ──────────────────────────────────────
-            $alloc   = \App\Models\HRMS\Leave\LeaveAllocationM::where('employee_id', $employee->id)->where('year', $year)->first();
+            $alloc   = LeaveAllocationM::where('employee_id', $employee->id)->where('year', $year)->first();
             $totalPl = (float) ($alloc->paid_allocated ?? 0);
             $totalSl = (float) ($alloc->sick_allocated ?? 0);
             $totalCompOff = (float) ($alloc->comp_off_allocated ?? 0);
 
             // ── 2. Used — from APPROVED applications (source of truth) ────
-            $usedPl = (float) \App\Models\HRMS\Leave\LeaveApplicationM::where('employee_id', $employee->id)
+            $usedPl = (float) LeaveApplicationM::where('employee_id', $employee->id)
                 ->where('leave_type', 'PL')->where('status', 'approved')
                 ->whereYear('start_date', $year)->sum('total_days');
 
-            $usedSl = (float) \App\Models\HRMS\Leave\LeaveApplicationM::where('employee_id', $employee->id)
+            $usedSl = (float) LeaveApplicationM::where('employee_id', $employee->id)
                 ->where('leave_type', 'SL')->where('status', 'approved')
                 ->whereYear('start_date', $year)->sum('total_days');
 
-            $lwpDirect = (float) \App\Models\HRMS\Leave\LeaveApplicationM::where('employee_id', $employee->id)
+            $lwpDirect = (float) LeaveApplicationM::where('employee_id', $employee->id)
                 ->where('leave_type', 'LWP')->where('status', 'approved')
                 ->whereYear('start_date', $year)->sum('total_days');
 
-            $lwpEmbedded = (float) \App\Models\HRMS\Leave\LeaveApplicationM::where('employee_id', $employee->id)
+            $lwpEmbedded = (float) LeaveApplicationM::where('employee_id', $employee->id)
                 ->whereIn('leave_type', ['PL', 'SL'])->where('status', 'approved')
                 ->whereYear('start_date', $year)->sum('lwp_days');
 
@@ -698,20 +712,20 @@ class ApiController extends Controller
             $remCompOff = max(0, (float) ($alloc->comp_off_remaining ?? $totalCompOff));
 
             // ── 4. Pending (applied but not yet approved) ──────────────────
-            $pendingPl = (float) \App\Models\HRMS\Leave\LeaveApplicationM::where('employee_id', $employee->id)
+            $pendingPl = (float) LeaveApplicationM::where('employee_id', $employee->id)
                 ->where('leave_type', 'PL')->where('status', 'pending')
                 ->whereYear('start_date', $year)->sum('total_days');
 
-            $pendingSl = (float) \App\Models\HRMS\Leave\LeaveApplicationM::where('employee_id', $employee->id)
+            $pendingSl = (float) LeaveApplicationM::where('employee_id', $employee->id)
                 ->where('leave_type', 'SL')->where('status', 'pending')
                 ->whereYear('start_date', $year)->sum('total_days');
 
             // ── 5. Monthly usage breakdown ─────────────────────────────────
-            $monthlyPl = (float) \App\Models\HRMS\Leave\LeaveApplicationM::where('employee_id', $employee->id)
+            $monthlyPl = (float) LeaveApplicationM::where('employee_id', $employee->id)
                 ->where('leave_type', 'PL')->whereIn('status', ['approved', 'pending'])
                 ->whereYear('start_date', $year)->whereMonth('start_date', $month)->sum('total_days');
 
-            $monthlySl = (float) \App\Models\HRMS\Leave\LeaveApplicationM::where('employee_id', $employee->id)
+            $monthlySl = (float) LeaveApplicationM::where('employee_id', $employee->id)
                 ->where('leave_type', 'SL')->whereIn('status', ['approved', 'pending'])
                 ->whereYear('start_date', $year)->whereMonth('start_date', $month)->sum('total_days');
 
@@ -821,11 +835,11 @@ class ApiController extends Controller
             ], ['leave_type.in' => 'Invalid type. Use "Paid Leave" (PL) or "Sick Leave" (SL).']);
 
             $user     = auth()->user();
-            $employee = \App\Models\HRMS\Employee\EmployeeM::where('user_id', $user->id)->first();
+            $employee = EmployeeM::where('user_id', $user->id)->first();
             if (!$employee) return response()->json(['status' => false, 'message' => 'Employee profile not found.'], 404);
 
-            $start = \Carbon\Carbon::parse($request->start_date)->startOfDay();
-            $end   = \Carbon\Carbon::parse($request->end_date)->startOfDay();
+            $start = Carbon::parse($request->start_date)->startOfDay();
+            $end   = Carbon::parse($request->end_date)->startOfDay();
             $year  = $start->year;
             $month = $start->month;
 
@@ -856,7 +870,7 @@ class ApiController extends Controller
             $isRestricted = in_array($employee->employment_type, ['Internship', 'Probation'])
                          || ($employee->probation_status && $employee->probation_status !== 'Permanent');
 
-            $allocation     = \App\Models\HRMS\Leave\LeaveAllocationM::where('employee_id', $employee->id)->where('year', $year)->first();
+            $allocation     = LeaveAllocationM::where('employee_id', $employee->id)->where('year', $year)->first();
             $finalLeaveType = $request->leave_type;
             $lwpDays        = 0;
             $warnings       = [];
@@ -886,7 +900,7 @@ class ApiController extends Controller
                 }
 
                 // Year-end restriction Nov/Dec = 50% balance
-                $nowMonth  = \Carbon\Carbon::now()->month;
+                $nowMonth  = Carbon::now()->month;
                 $available = ($finalLeaveType === 'PL')
                     ? max(0, (float) ($allocation->paid_remaining ?? 0))
                     : max(0, (float) ($allocation->sick_remaining ?? 0));
@@ -903,7 +917,7 @@ class ApiController extends Controller
                 }
             }
 
-            $application = \App\Models\HRMS\Leave\LeaveApplicationM::create([
+            $application = LeaveApplicationM::create([
                 'employee_id' => $employee->id,
                 'leave_type'  => ($lwpDays >= $totalDays) ? 'LWP' : $finalLeaveType,
                 'start_date'  => $start->format('Y-m-d'),
@@ -928,7 +942,7 @@ class ApiController extends Controller
                     'leave_type'     => $application->leave_type,
                     'start_date'     => $start->format('d M Y'),
                     'end_date'       => $end->format('d M Y'),
-                    'effective_end'  => \Carbon\Carbon::parse($calc['effective_end'])->format('d M Y'),
+                    'effective_end'  => Carbon::parse($calc['effective_end'])->format('d M Y'),
                     'total_days'     => $totalDays,
                     'lwp_days'       => $lwpDays,
                     'status'         => 'pending',
@@ -936,10 +950,10 @@ class ApiController extends Controller
                 ],
             ], 200);
 
-        } catch (\Illuminate\Validation\ValidationException $ve) {
-            return response()->json(['status' => false, 'message' => app(\App\Services\Shared\MobileApiMessageS::class)->friendly($ve), 'errors' => $ve->errors()], 422);
+        } catch (ValidationException $ve) {
+            return response()->json(['status' => false, 'message' => app(MobileApiMessageS::class)->friendly($ve), 'errors' => $ve->errors()], 422);
         } catch (\Exception $e) {
-            return response()->json(['status' => false, 'message' => app(\App\Services\Shared\MobileApiMessageS::class)->friendly($e)], 500);
+            return response()->json(['status' => false, 'message' => app(MobileApiMessageS::class)->friendly($e)], 500);
         }
     }
 
@@ -952,11 +966,11 @@ class ApiController extends Controller
     {
         try {
             $user     = auth()->user();
-            $employee = \App\Models\HRMS\Employee\EmployeeM::where('user_id', $user->id)->first();
+            $employee = EmployeeM::where('user_id', $user->id)->first();
             if (!$employee) return response()->json(['status' => false, 'message' => 'Employee profile not found.'], 404);
 
-            $year  = \Carbon\Carbon::now()->year;
-            $alloc = \App\Models\HRMS\Leave\LeaveAllocationM::where('employee_id', $employee->id)->where('year', $year)->first();
+            $year  = Carbon::now()->year;
+            $alloc = LeaveAllocationM::where('employee_id', $employee->id)->where('year', $year)->first();
 
             $balance = [
                 'year' => $year,
@@ -975,14 +989,14 @@ class ApiController extends Controller
                 'comp_off_remaining' => $alloc->comp_off_remaining ?? 0,
             ];
 
-            $history = \App\Models\HRMS\Leave\LeaveApplicationM::where('employee_id', $employee->id)
+            $history = LeaveApplicationM::where('employee_id', $employee->id)
                 ->orderBy('created_at', 'desc')->get()
                 ->map(fn($app) => [
                     'id'             => $app->id,
                     'leave_type'     => $app->leave_type,
                     'type_label'     => ['PL' => 'Paid Leave', 'SL' => 'Sick Leave', 'LWP' => 'Leave Without Pay'][$app->leave_type] ?? $app->leave_type,
-                    'start_date'     => \Carbon\Carbon::parse($app->start_date)->format('d M Y'),
-                    'end_date'       => \Carbon\Carbon::parse($app->end_date)->format('d M Y'),
+                    'start_date'     => Carbon::parse($app->start_date)->format('d M Y'),
+                    'end_date'       => Carbon::parse($app->end_date)->format('d M Y'),
                     'total_days'     => $app->total_days,
                     'lwp_days'       => $app->lwp_days ?? 0,
                     'reason'         => $app->reason,
@@ -1006,10 +1020,10 @@ class ApiController extends Controller
     public function cancelLeaveRequest($id)
     {
         try {
-            $employee = \App\Models\HRMS\Employee\EmployeeM::where('user_id', auth()->id())->first();
+            $employee = EmployeeM::where('user_id', auth()->id())->first();
             if (!$employee) return response()->json(['status' => false, 'message' => 'Employee profile not found.'], 404);
 
-            $application = \App\Models\HRMS\Leave\LeaveApplicationM::where('id', $id)->where('employee_id', $employee->id)->first();
+            $application = LeaveApplicationM::where('id', $id)->where('employee_id', $employee->id)->first();
             if (!$application) return response()->json(['status' => false, 'message' => 'Leave application not found.'], 404);
 
             if ($application->status !== 'pending') {
@@ -1031,15 +1045,15 @@ class ApiController extends Controller
     public function approveLeave($id)
     {
         try {
-            $application = \App\Models\HRMS\Leave\LeaveApplicationM::with('employee')->find($id);
+            $application = LeaveApplicationM::with('employee')->find($id);
             if (!$application) return response()->json(['status' => false, 'message' => 'Leave application not found.'], 404);
             if ($application->status !== 'pending') return response()->json(['status' => false, 'message' => "Leave is already '{$application->status}'."], 400);
 
             $application->update(['status' => 'approved', 'approved_by' => auth()->id()]);
 
             // Update allocation counters
-            $allocation = \App\Models\HRMS\Leave\LeaveAllocationM::where('employee_id', $application->employee_id)
-                ->where('year', \Carbon\Carbon::parse($application->start_date)->year)->first();
+            $allocation = LeaveAllocationM::where('employee_id', $application->employee_id)
+                ->where('year', Carbon::parse($application->start_date)->year)->first();
 
             if ($allocation) {
                 $paidDays = max(0, $application->total_days - ($application->lwp_days ?? 0));
@@ -1048,7 +1062,7 @@ class ApiController extends Controller
                 elseif ($application->leave_type === 'SL') $allocation->sick_used = (float) $allocation->sick_used + $paidDays;
                 if ($lwpDays > 0) $allocation->lwp_used = (float) $allocation->lwp_used + $lwpDays;
 
-                app(\App\Services\HRMS\Leave\LeaveAllocationService::class)->recalculateAllocationFields($allocation);
+                app(LeaveAllocationService::class)->recalculateAllocationFields($allocation);
                 $allocation->save();
             }
 
@@ -1066,7 +1080,7 @@ class ApiController extends Controller
     public function rejectLeave(Request $request, $id)
     {
         try {
-            $application = \App\Models\HRMS\Leave\LeaveApplicationM::find($id);
+            $application = LeaveApplicationM::find($id);
             if (!$application) return response()->json(['status' => false, 'message' => 'Leave application not found.'], 404);
             if ($application->status !== 'pending') return response()->json(['status' => false, 'message' => "Leave is already '{$application->status}'."], 400);
 
@@ -1085,13 +1099,13 @@ class ApiController extends Controller
     public function myLeaveCalendar(Request $request)
     {
         try {
-            $employee = \App\Models\HRMS\Employee\EmployeeM::where('user_id', auth()->id())->first();
+            $employee = EmployeeM::where('user_id', auth()->id())->first();
             if (!$employee) return response()->json(['status' => false, 'message' => 'Employee profile not found.'], 404);
 
-            $month = (int)($request->month ?? \Carbon\Carbon::now()->month);
-            $year  = (int)($request->year  ?? \Carbon\Carbon::now()->year);
+            $month = (int)($request->month ?? Carbon::now()->month);
+            $year  = (int)($request->year  ?? Carbon::now()->year);
 
-            $leaves = \App\Models\HRMS\Leave\LeaveApplicationM::where('employee_id', $employee->id)
+            $leaves = LeaveApplicationM::where('employee_id', $employee->id)
                 ->whereYear('start_date', $year)->whereMonth('start_date', $month)
                 ->whereIn('status', ['pending', 'approved'])->get()
                 ->map(fn($app) => [
@@ -1105,10 +1119,10 @@ class ApiController extends Controller
                     'reason'     => $app->reason,
                 ]);
 
-            $holidays = \App\Models\HRMS\Leave\NationalHolidayM::whereYear('holiday_date', $year)
+            $holidays = NationalHolidayM::whereYear('holiday_date', $year)
                 ->whereMonth('holiday_date', $month)->get(['name', 'holiday_date']);
 
-            return response()->json(['status' => true, 'period' => \Carbon\Carbon::createFromDate($year, $month, 1)->format('F Y'), 'leaves' => $leaves, 'holidays' => $holidays], 200);
+            return response()->json(['status' => true, 'period' => Carbon::createFromDate($year, $month, 1)->format('F Y'), 'leaves' => $leaves, 'holidays' => $holidays], 200);
         } catch (\Exception $e) {
             return response()->json(['status' => false, 'message' => $e->getMessage()], 500);
         }
@@ -1118,13 +1132,13 @@ class ApiController extends Controller
     public function employeeLeaveCalendar(Request $request, $id)
     {
         try {
-            $employee = \App\Models\HRMS\Employee\EmployeeM::find($id);
+            $employee = EmployeeM::find($id);
             if (!$employee) return response()->json(['status' => false, 'message' => 'Employee not found.'], 404);
 
-            $month = (int)($request->month ?? \Carbon\Carbon::now()->month);
-            $year  = (int)($request->year  ?? \Carbon\Carbon::now()->year);
+            $month = (int)($request->month ?? Carbon::now()->month);
+            $year  = (int)($request->year  ?? Carbon::now()->year);
 
-            $leaves = \App\Models\HRMS\Leave\LeaveApplicationM::where('employee_id', $employee->id)
+            $leaves = LeaveApplicationM::where('employee_id', $employee->id)
                 ->whereYear('start_date', $year)->whereMonth('start_date', $month)
                 ->whereIn('status', ['pending', 'approved'])->get()
                 ->map(fn($app) => [
@@ -1138,13 +1152,13 @@ class ApiController extends Controller
                     'reason'     => $app->reason,
                 ]);
 
-            $holidays = \App\Models\HRMS\Leave\NationalHolidayM::whereYear('holiday_date', $year)
+            $holidays = NationalHolidayM::whereYear('holiday_date', $year)
                 ->whereMonth('holiday_date', $month)->get(['name', 'holiday_date']);
 
             return response()->json([
                 'status'        => true,
                 'employee_name' => $employee->user->name ?? 'N/A',
-                'period'        => \Carbon\Carbon::createFromDate($year, $month, 1)->format('F Y'),
+                'period'        => Carbon::createFromDate($year, $month, 1)->format('F Y'),
                 'leaves'        => $leaves,
                 'holidays'      => $holidays,
             ], 200);
@@ -1204,7 +1218,7 @@ class ApiController extends Controller
         ]);
 
         // Centralized Leave Allocation
-        $allocationController = new \App\Http\Controllers\Web\HRMS\Leave\LeaveAllocationC();
+        $allocationController = new LeaveAllocationC();
         $allocationController->calculateAllocationForEmployee($employee, date('Y'));
 
         return response()->json([
@@ -2195,7 +2209,7 @@ class ApiController extends Controller
                 // Identify document type name if ID provided
                 $docTypeName = 'Onboarding Documents';
                 if ($request->filled('document_type_id')) {
-                    $docType = \App\Models\HRMS\Document\DocumentTypeM::find($request->document_type_id);
+                    $docType = DocumentTypeM::find($request->document_type_id);
                     if ($docType) $docTypeName = $docType->name;
                 }
 
@@ -2242,7 +2256,7 @@ class ApiController extends Controller
                 ], 200);
             });
 
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return response()->json([
                 'status'  => false,
                 'message' => 'Validation Failed',

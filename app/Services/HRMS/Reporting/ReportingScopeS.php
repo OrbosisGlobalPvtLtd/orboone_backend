@@ -6,6 +6,7 @@ use App\Models\HRMS\Employee\EmployeeM;
 use App\Models\HRMS\Reporting\ReportingAssignmentM;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Services\HRMS\Team\TeamManagementScopeS;
 
 class ReportingScopeS
 {
@@ -28,7 +29,7 @@ class ReportingScopeS
      */
     public function isSuperAdminOrGlobal(): bool
     {
-        return app(\App\Services\HRMS\Team\TeamManagementScopeS::class)->isSuperAdminOrGlobal();
+        return app(TeamManagementScopeS::class)->isSuperAdminOrGlobal();
     }
 
     /**
@@ -36,7 +37,7 @@ class ReportingScopeS
      */
     public function getActiveSupervisedEmployeeIds(?int $supervisorEmpId = null): array
     {
-        return app(\App\Services\HRMS\Team\TeamManagementScopeS::class)->getTeamEmployeeIds($supervisorEmpId);
+        return app(TeamManagementScopeS::class)->getTeamEmployeeIds($supervisorEmpId);
     }
 
     /**
@@ -44,7 +45,7 @@ class ReportingScopeS
      */
     public function scopeAttendanceQuery($query, ?int $supervisorEmpId = null)
     {
-        return app(\App\Services\HRMS\Team\TeamManagementScopeS::class)->scopeTeamAttendanceQuery($query, $supervisorEmpId);
+        return app(TeamManagementScopeS::class)->scopeTeamAttendanceQuery($query, $supervisorEmpId);
     }
 
     /**
@@ -52,7 +53,7 @@ class ReportingScopeS
      */
     public function scopeLeaveQuery($query, ?int $supervisorEmpId = null)
     {
-        return app(\App\Services\HRMS\Team\TeamManagementScopeS::class)->scopeTeamLeaveQuery($query, $supervisorEmpId);
+        return app(TeamManagementScopeS::class)->scopeTeamLeaveQuery($query, $supervisorEmpId);
     }
 
     /**
@@ -60,7 +61,7 @@ class ReportingScopeS
      */
     public function scopeWorkReports($query, ?int $supervisorEmpId = null)
     {
-        return app(\App\Services\HRMS\Team\TeamManagementScopeS::class)->scopeTeamWorkReportsQuery($query, $supervisorEmpId);
+        return app(TeamManagementScopeS::class)->scopeTeamWorkReportsQuery($query, $supervisorEmpId);
     }
 
     /**
@@ -68,7 +69,7 @@ class ReportingScopeS
      */
     public function scopeTasks($query, ?int $supervisorEmpId = null)
     {
-        return app(\App\Services\HRMS\Team\TeamManagementScopeS::class)->scopeTeamTasksQuery($query, $supervisorEmpId);
+        return app(TeamManagementScopeS::class)->scopeTeamTasksQuery($query, $supervisorEmpId);
     }
 
     /**

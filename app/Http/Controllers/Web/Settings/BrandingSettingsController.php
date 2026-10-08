@@ -7,13 +7,15 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use App\Services\Core\Branding\BrandingSettingsS;
+use Illuminate\View\View;
+use Illuminate\Http\RedirectResponse;
 
 class BrandingSettingsController extends Controller
 {
     /**
      * Display the branding settings page.
      *
-     * @return \Illuminate\View\View
+     * @return View
      */
     public function index()
     {
@@ -42,8 +44,8 @@ class BrandingSettingsController extends Controller
     /**
      * Update the branding settings.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\RedirectResponse
+     * @param  Request  $request
+     * @return RedirectResponse
      */
     public function update(Request $request)
     {

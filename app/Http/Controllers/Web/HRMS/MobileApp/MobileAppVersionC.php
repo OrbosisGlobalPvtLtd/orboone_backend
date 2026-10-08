@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use App\Services\HRMS\Notification\NotificationS;
 
 class MobileAppVersionC extends Controller
 {
@@ -342,7 +343,7 @@ class MobileAppVersionC extends Controller
 
         foreach ($query->get() as $user) {
             try {
-                app(\App\Services\HRMS\Notification\NotificationS::class)->createNotification(
+                app(NotificationS::class)->createNotification(
                     userId: $user->id,
                     roleId: $user->system_role_id ?? null,
                     title: 'New app update available',

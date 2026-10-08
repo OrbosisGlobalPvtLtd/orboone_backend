@@ -7,6 +7,8 @@ use App\Http\Requests\Web\AccessControl\StoreAdminUserRequest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\ValidationException;
+use App\Services\AccessControl\SidebarS;
 
 class AdminUserC extends Controller
 {
@@ -263,7 +265,7 @@ class AdminUserC extends Controller
                 }
             }
 
-            throw \Illuminate\Validation\ValidationException::withMessages([
+            throw ValidationException::withMessages([
                 'role_id' => 'Select a role.',
             ]);
         }
@@ -300,8 +302,8 @@ class AdminUserC extends Controller
                 ->delete();
         }
 
-        if (class_exists(\App\Services\AccessControl\SidebarS::class)) {
-            app(\App\Services\AccessControl\SidebarS::class)->clearCache($userId);
+        if (class_exists(SidebarS::class)) {
+            app(SidebarS::class)->clearCache($userId);
         }
     }
 

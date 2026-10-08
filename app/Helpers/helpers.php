@@ -1,6 +1,13 @@
 <?php
 
 use Illuminate\Support\Facades\Request;
+use App\Models\HRMS\Employee\EmployeeM;
+use App\Models\Core\UserM;
+use App\Models\HRMS\Employee\EmployeeProfileM;
+use App\Models\HRMS\Document\EmployeeDocumentM;
+use App\Services\Core\Branding\BrandingSettingsS;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 if (!function_exists('routeActive')) {
 
@@ -145,18 +152,18 @@ if (!function_exists('resolveEmployeeAvatar')) {
         $user = null;
 
         // Determine if entity is employee, user, or has relations
-        if ($entity instanceof \App\Models\HRMS\Employee\EmployeeM) {
+        if ($entity instanceof EmployeeM) {
             $employee = $entity;
             $user = $entity->user;
-        } elseif ($entity instanceof \App\Models\Core\UserM) {
+        } elseif ($entity instanceof UserM) {
             $user = $entity;
             $employee = $entity->employee;
         } elseif (is_object($entity)) {
             // Check for common relations on general models (like Attendance, Leave request etc)
-            if (isset($entity->employee) && $entity->employee instanceof \App\Models\HRMS\Employee\EmployeeM) {
+            if (isset($entity->employee) && $entity->employee instanceof EmployeeM) {
                 $employee = $entity->employee;
             }
-            if (isset($entity->user) && $entity->user instanceof \App\Models\Core\UserM) {
+            if (isset($entity->user) && $entity->user instanceof UserM) {
                 $user = $entity->user;
                 if (!$employee && $user->employee) {
                     $employee = $user->employee;
@@ -165,13 +172,13 @@ if (!function_exists('resolveEmployeeAvatar')) {
             // Fallback for objects that might have user/employee properties but not Eloquent models
             if (!$employee && isset($entity->employee_id)) {
                 try {
-                    $employee = \App\Models\HRMS\Employee\EmployeeM::find($entity->employee_id);
+                    $employee = EmployeeM::find($entity->employee_id);
                 } catch (\Throwable $e) {
                 }
             }
             if (!$user && isset($entity->user_id)) {
                 try {
-                    $user = \App\Models\Core\UserM::find($entity->user_id);
+                    $user = UserM::find($entity->user_id);
                 } catch (\Throwable $e) {
                 }
             }
@@ -181,7 +188,7 @@ if (!function_exists('resolveEmployeeAvatar')) {
         if ($employee) {
             // Ensure profile relation is loaded or queried
             try {
-                $profile = $employee->profile ?: \App\Models\HRMS\Employee\EmployeeProfileM::where('employee_id', $employee->id)->first();
+                $profile = $employee->profile ?: EmployeeProfileM::where('employee_id', $employee->id)->first();
                 $profileImage = $profile ? trim((string)$profile->profile_image) : '';
                 if ($profileImage !== '') {
                     // Return secure private file server route
@@ -240,36 +247,36 @@ if (!function_exists('resolveEmployeePassportPhoto')) {
         }
 
         $employee = null;
-        if ($employeeOrUser instanceof \App\Models\HRMS\Employee\EmployeeM) {
+        if ($employeeOrUser instanceof EmployeeM) {
             $employee = $employeeOrUser;
-        } elseif ($employeeOrUser instanceof \App\Models\Core\UserM) {
+        } elseif ($employeeOrUser instanceof UserM) {
             $employee = $employeeOrUser->employee;
         } elseif (is_numeric($employeeOrUser)) {
             try {
-                $employee = \App\Models\HRMS\Employee\EmployeeM::find($employeeOrUser);
+                $employee = EmployeeM::find($employeeOrUser);
                 if (!$employee) {
-                    $employee = \App\Models\HRMS\Employee\EmployeeM::where('user_id', $employeeOrUser)->first();
+                    $employee = EmployeeM::where('user_id', $employeeOrUser)->first();
                 }
             } catch (\Throwable $e) {
             }
         } elseif (is_object($employeeOrUser)) {
-            if (isset($employeeOrUser->employee) && $employeeOrUser->employee instanceof \App\Models\HRMS\Employee\EmployeeM) {
+            if (isset($employeeOrUser->employee) && $employeeOrUser->employee instanceof EmployeeM) {
                 $employee = $employeeOrUser->employee;
             } elseif (isset($employeeOrUser->employee_id) && !empty($employeeOrUser->employee_id)) {
                 try {
-                    $employee = \App\Models\HRMS\Employee\EmployeeM::find($employeeOrUser->employee_id);
+                    $employee = EmployeeM::find($employeeOrUser->employee_id);
                 } catch (\Throwable $e) {
                 }
             } elseif (isset($employeeOrUser->user_id) && !empty($employeeOrUser->user_id)) {
                 try {
-                    $employee = \App\Models\HRMS\Employee\EmployeeM::where('user_id', $employeeOrUser->user_id)->first();
+                    $employee = EmployeeM::where('user_id', $employeeOrUser->user_id)->first();
                 } catch (\Throwable $e) {
                 }
             } elseif (isset($employeeOrUser->id) && !empty($employeeOrUser->id)) {
                 try {
-                    $employee = \App\Models\HRMS\Employee\EmployeeM::find($employeeOrUser->id);
+                    $employee = EmployeeM::find($employeeOrUser->id);
                     if (!$employee) {
-                        $employee = \App\Models\HRMS\Employee\EmployeeM::where('user_id', $employeeOrUser->id)->first();
+                        $employee = EmployeeM::where('user_id', $employeeOrUser->id)->first();
                     }
                 } catch (\Throwable $e) {
                 }
@@ -286,7 +293,7 @@ if (!function_exists('resolveEmployeePassportPhoto')) {
         }
 
         try {
-            $document = \App\Models\HRMS\Document\EmployeeDocumentM::where('employee_id', $employee->id)
+            $document = EmployeeDocumentM::where('employee_id', $employee->id)
                 ->whereHas('documentType', function ($query) {
                     $query->where(function ($q) {
                         $q->where('name', 'Passport Size Photo')
@@ -343,9 +350,9 @@ if (!function_exists('resolveEmployeeInitials')) {
         }
 
         $name = '';
-        if ($entity instanceof \App\Models\HRMS\Employee\EmployeeM) {
+        if ($entity instanceof EmployeeM) {
             $name = $entity->display_name ?: ($entity->user ? $entity->user->name : '');
-        } elseif ($entity instanceof \App\Models\Core\UserM) {
+        } elseif ($entity instanceof UserM) {
             $name = $entity->name;
         } elseif (is_object($entity)) {
             if (isset($entity->user) && $entity->user) {
@@ -371,7 +378,7 @@ if (!function_exists('branding_name')) {
     function branding_name()
     {
         try {
-            $branding = \App\Services\Core\Branding\BrandingSettingsS::get();
+            $branding = BrandingSettingsS::get();
             if (!empty($branding['company_name'])) {
                 return $branding['company_name'];
             }
@@ -391,7 +398,7 @@ if (!function_exists('branding_logo')) {
     function branding_logo()
     {
         try {
-            $branding = \App\Services\Core\Branding\BrandingSettingsS::get();
+            $branding = BrandingSettingsS::get();
             $logoUrl = !empty($branding['logo_url']) ? $branding['logo_url'] : asset('images/Picsart_26-04-02_12-19-10-396.png');
         } catch (\Throwable $e) {
             $logoUrl = asset('images/Picsart_26-04-02_12-19-10-396.png');
@@ -418,7 +425,7 @@ if (!function_exists('branding_logo_path')) {
     function branding_logo_path()
     {
         try {
-            $settings = \App\Services\Core\Branding\BrandingSettingsS::cache();
+            $settings = BrandingSettingsS::cache();
             if (!empty($settings['branding.logo_path'])) {
                 $logoPath = $settings['branding.logo_path'];
                 if (!str_starts_with($logoPath, 'http://') && !str_starts_with($logoPath, 'https://')) {
@@ -445,7 +452,7 @@ if (!function_exists('company_name')) {
     function company_name()
     {
         try {
-            $company = \Illuminate\Support\Facades\DB::table('company_settings')->first();
+            $company = DB::table('company_settings')->first();
             if ($company && !empty($company->company_name)) {
                 return $company->company_name;
             }
@@ -465,7 +472,7 @@ if (!function_exists('branding_primary_color')) {
     function branding_primary_color()
     {
         try {
-            $branding = \App\Services\Core\Branding\BrandingSettingsS::get();
+            $branding = BrandingSettingsS::get();
             if (!empty($branding['primary_color'])) {
                 return $branding['primary_color'];
             }
@@ -485,7 +492,7 @@ if (!function_exists('branding_secondary_color')) {
     function branding_secondary_color()
     {
         try {
-            $branding = \App\Services\Core\Branding\BrandingSettingsS::get();
+            $branding = BrandingSettingsS::get();
             if (!empty($branding['secondary_color'])) {
                 return $branding['secondary_color'];
             }
@@ -554,11 +561,11 @@ if (!function_exists('formatWorkReportRow')) {
         // 2. Date
         $workDateRaw = is_object($log) && isset($log->work_date) ? $log->work_date : null;
         $dateCarbon = null;
-        if ($workDateRaw instanceof \Carbon\Carbon || $workDateRaw instanceof \DateTimeInterface) {
+        if ($workDateRaw instanceof Carbon || $workDateRaw instanceof \DateTimeInterface) {
             $dateCarbon = $workDateRaw;
         } elseif (!empty($workDateRaw)) {
             try {
-                $dateCarbon = \Carbon\Carbon::parse($workDateRaw);
+                $dateCarbon = Carbon::parse($workDateRaw);
             } catch (\Throwable $e) {
             }
         }
@@ -569,11 +576,11 @@ if (!function_exists('formatWorkReportRow')) {
         // Submitted time
         $submittedAtRaw = is_object($log) && isset($log->created_at) ? $log->created_at : null;
         $submittedTime = '-';
-        if ($submittedAtRaw instanceof \Carbon\Carbon || $submittedAtRaw instanceof \DateTimeInterface) {
+        if ($submittedAtRaw instanceof Carbon || $submittedAtRaw instanceof \DateTimeInterface) {
             $submittedTime = $submittedAtRaw->format('h:i A');
         } elseif (!empty($submittedAtRaw)) {
             try {
-                $submittedTime = \Carbon\Carbon::parse($submittedAtRaw)->format('h:i A');
+                $submittedTime = Carbon::parse($submittedAtRaw)->format('h:i A');
             } catch (\Throwable $e) {
             }
         }

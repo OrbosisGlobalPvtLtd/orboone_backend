@@ -64,7 +64,7 @@ class CheckProfileComplete
             ], 423);
         }
 
-        if (\Illuminate\Support\Facades\Route::has('profile.index')) {
+        if (Route::has('profile.index')) {
             return redirect()
                 ->route('profile.index')
                 ->with('warning', 'Please complete your profile first.');

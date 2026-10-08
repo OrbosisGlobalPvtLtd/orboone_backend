@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
+use App\Models\Core\UserM;
+use Illuminate\Support\Facades\File;
 
 class DashboardResolverS
 {
@@ -130,12 +132,12 @@ class DashboardResolverS
     }
 
     /**
-     * @param \App\Models\Core\UserM|mixed|null $user
+     * @param UserM|mixed|null $user
      * @return array
      */
     public function birthdayStats($user = null): array
     {
-        /** @var \App\Models\Core\UserM|null $user */
+        /** @var UserM|null $user */
         $user = $user ?: Auth::user();
         return [
             'today'    => $this->birthdayS->getTodayBirthdays(),
@@ -2014,7 +2016,7 @@ class DashboardResolverS
 
                 $expired_documents += $latestDocs->whereNotNull('expiry_date')->filter(function ($doc) {
                     try {
-                        return now()->gt(\Carbon\Carbon::parse($doc->expiry_date));
+                        return now()->gt(Carbon::parse($doc->expiry_date));
                     } catch (\Exception $e) {
                         return false;
                     }
@@ -2749,7 +2751,7 @@ class DashboardResolverS
 
         return collect($actions[$role] ?? [])->map(function ($action) {
             foreach ($action['routes'] as $route) {
-                if (\Illuminate\Support\Facades\Route::has($route)) {
+                if (Route::has($route)) {
                     return [
                         'title' => $action['title'],
                         'icon' => $action['icon'],
@@ -2890,7 +2892,7 @@ class DashboardResolverS
 
         $dbConnected = false;
         try {
-            \Illuminate\Support\Facades\DB::connection()->getPdo();
+            DB::connection()->getPdo();
             $dbConnected = true;
         } catch (\Throwable $e) {
             $dbConnected = false;
@@ -2899,15 +2901,15 @@ class DashboardResolverS
         $items = [
             [
                 'label' => 'Storage Path',
-                'value' => \Illuminate\Support\Facades\File::exists($storagePath) ? 'Available' : 'Missing',
+                'value' => File::exists($storagePath) ? 'Available' : 'Missing',
                 'icon' => 'fas fa-folder-open',
-                'status' => \Illuminate\Support\Facades\File::exists($storagePath) ? 'ok' : 'danger',
+                'status' => File::exists($storagePath) ? 'ok' : 'danger',
             ],
             [
                 'label' => 'Public Storage Link',
-                'value' => \Illuminate\Support\Facades\File::exists($publicStoragePath) ? 'Available' : 'Not linked',
+                'value' => File::exists($publicStoragePath) ? 'Available' : 'Not linked',
                 'icon' => 'fas fa-link',
-                'status' => \Illuminate\Support\Facades\File::exists($publicStoragePath) ? 'ok' : 'warning',
+                'status' => File::exists($publicStoragePath) ? 'ok' : 'warning',
             ],
             [
                 'label' => 'Database Connection',
@@ -2924,7 +2926,7 @@ class DashboardResolverS
         ];
 
         if ($this->tableExists('failed_jobs')) {
-            $failed = \Illuminate\Support\Facades\DB::table('failed_jobs')->count();
+            $failed = DB::table('failed_jobs')->count();
             $items[] = [
                 'label' => 'Failed Jobs',
                 'value' => $failed,
@@ -2942,7 +2944,7 @@ class DashboardResolverS
             return [];
         }
 
-        $query = \Illuminate\Support\Facades\DB::table('attendances as a')
+        $query = DB::table('attendances as a')
             ->join('employees_new as e', 'e.id', '=', 'a.employee_id')
             ->leftJoin('users as u', 'u.id', '=', 'e.user_id')
             ->whereDate('a.attendance_date', $date);
@@ -2960,8 +2962,8 @@ class DashboardResolverS
             'u.name as employee_name',
             'a.punch_in_time',
             'a.punch_out_time',
-            \Illuminate\Support\Facades\DB::raw($this->tableExists('departments') && $this->columnExists('employees_new', 'department_id') ? "COALESCE(d.name, 'N/A') as department_name" : "'N/A' as department_name"),
-            \Illuminate\Support\Facades\DB::raw($this->tableExists('attendance_times') && $this->columnExists('attendances', 'attendance_time_id') ? "COALESCE(s.name, 'N/A') as shift_name" : "'N/A' as shift_name")
+            DB::raw($this->tableExists('departments') && $this->columnExists('employees_new', 'department_id') ? "COALESCE(d.name, 'N/A') as department_name" : "'N/A' as department_name"),
+            DB::raw($this->tableExists('attendance_times') && $this->columnExists('attendances', 'attendance_time_id') ? "COALESCE(s.name, 'N/A') as shift_name" : "'N/A' as shift_name")
         ];
 
         if ($this->columnExists('attendances', 'work_mode')) {
@@ -3022,12 +3024,12 @@ class DashboardResolverS
         ];
 
         if ($this->tableExists('enterprise_payroll_runs')) {
-            $overview['pending_approval'] = \Illuminate\Support\Facades\DB::table('enterprise_payroll_runs')->where('status', 'pending')->count();
+            $overview['pending_approval'] = DB::table('enterprise_payroll_runs')->where('status', 'pending')->count();
         }
 
         if ($this->tableExists('enterprise_payrolls')) {
             $currentMonth = now()->timezone('Asia/Kolkata')->startOfMonth()->toDateString();
-            $latestRun = \Illuminate\Support\Facades\DB::table('enterprise_payrolls')
+            $latestRun = DB::table('enterprise_payrolls')
                 ->whereDate('for_month', '>=', $currentMonth)
                 ->selectRaw('SUM(gross_pay) as gross, SUM(net_pay) as net, SUM(total_deductions) as deductions, COUNT(id) as count')
                 ->first();
@@ -3039,8 +3041,8 @@ class DashboardResolverS
         }
 
         if ($this->tableExists('employees_new') && $this->tableExists('enterprise_salary_structures')) {
-            $activeCount = \Illuminate\Support\Facades\DB::table('employees_new')->where('status', 'active')->count();
-            $withStructure = \Illuminate\Support\Facades\DB::table('enterprise_salary_structures')->distinct('employee_id')->count('employee_id');
+            $activeCount = DB::table('employees_new')->where('status', 'active')->count();
+            $withStructure = DB::table('enterprise_salary_structures')->distinct('employee_id')->count('employee_id');
             $overview['missing_structure'] = max(0, $activeCount - $withStructure);
         }
 
@@ -3053,8 +3055,8 @@ class DashboardResolverS
             return ['labels' => [], 'values' => []];
         }
 
-        $rows = \Illuminate\Support\Facades\DB::table('employees_new')
-            ->select('employee_stage as label', \Illuminate\Support\Facades\DB::raw('COUNT(id) as total'))
+        $rows = DB::table('employees_new')
+            ->select('employee_stage as label', DB::raw('COUNT(id) as total'))
             ->whereNotNull('employee_stage')
             ->groupBy('employee_stage')
             ->get();
@@ -3071,8 +3073,8 @@ class DashboardResolverS
             return ['labels' => [], 'values' => []];
         }
 
-        $rows = \Illuminate\Support\Facades\DB::table('employees_new')
-            ->select(\Illuminate\Support\Facades\DB::raw('DATE_FORMAT(joining_date, "%b %Y") as month'), \Illuminate\Support\Facades\DB::raw('COUNT(id) as total'))
+        $rows = DB::table('employees_new')
+            ->select(DB::raw('DATE_FORMAT(joining_date, "%b %Y") as month'), DB::raw('COUNT(id) as total'))
             ->whereNotNull('joining_date')
             ->groupBy('month')
             ->orderByRaw('MIN(joining_date) DESC')

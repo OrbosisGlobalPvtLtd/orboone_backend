@@ -11,6 +11,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Carbon\Carbon;
+use Illuminate\Support\Str;
+use App\Models\HRMS\Leave\LeaveTypeM;
 
 class ReportingC extends Controller
 {
@@ -710,9 +713,9 @@ class ReportingC extends Controller
             $startDate = $emp->internship_start_date ?? null;
             $endDate = $emp->internship_extended_to ?? $emp->internship_end_date ?? null;
             if ($startDate && $endDate) {
-                $emp->internship_period = \Carbon\Carbon::parse($startDate)->format('d M Y') . ' – ' . \Carbon\Carbon::parse($endDate)->format('d M Y');
+                $emp->internship_period = Carbon::parse($startDate)->format('d M Y') . ' – ' . Carbon::parse($endDate)->format('d M Y');
             } elseif ($startDate) {
-                $emp->internship_period = 'From ' . \Carbon\Carbon::parse($startDate)->format('d M Y');
+                $emp->internship_period = 'From ' . Carbon::parse($startDate)->format('d M Y');
             } else {
                 $emp->internship_period = '—';
             }
@@ -725,9 +728,9 @@ class ReportingC extends Controller
         $designations = DB::table('designations')->where('is_active', 1)->orderBy('name')->get();
         
         $projectsQuery = DB::table('projects');
-        if (\Illuminate\Support\Facades\Schema::hasColumn('projects', 'status')) {
+        if (Schema::hasColumn('projects', 'status')) {
             $projectsQuery->where('status', 'active');
-        } elseif (\Illuminate\Support\Facades\Schema::hasColumn('projects', 'is_active')) {
+        } elseif (Schema::hasColumn('projects', 'is_active')) {
             $projectsQuery->where('is_active', 1);
         }
         $projects = $projectsQuery->orderBy('name')->get();
@@ -877,13 +880,13 @@ class ReportingC extends Controller
                         $hrStatus = 'Pending';
                     }
 
-                    $period = \Carbon\Carbon::parse($req->start_date)->format('d M Y');
+                    $period = Carbon::parse($req->start_date)->format('d M Y');
                     if ($req->start_date !== $req->end_date) {
-                        $period .= ' -> ' . \Carbon\Carbon::parse($req->end_date)->format('d M Y');
+                        $period .= ' -> ' . Carbon::parse($req->end_date)->format('d M Y');
                     }
 
                     $daysVal = (float)($req->requested_days ?? $req->deducted_days ?? 1);
-                    $daysStr = ($daysVal == floor($daysVal) ? number_format($daysVal, 0) : number_format($daysVal, 1)) . ' ' . \Illuminate\Support\Str::plural('Day', $daysVal);
+                    $daysStr = ($daysVal == floor($daysVal) ? number_format($daysVal, 0) : number_format($daysVal, 1)) . ' ' . Str::plural('Day', $daysVal);
 
                     $formattedData[] = [
                         'sr_no' => $idx + 1,
@@ -981,7 +984,7 @@ class ReportingC extends Controller
         }
         $teamEmployees = $employees;
 
-        $leaveTypes = \App\Models\HRMS\Leave\LeaveTypeM::orderBy('name')->get();
+        $leaveTypes = LeaveTypeM::orderBy('name')->get();
         $reportingManagers = EmployeeM::whereIn('id', function ($q) {
             $q->select('reporting_manager_employee_id')->from('employees_new')->whereNotNull('reporting_manager_employee_id');
         })->with(['user'])->get();
@@ -1038,7 +1041,7 @@ class ReportingC extends Controller
 
         // 5. Month & Date Scope Handling
         $months = [];
-        $currentDateObj = \Carbon\Carbon::now();
+        $currentDateObj = Carbon::now();
         for ($i = 0; $i < 12; $i++) {
             $mObj = $currentDateObj->copy()->subMonths($i);
             $months[$mObj->format('Y-m')] = $mObj->format('F Y');
@@ -1090,7 +1093,7 @@ class ReportingC extends Controller
         // Summary Stats based on filtered query before pagination
         $statsBaseQuery = clone $query;
         $totalReportsCount = (clone $statsBaseQuery)->count();
-        $todayReportsCount = (clone $statsBaseQuery)->whereDate('attendance_work_logs.work_date', \Carbon\Carbon::today()->toDateString())->count();
+        $todayReportsCount = (clone $statsBaseQuery)->whereDate('attendance_work_logs.work_date', Carbon::today()->toDateString())->count();
         $wfoReportsCount = (clone $statsBaseQuery)->where('att.work_mode', 'WFO')->count();
         $wfhReportsCount = (clone $statsBaseQuery)->where('att.work_mode', 'WFH')->count();
         $totalGrossMinutes = (clone $statsBaseQuery)->sum('att.gross_work_minutes') ?? 0;
@@ -1409,13 +1412,13 @@ class ReportingC extends Controller
                     $hrStatus = 'Pending';
                 }
 
-                $period = \Carbon\Carbon::parse($req->start_date)->format('d M Y');
+                $period = Carbon::parse($req->start_date)->format('d M Y');
                 if ($req->start_date !== $req->end_date) {
-                    $period .= ' -> ' . \Carbon\Carbon::parse($req->end_date)->format('d M Y');
+                    $period .= ' -> ' . Carbon::parse($req->end_date)->format('d M Y');
                 }
 
                 $daysVal = (float)($req->requested_days ?? $req->deducted_days ?? 1);
-                $daysStr = ($daysVal == floor($daysVal) ? number_format($daysVal, 0) : number_format($daysVal, 1)) . ' ' . \Illuminate\Support\Str::plural('Day', $daysVal);
+                $daysStr = ($daysVal == floor($daysVal) ? number_format($daysVal, 0) : number_format($daysVal, 1)) . ' ' . Str::plural('Day', $daysVal);
 
                 fputcsv($handle, [
                     $index + 1,
@@ -1496,13 +1499,13 @@ class ReportingC extends Controller
                 $hrStatus = 'Pending';
             }
 
-            $period = \Carbon\Carbon::parse($req->start_date)->format('d M Y');
+            $period = Carbon::parse($req->start_date)->format('d M Y');
             if ($req->start_date !== $req->end_date) {
-                $period .= ' &rarr; ' . \Carbon\Carbon::parse($req->end_date)->format('d M Y');
+                $period .= ' &rarr; ' . Carbon::parse($req->end_date)->format('d M Y');
             }
 
             $daysVal = (float)($req->requested_days ?? $req->deducted_days ?? 1);
-            $daysStr = ($daysVal == floor($daysVal) ? number_format($daysVal, 0) : number_format($daysVal, 1)) . ' ' . \Illuminate\Support\Str::plural('Day', $daysVal);
+            $daysStr = ($daysVal == floor($daysVal) ? number_format($daysVal, 0) : number_format($daysVal, 1)) . ' ' . Str::plural('Day', $daysVal);
 
             $output .= '<tr>
                 <td align="center">' . ($index + 1) . '</td>

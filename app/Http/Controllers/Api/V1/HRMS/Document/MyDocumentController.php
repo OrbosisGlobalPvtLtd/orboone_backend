@@ -15,6 +15,12 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use App\Models\HRMS\DocumentGeneration\GeneratedDocument;
+use Illuminate\Support\Facades\Schema;
+use App\Services\HRMS\Document\HrmsFileStorageS;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Filesystem\FilesystemAdapter;
+use App\Services\Shared\MobileApiMessageS;
 
 class MyDocumentController extends Controller
 {
@@ -51,7 +57,7 @@ class MyDocumentController extends Controller
             ->map(fn($document) => $this->completionService->formatDocument($document))
             ->values();
 
-        $generatedDocuments = \App\Models\HRMS\DocumentGeneration\GeneratedDocument::where('employee_id', $employee->id)
+        $generatedDocuments = GeneratedDocument::where('employee_id', $employee->id)
             ->whereIn('status', ['generated', 'sent', 'reviewed'])
             ->latest()
             ->get()
@@ -127,7 +133,7 @@ class MyDocumentController extends Controller
             return $this->apiResponse(false, 'Validation failed.', null, 422, $validator->errors());
         }
 
-        $hasActiveColumn = \Illuminate\Support\Facades\Schema::hasColumn('employee_documents_new', 'is_active');
+        $hasActiveColumn = Schema::hasColumn('employee_documents_new', 'is_active');
         if (!$hasActiveColumn) {
             $verifiedExists = EmployeeDocumentM::where('employee_id', $employee->id)
                 ->where('document_type_id', $type->id)
@@ -142,7 +148,7 @@ class MyDocumentController extends Controller
         }
 
         $file = $request->file('file');
-        $storageService = app(\App\Services\HRMS\Document\HrmsFileStorageS::class);
+        $storageService = app(HrmsFileStorageS::class);
         $meta = $storageService->archiveOrReplaceEmployeeDocument($employee, $type, $file);
 
         $search = [
@@ -375,7 +381,7 @@ class MyDocumentController extends Controller
 
         $documentExists = EmployeeDocumentM::find($id);
         if ($documentExists && $documentExists->employee_id !== $employee->id) {
-            throw new \Illuminate\Auth\Access\AuthorizationException('This action is unauthorized.');
+            throw new AuthorizationException('This action is unauthorized.');
         }
 
         $document = EmployeeDocumentM::where('employee_id', $employee->id)->find($id);
@@ -458,7 +464,7 @@ class MyDocumentController extends Controller
             return $this->apiResponse(false, 'Employee record not found.', null, 404);
         }
 
-        $document = \App\Models\HRMS\DocumentGeneration\GeneratedDocument::where('employee_id', $employee->id)
+        $document = GeneratedDocument::where('employee_id', $employee->id)
             ->whereIn('status', ['generated', 'sent', 'reviewed'])
             ->find($id);
 
@@ -471,7 +477,7 @@ class MyDocumentController extends Controller
             return $this->apiResponse(false, 'PDF file is not available.', null, 404);
         }
 
-        /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
+        /** @var FilesystemAdapter $disk */
         $disk = Storage::disk('private');
         return $disk->download($path, basename($path));
     }
@@ -480,7 +486,7 @@ class MyDocumentController extends Controller
     {
         return response()->json([
             'success' => $success,
-            'message' => app(\App\Services\Shared\MobileApiMessageS::class)->cleanMessage($message),
+            'message' => app(MobileApiMessageS::class)->cleanMessage($message),
             'errors' => $errors,
             'data' => $data,
         ], $status);

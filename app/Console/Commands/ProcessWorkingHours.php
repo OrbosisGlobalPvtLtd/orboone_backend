@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\HRMS\Attendance\AttendanceM as Attendance;
-use App\Services\HRMS\Attendance\AttendanceS;
+use App\Services\HRMS\Attendance\AttendanceService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 
@@ -12,7 +12,7 @@ class ProcessWorkingHours extends Command
     protected $signature = 'attendance:process-working-hours {date?}';
     protected $description = 'Recalculate working hours and status for attendances.';
 
-    public function handle(AttendanceS $attendanceService): int
+    public function handle(AttendanceService $attendanceService): int
     {
         $date = $this->argument('date') ?: Carbon::now($attendanceService->attendanceTimezone())->toDateString();
         

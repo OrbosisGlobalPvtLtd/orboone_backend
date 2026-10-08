@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\HRMS\Attendance\AttendanceM as Attendance;
 use App\Models\HRMS\Attendance\AttendanceTimeM as AttendanceTime;
-use App\Services\HRMS\Attendance\AttendanceS;
+use App\Services\HRMS\Attendance\AttendanceService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 
@@ -13,7 +13,7 @@ class ProcessLateMarks extends Command
     protected $signature = 'attendance:process-late-marks {date?}';
     protected $description = 'Process and audit late marks for a specific date.';
 
-    public function handle(AttendanceS $attendanceService): int
+    public function handle(AttendanceService $attendanceService): int
     {
         $date = $this->argument('date') ?: Carbon::now($attendanceService->attendanceTimezone())->toDateString();
         $attendances = Attendance::whereDate('attendance_date', $date)->whereNotNull('punch_in_time')->get();

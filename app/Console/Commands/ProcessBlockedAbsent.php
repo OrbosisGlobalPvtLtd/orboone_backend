@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Services\HRMS\Attendance\AttendanceS;
+use App\Services\HRMS\Attendance\AttendanceService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 
@@ -11,7 +11,7 @@ class ProcessBlockedAbsent extends Command
     protected $signature = 'attendance:process-blocked-absent {date?}';
     protected $description = 'Convert still-blocked punch_blocked attendances to absent/LWP after day end.';
 
-    public function handle(AttendanceS $attendanceService): int
+    public function handle(AttendanceService $attendanceService): int
     {
         $date = $this->argument('date') ?: Carbon::yesterday($attendanceService->attendanceTimezone())->toDateString();
         $count = $attendanceService->processBlockedAbsent($date);

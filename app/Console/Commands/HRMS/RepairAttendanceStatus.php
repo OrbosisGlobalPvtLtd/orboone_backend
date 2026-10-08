@@ -3,7 +3,7 @@
 namespace App\Console\Commands\HRMS;
 
 use App\Models\HRMS\Attendance\AttendanceM as Attendance;
-use App\Services\HRMS\Attendance\AttendanceS;
+use App\Services\HRMS\Attendance\AttendanceService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 
@@ -12,7 +12,7 @@ class RepairAttendanceStatus extends Command
     protected $signature = 'hrms:repair-attendance-status {--date=} {--attendance-id=} {--dry-run}';
     protected $description = 'Repair mismatched attendance status/type/flags using authoritative final status resolver.';
 
-    public function handle(AttendanceS $attendanceService): int
+    public function handle(AttendanceService $attendanceService): int
     {
         $timezone = $attendanceService->attendanceTimezone();
         $date = $this->option('date') ?: Carbon::now($timezone)->toDateString();

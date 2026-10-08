@@ -4,6 +4,9 @@ namespace App\Services\HRMS\Employee;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\HrWorkflowAlertMail;
 
 class EmployeeProfileS
 {
@@ -109,7 +112,7 @@ class EmployeeProfileS
 
         // 5. Check cache lock to avoid duplicate emails
         $cacheKey = 'all_docs_verified_email_sent_' . $employeeId;
-        if (\Illuminate\Support\Facades\Cache::has($cacheKey)) {
+        if (Cache::has($cacheKey)) {
             return;
         }
 
@@ -121,13 +124,13 @@ class EmployeeProfileS
             'Welcome Message' => 'Welcome to the team! We are excited to have you with us.',
         ];
 
-        \Illuminate\Support\Facades\Mail::to($user->email)->queue(new \App\Mail\HrWorkflowAlertMail(
+        Mail::to($user->email)->queue(new HrWorkflowAlertMail(
             subjectText: 'All Documents Successfully Verified',
             workflowTitle: 'All Documents Successfully Verified',
             details: $details,
             actionUrl: url('/dashboard')
         ));
 
-        \Illuminate\Support\Facades\Cache::put($cacheKey, true, now()->addYears(1));
+        Cache::put($cacheKey, true, now()->addYears(1));
     }
 }

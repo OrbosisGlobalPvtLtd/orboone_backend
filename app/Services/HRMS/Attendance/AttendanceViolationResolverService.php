@@ -6,17 +6,28 @@ use App\Models\HRMS\Attendance\AttendanceM as Attendance;
 use App\Models\HRMS\Attendance\AttendanceTypeM;
 use App\Models\HRMS\Attendance\AttendanceViolationM;
 use App\Models\HRMS\Employee\EmployeeM as Employee;
+use App\Services\HRMS\Employee\EmployeeEligibilityS;
+use App\Services\HRMS\Notification\NotificationS;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 class AttendanceViolationResolverService
 {
     public const TIMEZONE = 'Asia/Kolkata';
 
+    private static bool $isRebuildingCycles = false;
+
     public function __construct(
-        private AttendanceRuleResolverService $ruleResolver
-    ) {}
+        private AttendanceRuleResolverService $ruleResolver,
+        private ?NotificationS $notificationService = null,
+        private ?EmployeeEligibilityS $eligibilityService = null
+    ) {
+        $this->notificationService = $notificationService ?: app(NotificationS::class);
+        $this->eligibilityService = $eligibilityService ?: app(EmployeeEligibilityS::class);
+    }
 
     /**
      * Helper to resolve standard 7-character cycle month string (YYYY-MM).
@@ -36,7 +47,7 @@ class AttendanceViolationResolverService
         }
 
         $employee = Employee::find($attendance->employee_id);
-        if (!app(\App\Services\HRMS\Employee\EmployeeEligibilityS::class)->canUseAttendance($employee)) {
+        if (! $employee || ! $this->eligibilityService->canUseAttendance($employee)) {
             return null;
         }
 
@@ -114,20 +125,28 @@ class AttendanceViolationResolverService
             return false;
         }
 
-        if (! $violation->is_consumed && $violation->status !== 'converted') {
-            $violation->update([
-                'status' => 'resolved',
-                'policy_action' => 'resolved',
-                'resolved_at' => now(),
-            ]);
+        $violation->update([
+            'status' => 'resolved',
+            'policy_action' => 'resolved',
+            'is_consumed' => false,
+            'consumed_at' => null,
+            'converted_to_half_day' => false,
+            'converted_to_lwp' => false,
+            'penalty_attendance_id' => null,
+            'resolved_at' => now(),
+        ]);
 
-            if ($attendance->employee_id && $attendance->attendance_date) {
-                $this->evaluateViolationsAndApplyPenalties($attendance->employee, (string) $attendance->attendance_date);
-            }
-            return true;
+        if ($normalizedType === 'missed_punch') {
+            $attendance->update([
+                'missed_punch' => 0,
+                'is_missed_punch' => 0,
+            ]);
         }
 
-        return false;
+        if (! self::$isRebuildingCycles && $attendance->employee_id && $attendance->attendance_date) {
+            $this->rebuildEmployeeViolationCycles($attendance->employee_id, (string) $attendance->attendance_date);
+        }
+        return true;
     }
 
     /**
@@ -138,6 +157,10 @@ class AttendanceViolationResolverService
      */
     public function evaluateViolationsAndApplyPenalties(Employee $employee, string $date, ?Attendance $triggerAttendance = null): array
     {
+        if (! $this->eligibilityService->canUseAttendance($employee)) {
+            return $this->getEmployeeViolationSummary($employee, $date);
+        }
+
         $cycleMonth = $this->resolveCycleMonth($date);
         $policy = $this->ruleResolver->getPolicyForEmployee($employee, $date);
 
@@ -147,67 +170,6 @@ class AttendanceViolationResolverService
 
         $missedPunchLimit = $policy ? (int) ($policy->missed_punch_lwp_after ?? 3) : 3;
         $missedPunchAction = strtolower((string) ($policy->missed_punch_action ?? 'lwp'));
-        $monthAttendances = Attendance::where('employee_id', $employee->id)
-            ->whereRaw("DATE_FORMAT(attendance_date, '%Y-%m') = ?", [$cycleMonth])
-            ->get();
-        foreach ($monthAttendances as $mAtt) {
-            $approvedLeaveOnAttDate = $this->ruleResolver->getApprovedLeaveOnDate($employee, (string) $mAtt->attendance_date);
-            if ($approvedLeaveOnAttDate) {
-                continue;
-            }
-            if ($mAtt->is_late || (int) $mAtt->late_minutes > 0) {
-                $this->recordOrSyncViolation($mAtt, 'late_login', [
-                    'minutes' => (int) $mAtt->late_minutes,
-                    'source' => $mAtt->attendance_source ?: 'system',
-                    'policy_action' => 'late_mark',
-                    'remarks' => $mAtt->punch_in_note ?: 'Late login detected.',
-                ]);
-            }
-            if ($mAtt->is_early_out || (int) $mAtt->early_out_minutes > 0) {
-                $this->recordOrSyncViolation($mAtt, 'early_logout', [
-                    'minutes' => (int) $mAtt->early_out_minutes,
-                    'source' => $mAtt->attendance_source ?: 'system',
-                    'policy_action' => 'early_logout',
-                    'remarks' => $mAtt->punch_out_note ?: 'Early logout detected.',
-                ]);
-            }
-            $isMissedByLateCutoff = false;
-            $lateCutoffMinutes = 0;
-            $lateCutoffRemark = null;
-            if (!$mAtt->missed_punch && !$mAtt->is_missed_punch && $mAtt->attendance_status !== 'missed_punch' && $mAtt->punch_in_time && $mAtt->punch_out_time) {
-                $attDateStr = Carbon::parse($mAtt->attendance_date, self::TIMEZONE)->toDateString();
-                $mIn = Carbon::parse($attDateStr . ' ' . $this->ruleResolver->timeString($mAtt->punch_in_time), self::TIMEZONE);
-                $mOut = Carbon::parse($attDateStr . ' ' . $this->ruleResolver->timeString($mAtt->punch_out_time), self::TIMEZONE);
-                if ($mOut->lt($mIn)) {
-                    $mOut->addDay();
-                }
-                $mShift = $this->ruleResolver->resolveShiftPolicy($employee, $attDateStr, $mAtt->attendance_time_id);
-                $mTargetStr = $mAtt->target_punch_out_time ?: ($this->ruleResolver->timeString($mShift?->shift_end_time ?? '19:00:00'));
-                $mTarget = Carbon::parse($attDateStr . ' ' . $this->ruleResolver->timeString($mTargetStr), self::TIMEZONE);
-                if ($mTarget->lt($mIn)) {
-                    $mTarget->addDay();
-                }
-                $mPolicyRule = $mShift ?: $this->ruleResolver->getPolicyForEmployee($employee, $attDateStr);
-                $mMissedPunchAfterMins = (int) ($mPolicyRule?->missed_punch_after_minutes ?? 60);
-                $mMissedPunchCutoff = $mTarget->copy()->addMinutes($mMissedPunchAfterMins);
-
-                if ($mOut->gt($mMissedPunchCutoff)) {
-                    $isMissedByLateCutoff = true;
-                    $lateCutoffMinutes = $mOut->diffInMinutes($mMissedPunchCutoff);
-                    $lateCutoffRemark = 'Punch out exceeded missed punch cutoff of ' . $mMissedPunchCutoff->format('H:i:s') . '.';
-                }
-            }
-
-            if ($mAtt->missed_punch || $mAtt->is_missed_punch || $mAtt->attendance_status === 'missed_punch' || $isMissedByLateCutoff) {
-                $this->recordOrSyncViolation($mAtt, 'missed_punch', [
-                    'minutes' => $lateCutoffMinutes,
-                    'source' => $mAtt->attendance_source ?: 'system_auto',
-                    'policy_action' => $mAtt->is_lwp ? 'lwp' : 'warning',
-                    'converted_to_lwp' => (bool) $mAtt->is_lwp,
-                    'remarks' => $lateCutoffRemark ?: ($mAtt->missed_punch_reason ?: 'Missed punch detected.'),
-                ]);
-            }
-        }
 
         // -------------------------------------------------------------
         // 1. DISCIPLINE BUCKET (Late Login + Early Logout)
@@ -217,12 +179,41 @@ class AttendanceViolationResolverService
                 ->where('cycle_month', $cycleMonth)
                 ->whereIn('type', ['late_login', 'early_logout'])
                 ->where('is_consumed', false)
-                ->whereNotIn('status', ['resolved', 'converted'])
+                ->whereNotIn('status', ['resolved', 'regularized', 'converted'])
+                ->where(function ($q) {
+                    $q->whereNull('policy_action')->orWhere('policy_action', '!=', 'resolved');
+                })
                 ->orderBy('violation_date', 'asc')
                 ->orderBy('id', 'asc')
                 ->get();
 
             $disciplineCount = $activeDisciplineViolations->sum(fn ($v) => (int) ($v->violation_count ?? 1));
+
+            // Send warning notification on reaching warning quota
+            if ($disciplineCount === ($disciplineLimit - 1) && ! empty($employee->user_id)) {
+                $cacheKey = "att_discipline_warning_2:{$employee->id}:{$cycleMonth}";
+                if (Cache::add($cacheKey, 1, now()->endOfMonth())) {
+                    try {
+                        $actionLabel = ($disciplineAction === 'lwp') ? 'LWP' : 'Half Day';
+                        $warningLimit = $disciplineLimit - 1;
+                        $this->notificationService->notifyUser(
+                            (int) $employee->user_id,
+                            "Attendance Violation Warning",
+                            "You have reached {$disciplineCount}/{$warningLimit} Late or Early Logout warnings this month. 3rd violation will result in {$actionLabel}.",
+                            [
+                                'type' => 'attendance_violation_warning',
+                                'employee_id' => $employee->id,
+                                'cycle_month' => $cycleMonth,
+                                'violation_category' => 'discipline',
+                                'active_count' => $disciplineCount,
+                                'limit' => $disciplineLimit,
+                            ]
+                        );
+                    } catch (\Throwable $e) {
+                        Log::warning('Failed to dispatch discipline 2nd strike notification: ' . $e->getMessage());
+                    }
+                }
+            }
 
             if ($disciplineCount >= $disciplineLimit) {
                 // Take exact chunk of violations up to threshold to consume
@@ -278,6 +269,48 @@ class AttendanceViolationResolverService
                             'penalty_attendance_id' => $targetAttendance->id,
                         ]);
                     }
+
+                    // Reset warning cache key for next cycle in same month
+                    Cache::forget("att_discipline_warning_2:{$employee->id}:{$cycleMonth}");
+
+                    // Dispatch penalty notification to employee with clear reason
+                    if (! empty($employee->user_id)) {
+                        try {
+                            $actionLabel = ($disciplineAction === 'lwp') ? 'LWP' : 'Half Day';
+                            $attDateFormatted = Carbon::parse($targetAttendance->attendance_date)->format('d M Y');
+                            $lastType = $lastViolation?->type ?? 'violation';
+                            $typeDesc = match ($lastType) {
+                                'late_login', 'late', 'late_mark' => 'Late Login',
+                                'early_logout', 'early', 'early_out' => 'Early Logout',
+                                default => 'Late / Early Violation',
+                            };
+                            $ordinal = match ($disciplineLimit) {
+                                1 => '1st',
+                                2 => '2nd',
+                                3 => '3rd',
+                                default => "{$disciplineLimit}th",
+                            };
+                            $notifTitle = "{$actionLabel} Marked ({$ordinal} {$typeDesc})";
+
+                            $this->notificationService->notifyUser(
+                                (int) $employee->user_id,
+                                $notifTitle,
+                                "Your attendance on {$attDateFormatted} has been marked as {$actionLabel} due to completing {$disciplineLimit} Late / Early Logout violations this month.",
+                                [
+                                    'type' => ($disciplineAction === 'lwp') ? 'attendance_lwp_action' : 'attendance_half_day_action',
+                                    'action' => $disciplineAction,
+                                    'attendance_id' => $targetAttendance->id,
+                                    'attendance_date' => $targetAttendance->attendance_date,
+                                    'employee_id' => $employee->id,
+                                    'cycle_month' => $cycleMonth,
+                                    'violation_category' => 'discipline',
+                                    'limit' => $disciplineLimit,
+                                ]
+                            );
+                        } catch (\Throwable $e) {
+                            Log::warning('Failed to dispatch discipline penalty notification: ' . $e->getMessage());
+                        }
+                    }
                 }
             }
         }
@@ -290,12 +323,41 @@ class AttendanceViolationResolverService
                 ->where('cycle_month', $cycleMonth)
                 ->where('type', 'missed_punch')
                 ->where('is_consumed', false)
-                ->whereNotIn('status', ['resolved', 'converted'])
+                ->whereNotIn('status', ['resolved', 'regularized', 'converted'])
+                ->where(function ($q) {
+                    $q->whereNull('policy_action')->orWhere('policy_action', '!=', 'resolved');
+                })
                 ->orderBy('violation_date', 'asc')
                 ->orderBy('id', 'asc')
                 ->get();
 
             $missedCount = $activeMissedViolations->sum(fn ($v) => (int) ($v->violation_count ?? 1));
+
+            // Send warning notification on 2nd missed punch (1 strike remaining before penalty action)
+            if ($missedCount === ($missedPunchLimit - 1) && ! empty($employee->user_id)) {
+                $cacheKey = "att_missed_punch_warning_2:{$employee->id}:{$cycleMonth}";
+                if (Cache::add($cacheKey, 1, now()->endOfMonth())) {
+                    try {
+                        $actionLabel = ($missedPunchAction === 'half_day') ? 'Half Day' : 'LWP';
+                        $warningLimit = $missedPunchLimit - 1;
+                        $this->notificationService->notifyUser(
+                            (int) $employee->user_id,
+                            "Attendance Violation Warning",
+                            "You have reached {$missedCount}/{$warningLimit} Missed Punch warnings this month. 3rd violation will result in {$actionLabel}.",
+                            [
+                                'type' => 'attendance_missed_punch_warning',
+                                'employee_id' => $employee->id,
+                                'cycle_month' => $cycleMonth,
+                                'violation_category' => 'missed_punch',
+                                'active_count' => $missedCount,
+                                'limit' => $missedPunchLimit,
+                            ]
+                        );
+                    } catch (\Throwable $e) {
+                        Log::warning('Failed to dispatch missed punch 2nd strike notification: ' . $e->getMessage());
+                    }
+                }
+            }
 
             if ($missedCount >= $missedPunchLimit) {
                 $chunkToConsumeMissed = collect();
@@ -347,6 +409,42 @@ class AttendanceViolationResolverService
                             'converted_to_lwp' => ($missedPunchAction === 'lwp'),
                             'penalty_attendance_id' => $targetAttendanceMissed->id,
                         ]);
+                    }
+
+                    // Reset warning cache key for next cycle in same month
+                    Cache::forget("att_missed_punch_warning_2:{$employee->id}:{$cycleMonth}");
+
+                    // Dispatch penalty notification to employee with clear reason
+                    if (! empty($employee->user_id)) {
+                        try {
+                            $actionLabel = ($missedPunchAction === 'half_day') ? 'Half Day' : 'LWP';
+                            $attDateFormatted = Carbon::parse($targetAttendanceMissed->attendance_date)->format('d M Y');
+                            $ordinal = match ($missedPunchLimit) {
+                                1 => '1st',
+                                2 => '2nd',
+                                3 => '3rd',
+                                default => "{$missedPunchLimit}th",
+                            };
+                            $notifTitle = "{$actionLabel} Marked ({$ordinal} Missed Punch)";
+
+                            $this->notificationService->notifyUser(
+                                (int) $employee->user_id,
+                                $notifTitle,
+                                "Your attendance on {$attDateFormatted} has been marked as {$actionLabel} due to completing {$missedPunchLimit} Missed Punch violations this month.",
+                                [
+                                    'type' => ($missedPunchAction === 'half_day') ? 'attendance_half_day_action' : 'attendance_lwp_action',
+                                    'action' => $missedPunchAction,
+                                    'attendance_id' => $targetAttendanceMissed->id,
+                                    'attendance_date' => $targetAttendanceMissed->attendance_date,
+                                    'employee_id' => $employee->id,
+                                    'cycle_month' => $cycleMonth,
+                                    'violation_category' => 'missed_punch',
+                                    'limit' => $missedPunchLimit,
+                                ]
+                            );
+                        } catch (\Throwable $e) {
+                            Log::warning('Failed to dispatch missed punch penalty notification: ' . $e->getMessage());
+                        }
                     }
                 }
             }
@@ -400,68 +498,77 @@ class AttendanceViolationResolverService
      */
     public function rebuildEmployeeViolationCycles(int $employeeId, string $dateOrMonth): void
     {
-        $employee = Employee::find($employeeId);
-        if (! $employee) {
+        if (self::$isRebuildingCycles) {
             return;
         }
 
-        $cycleMonth = strlen($dateOrMonth) === 7 ? $dateOrMonth : $this->resolveCycleMonth($dateOrMonth);
+        self::$isRebuildingCycles = true;
+        try {
+            $employee = Employee::find($employeeId);
+            if (! $employee) {
+                return;
+            }
 
-        // Fetch all attendance records for employee in that month ordered by date
-        $attendances = Attendance::where('employee_id', $employeeId)
-            ->whereRaw("DATE_FORMAT(attendance_date, '%Y-%m') = ?", [$cycleMonth])
-            ->orderBy('attendance_date', 'asc')
-            ->get();
+            $cycleMonth = strlen($dateOrMonth) === 7 ? $dateOrMonth : $this->resolveCycleMonth($dateOrMonth);
 
-        // 1. Reset penalty states on attendances triggered by violations
-        foreach ($attendances as $att) {
-            if ($att->half_day_reason && (str_contains($att->half_day_reason, 'violations completed') || str_contains($att->half_day_reason, 'Attendance Discipline'))) {
-                $att->update([
-                    'is_half_day' => false,
-                    'half_day_reason' => null,
-                ]);
-                $presentType = AttendanceTypeM::where('code', 'present')->first();
-                if ($presentType) {
+            // Fetch all attendance records for employee in that month ordered by date
+            $attendances = Attendance::where('employee_id', $employeeId)
+                ->whereRaw("DATE_FORMAT(attendance_date, '%Y-%m') = ?", [$cycleMonth])
+                ->orderBy('attendance_date', 'asc')
+                ->get();
+
+            // 1. Reset penalty states on attendances triggered by violations
+            foreach ($attendances as $att) {
+                if ($att->half_day_reason && (str_contains($att->half_day_reason, 'violations completed') || str_contains($att->half_day_reason, 'Attendance Discipline') || str_contains($att->half_day_reason, 'violation'))) {
                     $att->update([
-                        'attendance_status' => 'present',
-                        'attendance_type_id' => $presentType->id,
+                        'is_half_day' => false,
+                        'half_day_reason' => null,
                     ]);
+                    $presentType = AttendanceTypeM::where('code', 'present')->first();
+                    if ($presentType) {
+                        $att->update([
+                            'attendance_status' => 'present',
+                            'attendance_type_id' => $presentType->id,
+                        ]);
+                    }
+                }
+                if ($att->lwp_reason && (str_contains($att->lwp_reason, 'missed punch') || str_contains($att->lwp_reason, 'Missed Punch') || str_contains($att->lwp_reason, 'violation'))) {
+                    $att->update([
+                        'is_lwp' => false,
+                        'lwp_reason' => null,
+                    ]);
+                    $presentType = AttendanceTypeM::where('code', 'present')->first();
+                    if ($presentType) {
+                        $att->update([
+                            'attendance_status' => 'present',
+                            'attendance_type_id' => $presentType->id,
+                        ]);
+                    }
                 }
             }
-            if ($att->lwp_reason && (str_contains($att->lwp_reason, 'missed punch') || str_contains($att->lwp_reason, 'Missed Punch'))) {
-                $att->update([
-                    'is_lwp' => false,
-                    'lwp_reason' => null,
+
+            // 2. Un-consume active non-resolved violations
+            AttendanceViolationM::where('employee_id', $employeeId)
+                ->where('cycle_month', $cycleMonth)
+                ->where('status', '!=', 'resolved')
+                ->update([
+                    'is_consumed' => false,
+                    'consumed_at' => null,
+                    'status' => 'pending',
+                    'resolved_at' => null,
+                    'converted_to_half_day' => false,
+                    'converted_to_lwp' => false,
+                    'penalty_attendance_id' => null,
                 ]);
-                $presentType = AttendanceTypeM::where('code', 'present')->first();
-                if ($presentType) {
-                    $att->update([
-                        'attendance_status' => 'present',
-                        'attendance_type_id' => $presentType->id,
-                    ]);
-                }
+
+            // 3. Sequentially evaluate each attendance date
+            $attendanceService = app(AttendanceService::class);
+            foreach ($attendances as $att) {
+                $att->refresh();
+                $attendanceService->syncAttendanceViolations($att);
             }
-        }
-
-        // 2. Un-consume active non-resolved violations
-        AttendanceViolationM::where('employee_id', $employeeId)
-            ->where('cycle_month', $cycleMonth)
-            ->where('status', '!=', 'resolved')
-            ->update([
-                'is_consumed' => false,
-                'consumed_at' => null,
-                'status' => 'pending',
-                'resolved_at' => null,
-                'converted_to_half_day' => false,
-                'converted_to_lwp' => false,
-                'penalty_attendance_id' => null,
-            ]);
-
-        // 3. Sequentially evaluate each attendance date
-        $attendanceService = app(AttendanceS::class);
-        foreach ($attendances as $att) {
-            $attendanceService->syncAttendanceViolations($att);
-            $this->evaluateViolationsAndApplyPenalties($employee, (string) $att->attendance_date, $att);
+        } finally {
+            self::$isRebuildingCycles = false;
         }
     }
 }

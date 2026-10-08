@@ -7,6 +7,7 @@ use App\Services\HRMS\Document\HrmsFileStorageS;
 use App\Services\HRMS\Storage\HrmsStoragePathS;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class EmployeeFileS
 {
@@ -109,7 +110,7 @@ class EmployeeFileS
         ========================= */
 
         if ($type === 'resume') {
-            $existingProfileResume = \Illuminate\Support\Facades\DB::table('employee_profiles')
+            $existingProfileResume = DB::table('employee_profiles')
                 ->where('employee_id', $employeeId)
                 ->value('resume_file');
 

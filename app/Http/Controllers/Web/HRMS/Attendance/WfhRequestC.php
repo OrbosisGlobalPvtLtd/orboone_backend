@@ -14,6 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class WfhRequestC extends Controller
 {
@@ -157,8 +158,8 @@ class WfhRequestC extends Controller
             $fromDate = $row->from_date ?: $row->request_date;
             $toDate = $row->to_date ?: $fromDate;
 
-            $fromCarbon = \Carbon\Carbon::parse($fromDate);
-            $toCarbon = \Carbon\Carbon::parse($toDate);
+            $fromCarbon = Carbon::parse($fromDate);
+            $toCarbon = Carbon::parse($toDate);
 
             $row->from_date_formatted = $fromCarbon->format('d M Y');
             $row->to_date_formatted = $toCarbon->format('d M Y');
@@ -315,7 +316,7 @@ class WfhRequestC extends Controller
             try {
                 $this->service->approve($row, (int) $this->actorId(), $partialRange, $allowOverride || $canOverride);
                 return back()->with('success', 'WFH request approved & finalized.');
-            } catch (\Illuminate\Validation\ValidationException $e) {
+            } catch (ValidationException $e) {
                 $msg = collect($e->errors())->flatten()->first() ?: $e->getMessage();
                 return back()->with('error', $msg)->withErrors($e->errors());
             } catch (\Throwable $e) {
@@ -555,7 +556,7 @@ class WfhRequestC extends Controller
         try {
             $stats = $this->service->calculateRangeStats($employee, (string) $fromDate, (string) $toDate);
             return response()->json(['status' => true, 'data' => $stats]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return response()->json(['status' => false, 'message' => collect($e->errors())->flatten()->first() ?: $e->getMessage()], 422);
         }
     }
@@ -580,7 +581,7 @@ class WfhRequestC extends Controller
         try {
             $this->service->apply($employee, $payload);
             return redirect()->back()->with('success', 'WFH request submitted successfully.');
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return redirect()->back()->withErrors($e->errors())->withInput();
         }
     }
@@ -597,7 +598,7 @@ class WfhRequestC extends Controller
         try {
             $this->service->cancel($requestRecord);
             return redirect()->back()->with('success', 'WFH request cancelled successfully.');
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return redirect()->back()->withErrors($e->errors());
         }
     }

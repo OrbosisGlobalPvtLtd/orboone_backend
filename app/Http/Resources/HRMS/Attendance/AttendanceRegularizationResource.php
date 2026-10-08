@@ -3,14 +3,15 @@
 namespace App\Http\Resources\HRMS\Attendance;
 
 use Illuminate\Http\Resources\Json\JsonResource;
+use Carbon\Carbon;
 
 class AttendanceRegularizationResource extends JsonResource
 {
     public function toArray($request): array
     {
         $attendanceDate = $this->attendance?->attendance_date
-            ? \Carbon\Carbon::parse($this->attendance->attendance_date)->toDateString()
-            : ($this->requested_punch_in ? \Carbon\Carbon::parse($this->requested_punch_in)->toDateString() : \Carbon\Carbon::parse($this->created_at)->toDateString());
+            ? Carbon::parse($this->attendance->attendance_date)->toDateString()
+            : ($this->requested_punch_in ? Carbon::parse($this->requested_punch_in)->toDateString() : Carbon::parse($this->created_at)->toDateString());
 
         return [
             'id' => $this->id,

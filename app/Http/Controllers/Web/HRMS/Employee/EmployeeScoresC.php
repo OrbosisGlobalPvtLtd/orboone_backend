@@ -10,6 +10,9 @@ use App\Models\Core\LogM as Log;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Http\Response;
+use App\Models\Core\AccessM;
+use App\Models\HRMS\Employee\EmployeeScoreM;
 
 class EmployeeScoresC extends Controller
 {
@@ -24,7 +27,7 @@ class EmployeeScoresC extends Controller
     /**
      * Display a listing of the resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function index(Request $request)
     {
@@ -32,7 +35,7 @@ class EmployeeScoresC extends Controller
         $params = $request->only(['search', 'date_from', 'date_to']);
         
         $employeeScores = $this->employeeScores->getSimplifiedScores($params);
-        $accesses = \App\Models\Core\AccessM::where('role_id', $user->role_id)->get();
+        $accesses = AccessM::where('role_id', $user->role_id)->get();
         
         return view('hrms.employee.performance_scores.index', compact('employeeScores', 'accesses'));
     }
@@ -40,7 +43,7 @@ class EmployeeScoresC extends Controller
     /**
      * Show the form for creating a new resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function create()
     {
@@ -52,7 +55,7 @@ class EmployeeScoresC extends Controller
         });
         
         $scoreCategories = $data["scoreCategories"];
-        $accesses = \App\Models\Core\AccessM::where('role_id', $user->role_id)->get();
+        $accesses = AccessM::where('role_id', $user->role_id)->get();
 
         return view('hrms.employee.performance_scores.create', compact('employees', 'scoreCategories', 'accesses'));
     }
@@ -60,8 +63,8 @@ class EmployeeScoresC extends Controller
     /**
      * Store a newly created resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
+     * @param  Request  $request
+     * @return Response
      */
     public function store(StoreEmployeeScoreRequest $request)
     {
@@ -93,15 +96,15 @@ class EmployeeScoresC extends Controller
     /**
      * Display the specified resource.
      *
-     * @param  \App\Models\HRMS\Employee\EmployeeScoreM  $employeeScore
-     * @return \Illuminate\Http\Response
+     * @param  EmployeeScoreM  $employeeScore
+     * @return Response
      */
     public function show(Request $request, $group_id)
     {
         $user = auth()->user();
         $employeeScore = EmployeeScore::where('group_id', $group_id)->firstOrFail();
         $scores = $this->employeeScores->getEmployeeScoreDetail($group_id);
-        $accesses = \App\Models\Core\AccessM::where('role_id', $user->role_id)->get();
+        $accesses = AccessM::where('role_id', $user->role_id)->get();
 
         return view('hrms.employee.performance_scores.show', compact('employeeScore', 'scores', 'accesses'));
     }
@@ -109,8 +112,8 @@ class EmployeeScoresC extends Controller
     /**
      * Show the form for editing the specified resource.
      *
-     * @param  \App\Models\HRMS\Employee\EmployeeScoreM  $employeeScore
-     * @return \Illuminate\Http\Response
+     * @param  EmployeeScoreM  $employeeScore
+     * @return Response
      */
     public function edit($group_id)
     {
@@ -124,7 +127,7 @@ class EmployeeScoresC extends Controller
         
         $scoreCategories = $data["scoreCategories"];
         $scores = $this->employeeScores->getEmployeeScoreDetail($group_id);
-        $accesses = \App\Models\Core\AccessM::where('role_id', $user->role_id)->get();
+        $accesses = AccessM::where('role_id', $user->role_id)->get();
 
         return view('hrms.employee.performance_scores.edit', compact('employees', 'scoreCategories', 'scores', 'employeeScore', 'accesses'));
     }
@@ -132,9 +135,9 @@ class EmployeeScoresC extends Controller
     /**
      * Update the specified resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\HRMS\Employee\EmployeeScoreM  $employeeScore
-     * @return \Illuminate\Http\Response
+     * @param  Request  $request
+     * @param  EmployeeScoreM  $employeeScore
+     * @return Response
      */
     public function update(StoreEmployeeScoreRequest $request, EmployeeScore $employeeScore)
     {
@@ -162,8 +165,8 @@ class EmployeeScoresC extends Controller
     /**
      * Remove the specified resource from storage.
      *
-     * @param  \App\Models\HRMS\Employee\EmployeeScoreM  $employeeScore
-     * @return \Illuminate\Http\Response
+     * @param  EmployeeScoreM  $employeeScore
+     * @return Response
      */
     public function destroy(EmployeeScore $employeeScore)
     {

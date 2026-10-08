@@ -10,6 +10,9 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
+use App\Services\HRMS\Attendance\AttendanceStateResolverService;
+use App\Services\HRMS\Leave\CompOffService;
+use App\Models\HRMS\Attendance\AttendanceM;
 
 class AttendanceRegularizationService
 {
@@ -17,7 +20,7 @@ class AttendanceRegularizationService
 
     public function __construct(
         private AttendanceRuleResolverService $ruleResolver,
-        private AttendanceS $attendanceService
+        private AttendanceService $attendanceService
     ) {}
 
     /**
@@ -205,7 +208,7 @@ class AttendanceRegularizationService
 
         if (! $isBlocked && $carbonDate->isToday()) {
             try {
-                $stateResolver = app(\App\Services\HRMS\Attendance\AttendanceStateResolverService::class);
+                $stateResolver = app(AttendanceStateResolverService::class);
                 $state = $stateResolver->resolveState($employee);
                 if (!empty($state['punch_windows']['is_blocked']) || !empty($state['ui']['is_blocked']) || !empty($state['ui']['is_punch_blocked']) || ($state['window_state'] ?? '') === 'blocked') {
                     $isBlocked = true;
@@ -314,7 +317,7 @@ class AttendanceRegularizationService
 
     /**
      * Centralized HR Approval method that applies the regularization to attendance record,
-     * clears all stale/blocked flags, recalculates working stats via AttendanceS,
+     * clears all stale/blocked flags, recalculates working stats via AttendanceService,
      * rebuilds the monthly attendance summary, and syncs payroll.
      */
     public function applyApprovedRegularization(AttendanceRegularizationM|int $regularization, ?int $approvedByUserId = null): array
@@ -483,13 +486,13 @@ class AttendanceRegularizationService
 
         $attendance->save();
 
-        // Step 6: Execute AttendanceS::calculateAttendanceStats() and rebuild violation cycles
+        // Step 6: Execute AttendanceService::calculateAttendanceStats() and rebuild violation cycles
         $attendanceService->calculateAttendanceStats($attendance);
         $attendanceService->rebuildEmployeeViolationCycles($employee->id, $attDateStr);
 
         // Step 6b: Trigger Comp-Off credit reconciliation if this date is an approved Holiday/Weekoff Work Request
         try {
-            app(\App\Services\HRMS\Leave\CompOffService::class)->reconcileForEmployeeAndDate($employee, $carbonAttDate);
+            app(CompOffService::class)->reconcileForEmployeeAndDate($employee, $carbonAttDate);
         } catch (\Throwable $e) {
             \Log::error('Comp-Off reconciliation failed during regularization approval: ' . $e->getMessage());
         }
@@ -552,7 +555,7 @@ class AttendanceRegularizationService
         $dateStr = Carbon::parse($attendanceDate, self::TIMEZONE)->toDateString();
 
         // 1. Resolve dynamic shift policy for employee and date
-        $attendance = \App\Models\HRMS\Attendance\AttendanceM::where('employee_id', $employee->id)->whereDate('attendance_date', $dateStr)->first();
+        $attendance = AttendanceM::where('employee_id', $employee->id)->whereDate('attendance_date', $dateStr)->first();
         $shift = null;
         if ($attendance && $attendance->attendance_time_id) {
             $shift = $this->ruleResolver->getPolicyFromAttendanceTimeId($attendance->attendance_time_id, $employee, $dateStr);

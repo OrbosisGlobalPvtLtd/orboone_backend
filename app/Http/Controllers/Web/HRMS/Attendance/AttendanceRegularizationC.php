@@ -10,13 +10,16 @@ use App\Models\HRMS\Attendance\AttendanceViolationM;
 use App\Models\HRMS\Employee\EmployeeM;
 use App\Services\HRMS\Attendance\AttendanceRegularizationService;
 use App\Services\HRMS\Attendance\AttendanceRuleResolverService;
-use App\Services\HRMS\Attendance\AttendanceS;
+use App\Services\HRMS\Attendance\AttendanceService;
 use App\Services\HRMS\Notification\NotificationS;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use App\Models\Core\UserM;
+use Illuminate\Validation\ValidationException;
 
 class AttendanceRegularizationC extends Controller
 {
@@ -53,7 +56,7 @@ class AttendanceRegularizationC extends Controller
             ])
             ->whereNull('attendance_regularizations.deleted_at');
 
-        /** @var \App\Models\Core\UserM|null $user */
+        /** @var UserM|null $user */
         $user = Auth::user();
         $isHrOrAdmin = $this->isHrOrAdminUser();
 
@@ -194,7 +197,7 @@ class AttendanceRegularizationC extends Controller
 
             return response()->json($result);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('Web Attendance Regularization getOptions error: ' . $e->getMessage(), [
+            Log::error('Web Attendance Regularization getOptions error: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
             ]);
 
@@ -277,7 +280,7 @@ class AttendanceRegularizationC extends Controller
                 existingPunchIn: $attendance?->punch_in_time,
                 existingPunchOut: $attendance?->punch_out_time
             );
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return back()->withErrors($e->errors())->withInput();
         }
 
@@ -357,7 +360,7 @@ class AttendanceRegularizationC extends Controller
                     existingPunchIn: $row->existing_punch_in,
                     existingPunchOut: $row->existing_punch_out
                 );
-            } catch (\Illuminate\Validation\ValidationException $e) {
+            } catch (ValidationException $e) {
                 return back()->withErrors($e->errors())->withInput();
             }
         }
@@ -418,7 +421,7 @@ class AttendanceRegularizationC extends Controller
         $note = request('rejection_note') ?: request('rejection_reason') ?: 'Rejected by Admin';
 
         if ($row) {
-            $attendanceService = app(AttendanceS::class);
+            $attendanceService = app(AttendanceService::class);
             $attendance = $row->attendance_id ? AttendanceM::find($row->attendance_id) : null;
             if (!$attendance) {
                 $attendance = AttendanceM::firstOrCreate(
@@ -569,7 +572,7 @@ class AttendanceRegularizationC extends Controller
 
     private function isHrOrAdminUser(): bool
     {
-        /** @var \App\Models\Core\UserM|null $user */
+        /** @var UserM|null $user */
         $user = Auth::user();
         if (! $user) {
             return false;
@@ -587,7 +590,7 @@ class AttendanceRegularizationC extends Controller
 
     private function pageData(mixed $rows, Request $request): array
     {
-        /** @var \App\Models\Core\UserM|null $user */
+        /** @var UserM|null $user */
         $user = Auth::user();
         $isHrOrAdmin = $this->isHrOrAdminUser();
         $canViewTeam = ! $isHrOrAdmin && ($this->canViewTeam('attendance.regularization.view_team') || (method_exists($user, 'hasRole') && $user->hasRole(['manager', 'lead', 'team_lead'])));

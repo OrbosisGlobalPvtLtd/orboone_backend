@@ -4,6 +4,8 @@ namespace App\Models\HRMS\Employee;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\HRMS\Attendance\AttendanceTimeM;
+use App\Models\HRMS\Attendance\AttendancePolicyRuleM;
 
 class EmployeeShiftTimingM extends Model
 {
@@ -26,11 +28,11 @@ class EmployeeShiftTimingM extends Model
 
     public function attendanceTime()
     {
-        return $this->belongsTo(\App\Models\HRMS\Attendance\AttendanceTimeM::class, 'attendance_time_id');
+        return $this->belongsTo(AttendanceTimeM::class, 'attendance_time_id');
     }
 
     public function attendancePolicyRule()
     {
-        return $this->belongsTo(\App\Models\HRMS\Attendance\AttendancePolicyRuleM::class, 'attendance_policy_rule_id');
+        return $this->belongsTo(AttendancePolicyRuleM::class, 'attendance_policy_rule_id');
     }
 }

@@ -8,6 +8,9 @@ use App\Models\HRMS\Department\DepartmentM as Department;
 use App\Models\Core\LogM as Log;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Response;
+use App\Models\Core\UserM;
+use App\Models\HRMS\Department\DepartmentM;
 
 class DepartmentsC extends Controller
 {
@@ -22,7 +25,7 @@ class DepartmentsC extends Controller
     /**
      * Display a listing of the resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function index(Request $request)
     {
@@ -46,7 +49,7 @@ class DepartmentsC extends Controller
     /**
      * Show the form for creating a new resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function create()
     {
@@ -56,14 +59,14 @@ class DepartmentsC extends Controller
     /**
      * Store a newly created resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
+     * @param  Request  $request
+     * @return Response
      */
     public function store(StoreDepartmentRequest $request)
     {
         Department::create($request->validated());
 
-        /** @var \App\Models\Core\UserM|null $user */
+        /** @var UserM|null $user */
         $user = Auth::user();
         $actorName = $user?->employee?->name ?? $user?->name ?? 'User';
 
@@ -77,8 +80,8 @@ class DepartmentsC extends Controller
     /**
      * Display the specified resource.
      *
-     * @param  \App\Models\HRMS\Department\DepartmentM  $department
-     * @return \Illuminate\Http\Response
+     * @param  DepartmentM  $department
+     * @return Response
      */
     public function show(Department $department)
     {
@@ -88,8 +91,8 @@ class DepartmentsC extends Controller
     /**
      * Show the form for editing the specified resource.
      *
-     * @param  \App\Models\HRMS\Department\DepartmentM  $department
-     * @return \Illuminate\Http\Response
+     * @param  DepartmentM  $department
+     * @return Response
      */
     public function edit(Department $department)
     {
@@ -99,15 +102,15 @@ class DepartmentsC extends Controller
     /**
      * Update the specified resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\HRMS\Department\DepartmentM  $department
-     * @return \Illuminate\Http\Response
+     * @param  Request  $request
+     * @param  DepartmentM  $department
+     * @return Response
      */
     public function update(StoreDepartmentRequest $request, Department $department)
     {
         Department::where('id', $department->id)->update($request->validated());
 
-        /** @var \App\Models\Core\UserM|null $user */
+        /** @var UserM|null $user */
         $user = Auth::user();
         $actorName = $user?->employee?->name ?? $user?->name ?? 'User';
 
@@ -121,14 +124,14 @@ class DepartmentsC extends Controller
     /**
      * Remove the specified resource from storage.
      *
-     * @param  \App\Models\HRMS\Department\DepartmentM  $department
-     * @return \Illuminate\Http\Response
+     * @param  DepartmentM  $department
+     * @return Response
      */
     public function destroy(Department $department)
     {
         Department::where('id', $department->id)->delete();
         
-        /** @var \App\Models\Core\UserM|null $user */
+        /** @var UserM|null $user */
         $user = Auth::user();
         $actorName = $user?->employee?->name ?? $user?->name ?? 'User';
 

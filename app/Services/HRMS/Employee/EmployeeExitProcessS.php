@@ -6,6 +6,7 @@ use App\Services\HRMS\Notification\NotificationS;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use App\Models\HRMS\Employee\EmployeeM;
 
 class EmployeeExitProcessS
 {
@@ -28,7 +29,7 @@ class EmployeeExitProcessS
         abort_if(! $employee, 404, 'Employee not found.');
 
         $exitType = strtolower((string) ($payload['exit_type'] ?? 'resignation'));
-        $employeeModel = \App\Models\HRMS\Employee\EmployeeM::find($employeeId);
+        $employeeModel = EmployeeM::find($employeeId);
         $policyFlags = $this->policyService->flags($employeeModel, $exitType);
         $resolvedNoticeDays = $this->policyService->getNoticePeriodDays($employeeModel, $exitType);
         $resolvedFnfDays = $this->policyService->getFnfProcessingDays($employeeModel, $exitType);
@@ -912,7 +913,7 @@ class EmployeeExitProcessS
         }
 
         if ($exit && !empty($exit->last_working_day)) {
-            $lastWorking = \Carbon\Carbon::parse($exit->last_working_day)->startOfDay();
+            $lastWorking = Carbon::parse($exit->last_working_day)->startOfDay();
             $today = now()->startOfDay();
             if ($lastWorking->isAfter($today)) {
                 $summary['notice_days_remaining'] = (int) $today->diffInDays($lastWorking);
@@ -947,7 +948,7 @@ class EmployeeExitProcessS
             if (isset($exitRecordsByEmpId[$eId])) {
                 $exit = $exitRecordsByEmpId[$eId];
                 if (!empty($exit->last_working_day)) {
-                    $lastWorking = \Carbon\Carbon::parse($exit->last_working_day)->startOfDay();
+                    $lastWorking = Carbon::parse($exit->last_working_day)->startOfDay();
                     $today = now()->startOfDay();
                     if ($lastWorking->isAfter($today)) {
                         $results[$eId]['notice_days_remaining'] = (int) $today->diffInDays($lastWorking);

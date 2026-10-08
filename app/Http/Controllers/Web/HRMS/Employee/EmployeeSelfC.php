@@ -12,6 +12,10 @@ use App\Services\HRMS\Employee\EmployeeFileS;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use App\Models\HRMS\Document\DocumentTypeM;
+use App\Models\HRMS\Document\EmployeeDocumentM;
+use App\Services\HRMS\Notification\NotificationS;
+use App\Services\HRMS\Document\EmployeeDocumentCompletionS;
 
 class EmployeeSelfC extends Controller
 {
@@ -55,13 +59,13 @@ class EmployeeSelfC extends Controller
             ? ['all', 'both', 'employee', 'employees', 'experienced', 'experience', 'exp']
             : ['all', 'both', 'employee', 'employees', 'fresher', 'freshers'];
 
-        $documentTypes = \App\Models\HRMS\Document\DocumentTypeM::where('scope', 'employee')
+        $documentTypes = DocumentTypeM::where('scope', 'employee')
             ->where('is_active', 1)
             ->orderBy('is_mandatory', 'desc')
             ->orderBy('name')
             ->get();
 
-        $uploadedDocuments = \App\Models\HRMS\Document\EmployeeDocumentM::where('employee_id', $employee->id)
+        $uploadedDocuments = EmployeeDocumentM::where('employee_id', $employee->id)
             ->get()
             ->keyBy('document_type_id');
         
@@ -144,7 +148,7 @@ class EmployeeSelfC extends Controller
                 ? ['all', 'both', 'employee', 'employees', 'experienced', 'experience', 'exp']
                 : ['all', 'both', 'employee', 'employees', 'fresher', 'freshers'];
 
-            $requiredDocumentTypeIds = \App\Models\HRMS\Document\DocumentTypeM::where('scope', 'employee')
+            $requiredDocumentTypeIds = DocumentTypeM::where('scope', 'employee')
                 ->where('is_active', 1)
                 ->where('is_mandatory', 1)
                 ->where(function ($q) use ($appliesTo) {
@@ -154,7 +158,7 @@ class EmployeeSelfC extends Controller
                 })
                 ->pluck('id');
 
-            $uploadedDocumentTypeIds = \App\Models\HRMS\Document\EmployeeDocumentM::where('employee_id', $employee->id)
+            $uploadedDocumentTypeIds = EmployeeDocumentM::where('employee_id', $employee->id)
                 ->whereIn('document_type_id', $requiredDocumentTypeIds)
                 ->pluck('document_type_id');
 
@@ -177,7 +181,7 @@ class EmployeeSelfC extends Controller
             $empName = $employee->user->name ?? $empCode;
             $subDate = now()->toFormattedDateString();
 
-            app(\App\Services\HRMS\Notification\NotificationS::class)->notifyHrAndSuperAdmin(
+            app(NotificationS::class)->notifyHrAndSuperAdmin(
                 'Employee Profile Submitted for Verification',
                 "Profile submitted for verification.\nEmployee: {$empName} ({$empCode})\nDepartment: {$deptName}\nDate: {$subDate}",
                 'profile_submitted',
@@ -217,7 +221,7 @@ class EmployeeSelfC extends Controller
             return redirect()->route('hrms.employee.complete_profile');
         }
         
-        $documentCompletionService = app(\App\Services\HRMS\Document\EmployeeDocumentCompletionS::class);
+        $documentCompletionService = app(EmployeeDocumentCompletionS::class);
         $payload = $documentCompletionService->requiredPayload($employee);
         
         return view('hrms.employee-self.my-profile', compact('employee', 'profile', 'status', 'payload'));

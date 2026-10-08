@@ -3,13 +3,14 @@
 namespace App\Http\Resources\HRMS\Attendance;
 
 use Illuminate\Http\Resources\Json\JsonResource;
+use Carbon\Carbon;
 
 class HolidayWorkRequestResource extends JsonResource
 {
     public function toArray($request): array
     {
         $status = (string) $this->status;
-        $workedDate = $this->worked_date ? \Carbon\Carbon::parse($this->worked_date) : null;
+        $workedDate = $this->worked_date ? Carbon::parse($this->worked_date) : null;
         if ($status === 'pending' && $workedDate && $workedDate->isPast() && ! $workedDate->isToday()) {
             $status = 'expired';
         }

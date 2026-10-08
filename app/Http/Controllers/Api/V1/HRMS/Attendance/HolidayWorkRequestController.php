@@ -11,6 +11,8 @@ use App\Services\HRMS\Leave\WeekoffHolidayService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
+use App\Services\HRMS\Notification\NotificationS;
+use App\Services\HRMS\Leave\CompOffService;
 
 class HolidayWorkRequestController extends ApiController
 {
@@ -144,7 +146,7 @@ class HolidayWorkRequestController extends ApiController
             }
         });
 
-        $notificationService = app(\App\Services\HRMS\Notification\NotificationS::class);
+        $notificationService = app(NotificationS::class);
         foreach ($createdRequests as $req) {
             try {
                 $employeeName = $employee->display_name;
@@ -219,7 +221,7 @@ class HolidayWorkRequestController extends ApiController
         }
 
         // Reconcile Comp-Off credit
-        app(\App\Services\HRMS\Leave\CompOffService::class)->reconcileRequest($request, auth()->id());
+        app(CompOffService::class)->reconcileRequest($request, auth()->id());
         $request = $request->fresh();
 
         $userId = $request->employee ? $request->employee->user_id : null;
@@ -230,7 +232,7 @@ class HolidayWorkRequestController extends ApiController
                 $message = "Your work request for {$formattedDate} has been approved.";
                 $actionUrl = route('hrms.attendance.holiday_work.index', [], false);
                 
-                app(\App\Services\HRMS\Notification\NotificationS::class)->notifyEmployee(
+                app(NotificationS::class)->notifyEmployee(
                     $title,
                     $message,
                     'holiday_work_request_approved',
@@ -279,7 +281,7 @@ class HolidayWorkRequestController extends ApiController
             'rejection_reason' => $data['rejection_reason'],
         ]);
 
-        app(\App\Services\HRMS\Leave\CompOffService::class)->reverseRequest($row);
+        app(CompOffService::class)->reverseRequest($row);
 
         $row = $row->fresh(['employee']);
         $userId = $row->employee ? $row->employee->user_id : null;
@@ -291,7 +293,7 @@ class HolidayWorkRequestController extends ApiController
                 $actionUrl = route('hrms.attendance.holiday_work.index', [], false);
                 $reviewerName = auth()->user()->name ?? 'HR Admin';
                 
-                app(\App\Services\HRMS\Notification\NotificationS::class)->notifyEmployee(
+                app(NotificationS::class)->notifyEmployee(
                     $title,
                     $message,
                     'holiday_work_request_rejected',

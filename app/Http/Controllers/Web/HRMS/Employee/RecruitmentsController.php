@@ -9,6 +9,8 @@ use App\Models\Core\LogM as Log;
 use App\Models\HRMS\Employee\PositionM as Position;
 use App\Models\HRMS\Employee\RecruitmentM as Recruitment;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use App\Models\HRMS\Employee\RecruitmentM;
 
 class RecruitmentsController extends Controller
 {
@@ -23,7 +25,7 @@ class RecruitmentsController extends Controller
     /**
      * Display a listing of the resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function index()
     {
@@ -34,7 +36,7 @@ class RecruitmentsController extends Controller
     /**
      * Show the form for creating a new resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function create()
     {
@@ -45,8 +47,8 @@ class RecruitmentsController extends Controller
     /**
      * Store a newly created resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
+     * @param  Request  $request
+     * @return Response
      */
     public function store(StoreRecruitmentRequest $request)
     {
@@ -72,8 +74,8 @@ class RecruitmentsController extends Controller
     /**
      * Display the specified resource.
      *
-     * @param  \App\Models\HRMS\Employee\RecruitmentM  $recruitment
-     * @return \Illuminate\Http\Response
+     * @param  RecruitmentM  $recruitment
+     * @return Response
      */
     public function show(Recruitment $recruitment)
     {
@@ -84,8 +86,8 @@ class RecruitmentsController extends Controller
     /**
      * Show the form for editing the specified resource.
      *
-     * @param  \App\Models\HRMS\Employee\RecruitmentM  $recruitment
-     * @return \Illuminate\Http\Response
+     * @param  RecruitmentM  $recruitment
+     * @return Response
      */
     public function edit(Recruitment $recruitment)
     {
@@ -96,9 +98,9 @@ class RecruitmentsController extends Controller
     /**
      * Update the specified resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\HRMS\Employee\RecruitmentM  $recruitment
-     * @return \Illuminate\Http\Response
+     * @param  Request  $request
+     * @param  RecruitmentM  $recruitment
+     * @return Response
      */
     public function update(StoreRecruitmentRequest $request, Recruitment $recruitment)
     {
@@ -125,8 +127,8 @@ class RecruitmentsController extends Controller
     /**
      * Remove the specified resource from storage.
      *
-     * @param  \App\Models\HRMS\Employee\RecruitmentM  $recruitment
-     * @return \Illuminate\Http\Response
+     * @param  RecruitmentM  $recruitment
+     * @return Response
      */
     public function destroy(Recruitment $recruitment)
     {

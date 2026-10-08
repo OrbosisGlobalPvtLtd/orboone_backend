@@ -8,6 +8,7 @@ use App\Models\HRMS\Employee\EmployeeM;
 use App\Services\HRMS\Attendance\WfhRequestService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class WfhController extends Controller
 {
@@ -60,7 +61,7 @@ class WfhController extends Controller
         try {
             $stats = $this->service->calculateRangeStats($employee, (string) $fromDate, (string) $toDate);
             return $this->ok('Working days calculated successfully.', $stats);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return response()->json([
                 'status' => false,
                 'success' => false,
@@ -116,7 +117,7 @@ class WfhController extends Controller
         try {
             $row = $this->service->apply($employee, $payload);
             return $this->ok('WFH request submitted successfully.', $row, 201);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return response()->json([
                 'status' => false,
                 'success' => false,
@@ -153,7 +154,7 @@ class WfhController extends Controller
         try {
             $updated = $this->service->update($row, $payload);
             return $this->ok('WFH request updated successfully.', $updated);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return response()->json([
                 'status' => false,
                 'success' => false,
@@ -226,7 +227,7 @@ class WfhController extends Controller
 
         try {
             return $this->ok('WFH request approved successfully.', $this->service->approve($row, (int) auth()->id(), $partialRange));
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return response()->json([
                 'status' => false,
                 'success' => false,

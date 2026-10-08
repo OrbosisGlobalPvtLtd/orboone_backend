@@ -29,6 +29,7 @@ use App\Models\HRMS\Payroll\StatutorySettingM as StatutorySetting;
 use App\Models\HRMS\Document\EmployeeDocumentM;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use App\Models\HRMS\Employee\EmployeeShiftTimingM;
 
 class EmployeeM extends Model
 {
@@ -101,12 +102,12 @@ class EmployeeM extends Model
 
     public function shiftTimings()
     {
-        return $this->hasMany(\App\Models\HRMS\Employee\EmployeeShiftTimingM::class, 'employee_id');
+        return $this->hasMany(EmployeeShiftTimingM::class, 'employee_id');
     }
 
     public function currentShiftTiming()
     {
-        return $this->hasOne(\App\Models\HRMS\Employee\EmployeeShiftTimingM::class, 'employee_id')->where('is_active', 1)->latestOfMany();
+        return $this->hasOne(EmployeeShiftTimingM::class, 'employee_id')->where('is_active', 1)->latestOfMany();
     }
 
 
@@ -237,7 +238,7 @@ class EmployeeM extends Model
     public function documents()
     {
         $relation = $this->hasMany(EmployeeDocumentM::class, 'employee_id');
-        if (\Illuminate\Support\Facades\Schema::hasColumn('employee_documents_new', 'is_active')) {
+        if (Schema::hasColumn('employee_documents_new', 'is_active')) {
             $relation->where('is_active', 1);
         }
         return $relation;
@@ -341,7 +342,7 @@ class EmployeeM extends Model
 
     public function scopeActive($query)
     {
-        $exitedEmployeeIds = \Illuminate\Support\Facades\DB::table('employee_exit_processes')
+        $exitedEmployeeIds = DB::table('employee_exit_processes')
             ->whereNotIn('status', ['cancelled', 'rejected', 'rolled_back'])
             ->pluck('employee_id')
             ->filter()

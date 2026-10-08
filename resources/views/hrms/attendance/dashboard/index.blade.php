@@ -1536,6 +1536,7 @@ $kpis = [
             @endif
         </div>      </div>
 
+        @php $renderedModalIds = []; @endphp
         @foreach($attendanceRows as $attendance)
         @php $renderedModalIds[] = $attendance->id; @endphp
         @if($canManageAttendance ?? false)

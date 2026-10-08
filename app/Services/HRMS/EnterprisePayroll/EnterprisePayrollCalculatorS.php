@@ -15,6 +15,8 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use App\Models\HRMS\Attendance\AttendanceM;
+use App\Services\HRMS\Employee\EmployeeEligibilityS;
+use Illuminate\Support\Facades\Log;
 
 class EnterprisePayrollCalculatorS
 {
@@ -35,10 +37,10 @@ class EnterprisePayrollCalculatorS
         $rows = [];
         $errors = [];
 
-        $eligibilityService = app(\App\Services\HRMS\Employee\EmployeeEligibilityS::class);
+        $eligibilityService = app(EmployeeEligibilityS::class);
         foreach ($employees as $employee) {
             if (!$eligibilityService->canUsePayroll($employee, $month, $year)) {
-                \Illuminate\Support\Facades\Log::info("Payroll generation skipped for employee #{$employee->id} ({$employee->display_name}): Profile pending, exit completed, terminated, unpaid intern, or not onboarded in {$month}/{$year}.");
+                Log::info("Payroll generation skipped for employee #{$employee->id} ({$employee->display_name}): Profile pending, exit completed, terminated, unpaid intern, or not onboarded in {$month}/{$year}.");
                 continue;
             }
             try {
@@ -117,10 +119,10 @@ class EnterprisePayrollCalculatorS
             $employees = $employeesQuery->get();
 
             $runErrors = [];
-            $eligibilityService = app(\App\Services\HRMS\Employee\EmployeeEligibilityS::class);
+            $eligibilityService = app(EmployeeEligibilityS::class);
             foreach ($employees as $employee) {
                 if (!$eligibilityService->canUsePayroll($employee, $month, $year)) {
-                    \Illuminate\Support\Facades\Log::info("Payroll generation skipped for employee #{$employee->id} ({$employee->display_name}): Profile pending, exit completed, terminated, unpaid intern, or not onboarded in {$month}/{$year}.");
+                    Log::info("Payroll generation skipped for employee #{$employee->id} ({$employee->display_name}): Profile pending, exit completed, terminated, unpaid intern, or not onboarded in {$month}/{$year}.");
                     continue;
                 }
                 try {

@@ -7,6 +7,8 @@ use App\Http\Controllers\Web\HRMS\Concerns\HrmsCrudPage;
 use App\Models\HRMS\EnterprisePayroll\EnterpriseFnfSettlementM;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use App\Models\HRMS\Employee\EmployeeM;
+use App\Services\HRMS\Notification\NotificationS;
 
 class FnfSettlementC extends Controller
 {
@@ -79,9 +81,9 @@ class FnfSettlementC extends Controller
             'approved_at' => Carbon::now('Asia/Kolkata'),
         ]);
 
-        $employee = \App\Models\HRMS\Employee\EmployeeM::with('user')->find($settlement->employee_id);
+        $employee = EmployeeM::with('user')->find($settlement->employee_id);
         if ($employee && $employee->user_id) {
-            app(\App\Services\HRMS\Notification\NotificationS::class)->notifyEmployee(
+            app(NotificationS::class)->notifyEmployee(
                 'Full & Final Settlement Approved',
                 'Your Full & Final Settlement has been approved and completed by HR.',
                 'fnf_completed',

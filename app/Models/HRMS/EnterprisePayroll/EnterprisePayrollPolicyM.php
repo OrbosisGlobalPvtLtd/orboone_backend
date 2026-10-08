@@ -3,6 +3,7 @@
 namespace App\Models\HRMS\EnterprisePayroll;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class EnterprisePayrollPolicyM extends Model
 {
@@ -41,7 +42,7 @@ class EnterprisePayrollPolicyM extends Model
                 $tdsSource = $model->attributes['tds_source'];
                 unset($model->attributes['tds_source']);
 
-                \Illuminate\Support\Facades\DB::table('settings')->updateOrInsert(
+                DB::table('settings')->updateOrInsert(
                     ['key' => 'enterprise_payroll_tds_source'],
                     ['value' => $tdsSource, 'updated_at' => now()]
                 );
@@ -51,7 +52,7 @@ class EnterprisePayrollPolicyM extends Model
 
     public function getTdsSourceAttribute()
     {
-        return \Illuminate\Support\Facades\DB::table('settings')
+        return DB::table('settings')
             ->where('key', 'enterprise_payroll_tds_source')
             ->value('value') ?: 'policy';
     }

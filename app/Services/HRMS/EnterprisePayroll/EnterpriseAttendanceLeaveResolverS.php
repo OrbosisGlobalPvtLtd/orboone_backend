@@ -9,6 +9,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
+use App\Services\HRMS\Attendance\AttendancePayableDayResolver;
 
 class EnterpriseAttendanceLeaveResolverS
 {
@@ -99,7 +100,7 @@ class EnterpriseAttendanceLeaveResolverS
             'missed_punch_count' => 0,
         ];
 
-        $payableResolver = app(\App\Services\HRMS\Attendance\AttendancePayableDayResolver::class);
+        $payableResolver = app(AttendancePayableDayResolver::class);
         foreach ($attendances as $attendance) {
             $code = strtolower((string) optional($attendance->attendanceType)->code);
             $status = strtolower((string) $attendance->attendance_status);

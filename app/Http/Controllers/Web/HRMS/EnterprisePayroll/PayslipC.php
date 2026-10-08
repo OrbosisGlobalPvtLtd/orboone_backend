@@ -10,6 +10,11 @@ use App\Models\HRMS\EnterprisePayroll\EnterprisePayslipM;
 use App\Services\HRMS\EnterprisePayroll\EnterprisePayslipService;
 use App\Services\HRMS\Storage\HrmsFileResolverS;
 use Illuminate\Http\Request;
+use App\Models\HRMS\EnterprisePayroll\EnterprisePayrollAuditM;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\HRMS\EnterprisePayroll\PayslipMail;
+use Illuminate\Support\Facades\Log;
 
 class PayslipC extends Controller
 {
@@ -110,13 +115,13 @@ class PayslipC extends Controller
 
         $this->payslipService->generate($payroll, $this->actorId());
 
-        \App\Models\HRMS\EnterprisePayroll\EnterprisePayrollAuditM::create([
+        EnterprisePayrollAuditM::create([
             'payroll_run_id' => $payroll->payroll_run_id,
             'payroll_id' => $payroll->id,
             'employee_id' => $payroll->employee_id,
             'action' => 'payslip_regenerated',
             'old_values' => ['pdf_path' => $payslip->pdf_path],
-            'new_values' => ['pdf_path' => $payslip->pdf_path, 'regenerated_at' => \Carbon\Carbon::now('Asia/Kolkata')],
+            'new_values' => ['pdf_path' => $payslip->pdf_path, 'regenerated_at' => Carbon::now('Asia/Kolkata')],
             'performed_by_user_id' => $this->actorId(),
         ]);
 
@@ -131,7 +136,7 @@ class PayslipC extends Controller
 
         $payroll->loadMissing('employee.user', 'employee.department', 'employee.designation', 'items');
 
-        $monthName = \Carbon\Carbon::create($payroll->year, $payroll->month, 1)->format('F');
+        $monthName = Carbon::create($payroll->year, $payroll->month, 1)->format('F');
         $payslipNo = sprintf('ORB-EP-%04d-%02d-%05d', $payroll->year, $payroll->month, $payroll->employee_id);
 
         return view('hrms.enterprise-payroll.payslips.pdf', [
@@ -154,13 +159,13 @@ class PayslipC extends Controller
 
         $payslip = $this->payslipService->generate($payroll, $this->actorId());
 
-        \App\Models\HRMS\EnterprisePayroll\EnterprisePayrollAuditM::create([
+        EnterprisePayrollAuditM::create([
             'payroll_run_id' => $payroll->payroll_run_id,
             'payroll_id' => $payroll->id,
             'employee_id' => $payroll->employee_id,
             'action' => 'payslip_generated',
             'old_values' => [],
-            'new_values' => ['pdf_path' => $payslip->pdf_path, 'generated_at' => \Carbon\Carbon::now('Asia/Kolkata')],
+            'new_values' => ['pdf_path' => $payslip->pdf_path, 'generated_at' => Carbon::now('Asia/Kolkata')],
             'performed_by_user_id' => $this->actorId(),
         ]);
 
@@ -209,27 +214,27 @@ class PayslipC extends Controller
         }
 
         try {
-            \Illuminate\Support\Facades\Mail::to($email)
-                ->send(new \App\Mail\HRMS\EnterprisePayroll\PayslipMail(
+            Mail::to($email)
+                ->send(new PayslipMail(
                     $employee,
                     $payslip->payroll->run,
                     $payslip,
                     $resolved['absolute']
                 ));
             
-            \App\Models\HRMS\EnterprisePayroll\EnterprisePayrollAuditM::create([
+            EnterprisePayrollAuditM::create([
                 'payroll_run_id' => $payslip->payroll->payroll_run_id,
                 'payroll_id' => $payslip->payroll_id,
                 'employee_id' => $payslip->employee_id,
                 'action' => 'payslip_emailed',
                 'old_values' => ['email' => $email],
-                'new_values' => ['email' => $email, 'sent_at' => \Carbon\Carbon::now('Asia/Kolkata')],
+                'new_values' => ['email' => $email, 'sent_at' => Carbon::now('Asia/Kolkata')],
                 'performed_by_user_id' => $this->actorId(),
             ]);
 
             return back()->with('success', 'Payslip emailed to employee successfully.');
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('Failed to email payslip', [
+            Log::error('Failed to email payslip', [
                 'payslip_id' => $payslip->id,
                 'employee_id' => $payslip->employee_id,
                 'error' => $e->getMessage()

@@ -5,7 +5,7 @@ namespace App\Console\Commands;
 use App\Models\HRMS\Attendance\AttendanceM as Attendance;
 use App\Models\HRMS\Attendance\AttendanceTypeM as AttendanceType;
 use App\Models\HRMS\Employee\EmployeeM as Employee;
-use App\Services\HRMS\Attendance\AttendanceS;
+use App\Services\HRMS\Attendance\AttendanceService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 
@@ -14,7 +14,7 @@ class MarkWeekOffs extends Command
     protected $signature = 'attendance:mark-weekoffs {date?}';
     protected $description = 'Mark week offs (Sundays, 2nd & 4th Saturdays) for employees.';
 
-    public function handle(AttendanceS $attendanceService): int
+    public function handle(AttendanceService $attendanceService): int
     {
         $dateStr = $this->argument('date') ?: Carbon::now($attendanceService->attendanceTimezone())->toDateString();
         $date = Carbon::parse($dateStr);

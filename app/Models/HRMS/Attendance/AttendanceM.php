@@ -7,6 +7,9 @@ use App\Models\HRMS\Employee\EmployeeM as Employee;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
+use App\Models\HRMS\Leave\LeaveRequestM;
+use App\Models\HRMS\Leave\CompOffM;
+use App\Models\HRMS\Payroll\PayrollAttendanceImpactM;
 
 class AttendanceM extends Model
 {
@@ -127,12 +130,12 @@ class AttendanceM extends Model
 
     public function leaveRequest()
     {
-        return $this->belongsTo(\App\Models\HRMS\Leave\LeaveRequestM::class, 'leave_request_id');
+        return $this->belongsTo(LeaveRequestM::class, 'leave_request_id');
     }
 
     public function compOff()
     {
-        return $this->belongsTo(\App\Models\HRMS\Leave\CompOffM::class, 'comp_off_id');
+        return $this->belongsTo(CompOffM::class, 'comp_off_id');
     }
 
     public function workLogs()
@@ -167,7 +170,7 @@ class AttendanceM extends Model
 
     public function payrollImpacts()
     {
-        return $this->hasMany(\App\Models\HRMS\Payroll\PayrollAttendanceImpactM::class, 'attendance_id');
+        return $this->hasMany(PayrollAttendanceImpactM::class, 'attendance_id');
     }
 
     public function getDurationAttribute()

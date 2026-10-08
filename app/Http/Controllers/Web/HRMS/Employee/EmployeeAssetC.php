@@ -6,13 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\HRMS\Employee\AssetAllocationM as AssetAllocation;
 use App\Models\HRMS\Employee\EmployeeM as Employee;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\View\View;
 
 class EmployeeAssetC extends Controller
 {
     /**
      * Display a listing of the assets assigned to the logged-in employee.
      *
-     * @return \Illuminate\View\View
+     * @return View
      */
     public function index()
     {

@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Models\HRMS\Attendance\AttendanceM;
 
 class HolidayWorkRequestC extends Controller
 {
@@ -281,7 +282,7 @@ class HolidayWorkRequestC extends Controller
 
             // Sync attendance status if it exists
             if ($request->attendance_id) {
-                $attendance = \App\Models\HRMS\Attendance\AttendanceM::find($request->attendance_id);
+                $attendance = AttendanceM::find($request->attendance_id);
                 if ($attendance) {
                     $attendance->is_blocked = false;
                     $attendance->is_punch_blocked = false;

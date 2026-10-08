@@ -7,6 +7,8 @@ use App\Http\Requests\Web\HRMS\Employee\StorePositionRequest;
 use App\Models\Core\LogM as Log;
 use App\Models\HRMS\Employee\PositionM as Position;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use App\Models\HRMS\Employee\PositionM;
 
 class PositionsC extends Controller
 {
@@ -21,7 +23,7 @@ class PositionsC extends Controller
     /**
      * Display a listing of the resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function index(Request $request)
     {
@@ -45,7 +47,7 @@ class PositionsC extends Controller
     /**
      * Show the form for creating a new resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
 
     
@@ -57,8 +59,8 @@ class PositionsC extends Controller
     /**
      * Store a newly created resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
+     * @param  Request  $request
+     * @return Response
      */
     public function store(StorePositionRequest $request)
     {
@@ -74,8 +76,8 @@ class PositionsC extends Controller
     /**
      * Display the specified resource.
      *
-     * @param  \App\Models\HRMS\Employee\PositionM  $position
-     * @return \Illuminate\Http\Response
+     * @param  PositionM  $position
+     * @return Response
      */
     public function show(Position $position)
     {
@@ -85,8 +87,8 @@ class PositionsC extends Controller
     /**
      * Show the form for editing the specified resource.
      *
-     * @param  \App\Models\HRMS\Employee\PositionM  $position
-     * @return \Illuminate\Http\Response
+     * @param  PositionM  $position
+     * @return Response
      */
     public function edit(Position $position)
     {
@@ -96,9 +98,9 @@ class PositionsC extends Controller
     /**
      * Update the specified resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\HRMS\Employee\PositionM  $position
-     * @return \Illuminate\Http\Response
+     * @param  Request  $request
+     * @param  PositionM  $position
+     * @return Response
      */
     public function update(StorePositionRequest $request, Position $position)
     {
@@ -114,8 +116,8 @@ class PositionsC extends Controller
     /**
      * Remove the specified resource from storage.
      *
-     * @param  \App\Models\HRMS\Employee\PositionM  $position
-     * @return \Illuminate\Http\Response
+     * @param  PositionM  $position
+     * @return Response
      */
     public function destroy(Position $position)
     {

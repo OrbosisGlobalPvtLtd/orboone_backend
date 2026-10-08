@@ -8,6 +8,11 @@ use App\Models\Core\UserM as User;
 use App\Models\HRMS\Attendance\AttendanceWorkLogM as WorkLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
+use App\Models\HRMS\Employee\EmployeeM;
+use Illuminate\View\View;
 
 class WorkReportC extends Controller
 {
@@ -85,7 +90,7 @@ class WorkReportC extends Controller
 
         // Build Month Dropdown Options (Last 12 Months)
         $monthOptions = [];
-        $cursor = \Carbon\Carbon::now()->startOfMonth();
+        $cursor = Carbon::now()->startOfMonth();
         for ($i = 0; $i < 12; $i++) {
             $val = $cursor->format('Y-m');
             $monthOptions[$val] = $cursor->format('F Y');
@@ -101,27 +106,27 @@ class WorkReportC extends Controller
         if ($hasSingleDate) {
             $query->whereDate('work_date', $request->date);
             try {
-                $selectedMonth = \Carbon\Carbon::parse($request->date)->format('Y-m');
+                $selectedMonth = Carbon::parse($request->date)->format('Y-m');
             } catch (\Throwable $e) {
-                $selectedMonth = \Carbon\Carbon::now()->format('Y-m');
+                $selectedMonth = Carbon::now()->format('Y-m');
             }
             if (! isset($monthOptions[$selectedMonth])) {
                 try {
-                    $monthOptions[$selectedMonth] = \Carbon\Carbon::createFromFormat('Y-m', $selectedMonth)->format('F Y');
+                    $monthOptions[$selectedMonth] = Carbon::createFromFormat('Y-m', $selectedMonth)->format('F Y');
                 } catch (\Throwable $e) {}
             }
         } elseif (! $isCustomDate && $selectedMonth && $selectedMonth !== 'all') {
             try {
-                $mDate = \Carbon\Carbon::createFromFormat('Y-m', $selectedMonth);
+                $mDate = Carbon::createFromFormat('Y-m', $selectedMonth);
                 $query->whereBetween('work_date', [
                     $mDate->copy()->startOfMonth()->toDateString(),
                     $mDate->copy()->endOfMonth()->toDateString()
                 ]);
             } catch (\Throwable $e) {
-                $selectedMonth = \Carbon\Carbon::now()->format('Y-m');
+                $selectedMonth = Carbon::now()->format('Y-m');
                 $query->whereBetween('work_date', [
-                    \Carbon\Carbon::now()->startOfMonth()->toDateString(),
-                    \Carbon\Carbon::now()->endOfMonth()->toDateString()
+                    Carbon::now()->startOfMonth()->toDateString(),
+                    Carbon::now()->endOfMonth()->toDateString()
                 ]);
             }
         } elseif ($isCustomDate) {
@@ -132,10 +137,10 @@ class WorkReportC extends Controller
                 $query->whereDate('work_date', '<=', $request->to_date);
             }
         } else {
-            $selectedMonth = \Carbon\Carbon::now()->format('Y-m');
+            $selectedMonth = Carbon::now()->format('Y-m');
             $query->whereBetween('work_date', [
-                \Carbon\Carbon::now()->startOfMonth()->toDateString(),
-                \Carbon\Carbon::now()->endOfMonth()->toDateString()
+                Carbon::now()->startOfMonth()->toDateString(),
+                Carbon::now()->endOfMonth()->toDateString()
             ]);
         }
 
@@ -250,9 +255,9 @@ class WorkReportC extends Controller
         $empIds = $workLogs->pluck('employee_id')->filter()->unique()->values()->toArray();
         global $preloadedPassportPhotos;
         $preloadedPassportPhotos = [];
-        if (!empty($empIds) && \Illuminate\Support\Facades\Schema::hasTable('employee_documents_new') && \Illuminate\Support\Facades\Schema::hasTable('document_types')) {
+        if (!empty($empIds) && Schema::hasTable('employee_documents_new') && Schema::hasTable('document_types')) {
             try {
-                $photos = \Illuminate\Support\Facades\DB::table('employee_documents_new')
+                $photos = DB::table('employee_documents_new')
                     ->join('document_types', 'document_types.id', '=', 'employee_documents_new.document_type_id')
                     ->whereIn('employee_documents_new.employee_id', $empIds)
                     ->where(function ($q) {
@@ -287,7 +292,7 @@ class WorkReportC extends Controller
         $filters = [
             'months' => $monthOptions,
             'selected_month' => $hasSingleDate ? '' : $selectedMonth,
-            'current_month' => \Carbon\Carbon::now()->format('Y-m'),
+            'current_month' => Carbon::now()->format('Y-m'),
             'is_custom' => $isCustomDate,
             'date' => $request->date,
             'from_date' => $request->from_date,
@@ -357,7 +362,7 @@ class WorkReportC extends Controller
             403
         );
 
-        $employee = \App\Models\HRMS\Employee\EmployeeM::with(['user', 'department', 'designation', 'reportingManager.user'])->find($employeeId);
+        $employee = EmployeeM::with(['user', 'department', 'designation', 'reportingManager.user'])->find($employeeId);
         if (! $employee) {
             $u = User::with(['employee.department', 'employee.designation', 'employee.reportingManager.user'])->find($employeeId);
             if ($u && $u->employee) {
@@ -402,7 +407,7 @@ class WorkReportC extends Controller
             $query->whereDate('work_date', '<=', $toDate);
         } elseif ($selectedMonth && $selectedMonth !== 'all') {
             try {
-                $dt = \Carbon\Carbon::createFromFormat('Y-m', $selectedMonth);
+                $dt = Carbon::createFromFormat('Y-m', $selectedMonth);
                 $query->whereYear('work_date', $dt->year)
                       ->whereMonth('work_date', $dt->month);
             } catch (\Exception $e) {
@@ -497,14 +502,14 @@ class WorkReportC extends Controller
 
         $dateRangeLabel = 'All Historical Records';
         if ($fromDate && $toDate) {
-            $dateRangeLabel = \Carbon\Carbon::parse($fromDate)->format('d M Y') . ' – ' . \Carbon\Carbon::parse($toDate)->format('d M Y');
+            $dateRangeLabel = Carbon::parse($fromDate)->format('d M Y') . ' – ' . Carbon::parse($toDate)->format('d M Y');
         } elseif ($fromDate) {
-            $dateRangeLabel = 'From ' . \Carbon\Carbon::parse($fromDate)->format('d M Y');
+            $dateRangeLabel = 'From ' . Carbon::parse($fromDate)->format('d M Y');
         } elseif ($toDate) {
-            $dateRangeLabel = 'Until ' . \Carbon\Carbon::parse($toDate)->format('d M Y');
+            $dateRangeLabel = 'Until ' . Carbon::parse($toDate)->format('d M Y');
         } elseif ($selectedMonth && $selectedMonth !== 'all') {
             try {
-                $dateRangeLabel = \Carbon\Carbon::createFromFormat('Y-m', $selectedMonth)->format('F Y');
+                $dateRangeLabel = Carbon::createFromFormat('Y-m', $selectedMonth)->format('F Y');
             } catch (\Exception $e) {
                 // fallback
             }
@@ -512,7 +517,7 @@ class WorkReportC extends Controller
             $minDate = $statsLogs->min('work_date');
             $maxDate = $statsLogs->max('work_date');
             if ($minDate && $maxDate) {
-                $dateRangeLabel = \Carbon\Carbon::parse($minDate)->format('d M Y') . ' – ' . \Carbon\Carbon::parse($maxDate)->format('d M Y');
+                $dateRangeLabel = Carbon::parse($minDate)->format('d M Y') . ' – ' . Carbon::parse($maxDate)->format('d M Y');
             }
         }
 
@@ -572,7 +577,7 @@ class WorkReportC extends Controller
     public function printEmployeeHistory(int|string $employeeId, Request $request)
     {
         $response = $this->employeeHistory($employeeId, $request);
-        if ($response instanceof \Illuminate\View\View) {
+        if ($response instanceof View) {
             $data = $response->getData();
 
             return view('hrms.attendance.work-reports.history-print', $data);

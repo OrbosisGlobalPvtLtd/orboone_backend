@@ -5,6 +5,7 @@ namespace App\Models\HRMS\Attendance;
 use App\Models\HRMS\Employee\EmployeeM;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
 class AttendanceViolationM extends Model
 {
@@ -31,7 +32,7 @@ class AttendanceViolationM extends Model
     {
         static::creating(function ($violation) {
             if (empty($violation->cycle_month) && ! empty($violation->violation_date)) {
-                $violation->cycle_month = \Carbon\Carbon::parse($violation->violation_date)->format('Y-m');
+                $violation->cycle_month = Carbon::parse($violation->violation_date)->format('Y-m');
             }
             if (empty($violation->violation_count)) {
                 $violation->violation_count = 1;

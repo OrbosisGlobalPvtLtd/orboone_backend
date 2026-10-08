@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Services\HRMS\Attendance\AttendanceS;
+use App\Services\HRMS\Attendance\AttendanceService;
 use Illuminate\Console\Command;
 
 class AutoCloseMissedAttendance extends Command
@@ -11,7 +11,7 @@ class AutoCloseMissedAttendance extends Command
 
     protected $description = 'Auto mark past attendance records absent when punch out was missed before day end.';
 
-    public function handle(AttendanceS $attendanceService): int
+    public function handle(AttendanceService $attendanceService): int
     {
         $closed = $attendanceService->autoCloseMissedPunchouts();
 

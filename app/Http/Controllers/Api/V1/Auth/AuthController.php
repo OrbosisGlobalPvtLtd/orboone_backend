@@ -7,6 +7,7 @@ use App\Models\HRMS\Employee\EmployeeM;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
+use App\Models\Core\UserM;
 
 class AuthController extends Controller
 {
@@ -26,7 +27,7 @@ class AuthController extends Controller
             ], 401);
         }
 
-        /** @var \App\Models\Core\UserM $user */
+        /** @var UserM $user */
         $user = Auth::guard('web')->user()->load('role');
 
         if (!(bool) $user->is_active) {

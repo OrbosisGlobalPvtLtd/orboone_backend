@@ -9,6 +9,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
+use App\Models\Core\UserM;
+use App\Services\HRMS\Employee\EmployeeFileS;
+use Illuminate\Support\Facades\Storage;
 
 class ProfilesController extends Controller
 {
@@ -23,7 +26,7 @@ class ProfilesController extends Controller
             return view('auth.change-password');
         }
 
-        /** @var \App\Models\Core\UserM|null $user */
+        /** @var UserM|null $user */
         $user = Auth::user();
         $profile = $user ? $user->load([
             'role',
@@ -108,7 +111,7 @@ class ProfilesController extends Controller
 
     public function update(Request $request)
     {
-        /** @var \App\Models\Core\UserM $user */
+        /** @var UserM $user */
         $user = Auth::user();
 
         $data = $request->validate([
@@ -221,7 +224,7 @@ class ProfilesController extends Controller
 
                     // Process profile image & resume file uploads (allowed in all states or locked as per allowed rules)
                     if ($request->hasFile('profile_image')) {
-                        $fileService = app(\App\Services\HRMS\Employee\EmployeeFileS::class);
+                        $fileService = app(EmployeeFileS::class);
                         $profileData['profile_image'] = $fileService->upload(
                             $request->file('profile_image'),
                             $employee->id,
@@ -232,7 +235,7 @@ class ProfilesController extends Controller
 
                     if ($request->hasFile('resume_file')) {
                         if (!$isSubmittedOrApproved) {
-                            $fileService = app(\App\Services\HRMS\Employee\EmployeeFileS::class);
+                            $fileService = app(EmployeeFileS::class);
                             $profileData['resume_file'] = $fileService->upload(
                                 $request->file('resume_file'),
                                 $employee->id,
@@ -277,7 +280,7 @@ class ProfilesController extends Controller
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
-        /** @var \App\Models\Core\UserM $user */
+        /** @var UserM $user */
         $user = Auth::user();
 
         if (! Hash::check($request->current_password, $user->password)) {
@@ -309,7 +312,7 @@ class ProfilesController extends Controller
 
     public function profileImage(int|string|null $employeeId = null)
     {
-        /** @var \App\Models\Core\UserM|null $user */
+        /** @var UserM|null $user */
         $user = Auth::user();
         
         $employeeIdNum = is_object($employeeId) && isset($employeeId->id) ? (int)$employeeId->id : (int)$employeeId;
@@ -348,12 +351,12 @@ class ProfilesController extends Controller
         $filePath = null;
 
         if ($path) {
-            if (\Illuminate\Support\Facades\Storage::disk('private')->exists($path)) {
-                $filePath = \Illuminate\Support\Facades\Storage::disk('private')->path($path);
-            } elseif (\Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
-                $filePath = \Illuminate\Support\Facades\Storage::disk('public')->path($path);
-            } elseif (\Illuminate\Support\Facades\Storage::disk('local')->exists($path)) {
-                $filePath = \Illuminate\Support\Facades\Storage::disk('local')->path($path);
+            if (Storage::disk('private')->exists($path)) {
+                $filePath = Storage::disk('private')->path($path);
+            } elseif (Storage::disk('public')->exists($path)) {
+                $filePath = Storage::disk('public')->path($path);
+            } elseif (Storage::disk('local')->exists($path)) {
+                $filePath = Storage::disk('local')->path($path);
             } elseif (file_exists(public_path($path))) {
                 $filePath = public_path($path);
             } elseif (file_exists(storage_path('app/' . $path))) {
@@ -396,7 +399,7 @@ class ProfilesController extends Controller
 
     public function submitForVerification()
     {
-        /** @var \App\Models\Core\UserM $user */
+        /** @var UserM $user */
         $user = Auth::user();
         $employee = DB::table('employees_new')->where('user_id', $user->id)->first();
 

@@ -4,6 +4,7 @@ namespace App\Models\HRMS\Attendance;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\HRMS\Employee\EmployeeShiftTimingM;
 
 class AttendanceTimeM extends Model
 {
@@ -66,6 +67,6 @@ class AttendanceTimeM extends Model
 
     public function employeeShiftTimings()
     {
-        return $this->hasMany(\App\Models\HRMS\Employee\EmployeeShiftTimingM::class, 'attendance_time_id');
+        return $this->hasMany(EmployeeShiftTimingM::class, 'attendance_time_id');
     }
 }

@@ -10,6 +10,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Schema;
+use App\Services\HRMS\Document\HrmsFileStorageS;
 
 class EmployeeDocumentC extends Controller
 {
@@ -54,7 +56,7 @@ class EmployeeDocumentC extends Controller
             ->get();
 
         $query = EmployeeDocumentM::where('employee_id', $employee->id);
-        if (\Illuminate\Support\Facades\Schema::hasColumn('employee_documents_new', 'is_active')) {
+        if (Schema::hasColumn('employee_documents_new', 'is_active')) {
             $query->where('is_active', 1);
         }
         $documents = $query->get()->keyBy('document_type_id');
@@ -87,7 +89,7 @@ class EmployeeDocumentC extends Controller
                 'employee_id' => $employee->id,
                 'document_type_id' => $documentType->id,
             ];
-            if (\Illuminate\Support\Facades\Schema::hasColumn('employee_documents_new', 'is_active')) {
+            if (Schema::hasColumn('employee_documents_new', 'is_active')) {
                 $search['is_active'] = 1;
             }
             $exists = EmployeeDocumentM::where($search)->exists();
@@ -100,14 +102,14 @@ class EmployeeDocumentC extends Controller
         }
         $file = $request->file('file');
 
-        $storageService = app(\App\Services\HRMS\Document\HrmsFileStorageS::class);
+        $storageService = app(HrmsFileStorageS::class);
         $meta = $storageService->archiveOrReplaceEmployeeDocument($employee, $documentType, $file);
 
         $search = [
             'employee_id' => $employee->id,
             'document_type_id' => $documentType->id,
         ];
-        if (\Illuminate\Support\Facades\Schema::hasColumn('employee_documents_new', 'is_active')) {
+        if (Schema::hasColumn('employee_documents_new', 'is_active')) {
             $search['is_active'] = 1;
         }
 
@@ -157,7 +159,7 @@ class EmployeeDocumentC extends Controller
 
         $file = $request->file('file');
         $documentType = DocumentTypeM::findOrFail($document->document_type_id);
-        $storageService = app(\App\Services\HRMS\Document\HrmsFileStorageS::class);
+        $storageService = app(HrmsFileStorageS::class);
         $meta = $storageService->archiveOrReplaceEmployeeDocument($employee, $documentType, $file);
 
         if ($document->verification_status === 'verified') {

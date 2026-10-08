@@ -15,6 +15,10 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
+use Illuminate\Pagination\LengthAwarePaginator;
+use App\Services\HRMS\Notification\NotificationS;
+use App\Services\HRMS\Employee\EmployeeProfileCompletionS;
 
 class EmployeeDocumentsC extends Controller
 {
@@ -86,7 +90,7 @@ class EmployeeDocumentsC extends Controller
             $employee->pending_docs = $relevantDocs->where('verification_status', 'pending')->count();
             $employee->rejected_docs = $relevantDocs->where('verification_status', 'rejected')->count();
             $employee->missing_docs = max(0, $employee->total_required_docs - $uploadedRelevant);
-            $employee->expired_docs = $relevantDocs->whereNotNull('expiry_date')->filter(fn($doc) => now()->gt(\Carbon\Carbon::parse($doc->expiry_date)))->count();
+            $employee->expired_docs = $relevantDocs->whereNotNull('expiry_date')->filter(fn($doc) => now()->gt(Carbon::parse($doc->expiry_date)))->count();
 
             // Supporting older template keys
             $employee->doc_total = $employee->uploaded_docs;
@@ -235,7 +239,7 @@ class EmployeeDocumentsC extends Controller
         }
 
         // Paginate filtered results
-        $currentPage = \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPage();
+        $currentPage = LengthAwarePaginator::resolveCurrentPage();
         $perPageInput = $request->get('per_page', 10);
         if ($perPageInput === 'all' || (int)$perPageInput === -1) {
             $perPage = max(1, $filtered->count());
@@ -243,12 +247,12 @@ class EmployeeDocumentsC extends Controller
             $perPage = max(1, (int)$perPageInput);
         }
         $currentPageItems = $filtered->slice(($currentPage - 1) * $perPage, $perPage)->values();
-        $employees = new \Illuminate\Pagination\LengthAwarePaginator(
+        $employees = new LengthAwarePaginator(
             $currentPageItems,
             $filtered->count(),
             $perPage,
             $currentPage,
-            ['path' => \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPath()]
+            ['path' => LengthAwarePaginator::resolveCurrentPath()]
         );
         $employees->withQueryString();
 
@@ -297,7 +301,7 @@ class EmployeeDocumentsC extends Controller
         $query = EmployeeDocumentM::with('documentType')
             ->where('employee_id', $employee->id);
 
-        if (\Illuminate\Support\Facades\Schema::hasColumn('employee_documents_new', 'is_active')) {
+        if (Schema::hasColumn('employee_documents_new', 'is_active')) {
             $query->where('is_active', 1);
         }
 
@@ -323,14 +327,14 @@ class EmployeeDocumentsC extends Controller
 
         $file = $request->file('file');
 
-        $storageService = app(\App\Services\HRMS\Document\HrmsFileStorageS::class);
+        $storageService = app(HrmsFileStorageS::class);
         $meta = $storageService->archiveOrReplaceEmployeeDocument($employee, $documentType, $file);
 
         $search = [
             'employee_id' => $employee->id,
             'document_type_id' => $documentType->id,
         ];
-        if (\Illuminate\Support\Facades\Schema::hasColumn('employee_documents_new', 'is_active')) {
+        if (Schema::hasColumn('employee_documents_new', 'is_active')) {
             $search['is_active'] = 1;
         }
 
@@ -379,7 +383,7 @@ class EmployeeDocumentsC extends Controller
         ]);
 
         $documentType = DocumentTypeM::findOrFail($request->document_type_id);
-        $storageService = app(\App\Services\HRMS\Document\HrmsFileStorageS::class);
+        $storageService = app(HrmsFileStorageS::class);
 
         foreach ($request->employee_ids as $employeeId) {
             $employee = EmployeeM::findOrFail($employeeId);
@@ -563,7 +567,7 @@ class EmployeeDocumentsC extends Controller
 
         if ($isReupload) {
             $employeeName = $employeeModel->user->name ?? $employeeModel->employee_code;
-            app(\App\Services\HRMS\Notification\NotificationS::class)->notifyHrAndSuperAdmin(
+            app(NotificationS::class)->notifyHrAndSuperAdmin(
                 'Document Re-uploaded',
                 $employeeName . ' has re-uploaded ' . ($oldDocument->title ?: 'a document') . ' for verification.',
                 'document_reuploaded',
@@ -601,7 +605,7 @@ class EmployeeDocumentsC extends Controller
             $title = 'Document Rejected';
             $message = ($document->title ?: 'Document') . ' has been rejected. Reason: ' . ($reason ?: 'Image not clear') . '. Please upload again.';
 
-            app(\App\Services\HRMS\Notification\NotificationS::class)->notifyEmployee(
+            app(NotificationS::class)->notifyEmployee(
                 $title,
                 $message,
                 $type,
@@ -623,9 +627,9 @@ class EmployeeDocumentsC extends Controller
         if ($type === 'document_approved' || $type === 'document_verified') {
             $employeeModel = EmployeeM::with(['profile'])->find($document->employee_id);
             if ($employeeModel) {
-                $completionStatus = app(\App\Services\HRMS\Employee\EmployeeProfileCompletionS::class)->buildCompletionStatus($employeeModel);
+                $completionStatus = app(EmployeeProfileCompletionS::class)->buildCompletionStatus($employeeModel);
                 if ($completionStatus['required_documents_verified']) {
-                    app(\App\Services\HRMS\Notification\NotificationS::class)->notifyEmployee(
+                    app(NotificationS::class)->notifyEmployee(
                         'Profile Verified',
                         'Your profile verification has been completed successfully.',
                         'profile_approved',

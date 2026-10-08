@@ -8,6 +8,8 @@ use App\Models\HRMS\EnterprisePayroll\EnterprisePayrollRunM;
 use App\Services\HRMS\EnterprisePayroll\EnterprisePayrollCalculatorS;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use App\Services\HRMS\Employee\EmployeeEligibilityS;
+use App\Models\HRMS\Employee\EmployeeM;
 
 class PayrollRunC extends Controller
 {
@@ -34,8 +36,8 @@ class PayrollRunC extends Controller
         }
 
         $runs = $query->latest()->get();
-        $eligibilityService = app(\App\Services\HRMS\Employee\EmployeeEligibilityS::class);
-        $employees = \App\Models\HRMS\Employee\EmployeeM::query()
+        $eligibilityService = app(EmployeeEligibilityS::class);
+        $employees = EmployeeM::query()
             ->active()
             ->with(['user', 'profile'])
             ->orderBy('id')

@@ -223,24 +223,19 @@ class AttendanceRuleResolverService
             $policy->attendance_time_id = $explicitShiftTemplate ? $attendanceTimeId : $overrideTiming->attendance_time_id;
             $policy->id = $policy->attendance_time_id;
 
-            $explicitTemplate = null;
-            if ($attendanceTimeId && $overrideTiming && (int) $overrideTiming->attendance_time_id !== (int) $attendanceTimeId) {
-                $explicitTemplate = DB::table('attendance_times')->where('id', $attendanceTimeId)->first();
-            }
-
-            $policy->early_login_from = $overrideTiming->punch_allowed_from ?? $explicitTemplate?->punch_allowed_from ?? $shiftTemplate?->punch_allowed_from ?? $shiftTemplate?->early_login_from ?? '08:00:00';
-            $policy->normal_login_from = $overrideTiming->shift_start_time ?? $explicitTemplate?->shift_start_time ?? $shiftTemplate?->shift_start_time ?? $shiftTemplate?->normal_login_from ?? '09:30:00';
+            $policy->early_login_from = $overrideTiming->punch_allowed_from ?? $explicitShiftTemplate?->punch_allowed_from ?? $explicitShiftTemplate?->early_login_from ?? $shiftTemplate?->punch_allowed_from ?? $shiftTemplate?->early_login_from ?? '08:00:00';
+            $policy->normal_login_from = $overrideTiming->shift_start_time ?? $explicitShiftTemplate?->shift_start_time ?? $explicitShiftTemplate?->normal_login_from ?? $shiftTemplate?->shift_start_time ?? $shiftTemplate?->normal_login_from ?? '09:30:00';
             $policy->punch_allowed_from = $policy->early_login_from;
             $policy->shift_start_time = $policy->normal_login_from;
-            $policy->late_after_time = $overrideTiming->late_after_time ?? $explicitTemplate?->late_after_time ?? $shiftTemplate?->late_after_time ?? '09:45:00';
-            $policy->warning_after_time = $shiftTemplate?->warning_after_time ?? $policy->late_after_time;
-            $policy->half_day_after_time = $overrideTiming->half_day_after_time ?? $explicitTemplate?->half_day_after_time ?? $shiftTemplate?->half_day_after_time ?? $shiftTemplate?->shift_end_time;
-            $policy->block_after_time = $shiftTemplate?->block_after_time ?? $overrideTiming->block_after_time ?? $policy->half_day_after_time ?? $shiftTemplate?->shift_end_time;
-            $policy->shift_end_time = $explicitTemplate?->shift_end_time ?? $overrideTiming->shift_end_time ?? $shiftTemplate?->shift_end_time ?? '18:30:00';
-            $policy->required_work_minutes = (int) ($explicitTemplate?->required_work_minutes ?? $overrideTiming->required_work_minutes ?? $shiftTemplate?->required_work_minutes ?? 480);
-            $policy->half_day_min_minutes = (int) ($shiftTemplate?->half_day_min_minutes ?? ($policy->required_work_minutes ? (int) ($policy->required_work_minutes / 2) : 240));
-            $policy->required_office_minutes = (int) ($shiftTemplate?->required_office_minutes ?? $policy->required_work_minutes);
-            $policy->lunch_break_minutes = (int) ($overrideTiming->lunch_minutes ?? $shiftTemplate?->lunch_break_minutes ?? $shiftTemplate?->break_minutes ?? 0);
+            $policy->late_after_time = $overrideTiming->late_after_time ?? $explicitShiftTemplate?->late_after_time ?? $shiftTemplate?->late_after_time ?? '09:45:00';
+            $policy->warning_after_time = $overrideTiming->warning_after_time ?? $explicitShiftTemplate?->warning_after_time ?? $shiftTemplate?->warning_after_time ?? $policy->late_after_time;
+            $policy->half_day_after_time = $overrideTiming->half_day_after_time ?? $explicitShiftTemplate?->half_day_after_time ?? $shiftTemplate?->half_day_after_time ?? $shiftTemplate?->shift_end_time;
+            $policy->block_after_time = $overrideTiming->block_after_time ?? $explicitShiftTemplate?->block_after_time ?? $shiftTemplate?->block_after_time ?? $policy->half_day_after_time ?? $shiftTemplate?->shift_end_time;
+            $policy->shift_end_time = $overrideTiming->shift_end_time ?? $explicitShiftTemplate?->shift_end_time ?? $shiftTemplate?->shift_end_time ?? '18:30:00';
+            $policy->required_work_minutes = (int) ($overrideTiming->required_work_minutes ?? $explicitShiftTemplate?->required_work_minutes ?? $shiftTemplate?->required_work_minutes ?? 480);
+            $policy->half_day_min_minutes = (int) ($overrideTiming->half_day_min_minutes ?? $explicitShiftTemplate?->half_day_min_minutes ?? $shiftTemplate?->half_day_min_minutes ?? ($policy->required_work_minutes ? (int) ($policy->required_work_minutes / 2) : 240));
+            $policy->required_office_minutes = (int) ($overrideTiming->required_office_minutes ?? $explicitShiftTemplate?->required_office_minutes ?? $shiftTemplate?->required_office_minutes ?? $policy->required_work_minutes);
+            $policy->lunch_break_minutes = (int) ($overrideTiming->lunch_minutes ?? $explicitShiftTemplate?->lunch_break_minutes ?? $explicitShiftTemplate?->break_minutes ?? $shiftTemplate?->lunch_break_minutes ?? $shiftTemplate?->break_minutes ?? 0);
             $policy->break_minutes = $policy->lunch_break_minutes;
 
             $shiftType = strtolower($shiftTemplate->shift_type ?? '');
@@ -794,7 +789,7 @@ class AttendanceRuleResolverService
             $attendance->attendance_status = 'unlocked';
             $attendance->display_status = 'Awaiting Punch In';
 
-            $mockType = new \App\Models\HRMS\Attendance\AttendanceTypeM([
+            $mockType = new AttendanceTypeM([
                 'code' => 'awaiting_punch_in',
                 'name' => 'Awaiting Punch In',
             ]);
@@ -987,14 +982,33 @@ class AttendanceRuleResolverService
     public function targetPunchOut(Carbon $punchIn, ?object $policy, string $status = 'present'): Carbon
     {
         $required = (int) ($policy?->required_work_minutes ?? 0);
+        if ($required <= 0) {
+            $required = (int) ($policy?->required_office_minutes ?? 0);
+        }
+        if ($required <= 0 && ! empty($policy?->shift_start_time) && ! empty($policy?->shift_end_time)) {
+            try {
+                $st = Carbon::parse('2026-01-01 ' . $this->timeString($policy->shift_start_time));
+                $et = Carbon::parse('2026-01-01 ' . $this->timeString($policy->shift_end_time));
+                if ($et->lt($st)) {
+                    $et->addDay();
+                }
+                $required = $st->diffInMinutes($et);
+            } catch (\Throwable $e) {
+                $required = 480;
+            }
+        }
+        if ($required <= 0) {
+            $required = 480;
+        }
+
         $halfDay = (int) ($policy?->half_day_min_minutes ?? 0);
         if ($halfDay <= 0 && $required > 0) {
             $halfDay = (int) ($required / 2);
         }
 
-        $isHalfDayStatus = in_array(strtolower($status), ['half_day', 'half_day_lwp', 'half_leave', 'first_half_leave', 'second_half_leave'], true);
-        $applicableWorkMinutes = ($isHalfDayStatus && $halfDay > 0) ? $halfDay : $required;
-        $breakMinutes = $isHalfDayStatus ? 0 : (int) ($policy?->lunch_break_minutes ?? $policy?->lunch_minutes ?? $policy?->break_minutes ?? 0);
+        $isHalfDayLeave = in_array(strtolower($status), ['half_leave', 'first_half_leave', 'second_half_leave'], true);
+        $applicableWorkMinutes = ($isHalfDayLeave && $halfDay > 0) ? $halfDay : $required;
+        $breakMinutes = $isHalfDayLeave ? 0 : (int) ($policy?->lunch_break_minutes ?? $policy?->lunch_minutes ?? $policy?->break_minutes ?? 0);
 
         return $punchIn->copy()->addMinutes($applicableWorkMinutes + $breakMinutes);
     }

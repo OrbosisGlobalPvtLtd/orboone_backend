@@ -10,12 +10,15 @@ use App\Models\HRMS\Attendance\AttendanceViolationM;
 use App\Models\HRMS\Employee\EmployeeM;
 use App\Services\HRMS\Attendance\AttendanceRegularizationService;
 use App\Services\HRMS\Attendance\AttendanceRuleResolverService;
-use App\Services\HRMS\Attendance\AttendanceS;
+use App\Services\HRMS\Attendance\AttendanceService;
 use App\Services\HRMS\Notification\NotificationS;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\ValidationException;
+use App\Services\Shared\MobileApiMessageS;
 
 class AttendanceRegularizationController extends ApiController
 {
@@ -92,7 +95,7 @@ class AttendanceRegularizationController extends ApiController
                 'data' => $result,
             ]);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('API Attendance Regularization getOptions error: ' . $e->getMessage());
+            Log::error('API Attendance Regularization getOptions error: ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,
@@ -152,7 +155,7 @@ class AttendanceRegularizationController extends ApiController
                 ->first();
         }
 
-        $service = app(\App\Services\HRMS\Attendance\AttendanceRegularizationService::class);
+        $service = app(AttendanceRegularizationService::class);
         $optionsResult = $service->getAvailableRegularizationTypes($employee, $attendanceDate);
         if (! $optionsResult['can_regularize']) {
             return response()->json(['success' => false, 'status' => false, 'message' => $optionsResult['message'] ?? 'Regularization is not allowed for this date.', 'data' => null], 422);
@@ -213,7 +216,7 @@ class AttendanceRegularizationController extends ApiController
                 existingPunchIn: $attendance?->punch_in_time,
                 existingPunchOut: $attendance?->punch_out_time
             );
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage() ?: 'Please select the correct Punch Out time. Punch Out must be later than Punch In.',
@@ -390,7 +393,7 @@ class AttendanceRegularizationController extends ApiController
                 }
             });
         } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'status' => false, 'message' => app(\App\Services\Shared\MobileApiMessageS::class)->friendly($e), 'data' => null], 422);
+            return response()->json(['success' => false, 'status' => false, 'message' => app(MobileApiMessageS::class)->friendly($e), 'data' => null], 422);
         }
 
         $fresh = $row->fresh();
@@ -432,7 +435,7 @@ class AttendanceRegularizationController extends ApiController
         }
         try {
             DB::transaction(function () use ($row, $data) {
-                $attendanceService = app(AttendanceS::class);
+                $attendanceService = app(AttendanceService::class);
                 $attendance = $row->attendance_id
                     ? Attendance::where('id', $row->attendance_id)->where('employee_id', $row->employee_id)->first()
                     : null;
@@ -491,7 +494,7 @@ class AttendanceRegularizationController extends ApiController
                 ]);
             });
         } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'status' => false, 'message' => app(\App\Services\Shared\MobileApiMessageS::class)->friendly($e), 'data' => null], 422);
+            return response()->json(['success' => false, 'status' => false, 'message' => app(MobileApiMessageS::class)->friendly($e), 'data' => null], 422);
         }
 
         $employee = EmployeeM::find($row->employee_id);
@@ -555,7 +558,7 @@ class AttendanceRegularizationController extends ApiController
 
         if ($isTimeOnly) {
             if (! $attendanceDate) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
+                throw ValidationException::withMessages([
                     'attendance_date' => ["Attendance date is required to parse time '{$value}'."],
                 ]);
             }
@@ -567,7 +570,7 @@ class AttendanceRegularizationController extends ApiController
         try {
             return Carbon::parse($value)->toDateTimeString();
         } catch (\Throwable $e) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
+            throw ValidationException::withMessages([
                 $fieldName => ["The {$fieldName} is not a valid date."],
             ]);
         }

@@ -14,6 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Schema;
 
 class ProfileController extends Controller
 {
@@ -43,7 +44,7 @@ class ProfileController extends Controller
     {
         return [
             'emergency_contact_number' => $profile->emergency_contact_number,
-            'date_of_birth'         => $profile->date_of_birth ? \Carbon\Carbon::parse($profile->date_of_birth)->format('Y-m-d') : null,
+            'date_of_birth'         => $profile->date_of_birth ? Carbon::parse($profile->date_of_birth)->format('Y-m-d') : null,
             'gender'                => $profile->gender,
             'address'               => $profile->address,
             'highest_qualification' => $profile->highest_qualification,
@@ -309,7 +310,7 @@ class ProfileController extends Controller
                     'employee_id'           => $profile->employee_id,
                     'emergency_contact_number' => $profile->emergency_contact_number,
                     'profile_image'         => $this->fileUrl($profile->profile_image),
-                    'date_of_birth'         => $profile->date_of_birth ? \Carbon\Carbon::parse($profile->date_of_birth)->format('Y-m-d') : null,
+                    'date_of_birth'         => $profile->date_of_birth ? Carbon::parse($profile->date_of_birth)->format('Y-m-d') : null,
                     'gender'                => $profile->gender,
                     'address'               => $profile->address,
                     'highest_qualification' => $profile->highest_qualification,
@@ -695,9 +696,9 @@ class ProfileController extends Controller
 
         $user = auth()->user();
 
-        if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'fcm_token')) {
+        if (Schema::hasColumn('users', 'fcm_token')) {
             $user->update(['fcm_token' => $request->fcm_token]);
-        } elseif (\Illuminate\Support\Facades\Schema::hasColumn('users', 'device_token')) {
+        } elseif (Schema::hasColumn('users', 'device_token')) {
             $user->update(['device_token' => $request->fcm_token]);
         }
 

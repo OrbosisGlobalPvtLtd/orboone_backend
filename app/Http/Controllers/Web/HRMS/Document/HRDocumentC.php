@@ -10,6 +10,9 @@ use App\Models\HRMS\Department\DepartmentM;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Services\HRMS\Employee\EmployeeProfileS;
+use App\Services\HRMS\Notification\NotificationS;
+use App\Services\HRMS\Employee\EmployeeProfileCompletionS;
 
 class HRDocumentC extends Controller
 {
@@ -81,7 +84,7 @@ class HRDocumentC extends Controller
             $employee->doc_missing = max(0, $requiredDocs->count() - $uploadedRelevant);
             
             $employee->doc_expiring = $documents->whereNotNull('expiry_date')->filter(function($doc) {
-                return \Carbon\Carbon::parse($doc->expiry_date)->isFuture() && \Carbon\Carbon::parse($doc->expiry_date)->diffInDays(now()) <= 30;
+                return Carbon::parse($doc->expiry_date)->isFuture() && Carbon::parse($doc->expiry_date)->diffInDays(now()) <= 30;
             })->count();
 
             $employee->doc_status = ($employee->doc_missing === 0 && $employee->doc_pending === 0 && $employee->doc_rejected === 0 && $employee->doc_verified >= $employee->doc_required && $employee->doc_required > 0)
@@ -108,7 +111,7 @@ class HRDocumentC extends Controller
             ]);
 
         $this->syncEmployeeVerification($employee->id);
-        app(\App\Services\HRMS\Employee\EmployeeProfileS::class)->checkAndSendAllDocumentsVerifiedEmail($employee->id);
+        app(EmployeeProfileS::class)->checkAndSendAllDocumentsVerifiedEmail($employee->id);
 
         return back()->with('success', 'All documents for ' . ($employee->user->name ?? 'Employee') . ' have been verified successfully.');
     }
@@ -167,7 +170,7 @@ class HRDocumentC extends Controller
 
         $this->syncEmployeeVerification($document->employee_id);
         $this->notifyDocumentStatus($document->fresh(['employee.user', 'documentType']), 'document_approved');
-        app(\App\Services\HRMS\Employee\EmployeeProfileS::class)->checkAndSendAllDocumentsVerifiedEmail($document->employee_id);
+        app(EmployeeProfileS::class)->checkAndSendAllDocumentsVerifiedEmail($document->employee_id);
 
         return back()->with('success', 'Document verified successfully.');
     }
@@ -218,7 +221,7 @@ class HRDocumentC extends Controller
 
         $employeeIds = $documents->pluck('employee_id')->unique();
         foreach ($employeeIds as $empId) {
-            app(\App\Services\HRMS\Employee\EmployeeProfileS::class)->checkAndSendAllDocumentsVerifiedEmail($empId);
+            app(EmployeeProfileS::class)->checkAndSendAllDocumentsVerifiedEmail($empId);
         }
 
         return back()->with('success', 'Selected documents verified successfully.');
@@ -255,7 +258,7 @@ class HRDocumentC extends Controller
             $title = 'Document Rejected';
             $message = ($document->title ?: 'Document') . ' has been rejected. Reason: ' . ($reason ?: 'Image not clear') . '. Please upload again.';
 
-            app(\App\Services\HRMS\Notification\NotificationS::class)->notifyEmployee(
+            app(NotificationS::class)->notifyEmployee(
                 $title,
                 $message,
                 $type,
@@ -277,9 +280,9 @@ class HRDocumentC extends Controller
         if ($type === 'document_approved' || $type === 'document_verified') {
             $employeeModel = EmployeeM::with(['profile'])->find($document->employee_id);
             if ($employeeModel) {
-                $completionStatus = app(\App\Services\HRMS\Employee\EmployeeProfileCompletionS::class)->buildCompletionStatus($employeeModel);
+                $completionStatus = app(EmployeeProfileCompletionS::class)->buildCompletionStatus($employeeModel);
                 if ($completionStatus['required_documents_verified']) {
-                    app(\App\Services\HRMS\Notification\NotificationS::class)->notifyEmployee(
+                    app(NotificationS::class)->notifyEmployee(
                         'Profile Verified',
                         'Your profile verification has been completed successfully.',
                         'profile_approved',

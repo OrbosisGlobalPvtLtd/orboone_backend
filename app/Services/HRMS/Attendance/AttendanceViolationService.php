@@ -16,7 +16,7 @@ class AttendanceViolationService
 
     public function __construct(
         private AttendanceRuleResolverService $ruleResolver,
-        private AttendanceS $attendanceService
+        private AttendanceService $attendanceService
     ) {}
 
     /**
@@ -143,7 +143,11 @@ class AttendanceViolationService
             ->where('employee_id', $employeeId)
             ->whereYear('violation_date', $asOfDate->year)
             ->whereMonth('violation_date', $asOfDate->month)
-            ->whereDate('violation_date', '<=', $date);
+            ->whereDate('violation_date', '<=', $date)
+            ->whereNotIn('status', ['resolved', 'regularized', 'converted'])
+            ->where(function ($q) {
+                $q->whereNull('policy_action')->orWhere('policy_action', '!=', 'resolved');
+            });
 
         if (Schema::hasColumn('attendance_violations', 'deleted_at')) {
             $query->whereNull('deleted_at');
@@ -300,6 +304,19 @@ class AttendanceViolationService
                         continue;
                     }
 
+                    $isResolvedOrRegularized = ($v->policy_action ?? '') === 'resolved'
+                        || ($v->status ?? '') === 'resolved'
+                        || ($v->status ?? '') === 'regularized';
+
+                    if ($isResolvedOrRegularized) {
+                        $metaMap[$v->id] = [
+                            'active_counter' => '-',
+                            'is_third_occurrence' => false,
+                            'cycle_position' => 0,
+                        ];
+                        continue;
+                    }
+
                     $counters[$canonicalType]++;
                     $seq = $counters[$canonicalType];
                     $pos = (($seq - 1) % 3) + 1; // Sequence: 1, 2, 3, 1, 2, 3...
@@ -377,7 +394,11 @@ class AttendanceViolationService
         $discQuery = DB::table('attendance_violations')
             ->where('employee_id', $employeeId)
             ->whereBetween('violation_date', [$start->toDateString(), $end->toDateString()])
-            ->whereIn('type', ['late_login', 'late_mark', 'early_logout', 'early_out']);
+            ->whereIn('type', ['late_login', 'late_mark', 'early_logout', 'early_out'])
+            ->whereNotIn('status', ['resolved', 'regularized', 'converted'])
+            ->where(function ($q) {
+                $q->whereNull('policy_action')->orWhere('policy_action', '!=', 'resolved');
+            });
         if (Schema::hasColumn('attendance_violations', 'deleted_at')) {
             $discQuery->whereNull('deleted_at');
         }
@@ -387,7 +408,11 @@ class AttendanceViolationService
         $missedQuery = DB::table('attendance_violations')
             ->where('employee_id', $employeeId)
             ->whereBetween('violation_date', [$start->toDateString(), $end->toDateString()])
-            ->where('type', 'missed_punch');
+            ->where('type', 'missed_punch')
+            ->whereNotIn('status', ['resolved', 'regularized', 'converted'])
+            ->where(function ($q) {
+                $q->whereNull('policy_action')->orWhere('policy_action', '!=', 'resolved');
+            });
         if (Schema::hasColumn('attendance_violations', 'deleted_at')) {
             $missedQuery->whereNull('deleted_at');
         }

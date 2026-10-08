@@ -5,11 +5,15 @@ namespace App\Services\HRMS\Attendance;
 use App\Models\HRMS\Attendance\AttendanceM as Attendance;
 use App\Models\HRMS\Employee\EmployeeM as Employee;
 use Carbon\Carbon;
+use App\Services\HRMS\Employee\EmployeeEligibilityS;
+use App\Models\HRMS\Attendance\HolidayWorkRequestM;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 class AttendanceMobileService
 {
     public function __construct(
-        private AttendanceS $attendanceService,
+        private AttendanceService $attendanceService,
         private AttendanceRuleResolverService $resolver,
         private ?WfhRequestService $wfhRequestService = null
     ) {
@@ -114,7 +118,7 @@ class AttendanceMobileService
         }
         $payload['next_action'] = $attendanceData['next_action'] ?? ($payload['ui']['next_action'] ?? 'none');
 
-        $eligibilityService = app(\App\Services\HRMS\Employee\EmployeeEligibilityS::class);
+        $eligibilityService = app(EmployeeEligibilityS::class);
         if (! $eligibilityService->canUseAttendance($employee)) {
             $payload['can_punch_in'] = false;
             $payload['can_punch_out'] = false;
@@ -131,7 +135,7 @@ class AttendanceMobileService
         $wfhService = $this->wfhRequestService ?: app(WfhRequestService::class);
         $wfhApproved = false;
         if ($employee) {
-            $approvedHolidayWfh = \App\Models\HRMS\Attendance\HolidayWorkRequestM::where('employee_id', $employee->id)
+            $approvedHolidayWfh = HolidayWorkRequestM::where('employee_id', $employee->id)
                 ->whereDate('worked_date', Carbon::now(AttendanceRuleResolverService::TIMEZONE)->toDateString())
                 ->where('status', 'approved')
                 ->where('work_mode', 'wfh')
@@ -174,24 +178,28 @@ class AttendanceMobileService
 
         $violationCycle = '0 / 3';
         $missedPunchCycle = '0 / 2';
-        if ($employee && \Illuminate\Support\Facades\Schema::hasTable('attendance_violations')) {
+        if ($employee && Schema::hasTable('attendance_violations')) {
             $year = Carbon::now('Asia/Kolkata')->year;
             $month = Carbon::now('Asia/Kolkata')->month;
 
-            $qDisc = \Illuminate\Support\Facades\DB::table('attendance_violations')
+            $qDisc = DB::table('attendance_violations')
                 ->where('employee_id', $employee->id)
                 ->whereIn('type', ['late_login', 'late_mark', 'early_logout', 'early_out'])
                 ->whereYear('violation_date', $year)
                 ->whereMonth('violation_date', $month)
+                ->whereNotIn('status', ['resolved', 'regularized', 'converted'])
                 ->where(function ($query) {
                     $query->whereNull('status')->orWhere('status', 'pending');
+                })
+                ->where(function ($query) {
+                    $query->whereNull('policy_action')->orWhere('policy_action', '!=', 'resolved');
                 });
-            if (\Illuminate\Support\Facades\Schema::hasColumn('attendance_violations', 'is_consumed')) {
+            if (Schema::hasColumn('attendance_violations', 'is_consumed')) {
                 $qDisc->where(function ($query) {
                     $query->whereNull('is_consumed')->orWhere('is_consumed', false);
                 });
             }
-            if (\Illuminate\Support\Facades\Schema::hasColumn('attendance_violations', 'deleted_at')) {
+            if (Schema::hasColumn('attendance_violations', 'deleted_at')) {
                 $qDisc->whereNull('deleted_at');
             }
             $countDisc = $qDisc->count();
@@ -200,20 +208,24 @@ class AttendanceMobileService
                 $violationCycle = "{$posDisc} / 3";
             }
 
-            $qMissed = \Illuminate\Support\Facades\DB::table('attendance_violations')
+            $qMissed = DB::table('attendance_violations')
                 ->where('employee_id', $employee->id)
                 ->whereIn('type', ['missed_punch'])
                 ->whereYear('violation_date', $year)
                 ->whereMonth('violation_date', $month)
+                ->whereNotIn('status', ['resolved', 'regularized', 'converted'])
                 ->where(function ($query) {
                     $query->whereNull('status')->orWhere('status', 'pending');
+                })
+                ->where(function ($query) {
+                    $query->whereNull('policy_action')->orWhere('policy_action', '!=', 'resolved');
                 });
-            if (\Illuminate\Support\Facades\Schema::hasColumn('attendance_violations', 'is_consumed')) {
+            if (Schema::hasColumn('attendance_violations', 'is_consumed')) {
                 $qMissed->where(function ($query) {
                     $query->whereNull('is_consumed')->orWhere('is_consumed', false);
                 });
             }
-            if (\Illuminate\Support\Facades\Schema::hasColumn('attendance_violations', 'deleted_at')) {
+            if (Schema::hasColumn('attendance_violations', 'deleted_at')) {
                 $qMissed->whereNull('deleted_at');
             }
             $countMissed = $qMissed->count();
@@ -223,6 +235,8 @@ class AttendanceMobileService
             }
         }
 
+        $payload['violation_count'] = $countDisc ?? 0;
+        $payload['missed_punch_count'] = $countMissed ?? 0;
         $payload['violation_cycle'] = $violationCycle;
         $payload['violations'] = $violationCycle;
         $payload['discipline_cycle'] = $violationCycle;
@@ -432,6 +446,9 @@ class AttendanceMobileService
             $data['isEarlyOut'] = false;
             $data['early_out_minutes'] = 0;
             $data['earlyOutMinutes'] = 0;
+            $data['missed_punch'] = false;
+            $data['is_missed_punch'] = false;
+            $data['missed_punch_count'] = 0;
         }
 
         if ($punchOut && $earlyOutCutoff) {

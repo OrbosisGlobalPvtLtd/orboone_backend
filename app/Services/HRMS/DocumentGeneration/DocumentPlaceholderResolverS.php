@@ -202,7 +202,7 @@ class DocumentPlaceholderResolverS
         } elseif (!empty($manualFields['signature_image'])) {
             $signatureImage = $manualFields['signature_image'];
             if (str_contains($signatureImage, 'storage/hrms/')) {
-                $relPath = 'public/' . \Illuminate\Support\Str::after($signatureImage, 'storage/');
+                $relPath = 'public/' . Str::after($signatureImage, 'storage/');
                 $fullPath = storage_path('app/' . $relPath);
                 if (is_file($fullPath)) {
                     $signatureImage = 'data:image/' . pathinfo($fullPath, PATHINFO_EXTENSION) . ';base64,' . base64_encode(file_get_contents($fullPath));
@@ -217,7 +217,7 @@ class DocumentPlaceholderResolverS
         } elseif (!empty($manualFields['seal_image'])) {
             $sealImage = $manualFields['seal_image'];
             if (str_contains($sealImage, 'storage/hrms/')) {
-                $relPath = 'public/' . \Illuminate\Support\Str::after($sealImage, 'storage/');
+                $relPath = 'public/' . Str::after($sealImage, 'storage/');
                 $fullPath = storage_path('app/' . $relPath);
                 if (is_file($fullPath)) {
                     $sealImage = 'data:image/' . pathinfo($fullPath, PATHINFO_EXTENSION) . ';base64,' . base64_encode(file_get_contents($fullPath));

@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\HRMS\Employee\EmployeeM;
 use App\Models\HRMS\Employee\EmployeeProfileM;
 use App\Services\HRMS\Employee\EmployeeProfileCompletionS;
+use App\Services\HRMS\Employee\EmployeeEligibilityS;
 
 class CheckEmployeeProfileCompletion
 {
@@ -49,7 +50,7 @@ class CheckEmployeeProfileCompletion
             return $next($request);
         }
 
-        $eligibilityService = app(\App\Services\HRMS\Employee\EmployeeEligibilityS::class);
+        $eligibilityService = app(EmployeeEligibilityS::class);
         if ($eligibilityService->isExitCompleted($employee) || $eligibilityService->isTerminated($employee)) {
             Auth::logout();
             return redirect('/login')->with('fail', 'Your employment has ended. Please contact HR.');

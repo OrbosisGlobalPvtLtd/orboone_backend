@@ -8,6 +8,7 @@ use App\Models\HRMS\Attendance\AttendanceTypeM as AttendanceType;
 use App\Models\HRMS\Employee\EmployeeM as Employee;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
+use App\Services\HRMS\Employee\EmployeeEligibilityS;
 
 class AttendanceAbsent extends Command
 {
@@ -47,7 +48,7 @@ class AttendanceAbsent extends Command
         $attendanceTimeId = AttendanceTime::whereName('OTHER')->first()->id;
         $attendanceTypeId = AttendanceType::where('name', ["ABSENT"])->first()->id;
 
-        $eligibilityService = app(\App\Services\HRMS\Employee\EmployeeEligibilityS::class);
+        $eligibilityService = app(EmployeeEligibilityS::class);
 
         foreach($employees as $employee) {
             if (!$eligibilityService->canUseAttendance($employee)) {

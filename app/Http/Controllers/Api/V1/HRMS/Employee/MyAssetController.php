@@ -6,13 +6,14 @@ use App\Http\Controllers\Api\V1\ApiController;
 use App\Models\HRMS\Employee\AssetAllocationM as AssetAllocation;
 use App\Models\HRMS\Employee\EmployeeM as Employee;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 
 class MyAssetController extends ApiController
 {
     /**
      * Get allocated assets for the currently authenticated employee.
      *
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
     public function myAssets()
     {

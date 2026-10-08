@@ -8,6 +8,7 @@ use Closure;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class CheckAccess
 {
@@ -204,7 +205,7 @@ class CheckAccess
                 ->with('error', 'Access denied.');
         }
 
-        $access = \Illuminate\Support\Facades\DB::table('role_menu_access')
+        $access = DB::table('role_menu_access')
             ->where('menu_id', $menu->id)
             ->whereIn('role_id', $roleIds)
             ->first();

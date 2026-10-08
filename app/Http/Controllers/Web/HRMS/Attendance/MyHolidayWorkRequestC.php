@@ -10,14 +10,19 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\View\View;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Validator;
+use App\Models\HRMS\Attendance\AttendanceM;
+use App\Services\HRMS\Notification\NotificationS;
 
 class MyHolidayWorkRequestC extends Controller
 {
     /**
      * Display a paginated listing of the employee's holiday work requests.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\View\View
+     * @param  Request  $request
+     * @return View
      */
     public function index(Request $request)
     {
@@ -37,9 +42,9 @@ class MyHolidayWorkRequestC extends Controller
     /**
      * Store a newly created holiday work request in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Services\HRMS\Leave\WeekoffHolidayService  $weekoffHolidayService
-     * @return \Illuminate\Http\RedirectResponse
+     * @param  Request  $request
+     * @param  WeekoffHolidayService  $weekoffHolidayService
+     * @return RedirectResponse
      */
     public function store(Request $request, WeekoffHolidayService $weekoffHolidayService)
     {
@@ -50,7 +55,7 @@ class MyHolidayWorkRequestC extends Controller
         }
 
         // Custom validation messages as required by Phase 3
-        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+        $validator = Validator::make($request->all(), [
             'work_type' => 'required',
             'reason' => 'required|string|max:1000',
             'start_time' => 'nullable|string',
@@ -134,7 +139,7 @@ class MyHolidayWorkRequestC extends Controller
         DB::transaction(function () use ($employee, $dates, $workType, $workMode, $request, &$createdRequests, $startTime, $endTime) {
             foreach ($dates as $dateStr) {
                 $workedDate = Carbon::parse($dateStr, 'Asia/Kolkata')->toDateString();
-                $attendance = \App\Models\HRMS\Attendance\AttendanceM::where('employee_id', $employee->id)
+                $attendance = AttendanceM::where('employee_id', $employee->id)
                     ->whereDate('attendance_date', $workedDate)
                     ->first();
 
@@ -156,7 +161,7 @@ class MyHolidayWorkRequestC extends Controller
 
         // 4. Notify HR/Admin (Grouped notification for multiple dates)
         try {
-            $notificationService = app(\App\Services\HRMS\Notification\NotificationS::class);
+            $notificationService = app(NotificationS::class);
             $employeeName = $employee->display_name;
 
             if (count($dates) === 1) {

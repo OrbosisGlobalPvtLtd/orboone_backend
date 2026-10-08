@@ -14,6 +14,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
+use App\Services\HRMS\DocumentGeneration\DocumentPlaceholderResolverS;
+use Illuminate\Support\Facades\Log;
+use App\Services\HRMS\DocumentGeneration\DocumentFieldConfigS;
+use Illuminate\Support\Facades\DB;
+use App\Mail\QueuedDocumentMail;
+use Illuminate\Support\Facades\Mail;
 
 class GeneratedDocumentC extends Controller
 {
@@ -111,7 +118,7 @@ class GeneratedDocumentC extends Controller
         }
 
         $totalDocuments = (clone $baseQueryForMetrics)->count();
-        $generatedToday = (clone $baseQueryForMetrics)->whereDate('created_at', \Carbon\Carbon::today())->count();
+        $generatedToday = (clone $baseQueryForMetrics)->whereDate('created_at', Carbon::today())->count();
         $employeeDocuments = (clone $baseQueryForMetrics)->whereNotNull('employee_id')->count();
         $manualDocuments = (clone $baseQueryForMetrics)->whereNull('employee_id')->count();
         $emailedDocuments = (clone $baseQueryForMetrics)->where('status', 'sent')->count();
@@ -192,7 +199,7 @@ class GeneratedDocumentC extends Controller
     {
         $employee = EmployeeM::with(['user', 'department', 'designation', 'reportingManager', 'profile'])->findOrFail($employeeId);
         
-        $resolver = app(\App\Services\HRMS\DocumentGeneration\DocumentPlaceholderResolverS::class);
+        $resolver = app(DocumentPlaceholderResolverS::class);
         $resolved = $resolver->resolve($employee, []);
 
         $monthlySalary = $employee->salaryStructure?->gross_salary ?? $employee->actual_salary ?? $employee->gross_salary ?? '';
@@ -229,7 +236,7 @@ class GeneratedDocumentC extends Controller
     public function store(Request $request)
     {
         // 1. Temporary log for submitted payload
-        \Illuminate\Support\Facades\Log::info("Document Generation Submit Request", [
+        Log::info("Document Generation Submit Request", [
             'send_email' => $request->input('send_email'),
             'employee_email' => $request->input('employee_email'),
             'email_subject' => $request->input('email_subject'),
@@ -254,7 +261,7 @@ class GeneratedDocumentC extends Controller
 
         if ($request->filled('document_type')) {
             $docType = $request->input('document_type');
-            $configs = \App\Services\HRMS\DocumentGeneration\DocumentFieldConfigS::getTemplates();
+            $configs = DocumentFieldConfigS::getTemplates();
             $manualFields = $request->input('manual_fields', []);
 
             if (isset($configs[$docType])) {
@@ -302,7 +309,7 @@ class GeneratedDocumentC extends Controller
                 );
                 $messageSuffix = ' as HTML PDF.';
             } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::error("Document Generation Failed (HTML)", ['error' => $e->getMessage()]);
+                Log::error("Document Generation Failed (HTML)", ['error' => $e->getMessage()]);
                 return redirect()->back()->withInput()->with('error', $e->getMessage());
             }
         } else {
@@ -318,7 +325,7 @@ class GeneratedDocumentC extends Controller
                     $request->input('manual_fields', [])
                 );
             } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::error("Document Generation Failed (Docx Template)", ['error' => $e->getMessage()]);
+                Log::error("Document Generation Failed (Docx Template)", ['error' => $e->getMessage()]);
                 return redirect()->back()->withInput()->with('error', $e->getMessage());
             }
         }
@@ -327,7 +334,7 @@ class GeneratedDocumentC extends Controller
 
         // Email delivery flow
         if ($document && $sendEmail) {
-            \Illuminate\Support\Facades\Log::info("Email checkbox detected");
+            Log::info("Email checkbox detected");
             $emailTo = $request->input('employee_email');
             $ccEmail = $request->input('cc_email');
             
@@ -337,8 +344,8 @@ class GeneratedDocumentC extends Controller
             // Resolve company name
             $company = null;
             try {
-                if (\Illuminate\Support\Facades\Schema::hasTable('company_settings')) {
-                    $company = \Illuminate\Support\Facades\DB::table('company_settings')->first();
+                if (Schema::hasTable('company_settings')) {
+                    $company = DB::table('company_settings')->first();
                 }
             } catch (\Throwable $e) {}
             
@@ -356,7 +363,7 @@ class GeneratedDocumentC extends Controller
             $subject = $parsed['subject'];
             $body = $parsed['body'];
 
-            \Illuminate\Support\Facades\Log::info("Email sending started", [
+            Log::info("Email sending started", [
                 'to' => $emailTo,
                 'cc' => $ccEmail,
                 'subject' => $subject,
@@ -364,12 +371,12 @@ class GeneratedDocumentC extends Controller
 
             try {
                 $pdfPath = $document->generated_pdf_path ?: $document->pdf_path;
-                if (!$pdfPath || !\Illuminate\Support\Facades\Storage::disk('private')->exists($pdfPath)) {
+                if (!$pdfPath || !Storage::disk('private')->exists($pdfPath)) {
                     throw new \Exception("PDF document does not exist and cannot be sent.");
                 }
 
-                \Illuminate\Support\Facades\Log::info("PDF path exists", ['path' => $pdfPath]);
-                $pdfFile = \Illuminate\Support\Facades\Storage::disk('private')->path($pdfPath);
+                Log::info("PDF path exists", ['path' => $pdfPath]);
+                $pdfFile = Storage::disk('private')->path($pdfPath);
                 
                 // Confirm file size > 0
                 if (!is_file($pdfFile) || filesize($pdfFile) === 0) {
@@ -380,7 +387,7 @@ class GeneratedDocumentC extends Controller
                 $fromName = config('mail.from.name') ?: 'HR Team';
                 $fallbackUsed = false;
 
-                $mailable = new \App\Mail\QueuedDocumentMail(
+                $mailable = new QueuedDocumentMail(
                     $subject,
                     $body,
                     $pdfFile,
@@ -392,8 +399,8 @@ class GeneratedDocumentC extends Controller
 
                 if (config('queue.default') === 'sync') {
                     try {
-                        \Illuminate\Support\Facades\Log::info("Attempting to send email synchronously with preferred sender: {$fromAddress}");
-                        \Illuminate\Support\Facades\Mail::to($emailTo)->send($mailable);
+                        Log::info("Attempting to send email synchronously with preferred sender: {$fromAddress}");
+                        Mail::to($emailTo)->send($mailable);
                     } catch (\Throwable $mailEx) {
                         $errorMessage = $mailEx->getMessage();
                         $isRelayError = str_contains(strtolower($errorMessage), '553') || 
@@ -403,32 +410,32 @@ class GeneratedDocumentC extends Controller
 
                         $smtpUsername = config('mail.mailers.smtp.username');
                         if ($isRelayError && $smtpUsername && $fromAddress !== $smtpUsername) {
-                            \Illuminate\Support\Facades\Log::warning("SMTP rejected preferred sender ({$fromAddress}) with error: {$errorMessage}. Falling back to MAIL_USERNAME: {$smtpUsername}");
+                            Log::warning("SMTP rejected preferred sender ({$fromAddress}) with error: {$errorMessage}. Falling back to MAIL_USERNAME: {$smtpUsername}");
                             $mailable->fromAddress = $smtpUsername;
-                            \Illuminate\Support\Facades\Mail::to($emailTo)->send($mailable);
+                            Mail::to($emailTo)->send($mailable);
                         } else {
                             throw $mailEx;
                         }
                     }
                 } else {
-                    \Illuminate\Support\Facades\Log::info("Queueing email with preferred sender: {$fromAddress}");
-                    \Illuminate\Support\Facades\Mail::to($emailTo)->queue($mailable);
+                    Log::info("Queueing email with preferred sender: {$fromAddress}");
+                    Mail::to($emailTo)->queue($mailable);
                 }
 
                 $dbData = [
                     'status' => 'sent',
-                    'sent_at' => \Carbon\Carbon::now(),
-                    'sent_by_user_id' => \Illuminate\Support\Facades\Auth::id() ?? 1,
+                    'sent_at' => Carbon::now(),
+                    'sent_by_user_id' => Auth::id() ?? 1,
                     'email_to' => $emailTo,
                     'email_subject' => $subject,
                     'email_body' => $body,
                 ];
 
-                if (\Illuminate\Support\Facades\Schema::hasColumn('generated_documents', 'email_status')) {
+                if (Schema::hasColumn('generated_documents', 'email_status')) {
                     $dbData['email_status'] = 'sent';
                 }
-                if (\Illuminate\Support\Facades\Schema::hasColumn('generated_documents', 'email_sent_at')) {
-                    $dbData['email_sent_at'] = \Carbon\Carbon::now();
+                if (Schema::hasColumn('generated_documents', 'email_sent_at')) {
+                    $dbData['email_sent_at'] = Carbon::now();
                 }
 
                 $document->update($dbData);
@@ -436,21 +443,21 @@ class GeneratedDocumentC extends Controller
                 $document->logs()->create([
                     'action' => 'sent',
                     'remarks' => "Emailed to {$emailTo}" . (!empty($ccEmail) ? " (CC: {$ccEmail})" : ""),
-                    'actor_user_id' => \Illuminate\Support\Facades\Auth::id() ?? 1,
+                    'actor_user_id' => Auth::id() ?? 1,
                 ]);
 
                 return redirect()->route('hrms.document-generation.generated.index')
                     ->with('success', "Document generated successfully{$messageSuffix} Email sent successfully to {$emailTo}.");
             } catch (\Throwable $mailEx) {
-                \Illuminate\Support\Facades\Log::error("Mail send failed: " . $mailEx->getMessage(), [
+                Log::error("Mail send failed: " . $mailEx->getMessage(), [
                     'exception' => $mailEx
                 ]);
 
                 $dbData = [];
-                if (\Illuminate\Support\Facades\Schema::hasColumn('generated_documents', 'email_status')) {
+                if (Schema::hasColumn('generated_documents', 'email_status')) {
                     $dbData['email_status'] = 'failed';
                 }
-                if (\Illuminate\Support\Facades\Schema::hasColumn('generated_documents', 'email_error')) {
+                if (Schema::hasColumn('generated_documents', 'email_error')) {
                     $dbData['email_error'] = substr($mailEx->getMessage(), 0, 500);
                 }
                 if (!empty($dbData)) {
@@ -460,7 +467,7 @@ class GeneratedDocumentC extends Controller
                 $document->logs()->create([
                     'action' => 'failed',
                     'remarks' => "Email failed: " . substr($mailEx->getMessage(), 0, 200),
-                    'actor_user_id' => \Illuminate\Support\Facades\Auth::id() ?? 1,
+                    'actor_user_id' => Auth::id() ?? 1,
                 ]);
 
                 return redirect()->route('hrms.document-generation.generated.index')
@@ -472,7 +479,7 @@ class GeneratedDocumentC extends Controller
             $document->logs()->create([
                 'action' => 'generated',
                 'remarks' => "Document generated. Email was not sent.",
-                'actor_user_id' => \Illuminate\Support\Facades\Auth::id() ?? 1,
+                'actor_user_id' => Auth::id() ?? 1,
             ]);
         }
 
@@ -742,7 +749,7 @@ class GeneratedDocumentC extends Controller
             return redirect()->route('hrms.document-generation.generated.index')
                 ->with('success', 'Document deleted successfully.');
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error("Failed to delete generated document", ['error' => $e->getMessage()]);
+            Log::error("Failed to delete generated document", ['error' => $e->getMessage()]);
             return redirect()->back()->with('error', 'Failed to delete document: ' . $e->getMessage());
         }
     }

@@ -6,6 +6,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
+use Carbon\Carbon;
 
 class PayslipMail extends Mailable implements ShouldQueue
 {
@@ -39,7 +40,7 @@ class PayslipMail extends Mailable implements ShouldQueue
      */
     public function build()
     {
-        $monthName = \Carbon\Carbon::create(null, $this->payslip->month)->format('F');
+        $monthName = Carbon::create(null, $this->payslip->month)->format('F');
         $fileName = ($this->employee->employee_code ?? 'OG-EMP-' . $this->employee->id) . '_PAYSLIP_' . $monthName . '_' . $this->payslip->year . '.pdf';
 
         return $this->subject('Payslip for ' . $monthName . ' ' . $this->payslip->year)

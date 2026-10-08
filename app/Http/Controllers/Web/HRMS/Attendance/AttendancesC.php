@@ -13,7 +13,8 @@ use App\Models\HRMS\Department\DepartmentM;
 use App\Models\HRMS\Employee\EmployeeM;
 use App\Models\HRMS\Employee\EmployeeShiftTimingM;
 use App\Services\HRMS\Attendance\AttendanceMobileService;
-use App\Services\HRMS\Attendance\AttendanceS;
+use App\Services\HRMS\Attendance\AttendanceRuleResolverService;
+use App\Services\HRMS\Attendance\AttendanceService;
 use App\Services\HRMS\Employee\EmployeeShiftAssignmentService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -24,16 +25,23 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
+use Illuminate\Pagination\LengthAwarePaginator;
+use App\Services\HRMS\Team\TeamManagementScopeS;
+use App\Models\HRMS\Attendance\AttendanceDailyStatusLogM;
+use App\Models\HRMS\Attendance\AttendanceViolationM;
+use App\Services\Core\Menu\SidebarMenuResolverS;
+use Illuminate\Validation\ValidationException;
+use App\Services\HRMS\ProjectManagement\ProjectAccessScopeS;
 
 class AttendancesC extends Controller
 {
     use HrmsCrudPage;
 
-    private AttendanceS $attendanceService;
+    private AttendanceService $attendanceService;
     private AttendanceMobileService $mobileService;
 
     public function __construct(
-        AttendanceS $attendanceService,
+        AttendanceService $attendanceService,
         AttendanceMobileService $mobileService
     ) {
         $this->middleware('auth');
@@ -277,7 +285,7 @@ class AttendancesC extends Controller
         if ($unmarkedPerPage <= 0) {
             $unmarkedPerPage = 10;
         }
-        $unmarkedEmployees = new \Illuminate\Pagination\LengthAwarePaginator(
+        $unmarkedEmployees = new LengthAwarePaginator(
             $allUnmarkedEmployees->forPage($unmarkedPage, $unmarkedPerPage)->values(),
             $allUnmarkedEmployees->count(),
             $unmarkedPerPage,
@@ -476,7 +484,7 @@ class AttendancesC extends Controller
         $canTeam = $this->canViewTeam('attendance.regularization.view_team') || $this->canViewTeam('attendance.monthly_report.view_team');
 
         $supervisorEmpId = $this->ownEmployeeId();
-        $teamScope = app(\App\Services\HRMS\Team\TeamManagementScopeS::class);
+        $teamScope = app(TeamManagementScopeS::class);
         $teamEmpIds = $supervisorEmpId ? $teamScope->getTeamEmployeeIds($supervisorEmpId) : [];
 
         // If global/admin with no specific team, default to all active employees
@@ -894,7 +902,7 @@ class AttendancesC extends Controller
 
     private function resolveAttendanceRecordsQuery(Request $request): array
     {
-        $currentEmployee = \App\Models\HRMS\Employee\EmployeeM::where('user_id', Auth::id())->first();
+        $currentEmployee = EmployeeM::where('user_id', Auth::id())->first();
         $currentEmployeeId = $currentEmployee ? $currentEmployee->id : ($this->ownEmployeeId() ?: null);
         $userId = Auth::id();
 
@@ -1003,7 +1011,7 @@ class AttendancesC extends Controller
             );
         }
 
-        $currentEmployee = \App\Models\HRMS\Employee\EmployeeM::where('user_id', Auth::id())->first();
+        $currentEmployee = EmployeeM::where('user_id', Auth::id())->first();
         $currentEmployeeId = $currentEmployee ? $currentEmployee->id : ($this->ownEmployeeId() ?: null);
 
         [$query, $filterRequest, $selectedEmployeeId, $selectedMonthYear, $periodLabel] = $this->resolveAttendanceRecordsQuery($request);
@@ -1094,7 +1102,7 @@ class AttendancesC extends Controller
             'task_summary' => 'required_if:type,out',
         ]);
 
-        $employee = \App\Models\HRMS\Employee\EmployeeM::find($request->employee_id);
+        $employee = EmployeeM::find($request->employee_id);
         $customTime = Carbon::parse($request->time)->format('Y-m-d H:i:s');
 
         if ($request->type === 'in') {
@@ -1142,9 +1150,18 @@ class AttendancesC extends Controller
         $type = AttendanceType::findOrFail($request->attendance_type_id);
         $typeCode = strtolower($type->code);
 
-        $punchInTime = $request->filled('punch_in_time') ? Carbon::parse($request->punch_in_time)->format('H:i:s') : $attendance->punch_in_time;
-        $punchOutTime = $request->filled('punch_out_time') ? Carbon::parse($request->punch_out_time)->format('H:i:s') : $attendance->punch_out_time;
+        $punchInTime = $request->filled('punch_in_time') ? Carbon::parse($request->punch_in_time)->format('H:i:s') : null;
+        $punchOutTime = $request->filled('punch_out_time') ? Carbon::parse($request->punch_out_time)->format('H:i:s') : null;
         $adminReason = $request->hr_approval_note ?: ($request->note ?: 'Manually updated by HR/Admin');
+
+        $attDateStr = $request->filled('attendance_date') ? Carbon::parse($request->attendance_date)->toDateString() : Carbon::parse($attendance->attendance_date)->toDateString();
+
+        $employee = $attendance->employee ?: EmployeeM::find($attendance->employee_id);
+        $ruleResolver = app(AttendanceRuleResolverService::class);
+        $shiftId = $attendance->attendance_time_id ?: null;
+        $shift = $shiftId
+            ? $ruleResolver->getPolicyFromAttendanceTimeId((int) $shiftId, $employee, $attDateStr)
+            : ($employee ? $ruleResolver->getPolicyForEmployee($employee, $attDateStr) : null);
 
         $updateData = [
             'attendance_type_id' => $type->id,
@@ -1168,7 +1185,7 @@ class AttendancesC extends Controller
         }
 
         if ($request->filled('attendance_date')) {
-            $updateData['attendance_date'] = Carbon::parse($request->attendance_date)->toDateString();
+            $updateData['attendance_date'] = $attDateStr;
         }
 
         if ($request->filled('note')) {
@@ -1211,11 +1228,142 @@ class AttendancesC extends Controller
             $updateData['is_missed_punch'] = false;
         }
 
+        $isDynamicShift = in_array(strtolower($shift?->shift_type ?? ''), ['dynamic_hours', 'flexible_part_time'], true)
+            || (is_object($shift) && method_exists($shift, 'isDynamicShift') && $shift->isDynamicShift());
+
+        $requiredMinutes = (int) ($shift?->required_work_minutes ?? 0);
+        if ($requiredMinutes <= 0) {
+            $requiredMinutes = (int) ($shift?->required_office_minutes ?? 0);
+        }
+        if ($requiredMinutes <= 0 && ! empty($shift?->shift_start_time) && ! empty($shift?->shift_end_time)) {
+            try {
+                $st = Carbon::parse('2026-01-01 ' . $ruleResolver->timeString($shift->shift_start_time));
+                $et = Carbon::parse('2026-01-01 ' . $ruleResolver->timeString($shift->shift_end_time));
+                if ($et->lt($st)) {
+                    $et->addDay();
+                }
+                $requiredMinutes = $st->diffInMinutes($et);
+            } catch (\Throwable $e) {
+                $requiredMinutes = 480;
+            }
+        }
+        if ($requiredMinutes <= 0) {
+            $requiredMinutes = 480;
+        }
+
+        $halfDayMinMinutes = (int) ($shift?->half_day_min_minutes ?? (int)($requiredMinutes / 2));
+
+        // Recalculate target punch out & late / early stats
+        if ($punchInTime) {
+            $punchInCarbon = Carbon::parse($attDateStr . ' ' . $punchInTime, AttendanceRuleResolverService::TIMEZONE);
+            $targetOutCarbon = $ruleResolver->targetPunchOut($punchInCarbon, $shift, $typeCode);
+            $updateData['target_punch_out_time'] = $targetOutCarbon ? $targetOutCarbon->format('H:i:s') : null;
+
+            if (in_array($typeCode, ['leave', 'holiday', 'week_off'], true) || (bool) $attendance->is_late_exempted || $isDynamicShift) {
+                $updateData['is_late'] = false;
+                $updateData['late_minutes'] = 0;
+            } elseif ($shift && $shift->late_after_time) {
+                $lateAfterCarbon = Carbon::parse($attDateStr . ' ' . $shift->late_after_time, AttendanceRuleResolverService::TIMEZONE);
+                $isLate = $punchInCarbon->gt($lateAfterCarbon);
+                $updateData['is_late'] = $isLate;
+                $updateData['late_minutes'] = $isLate ? $lateAfterCarbon->diffInMinutes($punchInCarbon) : 0;
+            } else {
+                $updateData['is_late'] = false;
+                $updateData['late_minutes'] = 0;
+            }
+        } else {
+            $updateData['target_punch_out_time'] = null;
+            $updateData['is_late'] = false;
+            $updateData['late_minutes'] = 0;
+        }
+
+        if ($punchInTime && $punchOutTime) {
+            $punchInCarbon = Carbon::parse($attDateStr . ' ' . $punchInTime, AttendanceRuleResolverService::TIMEZONE);
+            $punchOutCarbon = Carbon::parse($attDateStr . ' ' . $punchOutTime, AttendanceRuleResolverService::TIMEZONE);
+
+            $isEarly = false;
+            $earlyMinutes = 0;
+            if (! empty($updateData['target_punch_out_time'])) {
+                $targetCarbon = Carbon::parse($attDateStr . ' ' . $updateData['target_punch_out_time'], AttendanceRuleResolverService::TIMEZONE);
+                if ($targetCarbon->lt($punchInCarbon)) {
+                    $targetCarbon->addDay();
+                }
+                if ($punchOutCarbon->lt($punchInCarbon)) {
+                    $punchOutCarbon->addDay();
+                }
+                $isEarly = $punchOutCarbon->lt($targetCarbon);
+                $earlyMinutes = $isEarly ? (int) abs($punchOutCarbon->diffInMinutes($targetCarbon)) : 0;
+            }
+
+            $updateData['is_early_out'] = $isEarly;
+            $updateData['early_out_minutes'] = $earlyMinutes;
+            $grossMinutes = (int) abs($punchInCarbon->diffInMinutes($punchOutCarbon));
+            $breakMinutes = (int) ($shift?->lunch_break_minutes ?? $shift?->break_minutes ?? 0);
+            $netMinutes = max(0, $grossMinutes - $breakMinutes);
+
+            $earlyOutHalfDayMins = (int) ($shift?->early_out_half_day_minutes ?? 60);
+            $halfDayCutoffCarbon = ! empty($updateData['target_punch_out_time'])
+                ? Carbon::parse($attDateStr . ' ' . $updateData['target_punch_out_time'], AttendanceRuleResolverService::TIMEZONE)->subMinutes($earlyOutHalfDayMins)
+                : null;
+            $isHalfDayByPunchOut = $halfDayCutoffCarbon ? $punchOutCarbon->lt($halfDayCutoffCarbon) : false;
+
+            // If user left status as half_day or absent from old state, but new timings satisfy full day or within early out grace window
+            if (in_array($typeCode, ['half_day', 'absent', 'lwp', 'missed_punch'], true) && ($netMinutes >= $requiredMinutes || (! $isHalfDayByPunchOut && ! $isDynamicShift && $netMinutes >= $halfDayMinMinutes))) {
+                $presentType = AttendanceType::where('code', 'present')->first();
+                if ($presentType) {
+                    $typeCode = 'present';
+                    $updateData['attendance_type_id'] = $presentType->id;
+                    $updateData['attendance_status'] = 'present';
+                    $updateData['is_half_day'] = false;
+                    $updateData['is_lwp'] = false;
+                    $updateData['half_day_reason'] = null;
+                }
+            } elseif (in_array($typeCode, ['absent', 'lwp'], true) && $netMinutes >= $halfDayMinMinutes) {
+                $halfDayType = AttendanceType::where('code', 'half_day')->first();
+                if ($halfDayType) {
+                    $typeCode = 'half_day';
+                    $updateData['attendance_type_id'] = $halfDayType->id;
+                    $updateData['attendance_status'] = 'half_day';
+                    $updateData['is_half_day'] = true;
+                    $updateData['is_lwp'] = false;
+                }
+            }
+
+            $updateData['gross_work_minutes'] = $grossMinutes;
+            $updateData['break_minutes'] = $breakMinutes;
+            $updateData['lunch_break_minutes'] = $breakMinutes;
+            $updateData['total_work_minutes'] = $netMinutes;
+            $updateData['gross_duration'] = sprintf('%d hours %d mins', intdiv($grossMinutes, 60), $grossMinutes % 60);
+            $updateData['total_duration'] = sprintf('%d hours %d mins', intdiv($netMinutes, 60), $netMinutes % 60);
+        } elseif ($punchInTime && ! $punchOutTime) {
+            $updateData['punch_out_time'] = null;
+            $updateData['is_early_out'] = false;
+            $updateData['early_out_minutes'] = 0;
+            $updateData['gross_work_minutes'] = 0;
+            $updateData['total_work_minutes'] = 0;
+            $updateData['gross_duration'] = 'N/A';
+            $updateData['total_duration'] = 'N/A';
+
+            // When only punch in is recorded, ensure active attendance status is present (unless explicit leave/holiday/week_off)
+            if (in_array($typeCode, ['absent', 'lwp', 'half_day', 'missed_punch'], true)) {
+                $presentType = AttendanceType::where('code', 'present')->first();
+                if ($presentType) {
+                    $typeCode = 'present';
+                    $updateData['attendance_type_id'] = $presentType->id;
+                    $updateData['attendance_status'] = 'present';
+                    $updateData['is_half_day'] = false;
+                    $updateData['is_lwp'] = false;
+                    $updateData['missed_punch'] = false;
+                    $updateData['is_missed_punch'] = false;
+                }
+            }
+        }
+
         $oldStatus = $attendance->attendance_status ?? optional($attendance->attendanceType)->code ?? 'unknown';
         $attendance->update($updateData);
 
         try {
-            \App\Models\HRMS\Attendance\AttendanceDailyStatusLogM::create([
+            AttendanceDailyStatusLogM::create([
                 'employee_id' => $attendance->employee_id,
                 'attendance_id' => $attendance->id,
                 'status_date' => $attendance->attendance_date ?? now()->toDateString(),
@@ -1232,6 +1380,9 @@ class AttendancesC extends Controller
         if ($attendance->punch_in_time && $attendance->punch_out_time) {
             $this->attendanceService->calculateAttendanceStats($attendance);
         }
+
+        $this->attendanceService->syncAttendanceViolations($attendance);
+        $this->attendanceService->rebuildEmployeeViolationCycles($attendance->employee_id, $attDateStr);
 
         return back()->with('status', 'Attendance updated successfully.');
     }
@@ -1297,7 +1448,7 @@ class AttendancesC extends Controller
         }
 
         // Query blocked_punch violations from attendance_violations table
-        $violationQuery = \App\Models\HRMS\Attendance\AttendanceViolationM::with(['employee.user', 'employee.department'])
+        $violationQuery = AttendanceViolationM::with(['employee.user', 'employee.department'])
             ->where('type', 'blocked_punch')
             ->where(function ($sq) use ($request) {
                 if ($request->flag === 'unlocked') {
@@ -1430,7 +1581,7 @@ class AttendancesC extends Controller
                 return true;
             }
             $violationId = (int) str_replace('violation_', '', (string) $vAtt->id);
-            $violation = \App\Models\HRMS\Attendance\AttendanceViolationM::find($violationId);
+            $violation = AttendanceViolationM::find($violationId);
             if ($violation && $violation->attendance_id && in_array((int) $violation->attendance_id, $realAttendanceIds, true)) {
                 return true;
             }
@@ -1446,7 +1597,7 @@ class AttendancesC extends Controller
                 return [$dateTs, $timeTs, $idNum];
             })->values();
 
-        $currentPage = \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPage();
+        $currentPage = LengthAwarePaginator::resolveCurrentPage();
         $perPageReq = $request->input('per_page', '25');
         if ($perPageReq === 'all' || $perPageReq === '-1') {
             $perPage = max(1, $merged->count());
@@ -1455,12 +1606,12 @@ class AttendancesC extends Controller
         }
         $currentPageItems = $merged->slice(($currentPage - 1) * $perPage, $perPage)->values();
 
-        $attendances = new \Illuminate\Pagination\LengthAwarePaginator(
+        $attendances = new LengthAwarePaginator(
             $currentPageItems,
             $merged->count(),
             $perPage,
             $currentPage,
-            ['path' => \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPath()]
+            ['path' => LengthAwarePaginator::resolveCurrentPath()]
         );
         $attendances->appends($request->all());
 
@@ -2320,7 +2471,7 @@ class AttendancesC extends Controller
         }
 
         if ($employee->user_id) {
-            app(\App\Services\Core\Menu\SidebarMenuResolverS::class)->clearCache((int) $employee->user_id);
+            app(SidebarMenuResolverS::class)->clearCache((int) $employee->user_id);
         }
 
         return back()->with('success', 'Access updated for ' . ($employee->employee_code ?? 'Employee'));
@@ -2413,7 +2564,7 @@ class AttendancesC extends Controller
         if (count($updateData) > 1) {
             $userIds = (clone $query)->whereNotNull('user_id')->pluck('user_id');
             $count = $query->update($updateData);
-            $resolver = app(\App\Services\Core\Menu\SidebarMenuResolverS::class);
+            $resolver = app(SidebarMenuResolverS::class);
             foreach ($userIds as $uId) {
                 $resolver->clearCache((int) $uId);
             }
@@ -2463,7 +2614,7 @@ class AttendancesC extends Controller
             }
 
             return back()->with('success', $result['message'] ?? 'Punch in recorded successfully.');
-        } catch (\Illuminate\Validation\ValidationException $ve) {
+        } catch (ValidationException $ve) {
             throw $ve;
         } catch (\Throwable $e) {
             Log::error('Web Punch In Exception: ' . $e->getMessage(), [
@@ -2496,7 +2647,7 @@ class AttendancesC extends Controller
             'gps_status' => 'nullable|string|max:255',
         ]);
 
-        $scopeS = app(\App\Services\HRMS\ProjectManagement\ProjectAccessScopeS::class);
+        $scopeS = app(ProjectAccessScopeS::class);
         $accessibleProjectIds = $scopeS->getAccessibleProjectIds();
 
         $rawProjects = $request->projects ?? [];

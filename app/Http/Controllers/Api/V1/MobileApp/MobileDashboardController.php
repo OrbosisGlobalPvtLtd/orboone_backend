@@ -16,6 +16,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use App\Services\HRMS\Employee\EmployeeEligibilityS;
+use App\Services\HRMS\Leave\MonthlyLeaveQuotaService;
+use App\Services\HRMS\Leave\LeaveAllocationService;
+use App\Services\HRMS\Employee\EmployeeProfileCompletionS;
 
 class MobileDashboardController extends Controller
 {
@@ -60,7 +64,7 @@ class MobileDashboardController extends Controller
             $employee->load('profile');
         }
 
-        $eligibilityService = app(\App\Services\HRMS\Employee\EmployeeEligibilityS::class);
+        $eligibilityService = app(EmployeeEligibilityS::class);
 
         if ($eligibilityService->isExitCompleted($employee) || $eligibilityService->isTerminated($employee)) {
             return response()->json([
@@ -181,7 +185,7 @@ class MobileDashboardController extends Controller
                 ->groupBy('status')
                 ->pluck('total', 'status');
 
-            $quota = app(\App\Services\HRMS\Leave\MonthlyLeaveQuotaService::class)->getMonthlyQuota($employee);
+            $quota = app(MonthlyLeaveQuotaService::class)->getMonthlyQuota($employee);
             $leaveSummary['monthly_quota'] = [
                 'limit' => $quota['monthly_limit'],
                 'used' => $quota['current_month_used'],
@@ -190,7 +194,7 @@ class MobileDashboardController extends Controller
             ];
 
             $year = Carbon::now('Asia/Kolkata')->year;
-            $allocation = app(\App\Services\HRMS\Leave\LeaveAllocationService::class)->getOrGenerate($employee, $year);
+            $allocation = app(LeaveAllocationService::class)->getOrGenerate($employee, $year);
 
             if ($allocation) {
                 $leaveSummary['balances'] = [
@@ -309,8 +313,12 @@ class MobileDashboardController extends Controller
                 ->whereIn('type', ['late_login', 'late_mark', 'early_logout', 'early_out'])
                 ->whereYear('violation_date', $year)
                 ->whereMonth('violation_date', $month)
+                ->whereNotIn('status', ['resolved', 'regularized', 'converted'])
                 ->where(function ($query) {
                     $query->whereNull('status')->orWhere('status', 'pending');
+                })
+                ->where(function ($query) {
+                    $query->whereNull('policy_action')->orWhere('policy_action', '!=', 'resolved');
                 });
             if (Schema::hasColumn('attendance_violations', 'is_consumed')) {
                 $qDisc->where(function ($query) {
@@ -331,8 +339,12 @@ class MobileDashboardController extends Controller
                 ->whereIn('type', ['missed_punch'])
                 ->whereYear('violation_date', $year)
                 ->whereMonth('violation_date', $month)
+                ->whereNotIn('status', ['resolved', 'regularized', 'converted'])
                 ->where(function ($query) {
                     $query->whereNull('status')->orWhere('status', 'pending');
+                })
+                ->where(function ($query) {
+                    $query->whereNull('policy_action')->orWhere('policy_action', '!=', 'resolved');
                 });
             if (Schema::hasColumn('attendance_violations', 'is_consumed')) {
                 $qMissed->where(function ($query) {
@@ -408,7 +420,7 @@ class MobileDashboardController extends Controller
 
     private function buildCompletionStatus(Employee $employee, $profile): array
     {
-        return app(\App\Services\HRMS\Employee\EmployeeProfileCompletionS::class)->buildCompletionStatus($employee, $profile);
+        return app(EmployeeProfileCompletionS::class)->buildCompletionStatus($employee, $profile);
     }
 
     private function isUserInTarget($user, $announcement): bool

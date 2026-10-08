@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web\HRMS\Document;
 use App\Http\Controllers\Controller;
 use App\Models\HRMS\Document\CompanyDocumentM as CompanyDocumentModal;
 use Illuminate\Http\Request;
+use App\Models\Core\AccessM;
 
 class EmployeePolicyC extends Controller
 {
@@ -16,7 +17,7 @@ class EmployeePolicyC extends Controller
             ->latest()
             ->get();
 
-        $accesses = \App\Models\Core\AccessM::where('role_id', $user->role_id)->get();
+        $accesses = AccessM::where('role_id', $user->role_id)->get();
 
         return view('hrms.documents.company-documents.index', compact('policies', 'accesses'));
     }

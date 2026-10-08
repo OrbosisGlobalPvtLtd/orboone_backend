@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands\HRMS;
 
-use App\Services\HRMS\Attendance\AttendanceS;
+use App\Services\HRMS\Attendance\AttendanceService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -12,7 +12,7 @@ class AutoCloseBlockedAttendance extends Command
 
     protected $description = 'At day end, mark unresolved blocked attendance records as absent.';
 
-    public function handle(AttendanceS $attendanceService): int
+    public function handle(AttendanceService $attendanceService): int
     {
         $date = $this->option('date') ?: $this->argument('date');
         $dryRun = (bool) $this->option('dry-run');

@@ -4,6 +4,8 @@ namespace App\Http\Requests\Web\AccessControl;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 class StoreAdminUserRequest extends FormRequest
 {
@@ -18,8 +20,8 @@ class StoreAdminUserRequest extends FormRequest
         $passwordRule = $this->isMethod('post') ? ['required', 'string', 'min:8'] : ['nullable', 'string', 'min:8'];
         
         $isEmployee = false;
-        if ($adminId && \Illuminate\Support\Facades\Schema::hasTable('employees_new')) {
-            $isEmployee = \Illuminate\Support\Facades\DB::table('employees_new')->where('user_id', $adminId)->exists();
+        if ($adminId && Schema::hasTable('employees_new')) {
+            $isEmployee = DB::table('employees_new')->where('user_id', $adminId)->exists();
         }
 
         $roleIdsRule = ['array'];

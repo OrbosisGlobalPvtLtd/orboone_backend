@@ -5,16 +5,20 @@ namespace App\Http\Controllers\Api\V1\HRMS\Attendance;
 use App\Http\Controllers\Controller;
 use App\Models\HRMS\Attendance\AttendanceM as Attendance;
 use App\Services\HRMS\Attendance\AttendanceMobileService;
-use App\Services\HRMS\Attendance\AttendanceS;
+use App\Services\HRMS\Attendance\AttendanceService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use App\Services\HRMS\ProjectManagement\ProjectAccessScopeS;
+use App\Models\HRMS\Employee\EmployeeM;
+use App\Services\HRMS\Attendance\AttendanceContextResolverService;
+use App\Services\Shared\MobileApiMessageS;
 
 class AttendanceController extends Controller
 {
     public function __construct(
-        private AttendanceS $attendanceService,
+        private AttendanceService $attendanceService,
         private AttendanceMobileService $mobileService
     ) {}
 
@@ -92,7 +96,7 @@ class AttendanceController extends Controller
             'address' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        $scopeS = app(\App\Services\HRMS\ProjectManagement\ProjectAccessScopeS::class);
+        $scopeS = app(ProjectAccessScopeS::class);
         $accessibleProjectIds = $scopeS->getAccessibleProjectIds();
 
         $rawProjects = $request->projects ?? ($request->task_summary_json['projects'] ?? []);
@@ -256,12 +260,12 @@ class AttendanceController extends Controller
 
     public function todayContext()
     {
-        $employee = \App\Models\HRMS\Employee\EmployeeM::where('user_id', auth()->id())->first();
+        $employee = EmployeeM::where('user_id', auth()->id())->first();
         if (! $employee) {
             return $this->apiResponse(false, 'Employee profile not found.', null, 404);
         }
 
-        $contextResolver = app(\App\Services\HRMS\Attendance\AttendanceContextResolverService::class);
+        $contextResolver = app(AttendanceContextResolverService::class);
         $data = $contextResolver->resolveContext($employee);
 
         return $this->apiResponse(true, 'Attendance context fetched successfully.', $data);
@@ -437,7 +441,7 @@ class AttendanceController extends Controller
         $code = fn($item) => strtolower((string) optional($item->attendanceType)->code);
 
         $user = auth()->user();
-        $employee = $user ? \App\Models\HRMS\Employee\EmployeeM::where('user_id', $user->id)->first() : null;
+        $employee = $user ? EmployeeM::where('user_id', $user->id)->first() : null;
         $violationCycle = '0 / 3';
         $missedPunchCycle = '0 / 2';
         if ($employee && Schema::hasTable('attendance_violations')) {
@@ -449,8 +453,12 @@ class AttendanceController extends Controller
                 ->whereIn('type', ['late_login', 'late_mark', 'early_logout', 'early_out'])
                 ->whereYear('violation_date', $year)
                 ->whereMonth('violation_date', $month)
+                ->whereNotIn('status', ['resolved', 'regularized', 'converted'])
                 ->where(function ($query) {
                     $query->whereNull('status')->orWhere('status', 'pending');
+                })
+                ->where(function ($query) {
+                    $query->whereNull('policy_action')->orWhere('policy_action', '!=', 'resolved');
                 });
             if (Schema::hasColumn('attendance_violations', 'is_consumed')) {
                 $qDisc->where(function ($query) {
@@ -471,8 +479,12 @@ class AttendanceController extends Controller
                 ->whereIn('type', ['missed_punch'])
                 ->whereYear('violation_date', $year)
                 ->whereMonth('violation_date', $month)
+                ->whereNotIn('status', ['resolved', 'regularized', 'converted'])
                 ->where(function ($query) {
                     $query->whereNull('status')->orWhere('status', 'pending');
+                })
+                ->where(function ($query) {
+                    $query->whereNull('policy_action')->orWhere('policy_action', '!=', 'resolved');
                 });
             if (Schema::hasColumn('attendance_violations', 'is_consumed')) {
                 $qMissed->where(function ($query) {
@@ -528,7 +540,7 @@ class AttendanceController extends Controller
         return response()->json([
             'status' => $success,
             'success' => $success,
-            'message' => app(\App\Services\Shared\MobileApiMessageS::class)->cleanMessage($message),
+            'message' => app(MobileApiMessageS::class)->cleanMessage($message),
             'errors' => $errors,
             'data' => $data,
         ], $status);

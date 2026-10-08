@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Storage;
 use App\Services\HRMS\Notification\NotificationS; // Use existing if needed
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use App\Mail\QueuedDocumentMail;
 
 class DocumentEmailS
 {
@@ -20,7 +21,7 @@ class DocumentEmailS
 
         $pdfFile = Storage::disk('private')->path($pdfPath);
 
-        $mailable = new \App\Mail\QueuedDocumentMail(
+        $mailable = new QueuedDocumentMail(
             $subject,
             $body,
             $pdfFile,

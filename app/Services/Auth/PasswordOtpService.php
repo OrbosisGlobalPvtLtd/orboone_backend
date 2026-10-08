@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
+use Carbon\Carbon;
 
 class PasswordOtpService
 {
@@ -29,7 +30,7 @@ class PasswordOtpService
             'has_last_sent_at' => (bool) $lastSentAtValue,
         ]);
         if ($lastSentAtValue) {
-            $lastSentAt = \Carbon\Carbon::parse($lastSentAtValue);
+            $lastSentAt = Carbon::parse($lastSentAtValue);
             if ($lastSentAt->diffInSeconds(now()) < 60) {
                 return;
             }

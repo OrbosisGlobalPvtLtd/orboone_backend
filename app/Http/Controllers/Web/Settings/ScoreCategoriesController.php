@@ -8,6 +8,8 @@ use App\Http\Requests\Web\HRMS\Employee\StoreScoreCategoryRequest;
 use App\Models\Core\LogM as Log;
 use App\Models\HRMS\Employee\ScoreCategoryM as ScoreCategory;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use App\Models\HRMS\Employee\ScoreCategoryM;
 
 class ScoreCategoriesController extends Controller
 {
@@ -23,7 +25,7 @@ class ScoreCategoriesController extends Controller
     /**
      * Display a listing of the resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function index()
     {
@@ -34,7 +36,7 @@ class ScoreCategoriesController extends Controller
     /**
      * Show the form for creating a new resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function create()
     {
@@ -44,8 +46,8 @@ class ScoreCategoriesController extends Controller
     /**
      * Store a newly created resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
+     * @param  Request  $request
+     * @return Response
      */
     public function store(StoreScoreCategoryRequest $request)
     {
@@ -63,8 +65,8 @@ class ScoreCategoriesController extends Controller
     /**
      * Display the specified resource.
      *
-     * @param  \App\Models\HRMS\Employee\ScoreCategoryM  $scoreCategory
-     * @return \Illuminate\Http\Response
+     * @param  ScoreCategoryM  $scoreCategory
+     * @return Response
      */
     public function show(ScoreCategory $scoreCategory)
     {
@@ -74,8 +76,8 @@ class ScoreCategoriesController extends Controller
     /**
      * Show the form for editing the specified resource.
      *
-     * @param  \App\Models\HRMS\Employee\ScoreCategoryM  $scoreCategory
-     * @return \Illuminate\Http\Response
+     * @param  ScoreCategoryM  $scoreCategory
+     * @return Response
      */
     public function edit(ScoreCategory $scoreCategory)
     {
@@ -85,9 +87,9 @@ class ScoreCategoriesController extends Controller
     /**
      * Update the specified resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\HRMS\Employee\ScoreCategoryM  $scoreCategory
-     * @return \Illuminate\Http\Response
+     * @param  Request  $request
+     * @param  ScoreCategoryM  $scoreCategory
+     * @return Response
      */
     public function update(Request $request, ScoreCategory $scoreCategory)
     {
@@ -106,8 +108,8 @@ class ScoreCategoriesController extends Controller
     /**
      * Remove the specified resource from storage.
      *
-     * @param  \App\Models\HRMS\Employee\ScoreCategoryM  $scoreCategory
-     * @return \Illuminate\Http\Response
+     * @param  ScoreCategoryM  $scoreCategory
+     * @return Response
      */
     public function destroy(ScoreCategory $scoreCategory)
     {

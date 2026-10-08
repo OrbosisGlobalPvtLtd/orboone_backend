@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Web\HRMS\Concerns\HrmsCrudPage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Services\HRMS\Attendance\PayrollAttendanceSummaryService;
 
 class MonthlyAttendanceSummaryC extends Controller
 {
@@ -66,7 +67,7 @@ class MonthlyAttendanceSummaryC extends Controller
         ]);
     }
 
-    public function generate(Request $request, \App\Services\HRMS\Attendance\PayrollAttendanceSummaryService $summaryService)
+    public function generate(Request $request, PayrollAttendanceSummaryService $summaryService)
     {
         abort_unless($this->userHasPermission('attendance.monthly_summary.view'), 403);
 

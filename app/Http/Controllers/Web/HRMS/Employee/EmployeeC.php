@@ -911,7 +911,7 @@ class EmployeeC extends Controller
         $documentsList = [];
         $seenDocTypes = [];
         foreach ($uploadedDocs as $uploaded) {
-            $typeKey = $uploaded->document_type_id ?: ('title_' . \Illuminate\Support\Str::slug($uploaded->title ?? 'doc'));
+            $typeKey = $uploaded->document_type_id ?: ('title_' . Str::slug($uploaded->title ?? 'doc'));
             if (isset($seenDocTypes[$typeKey])) {
                 continue;
             }
@@ -1468,7 +1468,7 @@ class EmployeeC extends Controller
         $documentsList = [];
         $seenDocTypes = [];
         foreach ($uploadedDocs as $uploaded) {
-            $typeKey = $uploaded->document_type_id ?: ('title_' . \Illuminate\Support\Str::slug($uploaded->title ?? 'doc'));
+            $typeKey = $uploaded->document_type_id ?: ('title_' . Str::slug($uploaded->title ?? 'doc'));
             if (isset($seenDocTypes[$typeKey])) {
                 continue;
             }
@@ -1670,7 +1670,7 @@ class EmployeeC extends Controller
                     $code = $emp->employee_code ?? '-';
                     $department = $emp->department_name ?? '-';
                     $designation = $emp->designation_name ?? '-';
-                    $updated = !empty($emp->updated_at) ? \Carbon\Carbon::parse($emp->updated_at)->diffForHumans() : 'Not updated';
+                    $updated = !empty($emp->updated_at) ? Carbon::parse($emp->updated_at)->diffForHumans() : 'Not updated';
 
                     // Employee cell (name & email)
                     $employeeHtml = '<div class="emp-cell"><div class="emp-info"><div class="emp-name">' . e($name) . '</div><div class="emp-email">' . e($email) . '</div></div></div>';
@@ -1793,7 +1793,7 @@ class EmployeeC extends Controller
                 ->get();
 
             $documents = $allDocs->unique(function ($doc) {
-                return $doc->document_type_id ?: ('title_' . \Illuminate\Support\Str::slug($doc->title ?? 'doc'));
+                return $doc->document_type_id ?: ('title_' . Str::slug($doc->title ?? 'doc'));
             })->sortByDesc('is_required')->values();
         }
 
@@ -2315,9 +2315,9 @@ class EmployeeC extends Controller
         ]);
 
         if ($request->filled('permanent_effective_date')) {
-            $permanentEffectiveDate = \Carbon\Carbon::parse($request->permanent_effective_date, 'Asia/Kolkata')->toDateString();
+            $permanentEffectiveDate = Carbon::parse($request->permanent_effective_date, 'Asia/Kolkata')->toDateString();
         } elseif ($employeeData->probation_end_date) {
-            $permanentEffectiveDate = \Carbon\Carbon::parse($employeeData->probation_end_date, 'Asia/Kolkata')->addDay()->toDateString();
+            $permanentEffectiveDate = Carbon::parse($employeeData->probation_end_date, 'Asia/Kolkata')->addDay()->toDateString();
         } else {
             $startDate = $employeeData->probation_start_date ?: $employeeData->joining_date;
             if ($startDate) {
@@ -2326,11 +2326,11 @@ class EmployeeC extends Controller
                 $calc = app(EmployeeLifecycleService::class)->calculateProbationDates($startDate, $durationType, $durationValue);
                 $permanentEffectiveDate = $calc['permanent_effective_date'];
             } else {
-                $permanentEffectiveDate = \Carbon\Carbon::today('Asia/Kolkata')->addDay()->toDateString();
+                $permanentEffectiveDate = Carbon::today('Asia/Kolkata')->addDay()->toDateString();
             }
         }
 
-        $isFuture = \Carbon\Carbon::parse($permanentEffectiveDate, 'Asia/Kolkata')->gt(\Carbon\Carbon::today('Asia/Kolkata'));
+        $isFuture = Carbon::parse($permanentEffectiveDate, 'Asia/Kolkata')->gt(Carbon::today('Asia/Kolkata'));
 
         DB::beginTransaction();
 
@@ -2351,7 +2351,7 @@ class EmployeeC extends Controller
                 $empName = DB::table('users')->where('id', $employeeData->user_id)->value('name') ?: 'Employee';
                 DB::afterCommit(function () use ($employeeData, $employee, $empName, $permanentEffectiveDate) {
                     $notifications = app(NotificationS::class);
-                    $formattedDate = \Carbon\Carbon::parse($permanentEffectiveDate, 'Asia/Kolkata')->format('d M Y');
+                    $formattedDate = Carbon::parse($permanentEffectiveDate, 'Asia/Kolkata')->format('d M Y');
                     $notifications->notifyEmployee(
                         'Permanent Confirmation Scheduled',
                         'Your permanent confirmation has been scheduled from ' . $formattedDate . '.',
@@ -2379,7 +2379,7 @@ class EmployeeC extends Controller
 
                 return redirect()
                     ->route('hrms.employees.probation_internship')
-                    ->with('success', 'Permanent confirmation scheduled. Effective from ' . \Carbon\Carbon::parse($permanentEffectiveDate)->format('d M Y') . '.');
+                    ->with('success', 'Permanent confirmation scheduled. Effective from ' . Carbon::parse($permanentEffectiveDate)->format('d M Y') . '.');
             } else {
                 // Immediate confirmation: Activate now!
                 $updateData = [

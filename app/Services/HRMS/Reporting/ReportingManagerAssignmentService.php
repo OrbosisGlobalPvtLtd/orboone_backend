@@ -5,6 +5,7 @@ namespace App\Services\HRMS\Reporting;
 use App\Models\HRMS\Reporting\ReportingAssignmentM;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Services\Core\Menu\SidebarMenuResolverS;
 
 class ReportingManagerAssignmentService
 {
@@ -164,7 +165,7 @@ class ReportingManagerAssignmentService
 
         $emp = DB::table('employees_new')->where('id', $managerEmployeeId)->first(['user_id']);
         if ($emp && $emp->user_id) {
-            app(\App\Services\Core\Menu\SidebarMenuResolverS::class)->clearCache((int)$emp->user_id);
+            app(SidebarMenuResolverS::class)->clearCache((int)$emp->user_id);
         }
     }
 }

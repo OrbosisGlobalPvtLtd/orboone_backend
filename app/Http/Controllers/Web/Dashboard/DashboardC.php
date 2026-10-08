@@ -7,6 +7,10 @@ use App\Services\HRMS\Dashboard\DashboardResolverS;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
+use Illuminate\Http\Request;
+use App\Models\HRMS\Employee\EmployeeM;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class DashboardC extends Controller
 {
@@ -70,10 +74,10 @@ class DashboardC extends Controller
         return $this->renderRoleDashboard('employee');
     }
 
-    public function getAttendanceCalendar(\Illuminate\Http\Request $request)
+    public function getAttendanceCalendar(Request $request)
     {
         $user = auth()->user();
-        $employee = \App\Models\HRMS\Employee\EmployeeM::where('user_id', $user->id)->first();
+        $employee = EmployeeM::where('user_id', $user->id)->first();
 
         if (!$employee) {
             return response()->json(['status' => false, 'message' => 'Employee profile not found.'], 404);
@@ -88,24 +92,24 @@ class DashboardC extends Controller
             $year = now()->year;
         }
 
-        $startDate = \Carbon\Carbon::createFromDate($year, $month, 1)->startOfMonth();
+        $startDate = Carbon::createFromDate($year, $month, 1)->startOfMonth();
         $endDate = $startDate->copy()->endOfMonth();
         $daysInMonth = $startDate->daysInMonth;
         $todayDate = now()->toDateString();
 
-        $attendances = \Illuminate\Support\Facades\DB::table('attendances')
+        $attendances = DB::table('attendances')
             ->where('employee_id', $employee->id)
             ->whereBetween('attendance_date', [$startDate->toDateString(), $endDate->toDateString()])
             ->get()
             ->keyBy('attendance_date');
 
-        $holidays = \Illuminate\Support\Facades\DB::table('holidays')
+        $holidays = DB::table('holidays')
             ->where('is_active', 1)
             ->whereBetween('holiday_date', [$startDate->toDateString(), $endDate->toDateString()])
             ->get()
             ->keyBy('holiday_date');
 
-        $leaves = \Illuminate\Support\Facades\DB::table('leave_requests')
+        $leaves = DB::table('leave_requests')
             ->where('employee_id', $employee->id)
             ->where('status', 'approved')
             ->where(function ($q) use ($startDate, $endDate) {
@@ -116,8 +120,8 @@ class DashboardC extends Controller
 
         $leaveDates = [];
         foreach ($leaves as $l) {
-            $s = \Carbon\Carbon::parse($l->start_date);
-            $e = \Carbon\Carbon::parse($l->end_date);
+            $s = Carbon::parse($l->start_date);
+            $e = Carbon::parse($l->end_date);
             while ($s->lte($e)) {
                 $leaveDates[$s->toDateString()] = $l;
                 $s->addDay();
@@ -136,10 +140,10 @@ class DashboardC extends Controller
         ];
 
         $joiningDateRaw = $employee->joining_date ?? $employee->created_at ?? null;
-        $joiningDate = $joiningDateRaw ? \Carbon\Carbon::parse($joiningDateRaw)->startOfDay() : null;
+        $joiningDate = $joiningDateRaw ? Carbon::parse($joiningDateRaw)->startOfDay() : null;
 
         for ($day = 1; $day <= $daysInMonth; $day++) {
-            $dateObj = \Carbon\Carbon::createFromDate($year, $month, $day)->startOfDay();
+            $dateObj = Carbon::createFromDate($year, $month, $day)->startOfDay();
             $dateStr = $dateObj->toDateString();
             $isSunday = $dateObj->isSunday();
             $isPast = $dateObj->lt(now()->startOfDay());
@@ -159,8 +163,8 @@ class DashboardC extends Controller
             $workTime = null;
 
             if ($att) {
-                $punchIn = $att->punch_in_time ? \Carbon\Carbon::parse($att->punch_in_time)->format('h:i A') : null;
-                $punchOut = $att->punch_out_time ? \Carbon\Carbon::parse($att->punch_out_time)->format('h:i A') : null;
+                $punchIn = $att->punch_in_time ? Carbon::parse($att->punch_in_time)->format('h:i A') : null;
+                $punchOut = $att->punch_out_time ? Carbon::parse($att->punch_out_time)->format('h:i A') : null;
                 if ($att->total_work_minutes) {
                     $workTime = floor($att->total_work_minutes / 60) . 'h ' . ($att->total_work_minutes % 60) . 'm';
                 }

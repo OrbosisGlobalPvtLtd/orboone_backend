@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Throwable;
+use App\Services\Shared\MobileApiMessageS;
+use Illuminate\Auth\Access\AuthorizationException;
 
 class Handler extends ExceptionHandler
 {
@@ -26,23 +28,23 @@ class Handler extends ExceptionHandler
 
             if ($exception instanceof ValidationException) {
                 $statusCode = 422;
-                $message = app(\App\Services\Shared\MobileApiMessageS::class)->friendly($exception);
+                $message = app(MobileApiMessageS::class)->friendly($exception);
                 $errors = $exception->errors();
             }
 
             elseif ($exception instanceof AuthenticationException) {
                 $statusCode = 401;
-                $message = app(\App\Services\Shared\MobileApiMessageS::class)->friendly($exception);
+                $message = app(MobileApiMessageS::class)->friendly($exception);
             }
 
-            elseif ($exception instanceof \Illuminate\Auth\Access\AuthorizationException) {
+            elseif ($exception instanceof AuthorizationException) {
                 $statusCode = 403;
-                $message = app(\App\Services\Shared\MobileApiMessageS::class)->friendly($exception);
+                $message = app(MobileApiMessageS::class)->friendly($exception);
             }
 
             elseif ($exception instanceof ModelNotFoundException) {
                 $statusCode = 404;
-                $message = app(\App\Services\Shared\MobileApiMessageS::class)->friendly($exception);
+                $message = app(MobileApiMessageS::class)->friendly($exception);
             }
 
             elseif ($exception instanceof NotFoundHttpException) {
@@ -64,7 +66,7 @@ class Handler extends ExceptionHandler
 
             elseif ($exception instanceof HttpException) {
                 $statusCode = $exception->getStatusCode();
-                $message = app(\App\Services\Shared\MobileApiMessageS::class)->cleanMessage($exception->getMessage());
+                $message = app(MobileApiMessageS::class)->cleanMessage($exception->getMessage());
             }
 
             else {

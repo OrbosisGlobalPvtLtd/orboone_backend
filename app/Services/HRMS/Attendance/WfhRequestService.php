@@ -2,6 +2,7 @@
 
 namespace App\Services\HRMS\Attendance;
 
+use App\Models\HRMS\Attendance\AttendanceDailyStatusLogM;
 use App\Models\HRMS\Attendance\AttendanceM;
 use App\Models\HRMS\Attendance\WfhRequestM;
 use App\Models\HRMS\Employee\EmployeeM;
@@ -301,6 +302,7 @@ class WfhRequestService
 
         $created = 0;
         $skipped = 0;
+        $convertedAttendance = 0;
 
         foreach ($employeeIds as $employeeId) {
             $employee = EmployeeM::find($employeeId);
@@ -325,11 +327,6 @@ class WfhRequestService
                     });
                 })
                 ->exists();
-
-            if ($exists) {
-                $skipped++;
-                continue;
-            }
 
             $remarks = [
                 'source' => $source,
@@ -365,17 +362,115 @@ class WfhRequestService
                 $createPayload['assigned_at'] = now();
             }
 
-            $record = WfhRequestM::create($createPayload);
-            if ($source === 'manager_assigned') {
-                $record->manager_approved_by = $actorId;
-                $record->manager_approved_at = now();
-                $record->save();
-            }
+            DB::transaction(function () use (
+                $exists,
+                $createPayload,
+                $source,
+                $actorId,
+                $employee,
+                $from,
+                $to,
+                $batchId,
+                $payload,
+                &$created,
+                &$skipped,
+                &$convertedAttendance
+            ) {
+                if (! $exists) {
+                    $record = WfhRequestM::create($createPayload);
+                    if ($source === 'manager_assigned') {
+                        $record->manager_approved_by = $actorId;
+                        $record->manager_approved_at = now();
+                        $record->save();
+                    }
+                    $created++;
+                } else {
+                    $skipped++;
+                }
 
-            $created++;
+                // Synchronize existing attendance records in the assigned range
+                $period = CarbonPeriod::create($from, $to);
+                $assignReason = trim((string) ($payload['reason'] ?? 'Company assigned WFH'));
+                $formattedReason = $assignReason;
+
+                foreach ($period as $dateObj) {
+                    $dateStr = $dateObj->toDateString();
+                    $existingAttendance = AttendanceM::where('employee_id', $employee->id)
+                        ->whereDate('attendance_date', $dateStr)
+                        ->first();
+
+                    if ($existingAttendance) {
+                        $oldMode = strtolower((string) ($existingAttendance->work_mode ?? 'wfo'));
+                        if ($oldMode !== 'wfh') {
+                            $existingAttendance->work_mode = 'wfh';
+                            $existingAttendance->hr_approval_note = $formattedReason;
+                            $existingAttendance->remarks = $formattedReason;
+                            $existingAttendance->hr_approved_by = $actorId;
+                            $existingAttendance->hr_approved_at = now();
+                            $existingAttendance->save();
+                            $convertedAttendance++;
+
+                            if (Schema::hasTable('attendance_daily_status_logs')) {
+                                AttendanceDailyStatusLogM::create([
+                                    'employee_id' => $employee->id,
+                                    'attendance_id' => $existingAttendance->id,
+                                    'status_date' => $dateStr,
+                                    'old_status' => strtoupper($oldMode),
+                                    'new_status' => 'WFH',
+                                    'source' => 'company_wfh_assignment',
+                                    'remarks' => $formattedReason,
+                                    'created_by_user_id' => $actorId,
+                                ]);
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Send Notification to Employee
+            try {
+                $notificationService = app(NotificationS::class);
+                $user = $employee->user;
+                if ($user) {
+                    $fromDateFormatted = $from->format('d M Y');
+                    $toDateFormatted = $to->format('d M Y');
+                    $rangeLabel = ($fromDateFormatted === $toDateFormatted)
+                        ? $fromDateFormatted
+                        : ($fromDateFormatted . ' – ' . $toDateFormatted);
+
+                    $reasonText = trim((string) ($payload['reason'] ?? ''));
+                    $msg = "Work From Home has been assigned to you for {$rangeLabel}.";
+                    if ($reasonText !== '') {
+                        $msg .= " Reason: {$reasonText}.";
+                    }
+                    $msg .= "\nYou can mark attendance remotely during this period.";
+
+                    $notificationService->notifyEmployee(
+                        'Company WFH Assigned',
+                        $msg,
+                        'company_wfh_assigned',
+                        'my-wfh.index',
+                        [],
+                        [
+                            'employee_id' => $employee->id,
+                            'from_date' => $from->toDateString(),
+                            'to_date' => $to->toDateString(),
+                            'working_days' => $stats['working_days'] ?? 1,
+                            'reason' => $reasonText,
+                        ],
+                        $user->id
+                    );
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Company WFH assignment notification skipped for Employee #' . $employee->id . ': ' . $e->getMessage());
+            }
         }
 
-        return ['created' => $created, 'skipped' => $skipped];
+        return [
+            'created' => $created,
+            'skipped' => $skipped,
+            'converted_attendance' => $convertedAttendance,
+        ];
     }
 
     public function approveManagerStage(WfhRequestM $request, int $actorId, ?string $note = null): WfhRequestM
@@ -488,6 +583,43 @@ class WfhRequestService
             }
 
             $request->save();
+
+            // Synchronize active attendance records in the approved date range
+            $period = CarbonPeriod::create($fromDateCarbon, $toDateCarbon);
+            $apprReason = trim((string) ($request->reason ?? 'Approved WFH Request'));
+            $formattedApprReason = $apprReason;
+
+            foreach ($period as $dateObj) {
+                $dateStr = $dateObj->toDateString();
+                $existingAttendance = AttendanceM::where('employee_id', $employee->id)
+                    ->whereDate('attendance_date', $dateStr)
+                    ->first();
+
+                if ($existingAttendance) {
+                    $oldMode = strtolower((string) ($existingAttendance->work_mode ?? 'wfo'));
+                    if ($oldMode !== 'wfh') {
+                        $existingAttendance->work_mode = 'wfh';
+                        $existingAttendance->hr_approval_note = $formattedApprReason;
+                        $existingAttendance->remarks = $formattedApprReason;
+                        $existingAttendance->hr_approved_by = $actorId;
+                        $existingAttendance->hr_approved_at = now();
+                        $existingAttendance->save();
+
+                        if (Schema::hasTable('attendance_daily_status_logs')) {
+                            AttendanceDailyStatusLogM::create([
+                                'employee_id' => $employee->id,
+                                'attendance_id' => $existingAttendance->id,
+                                'status_date' => $dateStr,
+                                'old_status' => strtoupper($oldMode),
+                                'new_status' => 'WFH',
+                                'source' => 'wfh_request_approval',
+                                'remarks' => $formattedApprReason,
+                                'created_by_user_id' => $actorId,
+                            ]);
+                        }
+                    }
+                }
+            }
         });
 
         // Single Notification to Employee
@@ -523,12 +655,19 @@ class WfhRequestService
 
     public function reject(WfhRequestM $request, int $actorId, string $reason): WfhRequestM
     {
+        $oldStatus = (string) ($request->status ?? 'pending');
+        $oldPayrollImpact = (string) ($request->payroll_impact ?? 'none');
+
         $request->update([
             'status' => 'rejected',
             'rejected_by' => $actorId,
             'rejected_at' => now(),
             'rejection_reason' => $reason,
         ]);
+
+        if ($oldStatus === 'approved') {
+            $this->syncAttendanceOnRequestUpdate($request, $oldStatus, $oldPayrollImpact, $actorId);
+        }
 
         // Single Notification to Employee
         try {
@@ -556,14 +695,187 @@ class WfhRequestService
         return $request->fresh();
     }
 
-    public function cancel(WfhRequestM $request): WfhRequestM
+    public function cancel(WfhRequestM $request, ?int $actorId = null): WfhRequestM
     {
-        if (! in_array($request->status, ['pending', 'manager_approved'], true)) {
-            throw ValidationException::withMessages(['status' => 'Only pending WFH request can be cancelled.']);
+        if (! in_array($request->status, ['pending', 'manager_approved', 'approved'], true)) {
+            throw ValidationException::withMessages(['status' => 'Only pending or approved WFH request can be cancelled.']);
         }
 
+        $oldStatus = (string) ($request->status ?? 'pending');
+        $oldPayrollImpact = (string) ($request->payroll_impact ?? 'none');
+
         $request->update(['status' => 'cancelled']);
+
+        if ($oldStatus === 'approved') {
+            $this->syncAttendanceOnRequestUpdate($request, $oldStatus, $oldPayrollImpact, $actorId ?: (int) ($request->employee?->user_id ?? 0));
+        }
+
         return $request->fresh();
+    }
+
+    public function syncAttendanceOnRequestUpdate(
+        WfhRequestM $request,
+        string $oldStatus,
+        ?string $oldPayrollImpact,
+        int $actorId
+    ): void {
+        $from = Carbon::parse($request->from_date ?: $request->request_date)->startOfDay();
+        $to = Carbon::parse($request->to_date ?: $from)->startOfDay();
+        $period = CarbonPeriod::create($from, $to);
+
+        $newStatus = (string) ($request->status ?? 'pending');
+        $newPayrollImpact = (string) ($request->payroll_impact ?? 'none');
+        $oldPayrollImpact = (string) ($oldPayrollImpact ?? 'none');
+
+        foreach ($period as $dateObj) {
+            $dateStr = $dateObj->toDateString();
+            $attendance = AttendanceM::where('employee_id', $request->employee_id)
+                ->whereDate('attendance_date', $dateStr)
+                ->first();
+
+            if (! $attendance) {
+                continue;
+            }
+
+            // Case 1: Status was approved, but now changed to cancelled / rejected
+            if ($oldStatus === 'approved' && in_array($newStatus, ['cancelled', 'rejected'], true)) {
+                $otherApproved = WfhRequestM::query()
+                    ->where('employee_id', $request->employee_id)
+                    ->where('id', '!=', $request->id)
+                    ->where('status', 'approved')
+                    ->where(function ($q) use ($dateStr) {
+                        $q->where(function ($q2) use ($dateStr) {
+                            $q2->whereDate('from_date', '<=', $dateStr)
+                                ->whereDate('to_date', '>=', $dateStr);
+                        })->orWhere(function ($q3) use ($dateStr) {
+                            $q3->whereNull('from_date')
+                                ->whereDate('request_date', $dateStr);
+                        });
+                    })
+                    ->exists();
+
+                if (! $otherApproved) {
+                    $employee = EmployeeM::find($request->employee_id);
+                    $baseWorkMode = strtolower(trim((string) ($employee->work_mode ?? 'wfo')));
+                    $revertMode = in_array($baseWorkMode, ['permanent_wfh', 'permanent wfh', 'wfh'], true) ? 'wfh' : 'wfo';
+
+                    $prevMode = strtolower((string) ($attendance->work_mode ?? 'wfo'));
+                    $attendance->work_mode = $revertMode;
+
+                    if ($attendance->is_lwp && $oldPayrollImpact === 'lwp') {
+                        $attendance->is_lwp = false;
+                        $attendance->lwp_reason = null;
+                        if ($attendance->attendance_status === 'lwp') {
+                            $attendance->attendance_status = (! empty($attendance->punch_in_time)) ? 'present' : 'absent';
+                        }
+                    }
+
+                    $revertReason = "WFH Request #{$request->id} {$newStatus} by HR/Admin. Mode updated to " . strtoupper($revertMode) . ".";
+                    $attendance->remarks = $revertReason;
+                    $attendance->save();
+
+                    if (Schema::hasTable('attendance_daily_status_logs')) {
+                        AttendanceDailyStatusLogM::create([
+                            'employee_id' => $request->employee_id,
+                            'attendance_id' => $attendance->id,
+                            'status_date' => $dateStr,
+                            'old_status' => strtoupper($prevMode),
+                            'new_status' => strtoupper($revertMode),
+                            'source' => 'wfh_request_status_change',
+                            'remarks' => $revertReason,
+                            'created_by_user_id' => $actorId,
+                        ]);
+                    }
+                }
+            }
+
+            // Case 2: Status changed to approved (from pending/cancelled/rejected)
+            if ($oldStatus !== 'approved' && $newStatus === 'approved') {
+                $oldMode = strtolower((string) ($attendance->work_mode ?? 'wfo'));
+                $attendance->work_mode = 'wfh';
+                $apprReason = trim((string) ($request->reason ?? 'Approved WFH Request'));
+                $attendance->remarks = $apprReason;
+                $attendance->hr_approval_note = $apprReason;
+                $attendance->hr_approved_by = $actorId;
+                $attendance->hr_approved_at = now();
+
+                if ($newPayrollImpact === 'lwp') {
+                    $attendance->is_lwp = true;
+                    $attendance->lwp_reason = $request->reason ?? 'WFH marked as LWP';
+                    $attendance->attendance_status = 'lwp';
+                }
+
+                $attendance->save();
+
+                if (Schema::hasTable('attendance_daily_status_logs')) {
+                    AttendanceDailyStatusLogM::create([
+                        'employee_id' => $request->employee_id,
+                        'attendance_id' => $attendance->id,
+                        'status_date' => $dateStr,
+                        'old_status' => strtoupper($oldMode),
+                        'new_status' => $newPayrollImpact === 'lwp' ? 'LWP' : 'WFH',
+                        'source' => 'wfh_request_status_change',
+                        'remarks' => $apprReason,
+                        'created_by_user_id' => $actorId,
+                    ]);
+                }
+            }
+
+            // Case 3: Request is approved, synchronize payroll_impact with attendance record
+            if ($newStatus === 'approved') {
+                // Paid ('none'): Clear LWP if attendance was marked as LWP
+                if ($newPayrollImpact === 'none' && ($attendance->is_lwp || $attendance->attendance_status === 'lwp' || $oldPayrollImpact === 'lwp')) {
+                    $attendance->is_lwp = false;
+                    $attendance->lwp_reason = null;
+                    if ($attendance->attendance_status === 'lwp') {
+                        $attendance->attendance_status = (! empty($attendance->punch_in_time)) ? 'present' : 'absent';
+                    }
+                    if (Schema::hasColumn('attendances', 'payroll_processed')) {
+                        $attendance->payroll_processed = false;
+                        $attendance->payroll_processed_at = null;
+                    }
+                    $attendance->save();
+
+                    if (Schema::hasTable('attendance_daily_status_logs')) {
+                        AttendanceDailyStatusLogM::create([
+                            'employee_id' => $request->employee_id,
+                            'attendance_id' => $attendance->id,
+                            'status_date' => $dateStr,
+                            'old_status' => 'LWP',
+                            'new_status' => strtoupper((string) ($attendance->attendance_status ?? 'PRESENT')),
+                            'source' => 'wfh_payroll_impact_update',
+                            'remarks' => "WFH Request #{$request->id} payroll impact updated to Paid.",
+                            'created_by_user_id' => $actorId,
+                        ]);
+                    }
+                }
+
+                // LWP: Mark LWP if attendance is not already marked as LWP
+                if ($newPayrollImpact === 'lwp' && (! $attendance->is_lwp || $attendance->attendance_status !== 'lwp' || $oldPayrollImpact !== 'lwp')) {
+                    $attendance->is_lwp = true;
+                    $attendance->lwp_reason = $request->reason ?? 'WFH marked as LWP';
+                    $attendance->attendance_status = 'lwp';
+                    if (Schema::hasColumn('attendances', 'payroll_processed')) {
+                        $attendance->payroll_processed = false;
+                        $attendance->payroll_processed_at = null;
+                    }
+                    $attendance->save();
+
+                    if (Schema::hasTable('attendance_daily_status_logs')) {
+                        AttendanceDailyStatusLogM::create([
+                            'employee_id' => $request->employee_id,
+                            'attendance_id' => $attendance->id,
+                            'status_date' => $dateStr,
+                            'old_status' => 'PRESENT',
+                            'new_status' => 'LWP',
+                            'source' => 'wfh_payroll_impact_update',
+                            'remarks' => "WFH Request #{$request->id} payroll impact changed to LWP.",
+                            'created_by_user_id' => $actorId,
+                        ]);
+                    }
+                }
+            }
+        }
     }
 
     public function approvedForDate(int $employeeId, string $date): ?WfhRequestM
@@ -692,33 +1004,35 @@ class WfhRequestService
     private function resolveTargetEmployees(array $payload): array
     {
         $scope = (string) ($payload['assignment_scope'] ?? 'single');
+        $fromDate = $payload['date_from'] ?? $payload['from_date'] ?? date('Y-m-d');
+
         $query = EmployeeM::query()
-            ->where('is_active', 1)
+            ->activeEligible($fromDate)
             ->where(function ($q) {
-                $q->where('work_mode', 'wfo')
+                $q->where('employees_new.work_mode', 'wfo')
                   ->orWhere(function ($sub) {
-                      $sub->whereNull('work_mode')
-                          ->orWhereRaw("LOWER(TRIM(work_mode)) NOT IN ('wfh', 'permanent_wfh', 'permanent wfh')");
+                      $sub->whereNull('employees_new.work_mode')
+                          ->orWhereRaw("LOWER(TRIM(employees_new.work_mode)) NOT IN ('wfh', 'permanent_wfh', 'permanent wfh')");
                   });
             });
 
         return match ($scope) {
             'single' => ! empty($payload['employee_id'])
-                ? (clone $query)->where('id', (int) $payload['employee_id'])->pluck('id')->map(fn($id) => (int) $id)->all()
+                ? (clone $query)->where('employees_new.id', (int) $payload['employee_id'])->pluck('employees_new.id')->map(fn($id) => (int) $id)->all()
                 : [],
             'multiple' => collect($payload['employee_ids'] ?? [])
                 ->map(fn($id) => (int) $id)
                 ->filter()
                 ->unique()
                 ->values()
-                ->pipe(fn($ids) => (clone $query)->whereIn('id', $ids)->pluck('id')->map(fn($id) => (int) $id)->all()),
+                ->pipe(fn($ids) => (clone $query)->whereIn('employees_new.id', $ids)->pluck('employees_new.id')->map(fn($id) => (int) $id)->all()),
             'department' => ! empty($payload['department_id'])
-                ? (clone $query)->where('department_id', (int) $payload['department_id'])->pluck('id')->map(fn($id) => (int) $id)->all()
+                ? (clone $query)->where('employees_new.department_id', (int) $payload['department_id'])->pluck('employees_new.id')->map(fn($id) => (int) $id)->all()
                 : [],
             'designation' => ! empty($payload['designation_id'])
-                ? (clone $query)->where('designation_id', (int) $payload['designation_id'])->pluck('id')->map(fn($id) => (int) $id)->all()
+                ? (clone $query)->where('employees_new.designation_id', (int) $payload['designation_id'])->pluck('employees_new.id')->map(fn($id) => (int) $id)->all()
                 : [],
-            'all' => (clone $query)->pluck('id')->map(fn($id) => (int) $id)->all(),
+            'all' => (clone $query)->pluck('employees_new.id')->map(fn($id) => (int) $id)->all(),
             default => [],
         };
     }

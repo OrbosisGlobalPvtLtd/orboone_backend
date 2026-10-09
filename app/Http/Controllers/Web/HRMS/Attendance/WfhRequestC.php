@@ -5,6 +5,10 @@ namespace App\Http\Controllers\Web\HRMS\Attendance;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Web\HRMS\Concerns\HrmsCrudPage;
 use App\Models\Core\UserM as User;
+use App\Models\HRMS\Attendance\AttendanceDailyStatusLogM;
+use App\Models\HRMS\Attendance\AttendanceM;
+use Carbon\CarbonPeriod;
+use Illuminate\Support\Facades\Schema;
 use App\Models\HRMS\Attendance\WfhRequestM;
 use App\Models\HRMS\Department\DepartmentM;
 use App\Models\HRMS\Designation\DesignationM;
@@ -189,16 +193,32 @@ class WfhRequestC extends Controller
             return $row;
         });
 
+        $today = Carbon::now('Asia/Kolkata')->toDateString();
         if ($isHrOrAdmin) {
-            $allEmployees = $this->employeeOptions();
-            $employees = $allEmployees->filter(function ($emp) {
-                $mode = strtolower(trim((string) ($emp->work_mode ?? 'wfo')));
-                return $mode === 'wfo' || (! in_array($mode, ['wfh', 'permanent_wfh', 'permanent wfh'], true));
-            })->values();
+            $employeesQuery = EmployeeM::query()
+                ->activeEligible($today)
+                ->where(function ($q) {
+                    $q->where('employees_new.work_mode', 'wfo')
+                      ->orWhere(function ($sub) {
+                          $sub->whereNull('employees_new.work_mode')
+                              ->orWhereRaw("LOWER(TRIM(employees_new.work_mode)) NOT IN ('wfh', 'permanent_wfh', 'permanent wfh')");
+                      });
+                })
+                ->join('users', 'users.id', '=', 'employees_new.user_id')
+                ->select(
+                    'employees_new.id',
+                    'employees_new.employee_code',
+                    'employees_new.work_mode',
+                    'employees_new.department_id',
+                    'employees_new.designation_id',
+                    'users.name as user_name',
+                    'users.name as display_name'
+                )
+                ->orderBy('users.name');
         } elseif ($isManager) {
             $allowedEmpIds = array_merge($teamEmpIds, array_filter([$ownEmployeeId]));
-            $employees = DB::table('employees_new')
-                ->leftJoin('users', 'users.id', '=', 'employees_new.user_id')
+            $employeesQuery = EmployeeM::query()
+                ->activeEligible($today)
                 ->whereIn('employees_new.id', $allowedEmpIds)
                 ->where(function ($q) {
                     $q->where('employees_new.work_mode', 'wfo')
@@ -207,26 +227,35 @@ class WfhRequestC extends Controller
                               ->orWhereRaw("LOWER(TRIM(employees_new.work_mode)) NOT IN ('wfh', 'permanent_wfh', 'permanent wfh')");
                       });
                 })
+                ->join('users', 'users.id', '=', 'employees_new.user_id')
                 ->select(
                     'employees_new.id',
                     'employees_new.employee_code',
                     'employees_new.work_mode',
-                    DB::raw("COALESCE(users.name, employees_new.employee_code, 'N/A') as display_name")
+                    'employees_new.department_id',
+                    'employees_new.designation_id',
+                    'users.name as user_name',
+                    'users.name as display_name'
                 )
-                ->orderByRaw("COALESCE(users.name, employees_new.employee_code)")
-                ->get();
+                ->orderBy('users.name');
         } else {
-            $employees = DB::table('employees_new')
-                ->leftJoin('users', 'users.id', '=', 'employees_new.user_id')
+            $employeesQuery = EmployeeM::query()
                 ->where('employees_new.id', $ownEmployeeId)
+                ->join('users', 'users.id', '=', 'employees_new.user_id')
                 ->select(
                     'employees_new.id',
                     'employees_new.employee_code',
                     'employees_new.work_mode',
-                    DB::raw("COALESCE(users.name, employees_new.employee_code, 'N/A') as display_name")
-                )
-                ->get();
+                    'users.name as user_name',
+                    'users.name as display_name'
+                );
         }
+
+        $employees = $employeesQuery->get()->map(function ($emp) {
+            $name = trim((string) ($emp->user_name ?? ''));
+            $emp->display_name = $name !== '' ? $name : ($emp->employee_code ?? ('EMP-' . $emp->id));
+            return $emp;
+        });
 
         $monthOptions = [
             'all' => 'All Months',
@@ -424,6 +453,9 @@ class WfhRequestC extends Controller
             $record->request_type = $payload['request_type'];
         }
 
+        $oldStatus = (string) ($record->status ?? 'pending');
+        $oldPayrollImpact = (string) ($record->payroll_impact ?? 'none');
+
         if ($isHrOrAdmin) {
             if (!empty($payload['status'])) {
                 $record->status = $payload['status'];
@@ -434,6 +466,15 @@ class WfhRequestC extends Controller
         }
 
         $record->save();
+
+        if ($isHrOrAdmin) {
+            $this->service->syncAttendanceOnRequestUpdate(
+                $record,
+                $oldStatus,
+                $oldPayrollImpact,
+                (int) $this->actorId()
+            );
+        }
 
         return back()->with('success', 'WFH request updated successfully.');
     }
@@ -462,7 +503,13 @@ class WfhRequestC extends Controller
             $this->actorSource()
         );
 
-        return back()->with('success', "Company-assigned WFH processed. Created: {$result['created']}, Skipped duplicates: {$result['skipped']}.");
+        $msg = "Company-assigned WFH processed. Created: {$result['created']}, Skipped duplicates: {$result['skipped']}";
+        if (! empty($result['converted_attendance'])) {
+            $msg .= ", Converted active attendance: {$result['converted_attendance']}";
+        }
+        $msg .= ".";
+
+        return back()->with('success', $msg);
     }
 
     public function myWfh(Request $request)

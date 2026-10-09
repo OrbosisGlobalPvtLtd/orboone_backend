@@ -47,7 +47,7 @@
 
                 <div class="form-group mb-3">
                     <label class="orb-form-label">Reason Category <span class="text-danger">*</span></label>
-                    <select name="reason_category" class="form-control select2-modal-searchable" required style="border-radius: 10px;">
+                    <select name="reason_category" class="form-control select2-searchable" required style="border-radius: 10px;">
                         <option value="" disabled selected>-- Select WFH Reason Category --</option>
                         <option value="personal_reason">Personal / Family Work</option>
                         <option value="health_medical">Health & Medical Care</option>
@@ -70,3 +70,24 @@
         </form>
     </div>
 </div>
+
+<script>
+    (function() {
+        $('#applyWfhModal form').on('submit', function(e) {
+            var $cat = $(this).find('select[name="reason_category"]');
+            if ($cat.length && !$cat.val()) {
+                e.preventDefault();
+                var $container = $cat.next('.select2-container');
+                $container.find('.select2-selection').css('border-color', '#EF4444');
+                $cat.select2('open');
+                return false;
+            }
+        });
+
+        $('#applyWfhModal select[name="reason_category"]').on('change.select2 change', function() {
+            if ($(this).val()) {
+                $(this).next('.select2-container').find('.select2-selection').css('border-color', '');
+            }
+        });
+    })();
+</script>

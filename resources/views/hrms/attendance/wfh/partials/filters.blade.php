@@ -41,7 +41,13 @@
                 'all' => 'All Employees',
             ];
             foreach($employees as $emp) {
-                $empOptions[$emp->id] = $emp->display_name;
+                $name = trim((string) ($emp->display_name ?? $emp->user_name ?? ''));
+                $code = trim((string) ($emp->employee_code ?? ''));
+                if ($name !== '' && $code !== '' && !str_contains($name, $code)) {
+                    $empOptions[$emp->id] = $name . ' (' . $code . ')';
+                } else {
+                    $empOptions[$emp->id] = $name ?: $code ?: ('EMP #' . $emp->id);
+                }
             }
 
             $statusOptions = [

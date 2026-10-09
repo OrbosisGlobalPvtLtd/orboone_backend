@@ -411,6 +411,16 @@ class AttendanceService
         }
 
         $existingWorkMode = strtolower($attendance->work_mode ?? 'wfo');
+        if ($existingWorkMode === 'wfo') {
+            $wfhService = $this->wfhRequestService ?: app(WfhRequestService::class);
+            $approvedWfh = $wfhService->approvedForDate((int) $employee->id, $today);
+            if ($approvedWfh && $approvedWfh->status === 'approved') {
+                $existingWorkMode = 'wfh';
+                $attendance->work_mode = 'wfh';
+                $attendance->save();
+            }
+        }
+
         if ($enforceEmployeeRules && $existingWorkMode === 'wfo') {
             $locationValidation = $this->validateOfficeRadiusForWfo('punch_out', isset($meta['latitude']) && $meta['latitude'] !== '' ? (float) $meta['latitude'] : null, isset($meta['longitude']) && $meta['longitude'] !== '' ? (float) $meta['longitude'] : null);
             if (! $locationValidation['allowed']) {

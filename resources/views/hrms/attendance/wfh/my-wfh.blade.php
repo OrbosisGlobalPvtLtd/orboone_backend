@@ -204,8 +204,86 @@
     <div class="mt-3">{{ $rows->withQueryString()->links('vendor.pagination.orbo') }}</div>
 </div>
 
-<div class="modal fade" id="applyWfhModal" tabindex="-1">
-    <div class="modal-dialog modal-md modal-dialog-centered">
+<style>
+    #applyWfhModal .modal-dialog {
+        max-width: 540px !important;
+        margin: 1.75rem auto !important;
+    }
+    #applyWfhModal .modal-content {
+        overflow: hidden !important;
+        border-radius: 24px !important;
+    }
+    #applyWfhModal .ep-modal-body {
+        padding: 22px 24px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 16px !important;
+        overflow-x: hidden !important;
+    }
+    #applyWfhModal .ep-form-group {
+        margin: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 7px !important;
+        position: relative !important;
+    }
+    #applyWfhModal .ep-form-group label,
+    #applyWfhModal .ep-date-group label {
+        font-size: 11.5px !important;
+        font-weight: 800 !important;
+        color: #475467 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.04em !important;
+        margin: 0 !important;
+        display: block !important;
+        line-height: 1.3 !important;
+    }
+    #applyWfhModal .select2-container--default .select2-selection--single {
+        height: 42px !important;
+        border: 1px solid #D0D5DD !important;
+        border-radius: 9px !important;
+        display: flex !important;
+        align-items: center !important;
+        padding: 0 12px !important;
+        background: #fff !important;
+        transition: border-color 0.2s ease !important;
+    }
+    #applyWfhModal .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 40px !important;
+        padding-left: 0 !important;
+        color: #101828 !important;
+        font-size: 13px !important;
+        font-weight: 500 !important;
+    }
+    #applyWfhModal .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 40px !important;
+        right: 10px !important;
+    }
+    #applyWfhModal .select2-container.select2-invalid .select2-selection {
+        border-color: #EF4444 !important;
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+    }
+    #applyWfhModal textarea.form-control {
+        border: 1px solid #D0D5DD !important;
+        border-radius: 9px !important;
+        font-size: 13px !important;
+        padding: 10px 12px !important;
+        min-height: 85px !important;
+        box-sizing: border-box !important;
+    }
+    #applyWfhModal .orbo-date-picker {
+        height: 42px !important;
+        border: 1px solid #D0D5DD !important;
+        border-radius: 9px !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        padding: 8px 12px !important;
+        box-sizing: border-box !important;
+    }
+</style>
+
+<div class="modal fade" id="applyWfhModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-md modal-dialog-centered" role="document">
         <form method="POST" action="{{ route('hrms.attendance.my-wfh.apply') }}" class="modal-content ep-form border-0 shadow-lg">
             @csrf
             <div class="ep-modal-header">
@@ -214,44 +292,44 @@
                 <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <div class="ep-modal-body">
-                <div class="row">
-                    <div class="col-md-6 mb-2">
-                        <label>From Date</label>
+                <div class="row m-0" style="gap: 12px 0;">
+                    <div class="col-12 col-sm-6 pr-sm-2 pl-0 ep-date-group">
+                        <label>From Date <span class="text-danger">*</span></label>
                         <input type="text" data-date-picker name="from_date" id="wfh_from_date" class="form-control orbo-date-picker" placeholder="dd-mm-yyyy" required value="{{ date('Y-m-d') }}">
                     </div>
-                    <div class="col-md-6 mb-2">
-                        <label>To Date</label>
+                    <div class="col-12 col-sm-6 pl-sm-2 pr-0 ep-date-group">
+                        <label>To Date <span class="text-danger">*</span></label>
                         <input type="text" data-date-picker name="to_date" id="wfh_to_date" class="form-control orbo-date-picker" placeholder="dd-mm-yyyy" required value="{{ date('Y-m-d') }}">
                     </div>
                 </div>
 
-                <div id="wfh_calc_box" class="p-3 mb-3 d-none" style="background:#F8F9FA; border-radius:10px; border:1px solid #E9ECEF;">
+                <div id="wfh_calc_box" class="p-3 d-none" style="background:#F8F9FA; border-radius:10px; border:1px solid #E9ECEF;">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <strong class="text-primary" id="wfh_calc_period">Requested Period</strong>
-                        <span class="badge badge-primary" id="wfh_calc_total">0 Days</span>
+                        <strong class="text-primary font-weight-bold" id="wfh_calc_period" style="font-size:13px;">Requested Period</strong>
+                        <span class="badge badge-primary font-weight-bold" id="wfh_calc_total">0 Days</span>
                     </div>
                     <div class="row text-center small">
                         <div class="col-4">
-                            <div class="text-muted">Working Days</div>
-                            <strong class="text-success" style="font-size:16px;" id="wfh_calc_working">0</strong>
+                            <div class="text-muted" style="font-size: 11px;">Working Days</div>
+                            <strong class="text-success font-weight-bold" style="font-size:16px;" id="wfh_calc_working">0</strong>
                         </div>
                         <div class="col-4">
-                            <div class="text-muted">Weekly Off</div>
-                            <strong class="text-warning" style="font-size:16px;" id="wfh_calc_weekoff">0</strong>
+                            <div class="text-muted" style="font-size: 11px;">Weekly Off</div>
+                            <strong class="text-warning font-weight-bold" style="font-size:16px;" id="wfh_calc_weekoff">0</strong>
                         </div>
                         <div class="col-4">
-                            <div class="text-muted">Holidays</div>
-                            <strong class="text-info" style="font-size:16px;" id="wfh_calc_holiday">0</strong>
+                            <div class="text-muted" style="font-size: 11px;">Holidays</div>
+                            <strong class="text-info font-weight-bold" style="font-size:16px;" id="wfh_calc_holiday">0</strong>
                         </div>
                     </div>
-                    <div class="mt-2 text-center text-dark font-weight-bold pt-2 border-top">
-                        Actual WFH Days: <span class="text-success" id="wfh_calc_actual">0</span>
+                    <div class="mt-2 text-center text-dark font-weight-bold pt-2 border-top" style="font-size: 12px;">
+                        Actual WFH Days: <span class="text-success font-weight-bold" id="wfh_calc_actual">0</span>
                     </div>
                 </div>
 
                 <div class="ep-form-group">
-                    <label>Reason Category</label>
-                    <select name="reason_category" class="form-control select2-modal-searchable" required style="border-radius: 10px;">
+                    <label>Reason Category <span class="text-danger">*</span></label>
+                    <select name="reason_category" id="wfh_reason_category" class="form-control select2-modal-searchable" required style="width: 100%;">
                         <option value="" disabled selected>-- Select WFH Reason Category --</option>
                         <option value="personal_reason">Personal / Family Work</option>
                         <option value="health_medical">Health & Medical Care</option>
@@ -262,14 +340,15 @@
                         <option value="other">Other Valid Reason</option>
                     </select>
                 </div>
+
                 <div class="ep-form-group">
-                    <label>Reason Description</label>
+                    <label>Reason Description <span class="text-danger">*</span></label>
                     <textarea class="form-control" name="reason" rows="3" required placeholder="Describe your reason for requesting WFH..."></textarea>
                 </div>
             </div>
             <div class="ep-modal-footer">
                 <button type="button" class="ep-modal-btn ep-modal-btn-light" data-dismiss="modal">Cancel</button>
-                <button class="ep-modal-btn ep-modal-btn-primary"><i class="fas fa-check"></i> Submit Request</button>
+                <button type="submit" class="ep-modal-btn ep-modal-btn-primary"><i class="fas fa-check mr-1"></i> Submit Request</button>
             </div>
         </form>
     </div>
@@ -382,6 +461,33 @@
             toInput.addEventListener('change', calcWfhDays);
             calcWfhDays();
         }
+
+        $('#applyWfhModal').on('shown.bs.modal', function() {
+            if (typeof $.fn.select2 !== 'undefined') {
+                $(this).find('.select2-searchable').select2({
+                    dropdownParent: $('#applyWfhModal'),
+                    width: '100%'
+                });
+            }
+            calcWfhDays();
+        });
+
+        $('#applyWfhModal form').on('submit', function(e) {
+            var $cat = $(this).find('select[name="reason_category"]');
+            if ($cat.length && !$cat.val()) {
+                e.preventDefault();
+                var $container = $cat.next('.select2-container');
+                $container.addClass('select2-invalid');
+                $cat.select2('open');
+                return false;
+            }
+        });
+
+        $('#applyWfhModal select[name="reason_category"]').on('change.select2 change', function() {
+            if ($(this).val()) {
+                $(this).next('.select2-container').removeClass('select2-invalid');
+            }
+        });
     })();
 </script>
 @endsection

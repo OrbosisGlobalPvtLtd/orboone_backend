@@ -5,6 +5,8 @@ namespace App\Services\Notification;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class FcmNotificationS
 {
@@ -123,11 +125,11 @@ class FcmNotificationS
 
                 // Auto-cleanup stale token from database so subsequent attempts don't keep failing
                 try {
-                    \Illuminate\Support\Facades\DB::table('users')
+                    DB::table('users')
                         ->where('fcm_token', $token)
                         ->update(['fcm_token' => null]);
-                    if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'device_token')) {
-                        \Illuminate\Support\Facades\DB::table('users')
+                    if (Schema::hasColumn('users', 'device_token')) {
+                        DB::table('users')
                             ->where('device_token', $token)
                             ->update(['device_token' => null]);
                     }

@@ -98,6 +98,10 @@ class AttendanceSyncFromLeaveService
             $isHalfDay = ($dayValue > 0 && $dayValue < 1) || (bool) $leaveRequest->is_half_day;
 
             $isLwpHalfDay = false;
+            $isFullDayLwp = ! $isHalfDay && $lwpDay >= 1
+                && $paidDay <= 0
+                && (float) ($dateRow->sick_day ?? 0) <= 0
+                && (float) ($dateRow->comp_off_day ?? 0) <= 0;
             if ($isHalfDay) {
                 if ($lwpDay > 0) {
                     $isLwpHalfDay = true;
@@ -114,8 +118,8 @@ class AttendanceSyncFromLeaveService
                 }
             }
 
-            $attendanceStatus = $isHalfDay ? ($isLwpHalfDay ? 'lwp' : 'half_day') : 'leave';
-            $attendanceTypeId = $isHalfDay ? ($isLwpHalfDay ? $lwpTypeId : $halfDayTypeId) : $leaveTypeId;
+            $attendanceStatus = $isHalfDay ? ($isLwpHalfDay ? 'lwp' : 'half_day') : ($isFullDayLwp ? 'lwp' : 'leave');
+            $attendanceTypeId = $isHalfDay ? ($isLwpHalfDay ? $lwpTypeId : $halfDayTypeId) : ($isFullDayLwp ? $lwpTypeId : $leaveTypeId);
 
             $attendance->fill([
                 'user_id' => $leaveRequest->user_id,
@@ -125,8 +129,8 @@ class AttendanceSyncFromLeaveService
                 'attendance_date' => $leaveDateStr,
                 'attendance_status' => $attendanceStatus,
                 'attendance_source' => 'leave_auto',
-                'is_lwp' => $isLwpHalfDay,
-                'lwp_reason' => $isLwpHalfDay ? 'Half day leave applied but paid leave balance unavailable.' : null,
+                'is_lwp' => $isLwpHalfDay || $isFullDayLwp,
+                'lwp_reason' => $isLwpHalfDay ? 'Half day leave applied but paid leave balance unavailable.' : ($isFullDayLwp ? 'Leave applied but paid leave balance unavailable.' : null),
                 'is_half_day' => $isHalfDay,
                 'half_day_reason' => $isHalfDay ? ($isLwpHalfDay ? 'Half day leave applied but paid leave balance unavailable.' : 'Approved half-day leave') : null,
                 'remarks' => 'Approved Leave (' . ($leaveRequest->leaveType->name ?? 'Leave') . ')',

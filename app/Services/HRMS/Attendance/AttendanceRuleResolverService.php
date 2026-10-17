@@ -1451,37 +1451,6 @@ class AttendanceRuleResolverService
             }
         }
 
-        if (Schema::hasTable('leave_applications')) {
-            $app = DB::table('leave_applications')
-                ->where('employee_id', $employee->id)
-                ->where('status', 'approved')
-                ->whereDate('start_date', '<=', $dateStr)
-                ->whereDate('end_date', '>=', $dateStr)
-                ->first();
-
-            if ($app) {
-                $isHalfDay = (bool) ($app->is_half_day ?? false)
-                    || ! empty($app->half_day_type)
-                    || ! empty($app->leave_slot)
-                    || ($app->type ?? '') === 'half_day';
-
-                $slot = $app->half_day_type
-                    ?? $app->leave_slot
-                    ?? $app->slot
-                    ?? ($isHalfDay ? 'first_half' : null);
-
-                return $this->leaveCache[$cacheKey] = [
-                    'id' => $app->id,
-                    'leave_application_id' => $app->id,
-                    'leave_type' => $app->type ?? $app->leave_type ?? 'leave',
-                    'is_half_day' => $isHalfDay,
-                    'leave_slot' => $slot,
-                    'half_day_type' => $slot,
-                    'status' => 'approved',
-                ];
-            }
-        }
-
         return $this->leaveCache[$cacheKey] = null;
     }
 

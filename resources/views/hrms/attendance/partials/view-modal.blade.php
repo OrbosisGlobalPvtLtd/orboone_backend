@@ -549,7 +549,17 @@
                                                 <span class="badge bg-primary text-white">{{ strtoupper($log->new_status ?? 'N/A') }}</span>
                                             </td>
                                             <td class="font-weight-bold text-dark">{{ optional($log->createdBy)->name ?? 'Administrator' }}</td>
-                                            <td>{{ $log->remarks ?: '-' }}</td>
+                                            {{-- <td>{{ $log->remarks ?: '-' }}</td> --}}
+                                            @php
+                                                $logRemarks = (string) ($log->remarks ?? '');
+                                                if (str_starts_with(trim($logRemarks), '{')) {
+                                                    $decoded = json_decode($logRemarks, true);
+                                                    if (is_array($decoded) && isset($decoded['reason'])) {
+                                                        $logRemarks = 'Work mode updated to WFH. Reason: ' . $decoded['reason'];
+                                                    }
+                                                }
+                                            @endphp
+                                            <td>{{ $logRemarks ?: '-' }}</td>
                                         </tr>
                                         @endforeach
                                     </tbody>

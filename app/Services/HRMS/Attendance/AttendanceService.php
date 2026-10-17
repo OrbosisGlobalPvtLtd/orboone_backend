@@ -10,7 +10,6 @@ use App\Models\HRMS\Attendance\AttendanceViolationM;
 use App\Models\HRMS\Attendance\AttendanceWorkLogM;
 use App\Models\HRMS\Employee\EmployeeM as Employee;
 use App\Models\HRMS\Leave\HolidayM;
-use App\Models\HRMS\Leave\LeaveApplicationM;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -985,7 +984,7 @@ class AttendanceService
         $missedPunchCutoff = $effectiveTargetOut->copy()->addMinutes($missedPunchAfterMins);
 
         $isHalfDayByPunchOut = $out->lt($halfDayCutoff);
-        $isEarly = ($approvedLeaveOnAttDate || $isHalfDayByPunchOut) ? false : $out->lt($effectiveTargetOut);
+        $isEarly = ! $approvedLeaveOnAttDate && $out->lt($effectiveTargetOut);
         $isMissedPunchByCutoff = $out->gt($missedPunchCutoff);
 
         $isLate = ! $isFlexible && ! $approvedLeaveOnAttDate && ! (bool) $attendance->is_late_exempted && $this->isLatePunch($in, $shift);
@@ -1081,6 +1080,8 @@ class AttendanceService
         $pOutFmt = $out->format('g:i A');
         $cutoffFmt = $halfDayCutoff->format('g:i A');
         $earlyPunchOutReason = "Half Day — Punch Out at {$pOutFmt}, which is before the half-day cutoff of {$cutoffFmt}.";
+        $missedCutoffFmt = $missedPunchCutoff->format('g:i A');
+        $missedPunchReason = "Missed Punch — Punch Out at {$pOutFmt}, which is after the missed punch cutoff of {$missedCutoffFmt}.";
 
         $updateData = [
             'target_punch_out_time' => $target ? $target->format('H:i:s') : null,
@@ -1090,16 +1091,16 @@ class AttendanceService
             'total_work_minutes' => $netMinutes,
             'is_late' => $isLate,
             'late_minutes' => $lateMinutes,
-            'is_early_out' => ($approvedLeaveOnAttDate || $isHalfDay) ? false : $isEarly,
-            'early_out_minutes' => ($isEarly && ! $isHalfDay && $shiftEnd && ! $approvedLeaveOnAttDate) ? $out->diffInMinutes($shiftEnd) : 0,
+            'is_early_out' => (bool) $isEarly,
+            'early_out_minutes' => ($isEarly && $shiftEnd) ? $out->diffInMinutes($shiftEnd) : 0,
             'violation_count' => $approvedLeaveOnAttDate ? 0 : $violationCount,
             'is_half_day' => $isHalfDay,
             'half_day_reason' => $isHalfDay ? ($isHalfDayByPunchOut ? $earlyPunchOutReason : ($attendance->half_day_reason ?: 'Early out half day threshold exceeded.')) : null,
             'is_lwp' => $isLwp,
             'lwp_reason' => $isLwp ? ($unapprovedLwpReason ?? $attendance->lwp_reason ?? 'Half day attendance without approved leave.') : null,
-            'missed_punch' => false,
-            'is_missed_punch' => false,
-            'missed_punch_reason' => null,
+            'missed_punch' => (bool) $isMissedPunchByCutoff,
+            'is_missed_punch' => (bool) $isMissedPunchByCutoff,
+            'missed_punch_reason' => $isMissedPunchByCutoff ? $missedPunchReason : null,
         ];
 
         $attendance->fill($updateData);
@@ -1938,15 +1939,7 @@ class AttendanceService
             }
         }
 
-        if (! Schema::hasTable('leave_applications')) {
-            return false;
-        }
-
-        return LeaveApplicationM::where('employee_id', $employee->id)
-            ->where('status', 'approved')
-            ->whereDate('start_date', '<=', $date)
-            ->whereDate('end_date', '>=', $date)
-            ->exists();
+        return false;
     }
 
     private function isHolidayDate(string $date): bool
@@ -2166,6 +2159,14 @@ class AttendanceService
         }
 
         if ($isMissedByStatus || $isMissedByLateCutoff) {
+            if ($isMissedByLateCutoff && (! $attendance->missed_punch || ! $attendance->is_missed_punch)) {
+                $attendance->updateQuietly([
+                    'missed_punch' => true,
+                    'is_missed_punch' => true,
+                    'missed_punch_reason' => $lateCutoffRemark,
+                ]);
+            }
+
             $resolver->recordOrSyncViolation($attendance, 'missed_punch', [
                 'minutes' => $lateCutoffMinutes,
                 'source' => $attendance->attendance_source ?: 'system_auto',

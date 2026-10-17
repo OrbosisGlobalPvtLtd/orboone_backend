@@ -1271,10 +1271,24 @@
                         ?? $attendance->punch_out_note
                         ?? '-';
 
-                        $isBlocked = $attendance->is_blocked ?? $attendance->is_punch_blocked ?? false;
-                        $isLate = $attendance->is_late ?? $attendance->late_mark ?? false;
-                        $isEarly = $attendance->is_early_out ?? $attendance->early_leave_mark ?? false;
-                        $isMissed = (bool) ($attendance->missed_punch ?? $attendance->is_missed_punch ?? false);
+                        $violations = $attendance->relationLoaded('violations') ? $attendance->violations : collect();
+
+                        $isBlocked = (bool) ($attendance->is_blocked ?? $attendance->is_punch_blocked ?? false)
+                            || in_array(strtolower((string)($attendance->attendance_status ?? '')), ['punch_blocked', 'blocked'], true)
+                            || $violations->whereIn('type', ['punch_blocked', 'blocked_punch'])->whereNotIn('status', ['resolved', 'regularized'])->isNotEmpty();
+
+                        $isLate = (bool) ($attendance->is_late ?? $attendance->late_mark ?? false)
+                            || ((int)($attendance->late_minutes ?? 0) > 0)
+                            || $violations->whereIn('type', ['late', 'late_login', 'late_mark'])->whereNotIn('status', ['resolved', 'regularized'])->isNotEmpty();
+
+                        $isEarly = (bool) ($attendance->is_early_out ?? $attendance->early_leave_mark ?? false)
+                            || ((int)($attendance->early_out_minutes ?? 0) > 0)
+                            || ($punchOut && $attendance->target_punch_out_time && \Carbon\Carbon::parse($punchOut)->lt(\Carbon\Carbon::parse($attendance->target_punch_out_time)))
+                            || $violations->whereIn('type', ['early', 'early_out', 'early_logout', 'early_leave'])->whereNotIn('status', ['resolved', 'regularized'])->isNotEmpty();
+
+                        $isMissed = (bool) ($attendance->missed_punch ?? $attendance->is_missed_punch ?? false)
+                            || in_array(strtolower((string)($attendance->attendance_status ?? '')), ['missed_punch', 'missed'], true)
+                            || $violations->where('type', 'missed_punch')->whereNotIn('status', ['resolved', 'regularized'])->isNotEmpty();
                         @endphp
 
                         <tr>
@@ -1354,26 +1368,28 @@
                                 @endif
                             </td>
 
-                            <td>
-                                @if($isLate)
-                                <span class="flag flag-late">Late</span>
-                                @endif
+                            <td style="min-width: 120px;">
+                                <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap;">
+                                    @if($isLate)
+                                    <span class="flag flag-late">Late</span>
+                                    @endif
 
-                                @if($isEarly)
-                                <span class="flag flag-early">Early</span>
-                                @endif
+                                    @if($isEarly)
+                                    <span class="flag flag-early">Early</span>
+                                    @endif
 
-                                @if($isBlocked)
-                                <span class="flag flag-blocked">Blocked</span>
-                                @endif
+                                    @if($isBlocked)
+                                    <span class="flag flag-blocked">Blocked</span>
+                                    @endif
 
-                                @if($isMissed)
-                                <span class="flag flag-missed">Missed</span>
-                                @endif
+                                    @if($isMissed)
+                                    <span class="flag flag-missed">Missed</span>
+                                    @endif
 
-                                @if(!$isLate && !$isEarly && !$isBlocked && !$isMissed)
-                                <span class="flag flag-clear">Clear</span>
-                                @endif
+                                    @if(!$isLate && !$isEarly && !$isBlocked && !$isMissed)
+                                    <span class="flag flag-clear">Clear</span>
+                                    @endif
+                                </div>
                             </td>
 
                             <td>

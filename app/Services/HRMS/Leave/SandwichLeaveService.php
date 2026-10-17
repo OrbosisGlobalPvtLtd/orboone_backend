@@ -29,7 +29,7 @@ class SandwichLeaveService
             ? $endDate->copy()->timezone('Asia/Kolkata')->startOfDay() 
             : Carbon::parse($endDate, 'Asia/Kolkata')->startOfDay();
 
-        $policy = $this->policyService->forEmployee($employee, $start);
+        $policy = $this->policyService->requireForEmployee($employee, $start);
 
         $sandwichEnabled = (bool) ($policy?->sandwich_enabled ?? true);
         $weekoffIncludedInSandwich = (bool) ($policy?->weekoff_included_in_sandwich ?? true);

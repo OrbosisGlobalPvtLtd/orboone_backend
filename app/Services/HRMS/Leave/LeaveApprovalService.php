@@ -1,16 +1,22 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\HRMS\Leave;
 
-use App\Models\HRMS\Leave\LeaveBalanceLogM;
 use App\Models\HRMS\Leave\LeaveRequestDateM;
 use App\Models\HRMS\Leave\LeaveRequestM;
+use App\Models\HRMS\Leave\LeaveAllocationM;
+use App\Models\HRMS\Leave\LeaveBalanceTransactionM;
+use App\Enums\LeaveBucket;
 use App\Models\HRMS\Payroll\PayrollAttendanceImpactM;
 use App\Services\HRMS\Attendance\AttendanceSyncFromLeaveService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use App\Models\Core\UserM;
+use App\Services\HRMS\Notification\NotificationS;
 
 class LeaveApprovalService
 {
@@ -18,7 +24,9 @@ class LeaveApprovalService
         private LeaveCalculationService $calculationService,
         private LeaveAllocationService $allocationService,
         private AttendanceSyncFromLeaveService $attendanceSyncService,
-        private CompOffService $compOffService
+        private CompOffService $compOffService,
+        private LeaveBalanceMovementService $movementService,
+        private LeaveBalanceService $balanceService
     ) {
     }
 
@@ -37,7 +45,7 @@ class LeaveApprovalService
 
             if (empty($leaveRequest->reporting_manager_employee_id)) {
                 $mgrId = $leaveRequest->employee?->reporting_manager_employee_id 
-                    ?: \Illuminate\Support\Facades\DB::table('employees_new')->where('id', $leaveRequest->employee_id)->value('reporting_manager_employee_id');
+                    ?: DB::table('employees_new')->where('id', $leaveRequest->employee_id)->value('reporting_manager_employee_id');
                 if ($mgrId) {
                     $leaveRequest->reporting_manager_employee_id = $mgrId;
                     $leaveRequest->save();
@@ -72,41 +80,86 @@ class LeaveApprovalService
                 throw ValidationException::withMessages(['status' => 'Only pending, manager approved, or rejected leave can be approved by HR.']);
             }
 
+            if (LeaveBalanceTransactionM::query()->where('leave_request_id', $leaveRequest->id)
+                ->whereIn('transaction_type', ['leave_debit', 'reversal'])->exists()) {
+                throw ValidationException::withMessages(['status' => 'A debited leave request cannot be approved again; submit a new request.']);
+            }
+
+            $years = $this->requestYears($leaveRequest);
+            $lockedAllocations = LeaveAllocationM::query()->where('employee_id', $leaveRequest->employee_id)
+                ->whereIn('year', $years)->orderBy('id')->lockForUpdate()->get()->keyBy('year');
+
             $calculation = $this->calculationService->calculate($leaveRequest->employee, $leaveRequest->leaveType, [
                 'start_date' => $leaveRequest->start_date,
                 'end_date' => $leaveRequest->end_date,
                 'is_half_day' => $leaveRequest->is_half_day,
                 'attachment_path' => $leaveRequest->attachment_path,
-            ], $leaveRequest);
+            ], $leaveRequest, true);
 
             $allocation = $calculation['allocation'];
-            if ($allocation->is_locked) {
-                throw ValidationException::withMessages(['allocation' => 'Leave allocation is locked for this employee/year.']);
+            $ledgerBacked = $allocation->isLedgerBacked();
+            if (! $ledgerBacked && strtolower((string) $allocation->employment_stage) === LeaveAllocationService::STAGE_PERMANENT) {
+                throw ValidationException::withMessages([
+                    'allocation' => 'Legacy permanent leave approval is disabled. Enable the employee in the new ledger leave model first.',
+                ]);
+            }
+            if ($ledgerBacked) {
+                foreach ($years as $year) {
+                    $yearAllocation = $lockedAllocations->get($year);
+                    if (! $yearAllocation || ! $yearAllocation->isLedgerBacked()) {
+                        throw ValidationException::withMessages(['allocation' => "Ledger allocation for {$year} is missing or not enabled."]);
+                    }
+                    if ($yearAllocation->is_locked) throw ValidationException::withMessages(['allocation' => "Leave allocation {$year} is locked."]);
+                }
+            } else {
+                if ($allocation->is_locked) {
+                    throw ValidationException::withMessages(['allocation' => 'Leave allocation is locked for this employee/year.']);
+                }
             }
 
             LeaveRequestDateM::where('leave_request_id', $leaveRequest->id)->delete();
+            $dateIdsByDate = [];
             foreach ($calculation['dates'] as $row) {
-                LeaveRequestDateM::create(array_merge($row, [
+                $savedDate = LeaveRequestDateM::create(array_merge($row, [
                     'leave_request_id' => $leaveRequest->id,
                     'employee_id' => $leaveRequest->employee_id,
                 ]));
+                $dateIdsByDate[Carbon::parse($savedDate->leave_date, 'Asia/Kolkata')->toDateString()] = (int) $savedDate->id;
             }
 
-            $before = (float) $allocation->total_monthly_remaining_paid;
-            $allocation->paid_used = (float) $allocation->paid_used + (float) $calculation['paid_days'];
-            $allocation->sick_used = (float) $allocation->sick_used + (float) $calculation['sick_days'];
-            $allocation->comp_off_used = (float) $allocation->comp_off_used + (float) $calculation['comp_off_days'];
-            $allocation->lwp_used = (float) $allocation->lwp_used + (float) $calculation['lwp_days'];
-            $this->allocationService->recalculateAllocationFields($allocation);
-            $allocation->save();
-
-            $monthlyUsedDays = (float) $calculation['paid_days'];
-            if ($monthlyUsedDays > 0) {
-                app(\App\Services\HRMS\Leave\MonthlyLeaveQuotaService::class)->recordMonthlyLeaveUsage($allocation, $monthlyUsedDays);
+            if ($ledgerBacked) {
+                $this->writeLedgerDebits($leaveRequest, $calculation['dates'], $lockedAllocations, $approvedByUserId);
+                $this->compOffService->postLedgerUsage(
+                    $leaveRequest->employee,
+                    (int) $leaveRequest->id,
+                    $calculation['_comp_off_usage_allocations'] ?? [],
+                    $dateIdsByDate,
+                    $approvedByUserId
+                );
+            } else {
+                $allocation = $this->allocationService->adjustLegacyAllocation(
+                    $allocation,
+                    [
+                        'paid_used' => (string) $calculation['paid_days'],
+                        'sick_used' => (string) $calculation['sick_days'],
+                        'comp_off_used' => (string) $calculation['comp_off_days'],
+                        'lwp_used' => (string) $calculation['lwp_days'],
+                    ],
+                    $approvedByUserId,
+                    'leave_approved',
+                    'Approved leave request #' . $leaveRequest->id,
+                    (int) $leaveRequest->id,
+                    (int) $leaveRequest->leave_type_id
+                );
             }
 
-            if ((float) $calculation['comp_off_days'] > 0) {
-                $this->compOffService->consume($leaveRequest->employee, (float) $calculation['comp_off_days'], $leaveRequest->id);
+            if (! $ledgerBacked && (float) $calculation['comp_off_days'] > 0) {
+                $this->compOffService->consume(
+                    $leaveRequest->employee,
+                    (string) $calculation['comp_off_days'],
+                    $leaveRequest->id,
+                    $approvedByUserId
+                );
             }
 
             $hasManager = ! empty($leaveRequest->reporting_manager_employee_id);
@@ -133,7 +186,7 @@ class LeaveApprovalService
                 'auto_converted_to_lwp' => (float) $calculation['lwp_days'] > 0,
             ])->save();
 
-            $this->logBalance($leaveRequest, $allocation, 'leave_approved', $before, (float) $allocation->total_monthly_remaining_paid, $approvedByUserId);
+            $this->refreshMonthlyPassbookForRequest($leaveRequest);
             $this->attendanceSyncService->syncApprovedLeave($leaveRequest->fresh(['dates']), $approvedByUserId);
             $this->createPayrollImpacts($leaveRequest->fresh(['dates']), $approvedByUserId);
             $this->notifyLeaveDecision($leaveRequest->fresh(['employee.user', 'leaveType', 'dates']), 'leave_approved', null, $approvedByUserId);
@@ -163,6 +216,7 @@ class LeaveApprovalService
                 'rejection_reason' => $reason,
             ])->save();
 
+            $this->refreshMonthlyPassbookForRequest($leaveRequest);
             $this->notifyLeaveDecision($leaveRequest->fresh(['employee.user', 'leaveType', 'dates']), 'leave_rejected', $reason, $rejectedByUserId);
 
             return $leaveRequest->fresh(['employee', 'leaveType', 'dates']);
@@ -173,6 +227,8 @@ class LeaveApprovalService
     {
         return DB::transaction(function () use ($leaveRequest, $cancelledByUserId, $reason) {
             $leaveRequest = LeaveRequestM::with(['employee', 'leaveType'])->lockForUpdate()->findOrFail($leaveRequest->id);
+
+            if ($leaveRequest->status === 'cancelled') return $leaveRequest;
 
             if ($leaveRequest->status === 'approved') {
                 $this->reverseApprovedLeave($leaveRequest, $cancelledByUserId, 'leave_cancelled_reversal');
@@ -189,6 +245,7 @@ class LeaveApprovalService
                 'cancel_reason' => $reason,
             ])->save();
 
+            $this->refreshMonthlyPassbookForRequest($leaveRequest);
             return $leaveRequest->fresh(['employee', 'leaveType', 'dates']);
         });
     }
@@ -197,6 +254,8 @@ class LeaveApprovalService
     {
         return DB::transaction(function () use ($leaveRequest, $voidedByUserId, $note) {
             $leaveRequest = LeaveRequestM::with(['employee', 'leaveType', 'dates'])->lockForUpdate()->findOrFail($leaveRequest->id);
+
+            if ($leaveRequest->status === 'void') return $leaveRequest;
 
             if ($leaveRequest->status !== 'approved') {
                 throw ValidationException::withMessages(['status' => 'Only approved leave requests can be marked as Null & Void.']);
@@ -213,6 +272,7 @@ class LeaveApprovalService
                 'cancelled_at' => Carbon::now('Asia/Kolkata'),
             ])->save();
 
+            $this->refreshMonthlyPassbookForRequest($leaveRequest);
             $this->notifyLeaveDecision($leaveRequest->fresh(['employee.user', 'leaveType', 'dates']), 'leave_voided', $note);
 
             return $leaveRequest->fresh(['employee', 'leaveType', 'dates']);
@@ -223,27 +283,66 @@ class LeaveApprovalService
     {
         try {
             $allocation = $this->allocationService->getOrGenerate($leaveRequest->employee, Carbon::parse($leaveRequest->start_date)->year, $userId);
+            if ($allocation->isLedgerBacked()) {
+                $debits = LeaveBalanceTransactionM::query()->where('leave_request_id', $leaveRequest->id)
+                    ->where('transaction_type', 'leave_debit')->orderBy('leave_allocation_id')->orderBy('id')->get();
+                $allocationIds = $debits->pluck('leave_allocation_id')->unique()->sort()->values();
+                LeaveAllocationM::query()->whereIn('id', $allocationIds)->orderBy('id')->lockForUpdate()->get();
+                foreach ($debits as $debit) $this->movementService->reverse((int) $debit->id, $userId, $action);
+                $this->attendanceSyncService->reverseLeaveSync($leaveRequest, $userId);
+                DB::table('payroll_attendance_impacts')->where('leave_request_id', $leaveRequest->id)
+                    ->where('is_processed_in_payroll', 0)->delete();
+                if ((float) $leaveRequest->comp_off_days > 0) {
+                    $reversed = $this->compOffService->reverseLedgerUsageForRequest(
+                        $leaveRequest->employee,
+                        (int) $leaveRequest->id,
+                        $userId,
+                        ucfirst(str_replace('_', ' ', $action)) . ' for leave request #' . $leaveRequest->id
+                    );
+                    if (! $reversed) {
+                        $this->compOffService->refund(
+                            $leaveRequest->employee,
+                            (string) $leaveRequest->comp_off_days,
+                            $leaveRequest->id,
+                            $userId
+                        );
+                    }
+                }
+                return;
+            }
+            if (strtolower((string) $allocation->employment_stage) === LeaveAllocationService::STAGE_PERMANENT) {
+                throw ValidationException::withMessages([
+                    'allocation' => 'Legacy permanent leave reversals are disabled. Reconcile this request through the new leave ledger.',
+                ]);
+            }
             if ($allocation->is_locked) {
                 throw ValidationException::withMessages(['allocation' => 'Leave allocation is locked and cannot be reversed.']);
             }
 
             $this->attendanceSyncService->reverseLeaveSync($leaveRequest, $userId);
 
-            $before = (float) $allocation->total_monthly_remaining_paid;
-            $allocation->paid_used = max(0, (float) $allocation->paid_used - (float) $leaveRequest->paid_days);
-            $allocation->sick_used = max(0, (float) $allocation->sick_used - (float) $leaveRequest->sick_days);
-            $allocation->comp_off_used = max(0, (float) $allocation->comp_off_used - (float) $leaveRequest->comp_off_days);
-            $allocation->lwp_used = max(0, (float) $allocation->lwp_used - (float) $leaveRequest->lwp_days);
-            $this->allocationService->recalculateAllocationFields($allocation);
-            $allocation->save();
-
-            $monthlyUsedDays = (float) $leaveRequest->paid_days;
-            if ($monthlyUsedDays > 0) {
-                app(\App\Services\HRMS\Leave\MonthlyLeaveQuotaService::class)->refundMonthlyLeaveUsage($allocation, $monthlyUsedDays);
-            }
+            $allocation = $this->allocationService->adjustLegacyAllocation(
+                $allocation,
+                [
+                    'paid_used' => bcsub('0', (string) $leaveRequest->paid_days, 6),
+                    'sick_used' => bcsub('0', (string) $leaveRequest->sick_days, 6),
+                    'comp_off_used' => bcsub('0', (string) $leaveRequest->comp_off_days, 6),
+                    'lwp_used' => bcsub('0', (string) $leaveRequest->lwp_days, 6),
+                ],
+                $userId,
+                $action,
+                'Reversal for leave request #' . $leaveRequest->id,
+                (int) $leaveRequest->id,
+                (int) $leaveRequest->leave_type_id
+            );
 
             if ((float) $leaveRequest->comp_off_days > 0) {
-                $this->compOffService->refund($leaveRequest->employee, (float) $leaveRequest->comp_off_days, $leaveRequest->id);
+                $this->compOffService->refund(
+                    $leaveRequest->employee,
+                    (string) $leaveRequest->comp_off_days,
+                    $leaveRequest->id,
+                    $userId
+                );
             }
 
             DB::table('payroll_attendance_impacts')
@@ -251,28 +350,97 @@ class LeaveApprovalService
                 ->where('is_processed_in_payroll', 0)
                 ->delete();
 
-            $this->logBalance($leaveRequest, $allocation, $action, $before, (float) $allocation->total_monthly_remaining_paid, $userId);
         } catch (\Throwable $e) {
             Log::error('Leave reversal failed', ['leave_request_id' => $leaveRequest->id, 'error' => $e->getMessage()]);
             throw $e;
         }
     }
 
-    private function logBalance(LeaveRequestM $leaveRequest, $allocation, string $action, float $before, float $after, int $userId): void
+    private function refreshMonthlyPassbookForRequest(LeaveRequestM $leaveRequest): void
     {
-        LeaveBalanceLogM::create([
-            'employee_id' => $leaveRequest->employee_id,
-            'leave_allocation_id' => $allocation->id,
-            'leave_request_id' => $leaveRequest->id,
-            'leave_type_id' => $leaveRequest->leave_type_id,
-            'action' => $action,
-            'credit' => max(0, $after - $before),
-            'debit' => max(0, $before - $after),
-            'balance_before' => $before,
-            'balance_after' => $after,
-            'remarks' => 'Leave request #' . $leaveRequest->id,
-            'created_by_user_id' => $userId,
-        ]);
+        $employee = $leaveRequest->employee;
+        if (! $employee) {
+            return;
+        }
+
+        $periods = LeaveRequestDateM::query()
+            ->where('leave_request_id', $leaveRequest->id)
+            ->pluck('leave_date')
+            ->map(fn ($date): string => Carbon::parse($date, 'Asia/Kolkata')->format('Y-n'))
+            ->unique()
+            ->map(function (string $period): array {
+                [$year, $month] = array_map('intval', explode('-', $period));
+                return ['year' => $year, 'month' => $month];
+            })
+            ->groupBy('year');
+
+        foreach ($periods as $year => $months) {
+            app(LeaveMonthlyBalanceService::class)->rebuildEmployeeThrough(
+                $employee,
+                (int) $year,
+                (int) $months->max('month')
+            );
+        }
+    }
+
+    /** @return list<int> */
+    private function requestYears(LeaveRequestM $request): array
+    {
+        $years = LeaveRequestDateM::query()->where('leave_request_id', $request->id)
+            ->where('deduct_as_leave', true)->pluck('leave_date')
+            ->map(fn ($date): int => (int) Carbon::parse($date, 'Asia/Kolkata')->year)->unique()->values()->all();
+        return $years ?: [Carbon::parse($request->start_date, 'Asia/Kolkata')->year];
+    }
+
+    /** Debit each bucket against its date's allocation year; caller has locked allocations in stable order. */
+    private function writeLedgerDebits(LeaveRequestM $request, array $dates, $allocations, int $actorId): void
+    {
+        $totals = [];
+        foreach ($dates as $date) {
+            if (! ($date['deduct_as_leave'] ?? false)) continue;
+            $year = (int) Carbon::parse($date['leave_date'], 'Asia/Kolkata')->year;
+            $totals[$year]['PL'] = bcadd($totals[$year]['PL'] ?? '0.000000', (string) ($date['paid_day'] ?? 0), 6);
+            $totals[$year]['SL'] = bcadd($totals[$year]['SL'] ?? '0.000000', (string) ($date['sick_day'] ?? 0), 6);
+        }
+
+        $selectedBucket = null;
+        try {
+            if ($request->leaveType && ! $request->leaveType->is_comp_off && ! $request->leaveType->is_lwp) {
+                $selectedBucket = LeaveBucket::fromLeaveType($request->leaveType);
+            }
+        } catch (\Throwable) {
+            $selectedBucket = null;
+        }
+
+        foreach ($totals as $year => $buckets) {
+            $allocation = $allocations->get($year);
+            foreach ([LeaveBucket::PL, LeaveBucket::SL] as $bucket) {
+                $amount = $buckets[$bucket->value] ?? '0.000000';
+                if (bccomp($amount, '0', 6) <= 0) continue;
+                $date = collect($dates)->first(fn (array $row): bool =>
+                    Carbon::parse($row['leave_date'], 'Asia/Kolkata')->year === (int) $year
+                    && bccomp((string) ($row[$bucket === LeaveBucket::PL ? 'paid_day' : 'sick_day'] ?? 0), '0', 6) > 0
+                );
+
+                $reason = 'Approved leave debit';
+                if ($request->leaveType?->is_comp_off) {
+                    $reason = sprintf('Approved leave debit (Comp-Off shortfall covered by %s)', $bucket->value);
+                } elseif ($selectedBucket && $bucket !== $selectedBucket) {
+                    $reason = sprintf(
+                        'Approved leave debit (adjusted from %s due to insufficient %s balance)',
+                        $bucket->value,
+                        $selectedBucket->value
+                    );
+                }
+
+                $this->movementService->debit(
+                    $allocation, $bucket, (int) $request->id, (int) $year,
+                    (int) Carbon::parse($date['leave_date'], 'Asia/Kolkata')->month,
+                    $amount, Carbon::parse($date['leave_date'], 'Asia/Kolkata')->toDateString(), $actorId,
+                    'system', $reason
+                );
+            }
+        }
     }
 
     private function createPayrollImpacts(LeaveRequestM $leaveRequest, int $userId): void
@@ -313,7 +481,7 @@ class LeaveApprovalService
 
     private function getApproverRoleTitle(int $actorId): string
     {
-        $user = \App\Models\Core\UserM::with('role')->find($actorId);
+        $user = UserM::with('role')->find($actorId);
         if (! $user) {
             return 'Approver';
         }
@@ -373,7 +541,7 @@ class LeaveApprovalService
             default => "Your {$leaveType} leave from {$fromDate} to {$toDate} has been rejected by {$approverRole}." . ($reason ? " Reason: {$reason}" : ""),
         };
 
-        app(\App\Services\HRMS\Notification\NotificationS::class)->notifyEmployee(
+        app(NotificationS::class)->notifyEmployee(
             $title,
             $message,
             $type,

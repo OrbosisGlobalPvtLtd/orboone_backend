@@ -32,6 +32,11 @@ class LeaveRequestDateM extends Model
         return $this->belongsTo(LeaveRequestM::class, 'leave_request_id');
     }
 
+    public function leaveRequest()
+    {
+        return $this->belongsTo(LeaveRequestM::class, 'leave_request_id');
+    }   
+
     public function employee()
     {
         return $this->belongsTo(EmployeeM::class, 'employee_id');

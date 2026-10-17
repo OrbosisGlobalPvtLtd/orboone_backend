@@ -13,8 +13,14 @@ class LeaveCalculationService
     ) {
     }
 
-    public function calculate(EmployeeM $employee, LeaveTypeM $leaveType, array $payload, ?LeaveRequestM $existingRequest = null): array
+    public function calculate(
+        EmployeeM $employee,
+        LeaveTypeM $leaveType,
+        array $payload,
+        ?LeaveRequestM $existingRequest = null,
+        bool $lockCompOffCredits = false
+    ): array
     {
-        return $this->policyCalculator->calculate($employee, $leaveType, $payload, $existingRequest);
+        return $this->policyCalculator->calculate($employee, $leaveType, $payload, $existingRequest, $lockCompOffCredits);
     }
 }

@@ -8,7 +8,6 @@ use App\Models\HRMS\Employee\EmployeeProfileM as EmployeeProfile;
 use App\Services\HRMS\Document\EmployeeDocumentCompletionS;
 use App\Services\HRMS\Attendance\AttendanceMobileService;
 use App\Models\HRMS\Announcement\AnnouncementM as Announcement;
-use App\Models\HRMS\Leave\LeaveAllocationM as LeaveAllocation;
 use App\Models\HRMS\Leave\LeaveRequestM as LeaveRequest;
 use App\Models\Core\NotificationM as Notification;
 use Carbon\Carbon;
@@ -17,8 +16,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use App\Services\HRMS\Employee\EmployeeEligibilityS;
-use App\Services\HRMS\Leave\MonthlyLeaveQuotaService;
-use App\Services\HRMS\Leave\LeaveAllocationService;
 use App\Services\HRMS\Employee\EmployeeProfileCompletionS;
 
 class MobileDashboardController extends Controller
@@ -84,8 +81,17 @@ class MobileDashboardController extends Controller
                     'employee' => [
                         'id' => $employee->id,
                         'code' => $employee->employee_code,
+                        'employee_code' => $employee->employee_code,
                         'name' => $employee->display_name ?? $user->name,
                         'email' => $user->email,
+                        'department' => [
+                            'id'   => $employee->department?->id,
+                            'name' => $employee->department?->name,
+                        ],
+                        'designation' => [
+                            'id'   => $employee->designation?->id,
+                            'name' => $employee->designation?->name,
+                        ],
                     ],
                     'restricted' => true,
                     'allowed_modules' => ['profile', 'documents'],
@@ -185,7 +191,21 @@ class MobileDashboardController extends Controller
                 ->groupBy('status')
                 ->pluck('total', 'status');
 
-            $quota = app(MonthlyLeaveQuotaService::class)->getMonthlyQuota($employee);
+            $leaveBalanceService = app(\App\Services\HRMS\Leave\LeaveBalanceService::class);
+            $ledgerShape = $leaveBalanceService->getApiBalanceShape($employee);
+            $allocation = $ledgerShape['allocation'] ?? $leaveBalanceService->allocationForRead($employee);
+            if ($ledgerShape) {
+                $allocation = $ledgerShape['allocation'];
+                $ledgerBalance = $ledgerShape['central'];
+                $quota = ['monthly_limit' => (float) $ledgerBalance['monthly_limit'],
+                    'current_month_used' => (float) $ledgerBalance['current_month_used'],
+                    'carry_forward_available' => (float) $ledgerBalance['carry_forward_available'],
+                    'available_this_month' => (float) $ledgerBalance['available_this_month']];
+            } else {
+                $central = $leaveBalanceService->getCentralBalance($employee);
+                $quota = ['monthly_limit' => 0.0, 'current_month_used' => 0.0,
+                    'carry_forward_available' => 0.0, 'available_this_month' => (float) $central['available_this_month']];
+            }
             $leaveSummary['monthly_quota'] = [
                 'limit' => $quota['monthly_limit'],
                 'used' => $quota['current_month_used'],
@@ -193,10 +213,9 @@ class MobileDashboardController extends Controller
                 'available' => $quota['available_this_month'],
             ];
 
-            $year = Carbon::now('Asia/Kolkata')->year;
-            $allocation = app(LeaveAllocationService::class)->getOrGenerate($employee, $year);
-
-            if ($allocation) {
+            if ($ledgerShape) {
+                $leaveSummary['balances'] = $ledgerShape['balances'];
+            } elseif ($allocation) {
                 $leaveSummary['balances'] = [
                     [
                         'type' => 'total',
@@ -234,6 +253,10 @@ class MobileDashboardController extends Controller
                         'remaining' => 0.0,
                     ],
                 ];
+            }
+            $ledgerFields = $ledgerShape['fields'] ?? null;
+            if ($ledgerFields !== null) {
+                $leaveSummary = array_merge($leaveSummary, $ledgerFields);
             }
         } catch (\Throwable $e) {
             // Fallback

@@ -840,16 +840,21 @@
     @php
     $policyFields = [
     'policy_name' => ['Policy Name', 'text', 'Example: Default Leave Policy', true],
-    'annual_total_leaves' => ['Annual Total Leaves', 'number', '25', false],
-    'annual_paid_leaves' => ['Annual Paid Leaves', 'number', '18', false],
-    'annual_sick_leaves' => ['Annual Sick Leaves', 'number', '7', false],
-    'monthly_leave_limit' => ['Monthly Leave Limit', 'number', '2', false],
-    'max_leave_at_once' => ['Max Leave At Once', 'number', '15', false],
-    'probation_leave_limit' => ['Probation Limit', 'number', '1', false],
-    'internship_leave_limit' => ['Internship Limit', 'number', '1', false],
-    'medical_certificate_after_days' => ['Medical Certificate After Days', 'number', '2', false],
-    'nov_dec_threshold_balance' => ['Nov/Dec Threshold Balance', 'number', '20', false],
-    'nov_dec_usage_percentage' => ['Nov/Dec Usage Percentage', 'number', '50', false],
+    'annual_total_leaves' => ['Annual Total Leaves', 'number', 'Enter policy value', true],
+    'annual_paid_leaves' => ['Annual Paid Leaves', 'number', 'Enter policy value', true],
+    'annual_sick_leaves' => ['Annual Sick Leaves', 'number', 'Enter policy value', true],
+    'monthly_leave_limit' => ['Monthly Leave Limit', 'number', 'Not used as a ledger usage cap', true],
+    'max_leave_at_once' => ['Max Leave At Once', 'number', 'Enter policy value', true],
+    'probation_leave_limit' => ['Probation Limit', 'number', 'Enter policy value', true],
+    'internship_leave_limit' => ['Internship Limit', 'number', 'Enter policy value', true],
+    'unpaid_intern_leave_limit' => ['Unpaid Internship Leave Limit', 'number', 'Enter policy value', true],
+    'request_unit' => ['Leave Request Unit', 'number', 'Enter policy value', true],
+    'lapse_grace_days' => ['Lapse Grace Days', 'number', 'Enter policy value', true],
+    'leave_lapse_month' => ['Leave Lapse Month (1-12)', 'number', 'Enter month', true],
+    'leave_lapse_day' => ['Leave Lapse Day (1-31)', 'number', 'Enter day', true],
+    'medical_certificate_after_days' => ['Medical Certificate After Days', 'number', 'Enter policy value', true],
+    'nov_dec_threshold_balance' => ['Nov/Dec Threshold Balance', 'number', 'Enter policy value', true],
+    'nov_dec_usage_percentage' => ['Nov/Dec Usage Percentage', 'number', 'Enter policy value', true],
     ];
 
     $policyRules = [
@@ -982,16 +987,6 @@
                                     @foreach($policyFields as $field => $meta)
                                     @php
                                     $defaultValue = '';
-                                    if ($field === 'annual_total_leaves') $defaultValue = 25;
-                                    if ($field === 'annual_paid_leaves') $defaultValue = 18;
-                                    if ($field === 'annual_sick_leaves') $defaultValue = 7;
-                                    if ($field === 'monthly_leave_limit') $defaultValue = 2;
-                                    if ($field === 'max_leave_at_once') $defaultValue = 15;
-                                    if ($field === 'probation_leave_limit') $defaultValue = 1;
-                                    if ($field === 'internship_leave_limit') $defaultValue = 1;
-                                    if ($field === 'medical_certificate_after_days') $defaultValue = 2;
-                                    if ($field === 'nov_dec_threshold_balance') $defaultValue = 20;
-                                    if ($field === 'nov_dec_usage_percentage') $defaultValue = 50;
                                     @endphp
 
                                     <div class="col-md-4">

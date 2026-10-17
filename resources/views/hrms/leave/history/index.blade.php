@@ -5,6 +5,7 @@
 @section('_head')
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap4.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap4.min.css">
+@include('hrms.leave.shared.style')
 <style>
 :root {
     --orb-primary: {{ $branding['primary_color'] ?? '#4B00E8' }};
@@ -24,11 +25,16 @@ body {
 
 .lh-page {
     padding: 24px 20px 48px;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
 }
 
 .lh-container {
-    max-width: 1550px;
+    width: 100% !important;
+    max-width: 100% !important;
     margin: 0 auto;
+    box-sizing: border-box !important;
 }
 
 .lh-hero {
@@ -263,42 +269,61 @@ body {
 
         @include('hrms.leave.shared.flash')
 
-        <!-- Stats Grid -->
-        <div class="lh-stat-grid">
-            <div class="lh-stat-card total">
-                <div class="lh-stat-icon"><i class="fas fa-folder-open"></i></div>
-                <div>
-                    <div class="lh-stat-val">{{ $stats['total'] ?? 0 }}</div>
-                    <div class="lh-stat-lbl">Total Records</div>
+        <!-- Stats Grid (Image 2 Design) -->
+        <div class="leave-metric-grid">
+            <div class="leave-metric" style="--metric-color:#4B00E8;--metric-soft:rgba(75, 0, 232, 0.08);">
+                <div class="leave-metric-top">
+                    <div class="leave-metric-icon">
+                        <i class="fas fa-folder-open"></i>
+                    </div>
+                    <div class="leave-metric-value">{{ $stats['total'] ?? 0 }}</div>
                 </div>
+                <div class="leave-metric-label">Total Records</div>
+                <div class="leave-metric-line"></div>
             </div>
-            <div class="lh-stat-card approved">
-                <div class="lh-stat-icon"><i class="fas fa-check-circle"></i></div>
-                <div>
-                    <div class="lh-stat-val">{{ $stats['approved'] ?? 0 }}</div>
-                    <div class="lh-stat-lbl">Approved</div>
+
+            <div class="leave-metric" style="--metric-color:#10B981;--metric-soft:#ECFDF5;">
+                <div class="leave-metric-top">
+                    <div class="leave-metric-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="leave-metric-value">{{ $stats['approved'] ?? 0 }}</div>
                 </div>
+                <div class="leave-metric-label">Approved</div>
+                <div class="leave-metric-line"></div>
             </div>
-            <div class="lh-stat-card pending">
-                <div class="lh-stat-icon"><i class="fas fa-clock"></i></div>
-                <div>
-                    <div class="lh-stat-val">{{ $stats['pending'] ?? 0 }}</div>
-                    <div class="lh-stat-lbl">Pending</div>
+
+            <div class="leave-metric" style="--metric-color:#F59E0B;--metric-soft:#FFFBEB;">
+                <div class="leave-metric-top">
+                    <div class="leave-metric-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="leave-metric-value">{{ $stats['pending'] ?? 0 }}</div>
                 </div>
+                <div class="leave-metric-label">Pending</div>
+                <div class="leave-metric-line"></div>
             </div>
-            <div class="lh-stat-card rejected">
-                <div class="lh-stat-icon"><i class="fas fa-times-circle"></i></div>
-                <div>
-                    <div class="lh-stat-val">{{ $stats['rejected'] ?? 0 }}</div>
-                    <div class="lh-stat-lbl">Rejected</div>
+
+            <div class="leave-metric" style="--metric-color:#EF4444;--metric-soft:#FEF2F2;">
+                <div class="leave-metric-top">
+                    <div class="leave-metric-icon">
+                        <i class="fas fa-times-circle"></i>
+                    </div>
+                    <div class="leave-metric-value">{{ $stats['rejected'] ?? 0 }}</div>
                 </div>
+                <div class="leave-metric-label">Rejected</div>
+                <div class="leave-metric-line"></div>
             </div>
-            <div class="lh-stat-card cancelled">
-                <div class="lh-stat-icon"><i class="fas fa-ban"></i></div>
-                <div>
-                    <div class="lh-stat-val">{{ $stats['cancelled'] ?? 0 }}</div>
-                    <div class="lh-stat-lbl">Cancelled</div>
+
+            <div class="leave-metric" style="--metric-color:#64748B;--metric-soft:#F1F5F9;">
+                <div class="leave-metric-top">
+                    <div class="leave-metric-icon">
+                        <i class="fas fa-ban"></i>
+                    </div>
+                    <div class="leave-metric-value">{{ $stats['cancelled'] ?? 0 }}</div>
                 </div>
+                <div class="leave-metric-label">Cancelled</div>
+                <div class="leave-metric-line"></div>
             </div>
         </div>
 

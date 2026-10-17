@@ -12,6 +12,10 @@ use App\Models\Core\LogM as Log;
 use App\Models\Core\AccessM as Access;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use App\Models\HRMS\Leave\HolidayM;
+use App\Models\HRMS\Leave\EmployeeLeaveRequestM;
+use Illuminate\Http\JsonResponse;
 
 class EmployeeLeaveRequestsC extends Controller
 {
@@ -26,7 +30,7 @@ class EmployeeLeaveRequestsC extends Controller
     /**
      * Display a listing of the resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function index()
     {
@@ -54,7 +58,7 @@ class EmployeeLeaveRequestsC extends Controller
             ->where('is_active', 1)
             ->get();
 
-        $holidays = \App\Models\HRMS\Leave\HolidayM::orderBy('date', 'asc')->get();
+        $holidays = HolidayM::orderBy('date', 'asc')->get();
         $accesses = Access::where('role_id', auth()->user()->role_id)->get();
 
         return view('hrms.leave.employee_requests.summary', compact('employees', 'accesses', 'holidays'))->with('active', 'leave-summary');
@@ -175,8 +179,8 @@ class EmployeeLeaveRequestsC extends Controller
     /**
      * Display the specified resource.
      *
-     * @param  \App\Models\HRMS\Leave\EmployeeLeaveRequestM  $employeeLeaveRequest
-     * @return \Illuminate\Http\Response
+     * @param  EmployeeLeaveRequestM  $employeeLeaveRequest
+     * @return Response
      */
     public function show(EmployeeLeaveRequest $employeeLeaveRequest)
     {
@@ -199,8 +203,8 @@ class EmployeeLeaveRequestsC extends Controller
     /**
      * Show the form for editing the specified resource.
      *
-     * @param  \App\Models\HRMS\Leave\EmployeeLeaveRequestM  $employeeLeaveRequest
-     * @return \Illuminate\Http\Response
+     * @param  EmployeeLeaveRequestM  $employeeLeaveRequest
+     * @return Response
      */
     public function edit(EmployeeLeaveRequest $employeeLeaveRequest)
     {
@@ -210,9 +214,9 @@ class EmployeeLeaveRequestsC extends Controller
     /**
      * Update the specified resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\HRMS\Leave\EmployeeLeaveRequestM  $employeeLeaveRequest
-     * @return \Illuminate\Http\Response|\Illuminate\Http\JsonResponse
+     * @param  Request  $request
+     * @param  EmployeeLeaveRequestM  $employeeLeaveRequest
+     * @return Response|JsonResponse
      */
     public function update(Request $request, EmployeeLeaveRequest $employeeLeaveRequest)
     {
@@ -283,8 +287,8 @@ class EmployeeLeaveRequestsC extends Controller
     /**
      * Remove the specified resource from storage.
      *
-     * @param  \App\Models\HRMS\Leave\EmployeeLeaveRequestM  $employeeLeaveRequest
-     * @return \Illuminate\Http\Response
+     * @param  EmployeeLeaveRequestM  $employeeLeaveRequest
+     * @return Response
      */
     public function destroy(Request $request, EmployeeLeaveRequest $employeeLeaveRequest)
     {

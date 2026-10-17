@@ -754,35 +754,38 @@
 
     @include('hrms.leave.shared.flash')
 
-    <div class="leave-summary-grid">
-        <div class="summary-card summary-primary">
-            <div class="summary-icon">
-                <i class="fas fa-calendar-day"></i>
+    <div class="leave-metric-grid">
+        <div class="leave-metric" style="--metric-color:#4B00E8;--metric-soft:rgba(75, 0, 232, 0.08);">
+            <div class="leave-metric-top">
+                <div class="leave-metric-icon">
+                    <i class="fas fa-calendar-day"></i>
+                </div>
+                <div class="leave-metric-value">{{ $holidays->count() }}</div>
             </div>
-            <div class="summary-info">
-                <h4>{{ $holidays->count() }}</h4>
-                <p>Total Holidays</p>
-            </div>
+            <div class="leave-metric-label">Total Holidays</div>
+            <div class="leave-metric-line"></div>
         </div>
 
-        <div class="summary-card summary-success">
-            <div class="summary-icon">
-                <i class="fas fa-calendar-check"></i>
+        <div class="leave-metric" style="--metric-color:#10B981;--metric-soft:#ECFDF5;">
+            <div class="leave-metric-top">
+                <div class="leave-metric-icon">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+                <div class="leave-metric-value">{{ $holidays->where('is_working_day_override', 0)->count() }}</div>
             </div>
-            <div class="summary-info">
-                <h4>{{ $holidays->where('is_working_day_override', 0)->count() }}</h4>
-                <p>Days Off</p>
-            </div>
+            <div class="leave-metric-label">Days Off</div>
+            <div class="leave-metric-line"></div>
         </div>
 
-        <div class="summary-card summary-warning">
-            <div class="summary-icon">
-                <i class="fas fa-briefcase"></i>
+        <div class="leave-metric" style="--metric-color:#F59E0B;--metric-soft:#FFFBEB;">
+            <div class="leave-metric-top">
+                <div class="leave-metric-icon">
+                    <i class="fas fa-briefcase"></i>
+                </div>
+                <div class="leave-metric-value">{{ $holidays->where('is_working_day_override', 1)->count() }}</div>
             </div>
-            <div class="summary-info">
-                <h4>{{ $holidays->where('is_working_day_override', 1)->count() }}</h4>
-                <p>Working Overrides</p>
-            </div>
+            <div class="leave-metric-label">Working Overrides</div>
+            <div class="leave-metric-line"></div>
         </div>
     </div>
 

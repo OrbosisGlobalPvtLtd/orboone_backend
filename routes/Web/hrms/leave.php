@@ -27,9 +27,12 @@ Route::middleware(['auth', 'check.access'])->group(function () {
     Route::post('/leave-requests/{id}/cancel', [LeaveRequestC::class, 'cancel'])->middleware('permission:leave.my_requests.cancel|leave.my_requests.create|leave.my_requests.view|leave.approvals.view_all')->name('leave-requests.cancel');
 
     Route::get('/leave-approvals', [LeaveApprovalC::class, 'index'])->name('leave-approvals.index');
+    Route::get('/leave-approvals/{id}', [LeaveApprovalC::class, 'show'])->whereNumber('id')->name('leave-approvals.show');
     Route::post('/leave-approvals/{id}/approve', [LeaveApprovalC::class, 'approve'])->name('leave-approvals.approve');
     Route::post('/leave-approvals/{id}/reject', [LeaveApprovalC::class, 'reject'])->name('leave-approvals.reject');
     Route::post('/leave-approvals/{id}/void', [LeaveApprovalC::class, 'void'])->name('leave-approvals.void');
+
+    Route::get('/leave-requests/{id}', [LeaveApprovalC::class, 'show'])->whereNumber('id')->name('leave-requests.show');
 
     Route::get('/leave-balances', [LeaveBalanceC::class, 'index'])->middleware('permission:leave.balance.view_all|leave.balance.view_team|leave.balance.view_own|leave.balance.view')->name('hrms.leave.balances.index');
     Route::get('/leave-allocations', [LeaveAllocationC::class, 'index'])->middleware('permission:leave.allocation.view_all|leave.allocation.view_own|leave.allocation.view|leave.allocation.manage')->name('leave-allocations.index');
@@ -54,6 +57,7 @@ Route::middleware(['auth', 'check.access'])->group(function () {
     Route::delete('/holidays/{id}', [HolidayC::class, 'destroy'])->middleware('permission:leave.holidays.manage')->name('hrms.holidays.destroy');
 
     Route::get('/comp-offs', [CompOffC::class, 'index'])->middleware('permission:leave.comp_off.view_all|leave.comp_off.view_own|leave.comp_off.view|leave.comp_off.manage')->name('hrms.comp_offs.index');
+    Route::post('/comp-offs/grant', [CompOffC::class, 'grantManual'])->middleware('permission:leave.comp_off.manage')->name('hrms.comp_offs.grant');
     Route::post('/comp-offs/holiday-work/{id}/approve', [CompOffC::class, 'approveHolidayWork'])->middleware('permission:leave.comp_off.manage')->name('hrms.comp_offs.holiday_work.approve');
     Route::post('/comp-offs/expire', [CompOffC::class, 'expire'])->middleware('permission:leave.comp_off.manage')->name('hrms.comp_offs.expire');
 

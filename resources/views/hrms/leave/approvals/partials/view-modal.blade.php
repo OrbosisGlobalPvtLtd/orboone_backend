@@ -160,19 +160,17 @@
                             </div>
                         </div>
 
-                        <!-- Current Month Remaining Paid Balance -->
+                        <!-- Current Available Paid Balance -->
                         <div class="leave-balance-tile">
                             <div style="width: 32px; height: 32px; border-radius: 8px; background: #EFF6FF; color: #2563EB; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0;">
                                 <i class="fas fa-calendar-check"></i>
                             </div>
                             <div class="overflow-hidden" style="min-width: 0;">
-                                <div class="text-muted font-weight-bold uppercase text-truncate" style="font-size: 8.5px; letter-spacing: 0.4px;">MONTH BALANCE</div>
+                                <div class="text-muted font-weight-bold uppercase text-truncate" style="font-size: 8.5px; letter-spacing: 0.4px;">AVAILABLE PAID</div>
                                 <div class="font-weight-bold text-primary text-truncate" style="font-size: 13px; line-height: 1.1;">
-                                    {{ (float)($lr->total_monthly_remaining_paid ?? $lr->paid_remaining ?? 0) }} {{ \Illuminate\Support\Str::plural('Day', (float)($lr->total_monthly_remaining_paid ?? $lr->paid_remaining ?? 0)) }}
+                                    {{ (float)($lr->paid_remaining ?? 0) }} {{ \Illuminate\Support\Str::plural('Day', (float)($lr->paid_remaining ?? 0)) }}
                                 </div>
-                                <div class="text-muted text-truncate" style="font-size: 9.5px;" title="Quota: {{ (float)($lr->monthly_quota ?? 2) }} / mo + {{ (float)($lr->monthly_carry_forward ?? 0) }} C/F">
-                                    {{ (float)($lr->monthly_quota ?? 2) }}/mo + {{ (float)($lr->monthly_carry_forward ?? 0) }} C/F
-                                </div>
+                                <div class="text-muted text-truncate" style="font-size: 9.5px;">Available balance when request was loaded</div>
                             </div>
                         </div>
 

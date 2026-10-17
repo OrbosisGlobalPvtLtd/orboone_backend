@@ -11,6 +11,7 @@ use App\Models\HRMS\Leave\LeaveRequestM;
 use App\Models\HRMS\Leave\LeaveTypeM;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use App\Services\HRMS\Leave\AutoExpireLeaveService;
 
 class LeaveHistoryC extends Controller
 {
@@ -23,7 +24,7 @@ class LeaveHistoryC extends Controller
         $ownEmp = $user->employee ?? $this->currentEmployee();
 
         // Auto-expire past pending leaves
-        // app(\App\Services\HRMS\Leave\AutoExpireLeaveService::class)->expirePastPendingRequests();
+        // app(AutoExpireLeaveService::class)->expirePastPendingRequests();
 
         $query = LeaveRequestM::with(['employee.user', 'employee.department', 'employee.designation', 'leaveType', 'dates', 'approver']);
 

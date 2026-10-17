@@ -3,6 +3,7 @@
 @section('page_title', 'Leave Approvals')
 
 @section('_head')
+@include('hrms.leave.shared.style')
 <style>
 :root {
     --orb-primary: {{ $branding['primary_color'] ?? '#4B00E8' }};
@@ -18,11 +19,16 @@
     padding: 24px 20px 48px;
     background: var(--orb-bg);
     min-height: calc(100vh - 90px);
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
 }
 
 .rep-container {
-    max-width: 1600px;
+    width: 100% !important;
+    max-width: 100% !important;
     margin: 0 auto;
+    box-sizing: border-box !important;
 }
 
 /* Signature Hero Header Banner */
@@ -53,47 +59,212 @@
     margin: 0;
 }
 
-/* 6 Rich Metric Summary Cards Grid */
-.team-stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
-    gap: 14px;
-    margin-bottom: 24px;
+/* 6 Responsive Leave Metric Cards in a Single Row on Desktop (Image 2 Design) */
+.leave-metric-grid {
+    display: grid !important;
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+    margin-bottom: 22px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
 }
 
-.team-stat-card {
-    background: #FFFFFF;
-    border: 1px solid #E2E8F0;
-    border-radius: 16px;
-    padding: 16px 18px;
-    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    transition: all 0.22s ease;
+.leave-metric-card {
+    background: #FFFFFF !important;
+    border: 1px solid var(--orb-border, #E7EAF3) !important;
+    border-radius: 16px !important;
+    padding: 12px 14px 10px !important;
+    box-shadow: 0 10px 24px rgba(16, 24, 40, .055) !important;
+    position: relative !important;
+    overflow: hidden !important;
+    min-height: 88px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease !important;
     text-decoration: none !important;
-    color: inherit;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
+    color: inherit !important;
+    cursor: pointer !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
 }
 
-.team-stat-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
-    color: inherit;
+.leave-metric-card:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 14px 30px rgba(16, 24, 40, .09) !important;
+    text-decoration: none !important;
+    color: inherit !important;
 }
 
-.team-stat-card.active {
-    box-shadow: 0 8px 24px rgba(75, 0, 232, 0.14);
-    border-width: 2px !important;
+.leave-metric-card::after {
+    content: "" !important;
+    position: absolute !important;
+    right: -22px !important;
+    top: -30px !important;
+    width: 80px !important;
+    height: 80px !important;
+    border-radius: 50% !important;
+    background: var(--metric-soft, #F4F2FF) !important;
+    pointer-events: none !important;
+    z-index: 0 !important;
 }
-.team-stat-card.stat-all.active { border-color: #6366F1 !important; background: #F8FAFC; }
-.team-stat-card.stat-pending.active { border-color: #4F46E5 !important; background: #EEF2FF; }
-.team-stat-card.stat-pending-manager.active { border-color: #D97706 !important; background: #FFFBEB; }
-.team-stat-card.stat-pending-hr.active { border-color: #0284C7 !important; background: #F0F9FF; }
-.team-stat-card.stat-approved.active { border-color: #047857 !important; background: #ECFDF5; }
-.team-stat-card.stat-rejected.active { border-color: #DC2626 !important; background: #FEF2F2; }
+
+.leave-metric-card.active {
+    border: 2px solid var(--metric-color, var(--orb-primary)) !important;
+    box-shadow: 0 12px 28px rgba(75, 0, 232, 0.14) !important;
+    transform: translateY(-2px) !important;
+    background: #FFFFFF !important;
+}
+
+.leave-metric-card .leave-metric-top {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    position: relative !important;
+    z-index: 1 !important;
+    width: 100% !important;
+}
+
+.leave-metric-card .leave-metric-icon {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 12px !important;
+    background: var(--metric-soft, #F4F2FF) !important;
+    color: var(--metric-color, var(--orb-primary)) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 15px !important;
+    flex-shrink: 0 !important;
+}
+
+.leave-metric-card .leave-metric-value {
+    font-size: 24px !important;
+    font-weight: 950 !important;
+    color: #101828 !important;
+    line-height: 1 !important;
+    letter-spacing: -0.02em !important;
+    text-align: right !important;
+}
+
+.leave-metric-card .leave-metric-label {
+    font-size: 10.5px !important;
+    font-weight: 900 !important;
+    color: #475467 !important;
+    text-transform: uppercase !important;
+    margin-top: 10px !important;
+    position: relative !important;
+    z-index: 1 !important;
+    letter-spacing: 0.03em !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+.leave-metric-card .leave-metric-line {
+    position: relative !important;
+    height: 3px !important;
+    border-radius: 999px !important;
+    background: linear-gradient(90deg, var(--metric-color, var(--orb-primary)), transparent) !important;
+    margin-top: 8px !important;
+    width: 100% !important;
+    z-index: 1 !important;
+}
+
+@media (max-width: 1100px) {
+    .leave-metric-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 10px !important;
+    }
+}
+
+@media (max-width: 640px) {
+    .leave-metric-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 8px !important;
+    }
+    .leave-metric-card {
+        padding: 10px 12px 8px !important;
+        border-radius: 14px !important;
+    }
+    .leave-metric-card .leave-metric-value {
+        font-size: 20px !important;
+    }
+}
+
+/* Filter Labels & Button Theme Styles */
+.filter-item-lbl {
+    font-size: 11px !important;
+    font-weight: 850 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.04em !important;
+    color: #475467 !important;
+    margin-bottom: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    white-space: nowrap !important;
+}
+
+.btn-orb-search {
+    height: 38px !important;
+    border-radius: 10px !important;
+    padding: 0 18px !important;
+    background: linear-gradient(135deg, var(--orb-primary, #4B00E8) 0%, var(--orb-secondary, #FF5252) 100%) !important;
+    color: #ffffff !important;
+    border: none !important;
+    font-weight: 850 !important;
+    font-size: 12.5px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 7px !important;
+    box-shadow: 0 4px 14px rgba(75, 0, 232, 0.25) !important;
+    transition: all 0.2s ease !important;
+    cursor: pointer !important;
+    white-space: nowrap !important;
+}
+
+.btn-orb-search:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 20px rgba(75, 0, 232, 0.35) !important;
+    color: #ffffff !important;
+    filter: brightness(1.05) !important;
+}
+
+.btn-orb-reset {
+    height: 38px !important;
+    border-radius: 10px !important;
+    padding: 0 16px !important;
+    background: #ffffff !important;
+    color: #475467 !important;
+    border: 1px solid #CBD5E1 !important;
+    font-weight: 750 !important;
+    font-size: 12.5px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    transition: all 0.2s ease !important;
+    white-space: nowrap !important;
+    text-decoration: none !important;
+}
+
+.btn-orb-reset:hover {
+    background: #F8FAFC !important;
+    border-color: #94A3B8 !important;
+    color: #1E293B !important;
+    text-decoration: none !important;
+}
+
+.filter-control-sm.orbo-datepicker,
+.flatpickr-input.orbo-datepicker {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%234B00E8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 12px center !important;
+    background-size: 16px 16px !important;
+    padding-right: 36px !important;
+    cursor: pointer !important;
+}
 
 .lt-badge-sick { background: #FEF2F2; color: #991B1B; border: 1px solid #FCA5A5; }
 .lt-badge-casual { background: #ECFDF5; color: #065F46; border: 1px solid #6EE7B7; }
@@ -501,9 +672,9 @@
 
 @section('_content')
 @php
-    $curStatus = request('status', 'all');
+    $curStatus = request('status', 'pending');
     if (empty($curStatus)) {
-        $curStatus = 'all';
+        $curStatus = 'pending';
     }
 @endphp
 <div class="rep-page">
@@ -516,78 +687,90 @@
             </div>
         </div>
 
-        <!-- 6 Rich Interactive Metric Summary Cards Grid -->
-        <div class="team-stats-grid">
+        <!-- 6 Rich Interactive Metric Summary Cards Grid (Image 2 Design) -->
+        <div class="leave-metric-grid">
             <!-- 1. All Requests -->
             <a href="{{ route('leave-approvals.index', array_merge(request()->except(['status', 'page']), ['status' => 'all'])) }}"
-               class="team-stat-card stat-all {{ ($curStatus === 'all') ? 'active' : '' }}">
-                <div class="team-stat-icon" style="background: #F1F5F9; color: #475569; border: 1px solid #CBD5E1;">
-                    <i class="fas fa-layer-group"></i>
+               class="leave-metric-card stat-all {{ ($curStatus === 'all') ? 'active' : '' }}"
+               style="--metric-color:#6366F1;--metric-soft:#EEF2FF;">
+                <div class="leave-metric-top">
+                    <div class="leave-metric-icon">
+                        <i class="fas fa-layer-group"></i>
+                    </div>
+                    <div class="leave-metric-value">{{ $totalAllCount ?? 0 }}</div>
                 </div>
-                <div>
-                    <div class="team-stat-label">All Requests</div>
-                    <div class="team-stat-val">{{ $totalAllCount ?? 0 }}</div>
-                </div>
+                <div class="leave-metric-label">All Requests</div>
+                <div class="leave-metric-line"></div>
             </a>
 
-            <!-- 2. Total Pending -->
+            <!-- 2. Total Pending (Default Active) -->
             <a href="{{ route('leave-approvals.index', array_merge(request()->except(['status', 'page']), ['status' => 'pending'])) }}"
-               class="team-stat-card stat-pending {{ ($curStatus === 'pending') ? 'active' : '' }}">
-                <div class="team-stat-icon" style="background: #EEF2FF; color: #4F46E5; border: 1px solid #C7D2FE;">
-                    <i class="fas fa-clock"></i>
+               class="leave-metric-card stat-pending {{ ($curStatus === 'pending') ? 'active' : '' }}"
+               style="--metric-color:#F59E0B;--metric-soft:#FFFBEB;">
+                <div class="leave-metric-top">
+                    <div class="leave-metric-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="leave-metric-value">{{ $totalPendingCount ?? 0 }}</div>
                 </div>
-                <div>
-                    <div class="team-stat-label">Total Pending</div>
-                    <div class="team-stat-val">{{ $totalPendingCount ?? 0 }}</div>
-                </div>
+                <div class="leave-metric-label">Total Pending</div>
+                <div class="leave-metric-line"></div>
             </a>
 
             <!-- 3. Manager Pending -->
             <a href="{{ route('leave-approvals.index', array_merge(request()->except(['status', 'page']), ['status' => 'pending_manager'])) }}"
-               class="team-stat-card stat-pending-manager {{ ($curStatus === 'pending_manager') ? 'active' : '' }}">
-                <div class="team-stat-icon" style="background: #FFFBEB; color: #D97706; border: 1px solid #FDE68A;">
-                    <i class="fas fa-user-clock"></i>
+               class="leave-metric-card stat-pending-manager {{ ($curStatus === 'pending_manager') ? 'active' : '' }}"
+               style="--metric-color:#EA580C;--metric-soft:#FFF7ED;">
+                <div class="leave-metric-top">
+                    <div class="leave-metric-icon">
+                        <i class="fas fa-user-clock"></i>
+                    </div>
+                    <div class="leave-metric-value">{{ $managerPendingCount ?? 0 }}</div>
                 </div>
-                <div>
-                    <div class="team-stat-label">Pending Manager</div>
-                    <div class="team-stat-val">{{ $managerPendingCount ?? 0 }}</div>
-                </div>
+                <div class="leave-metric-label">Pending Manager</div>
+                <div class="leave-metric-line"></div>
             </a>
 
             <!-- 4. HR Pending -->
             <a href="{{ route('leave-approvals.index', array_merge(request()->except(['status', 'page']), ['status' => 'pending_hr'])) }}"
-               class="team-stat-card stat-pending-hr {{ ($curStatus === 'pending_hr') ? 'active' : '' }}">
-                <div class="team-stat-icon" style="background: #F0F9FF; color: #0284C7; border: 1px solid #BAE6FD;">
-                    <i class="fas fa-hourglass-half"></i>
+               class="leave-metric-card stat-pending-hr {{ ($curStatus === 'pending_hr') ? 'active' : '' }}"
+               style="--metric-color:#0284C7;--metric-soft:#F0F9FF;">
+                <div class="leave-metric-top">
+                    <div class="leave-metric-icon">
+                        <i class="fas fa-hourglass-half"></i>
+                    </div>
+                    <div class="leave-metric-value">{{ $hrPendingCount ?? 0 }}</div>
                 </div>
-                <div>
-                    <div class="team-stat-label">Pending HR</div>
-                    <div class="team-stat-val">{{ $hrPendingCount ?? 0 }}</div>
-                </div>
+                <div class="leave-metric-label">Pending HR</div>
+                <div class="leave-metric-line"></div>
             </a>
 
             <!-- 5. Approved Requests -->
             <a href="{{ route('leave-approvals.index', array_merge(request()->except(['status', 'page']), ['status' => 'approved'])) }}"
-               class="team-stat-card stat-approved {{ ($curStatus === 'approved') ? 'active' : '' }}">
-                <div class="team-stat-icon" style="background: #ECFDF5; color: #047857; border: 1px solid #A7F3D0;">
-                    <i class="fas fa-check-circle"></i>
+               class="leave-metric-card stat-approved {{ ($curStatus === 'approved') ? 'active' : '' }}"
+               style="--metric-color:#10B981;--metric-soft:#ECFDF5;">
+                <div class="leave-metric-top">
+                    <div class="leave-metric-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="leave-metric-value">{{ $approvedLeaveCount ?? 0 }}</div>
                 </div>
-                <div>
-                    <div class="team-stat-label">Approved</div>
-                    <div class="team-stat-val">{{ $approvedLeaveCount ?? 0 }}</div>
-                </div>
+                <div class="leave-metric-label">Approved</div>
+                <div class="leave-metric-line"></div>
             </a>
 
             <!-- 6. Rejected Requests -->
             <a href="{{ route('leave-approvals.index', array_merge(request()->except(['status', 'page']), ['status' => 'rejected'])) }}"
-               class="team-stat-card stat-rejected {{ ($curStatus === 'rejected') ? 'active' : '' }}">
-                <div class="team-stat-icon" style="background: #FEF2F2; color: #DC2626; border: 1px solid #FCA5A5;">
-                    <i class="fas fa-times-circle"></i>
+               class="leave-metric-card stat-rejected {{ ($curStatus === 'rejected') ? 'active' : '' }}"
+               style="--metric-color:#EF4444;--metric-soft:#FEF2F2;">
+                <div class="leave-metric-top">
+                    <div class="leave-metric-icon">
+                        <i class="fas fa-times-circle"></i>
+                    </div>
+                    <div class="leave-metric-value">{{ $rejectedLeaveCount ?? 0 }}</div>
                 </div>
-                <div>
-                    <div class="team-stat-label">Rejected</div>
-                    <div class="team-stat-val">{{ $rejectedLeaveCount ?? 0 }}</div>
-                </div>
+                <div class="leave-metric-label">Rejected</div>
+                <div class="leave-metric-line"></div>
             </a>
         </div>
 
@@ -603,35 +786,38 @@
                         <h5 class="font-weight-bold mb-0 text-dark" style="font-size: 15px;">Leave Approvals Workbench</h5>
                     </div>
                 </div>
-                <div class="d-flex align-items-center" style="gap: 8px;">
-                    <span class="badge badge-light border text-muted font-weight-bold px-2.5 py-1" style="font-size: 11.5px; border-radius: 7px;">
-                        Showing {{ $leaveRequests->total() }} {{ \Illuminate\Support\Str::plural('Record', $leaveRequests->total()) }}
-                    </span>
-                </div>
+                
             </div>
 
-            <!-- Comprehensive Filter Toolbar Bar -->
+            <!-- Comprehensive Filter Toolbar Bar with Labels -->
             <div class="p-3 border-bottom bg-white">
                 <form method="GET" action="{{ route('leave-approvals.index') }}" class="d-flex flex-column" style="gap: 12px;">
                     <div class="filter-form-grid">
-                        <!-- Status / Stage Filter -->
+                        <!-- 1. Status / Approval Stage Filter -->
                         <div class="filter-item-wrap">
-                            <select name="status" class="filter-control-sm">
-                                <option value="all" {{ $curStatus === 'all' ? 'selected' : '' }}>🌟 All Requests</option>
-                                <option value="pending" {{ $curStatus === 'pending' ? 'selected' : '' }}>⏳ Total Pending</option>
-                                <option value="pending_manager" {{ $curStatus === 'pending_manager' ? 'selected' : '' }}>🟠 Pending Manager</option>
-                                <option value="pending_hr" {{ $curStatus === 'pending_hr' ? 'selected' : '' }}>🔵 Pending HR</option>
-                                <option value="approved" {{ $curStatus === 'approved' ? 'selected' : '' }}>🟢 Approved (Past)</option>
-                                <option value="rejected" {{ $curStatus === 'rejected' ? 'selected' : '' }}>🔴 Rejected</option>
-                                <option value="void" {{ $curStatus === 'void' ? 'selected' : '' }}>⚪ Null & Void</option>
-                                <option value="expired" {{ $curStatus === 'expired' ? 'selected' : '' }}>⚪ Expired</option>
-                                <option value="cancelled" {{ $curStatus === 'cancelled' ? 'selected' : '' }}>⚪ Cancelled</option>
+                            <label class="filter-item-lbl">
+                                <i class="fas fa-tasks text-primary"></i> Status
+                            </label>
+                            <select name="status" class="filter-control-sm select2-searchable">
+                                <option value="pending" {{ $curStatus === 'pending' ? 'selected' : '' }}> Total Pending</option>
+                                <option value="pending_manager" {{ $curStatus === 'pending_manager' ? 'selected' : '' }}> Pending Manager</option>
+                                <option value="pending_hr" {{ $curStatus === 'pending_hr' ? 'selected' : '' }}> Pending HR</option>
+                                <option value="approved" {{ $curStatus === 'approved' ? 'selected' : '' }}>Approved</option>
+                                <option value="rejected" {{ $curStatus === 'rejected' ? 'selected' : '' }}>Rejected</option>
+                                <option value="all" {{ $curStatus === 'all' ? 'selected' : '' }}>All Requests</option>
+                                <option value="void" {{ $curStatus === 'void' ? 'selected' : '' }}>Null & Void</option>
+                                <option value="expired" {{ $curStatus === 'expired' ? 'selected' : '' }}> Expired</option>
+                                <option value="cancelled" {{ $curStatus === 'cancelled' ? 'selected' : '' }}> Cancelled</option>
                             </select>
                         </div>
 
-                        <!-- Employee Filter -->
+
+                        <!-- 3. Employee Filter -->
                         <div class="filter-item-wrap lg-wrap">
-                            <select name="employee_id" class="filter-control-sm select2-searchable" data-placeholder="All Employees" placeholder="All Employees">
+                            <label class="filter-item-lbl">
+                                <i class="fas fa-user text-primary"></i> Employee
+                            </label>
+                            <select name="employee_id" class="filter-control-sm select2-searchable" data-placeholder="All Employees">
                                 <option value="">All Employees</option>
                                 @foreach($employees as $emp)
                                     <option value="{{ $emp->id }}" {{ request('employee_id') == $emp->id ? 'selected' : '' }}>
@@ -641,10 +827,13 @@
                             </select>
                         </div>
 
-                        <!-- Reporting Manager Filter -->
+                        <!-- 4. Reporting Manager Filter -->
                         @if(!empty($reportingManagers) && count($reportingManagers) > 0)
                             <div class="filter-item-wrap lg-wrap">
-                                <select name="reporting_manager_id" class="filter-control-sm select2-searchable" data-placeholder="All Managers" placeholder="All Managers">
+                                <label class="filter-item-lbl">
+                                    <i class="fas fa-user-tie text-primary"></i> Manager
+                                </label>
+                                <select name="reporting_manager_id" class="filter-control-sm select2-searchable" data-placeholder="All Managers">
                                     <option value="">All Managers</option>
                                     @foreach($reportingManagers as $rm)
                                         <option value="{{ $rm->id }}" {{ request('reporting_manager_id') == $rm->id ? 'selected' : '' }}>
@@ -655,9 +844,12 @@
                             </div>
                         @endif
 
-                        <!-- Leave Type Filter -->
+                        <!-- 5. Leave Type Filter -->
                         <div class="filter-item-wrap sm-wrap">
-                            <select name="leave_type_id" class="filter-control-sm">
+                            <label class="filter-item-lbl">
+                                <i class="fas fa-tag text-primary"></i> Type
+                            </label>
+                            <select name="leave_type_id" class="filter-control-sm select2-searchable">
                                 <option value="">All Leave Types</option>
                                 @foreach($leaveTypes as $lt)
                                     <option value="{{ $lt->id }}" {{ request('leave_type_id') == $lt->id ? 'selected' : '' }}>
@@ -667,27 +859,36 @@
                             </select>
                         </div>
 
-                        <!-- Start Date (From) -->
-                        <div class="filter-item-wrap date-wrap" title="From Date">
-                            <input type="date" name="start_date" value="{{ request('start_date') }}" class="filter-control-sm" placeholder="From Date">
+                        <!-- 6. Start Date (From) -->
+                        <div class="filter-item-wrap date-wrap">
+                            <label class="filter-item-lbl">
+                                <i class="fas fa-calendar-day text-primary"></i> From
+                            </label>
+                            <x-form.date-picker name="start_date" id="approval_start_date" :value="request('start_date')" placeholder="dd-mm-yyyy" class="filter-control-sm" />
                         </div>
 
-                        <!-- End Date (To) -->
-                        <div class="filter-item-wrap date-wrap" title="To Date">
-                            <input type="date" name="end_date" value="{{ request('end_date') }}" class="filter-control-sm" placeholder="To Date">
+                        <!-- 7. End Date (To) -->
+                        <div class="filter-item-wrap date-wrap">
+                            <label class="filter-item-lbl">
+                                <i class="fas fa-calendar-day text-primary"></i> To
+                            </label>
+                            <x-form.date-picker name="end_date" id="approval_end_date" :value="request('end_date')" placeholder="dd-mm-yyyy" class="filter-control-sm" />
                         </div>
 
-                        <!-- Search Input -->
+                        <!-- 8. Search Input -->
                         <div class="filter-item-wrap lg-wrap">
-                            <input type="text" name="search" value="{{ request('search') }}" class="filter-control-sm" placeholder="Search employee, type, reason...">
+                            <label class="filter-item-lbl">
+                                <i class="fas fa-search text-primary"></i> Keyword
+                            </label>
+                            <input type="text" name="search" value="{{ request('search') }}" class="filter-control-sm" placeholder="Search employee, reason...">
                         </div>
 
-                        <!-- Buttons -->
-                        <div class="d-flex align-items-center" style="gap: 6px;">
-                            <button type="submit" class="btn btn-sm text-white font-weight-bold" style="height: 38px; border-radius: 9px; padding: 0 16px; background: var(--orb-primary); border: none; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(75,0,232,0.2);">
+                        <!-- 9. Search & Reset Buttons -->
+                        <div class="d-flex align-items-center filter-actions-box" style="gap: 8px;">
+                            <button type="submit" class="btn btn-sm btn-orb-search">
                                 <i class="fas fa-search" style="font-size: 11px;"></i> Search
                             </button>
-                            <a href="{{ route('leave-approvals.index') }}" class="btn btn-sm btn-outline-secondary font-weight-bold" style="height: 38px; border-radius: 9px; padding: 0 14px; display: inline-flex; align-items: center; gap: 6px;" title="Reset all filters">
+                            <a href="{{ route('leave-approvals.index') }}" class="btn btn-sm btn-orb-reset" title="Reset all filters">
                                 <i class="fas fa-undo" style="font-size: 11px;"></i> Reset
                             </a>
                         </div>
@@ -703,17 +904,17 @@
                     || request()->filled('start_date')
                     || request()->filled('end_date')
                     || request()->filled('search')
-                    || (request()->filled('status') && request('status') !== 'all');
+                    || (request()->filled('status') && request('status') !== 'pending');
             @endphp
             @if($hasActiveFilters)
                 <div class="active-filters-bar">
                     <span class="font-weight-bold text-muted" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px;">
                         <i class="fas fa-filter text-primary mr-1"></i> Active Filters:
                     </span>
-                    @if(request()->filled('status') && request('status') !== 'all')
+                    @if(request()->filled('status') && request('status') !== 'pending')
                         <span class="active-filter-badge">
                             Status: {{ ucwords(str_replace('_', ' ', request('status'))) }}
-                            <a href="{{ route('leave-approvals.index', request()->except('status')) }}" title="Remove status filter">&times;</a>
+                            <a href="{{ route('leave-approvals.index', request()->except('status')) }}" title="Reset status filter">&times;</a>
                         </span>
                     @endif
                     @if(request()->filled('employee_id'))
@@ -1072,13 +1273,8 @@
             </div>
 
             @if($leaveRequests->hasPages())
-                <div class="p-3 border-top bg-white d-flex justify-content-between align-items-center">
-                    <div class="small text-muted font-weight-bold">
-                        Showing {{ $leaveRequests->firstItem() }} to {{ $leaveRequests->lastItem() }} of {{ $leaveRequests->total() }} entries
-                    </div>
-                    <div>
-                        {{ $leaveRequests->links() }}
-                    </div>
+                <div class="p-3 border-top bg-white">
+                    {{ $leaveRequests->links('vendor.pagination.orbo') }}
                 </div>
             @endif
         </div>

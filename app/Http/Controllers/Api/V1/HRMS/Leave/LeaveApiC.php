@@ -19,8 +19,15 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use App\Services\HRMS\Leave\LeavePolicyService;
+use App\Services\HRMS\Leave\LeaveValidationService;
+use App\Enums\LeaveBucket;
+use App\Services\HRMS\Employee\EmployeeEligibilityS;
+use App\Services\HRMS\Notification\NotificationS;
+use App\Services\Shared\MobileApiMessageS;
 
 class LeaveApiC extends Controller
 {
@@ -35,13 +42,31 @@ class LeaveApiC extends Controller
     public function types()
     {
         $employee = $this->employee();
-        $typeBalances = $this->balanceService->getTypeWiseBalances($employee);
+        $ledgerShape = $this->balanceService->getApiBalanceShape($employee);
+        $typeBalances = $this->balanceService->getTypeWiseBalances($employee, null, $ledgerShape['central'] ?? null);
+        $ledgerFields = $ledgerShape['fields'] ?? null;
         $types = LeaveTypeM::where('is_active', true)->orderBy('name')->get();
+
+        $availPl = $ledgerFields ? (float) ($ledgerFields['available_pl'] ?? 0) : 0.0;
+        $availSl = $ledgerFields ? (float) ($ledgerFields['available_sl'] ?? 0) : 0.0;
+        $availComp = $ledgerFields ? (float) ($ledgerFields['available_comp_off'] ?? 0) : 0.0;
+        $totalAvail = $ledgerFields ? (float) ($ledgerFields['total_available'] ?? ($availPl + $availSl + $availComp)) : 0.0;
 
         foreach ($types as $type) {
             $matching = collect($typeBalances)->firstWhere('leave_type_id', (int) $type->id);
             $available = (float) ($matching['available'] ?? 0.0);
             $type->available_balance = $available;
+            $type->available_pl = $availPl;
+            $type->available_sl = $availSl;
+            $type->available_comp_off = $availComp;
+            $type->total_available = $totalAvail;
+            $type->balances_summary = [
+                'pl' => $availPl,
+                'sl' => $availSl,
+                'comp_off' => $availComp,
+                'total' => $totalAvail,
+                'summary_text' => 'PL ' . number_format($availPl, 2) . ' | SL ' . number_format($availSl, 2) . ' | Comp-Off ' . number_format($availComp, 2),
+            ];
             $type->policy = [
                 'available_balance' => $available,
                 'max_consecutive_days' => (int) $type->max_days_per_request,
@@ -54,6 +79,16 @@ class LeaveApiC extends Controller
                     $type->{$k} = $v;
                 }
             }
+            if ($ledgerFields !== null) {
+                try {
+                    $bucketKey = LeaveBucket::fromLeaveType($type) === LeaveBucket::PL ? 'pl' : 'sl';
+                    foreach (['available', 'usable', 'accrued', 'used'] as $metric) {
+                        $type->{$metric . '_' . $bucketKey} = $ledgerFields[$metric . '_' . $bucketKey];
+                    }
+                } catch (\InvalidArgumentException) {
+                    // Comp-off and LOP remain outside the PL/SL ledger buckets.
+                }
+            }
         }
 
         return $this->ok('Leave types fetched successfully.', $types);
@@ -64,11 +99,15 @@ class LeaveApiC extends Controller
         try {
             $employee = $this->employee();
             $today = Carbon::now('Asia/Kolkata')->toDateString();
-            $year = Carbon::now('Asia/Kolkata')->year;
-            $currentMonth = Carbon::now('Asia/Kolkata')->month;
+            $ledgerShape = $this->balanceService->getApiBalanceShape($employee);
 
-            $policy = app(\App\Services\HRMS\Leave\LeavePolicyService::class)->forEmployee($employee, Carbon::now('Asia/Kolkata'));
-            $quota = app(\App\Services\HRMS\Leave\MonthlyLeaveQuotaService::class)->getMonthlyQuota($employee);
+            $policy = app(LeavePolicyService::class)->forEmployee($employee, Carbon::now('Asia/Kolkata'));
+            $allocation = $ledgerShape['allocation'] ?? $this->balanceService->allocationForRead($employee);
+            $central = $ledgerShape['central'] ?? $this->balanceService->getCentralBalance($employee);
+            $quota = ['monthly_limit' => (float) $central['monthly_limit'],
+                'current_month_used' => (float) $central['current_month_used'],
+                'carry_forward_available' => (float) $central['carry_forward_available'],
+                'available_this_month' => (float) $central['available_this_month']];
 
             $statusCounts = LeaveRequestM::query()
                 ->where('employee_id', $employee->id)
@@ -76,29 +115,21 @@ class LeaveApiC extends Controller
                 ->groupBy('status')
                 ->pluck('total', 'status');
 
-            $allocation = app(\App\Services\HRMS\Leave\LeaveAllocationService::class)->getOrGenerate($employee, $year);
+            $paidAlloc = $ledgerShape ? $ledgerShape['fields']['year_end_pl'] : (float) ($allocation->paid_allocated ?? 0.0);
+            $paidUsed = $ledgerShape ? $ledgerShape['fields']['used_pl'] : (float) ($allocation->paid_used ?? 0.0);
+            $paidRemaining = $ledgerShape ? $ledgerShape['fields']['available_pl'] : (float) ($allocation->paid_remaining ?? 0.0);
 
-            $paidAlloc = $allocation ? (float) $allocation->paid_allocated : 0.0;
-            $paidUsed = $allocation ? (float) $allocation->paid_used : 0.0;
-            $paidRemaining = $allocation ? (float) $allocation->paid_remaining : 0.0;
+            $sickAlloc = $ledgerShape ? $ledgerShape['fields']['year_end_sl'] : (float) ($allocation->sick_allocated ?? 0.0);
+            $sickUsed = $ledgerShape ? $ledgerShape['fields']['used_sl'] : (float) ($allocation->sick_used ?? 0.0);
+            $sickRemaining = $ledgerShape ? $ledgerShape['fields']['available_sl'] : (float) ($allocation->sick_remaining ?? 0.0);
 
-            $sickAlloc = $allocation ? (float) $allocation->sick_allocated : 0.0;
-            $sickUsed = $allocation ? (float) $allocation->sick_used : 0.0;
-            $sickRemaining = $allocation ? (float) $allocation->sick_remaining : 0.0;
+            $totalAlloc = $ledgerShape ? $ledgerShape['fields']['year_end_total'] : (float) ($allocation->total_allocated ?? 0.0);
+            $totalUsed = $ledgerShape ? $ledgerShape['fields']['total_used'] : (float) ($allocation->total_used ?? 0.0);
+            $totalRemaining = $ledgerShape ? $ledgerShape['fields']['year_end_total_remaining'] : (float) ($allocation->total_remaining ?? 0.0);
 
-            $totalAlloc = $allocation ? (float) $allocation->total_allocated : 0.0;
-            $totalUsed = $allocation ? (float) $allocation->total_used : 0.0;
-            $totalRemaining = $allocation ? (float) $allocation->total_remaining : 0.0;
-
-            $lwpUsed = $allocation ? (float) $allocation->lwp_used : 0.0;
+            $lwpUsed = $ledgerShape ? (float) $ledgerShape['central']['leave_balance']['total_lwp'] : (float) ($allocation->lwp_used ?? 0.0);
 
             // Apply November/December rule to dynamic balances
-            if (in_array((int) $currentMonth, [11, 12], true) && $totalRemaining > 10.0) {
-                $paidRemaining = round($paidRemaining * 0.5, 2);
-                $sickRemaining = round($sickRemaining * 0.5, 2);
-                $totalRemaining = round($totalRemaining * 0.5, 2);
-            }
-
             $balance = [
                 'paid' => [
                     'allocated' => $paidAlloc,
@@ -117,12 +148,22 @@ class LeaveApiC extends Controller
                 ],
             ];
 
+            $policyPl = (float) bcdiv((string) ($policy->annual_paid_leaves ?? '0'), '12', 4);
+            $policySl = (float) bcdiv((string) ($policy->annual_sick_leaves ?? '0'), '12', 4);
             $monthlyQuota = [
                 'limit' => $quota['monthly_limit'],
                 'used' => $quota['current_month_used'],
                 'carry_forward' => $quota['carry_forward_available'],
-                'available' => $quota['available_this_month'],
+                'available' => $ledgerShape ? $ledgerShape['fields']['total_available'] : $quota['available_this_month'],
             ];
+            if ($ledgerShape) {
+                $monthlyQuota['pl_quota'] = $ledgerShape['monthly_quota']['pl_quota'];
+                $monthlyQuota['sl_quota'] = $ledgerShape['monthly_quota']['sl_quota'];
+                $monthlyQuota['quota_display'] = $ledgerShape['monthly_quota']['quota_display'];
+                $monthlyQuota['available_pl'] = $ledgerShape['fields']['available_pl'];
+                $monthlyQuota['available_sl'] = $ledgerShape['fields']['available_sl'];
+                $monthlyQuota['available_comp_off'] = $ledgerShape['fields']['available_comp_off'];
+            }
 
             $leaveSummary = [
                 'pending' => (int) ($statusCounts['pending'] ?? 0),
@@ -153,7 +194,6 @@ class LeaveApiC extends Controller
                 ->map(fn(LeaveRequestM $leaveRequest) => $this->formatLeaveRequest($leaveRequest))
                 ->values();
 
-            $central = $this->balanceService->getCentralBalance($employee);
             $lb = $central['leave_balance'];
 
             $summary = [
@@ -166,7 +206,9 @@ class LeaveApiC extends Controller
                 'monthly_used_this_month' => (float) $lb['monthly_used_this_month'],
                 'total_monthly_remaining_paid' => (float) $lb['total_monthly_remaining_paid'],
                 'total_remaining_paid' => (float) $lb['total_remaining_paid'],
-                'total_leave_balance' => (float) ($lb['total_remaining_paid'] + $lb['total_remaining_sick'] + $lb['total_remaining_comp_off']),
+                'total_leave_balance' => $ledgerShape ? (float) $ledgerShape['fields']['year_end_total_remaining'] : (float) ($lb['total_remaining_paid'] + $lb['total_remaining_sick'] + $lb['total_remaining_comp_off']),
+                'annual_remaining' => $ledgerShape ? (float) $ledgerShape['fields']['year_end_total_remaining'] : (float) ($allocation->total_remaining ?? 0),
+                'annual_quota' => $ledgerShape ? (float) $ledgerShape['fields']['year_end_total'] : (float) ($allocation->total_allocated ?? 0),
                 'paid_leave' => (float) $lb['total_remaining_paid'],
                 'sick_leave' => (float) $lb['total_remaining_sick'],
                 'used_leave' => $totalUsed,
@@ -180,7 +222,7 @@ class LeaveApiC extends Controller
                 'lwp_count' => $lwpUsed,
             ];
 
-            $balances = $this->formatBalances($allocation);
+            $balances = $this->formatStageBalances($allocation, $central);
 
             $upcomingHolidays = $this->holidayQuery()
                 ->whereDate('holiday_date', '>=', $today)
@@ -221,8 +263,11 @@ class LeaveApiC extends Controller
 
             $compOffs = $this->compOffRecords($employee->id, 5);
 
-            $central = $this->balanceService->getCentralBalance($employee);
-
+            $ledgerFields = $ledgerShape['fields'] ?? null;
+            if ($ledgerFields !== null) {
+                $summary = array_merge($summary, $ledgerFields);
+                $balances = $ledgerShape['balances'];
+            }
             return $this->ok('Leave dashboard fetched successfully.', [
                 'employee_id' => (int) $employee->id,
                 'leave_balance' => $central['leave_balance'],
@@ -238,6 +283,7 @@ class LeaveApiC extends Controller
                 'upcoming_holidays' => $upcomingHolidays,
                 'team_on_leave' => $teamOnLeave,
                 'comp_offs' => $compOffs,
+                ...($ledgerFields ?? []),
             ]);
         } catch (HttpException $e) {
             return $this->fail($e->getMessage(), $e->getStatusCode(), null);
@@ -250,19 +296,39 @@ class LeaveApiC extends Controller
     public function balance()
     {
         $employee = $this->employee();
-        $year = Carbon::now('Asia/Kolkata')->year;
-        $allocation = app(\App\Services\HRMS\Leave\LeaveAllocationService::class)->getOrGenerate($employee, $year);
+        $ledgerShape = $this->balanceService->getApiBalanceShape($employee);
+        if ($ledgerShape) {
+            $central = $ledgerShape['central'];
+            $fields = $ledgerShape['fields'];
+            return $this->ok('Leave balance fetched successfully.', array_merge($central, $fields, [
+                'allocation' => $ledgerShape['allocation'],
+                'total_remaining' => (float) $fields['year_end_total_remaining'],
+                'total_allocated' => (float) $fields['year_end_total'],
+                'annual_quota' => (float) $fields['year_end_total'],
+                'annual_remaining' => (float) $fields['year_end_total_remaining'],
+                'paid_remaining' => (float) $fields['available_pl'],
+                'sick_remaining' => (float) $fields['available_sl'],
+                'comp_off_remaining' => (float) $central['comp_off_remaining'],
+                'available_this_month' => (float) $fields['total_available'],
+                'total_available' => (float) $fields['total_available'],
+                'lwp_used' => (float) $central['leave_balance']['total_lwp'],
+                'balances' => $ledgerShape['balances'],
+                'leave_types' => $this->balanceService->getTypeWiseBalances($employee, null, $central),
+                'monthly_quota' => $ledgerShape['monthly_quota'],
+            ]));
+        }
+        $allocation = $this->balanceService->allocationForRead($employee);
         $central = $this->balanceService->getCentralBalance($employee);
-        $typeBalances = $this->balanceService->getTypeWiseBalances($employee);
-        $balances = $this->formatBalances($allocation);
+        $typeBalances = $this->balanceService->getTypeWiseBalances($employee, null, $central);
+        $balances = $this->formatStageBalances($allocation, $central);
 
         return $this->ok('Leave balance fetched successfully.', array_merge($central, [
             'allocation' => $allocation,
-            'total_remaining' => (float) ($allocation->total_remaining ?? 0),
-            'paid_remaining' => (float) ($allocation->paid_remaining ?? 0),
-            'sick_remaining' => (float) ($allocation->sick_remaining ?? 0),
-            'comp_off_remaining' => (float) ($allocation->comp_off_remaining ?? 0),
-            'lwp_used' => (float) ($allocation->lwp_used ?? 0),
+            'total_remaining' => (float) $central['leave_balance']['total_remaining_paid'] + (float) $central['leave_balance']['total_remaining_sick'] + (float) $central['leave_balance']['total_remaining_comp_off'],
+            'paid_remaining' => (float) $central['leave_balance']['total_remaining_paid'],
+            'sick_remaining' => (float) $central['leave_balance']['total_remaining_sick'],
+            'comp_off_remaining' => (float) $central['leave_balance']['total_remaining_comp_off'],
+            'lwp_used' => (float) $central['leave_balance']['total_lwp'],
             'balances' => $balances,
             'leave_types' => $typeBalances,
         ]));
@@ -279,23 +345,30 @@ class LeaveApiC extends Controller
 
     public function calculate(Request $request)
     {
-        $data = \App\Services\HRMS\Leave\LeaveValidationService::validateCalculation($request->all());
+        $data = LeaveValidationService::validateCalculation($request->all());
 
         $employee = $this->employee();
         $leaveType = LeaveTypeM::findOrFail($data['leave_type_id']);
-        $calculation = $this->calculationService->calculate($employee, $leaveType, $data);
+        $calculation = $this->calculationService->calculate(
+            $employee,
+            $leaveType,
+            array_merge($data, [
+                'bypass_notice_period' => true,
+                'bypass_attachment_validation' => true,
+            ])
+        );
 
-        return $this->ok('Leave calculated successfully.', $this->calculationPayload($calculation));
+        return $this->ok('Leave calculated successfully.', $this->calculationPayload($calculation, $leaveType, $employee));
     }
 
     public function apply(Request $request)
     {
-        $data = \App\Services\HRMS\Leave\LeaveValidationService::validate($request->all());
+        $data = LeaveValidationService::validate($request->all());
 
         try {
             $employee = $this->employee();
 
-            $eligibilityService = app(\App\Services\HRMS\Employee\EmployeeEligibilityS::class);
+            $eligibilityService = app(EmployeeEligibilityS::class);
             if (! $eligibilityService->canApplyLeave($employee)) {
                 if ($eligibilityService->isExitCompleted($employee) || $eligibilityService->isTerminated($employee)) {
                     return $this->fail('Your employment has ended. Please contact HR.', 422);
@@ -344,20 +417,34 @@ class LeaveApiC extends Controller
 
             $this->notifyLeaveApplied($leaveRequest->fresh(['employee.user', 'leaveType', 'dates']));
 
+            $plDays = (float) ($calculation['paid_days'] ?? 0);
+            $slDays = (float) ($calculation['sick_days'] ?? 0);
+            $compOffDays = (float) ($calculation['comp_off_days'] ?? 0);
+            $lwpDays = (float) ($calculation['lwp_days'] ?? 0);
+            $splitSummary = $this->buildSplitSummary($leaveType, $plDays, $slDays, $compOffDays, $lwpDays);
+
             $responseData = $leaveRequest->toArray();
-            $responseData['breakdown'] = [
-                'requested_days' => (float) $calculation['requested_days'],
-                'deducted_days' => (float) $calculation['deducted_days'],
-                'paid_days' => (float) $calculation['paid_days'],
-                'sick_days' => (float) $calculation['sick_days'],
-                'comp_off_days' => (float) $calculation['comp_off_days'],
-                'lwp_days' => (float) $calculation['lwp_days'],
-                'sandwich_days' => (int) $calculation['sandwich_days'],
-                'sandwich_applied' => (bool) $calculation['sandwich_applied'],
-                'sandwich_details' => $calculation['sandwich_details'] ?? [],
-                'sandwich_message' => $calculation['sandwich_message'] ?? null,
-                'requires_medical_certificate' => (bool) $calculation['requires_medical_certificate'],
-            ];
+            $responseData['breakdown'] = array_merge(
+                $this->calculationPayload($calculation, $leaveType, $employee),
+                [
+                    'requested_days' => (float) $calculation['requested_days'],
+                    'deducted_days' => (float) $calculation['deducted_days'],
+                    'paid_days' => $plDays,
+                    'sick_days' => $slDays,
+                    'comp_off_days' => $compOffDays,
+                    'lwp_days' => $lwpDays,
+                    'pl_days' => $plDays,
+                    'sl_days' => $slDays,
+                    'lop_days' => $lwpDays,
+                    'split_summary' => $splitSummary,
+                    'ledger_split_summary' => $splitSummary,
+                    'sandwich_days' => (int) $calculation['sandwich_days'],
+                    'sandwich_applied' => (bool) $calculation['sandwich_applied'],
+                    'sandwich_details' => $calculation['sandwich_details'] ?? [],
+                    'sandwich_message' => $calculation['sandwich_message'] ?? null,
+                    'requires_medical_certificate' => (bool) $calculation['requires_medical_certificate'],
+                ]
+            );
 
             return $this->ok('Leave request submitted successfully.', $responseData, 201);
         } catch (ValidationException $e) {
@@ -389,7 +476,7 @@ class LeaveApiC extends Controller
             'attachment_name' => $leaveRequest->attachment_path ? basename($leaveRequest->attachment_path) : '',
         ];
 
-        app(\App\Services\HRMS\Notification\NotificationS::class)->notifyHrAndSuperAdmin(
+        app(NotificationS::class)->notifyHrAndSuperAdmin(
             'New Leave Request',
             "{$employeeName} applied for {$leaveType} leave from {$payload['from_date']} to {$payload['to_date']}.",
             'leave_applied',
@@ -471,9 +558,9 @@ class LeaveApiC extends Controller
     public function show($id)
     {
         try {
-            $user = auth()->user();
+            $user = Auth::user();
             $canViewAll = $this->canViewAllLeaveDetails($user);
-            $employee = EmployeeM::where('user_id', auth()->id())->first();
+            $employee = EmployeeM::where('user_id', Auth::id())->first();
 
             if (! $canViewAll && ! $employee) {
                 return $this->fail('Employee profile not found.', 404, null);
@@ -536,7 +623,7 @@ class LeaveApiC extends Controller
     {
         $request->validate(['reason' => 'nullable|string|max:2000']);
         $leaveRequest = LeaveRequestM::where('employee_id', $this->employee()->id)->findOrFail($id);
-        $leaveRequest = $this->approvalService->cancel($leaveRequest, auth()->id(), $request->reason);
+        $leaveRequest = $this->approvalService->cancel($leaveRequest, Auth::id(), $request->reason);
 
         return $this->ok('Leave request cancelled successfully.', $leaveRequest);
     }
@@ -550,7 +637,7 @@ class LeaveApiC extends Controller
             return $this->fail('Only pending leave requests can be edited.', 422);
         }
 
-        $data = \App\Services\HRMS\Leave\LeaveValidationService::validate($request->all());
+        $data = LeaveValidationService::validate($request->all());
 
         $leaveType = LeaveTypeM::findOrFail($data['leave_type_id']);
         $attachmentPath = $request->hasFile('attachment') ? $this->storeAttachment($request) : $leaveRequest->attachment_path;
@@ -589,7 +676,7 @@ class LeaveApiC extends Controller
 
     private function employee(): EmployeeM
     {
-        $employee = EmployeeM::where('user_id', auth()->id())->first();
+        $employee = EmployeeM::where('user_id', Auth::id())->first();
         abort_if(! $employee, 404, 'Employee profile not found.');
 
         return $employee;
@@ -668,68 +755,71 @@ class LeaveApiC extends Controller
             ->values();
     }
 
-    private function formatBalances(?LeaveAllocationM $allocation): array
+    private function formatStageBalances(?LeaveAllocationM $allocation, array $central): array
     {
-        if (! $allocation) {
-            return [];
-        }
-
-        $employee = EmployeeM::find($allocation->employee_id);
-        $isPermanent = $employee ? $employee->is_permanent : true;
-
-        $totalAlloc = $isPermanent ? (float) ($allocation->total_allocated ?? 0) : 0.0;
-        $paidAlloc = $isPermanent ? (float) ($allocation->paid_allocated ?? 0) : 0.0;
-        $sickAlloc = $isPermanent ? (float) ($allocation->sick_allocated ?? 0) : 0.0;
-        $compAlloc = $isPermanent ? (float) ($allocation->comp_off_allocated ?? 0) : 0.0;
-
-        $totalRem = $isPermanent ? (float) ($allocation->total_remaining ?? 0) : 0.0;
-        $paidRem = $isPermanent ? (float) ($allocation->paid_remaining ?? 0) : 0.0;
-        $sickRem = $isPermanent ? (float) ($allocation->sick_remaining ?? 0) : 0.0;
-        $compRem = $isPermanent ? (float) ($allocation->comp_off_remaining ?? 0) : 0.0;
-
-        if (in_array((int) Carbon::now('Asia/Kolkata')->month, [11, 12], true) && $totalRem > 10.0) {
-            $totalRem = round($totalRem * 0.5, 2);
-            $paidRem = round($paidRem * 0.5, 2);
-            $sickRem = round($sickRem * 0.5, 2);
-            $compRem = round($compRem * 0.5, 2);
-        }
+        $empty = ! $allocation?->exists;
+        $paidAlloc = $empty ? 0.0 : (float) ($allocation->paid_allocated ?? 0);
+        $sickAlloc = $empty ? 0.0 : (float) ($allocation->sick_allocated ?? 0);
+        $paidUsed = $empty ? 0.0 : (float) ($allocation->paid_used ?? 0);
+        $sickUsed = $empty ? 0.0 : (float) ($allocation->sick_used ?? 0);
+        $paidRem = (float) $central['leave_balance']['total_remaining_paid'];
+        $sickRem = (float) $central['leave_balance']['total_remaining_sick'];
+        $compAlloc = $empty ? 0.0 : (float) ($allocation->comp_off_allocated ?? 0);
+        $compUsed = $empty ? 0.0 : (float) ($allocation->comp_off_used ?? 0);
+        $compRem = (float) $central['leave_balance']['total_remaining_comp_off'];
 
         return [
             [
                 'type' => 'total',
                 'label' => 'Total Leave',
-                'allocated' => $totalAlloc,
-                'used' => (float) ($allocation->total_used ?? 0),
-                'remaining' => $totalRem,
+                'allocated' => (float) $central['total_allocated'],
+                'used' => $paidUsed + $sickUsed + $compUsed + (float) ($allocation->lwp_used ?? 0),
+                'remaining' => $paidRem + $sickRem + $compRem,
             ],
             [
                 'type' => 'paid',
                 'label' => 'Paid Leave',
                 'allocated' => $paidAlloc,
-                'used' => (float) ($allocation->paid_used ?? 0),
+                'used' => $paidUsed,
                 'remaining' => $paidRem,
             ],
             [
                 'type' => 'sick',
                 'label' => 'Sick Leave',
                 'allocated' => $sickAlloc,
-                'used' => (float) ($allocation->sick_used ?? 0),
+                'used' => $sickUsed,
                 'remaining' => $sickRem,
             ],
             [
                 'type' => 'comp_off',
                 'label' => 'Comp Off',
                 'allocated' => $compAlloc,
-                'used' => (float) ($allocation->comp_off_used ?? 0),
+                'used' => $compUsed,
                 'remaining' => $compRem,
             ],
             [
                 'type' => 'lwp',
                 'label' => 'Leave Without Pay',
                 'allocated' => 0.0,
-                'used' => (float) ($allocation->lwp_used ?? 0),
+                'used' => $empty ? 0.0 : (float) ($allocation->lwp_used ?? 0),
                 'remaining' => 0.0,
             ],
+        ];
+    }
+
+    private function formatLedgerBalances(?LeaveAllocationM $allocation, array $fields): array
+    {
+        return [
+            ['type' => 'total', 'label' => 'Total Leave', 'allocated' => (float) ($allocation->total_allocated ?? 0),
+                'used' => (float) ($fields['used_pl'] + $fields['used_sl']), 'remaining' => (float) ($fields['available_pl'] + $fields['available_sl'])],
+            ['type' => 'paid', 'label' => 'Paid Leave', 'allocated' => (float) ($allocation->paid_allocated ?? 0),
+                'used' => (float) $fields['used_pl'], 'remaining' => (float) $fields['available_pl']],
+            ['type' => 'sick', 'label' => 'Sick Leave', 'allocated' => (float) ($allocation->sick_allocated ?? 0),
+                'used' => (float) $fields['used_sl'], 'remaining' => (float) $fields['available_sl']],
+            ['type' => 'comp_off', 'label' => 'Comp Off', 'allocated' => (float) ($allocation->comp_off_allocated ?? 0),
+                'used' => (float) ($allocation->comp_off_used ?? 0), 'remaining' => (float) ($allocation->comp_off_remaining ?? 0)],
+            ['type' => 'lwp', 'label' => 'Leave Without Pay', 'allocated' => 0.0,
+                'used' => (float) ($allocation->lwp_used ?? 0), 'remaining' => 0.0],
         ];
     }
 
@@ -774,6 +864,24 @@ class LeaveApiC extends Controller
                 'url' => $this->resolver->secureFileUrl($attachmentPath),
             ]] : [],
             'attachment_path' => $attachmentPath,
+            'paid_days' => (float) ($leaveRequest->paid_days ?? 0),
+            'sick_days' => (float) ($leaveRequest->sick_days ?? 0),
+            'comp_off_days' => (float) ($leaveRequest->comp_off_days ?? 0),
+            'lwp_days' => (float) ($leaveRequest->lwp_days ?? 0),
+            'split_summary' => $this->buildSplitSummary(
+                $leaveRequest->leaveType,
+                (float) ($leaveRequest->paid_days ?? 0),
+                (float) ($leaveRequest->sick_days ?? 0),
+                (float) ($leaveRequest->comp_off_days ?? 0),
+                (float) ($leaveRequest->lwp_days ?? 0)
+            ),
+            'ledger_split_summary' => $this->buildSplitSummary(
+                $leaveRequest->leaveType,
+                (float) ($leaveRequest->paid_days ?? 0),
+                (float) ($leaveRequest->sick_days ?? 0),
+                (float) ($leaveRequest->comp_off_days ?? 0),
+                (float) ($leaveRequest->lwp_days ?? 0)
+            ),
         ];
 
         if ($includeDetails) {
@@ -786,10 +894,6 @@ class LeaveApiC extends Controller
             $payload['cancelled_by'] = $this->formatUser($leaveRequest->canceller);
             $payload['cancelled_at'] = $this->formatDateTime($leaveRequest->cancelled_at);
             $payload['cancel_reason'] = $leaveRequest->cancel_reason;
-            $payload['paid_days'] = (float) ($leaveRequest->paid_days ?? 0);
-            $payload['sick_days'] = (float) ($leaveRequest->sick_days ?? 0);
-            $payload['comp_off_days'] = (float) ($leaveRequest->comp_off_days ?? 0);
-            $payload['lwp_days'] = (float) ($leaveRequest->lwp_days ?? 0);
             $payload['sandwich_applied'] = (bool) $leaveRequest->sandwich_applied;
             $payload['applied_from'] = $leaveRequest->applied_from;
             $payload['emergency_leave'] = (bool) $leaveRequest->emergency_leave;
@@ -819,8 +923,145 @@ class LeaveApiC extends Controller
         return Carbon::parse($value)->timezone('Asia/Kolkata')->toDateTimeString();
     }
 
-    private function calculationPayload(array $calculation): array
+    private function buildSplitSummary(?LeaveTypeM $leaveType, float $plDays, float $slDays, float $compOffDays, float $lwpDays): string
     {
+        $plStr = 'PL ' . number_format($plDays, 2);
+        $slStr = 'SL ' . number_format($slDays, 2);
+        $compStr = 'Comp-Off ' . number_format($compOffDays, 2);
+        $lwpStr = 'LWP ' . number_format($lwpDays, 2);
+
+        if (! $leaveType) {
+            return "{$plStr} + {$slStr} + {$compStr} + {$lwpStr}";
+        }
+
+        if ($leaveType->is_lwp) {
+            return $lwpStr;
+        }
+
+        if ($leaveType->is_sick) {
+            return "{$slStr} + {$plStr} + {$compStr} + {$lwpStr}";
+        }
+
+        if ($leaveType->is_comp_off) {
+            return "{$compStr} + {$plStr} + {$slStr} + {$lwpStr}";
+        }
+
+        return "{$plStr} + {$slStr} + {$compStr} + {$lwpStr}";
+    }
+
+    private function calculationPayload(array $calculation, ?LeaveTypeM $leaveType = null, ?EmployeeM $employee = null): array
+    {
+        $plDays = (float) ($calculation['paid_days'] ?? 0);
+        $slDays = (float) ($calculation['sick_days'] ?? 0);
+        $compOffDays = (float) ($calculation['comp_off_days'] ?? 0);
+        $lwpDays = (float) ($calculation['lwp_days'] ?? 0);
+        $splitSummary = $this->buildSplitSummary($leaveType, $plDays, $slDays, $compOffDays, $lwpDays);
+
+        // Fetch balances before request
+        $ledgerShape = $employee ? $this->balanceService->getApiBalanceShape($employee) : null;
+        $availPl = $ledgerShape ? (float) ($ledgerShape['fields']['available_pl'] ?? 0) : 0.0;
+        $availSl = $ledgerShape ? (float) ($ledgerShape['fields']['available_sl'] ?? 0) : 0.0;
+        $availComp = $ledgerShape ? (float) ($ledgerShape['fields']['available_comp_off'] ?? 0) : 0.0;
+        $totalAvail = $ledgerShape ? (float) ($ledgerShape['fields']['total_available'] ?? ($availPl + $availSl + $availComp)) : ($availPl + $availSl + $availComp);
+        $annualPl = $ledgerShape ? (float) ($ledgerShape['fields']['annual_quota_pl'] ?? $ledgerShape['fields']['year_end_pl'] ?? $availPl) : $availPl;
+        $annualSl = $ledgerShape ? (float) ($ledgerShape['fields']['annual_quota_sl'] ?? $ledgerShape['fields']['year_end_sl'] ?? $availSl) : $availSl;
+
+        $availableBalances = [
+            'pl_available' => $availPl,
+            'sl_available' => $availSl,
+            'comp_off_available' => $availComp,
+            'total_available' => $totalAvail,
+            'annual_pl' => $annualPl,
+            'annual_sl' => $annualSl,
+            'summary' => 'PL ' . number_format($availPl, 2) . ' | SL ' . number_format($availSl, 2) . ' | Comp-Off ' . number_format($availComp, 2),
+            'items' => [
+                ['label' => 'Paid Leave (PL)', 'code' => 'PL', 'available' => $availPl, 'unit' => 'Days', 'color' => '#2563eb'],
+                ['label' => 'Sick Leave (SL)', 'code' => 'SL', 'available' => $availSl, 'unit' => 'Days', 'color' => '#16a34a'],
+                ['label' => 'Comp-Off', 'code' => 'COMP_OFF', 'available' => $availComp, 'unit' => 'Days', 'color' => '#d97706'],
+                ['label' => 'Total Available', 'code' => 'TOTAL', 'available' => $totalAvail, 'unit' => 'Days', 'color' => '#4f46e5'],
+            ],
+        ];
+
+        // Structured deduction items ordered dynamically by selected leave type
+        $rawDeductionItems = [
+            'PL' => ['label' => 'Paid Days (PL)', 'code' => 'PL', 'days' => $plDays, 'type' => 'paid', 'color' => '#2563eb'],
+            'SL' => ['label' => 'Sick Days (SL)', 'code' => 'SL', 'days' => $slDays, 'type' => 'sick', 'color' => '#16a34a'],
+            'COMP_OFF' => ['label' => 'Comp-Off Days', 'code' => 'COMP_OFF', 'days' => $compOffDays, 'type' => 'comp_off', 'color' => '#d97706'],
+            'LWP' => ['label' => 'LWP Days', 'code' => 'LWP', 'days' => $lwpDays, 'type' => 'lwp', 'color' => '#dc2626'],
+        ];
+        if ($leaveType?->is_sick) {
+            $deductionOrder = ['SL', 'PL', 'COMP_OFF', 'LWP'];
+        } elseif ($leaveType?->is_comp_off) {
+            $deductionOrder = ['COMP_OFF', 'PL', 'SL', 'LWP'];
+        } elseif ($leaveType?->is_lwp) {
+            $deductionOrder = ['LWP'];
+        } else {
+            $deductionOrder = ['PL', 'SL', 'COMP_OFF', 'LWP'];
+        }
+        $deductionItems = [];
+        foreach ($deductionOrder as $k) {
+            if (isset($rawDeductionItems[$k])) {
+                $deductionItems[] = $rawDeductionItems[$k];
+            }
+        }
+
+        $deductionBreakdown = [
+            'requested_days' => (float) ($calculation['requested_days'] ?? 0),
+            'deducted_days' => (float) ($calculation['deducted_days'] ?? 0),
+            'paid_days' => $plDays,
+            'sick_days' => $slDays,
+            'comp_off_days' => $compOffDays,
+            'lwp_days' => $lwpDays,
+            'sandwich_days' => (int) ($calculation['sandwich_days'] ?? 0),
+            'sandwich_applied' => (bool) ($calculation['sandwich_applied'] ?? false),
+            'split_summary' => $splitSummary,
+            'items' => $deductionItems,
+        ];
+
+        // Balance remaining after request
+        $balanceAfter = $calculation['balance_after_split'] ?? [];
+        $paidRem = (float) ($balanceAfter['paid_remaining'] ?? 0.0);
+        $sickRem = (float) ($balanceAfter['sick_remaining'] ?? 0.0);
+        $compRem = (float) ($balanceAfter['comp_off_remaining'] ?? 0.0);
+        $totalRem = (float) ($balanceAfter['total_remaining'] ?? ($paidRem + $sickRem + $compRem));
+
+        $balanceAfterRequest = [
+            'paid_remaining' => $paidRem,
+            'sick_remaining' => $sickRem,
+            'comp_off_remaining' => $compRem,
+            'total_remaining' => $totalRem,
+            'pl_remaining' => $paidRem,
+            'sl_remaining' => $sickRem,
+            'items' => [
+                ['label' => 'Paid Remaining', 'code' => 'PL', 'remaining' => $paidRem],
+                ['label' => 'Sick Remaining', 'code' => 'SL', 'remaining' => $sickRem],
+                ['label' => 'Comp-Off Remaining', 'code' => 'COMP_OFF', 'remaining' => $compRem],
+                ['label' => 'Total Remaining', 'code' => 'TOTAL', 'remaining' => $totalRem],
+            ],
+        ];
+
+        // Enrich individual dates for Flutter UI to render easily
+        $enrichedDates = array_map(function ($d) {
+            $paid = (float) ($d['paid_day'] ?? 0);
+            $sick = (float) ($d['sick_day'] ?? 0);
+            $comp = (float) ($d['comp_off_day'] ?? 0);
+            $lwp = (float) ($d['lwp_day'] ?? 0);
+
+            $parts = [];
+            if ($paid > 0) $parts[] = 'Paid (' . ($paid == 1 ? '1 day' : $paid . ' day') . ')';
+            if ($sick > 0) $parts[] = 'Sick (' . ($sick == 1 ? '1 day' : $sick . ' day') . ')';
+            if ($comp > 0) $parts[] = 'Comp-Off (' . ($comp == 1 ? '1 day' : $comp . ' day') . ')';
+            if ($lwp > 0) $parts[] = 'LWP (' . ($lwp == 1 ? '1 day' : $lwp . ' day') . ')';
+
+            $d['deduction_text'] = count($parts) > 0 ? implode(' + ', $parts) : 'No deduction';
+            $d['is_sandwich_day'] = (bool) ($d['is_sandwich_day'] ?? false);
+            $d['is_working_day'] = (bool) ($d['is_working_day'] ?? false);
+            $d['is_weekoff'] = (bool) ($d['is_weekoff'] ?? false);
+            $d['is_holiday'] = (bool) ($d['is_holiday'] ?? false);
+            $d['day_type_label'] = $d['is_sandwich_day'] ? 'Sandwich Day' : ($d['is_working_day'] ? 'Working Day' : ($d['is_weekoff'] ? 'Week Off' : 'Holiday'));
+            return $d;
+        }, $calculation['dates'] ?? []);
+
         return [
             'requested_days' => $calculation['requested_days'],
             'deducted_days' => $calculation['deducted_days'],
@@ -833,8 +1074,20 @@ class LeaveApiC extends Controller
             'sandwich_details' => $calculation['sandwich_details'] ?? [],
             'sandwich_message' => $calculation['sandwich_message'] ?? null,
             'message' => $calculation['sandwich_message'] ?? null,
-            'dates' => $calculation['dates'],
+            'dates' => $enrichedDates,
             'balance_after_split' => $calculation['balance_after_split'] ?? null,
+            'pl_days' => $calculation['paid_days'],
+            'sl_days' => $calculation['sick_days'],
+            'lop_days' => $calculation['lwp_days'],
+            'leave_type_code' => $leaveType?->code,
+            'is_comp_off' => (bool) ($leaveType?->is_comp_off ?? false),
+            'is_sick' => (bool) ($leaveType?->is_sick ?? false),
+            'is_lwp' => (bool) ($leaveType?->is_lwp ?? false),
+            'split_summary' => $splitSummary,
+            'ledger_split_summary' => $splitSummary,
+            'available_balances' => $availableBalances,
+            'deduction_breakdown' => $deductionBreakdown,
+            'balance_after_request' => $balanceAfterRequest,
         ];
     }
 
@@ -856,6 +1109,6 @@ class LeaveApiC extends Controller
 
     private function fail(string $message, int $code = 400, $data = null)
     {
-        return response()->json(['success' => false, 'status' => false, 'message' => app(\App\Services\Shared\MobileApiMessageS::class)->cleanMessage($message), 'data' => $data], $code);
+        return response()->json(['success' => false, 'status' => false, 'message' => app(MobileApiMessageS::class)->cleanMessage($message), 'data' => $data], $code);
     }
 }

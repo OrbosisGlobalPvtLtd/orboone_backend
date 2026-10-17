@@ -5,15 +5,31 @@
 @section('_head')
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 @include('hrms.enterprise-payroll.partials.styles')
+@include('hrms.leave.shared.style')
 
 <style>
     body, .ep-page, .set-page, button, input, select, textarea, table {
         font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif !important;
     }
 
+    .ep-page {
+        padding: 24px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
     .leave-page-container {
-        max-width: 1400px;
-        margin: 0 auto;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 auto !important;
+        box-sizing: border-box !important;
+    }
+
+    @media (max-width: 768px) {
+        .ep-page {
+            padding: 14px !important;
+        }
     }
 
     /* Metric Summary Pills & Cards */
@@ -248,33 +264,13 @@
 
         <!-- Leaves Calculation Metadata -->
         @php
-            $isConfirmed = $employee ? (bool)$employee->is_permanent : true;
-            
-            $monthlyQuotaInfo = $employee ? app(\App\Services\HRMS\Leave\MonthlyLeaveQuotaService::class)->getMonthlyQuota($employee) : [
-                'current_month_used' => 0,
-                'total_monthly_remaining_paid' => 0,
-                'monthly_limit' => 0,
-                'carry_forward_available' => 0,
-            ];
-
-            $paidRemaining = $isConfirmed && $allocation ? (float)($allocation->paid_remaining ?? 0) : 0.0;
-            $paidUsed = $isConfirmed && $allocation ? (float)($allocation->paid_used ?? 0) : 0.0;
-            $sickRemaining = $isConfirmed && $allocation ? (float)($allocation->sick_remaining ?? 0) : 0.0;
-            $compRemaining = $isConfirmed && $allocation ? (float)($allocation->comp_off_remaining ?? 0) : 0.0;
+            $paidRemaining = (float) ($centralBalance['leave_balance']['total_remaining_paid'] ?? 0);
+            $paidUsed = (float) ($ledgerFields['used_pl'] ?? $allocation?->paid_used ?? 0);
+            $sickRemaining = (float) ($centralBalance['leave_balance']['total_remaining_sick'] ?? 0);
+            $sickUsed = (float) ($ledgerFields['used_sl'] ?? $allocation?->sick_used ?? 0);
+            $compRemaining = (float) ($centralBalance['leave_balance']['total_remaining_comp_off'] ?? 0);
             $lwpUsed = $allocation ? (float) ($allocation->lwp_used ?? 0) : 0.0;
-
-            $alreadyUsedThisMonth = (float) ($monthlyQuotaInfo['current_month_used'] ?? 0);
-            $remainingThisMonth = (float) ($monthlyQuotaInfo['total_monthly_remaining_paid'] ?? 0);
-            $paidAvailableThisMonth = (float) (($monthlyQuotaInfo['monthly_limit'] ?? 0) + ($monthlyQuotaInfo['carry_forward_available'] ?? 0));
-
-            // Apply November/December rule to dynamic balances
-            $currentMonth = Carbon\Carbon::now('Asia/Kolkata')->month;
-            if ($allocation && in_array((int) $currentMonth, [11, 12], true) && ($allocation->total_remaining ?? 0) > 10.0) {
-                $paidRemaining = round($paidRemaining * 0.5, 2);
-                $sickRemaining = round($sickRemaining * 0.5, 2);
-                $compRemaining = round($compRemaining * 0.5, 2);
-                $remainingThisMonth = round($remainingThisMonth * 0.5, 2);
-            }
+            $remainingThisMonth = $paidRemaining;
 
             // Requests Counts
             $countQuery = DB::table('leave_requests');
@@ -290,100 +286,104 @@
             $totalCount = (clone $countQuery)->count();
         @endphp
 
-        <!-- 1. PRIMARY QUOTA CARDS (4-Column Layout) -->
-        <div class="row mb-4">
+        <!-- 1. PRIMARY QUOTA CARDS (Image 2 Attendance Card Design) -->
+        <div class="leave-metric-grid">
             @if($employee)
-            <div class="col-12 col-sm-6 col-lg-3 mb-3 mb-lg-0">
-                <div class="metric-card-primary">
-                    <div class="metric-icon-box" style="background: #ECFDF5; color: #10B981;">
-                        <i class="fas fa-star"></i>
-                    </div>
-                    <div>
-                        <div class="metric-lbl" title="Annual remaining Paid Leaves">Paid Remaining</div>
-                        <div class="metric-val">{{ number_format((float) $paidRemaining, 2) }}</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-12 col-sm-6 col-lg-3 mb-3 mb-lg-0">
-                <div class="metric-card-primary">
-                    <div class="metric-icon-box" style="background: #FEF2F2; color: #EF4444;">
-                        <i class="fas fa-heartbeat"></i>
-                    </div>
-                    <div>
-                        <div class="metric-lbl" title="Annual remaining Sick Leaves">Sick Remaining</div>
-                        <div class="metric-val">{{ number_format((float) $sickRemaining, 2) }}</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-12 col-sm-6 col-lg-3 mb-3 mb-lg-0">
-                <div class="metric-card-primary">
-                    <div class="metric-icon-box" style="background: #F5F3FF; color: #8B5CF6;">
-                        <i class="fas fa-clock"></i>
-                    </div>
-                    <div>
-                        <div class="metric-lbl" title="Available Comp-Off balance">Comp-Off Balance</div>
-                        <div class="metric-val">{{ number_format((float) $compRemaining, 2) }}</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-12 col-sm-6 col-lg-3">
-                <div class="metric-card-primary">
-                    <div class="metric-icon-box" style="background: #E0F2FE; color: #0284C7;">
+            <!-- 1. Paid Leave Remaining -->
+            <div class="leave-metric" style="--metric-color:#10B981;--metric-soft:#ECFDF5;">
+                <div class="leave-metric-top">
+                    <div class="leave-metric-icon">
                         <i class="fas fa-calendar-check"></i>
                     </div>
-                    <div>
-                        <div class="metric-lbl" title="Total Paid Leave balance available for this month (including Carry Forward)">Monthly Paid Balance</div>
-                        <div class="metric-val">{{ number_format((float) $remainingThisMonth, 2) }}</div>
-                    </div>
+                    <div class="leave-metric-value">{{ number_format((float) $paidRemaining, 2) }}</div>
                 </div>
+                <div class="leave-metric-label" title="Annual remaining Paid Leaves">Paid Remaining</div>
+                <div class="leave-metric-line"></div>
+            </div>
+            
+            <!-- 2. Sick Leave Remaining -->
+            <div class="leave-metric" style="--metric-color:#EF4444;--metric-soft:#FEF2F2;">
+                <div class="leave-metric-top">
+                    <div class="leave-metric-icon">
+                        <i class="fas fa-heartbeat"></i>
+                    </div>
+                    <div class="leave-metric-value">{{ number_format((float) $sickRemaining, 2) }}</div>
+                </div>
+                <div class="leave-metric-label" title="Annual remaining Sick Leaves">Sick Remaining</div>
+                <div class="leave-metric-line"></div>
+            </div>
+
+            <!-- 3. Comp-Off Balance -->
+            <div class="leave-metric" style="--metric-color:#8B5CF6;--metric-soft:#F5F3FF;">
+                <div class="leave-metric-top">
+                    <div class="leave-metric-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="leave-metric-value">{{ number_format((float) $compRemaining, 2) }}</div>
+                </div>
+                <div class="leave-metric-label" title="Available Comp-Off balance">Comp-Off Balance</div>
+                <div class="leave-metric-line"></div>
+            </div>
+
+            <!-- 4. Available PL Balance -->
+            <div class="leave-metric" style="--metric-color:#0284C7;--metric-soft:#E0F2FE;">
+                <div class="leave-metric-top">
+                    <div class="leave-metric-icon">
+                        <i class="fas fa-calendar-alt"></i>
+                    </div>
+                    <div class="leave-metric-value">{{ number_format((float) $remainingThisMonth, 2) }}</div>
+                </div>
+                <div class="leave-metric-label" title="Current accumulated paid leave balance available to use">Available PL Balance</div>
+                <div class="leave-metric-line"></div>
             </div>
             @else
-            <div class="col-12 col-sm-6 col-lg-3 mb-3 mb-lg-0">
-                <div class="metric-card-primary">
-                    <div class="metric-icon-box" style="background: #EEF2FF; color: #4F46E5;">
+            <!-- Admin Directory Metrics -->
+            <!-- 1. Total Requests -->
+            <div class="leave-metric" style="--metric-color:#4F46E5;--metric-soft:#EEF2FF;">
+                <div class="leave-metric-top">
+                    <div class="leave-metric-icon">
                         <i class="fas fa-layer-group"></i>
                     </div>
-                    <div>
-                        <div class="metric-lbl">Total Requests</div>
-                        <div class="metric-val">{{ $totalCount }}</div>
-                    </div>
+                    <div class="leave-metric-value">{{ $totalCount }}</div>
                 </div>
+                <div class="leave-metric-label">Total Requests</div>
+                <div class="leave-metric-line"></div>
             </div>
-            <div class="col-12 col-sm-6 col-lg-3 mb-3 mb-lg-0">
-                <div class="metric-card-primary">
-                    <div class="metric-icon-box" style="background: #FEF3C7; color: #D97706;">
+
+            <!-- 2. Pending Review -->
+            <div class="leave-metric" style="--metric-color:#D97706;--metric-soft:#FEF3C7;">
+                <div class="leave-metric-top">
+                    <div class="leave-metric-icon">
                         <i class="fas fa-hourglass-half"></i>
                     </div>
-                    <div>
-                        <div class="metric-lbl">Pending Review</div>
-                        <div class="metric-val">{{ $pendingCount }}</div>
-                    </div>
+                    <div class="leave-metric-value">{{ $pendingCount }}</div>
                 </div>
+                <div class="leave-metric-label">Pending Review</div>
+                <div class="leave-metric-line"></div>
             </div>
-            <div class="col-12 col-sm-6 col-lg-3 mb-3 mb-lg-0">
-                <div class="metric-card-primary">
-                    <div class="metric-icon-box" style="background: #ECFDF5; color: #059669;">
+
+            <!-- 3. Approved Leaves -->
+            <div class="leave-metric" style="--metric-color:#059669;--metric-soft:#ECFDF5;">
+                <div class="leave-metric-top">
+                    <div class="leave-metric-icon">
                         <i class="fas fa-check-double"></i>
                     </div>
-                    <div>
-                        <div class="metric-lbl">Approved Leaves</div>
-                        <div class="metric-val">{{ $approvedCount }}</div>
-                    </div>
+                    <div class="leave-metric-value">{{ $approvedCount }}</div>
                 </div>
+                <div class="leave-metric-label">Approved Leaves</div>
+                <div class="leave-metric-line"></div>
             </div>
-            <div class="col-12 col-sm-6 col-lg-3">
-                <div class="metric-card-primary">
-                    <div class="metric-icon-box" style="background: #FEE2E2; color: #DC2626;">
+
+            <!-- 4. Rejected Leaves -->
+            <div class="leave-metric" style="--metric-color:#DC2626;--metric-soft:#FEE2E2;">
+                <div class="leave-metric-top">
+                    <div class="leave-metric-icon">
                         <i class="fas fa-ban"></i>
                     </div>
-                    <div>
-                        <div class="metric-lbl">Rejected Leaves</div>
-                        <div class="metric-val">{{ $rejectedCount }}</div>
-                    </div>
+                    <div class="leave-metric-value">{{ $rejectedCount }}</div>
                 </div>
+                <div class="leave-metric-label">Rejected Leaves</div>
+                <div class="leave-metric-line"></div>
             </div>
             @endif
         </div>
@@ -398,8 +398,8 @@
             </div>
             <div class="col-6 col-md-3 col-lg-2 mb-2">
                 <div class="counter-pill-item">
-                    <span class="counter-pill-lbl"><i class="fas fa-hourglass-half text-amber"></i> Month Used</span>
-                    <span class="counter-pill-num" style="background: #FEF3C7; color: #D97706;">{{ number_format((float) $alreadyUsedThisMonth, 1) }}</span>
+                    <span class="counter-pill-lbl"><i class="fas fa-heartbeat text-amber"></i> SL Used</span>
+                    <span class="counter-pill-num" style="background: #FEF3C7; color: #D97706;">{{ number_format((float) $sickUsed, 1) }}</span>
                 </div>
             </div>
             <div class="col-6 col-md-3 col-lg-2 mb-2">
@@ -466,7 +466,7 @@
 
                         <div>
                             <label class="font-weight-bold text-muted mb-1" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;">Leave Type</label>
-                            <select name="leave_type_id" id="filterLeaveType" class="filter-control">
+                            <select name="leave_type_id" id="filterLeaveType" class="filter-control select2-searchable">
                                 <option value="">All Types</option>
                                 @foreach($leaveTypes as $lt)
                                     <option value="{{ $lt->id }}" {{ (string)request('leave_type_id') === (string)$lt->id ? 'selected' : '' }}>{{ $lt->name }}</option>
@@ -476,7 +476,7 @@
 
                         <div>
                             <label class="font-weight-bold text-muted mb-1" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;">Status</label>
-                            <select name="status" id="filterStatus" class="filter-control">
+                            <select name="status" id="filterStatus" class="filter-control select2-searchable">
                                 <option value="">All Statuses</option>
                                 <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Pending</option>
                                 <option value="approved" {{ request('status') === 'approved' ? 'selected' : '' }}>Approved</option>
@@ -493,7 +493,7 @@
 
                         <div>
                             <label class="font-weight-bold text-muted mb-1" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;">Per Page</label>
-                            <select name="per_page" id="filterPerPage" class="filter-control font-weight-bold">
+                            <select name="per_page" id="filterPerPage" class="filter-control font-weight-bold select2-searchable">
                                 <option value="10" {{ (int)request('per_page', 25) === 10 ? 'selected' : '' }}>10 rows</option>
                                 <option value="25" {{ (int)request('per_page', 25) === 25 ? 'selected' : '' }}>25 rows</option>
                                 <option value="50" {{ (int)request('per_page', 25) === 50 ? 'selected' : '' }}>50 rows</option>
@@ -694,7 +694,7 @@
             <div class="ep-modal-body" style="padding: 24px;">
                 <div class="ep-form-group mb-3">
                     <label class="font-weight-bold text-dark mb-1" style="font-size: 13px;">Leave Type <span class="text-danger">*</span></label>
-                    <select name="leave_type_id" id="edit_leave_type_id" class="form-control shadow-none" style="border-radius: 10px; height: 42px;" required>
+                    <select name="leave_type_id" id="edit_leave_type_id" class="form-control shadow-none select2-searchable" style="border-radius: 10px; height: 42px;" required>
                         @php
                             $typesList = $leaveTypes ?? \App\Models\HRMS\Leave\LeaveTypeM::where('is_active', true)->get();
                         @endphp
@@ -708,13 +708,13 @@
                     <div class="col-md-6 col-12">
                         <div class="ep-form-group mb-3">
                             <label class="font-weight-bold text-dark mb-1" style="font-size: 13px;">Start Date <span class="text-danger">*</span></label>
-                            <input type="date" name="start_date" id="edit_start_date" class="form-control shadow-none" style="border-radius: 10px; height: 42px;" required>
+                            <x-form.date-picker name="start_date" id="edit_start_date" placeholder="dd-mm-yyyy" class="shadow-none" style="border-radius: 10px; height: 42px;" required />
                         </div>
                     </div>
                     <div class="col-md-6 col-12">
                         <div class="ep-form-group mb-3">
                             <label class="font-weight-bold text-dark mb-1" style="font-size: 13px;">End Date <span class="text-danger">*</span></label>
-                            <input type="date" name="end_date" id="edit_end_date" class="form-control shadow-none" style="border-radius: 10px; height: 42px;" required>
+                            <x-form.date-picker name="end_date" id="edit_end_date" placeholder="dd-mm-yyyy" class="shadow-none" style="border-radius: 10px; height: 42px;" required />
                         </div>
                     </div>
                 </div>
@@ -857,8 +857,25 @@ $(function() {
         var cleanStartDate = (row.start_date || '').toString().split('T')[0].split(' ')[0];
         var cleanEndDate = (row.end_date || '').toString().split('T')[0].split(' ')[0];
 
-        $('#edit_start_date').val(cleanStartDate);
-        $('#edit_end_date').val(cleanEndDate);
+        if (typeof window.initOrboDatePickers === 'function') {
+            window.initOrboDatePickers(document.getElementById('editLeaveModal'));
+        }
+
+        var editStartEl = document.getElementById('edit_start_date');
+        if (editStartEl) {
+            editStartEl.value = cleanStartDate;
+            if (editStartEl._flatpickr) {
+                editStartEl._flatpickr.setDate(cleanStartDate, true);
+            }
+        }
+        var editEndEl = document.getElementById('edit_end_date');
+        if (editEndEl) {
+            editEndEl.value = cleanEndDate;
+            if (editEndEl._flatpickr) {
+                editEndEl._flatpickr.setDate(cleanEndDate, true);
+            }
+        }
+
         $('#edit_leave_reason').val(row.reason || '');
         $('#edit_is_half_day').prop('checked', !!row.is_half_day);
         $('#edit_emergency_leave').prop('checked', !!row.emergency_leave);

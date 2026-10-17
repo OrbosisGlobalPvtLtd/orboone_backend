@@ -24,7 +24,7 @@
                 <div class="modal-body px-3 px-sm-4 py-3 bg-white" style="overflow-y: auto;">
                     <div class="alert alert-warning mb-3 p-2.5 rounded-lg" style="font-size: 11.5px; border-left: 4px solid #F59E0B; background: #FFFBEB; border-color: #FDE68A; color: #92400E; line-height: 1.45;">
                         <i class="fas fa-exclamation-triangle mr-1 text-warning"></i>
-                        <strong>Impact Notice:</strong> This action will reverse deducted leave balances (Paid/Sick/Comp-off/LWP), restore monthly quota, unlock attendance for the dates, and log a permanent HR audit note.
+                        <strong>Impact Notice:</strong> This action reverses the recorded leave balance movements, restores eligible balances once, updates attendance for the dates, and logs a permanent HR audit note.
                     </div>
                     <p class="text-dark font-weight-bold mb-2" style="font-size: 13px; line-height: 1.4;">
                         Are you sure you want to void approved leave for <strong>{{ $lr->display_name }}</strong> ({{ $isSingleDay ? $startDateFormatted : ($startDateFormatted . ' — ' . $endDateFormatted) }})?

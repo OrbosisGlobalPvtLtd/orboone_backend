@@ -7,6 +7,7 @@ use App\Http\Controllers\Web\HRMS\Concerns\HrmsCrudPage;
 use App\Http\Requests\Web\HRMS\Leave\StoreLeaveRequestRequest;
 use App\Mail\HrWorkflowAlertMail;
 use App\Models\Core\AccessM;
+use App\Models\Core\UserM;
 use App\Models\HRMS\Employee\EmployeeM;
 use App\Models\HRMS\Leave\LeaveRequestM;
 use App\Models\HRMS\Leave\LeaveTypeM;
@@ -17,9 +18,13 @@ use App\Services\HRMS\Storage\HrmsStoragePathS;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use App\Services\HRMS\Leave\LeaveValidationService;
+use Illuminate\Validation\ValidationException;
+use App\Services\HRMS\Notification\NotificationS;
 
 class LeaveRequestC extends Controller
 {
@@ -33,11 +38,33 @@ class LeaveRequestC extends Controller
     ) {
     }
 
+    private function currentUser(): ?UserM
+    {
+        /** @var UserM|null $user */
+        $user = Auth::user();
+
+        return $user;
+    }
+
+    private function isAdminOrHr(?UserM $user = null): bool
+    {
+        $user = $user ?: $this->currentUser();
+        if (! $user) {
+            return false;
+        }
+
+        return $user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin() || ($user->system_role_id ?? null) === 1 || ($user->role_id ?? null) === 1;
+    }
+
     public function index(Request $request)
     {
-        $user = Auth::user();
+        $user = $this->currentUser();
+        if (! $user) {
+            abort(401);
+        }
+
         $employee = EmployeeM::where('user_id', $user->id)->first();
-        $isAdminOrHr = $user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin();
+        $isAdminOrHr = $this->isAdminOrHr($user);
 
         if (! $employee && ! $isAdminOrHr) {
             abort(403, 'No employee profile linked to your account.');
@@ -66,20 +93,28 @@ class LeaveRequestC extends Controller
         $perPage = (int) $request->input('per_page', 25);
         $requests = $perPage > 0 ? $query->latest()->paginate($perPage) : $query->latest()->paginate(1000);
 
-        $allocation = $employee ? $employee->leaveAllocations()->where('year', Carbon::now('Asia/Kolkata')->year)->latest()->first() : null;
+        $balanceService = app(\App\Services\HRMS\Leave\LeaveBalanceService::class);
+        $ledgerShape = $employee ? $balanceService->getApiBalanceShape($employee) : null;
+        $allocation = $ledgerShape['allocation'] ?? ($employee ? $balanceService->allocationForRead($employee) : null);
+        $centralBalance = $ledgerShape['central'] ?? ($employee ? $balanceService->getCentralBalance($employee) : null);
+        $ledgerFields = $ledgerShape['fields'] ?? null;
         $leaveTypes = LeaveTypeM::where('is_active', true)->orderBy('name')->get();
         $employees = $isAdminOrHr ? EmployeeM::where('is_active', true)->get()->sortBy(fn ($e) => strtolower($e->display_name))->values() : collect();
         $accesses = $this->accesses();
 
-        return view('hrms.leave.requests.index', compact('requests', 'allocation', 'leaveTypes', 'employee', 'employees', 'isAdminOrHr', 'accesses'))
+        return view('hrms.leave.requests.index', compact('requests', 'allocation', 'leaveTypes', 'employee', 'employees', 'isAdminOrHr', 'accesses', 'centralBalance', 'ledgerFields'))
             ->with('active', 'leave_management');
     }
 
     public function create()
     {
-        $user = Auth::user();
+        $user = $this->currentUser();
+        if (! $user) {
+            abort(401);
+        }
+
         $employee = EmployeeM::where('user_id', $user->id)->first();
-        $isAdminOrHr = $user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin();
+        $isAdminOrHr = $this->isAdminOrHr($user);
 
         if (! $employee && ! $isAdminOrHr) {
             abort(403, 'No employee profile linked to your account.');
@@ -90,7 +125,12 @@ class LeaveRequestC extends Controller
         }
 
         $year = Carbon::now('Asia/Kolkata')->year;
-        $allocation = $employee ? resolve(\App\Services\HRMS\Leave\LeaveAllocationService::class)->getOrGenerate($employee, $year, auth()->id()) : null;
+        $allocation = $employee
+            ? app(\App\Services\HRMS\Leave\LeaveBalanceService::class)->allocationForRead(
+                $employee,
+                Carbon::create($year, 1, 1, 0, 0, 0, 'Asia/Kolkata')
+            )
+            : null;
 
         $leaveTypes = LeaveTypeM::where('is_active', true)->orderBy('name')->get();
         $employees = $isAdminOrHr ? EmployeeM::where('is_active', true)->get()->sortBy(fn ($e) => strtolower($e->display_name))->values() : collect();
@@ -102,9 +142,11 @@ class LeaveRequestC extends Controller
 
     public function store(StoreLeaveRequestRequest $request)
     {
+        $attachmentPath = null;
+        $requestPersisted = false;
         try {
-            $user = Auth::user();
-            $isAdminOrHr = $user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin();
+            $user = $this->currentUser();
+            $isAdminOrHr = $this->isAdminOrHr($user);
 
             $employee = $request->filled('employee_id') && $isAdminOrHr
                 ? EmployeeM::findOrFail($request->employee_id)
@@ -119,14 +161,13 @@ class LeaveRequestC extends Controller
             }
 
             $leaveType = LeaveTypeM::findOrFail($request->leave_type_id);
+            $sanitized = LeaveValidationService::sanitizePayload($request->validated());
+            $leaveRequest = DB::transaction(function () use ($request, $employee, $leaveType, $sanitized, &$attachmentPath) {
             $attachmentPath = $this->storeAttachment($request);
-            $sanitized = \App\Services\HRMS\Leave\LeaveValidationService::sanitizePayload($request->validated());
             $payload = array_merge($sanitized, ['attachment_path' => $attachmentPath]);
             $calculation = $this->calculationService->calculate($employee, $leaveType, $payload);
-
             $hasReportingManager = ! empty($employee->reporting_manager_employee_id);
             $approvalLevel = $hasReportingManager ? 'pending_manager' : 'pending_hr';
-
             $leaveRequest = LeaveRequestM::create([
                 'employee_id' => $employee->id,
                 'user_id' => $employee->user_id,
@@ -154,23 +195,30 @@ class LeaveRequestC extends Controller
             foreach ($calculation['dates'] as $row) {
                 $leaveRequest->dates()->create(array_merge($row, ['employee_id' => $employee->id]));
             }
+            return $leaveRequest->fresh(['employee.user', 'employee.department', 'leaveType', 'dates']);
+            });
+            $requestPersisted = true;
 
-            $this->notifyLeaveApplied($leaveRequest->fresh(['employee.user', 'employee.department', 'leaveType', 'dates']));
+            $this->notifyLeaveApplied($leaveRequest);
 
             return redirect()->route('leave-requests.index')->with('success', 'Leave request submitted successfully.');
         } catch (\Throwable $e) {
+            if (! $requestPersisted && ! empty($attachmentPath)) Storage::disk('private')->delete($attachmentPath);
             Log::error('Web leave request failed', ['error' => $e->getMessage()]);
             return back()->withInput()->with('error', $e->getMessage());
         }
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, int|string $id)
     {
+        $newAttachmentPath = null;
+        $oldAttachmentPath = null;
         try {
-            $user = Auth::user();
-            $isAdminOrHr = $user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin();
+            $user = $this->currentUser();
+            $isAdminOrHr = $this->isAdminOrHr($user);
 
             $leaveRequest = LeaveRequestM::findOrFail($id);
+            $oldAttachmentPath = $leaveRequest->attachment_path;
             $employee = $isAdminOrHr ? $leaveRequest->employee : EmployeeM::where('user_id', Auth::id())->first();
 
             if (! $isAdminOrHr) {
@@ -178,13 +226,9 @@ class LeaveRequestC extends Controller
             }
             abort_unless($leaveRequest->status === 'pending', 400, 'Cannot edit request after approval or rejection.');
 
-            $request->validate([
-                'leave_type_id' => 'required|exists:leave_types,id',
-                'start_date' => 'required|date',
-                'end_date' => 'required|date|after_or_equal:start_date',
-                'reason' => 'required|string|max:1000',
-            ]);
-
+            $rules = LeaveValidationService::rules($request->all());
+            $rules['reason'] = 'required|string|max:1000';
+            $request->validate($rules, LeaveValidationService::messages());
             $sanitized = [
                 'leave_type_id' => (int) $request->leave_type_id,
                 'start_date' => (string) $request->start_date,
@@ -194,8 +238,14 @@ class LeaveRequestC extends Controller
                 'emergency_leave' => $request->boolean('emergency_leave'),
             ];
 
-            $calculation = $this->calculationService->calculateLeaveRequest($employee, $sanitized);
-
+            $leaveRequest = DB::transaction(function () use ($request, $leaveRequest, $employee, $sanitized, &$newAttachmentPath) {
+            $leaveType = LeaveTypeM::findOrFail($sanitized['leave_type_id']);
+            if ($request->hasFile('attachment')) {
+                $directory = $this->paths->employeeLeave((int) $employee->id, 'attachments');
+                $newAttachmentPath = $request->file('attachment')->store($directory, 'private');
+            }
+            $calculation = $this->calculationService->calculate($employee, $leaveType,
+                $sanitized + ['attachment_path' => $newAttachmentPath ?: $leaveRequest->attachment_path], $leaveRequest);
             $leaveRequest->update([
                 'leave_type_id' => $sanitized['leave_type_id'],
                 'start_date' => $sanitized['start_date'],
@@ -205,6 +255,7 @@ class LeaveRequestC extends Controller
                 'is_half_day' => $sanitized['is_half_day'],
                 'half_day_type' => $sanitized['half_day_type'],
                 'reason' => $request->reason,
+                'attachment_path' => $newAttachmentPath ?: $leaveRequest->attachment_path,
                 'sandwich_applied' => $calculation['sandwich_applied'],
                 'paid_days' => $calculation['paid_days'],
                 'sick_days' => $calculation['sick_days'],
@@ -217,9 +268,13 @@ class LeaveRequestC extends Controller
             foreach ($calculation['dates'] as $row) {
                 $leaveRequest->dates()->create(array_merge($row, ['employee_id' => $employee->id]));
             }
+            return $leaveRequest->fresh();
+            });
+            if ($newAttachmentPath && $oldAttachmentPath) Storage::disk('private')->delete($oldAttachmentPath);
 
             return redirect()->route('leave-requests.index')->with('success', 'Leave request updated successfully.');
         } catch (\Throwable $e) {
+            if ($newAttachmentPath) Storage::disk('private')->delete($newAttachmentPath);
             Log::error('Web leave request update failed', ['id' => $id, 'error' => $e->getMessage()]);
             return back()->withInput()->with('error', $e->getMessage());
         }
@@ -228,8 +283,8 @@ class LeaveRequestC extends Controller
     public function preview(Request $request)
     {
         try {
-            $user = Auth::user();
-            $isAdminOrHr = $user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin();
+            $user = $this->currentUser();
+            $isAdminOrHr = $this->isAdminOrHr($user);
 
             $employee = $request->filled('employee_id') && $isAdminOrHr
                 ? EmployeeM::find($request->employee_id)
@@ -260,9 +315,14 @@ class LeaveRequestC extends Controller
                 'half_day_type' => $request->input('half_day_type', 'first_half'),
                 'emergency_leave' => $request->boolean('emergency_leave'),
                 'bypass_notice_period' => true,
+                'bypass_attachment_validation' => true,
             ];
 
             $calc = $this->calculationService->calculate($employee, $leaveType, $sanitized);
+            $ledgerBalances = app(\App\Services\HRMS\Leave\LeaveBalanceService::class)->getLedgerApiBalances($employee);
+            $centralBalance = $ledgerBalances !== null
+                ? app(\App\Services\HRMS\Leave\LeaveBalanceService::class)->getCentralBalance($employee)
+                : null;
 
             $isSick = (bool) $leaveType->is_sick;
             $isLwp = (bool) $leaveType->is_lwp;
@@ -293,16 +353,30 @@ class LeaveRequestC extends Controller
                     'sick_days' => $calc['sick_days'],
                     'comp_off_days' => $calc['comp_off_days'],
                     'lwp_days' => $calc['lwp_days'],
-                    'current_balance' => [
+                    'pl_days' => $calc['paid_days'],
+                    'sl_days' => $calc['sick_days'],
+                    'lop_days' => $calc['lwp_days'],
+                    'leave_type_code' => $leaveType->code,
+                    'is_comp_off' => (bool) $leaveType->is_comp_off,
+                    'is_sick' => (bool) $leaveType->is_sick,
+                    'is_lwp' => (bool) $leaveType->is_lwp,
+                    'ledger_backed' => $ledgerBalances !== null,
+                    'current_balance' => $centralBalance ? [
+                        'paid_remaining' => $centralBalance['paid_remaining'],
+                        'sick_remaining' => $centralBalance['sick_remaining'],
+                        'comp_off_remaining' => $centralBalance['comp_off_remaining'],
+                        'total_remaining' => $centralBalance['paid_remaining'] + $centralBalance['sick_remaining'] + $centralBalance['comp_off_remaining'],
+                    ] : [
                         'paid_remaining' => (float) ($calc['allocation']->paid_remaining ?? 0),
                         'sick_remaining' => (float) ($calc['allocation']->sick_remaining ?? 0),
                         'comp_off_remaining' => (float) ($calc['allocation']->comp_off_remaining ?? 0),
                         'total_remaining' => (float) ($calc['allocation']->total_remaining ?? 0),
                     ],
+                    ...($ledgerBalances ?? []),
                     'balance_after_split' => $calc['balance_after_split'] ?? [],
                 ],
             ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             $msg = collect($e->errors())->flatten()->first() ?: $e->getMessage();
             return response()->json(['success' => false, 'message' => $msg], 422);
         } catch (\Throwable $e) {
@@ -310,11 +384,11 @@ class LeaveRequestC extends Controller
         }
     }
 
-    public function cancel(Request $request, $id)
+    public function cancel(Request $request, int|string $id)
     {
         try {
-            $user = Auth::user();
-            $isAdminOrHr = $user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin();
+            $user = $this->currentUser();
+            $isAdminOrHr = $this->isAdminOrHr($user);
 
             $leaveRequest = LeaveRequestM::findOrFail($id);
             $employeeId = $this->ownEmployeeId();
@@ -368,7 +442,7 @@ class LeaveRequestC extends Controller
             'attachment_name' => $leaveRequest->attachment_path ? basename($leaveRequest->attachment_path) : '',
         ];
 
-        app(\App\Services\HRMS\Notification\NotificationS::class)->notifyHrAndSuperAdmin(
+        app(NotificationS::class)->notifyHrAndSuperAdmin(
             'New Leave Request',
             "{$employeeName} applied for {$leaveType} leave from {$payload['from_date']} to {$payload['to_date']}.",
             'leave_applied',
@@ -423,8 +497,12 @@ class LeaveRequestC extends Controller
 
     private function isEligibleForLeaveRequest(EmployeeM $employee): bool
     {
-        $user = auth()->user();
-        if ($user->isAdmin() || $user->isHrAdmin() || $user->isSuperAdmin() || ($user->role_id ?? null) == 1 || ($user->system_role_id ?? null) == 1) {
+        $user = $this->currentUser();
+        if (! $user) {
+            return false;
+        }
+
+        if ($this->isAdminOrHr($user)) {
             return true;
         }
 
@@ -445,7 +523,8 @@ class LeaveRequestC extends Controller
 
     private function accesses()
     {
-        $roleId = auth()->user()->role_id ?? auth()->user()->system_role_id ?? null;
+        $user = $this->currentUser();
+        $roleId = $user?->system_role_id ?? $user?->role_id ?? null;
         return $roleId ? AccessM::where('role_id', $roleId)->get() : collect();
     }
 }

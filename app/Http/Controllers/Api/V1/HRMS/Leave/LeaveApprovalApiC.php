@@ -8,7 +8,10 @@ use App\Models\HRMS\Leave\LeaveRequestM;
 use App\Services\HRMS\Leave\LeaveApprovalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use App\Services\HRMS\Team\TeamManagementScopeS;
+use Carbon\Carbon;
 
 class LeaveApprovalApiC extends Controller
 {
@@ -18,7 +21,7 @@ class LeaveApprovalApiC extends Controller
 
     public function pending(Request $request)
     {
-        $user = auth()->user();
+        $user = Auth::user();
         if (!$user) {
             return $this->fail('Unauthenticated.', 401);
         }
@@ -38,7 +41,7 @@ class LeaveApprovalApiC extends Controller
             ->where('status', 'pending')
             ->when(!$canViewAll, function ($query) use ($user) {
                 $employeeId = DB::table('employees_new')->where('user_id', $user->id)->value('id');
-                $teamEmployeeIds = $employeeId ? app(\App\Services\HRMS\Team\TeamManagementScopeS::class)->getTeamEmployeeIds((int)$employeeId) : [];
+                $teamEmployeeIds = $employeeId ? app(TeamManagementScopeS::class)->getTeamEmployeeIds((int)$employeeId) : [];
                 $query->whereIn('employee_id', $teamEmployeeIds);
             })
             ->when($request->employee_id, fn ($query) => $query->where('employee_id', $request->employee_id))
@@ -50,7 +53,7 @@ class LeaveApprovalApiC extends Controller
 
     public function approve(Request $request, $id)
     {
-        $user = auth()->user();
+        $user = Auth::user();
         if (!$user) {
             return $this->fail('Unauthenticated.', 401);
         }
@@ -58,11 +61,6 @@ class LeaveApprovalApiC extends Controller
         $leaveRequest = LeaveRequestM::with('employee')->findOrFail($id);
         $employee = $leaveRequest->employee ?: EmployeeM::find($leaveRequest->employee_id);
         $managerEmpId = $leaveRequest->reporting_manager_employee_id ?: $employee?->reporting_manager_employee_id ?: DB::table('employees_new')->where('id', $leaveRequest->employee_id)->value('reporting_manager_employee_id');
-
-        if (empty($leaveRequest->reporting_manager_employee_id) && !empty($managerEmpId)) {
-            $leaveRequest->reporting_manager_employee_id = $managerEmpId;
-            $leaveRequest->save();
-        }
 
         $employeeId = DB::table('employees_new')->where('user_id', $user->id)->value('id');
         $isAssignedManager = $employeeId && $managerEmpId && (int)$managerEmpId === (int)$employeeId;
@@ -83,6 +81,11 @@ class LeaveApprovalApiC extends Controller
             return $this->fail('Unauthorized. You do not have permission to approve this leave request.', 403);
         }
 
+        if (empty($leaveRequest->reporting_manager_employee_id) && !empty($managerEmpId)) {
+            $leaveRequest->reporting_manager_employee_id = $managerEmpId;
+            $leaveRequest->save();
+        }
+
         $request->validate(['note' => 'nullable|string|max:2000']);
 
         try {
@@ -94,7 +97,7 @@ class LeaveApprovalApiC extends Controller
             } else {
                 if ($hasManager && !$managerApproved) {
                     $leaveRequest->manager_approved_by = $user->id;
-                    $leaveRequest->manager_approved_at = \Carbon\Carbon::now('Asia/Kolkata');
+                    $leaveRequest->manager_approved_at = Carbon::now('Asia/Kolkata');
                     $leaveRequest->manager_note = $isSuperAdmin ? 'Super Admin Direct Approval' : 'HR Admin Direct Approval';
                     $leaveRequest->save();
                 }
@@ -110,7 +113,7 @@ class LeaveApprovalApiC extends Controller
 
     public function reject(Request $request, $id)
     {
-        $user = auth()->user();
+        $user = Auth::user();
         if (!$user) {
             return $this->fail('Unauthenticated.', 401);
         }
@@ -118,11 +121,6 @@ class LeaveApprovalApiC extends Controller
         $leaveRequest = LeaveRequestM::with('employee')->findOrFail($id);
         $employee = $leaveRequest->employee ?: EmployeeM::find($leaveRequest->employee_id);
         $managerEmpId = $leaveRequest->reporting_manager_employee_id ?: $employee?->reporting_manager_employee_id ?: DB::table('employees_new')->where('id', $leaveRequest->employee_id)->value('reporting_manager_employee_id');
-
-        if (empty($leaveRequest->reporting_manager_employee_id) && !empty($managerEmpId)) {
-            $leaveRequest->reporting_manager_employee_id = $managerEmpId;
-            $leaveRequest->save();
-        }
 
         $employeeId = DB::table('employees_new')->where('user_id', $user->id)->value('id');
         $isAssignedManager = $employeeId && $managerEmpId && (int)$managerEmpId === (int)$employeeId;
@@ -141,6 +139,11 @@ class LeaveApprovalApiC extends Controller
 
         if (!$canReject) {
             return $this->fail('Unauthorized. You do not have permission to reject this leave request.', 403);
+        }
+
+        if (empty($leaveRequest->reporting_manager_employee_id) && !empty($managerEmpId)) {
+            $leaveRequest->reporting_manager_employee_id = $managerEmpId;
+            $leaveRequest->save();
         }
 
         $request->validate(['reason' => 'required|string|max:2000']);

@@ -130,6 +130,147 @@ body {
 .leave-btn-success{background:linear-gradient(135deg,#10b981,#059669);color:#fff!important;}
 .leave-btn-warning{background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff!important;}
 
+/* Universal Responsive Leave Metric Cards (Image 2 Design) */
+.leave-metric-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)) !important;
+    gap: 14px !important;
+    margin-bottom: 22px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+@media (max-width: 768px) {
+    .leave-metric-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+    }
+}
+
+@media (max-width: 420px) {
+    .leave-metric-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+.leave-metric-grid > .leave-metric,
+.leave-metric-grid .leave-metric,
+.leave-metric-card {
+    background: #FFFFFF !important;
+    border: 1px solid var(--orb-border, #E7EAF3) !important;
+    border-radius: 18px !important;
+    padding: 16px 16px 12px !important;
+    box-shadow: 0 10px 24px rgba(16, 24, 40, .055) !important;
+    position: relative !important;
+    overflow: hidden !important;
+    min-height: 96px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    transition: transform 0.22s ease, box-shadow 0.22s ease !important;
+}
+
+.leave-metric-grid > .leave-metric:hover,
+.leave-metric-grid .leave-metric:hover,
+.leave-metric-card:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 14px 30px rgba(16, 24, 40, .09) !important;
+}
+
+.leave-metric-grid > .leave-metric::after,
+.leave-metric-grid .leave-metric::after,
+.leave-metric-card::after {
+    content: "" !important;
+    position: absolute !important;
+    right: -22px !important;
+    top: -30px !important;
+    width: 86px !important;
+    height: 86px !important;
+    border-radius: 50% !important;
+    background: var(--metric-soft, #F4F2FF) !important;
+    pointer-events: none !important;
+    z-index: 0 !important;
+}
+
+/* Ensure table cell metrics are never polluted by card styles */
+.leave-table .leave-metric,
+table .leave-metric {
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    min-height: auto !important;
+    display: block !important;
+    position: static !important;
+    overflow: visible !important;
+    transform: none !important;
+}
+
+.leave-table .leave-metric::after,
+.leave-table .leave-metric::before,
+table .leave-metric::after,
+table .leave-metric::before {
+    display: none !important;
+    content: none !important;
+}
+
+.leave-metric-top {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
+    position: relative !important;
+    z-index: 1 !important;
+    width: 100% !important;
+}
+
+.leave-metric-icon {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 13px !important;
+    background: var(--metric-soft, #F4F2FF) !important;
+    color: var(--metric-color, var(--orb-primary, #4B00E8)) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 16px !important;
+    flex-shrink: 0 !important;
+}
+
+.leave-metric-value {
+    font-size: 26px !important;
+    font-weight: 950 !important;
+    color: #101828 !important;
+    line-height: 1 !important;
+    letter-spacing: -0.02em !important;
+    text-align: right !important;
+}
+
+.leave-metric-label {
+    font-size: 11px !important;
+    font-weight: 950 !important;
+    color: #475467 !important;
+    text-transform: uppercase !important;
+    margin-top: 14px !important;
+    position: relative !important;
+    z-index: 1 !important;
+    letter-spacing: 0.04em !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+.leave-metric-line {
+    position: relative !important;
+    height: 3px !important;
+    border-radius: 999px !important;
+    background: linear-gradient(90deg, var(--metric-color, var(--orb-primary, #4B00E8)), transparent) !important;
+    margin-top: 8px !important;
+    width: 100% !important;
+    z-index: 1 !important;
+}
+
 .leave-table-wrap{padding:16px;}
 .leave-table-responsive{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;}
 

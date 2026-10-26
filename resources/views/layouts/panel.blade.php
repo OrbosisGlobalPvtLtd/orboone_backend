@@ -859,9 +859,14 @@
                     minResults = isNaN(parsed) ? 7 : parsed;
                 }
             }
+            const rawAllowClear = jQuery(this).attr('data-allow-clear') ?? jQuery(this).data('allow-clear');
+            let allowClear = true;
+            if (rawAllowClear === false || rawAllowClear === 'false' || rawAllowClear === 0 || rawAllowClear === '0') {
+                allowClear = false;
+            }
             jQuery(this).select2({
                 placeholder: jQuery(this).data('placeholder') || jQuery(this).attr('placeholder') || jQuery(this).find('option:first').text() || 'Search or select...',
-                allowClear: true,
+                allowClear: allowClear,
                 minimumResultsForSearch: minResults,
                 width: '100%',
                 dropdownParent: $modalParent.length ? $modalParent : undefined

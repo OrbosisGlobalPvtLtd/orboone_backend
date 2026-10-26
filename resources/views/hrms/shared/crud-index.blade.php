@@ -1207,6 +1207,7 @@
             @if(!empty($filters))
             @php
                 $hasMonthFilter = collect($filters)->contains('name', 'month');
+                $hasYearFilter = collect($filters)->contains('name', 'year');
                 $reqMonth = request('month');
                 $hasCustomDates = request()->filled('from') || request()->filled('from_date') || request()->filled('to') || request()->filled('to_date');
                 if ($hasCustomDates || $reqMonth === 'custom') {
@@ -1214,7 +1215,7 @@
                 } elseif ($reqMonth !== null) {
                     $activeMonth = $reqMonth;
                 } else {
-                    $activeMonth = $defaultMonth ?? now()->format('Y-m');
+                    $activeMonth = $defaultMonth ?? ($hasYearFilter ? (string) now()->month : now()->format('Y-m'));
                 }
             @endphp
             <div class="orb-filter">
@@ -1225,15 +1226,17 @@
                         $isDateField = in_array($filterName, ['from', 'to', 'from_date', 'to_date']) || ($filter['type'] ?? '') === 'date';
                     @endphp
 
-                    <div class="orb-filter-item {{ ($isDateField && $hasMonthFilter) ? 'js-custom-date-field' : '' }}" style="{{ ($isDateField && $hasMonthFilter && $activeMonth !== 'custom') ? 'display: none;' : '' }}">
+                    <div class="orb-filter-item {{ ($isDateField && $hasMonthFilter && !$hasYearFilter) ? 'js-custom-date-field' : '' }}" style="{{ ($isDateField && $hasMonthFilter && !$hasYearFilter && $activeMonth !== 'custom') ? 'display: none;' : '' }}">
 
                         @if(($filter['type'] ?? 'text') === 'select')
                         @php
                             $selectedVal = request($filter['name'], $filter['default'] ?? ($filter['value'] ?? null));
                             if ($filter['name'] === 'month') {
                                 $selectedVal = $activeMonth;
+                            } elseif ($filter['name'] === 'year' && ($selectedVal === null || $selectedVal === '')) {
+                                $selectedVal = (string) now()->year;
                             }
-                            $filterPlaceholder = $filter['placeholder'] ?? ($filter['name'] === 'employee_id' ? 'All Employee' : ($filter['name'] === 'month' ? '' : 'All ' . ($filter['label'] ?? '')));
+                            $filterPlaceholder = $filter['placeholder'] ?? ($filter['name'] === 'employee_id' ? 'All Employee' : ($filter['name'] === 'month' || $filter['name'] === 'year' ? '' : 'All ' . ($filter['label'] ?? '')));
                         @endphp
 
                         <x-form.select 
@@ -1279,7 +1282,17 @@
                         <button type="submit" class="orb-btn orb-btn-gradient orb-btn-search">
                             <i class="fas fa-search"></i> Search
                         </button>
-                        <a href="{{ url()->current() }}{{ $hasMonthFilter ? '?month=' . now()->format('Y-m') : '' }}" class="orb-btn orb-btn-light orb-btn-reset" title="Reset Filters">
+                        @php
+                            $resetQuery = [];
+                            if ($hasMonthFilter) {
+                                $resetQuery['month'] = $hasYearFilter ? (string) now()->month : now()->format('Y-m');
+                            }
+                            if ($hasYearFilter) {
+                                $resetQuery['year'] = (string) now()->year;
+                            }
+                            $resetUrl = url()->current() . (!empty($resetQuery) ? '?' . http_build_query($resetQuery) : '');
+                        @endphp
+                        <a href="{{ $resetUrl }}" class="orb-btn orb-btn-light orb-btn-reset" title="Reset Filters">
                             <i class="fas fa-undo"></i> Reset
                         </a>
                     </div>

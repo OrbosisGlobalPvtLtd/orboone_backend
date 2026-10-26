@@ -7,6 +7,7 @@ use App\Http\Controllers\Web\HRMS\Concerns\HrmsCrudPage;
 use App\Models\HRMS\Attendance\AttendanceWorkLogM as WorkLog;
 use App\Services\HRMS\ProjectManagement\ProjectAccessScopeS;
 use Illuminate\Http\Request;
+use App\Models\HRMS\ProjectManagement\ProjectM;
 
 class ProjectTeamWorkReportC extends Controller
 {
@@ -54,7 +55,7 @@ class ProjectTeamWorkReportC extends Controller
         }
 
         $workLogs = $query->orderByDesc('work_date')->orderByDesc('id')->paginate(25)->appends($request->query());
-        $projects = \App\Models\HRMS\ProjectManagement\ProjectM::where('status', 'active')->orderBy('name')->get();
+        $projects = ProjectM::where('status', 'active')->orderBy('name')->get();
 
         return view('hrms.projects.team.work-reports', compact('workLogs', 'projectId', 'projects'));
     }

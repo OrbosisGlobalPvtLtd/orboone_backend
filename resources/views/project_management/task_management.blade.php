@@ -3,6 +3,7 @@
 @section('_head')
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap4.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap4.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 @endsection
 
@@ -363,7 +364,7 @@
                     @if(!$roleCtx['is_employee'])
                     <div>
                         <label>Assignee Employee</label>
-                        <select name="user_id" class="form-select">
+                        <select name="user_id" class="form-control select2-searchable">
                             <option value="all">All Assignees</option>
                             @foreach($employees as $emp)
                                 <option value="{{ $emp->user_id }}" {{ request('user_id') == $emp->user_id ? 'selected' : '' }}>
@@ -376,7 +377,7 @@
 
                     <div>
                         <label>Status Filter</label>
-                        <select name="status" class="form-select">
+                        <select name="status" class="form-control select2-searchable">
                             <option value="all" {{ request('status') == 'all' ? 'selected' : '' }}>All Statuses</option>
                             <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
                             <option value="in_progress" {{ request('status') == 'in_progress' ? 'selected' : '' }}>In Progress</option>
@@ -390,12 +391,12 @@
 
                     <div>
                         <label>Start Date</label>
-                        <input type="date" name="start_date" class="form-control" value="{{ request('start_date') }}">
+                        <x-form.date-picker name="start_date" :value="request('start_date')" placeholder="Start date" />
                     </div>
 
                     <div>
                         <label>End Date</label>
-                        <input type="date" name="end_date" class="form-control" value="{{ request('end_date') }}">
+                        <x-form.date-picker name="end_date" :value="request('end_date')" placeholder="End date" />
                     </div>
 
                     <div>
@@ -521,7 +522,7 @@
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label>Assign To Employee <span class="text-danger">*</span></label>
-                            <select name="user_id" class="form-select" required>
+                            <select name="user_id" class="form-control" required>
                                 <option value="">Select Employee</option>
                                 @foreach($employees as $emp)
                                     <option value="{{ $emp->user_id }}">{{ $emp->name }} ({{ $emp->employee_code }})</option>
@@ -530,14 +531,14 @@
                         </div>
                         <div class="col-md-6">
                             <label>Due Date <span class="text-danger">*</span></label>
-                            <input type="date" name="due_date" class="form-control" required value="{{ date('Y-m-d') }}">
+                            <x-form.date-picker name="due_date" :value="date('Y-m-d')" placeholder="Select Due Date" />
                         </div>
                     </div>
 
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label>Initial Status</label>
-                            <select name="status" class="form-select">
+                            <select name="status" class="form-control">
                                 <option value="pending">Pending</option>
                                 <option value="in_progress">In Progress</option>
                                 <option value="on_hold">On Hold</option>
@@ -585,7 +586,7 @@
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label>Assign To Employee <span class="text-danger">*</span></label>
-                            <select name="user_id" class="form-select" required>
+                            <select name="user_id" class="form-control" required>
                                 @foreach($employees as $emp)
                                     <option value="{{ $emp->user_id }}" {{ $task->user_id == $emp->user_id ? 'selected' : '' }}>
                                         {{ $emp->name }} ({{ $emp->employee_code }})
@@ -595,7 +596,7 @@
                         </div>
                         <div class="col-md-6">
                             <label>Due Date <span class="text-danger">*</span></label>
-                            <input type="date" name="due_date" class="form-control" value="{{ $task->due_date ? \Carbon\Carbon::parse($task->due_date)->format('Y-m-d') : '' }}" required>
+                            <x-form.date-picker name="due_date" :value="$task->due_date ? \Carbon\Carbon::parse($task->due_date)->format('Y-m-d') : ''" placeholder="Select Due Date" />
                         </div>
                     </div>
 
@@ -856,7 +857,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('taskSearchForm');
     if (!form) return;
 
-    const inputs = form.querySelectorAll('select, input[type="date"]');
+    const inputs = form.querySelectorAll('select:not(.select2-searchable), input[type="date"]');
     inputs.forEach(input => {
         input.addEventListener('change', () => {
             form.submit();
@@ -880,6 +881,32 @@ document.addEventListener('DOMContentLoaded', function() {
             searchInput.value = val;
         }
     }
+});
+</script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+$(document).ready(function() {
+    $('.select2-searchable').select2({
+        width: '100%'
+    }).on('change', function() {
+        if ($(this).closest('#taskSearchForm').length) {
+            $('#taskSearchForm').submit();
+        }
+    });
+
+    $('#createTaskModal').on('shown.bs.modal', function () {
+        $(this).find('.select2-searchable').select2({
+            dropdownParent: $(this),
+            width: '100%'
+        });
+    });
+
+    $('[id^="editTaskModal"]').on('shown.bs.modal', function () {
+        $(this).find('.select2-searchable').select2({
+            dropdownParent: $(this),
+            width: '100%'
+        });
+    });
 });
 </script>
 @endsection

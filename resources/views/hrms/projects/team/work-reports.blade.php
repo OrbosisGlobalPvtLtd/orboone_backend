@@ -3,6 +3,8 @@
 @section('page_title', 'Team Daily Work Reports')
 
 @section('_head')
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
 <style>
 :root {
     --orb-primary: {{ $branding['primary_color'] ?? '#4B00E8' }};
@@ -20,6 +22,7 @@
     padding: 24px 20px 48px;
     background: var(--orb-bg);
     min-height: calc(100vh - 90px);
+    font-family: 'Outfit', sans-serif;
 }
 
 .prj-container {
@@ -30,10 +33,15 @@
 .prj-hero {
     background: linear-gradient(135deg, {{ $branding['primary_color'] ?? '#4B00E8' }} 0%, {{ $branding['secondary_color'] ?? '#FF5252' }} 100%);
     border-radius: 20px;
-    padding: 28px 32px;
+    padding: 24px 28px;
     margin-bottom: 24px;
     color: #ffffff;
     box-shadow: 0 14px 34px rgba(75, 0, 232, 0.18);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
 }
 
 .prj-card {
@@ -73,6 +81,31 @@
 .status-pill-testing { background: #E0E7FF; color: #3730A3; border: 1px solid #A5B4FC; }
 .status-pill-in_progress { background: #FEF3C7; color: #B45309; border: 1px solid #FDE68A; }
 .status-pill-blocked { background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5; }
+
+/* Select2 Standard Filter Skin */
+.select2-container--default .select2-selection--single {
+    height: 38px !important;
+    border: 1px solid #CBD5E1 !important;
+    border-radius: 10px !important;
+    display: flex !important;
+    align-items: center !important;
+    padding: 0 10px !important;
+    background-color: #fff !important;
+}
+
+.select2-container--default.select2-container--focus .select2-selection--single,
+.select2-container--default.select2-container--open .select2-selection--single {
+    border-color: var(--orb-primary) !important;
+    box-shadow: 0 0 0 3px rgba(75, 0, 232, 0.1) !important;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 36px !important;
+    font-size: 12.5px !important;
+    font-weight: 650 !important;
+    color: #101828 !important;
+    padding-left: 0 !important;
+}
 </style>
 @endsection
 
@@ -81,16 +114,23 @@
     <div class="prj-container">
         <!-- Hero Header -->
         <div class="prj-hero">
-            <h1 class="text-white font-weight-bold mb-1"><i class="fas fa-file-alt mr-2"></i>Team Daily Work Reports</h1>
-            <p class="mb-0 opacity-90">Daily work log submissions of project team members and team leads.</p>
+            <div>
+                <h2 class="text-white font-weight-bold mb-1"><i class="fas fa-file-alt mr-2"></i>Team Daily Work Reports</h2>
+                <p class="mb-0 opacity-90">Daily work log submissions of project team members and team leads.</p>
+            </div>
+            <div>
+                <a href="{{ route('projects.index') }}" class="btn btn-light font-weight-bold px-3 py-2" style="border-radius: 10px; color: var(--orb-primary);">
+                    <i class="fas fa-arrow-left mr-1"></i> Back to Projects
+                </a>
+            </div>
         </div>
 
         <!-- Filter Toolbar -->
         <div class="prj-card p-4">
-            <form method="GET" action="{{ route('projects.team.work_reports') }}" class="form-row align-items-center">
-                <div class="col-md-3 my-1">
+            <form method="GET" action="{{ route('projects.team.work_reports') }}" class="form-row align-items-end">
+                <div class="col-md-4 my-1">
                     <label class="small font-weight-bold text-muted">Project Scope</label>
-                    <select name="project_id" class="form-control">
+                    <select name="project_id" class="form-control select2-searchable">
                         <option value="">-- All Projects --</option>
                         @foreach($projects as $prj)
                             <option value="{{ $prj->id }}" {{ request('project_id') == $prj->id ? 'selected' : '' }}>{{ $prj->name }} ({{ $prj->project_code }})</option>
@@ -99,17 +139,17 @@
                 </div>
                 <div class="col-md-3 my-1">
                     <label class="small font-weight-bold text-muted">From Date</label>
-                    <input type="date" name="from" class="form-control" value="{{ request('from') }}">
+                    <x-form.date-picker name="from" :value="request('from')" placeholder="Select from date" />
                 </div>
                 <div class="col-md-3 my-1">
                     <label class="small font-weight-bold text-muted">To Date</label>
-                    <input type="date" name="to" class="form-control" value="{{ request('to') }}">
+                    <x-form.date-picker name="to" :value="request('to')" placeholder="Select to date" />
                 </div>
-                <div class="col-md-3 my-1 text-right align-self-end">
-                    <button type="submit" class="btn text-white px-4 font-weight-bold" style="background: var(--orb-primary); border-radius: 10px;">
+                <div class="col-md-2 my-1 text-right">
+                    <button type="submit" class="btn text-white px-3 font-weight-bold" style="background: var(--orb-primary); border-radius: 10px; height: 38px;">
                         <i class="fas fa-filter mr-1"></i> Filter
                     </button>
-                    <a href="{{ route('projects.team.work_reports') }}" class="btn btn-light border px-3 ml-1" style="border-radius: 10px;">
+                    <a href="{{ route('projects.team.work_reports') }}" class="btn btn-light border px-3 ml-1" style="border-radius: 10px; height: 38px;">
                         <i class="fas fa-undo mr-1"></i> Reset
                     </a>
                 </div>
@@ -197,10 +237,12 @@
                     </tbody>
                 </table>
             </div>
-        </div>
 
-        <div class="d-flex justify-content-center mt-4">
-            {{ $workLogs->links() }}
+            @if(method_exists($workLogs, 'links'))
+                <div class="px-4 py-3 bg-light border-top">
+                    {{ $workLogs->appends(request()->query())->links('vendor.pagination.orbo') }}
+                </div>
+            @endif
         </div>
     </div>
 </div>
@@ -248,8 +290,15 @@
 @endsection
 
 @section('_script')
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
 $(document).ready(function() {
+    if ($.fn.select2) {
+        $('.select2-searchable').select2({
+            width: '100%'
+        });
+    }
+
     $('.view-report-btn').on('click', function() {
         var emp = $(this).data('employee');
         var code = $(this).data('code');

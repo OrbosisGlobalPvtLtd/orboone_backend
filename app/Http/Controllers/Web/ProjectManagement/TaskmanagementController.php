@@ -11,6 +11,10 @@ use App\Models\Core\UserM as User;
 use App\Services\HRMS\Notification\NotificationS;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
+use App\Models\Core\AccessM;
+use App\Services\HRMS\Employee\EmployeeEligibilityS;
+use Illuminate\Support\Str;
 
 class TaskmanagementController extends Controller
 {
@@ -122,7 +126,7 @@ class TaskmanagementController extends Controller
             'verified'    => $allTasks->where('status', 'verified')->count(),
             'closed'      => $allTasks->where('status', 'closed')->count(),
             'due_today'   => $allTasks->filter(function ($t) {
-                return $t->due_date && \Carbon\Carbon::parse($t->due_date)->isToday() && !in_array($t->status, ['completed', 'verified', 'closed']);
+                return $t->due_date && Carbon::parse($t->due_date)->isToday() && !in_array($t->status, ['completed', 'verified', 'closed']);
             })->count(),
             'overdue'     => $allTasks->filter(function ($t) {
                 return $t->is_overdue;
@@ -141,7 +145,7 @@ class TaskmanagementController extends Controller
         }
 
         $employees = $empQuery->orderBy('users.name')->get();
-        $accesses = \App\Models\Core\AccessM::where('role_id', auth()->user()->system_role_id)->with('menu')->get();
+        $accesses = AccessM::where('role_id', auth()->user()->system_role_id)->with('menu')->get();
 
         return view('project_management.task_management', compact('tasks', 'employees', 'accesses', 'stats', 'roleCtx'));
     }
@@ -175,11 +179,11 @@ class TaskmanagementController extends Controller
             'completed'   => $allTasks->where('status', 'completed')->count(),
             'verified'    => $allTasks->where('status', 'verified')->count(),
             'closed'      => $allTasks->where('status', 'closed')->count(),
-            'due_today'   => $allTasks->filter(fn($t) => $t->due_date && \Carbon\Carbon::parse($t->due_date)->isToday() && !in_array($t->status, ['completed', 'verified', 'closed']))->count(),
+            'due_today'   => $allTasks->filter(fn($t) => $t->due_date && Carbon::parse($t->due_date)->isToday() && !in_array($t->status, ['completed', 'verified', 'closed']))->count(),
             'overdue'     => $allTasks->filter(fn($t) => $t->is_overdue)->count(),
         ];
 
-        $accesses = \App\Models\Core\AccessM::where('role_id', auth()->user()->system_role_id)->with('menu')->get();
+        $accesses = AccessM::where('role_id', auth()->user()->system_role_id)->with('menu')->get();
 
         return view('project_management.my_tasks', compact('tasks', 'accesses', 'stats', 'roleCtx'));
     }
@@ -199,7 +203,7 @@ class TaskmanagementController extends Controller
         }
         $employees = $empQuery->get();
         $roles = Role::all();
-        $accesses = \App\Models\Core\AccessM::where('role_id', auth()->user()->system_role_id)->with('menu')->get();
+        $accesses = AccessM::where('role_id', auth()->user()->system_role_id)->with('menu')->get();
 
         return view('project_management.add_task', compact('employees', 'roles', 'accesses', 'roleCtx'));
     }
@@ -229,7 +233,7 @@ class TaskmanagementController extends Controller
 
         $user = User::find($request->user_id);
         $employee = EmployeeM::where('user_id', $request->user_id)->first();
-        $eligibilityService = app(\App\Services\HRMS\Employee\EmployeeEligibilityS::class);
+        $eligibilityService = app(EmployeeEligibilityS::class);
 
         if ($employee && !$eligibilityService->canUseTasks($employee)) {
             if ($eligibilityService->isExitCompleted($employee) || $eligibilityService->isTerminated($employee)) {
@@ -268,7 +272,7 @@ class TaskmanagementController extends Controller
             app(NotificationS::class)->notifyUser(
                 $request->user_id,
                 'Task Assigned: ' . $task->title,
-                'You have been assigned a new task due on ' . \Carbon\Carbon::parse($task->due_date)->format('M d, Y') . '.',
+                'You have been assigned a new task due on ' . Carbon::parse($task->due_date)->format('M d, Y') . '.',
                 ['task_id' => $task->id, 'type' => 'task_assigned']
             );
         } catch (\Throwable $e) {
@@ -300,7 +304,7 @@ class TaskmanagementController extends Controller
             $empQuery->whereIn('user_id', $roleCtx['reporting_user_ids']);
         }
         $employees = $empQuery->get();
-        $accesses = \App\Models\Core\AccessM::where('role_id', auth()->user()->system_role_id)->with('menu')->get();
+        $accesses = AccessM::where('role_id', auth()->user()->system_role_id)->with('menu')->get();
 
         return view('project_management.add_task', compact('task', 'employees', 'accesses', 'roleCtx'));
     }
@@ -504,7 +508,7 @@ class TaskmanagementController extends Controller
             'Comment Added',
             auth()->id(),
             auth()->user()->name,
-            'Added a comment: "' . \Illuminate\Support\Str::limit($request->comment, 50) . '"'
+            'Added a comment: "' . Str::limit($request->comment, 50) . '"'
         );
 
         $task->save();
@@ -540,8 +544,8 @@ class TaskmanagementController extends Controller
                 'title' => $task->title,
                 'description' => $task->clean_description,
 
-                'due_date' => $task->due_date ? \Carbon\Carbon::parse($task->due_date)->format('Y-m-d') : null,
-                'formatted_due_date' => $task->due_date ? \Carbon\Carbon::parse($task->due_date)->format('M d, Y') : '-',
+                'due_date' => $task->due_date ? Carbon::parse($task->due_date)->format('Y-m-d') : null,
+                'formatted_due_date' => $task->due_date ? Carbon::parse($task->due_date)->format('M d, Y') : '-',
                 'status' => $task->status,
                 'is_overdue' => $task->is_overdue,
                 'user_id' => $task->user_id,

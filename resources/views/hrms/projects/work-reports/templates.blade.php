@@ -3,6 +3,7 @@
 @section('page_title', 'Work Report Templates')
 
 @section('_head')
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 :root {
     --orb-primary: {{ $branding['primary_color'] ?? '#4B00E8' }};
@@ -20,6 +21,7 @@
     padding: 24px 20px 48px;
     background: var(--orb-bg);
     min-height: calc(100vh - 90px);
+    font-family: 'Outfit', sans-serif;
 }
 
 .prj-container {

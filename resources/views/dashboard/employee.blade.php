@@ -346,44 +346,185 @@
         max-width: 250px;
     }
 
+    /* Responsive Enhancements for Dashboard & Calendar */
+    .cal-grid-wrapper {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .cal-grid-inner {
+        min-width: 280px;
+        width: 100%;
+    }
+
+    .cal-day-cell {
+        min-height: 44px;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .cal-day-cell:hover {
+        transform: scale(1.04);
+        z-index: 5;
+    }
+
+    .cal-summary-bar {
+        border-top: 1px solid #F1F5F9;
+        font-size: 10.5px;
+    }
+
+    .cal-summary-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 10px;
+        border-radius: 99px;
+        font-weight: 800;
+        font-size: 11px;
+        line-height: 1;
+    }
+
+    .floating-punch-container {
+        position: fixed;
+        bottom: 32px;
+        right: 32px;
+        z-index: 990;
+        transition: all 0.3s ease;
+    }
+
     @media(max-width:1200px) {
         .stat-grid {
             grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
         }
         .dash-grid {
             grid-template-columns: 1fr;
+            gap: 20px;
         }
     }
 
     @media(max-width:992px) {
         .emp-dash {
-            padding: 18px;
+            padding: 16px 14px;
+        }
+        .emp-hero {
+            padding: 22px 24px;
         }
     }
 
     @media(max-width:768px) {
         .emp-dash {
-            padding: 12px;
+            padding: 12px 10px;
         }
         .emp-hero {
             flex-direction: column;
             align-items: flex-start;
-            padding: 20px;
+            padding: 18px 20px;
             border-radius: 20px;
             gap: 14px;
         }
         .emp-hero h3 {
-            font-size: 22px;
+            font-size: 21px;
         }
         .emp-hero-badge {
             width: 100%;
             justify-content: center;
         }
         .stat-grid {
-            grid-template-columns: 1fr;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+        .stat-card {
+            padding: 14px 12px;
+            min-height: 110px;
+            border-radius: 18px;
+        }
+        .stat-icon {
+            height: 36px;
+            width: 36px;
+            border-radius: 10px;
+            font-size: 15px;
+        }
+        .stat-title {
+            font-size: 9px;
+        }
+        .stat-value {
+            font-size: 17px;
+            margin-top: 4px;
+        }
+        .stat-helper {
+            font-size: 10px;
+            margin-top: 4px;
         }
         .quick-actions-grid {
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+        .quick-action-btn {
+            padding: 10px 4px;
+            border-radius: 14px;
+            gap: 6px;
+        }
+        .quick-action-icon {
+            width: 34px;
+            height: 34px;
+            font-size: 14px;
+            border-radius: 10px;
+        }
+        .quick-action-label {
+            font-size: 9px;
+        }
+        .cal-nav-container {
+            margin-top: 8px;
+            width: 100%;
+            justify-content: space-between;
+        }
+        .cal-nav-container select {
+            flex-grow: 1;
+        }
+        .cal-summary-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            justify-content: center;
+        }
+        .cal-summary-pill {
+            font-size: 9.5px;
+            padding: 3px 8px;
+        }
+        .floating-punch-container {
+            bottom: 22px;
+            right: 18px;
+        }
+        .floating-punch-container button {
+            padding: 10px 18px !important;
+            font-size: 13px !important;
+        }
+    }
+
+    @media(max-width:480px) {
+        .stat-grid {
             grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        .quick-actions-grid {
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+        }
+        .cal-day-header {
+            font-size: 9px !important;
+        }
+        .cal-day-cell {
+            min-height: 38px !important;
+            border-radius: 8px !important;
+            padding: 2px 1px !important;
+        }
+        .cal-day-num {
+            font-size: 10.5px !important;
+        }
+        .cal-day-label {
+            font-size: 6.5px !important;
         }
     }
 </style>
@@ -419,7 +560,7 @@
                             <i class="fas fa-fingerprint mr-2"></i> Punch In
                         </button>
                     @elseif (!$hasPunchedOut)
-                        <button type="button" class="btn btn-danger font-weight-bold px-4 py-2 shadow" data-toggle="modal" data-target="#webPunchOutModal" style="border-radius: 50px; font-weight: 800; font-size: 14px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: none;">
+                        <button type="button" class="btn font-weight-bold px-4 py-2 shadow text-white" data-toggle="modal" data-target="#webPunchOutModal" style="border-radius: 50px; font-weight: 800; font-size: 14px; background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%) !important; color: #fff !important; border: 1px solid rgba(255, 255, 255, 0.3); box-shadow: 0 8px 20px rgba(239, 68, 68, 0.35) !important;">
                             <i class="fas fa-sign-out-alt mr-2"></i> Punch Out
                         </button>
                     @else
@@ -437,55 +578,152 @@
 
         @include('dashboard.partials.birthday-widget', ['dashboard' => $dashboard, 'show_upcoming' => false])
 
-        {{-- Flash Messages & Validation Alerts --}}
-        @if (session('error') || session('danger'))
-            <div class="alert alert-danger border-0 shadow-lg mb-4 mt-3" style="border-radius: 18px; background: #fef2f2; border-left: 6px solid #ef4444 !important; padding: 18px 22px;">
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-exclamation-circle text-danger fa-2x mr-3"></i>
-                    <div>
-                        <h6 style="color: #991b1b; font-weight: 800; margin: 0 0 2px 0;">Punch-In / Attendance Alert</h6>
-                        <p class="mb-0 text-dark font-weight-bold" style="font-size: 14px;">{{ session('error') ?? session('danger') }}</p>
+        {{-- Floating Toast Notification for Flash Messages (Top-Right Snackbar) --}}
+        @if (session('error') || session('danger') || session('success') || (isset($errors) && $errors->any()))
+            @php
+                $isErr = (bool)(session('error') || session('danger') || (isset($errors) && $errors->any()));
+                $toastMsg = session('error') ?? session('danger') ?? session('success');
+                if (!$toastMsg && isset($errors) && $errors->any()) {
+                    $toastMsg = $errors->first();
+                }
+                $tLower = strtolower($toastMsg ?? '');
+
+                if (!$isErr) {
+                    $toastTitle = 'Attendance Success';
+                    $toastIcon = 'fa-check-circle';
+                    $toastBorderColor = '#22c55e';
+                    $toastIconColor = '#16a34a';
+                    $toastIconBg = '#dcfce7';
+                    $toastTitleColor = '#166534';
+                } elseif (str_contains($tLower, 'work from home') || str_contains($tLower, 'wfh')) {
+                    $toastTitle = 'Work From Home Approval Required';
+                    $toastIcon = 'fa-laptop-house';
+                    $toastBorderColor = '#0284c7';
+                    $toastIconColor = '#0284c7';
+                    $toastIconBg = '#e0f2fe';
+                    $toastTitleColor = '#0369a1';
+                } elseif (str_contains($tLower, 'premises') || str_contains($tLower, 'geofence') || str_contains($tLower, 'location') || str_contains($tLower, 'gps') || str_contains($tLower, 'outside')) {
+                    $toastTitle = 'Office Location Mismatch';
+                    $toastIcon = 'fa-map-marker-alt';
+                    $toastBorderColor = '#d97706';
+                    $toastIconColor = '#d97706';
+                    $toastIconBg = '#fef3c7';
+                    $toastTitleColor = '#b45309';
+                } elseif (str_contains($tLower, 'holiday') || str_contains($tLower, 'week off') || str_contains($tLower, 'week-off') || str_contains($tLower, 'work request')) {
+                    $toastTitle = 'Holiday / Week-off Restriction';
+                    $toastIcon = 'fa-calendar-day';
+                    $toastBorderColor = '#7c3aed';
+                    $toastIconColor = '#7c3aed';
+                    $toastIconBg = '#f3e8ff';
+                    $toastTitleColor = '#6d28d9';
+                } elseif (str_contains($tLower, 'leave')) {
+                    $toastTitle = 'Attendance Disabled (On Leave)';
+                    $toastIcon = 'fa-plane-departure';
+                    $toastBorderColor = '#0284c7';
+                    $toastIconColor = '#0284c7';
+                    $toastIconBg = '#e0f2fe';
+                    $toastTitleColor = '#0369a1';
+                } elseif (str_contains($tLower, 'too early') || str_contains($tLower, 'early') || str_contains($tLower, 'allowed from')) {
+                    $toastTitle = 'Attendance Window Unavailable';
+                    $toastIcon = 'fa-clock';
+                    $toastBorderColor = '#f59e0b';
+                    $toastIconColor = '#f59e0b';
+                    $toastIconBg = '#fffbe6';
+                    $toastTitleColor = '#b45309';
+                } elseif (!empty($isPunchBlocked) || str_contains($tLower, 'closed') || str_contains($tLower, 'blocked') || str_contains($tLower, 'cutoff')) {
+                    $toastTitle = 'Attendance Punch Blocked';
+                    $toastIcon = 'fa-user-lock';
+                    $toastBorderColor = '#dc2626';
+                    $toastIconColor = '#dc2626';
+                    $toastIconBg = '#fee2e2';
+                    $toastTitleColor = '#991b1b';
+                } else {
+                    $toastTitle = 'Attendance Notice';
+                    $toastIcon = 'fa-exclamation-triangle';
+                    $toastBorderColor = '#ea580c';
+                    $toastIconColor = '#ea580c';
+                    $toastIconBg = '#ffedd5';
+                    $toastTitleColor = '#c2410c';
+                }
+            @endphp
+            <div id="orbFloatingSnackbar" class="shadow-lg p-3 d-flex align-items-start" style="
+                position: fixed;
+                top: 24px;
+                right: 24px;
+                z-index: 99999;
+                min-width: 320px;
+                max-width: 440px;
+                background: #ffffff;
+                border-radius: 16px;
+                border: 1px solid rgba(0,0,0,0.06);
+                border-left: 6px solid {{ $toastBorderColor }};
+                box-shadow: 0 12px 30px rgba(0,0,0,0.15) !important;
+                animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            ">
+                <div class="mr-3 mt-1 d-flex align-items-center justify-content-center" style="
+                    width: 38px;
+                    height: 38px;
+                    border-radius: 10px;
+                    background: {{ $toastIconBg }};
+                    color: {{ $toastIconColor }};
+                    flex-shrink: 0;
+                ">
+                    <i class="fas {{ $toastIcon }} fa-lg"></i>
+                </div>
+                <div class="flex-grow-1 pr-2">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <strong style="color: {{ $toastTitleColor }}; font-size: 13.5px;">{{ $toastTitle }}</strong>
+                        <button type="button" onclick="dismissOrbSnackbar()" class="border-0 bg-transparent text-muted" style="cursor: pointer; font-size: 16px; padding: 0 4px; line-height: 1;">&times;</button>
                     </div>
+                    <p class="mb-0 text-dark font-weight-bold" style="font-size: 12.5px; line-height: 1.4;">{{ $toastMsg }}</p>
                 </div>
             </div>
+            <style>
+                @keyframes slideInRight {
+                    from { transform: translateX(110%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+                @keyframes slideOutRight {
+                    from { transform: translateX(0); opacity: 1; }
+                    to { transform: translateX(110%); opacity: 0; }
+                }
+            </style>
+            <script>
+                function dismissOrbSnackbar() {
+                    const el = document.getElementById('orbFloatingSnackbar');
+                    if (el) {
+                        el.style.animation = 'slideOutRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards';
+                        setTimeout(() => el.remove(), 400);
+                    }
+                }
+                setTimeout(() => dismissOrbSnackbar(), 5000);
+            </script>
         @endif
 
-        @if (session('success'))
-            <div class="alert alert-success border-0 shadow-lg mb-4 mt-3" style="border-radius: 18px; background: #f0fdf4; border-left: 6px solid #22c55e !important; padding: 18px 22px;">
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-check-circle text-success fa-2x mr-3"></i>
-                    <div>
-                        <h6 style="color: #166534; font-weight: 800; margin: 0 0 2px 0;">Success</h6>
-                        <p class="mb-0 text-dark font-weight-bold" style="font-size: 14px;">{{ session('success') }}</p>
-                    </div>
-                </div>
-            </div>
-        @endif
-
-        @if (isset($errors) && $errors->any())
-            <div class="alert alert-danger border-0 shadow-lg mb-4 mt-3" style="border-radius: 18px; background: #fef2f2; border-left: 6px solid #ef4444 !important; padding: 18px 22px;">
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-exclamation-triangle text-danger fa-2x mr-3"></i>
-                    <div>
-                        <h6 style="color: #991b1b; font-weight: 800; margin: 0 0 2px 0;">Punch-In Form Errors</h6>
-                        <ul class="mb-0 text-dark font-weight-bold pl-3" style="font-size: 14px;">
-                            @foreach ($errors->all() as $error)
-                                <li>{{ $error }}</li>
-                            @endforeach
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        @endif
-
-        {{-- Punch Blocked Warning Banner (Displayed right below Hero Header) --}}
+        {{-- Punch Blocked Warning Banner with Regularization Action Button --}}
         @if ($isPunchBlocked)
-            <div class="alert alert-danger border-0 shadow-lg mb-4 mt-4" style="border-radius: 20px; background: #fef2f2; border-left: 6px solid #ef4444 !important; padding: 22px;">
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-user-lock text-danger fa-3x mr-3"></i>
-                    <div>
-                        <h5 style="color: #991b1b; font-weight: 800; margin: 0 0 4px 0;">Punch In Blocked for Today</h5>
-                        <p class="mb-0 text-dark font-weight-bold">Your attendance punch-in is currently blocked by HR system for today. Please contact HR Administrator to request an unlock.</p>
+            <div class="card border-0 shadow-sm mb-4 mt-3" style="border-radius: 20px; background: linear-gradient(135deg, #fff5f5 0%, #ffeef0 100%); border: 1.5px solid #fecaca !important; box-shadow: 0 8px 24px rgba(239, 68, 68, 0.08) !important;">
+                <div class="card-body p-4 d-flex align-items-center justify-content-between flex-wrap gap-3">
+                    <div class="d-flex align-items-center">
+                        <div class="mr-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 54px; height: 54px; background: #fee2e2; color: #dc2626; border-radius: 16px; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);">
+                            <i class="fas fa-user-lock fa-2x"></i>
+                        </div>
+                        <div>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <h5 class="font-weight-bold mb-0" style="color: #991b1b; font-size: 16px;">Punch In Blocked for Today</h5>
+                                <span class="badge badge-danger px-2 py-1 ml-2" style="border-radius: 6px; font-size: 10px; font-weight: 800; letter-spacing: 0.5px;">ACTION REQUIRED</span>
+                            </div>
+                            <p class="mb-0 text-dark font-weight-bold" style="font-size: 13px; line-height: 1.5; color: #374151;">
+                                Aapka attendance punch-in block ho gaya hai. Isko unlock karne ke liye <strong>Regularization request</strong> send karein ya HR Administrator se contact karein.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 mt-2 mt-md-0 flex-wrap">
+                        @if (Route::has('hrms.attendance.regularizations.index'))
+                            <a href="{{ route('hrms.attendance.regularizations.index') }}" class="btn btn-danger font-weight-bold shadow-sm px-4 py-2" style="border-radius: 12px; font-size: 13px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: none; letter-spacing: 0.3px;">
+                                <i class="fas fa-file-signature mr-2"></i> Apply Regularization
+                            </a>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -614,12 +852,12 @@
                     </h5>
 
                     <!-- Compact Month Navigation Controls -->
-                    <div class="d-flex align-items-center gap-1">
+                    <div class="d-flex align-items-center gap-1 cal-nav-container">
                         <button type="button" class="btn btn-sm btn-light border shadow-sm px-2 py-1" id="cal_prev_btn" onclick="changeCalMonth(-1)" style="border-radius: 8px; font-weight: 800;">
                             <i class="fas fa-chevron-left" style="font-size: 10px;"></i>
                         </button>
                         
-                        <select id="cal_month_select" class="form-control form-control-sm border shadow-sm px-1" style="border-radius: 8px; font-weight: 800; width: 88px; font-size: 11px; height: 28px;" onchange="fetchCalData()">
+                        <select id="cal_month_select" class="form-control form-control-sm border shadow-sm px-1 select2-searchable" style="border-radius: 8px; font-weight: 800; width: 88px; font-size: 11px; height: 28px;" onchange="fetchCalData()">
                             @foreach(range(1, 12) as $m)
                                 <option value="{{ $m }}" {{ $m == now()->month ? 'selected' : '' }}>
                                     {{ \Carbon\Carbon::create()->month($m)->format('M') }}
@@ -627,7 +865,7 @@
                             @endforeach
                         </select>
 
-                        <select id="cal_year_select" class="form-control form-control-sm border shadow-sm px-1" style="border-radius: 8px; font-weight: 800; width: 68px; font-size: 11px; height: 28px;" onchange="fetchCalData()">
+                        <select id="cal_year_select" class="form-control form-control-sm border shadow-sm px-1 select2-searchable" style="border-radius: 8px; font-weight: 800; width: 68px; font-size: 11px; height: 28px;" onchange="fetchCalData()">
                             @foreach(range(now()->year - 2, now()->year + 1) as $y)
                                 <option value="{{ $y }}" {{ $y == now()->year ? 'selected' : '' }}>{{ $y }}</option>
                             @endforeach
@@ -640,39 +878,41 @@
                 </div>
 
                 <div class="orb-card-body p-3 d-flex flex-column justify-content-between">
-                    <div>
-                        <!-- Calendar Grid Headers (MON TUE WED THU FRI SAT SUN) -->
-                        <div class="calendar-grid-header mb-2" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center;">
-                            <div class="cal-day-header font-weight-bold text-dark" style="font-size: 10.5px; letter-spacing: 0.5px; text-transform: uppercase;">MON</div>
-                            <div class="cal-day-header font-weight-bold text-dark" style="font-size: 10.5px; letter-spacing: 0.5px; text-transform: uppercase;">TUE</div>
-                            <div class="cal-day-header font-weight-bold text-dark" style="font-size: 10.5px; letter-spacing: 0.5px; text-transform: uppercase;">WED</div>
-                            <div class="cal-day-header font-weight-bold text-dark" style="font-size: 10.5px; letter-spacing: 0.5px; text-transform: uppercase;">THU</div>
-                            <div class="cal-day-header font-weight-bold text-dark" style="font-size: 10.5px; letter-spacing: 0.5px; text-transform: uppercase;">FRI</div>
-                            <div class="cal-day-header font-weight-bold text-secondary" style="font-size: 10.5px; letter-spacing: 0.5px; text-transform: uppercase;">SAT</div>
-                            <div class="cal-day-header font-weight-bold text-danger" style="font-size: 10.5px; letter-spacing: 0.5px; text-transform: uppercase;">SUN</div>
-                        </div>
+                    <div class="cal-grid-wrapper">
+                        <div class="cal-grid-inner">
+                            <!-- Calendar Grid Headers (MON TUE WED THU FRI SAT SUN) -->
+                            <div class="calendar-grid-header mb-2" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center;">
+                                <div class="cal-day-header font-weight-bold text-dark" style="font-size: 10.5px; letter-spacing: 0.5px; text-transform: uppercase;">MON</div>
+                                <div class="cal-day-header font-weight-bold text-dark" style="font-size: 10.5px; letter-spacing: 0.5px; text-transform: uppercase;">TUE</div>
+                                <div class="cal-day-header font-weight-bold text-dark" style="font-size: 10.5px; letter-spacing: 0.5px; text-transform: uppercase;">WED</div>
+                                <div class="cal-day-header font-weight-bold text-dark" style="font-size: 10.5px; letter-spacing: 0.5px; text-transform: uppercase;">THU</div>
+                                <div class="cal-day-header font-weight-bold text-dark" style="font-size: 10.5px; letter-spacing: 0.5px; text-transform: uppercase;">FRI</div>
+                                <div class="cal-day-header font-weight-bold text-secondary" style="font-size: 10.5px; letter-spacing: 0.5px; text-transform: uppercase;">SAT</div>
+                                <div class="cal-day-header font-weight-bold text-danger" style="font-size: 10.5px; letter-spacing: 0.5px; text-transform: uppercase;">SUN</div>
+                            </div>
 
-                        <!-- Compact Dynamic Days Grid Container -->
-                        <div id="attendance_calendar_grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; min-height: 180px;">
-                            <!-- Rendered dynamically by JavaScript -->
+                            <!-- Compact Dynamic Days Grid Container -->
+                            <div id="attendance_calendar_grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; min-height: 180px;">
+                                <!-- Rendered dynamically by JavaScript -->
+                            </div>
                         </div>
                     </div>
 
                     <!-- Shifted Bottom Summary Badges Bar -->
-                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-1 mt-3 pt-2" style="border-top: 1px solid #F1F5F9; font-size: 10.5px;">
-                        <span class="px-2 py-1 rounded-pill" style="background:#DCFCE7; color:#15803D; font-weight:800; display:inline-flex; align-items:center; gap:4px;">
+                    <div class="cal-summary-bar d-flex align-items-center justify-content-between flex-wrap gap-1 mt-3 pt-2">
+                        <span class="cal-summary-pill" style="background:#DCFCE7; color:#15803D;">
                             <span style="width:6px; height:6px; border-radius:50%; background:#16A34A;"></span> Present: <strong id="cal_count_present">0</strong>
                         </span>
-                        <span class="px-2 py-1 rounded-pill" style="background:#FEE2E2; color:#B91C1C; font-weight:800; display:inline-flex; align-items:center; gap:4px;">
+                        <span class="cal-summary-pill" style="background:#FEE2E2; color:#B91C1C;">
                             <span style="width:6px; height:6px; border-radius:50%; background:#EF4444;"></span> Absent: <strong id="cal_count_absent">0</strong>
                         </span>
-                        <span class="px-2 py-1 rounded-pill" style="background:#FEF3C7; color:#B45309; font-weight:800; display:inline-flex; align-items:center; gap:4px;">
+                        <span class="cal-summary-pill" style="background:#FEF3C7; color:#B45309;">
                             <span style="width:6px; height:6px; border-radius:50%; background:#F59E0B;"></span> Half Day: <strong id="cal_count_half_day">0</strong>
                         </span>
-                        <span class="px-2 py-1 rounded-pill" style="background:#DBEAFE; color:#1D4ED8; font-weight:800; display:inline-flex; align-items:center; gap:4px;">
+                        <span class="cal-summary-pill" style="background:#DBEAFE; color:#1D4ED8;">
                             <span style="width:6px; height:6px; border-radius:50%; background:#3B82F6;"></span> Leave: <strong id="cal_count_leave">0</strong>
                         </span>
-                        <span class="px-2 py-1 rounded-pill" style="background:#F1F5F9; color:#475467; font-weight:800; display:inline-flex; align-items:center; gap:4px;">
+                        <span class="cal-summary-pill" style="background:#F1F5F9; color:#475467;">
                             <span style="width:6px; height:6px; border-radius:50%; background:#64748B;"></span> Holiday/Off: <strong id="cal_count_holiday_off">0</strong>
                         </span>
                     </div>
@@ -691,10 +931,12 @@
                             <div class="quick-action-label">Apply Leave</div>
                         </a>
                         
+                        @if(!($empObj?->isPermanentWfh()))
                         <a href="{{ Route::has('hrms.attendance.my-wfh.index') ? route('hrms.attendance.my-wfh.index') : (Route::has('hrms.attendance.wfh.index') ? route('hrms.attendance.wfh.index') : '#') }}" class="quick-action-btn">
                             <div class="quick-action-icon"><i class="fas fa-laptop-house text-info"></i></div>
                             <div class="quick-action-label">WFH Apply</div>
                         </a>
+                        @endif
 
                         <a href="{{ Route::has('hrms.attendance.my-holiday-work.index') ? route('hrms.attendance.my-holiday-work.index') : (Route::has('hrms.attendance.work-reports') ? route('hrms.attendance.work-reports') : '#') }}" class="quick-action-btn">
                             <div class="quick-action-icon"><i class="fas fa-briefcase text-warning"></i></div>
@@ -877,7 +1119,7 @@
 
 {{-- Floating Bottom-Right Fixed Web Punch Button Overlay --}}
 @if ($canWebPunch)
-    <div style="position: fixed; bottom: 32px; right: 32px; z-index: 990;">
+    <div class="floating-punch-container">
         @if ($isPunchBlocked)
             <button type="button" class="btn font-weight-bold px-4 py-3 shadow-lg d-flex align-items-center" data-toggle="modal" data-target="#webPunchInModal" style="border-radius: 50px; font-size: 15px; font-weight: 900; background: linear-gradient(135deg, #64748b 0%, #475569 100%) !important; color: #fff; border: 2px solid #ffffff; cursor: pointer;">
                 <i class="fas fa-ban fa-lg mr-2"></i> PUNCH BLOCKED
@@ -887,7 +1129,7 @@
                 <i class="fas fa-fingerprint fa-lg mr-2"></i> PUNCH IN
             </button>
         @elseif (!$hasPunchedOut)
-            <button type="button" class="btn btn-danger font-weight-bold px-4 py-3 shadow-lg d-flex align-items-center" data-toggle="modal" data-target="#webPunchOutModal" style="border-radius: 50px; font-size: 15px; font-weight: 900; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: 2px solid #ffffff; box-shadow: 0 12px 30px rgba(239, 68, 68, 0.45) !important;">
+            <button type="button" class="btn font-weight-bold px-4 py-3 shadow-lg d-flex align-items-center text-white" data-toggle="modal" data-target="#webPunchOutModal" style="border-radius: 50px; font-size: 15px; font-weight: 900; background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%) !important; color: #fff !important; border: 2px solid #ffffff; box-shadow: 0 12px 30px rgba(239, 68, 68, 0.45) !important;">
                 <i class="fas fa-sign-out-alt fa-lg mr-2"></i> PUNCH OUT
             </button>
         @endif
@@ -904,7 +1146,7 @@
 function fetchCalData() {
     var m = $('#cal_month_select').val();
     var y = $('#cal_year_select').val();
-    
+
     $('#attendance_calendar_grid').html('<div class="w-100 text-center py-5" style="grid-column: span 7;"><i class="fas fa-spinner fa-spin fa-2x text-primary mb-2"></i><p class="text-muted font-weight-bold" style="font-size:13px;">Loading attendance calendar...</p></div>');
 
     $.ajax({
@@ -937,7 +1179,7 @@ function renderCalendarGrid(data) {
     var firstDay = data.first_day_of_week;
     
     for (var i = 0; i < firstDay; i++) {
-        gridHtml += '<div class="cal-day-cell empty-cell" style="background: #FAFAFA; border: 1px dashed #E2E8F0; border-radius: 8px; min-height: 42px;"></div>';
+        gridHtml += '<div class="cal-day-cell empty-cell" style="background: #FAFAFA; border: 1px dashed #E2E8F0; border-radius: 8px;"></div>';
     }
 
     var days = data.days || {};
@@ -956,14 +1198,27 @@ function renderCalendarGrid(data) {
             displayLabel = 'N/A';
         }
 
+        var shortLabel = displayLabel;
+        if (item.status === 'present') shortLabel = 'P';
+        else if (item.status === 'absent') shortLabel = 'A';
+        else if (item.status === 'half_day') shortLabel = 'HD';
+        else if (item.status === 'leave') shortLabel = 'L';
+        else if (item.status === 'week_off') shortLabel = 'OFF';
+        else if (item.status === 'holiday') shortLabel = 'HOL';
+        else if (item.status === 'upcoming') shortLabel = 'UP';
+        else if (item.status === 'no_record') shortLabel = '-';
+
         var tooltipLabel = (item.status === 'no_record') ? 'No Record' : displayLabel;
         var tooltip = item.date + ': ' + tooltipLabel + (item.punch_in ? ' (In: ' + item.punch_in + ' - Out: ' + (item.punch_out || '--') + ')' : '');
         
-        gridHtml += '<div class="cal-day-cell p-1 position-relative text-center" title="' + tooltip + '" style="background: ' + item.bg + '; border-radius: 10px; min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; ' + todayBorder + ' transition: all 0.2s ease; cursor: pointer;">';
+        gridHtml += '<div class="cal-day-cell p-1 position-relative text-center" title="' + tooltip + '" style="background: ' + item.bg + '; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; ' + todayBorder + ' transition: all 0.2s ease; cursor: pointer;">';
         
-        gridHtml += '<div style="font-size: 11.5px; font-weight: 900; color: #1E293B; line-height: 1.1;">' + item.day + '</div>';
+        gridHtml += '<div class="cal-day-num font-weight-bold" style="font-size: 11.5px; color: #1E293B; line-height: 1.1;">' + item.day + '</div>';
         
-        gridHtml += '<div style="font-size: 7.5px; font-weight: 900; color: ' + item.color + '; text-transform: uppercase; margin-top: 3px; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; width: 100%; padding: 0 2px;" title="' + displayLabel + '">' + displayLabel + '</div>';
+        gridHtml += '<div class="cal-day-label font-weight-bold text-uppercase" style="color: ' + item.color + '; margin-top: 3px; line-height: 1; max-width: 100%; width: 100%; padding: 0 1px;">';
+        gridHtml += '<span class="d-none d-md-inline" style="font-size: 7.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;" title="' + displayLabel + '">' + displayLabel + '</span>';
+        gridHtml += '<span class="d-inline d-md-none" style="font-size: 7.5px; font-weight: 900; letter-spacing: -0.3px;">' + shortLabel + '</span>';
+        gridHtml += '</div>';
 
         gridHtml += '</div>';
     });

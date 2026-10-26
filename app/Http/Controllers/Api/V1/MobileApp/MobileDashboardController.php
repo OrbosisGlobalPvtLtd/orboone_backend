@@ -9,6 +9,7 @@ use App\Services\HRMS\Document\EmployeeDocumentCompletionS;
 use App\Services\HRMS\Attendance\AttendanceMobileService;
 use App\Models\HRMS\Announcement\AnnouncementM as Announcement;
 use App\Models\HRMS\Leave\LeaveRequestM as LeaveRequest;
+use App\Models\HRMS\Leave\HolidayM;
 use App\Models\Core\NotificationM as Notification;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -262,6 +263,36 @@ class MobileDashboardController extends Controller
             // Fallback
         }
 
+        // 4b. Upcoming Holidays (limit 5)
+        $upcomingHolidays = [];
+        try {
+            $today = Carbon::today()->toDateString();
+            $upcomingHolidays = HolidayM::where('is_active', true)
+                ->whereDate('holiday_date', '>=', $today)
+                ->orderBy('holiday_date')
+                ->limit(5)
+                ->get()
+                ->map(function ($h) {
+                    $d = Carbon::parse($h->holiday_date);
+                    return [
+                        'id' => $h->id,
+                        'name' => $h->title,
+                        'title' => $h->title,
+                        'date' => $d->toDateString(),
+                        'holiday_date' => $d->toDateString(),
+                        'day' => $d->format('D'),
+                        'type' => $h->holiday_type ?: ($h->is_national ? 'National' : 'Company'),
+                        'holiday_type' => $h->holiday_type ?: ($h->is_national ? 'National' : 'Company'),
+                        'description' => $h->description ?? null,
+                    ];
+                })
+                ->values()
+                ->toArray();
+        } catch (\Throwable $e) {
+            // Fallback
+        }
+        $leaveSummary['upcoming_holidays'] = $upcomingHolidays;
+
         // 5. Latest Announcements (limit 3)
         $latestAnnouncements = [];
         try {
@@ -399,6 +430,7 @@ class MobileDashboardController extends Controller
                 'profile_gate_status' => $profileGateStatus,
                 'attendance_today' => $attendanceToday,
                 'leave_summary' => $leaveSummary,
+                'upcoming_holidays' => $upcomingHolidays,
                 'exit_status' => $exitStatusCard,
                 'latest_announcements' => $latestAnnouncements,
                 'unread_notification_count' => $unreadNotificationCount,

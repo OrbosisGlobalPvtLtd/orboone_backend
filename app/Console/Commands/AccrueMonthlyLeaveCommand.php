@@ -8,7 +8,7 @@ use Illuminate\Console\Command;
 
 class AccrueMonthlyLeaveCommand extends Command
 {
-    protected $signature = 'hrms:accrue-monthly-leave {--month=} {--year=}';
+    protected $signature = 'hrms:accrue-monthly-leave {--month=} {--year=} {--dry-run}';
 
     protected $description = 'Accrue monthly earned leave for eligible employees and carry forward unused balance.';
 
@@ -21,7 +21,7 @@ class AccrueMonthlyLeaveCommand extends Command
 
         $this->info("Processing Monthly Earned Leave Accrual for Month {$month}, Year {$year}...");
 
-        $res = $accrualService->accrueMonthlyLeaves($targetDate);
+        $res = $accrualService->accrueMonthlyLeaves($targetDate, null, (bool) $this->option('dry-run'));
 
         $this->info("Accrual completed. Processed: {$res['processed_count']}, Skipped: {$res['skipped_count']}.");
 

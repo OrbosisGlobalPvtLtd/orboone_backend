@@ -1,5 +1,19 @@
 <!-- VOID (NULL & VOID) MODAL -->
-@if($stLower === 'approved' && ($isSuperAdminUser || $isHrAdminUser) && Route::has('leave-approvals.void'))
+@php
+    $authUser = auth()->user();
+    $canVoidUser = ($isSuperAdminUser ?? false)
+        || ($isHrAdminUser ?? false)
+        || ($authUser && (
+            (method_exists($authUser, 'isSuperAdmin') && $authUser->isSuperAdmin())
+            || in_array((int)($authUser->system_role_id ?? $authUser->role_id ?? 0), [1, 2, 3], true)
+            || (method_exists($authUser, 'hasPermission') && (
+                $authUser->hasPermission('leave.approvals.view_all') || $authUser->hasPermission('leave.approvals.approve')
+            ))
+        ));
+    $empDisplayName = $lr->display_name ?? ($lr->employee?->user?->name ?? $lr->employee?->employee_code ?? 'Employee');
+@endphp
+
+@if($stLower === 'approved' && $canVoidUser && Route::has('leave-approvals.void'))
 <div class="modal fade" id="voidModal{{ $lr->id }}" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered leave-modal-dialog" role="document" style="max-width: 540px;">
         <div class="modal-content border-0 shadow-lg leave-modal-content">
@@ -19,19 +33,19 @@
                     <span>&times;</span>
                 </button>
             </div>
-            <form method="POST" action="{{ route('leave-approvals.void', $lr->id) }}" onsubmit="var btn = this.querySelector('button[type=submit]'); if(btn) { btn.disabled = true; btn.innerHTML = '<i class=\'fas fa-spinner fa-spin mr-1\'></i> Voiding Leave...'; }">
+            <form method="POST" action="{{ route('leave-approvals.void', $lr->id) }}" onsubmit="var f = this; setTimeout(function(){ var btn = f.querySelector('button[type=submit]'); if(btn) { btn.disabled = true; btn.innerHTML = '<i class=\'fas fa-spinner fa-spin mr-1\'></i> Voiding Leave...'; } }, 10);">
                 @csrf
                 <div class="modal-body px-3 px-sm-4 py-3 bg-white" style="overflow-y: auto;">
                     <div class="alert alert-warning mb-3 p-2.5 rounded-lg" style="font-size: 11.5px; border-left: 4px solid #F59E0B; background: #FFFBEB; border-color: #FDE68A; color: #92400E; line-height: 1.45;">
                         <i class="fas fa-exclamation-triangle mr-1 text-warning"></i>
-                        <strong>Impact Notice:</strong> This action will reverse deducted leave balances (Paid/Sick/Comp-off/LWP), restore monthly quota, unlock attendance for the dates, and log a permanent HR audit note.
+                        <strong>Impact Notice:</strong> This action reverses the recorded leave balance movements, restores eligible balances once, updates attendance for the dates, and logs a permanent HR audit note.
                     </div>
                     <p class="text-dark font-weight-bold mb-2" style="font-size: 13px; line-height: 1.4;">
-                        Are you sure you want to void approved leave for <strong>{{ $lr->display_name }}</strong> ({{ $isSingleDay ? $startDateFormatted : ($startDateFormatted . ' — ' . $endDateFormatted) }})?
+                        Are you sure you want to void approved leave for <strong>{{ $empDisplayName }}</strong> ({{ $isSingleDay ? $startDateFormatted : ($startDateFormatted . ' — ' . $endDateFormatted) }})?
                     </p>
                     <div class="form-group mb-1">
                         <label class="font-weight-bold text-muted uppercase mb-1" style="font-size: 10px; letter-spacing: 0.4px;">
-                            HR Note / Reason <span class="text-danger">*</span>
+                            Note / Reason <span class="text-danger">*</span>
                         </label>
                         <textarea name="note" class="form-control" rows="3" required minlength="3" maxlength="1000" style="border-radius: 10px; font-size: 12.5px;" placeholder="e.g. Employee worked on this day / informed HR they were working..."></textarea>
                     </div>

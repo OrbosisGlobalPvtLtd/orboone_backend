@@ -159,6 +159,7 @@ class SidebarMenuResolverS
         $filtered = $this->filterByRoleMenuAccess($menus, $user, $roleIds, $isSuperAdmin);
         $filtered = $this->filterByPermission($filtered, $user, $isSuperAdmin, $permissionChecker);
         $filtered = $this->filterReportingManagementVisibility($filtered, $user, $roleIds, $isSuperAdmin, $userContext, $userRoles);
+        $filtered = $this->filterByPermanentWfhVisibility($filtered, (bool) ($userContext['is_permanent_wfh'] ?? false));
         $filtered = $this->filterByRouteValidity($filtered);
 
         return $filtered;
@@ -171,11 +172,12 @@ class SidebarMenuResolverS
         }
 
         return $menus->reject(function ($menu) {
-            $r = strtolower((string) ($menu->route ?? ''));
-            $n = strtolower((string) ($menu->name ?? ''));
+            $r = strtolower(trim((string) ($menu->route ?? '')));
+            $n = strtolower(trim((string) ($menu->name ?? '')));
 
-            return in_array($r, ['hrms.attendance.my-wfh.index', 'attendances.my-wfh', 'attendance.my-wfh'], true)
-                || str_contains($n, 'my wfh');
+            return in_array($r, ['hrms.attendance.my-wfh.index', 'attendances.my-wfh', 'attendance.my-wfh', 'my-wfh.index', 'wfh.my'], true)
+                || str_contains($n, 'my wfh')
+                || str_contains($r, 'my-wfh');
         });
     }
 
@@ -197,8 +199,11 @@ class SidebarMenuResolverS
             ], true);
         });
 
+        $isHrOrAdmin = $isSuperAdmin || (! empty($roleIds) && $userRoles->contains(fn($r) => in_array(strtolower((string) $r->slug), ['super_admin', 'admin', 'hr_admin'], true)));
+        $isOnlyEmployee = $userRoles->isNotEmpty() && $userRoles->every(fn($r) => $r->slug === 'employee');
+
         if (! $hasReportingAdminAccess && $hasReportingAdminMenus && ! empty($roleIds)) {
-            $hasReportingAdminAccess = $userRoles->contains(fn($r) => in_array(strtolower((string) $r->slug), ['super_admin', 'admin', 'hr_admin'], true));
+            $hasReportingAdminAccess = $isHrOrAdmin;
         }
 
         return $menus->map(function ($m) use ($isProjectManager) {
@@ -213,7 +218,7 @@ class SidebarMenuResolverS
             }
 
             return $m;
-        })->reject(function ($menu) use ($isTeamManager, $isProjectManager, $isSuperAdmin, $hasReportingAdminAccess) {
+        })->reject(function ($menu) use ($isTeamManager, $isProjectManager, $isSuperAdmin, $hasReportingAdminAccess, $isHrOrAdmin, $isOnlyEmployee) {
             $route = strtolower(trim((string) ($menu->route ?? '')));
             $moduleKey = strtolower(trim((string) ($menu->module_key ?? '')));
             $id = (int) ($menu->id ?? 0);
@@ -257,6 +262,13 @@ class SidebarMenuResolverS
                 'reporting.history',
             ], true) || ($moduleKey === 'reporting' && ! $isTeamMenu);
             if ($isReportingAdminMenu && ! $hasReportingAdminAccess) {
+                return true;
+            }
+
+            // 5. Team Leave Calendar:
+            // Explicitly hidden for standard employees who do not have team reportees or HR/Admin access
+            $isTeamLeaveCalendar = $id === 146 || $route === 'hrms.leave.team_calendar.index' || str_contains($name, 'team leave calendar');
+            if ($isTeamLeaveCalendar && ($isOnlyEmployee || ! $isTeamManager) && ! $isHrOrAdmin) {
                 return true;
             }
 
@@ -552,6 +564,7 @@ class SidebarMenuResolverS
                     'hrms.attendance.wfh.index',
                     'hrms.comp_offs.index',
                     'hrms.leave.history',
+                    'hrms.leave.team_calendar.index',
                 ];
 
                 if (in_array($route, $adminOnlyRoutes, true)) {

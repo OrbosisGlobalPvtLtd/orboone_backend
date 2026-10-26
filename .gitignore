@@ -49,4 +49,5 @@ coverage/
 /storage/debugbar
 
 /tests/Feature/*Test.php
+!/tests/Feature/LapseYearEndLeavesStageRulesTest.php
 /attendance_postman_collection.json

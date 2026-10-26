@@ -4,6 +4,7 @@ namespace App\Services\HRMS\ProjectManagement;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use App\Services\HRMS\Team\TeamManagementScopeS;
 
 class ProjectAccessScopeS
 {
@@ -65,7 +66,7 @@ class ProjectAccessScopeS
         $empId = $this->getOwnEmployeeId();
         if (!$empId) return false;
 
-        $teamScope = app(\App\Services\HRMS\Team\TeamManagementScopeS::class);
+        $teamScope = app(TeamManagementScopeS::class);
         $supervisedEmpIds = $teamScope->getTeamEmployeeIds($empId);
         if (!empty($supervisedEmpIds)) return true;
 
@@ -162,7 +163,7 @@ class ProjectAccessScopeS
         $dhProjectIds = $this->getDeliveryHeadProjectIds($empId);
 
         $reportingProjectIds = [];
-        $teamScope = app(\App\Services\HRMS\Team\TeamManagementScopeS::class);
+        $teamScope = app(TeamManagementScopeS::class);
         $supervisedEmpIds = $teamScope->getTeamEmployeeIds($empId);
 
         if (!empty($supervisedEmpIds)) {
@@ -239,7 +240,7 @@ class ProjectAccessScopeS
         if ($isProjectLeadRole) return true;
 
         // 5. Reporting Manager of any member assigned to this project
-        $teamScope = app(\App\Services\HRMS\Team\TeamManagementScopeS::class);
+        $teamScope = app(TeamManagementScopeS::class);
         $supervisedEmpIds = $teamScope->getTeamEmployeeIds($empId);
         if (!empty($supervisedEmpIds)) {
             $isSupervisorOfMember = DB::table('project_assignments')

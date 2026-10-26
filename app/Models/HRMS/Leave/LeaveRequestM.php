@@ -15,6 +15,11 @@ class LeaveRequestM extends Model
 
     protected $guarded = [];
 
+    protected $appends = [
+        'split_summary',
+        'ledger_split_summary',
+    ];
+
     protected $casts = [
         'start_date' => 'date',
         'end_date' => 'date',
@@ -85,4 +90,46 @@ class LeaveRequestM extends Model
     {
         return $this->hasMany(LeaveBalanceLogM::class, 'leave_request_id');
     }
+
+    public function getSplitSummaryAttribute(): string
+    {
+        $pl = (float) ($this->paid_days ?? 0);
+        $sl = (float) ($this->sick_days ?? 0);
+        $comp = (float) ($this->comp_off_days ?? 0);
+        $lwp = (float) ($this->lwp_days ?? 0);
+
+        $plStr = 'PL ' . number_format($pl, 2);
+        $slStr = 'SL ' . number_format($sl, 2);
+        $compStr = 'Comp-Off ' . number_format($comp, 2);
+        $lwpStr = 'LWP ' . number_format($lwp, 2);
+
+        $type = $this->relationLoaded('leaveType') ? $this->leaveType : null;
+        if (! $type && ! empty($this->leave_type_id)) {
+            $type = $this->leaveType;
+        }
+
+        if (! $type) {
+            return "{$plStr} + {$slStr} + {$compStr} + {$lwpStr}";
+        }
+
+        if ($type->is_lwp) {
+            return $lwpStr;
+        }
+
+        if ($type->is_sick) {
+            return "{$slStr} + {$plStr} + {$compStr} + {$lwpStr}";
+        }
+
+        if ($type->is_comp_off) {
+            return "{$compStr} + {$plStr} + {$slStr} + {$lwpStr}";
+        }
+
+        return "{$plStr} + {$slStr} + {$compStr} + {$lwpStr}";
+    }
+
+    public function getLedgerSplitSummaryAttribute(): string
+    {
+        return $this->getSplitSummaryAttribute();
+    }
 }
+

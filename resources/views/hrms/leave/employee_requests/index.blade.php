@@ -28,33 +28,38 @@
             <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
         </div>
 
-        <div class="leave-summary-grid">
-            <div class="summary-card">
-                <div class="summary-icon bg-soft-warning text-warning" style="background:#ffedd5;color:#c2410c">
-                    <i class="fas fa-hourglass-half"></i>
+        <div class="leave-metric-grid">
+            <div class="leave-metric" style="--metric-color:#D97706;--metric-soft:#FFFBEB;">
+                <div class="leave-metric-top">
+                    <div class="leave-metric-icon">
+                        <i class="fas fa-hourglass-half"></i>
+                    </div>
+                    <div class="leave-metric-value">{{ collect($employeeLeaveRequests->items() ?? [])->filter(function($r) { return strtoupper($r->status) == 'PENDING'; })->count() }}</div>
                 </div>
-                <div class="summary-info">
-                    <h4>{{ collect($employeeLeaveRequests->items() ?? [])->filter(function($r) { return strtoupper($r->status) == 'PENDING'; })->count() }}</h4>
-                    <p>Pending Approvals</p>
-                </div>
+                <div class="leave-metric-label">Pending Approvals</div>
+                <div class="leave-metric-line"></div>
             </div>
-            <div class="summary-card">
-                <div class="summary-icon bg-soft-success text-success" style="background:#dcfce7;color:#166534">
-                    <i class="fas fa-check-circle"></i>
+
+            <div class="leave-metric" style="--metric-color:#059669;--metric-soft:#ECFDF5;">
+                <div class="leave-metric-top">
+                    <div class="leave-metric-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="leave-metric-value">{{ collect($employeeLeaveRequests->items() ?? [])->filter(function($r) { return strtoupper($r->status) == 'APPROVED' || strtoupper($r->status) == 'ACCEPTED'; })->count() }}</div>
                 </div>
-                <div class="summary-info">
-                    <h4>{{ collect($employeeLeaveRequests->items() ?? [])->filter(function($r) { return strtoupper($r->status) == 'APPROVED' || strtoupper($r->status) == 'ACCEPTED'; })->count() }}</h4>
-                    <p>Approved Leaves</p>
-                </div>
+                <div class="leave-metric-label">Approved Leaves</div>
+                <div class="leave-metric-line"></div>
             </div>
-            <div class="summary-card">
-                <div class="summary-icon bg-soft-danger text-danger" style="background:#fee2e2;color:#991b1b">
-                    <i class="fas fa-times-circle"></i>
+
+            <div class="leave-metric" style="--metric-color:#DC2626;--metric-soft:#FEE2E2;">
+                <div class="leave-metric-top">
+                    <div class="leave-metric-icon">
+                        <i class="fas fa-times-circle"></i>
+                    </div>
+                    <div class="leave-metric-value">{{ collect($employeeLeaveRequests->items() ?? [])->filter(function($r) { return strtoupper($r->status) == 'REJECTED'; })->count() }}</div>
                 </div>
-                <div class="summary-info">
-                    <h4>{{ collect($employeeLeaveRequests->items() ?? [])->filter(function($r) { return strtoupper($r->status) == 'REJECTED'; })->count() }}</h4>
-                    <p>Rejected Leaves</p>
-                </div>
+                <div class="leave-metric-label">Rejected Leaves</div>
+                <div class="leave-metric-line"></div>
             </div>
         </div>
 

@@ -496,10 +496,20 @@
             </div>
         </div>
 
-        <!-- Summary Description -->
-        <div style="background: #F8FAFC; border-left: 3px solid var(--brand-primary); padding: 8px 12px; border-radius: 0 6px 6px 0; margin-bottom: 14px; font-size: 11px; color: var(--brand-slate); font-weight: 600;">
-            <strong>Work Summary:</strong> {{ $summaryDesc }}
-        </div>
+        <!-- Summary Description or Developer Notes -->
+        @if(!empty($projectsList))
+            @if(!empty($notes))
+            <div style="background: #FFFBEB; border-left: 3px solid #D97706; padding: 8px 12px; border-radius: 0 6px 6px 0; margin-bottom: 14px; font-size: 11px; color: #92400E; font-weight: 600;">
+                <strong>Developer Notes:</strong> {{ $notes }}
+            </div>
+            @endif
+        @else
+            @if(!empty($summaryDesc))
+            <div style="background: #F8FAFC; border-left: 3px solid var(--brand-primary); padding: 8px 12px; border-radius: 0 6px 6px 0; margin-bottom: 14px; font-size: 11px; color: var(--brand-slate); font-weight: 600;">
+                <strong>Work Summary:</strong> {{ $summaryDesc }}
+            </div>
+            @endif
+        @endif
 
         <!-- Projects & Tasks -->
         <div style="margin-bottom: 14px;">

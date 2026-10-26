@@ -297,10 +297,47 @@
     }
 
     .att-filter-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-        gap: 14px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
         align-items: flex-end;
+    }
+
+    .att-filter-grid .att-filter-col {
+        flex: 1 1 140px;
+        min-width: 125px;
+    }
+
+    .att-filter-grid .att-filter-workmode {
+        flex: 1 1 130px;
+        min-width: 120px;
+    }
+
+    .att-filter-grid .att-filter-year {
+        flex: 0.8 1 100px;
+        min-width: 90px;
+        max-width: 120px;
+    }
+
+    .att-filter-grid .att-filter-month {
+        flex: 1.2 1 150px;
+        min-width: 135px;
+    }
+
+    .att-filter-grid .att-filter-date {
+        flex: 1 1 135px;
+        min-width: 120px;
+    }
+
+    .att-filter-grid .att-filter-from,
+    .att-filter-grid .att-filter-to {
+        flex: 1 1 135px;
+        min-width: 120px;
+    }
+
+    .att-filter-grid .att-filter-actions-col {
+        flex: 0 0 auto;
+        min-width: auto;
     }
 
     .att-filter-grid label {
@@ -314,11 +351,11 @@
     }
 
     .att-filter-grid .form-control {
-        height: 42px;
-        border-radius: 12px;
+        height: 38px;
+        border-radius: 10px;
         border: 1px solid var(--orb-border);
         background: #FFFFFF;
-        padding: 8px 14px;
+        padding: 6px 12px;
         font-size: 13px;
         font-weight: 600;
         color: var(--orb-text);
@@ -331,20 +368,6 @@
         box-shadow: 0 0 0 3px rgba(75, 0, 232, 0.1);
     }
 
-    .att-filter-panel .select2-container .select2-selection--single {
-        height: 42px !important;
-        border-radius: 12px !important;
-        border: 1px solid var(--orb-border) !important;
-        padding: 6px 12px !important;
-        display: flex !important;
-        align-items: center !important;
-        background: #FFFFFF !important;
-    }
-
-    .att-filter-panel .select2-container--default .select2-selection--single .select2-selection__arrow {
-        top: 8px !important;
-    }
-
     .att-filter-actions {
         display: flex;
         align-items: center;
@@ -352,12 +375,12 @@
     }
 
     .att-search-btn {
-        height: 42px;
-        border-radius: 12px;
+        height: 38px;
+        border-radius: 10px;
         background: linear-gradient(135deg, var(--orb-primary, #4B00E8) 0%, var(--orb-secondary, #6B11F4) 100%);
         color: #FFFFFF;
         border: none;
-        padding: 0 20px;
+        padding: 0 18px;
         font-size: 13px;
         font-weight: 800;
         display: inline-flex;
@@ -377,9 +400,9 @@
     }
 
     .att-reset-btn {
-        height: 42px;
-        width: 42px;
-        border-radius: 12px;
+        height: 38px;
+        width: 38px;
+        border-radius: 10px;
         background: #FFFFFF;
         border: 1px solid var(--orb-border);
         color: var(--orb-muted);
@@ -466,67 +489,15 @@
         gap: 4px;
     }
 
-    .project-tag-pill {
-        background: #F4F2FF;
-        color: var(--orb-primary, #4B00E8);
-        border: 1px solid rgba(75, 0, 232, 0.15);
-        font-weight: 800;
-        font-size: 11.5px;
-        padding: 3px 10px;
-        border-radius: 6px;
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        max-width: 100%;
-        margin-bottom: 6px;
+    .work-summary-full-text p {
+        margin-bottom: 4px;
+    }
+    .work-summary-full-text p:last-child {
+        margin-bottom: 0;
     }
 
-    .work-summary-snippet {
-        font-size: 12.5px;
-        color: #1E293B;
-        line-height: 1.5;
-        font-weight: 500;
-    }
-
-    .work-tasks-mini-list {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 5px;
-        margin-top: 6px;
-    }
-
-    .mini-task-pill {
-        font-size: 11px;
-        font-weight: 700;
-        padding: 2px 8px;
-        border-radius: 6px;
-        background: #F8FAFC;
-        border: 1px solid #E2E8F0;
-        color: #334155;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-    }
-
-    .mini-task-pill.done {
-        background: #ECFDF5;
-        border-color: #A7F3D0;
-        color: #065F46;
-    }
-
-    .mini-task-pill.pending {
-        background: #FFFBEB;
-        border-color: #FDE68A;
-        color: #92400E;
-    }
-
-    .mini-task-more {
-        font-size: 10.5px;
-        font-weight: 800;
-        color: #64748B;
-        padding: 2px 6px;
-        background: #F1F5F9;
-        border-radius: 6px;
+    .structured-task-item {
+        margin-bottom: 3px;
     }
 
     /* Action Buttons */
@@ -676,47 +647,72 @@
             <!-- Filter Panel -->
             <div class="att-filter-panel">
                 <form method="GET" action="{{ route('hrms.attendance.work-reports.employee-history', $employee->id) }}" id="historyFilterForm">
-                    <input type="hidden" name="per_page" id="hiddenPerPageInput" value="{{ request('per_page', 25) }}">
+                    <input type="hidden" name="per_page" id="hiddenPerPageInput" value="{{ request('per_page', $filters['per_page'] ?? 25) }}">
                     <div class="att-filter-grid">
-                        <div>
+                        @php
+                            $currY = $filters['current_year'] ?? date('Y');
+                            $selY = $filters['selected_year'] ?? request('year', $currY);
+                            $currM = $filters['current_month'] ?? date('m');
+                            $selM = $filters['selected_month'] ?? request('month', $currM);
+                            if (request()->filled('date')) {
+                                try {
+                                    $pDate = \Carbon\Carbon::parse(request('date'));
+                                    $selY = $pDate->format('Y');
+                                    $selM = $pDate->format('m');
+                                } catch (\Throwable $e) {}
+                            }
+                            $isCustom = ($selM === 'custom' || (!request()->has('month') && !request()->filled('date') && (request()->filled('from_date') || request()->filled('to_date'))));
+                        @endphp
+
+                        <div class="att-filter-col att-filter-workmode">
                             <label>Work Mode</label>
-                            <select name="work_mode" id="hist_work_mode" class="form-control select2-searchable">
+                            <select name="work_mode" id="hist_work_mode" class="form-control select2-searchable" data-placeholder="All Modes">
                                 <option value="">All Modes</option>
-                                <option value="WFO" {{ request('work_mode') === 'WFO' ? 'selected' : '' }}>WFO (Office)</option>
-                                <option value="WFH" {{ request('work_mode') === 'WFH' ? 'selected' : '' }}>WFH (Remote)</option>
+                                <option value="wfo" {{ strtolower(request('work_mode', $filters['work_mode'] ?? '')) === 'wfo' ? 'selected' : '' }}>Office (WFO)</option>
+                                <option value="wfh" {{ strtolower(request('work_mode', $filters['work_mode'] ?? '')) === 'wfh' ? 'selected' : '' }}>Remote (WFH)</option>
                             </select>
                         </div>
 
-                        <div>
-                            <label>Month</label>
-                            <select name="month" id="hist_month_select" class="form-control select2-searchable">
-                                @php
-                                    $activeMonth = request('month', $selectedMonth ?? now()->format('Y-m'));
-                                    $isCustom = request()->filled('from_date') || request()->filled('to_date') || $activeMonth === 'custom';
-                                @endphp
-                                <option value="custom" {{ $isCustom ? 'selected' : '' }}>Custom Date Range</option>
-                                @foreach($availableMonths as $val => $lbl)
-                                    <option value="{{ $val }}" {{ (!$isCustom && $activeMonth === $val) ? 'selected' : '' }}>
-                                        {{ $lbl }}
-                                    </option>
+                        <div class="att-filter-col att-filter-year" id="yearFilterWrap">
+                            <label><i class="fas fa-calendar text-primary mr-1"></i> Year</label>
+                            <select name="year" id="yearFilterSelect" class="form-control select2-searchable" data-allow-clear="false">
+                                @foreach($filters['years'] ?? get_filter_years(1, 4) as $yVal => $yLbl)
+                                    <option value="{{ $yVal }}" {{ (string) $selY === (string) $yVal ? 'selected' : '' }}>{{ $yLbl }}</option>
                                 @endforeach
                             </select>
                         </div>
 
-                        <div id="hist_custom_dates_wrap" style="{{ $isCustom ? '' : 'display: none;' }}">
-                            <div class="d-flex gap-2" style="gap: 10px;">
-                                <div style="flex: 1;">
-                                    <label>From Date</label>
-                                    <x-form.date-picker name="from_date" id="wr_hist_from" :value="request('from_date')" placeholder="dd-mm-yyyy" class="form-control" />
-                                </div>
-                                <div style="flex: 1;">
-                                    <label>To Date</label>
-                                    <x-form.date-picker name="to_date" id="wr_hist_to" :value="request('to_date')" placeholder="dd-mm-yyyy" class="form-control" />
-                                </div>
-                            </div>
+                        <div class="att-filter-col att-filter-month" id="monthFilterWrap">
+                            <label><i class="fas fa-calendar-alt text-primary mr-1"></i> Month</label>
+                            <select name="month" id="monthFilterSelect" class="form-control select2-searchable" data-allow-clear="false">
+                                <option value="custom" {{ $isCustom ? 'selected' : '' }}>Custom Date Range</option>
+                                @foreach($filters['months'] ?? get_filter_months(true) as $val => $lbl)
+                                    @if($val !== 'custom')
+                                        @php
+                                            $isSel = !$isCustom && ((string) $selM === (string) $val || (is_numeric($selM) && is_numeric($val) && (int) $selM === (int) $val));
+                                        @endphp
+                                        <option value="{{ $val }}" {{ $isSel ? 'selected' : '' }}>{{ $lbl }}</option>
+                                    @endif
+                                @endforeach
+                            </select>
                         </div>
 
-                        <div>
+                        <div class="att-filter-col att-filter-date" id="singleDateWrap" style="display: {{ $isCustom ? 'none' : 'block' }};">
+                            <label><i class="fas fa-calendar-day text-primary mr-1"></i> Date</label>
+                            <x-form.date-picker name="date" id="filterDate" :value="request('date', $filters['date'] ?? '')" placeholder="dd-mm-yyyy" class="form-control" />
+                        </div>
+
+                        <div class="att-filter-col att-filter-from" id="customFromWrap" style="display: {{ $isCustom ? 'block' : 'none' }};">
+                            <label>Date From</label>
+                            <x-form.date-picker name="from_date" id="filterFromDate" :value="request('from_date', $filters['from_date'] ?? '')" placeholder="dd-mm-yyyy" class="form-control" />
+                        </div>
+
+                        <div class="att-filter-col att-filter-to" id="customToWrap" style="display: {{ $isCustom ? 'block' : 'none' }};">
+                            <label>Date To</label>
+                            <x-form.date-picker name="to_date" id="filterToDate" :value="request('to_date', $filters['to_date'] ?? '')" placeholder="dd-mm-yyyy" class="form-control" />
+                        </div>
+
+                        <div class="att-filter-col att-filter-actions-col">
                             <label>&nbsp;</label>
                             <div class="att-filter-actions">
                                 <button type="submit" class="att-search-btn">
@@ -739,7 +735,7 @@
                             Show
                             <select id="recordsPerPageSelect" class="eo-entries-select">
                                 @foreach([10, 25, 50, 100, 250] as $size)
-                                    <option value="{{ $size }}" {{ (int) request('per_page', 25) === $size ? 'selected' : '' }}>{{ $size }}</option>
+                                    <option value="{{ $size }}" {{ (int) request('per_page', $filters['per_page'] ?? 25) === $size ? 'selected' : '' }}>{{ $size }}</option>
                                 @endforeach
                                 <option value="all" {{ (request('per_page') === 'all' || request('per_page') == -1) ? 'selected' : '' }}>All</option>
                             </select>
@@ -763,8 +759,8 @@
                             <th style="min-width: 90px;">Mode</th>
                             <th style="min-width: 130px;">Shift Context</th>
                             <th style="min-width: 120px;">Gross Work</th>
-                            <th style="min-width: 380px; width: 44%;">Work Summary Description</th>
-                            <th style="min-width: 200px; width: 22%;">Structured Tasks</th>
+                            <th style="min-width: 380px; width: 42%;">Work Summary Description</th>
+                            <th style="min-width: 240px; width: 28%;">Structured Tasks</th>
                             <th class="text-right pr-4 no-export" style="width: 110px; min-width: 110px;">Actions</th>
                         </tr>
                     </thead>
@@ -774,112 +770,8 @@
                         @endphp
                         @forelse($workLogs as $log)
                         @php
-                            $attendance = $log->attendance;
-                            $mode = strtolower($attendance->work_mode ?? 'wfo');
-                            $modeText = strtoupper($mode);
-                            $modeBadgeClass = $mode === 'wfh' ? 'badge-wfh' : 'badge-wfo';
-                            
-                            $grossWork = $attendance && $attendance->gross_duration ? $attendance->gross_duration : '-';
-                            $tasks = $log->work_summary_json;
-                            if (is_string($tasks)) {
-                                $tasks = json_decode($tasks, true);
-                            }
-                            
-                            $title = 'Work Report Submitted';
-                            $description = null;
-                            $status = 'Completed';
-                            $projectsList = [];
-                            $requirementsList = [];
-                            $testStatus = ['tested' => false, 'completed' => false];
-                            $issues = [];
-                            $notes = null;
-
-                            if (is_array($tasks)) {
-                                if (isset($tasks['projects']) && is_array($tasks['projects'])) {
-                                    $projectsList = $tasks['projects'];
-                                    foreach ($projectsList as $p) {
-                                        $pName = $p['project_name'] ?? $p['name'] ?? 'Project';
-                                        if (isset($p['tasks']) && is_array($p['tasks'])) {
-                                            foreach ($p['tasks'] as $t) {
-                                                $tName = $t['task_name'] ?? $t['description'] ?? $t['task'] ?? $t['title'] ?? 'Task';
-                                                $tDone = (isset($t['is_completed']) ? ($t['is_completed'] == 1 || $t['is_completed'] === true) : true);
-                                                $requirementsList[] = [
-                                                    'text' => $tName,
-                                                    'done' => $tDone,
-                                                    'project' => $pName
-                                                ];
-                                            }
-                                        }
-                                    }
-                                }
-
-                                if (empty($requirementsList)) {
-                                    $reqItems = $tasks['requirements'] ?? ($tasks['tasks'] ?? []);
-                                    if (is_array($reqItems)) {
-                                        $requirementsList = $reqItems;
-                                    }
-                                }
-
-                                $status = $tasks['today_work_status'] ?? ($tasks['status'] ?? 'Completed');
-
-                                if (!empty($projectsList) && !empty($projectsList[0]['project_name'])) {
-                                    $title = $projectsList[0]['project_name'];
-                                } elseif (!empty($tasks['task_name'])) {
-                                    $title = $tasks['task_name'];
-                                } elseif (!empty($tasks['title'])) {
-                                    $title = $tasks['title'];
-                                }
-
-                                $description = $tasks['description'] ?? ($tasks['today_work_description'] ?? 'Work report submitted.');
-                            } else {
-                                $description = $log->work_summary ?? 'No summary provided.';
-                            }
-                            
-                            // Clean and normalize summary description
-                            $cleanSummary = $description;
-                            if ($cleanSummary) {
-                                if (str_contains($cleanSummary, '☑') || str_contains($cleanSummary, '🗹') || str_contains($cleanSummary, '☐') || str_contains($cleanSummary, 'Project:')) {
-                                    $rawLines = explode("\n", str_replace(["\r\n", "\r"], "\n", $cleanSummary));
-                                    $filteredLines = [];
-                                    foreach ($rawLines as $rLine) {
-                                        $trimmed = trim($rLine);
-                                        if (empty($trimmed)) continue;
-                                        if (stripos($trimmed, 'Project:') === 0) continue;
-                                        if (stripos($trimmed, "Today's Work Status:") === 0 || stripos($trimmed, "Today Work Status:") === 0) continue;
-                                        if (preg_match('/^[☑🗹☐✓✔•\-*]\s*/u', $trimmed)) {
-                                            $trimmed = preg_replace('/^[☑🗹☐✓✔•\-*]\s*/u', '', $trimmed);
-                                        }
-                                        if (!empty($trimmed)) {
-                                            $filteredLines[] = $trimmed;
-                                        }
-                                    }
-                                    $filteredLines = array_unique($filteredLines);
-                                    if (count($filteredLines) > 1 && !empty($title) && strtolower(trim($filteredLines[0])) === strtolower(trim($title))) {
-                                        array_shift($filteredLines);
-                                    }
-                                    $cleanSummary = implode(' ', $filteredLines);
-                                }
-                                $cleanSummary = preg_replace('/[☑🗹☐✓✔]/u', '', $cleanSummary);
-                                $cleanSummary = preg_replace('/Today\'?s\s+Work\s+Status:\s*[^\n\r]+/i', '', $cleanSummary);
-                                $cleanSummary = preg_replace('/\s+/', ' ', trim($cleanSummary));
-                            }
-
-                            if (empty($cleanSummary) || $cleanSummary === 'Work report submitted.') {
-                                if (!empty($requirementsList)) {
-                                    $taskTexts = array_map(function($r) {
-                                        return is_array($r) ? ($r['text'] ?? ($r['task_name'] ?? ($r['task'] ?? ''))) : (string)$r;
-                                    }, array_slice($requirementsList, 0, 3));
-                                    $taskTexts = array_filter($taskTexts);
-                                    if (!empty($taskTexts)) {
-                                        $cleanSummary = implode('; ', $taskTexts);
-                                    }
-                                }
-                                if (empty($cleanSummary)) {
-                                    $cleanSummary = 'Daily work deliverables logged.';
-                                }
-                            }
-
-                            $tasksCount = is_array($requirementsList) ? count($requirementsList) : 0;
+                            $row = formatWorkReportRow($log);
+                            $modeBadgeClass = $row['mode'] === 'WFH' ? 'badge-wfh' : 'badge-wfo';
 
                             $logPayload = [
                                 'id' => $log->id,
@@ -890,89 +782,182 @@
                                 'employee_initial' => $summary['employee_initial'],
                                 'department' => $summary['department'],
                                 'designation' => $summary['designation'],
-                                'work_date' => $log->work_date ? $log->work_date->format('d M Y') : '-',
-                                'shift_name' => optional(optional($log->attendance)->attendanceTime)->name ?? 'Default Shift',
+                                'work_date' => $row['date'],
+                                'shift_name' => $row['shift_context'],
                                 'attendance_status' => (optional($log->attendance)->attendance_status ?? 'present'),
-                                'title' => $title,
-                                'description' => $cleanSummary,
-                                'status' => $status,
-                                'work_mode' => strtoupper(optional($log->attendance)->work_mode ?? 'WFO'),
-                                'submitted_time' => $log->created_at ? $log->created_at->format('h:i A') : '-',
-                                'projects' => $projectsList,
-                                'requirements' => $requirementsList,
-                                'test_status' => $testStatus,
-                                'issues' => $issues,
-                                'notes' => $notes,
+                                'title' => $row['title'] ?? 'Work Report',
+                                'description' => $row['summary_desc'],
+                                'status' => $row['status'],
+                                'work_mode' => $row['mode'],
+                                'submitted_time' => $row['submitted_time'],
+                                'projects' => $row['projects'] ?? [],
+                                'requirements' => array_map(fn($t) => ['text' => $t['text'], 'done' => $t['done']], $row['structured_tasks']),
+                                'test_status' => $row['test_status'] ?? ['tested' => false, 'completed' => true],
+                                'issues' => $row['issues'] ?? [],
+                                'notes' => $row['notes'] ?? null,
                             ];
                         @endphp
                         <tr>
                             <td class="text-center font-weight-bold text-muted table-sr-no" style="font-size: 12px;" data-export="{{ $startIdx + $loop->iteration }}">
                                 {{ $startIdx + $loop->iteration }}
                             </td>
-                            <td data-export="{{ $log->work_date ? $log->work_date->format('d M Y') : '-' }}" data-order="{{ $log->work_date ? $log->work_date->format('Y-m-d') : '' }}">
+
+                            <td data-export="{{ $row['date'] }}" data-order="{{ $row['date_raw'] }}">
                                 <div class="font-weight-bold text-dark" style="font-size: 13px; white-space: nowrap;">
-                                    {{ $log->work_date ? $log->work_date->format('d M Y') : '-' }}
+                                    {{ $row['date'] }}
                                 </div>
-                                @if($log->work_date)
+                                @if($row['day_name'])
                                 <div class="small text-muted font-weight-semibold">
-                                    {{ $log->work_date->format('l') }}
+                                    {{ $row['day_name'] }}
                                 </div>
                                 @endif
                             </td>
-                            <td data-export="{{ $modeText }}">
+
+                            <td data-export="{{ $row['mode'] }}">
                                 <span class="badge-premium-pill {{ $modeBadgeClass }}">
-                                    @if($mode === 'wfh')
+                                    @if($row['mode'] === 'WFH')
                                         <i class="fas fa-laptop-house mr-1"></i> WFH
                                     @else
                                         <i class="fas fa-building mr-1"></i> WFO
                                     @endif
                                 </span>
                             </td>
-                            <td data-export="{{ optional($attendance)->attendanceTime->name ?? 'Default Shift' }}">
+
+                            <td data-export="{{ $row['shift_context'] }}">
                                 <div class="font-weight-bold text-dark" style="font-size: 12.5px;">
-                                    {{ optional($attendance)->attendanceTime->name ?? 'Default Shift' }}
+                                    {{ $row['shift_context'] }}
                                 </div>
                             </td>
-                            <td data-export="{{ $grossWork }}">
+
+                            <td data-export="{{ $row['gross_work'] }}">
                                 <div class="badge-gross-pill" style="white-space: nowrap;">
-                                    <i class="fas fa-stopwatch mr-1"></i> {{ $grossWork }}
+                                    <i class="fas fa-stopwatch mr-1"></i> {{ $row['gross_work'] }}
                                 </div>
                             </td>
-                            <td data-export="{{ $cleanSummary }}" style="min-width: 380px;">
-                                @if(!empty($title) && $title !== 'Work Report Submitted' && strtolower(trim($title)) !== strtolower(trim($cleanSummary)))
-                                <div class="project-tag-pill" title="{{ $title }}">
-                                    <i class="fas fa-folder-open"></i> {{ $title }}
-                                </div>
-                                @endif
-                                <div class="work-summary-snippet" title="{{ $cleanSummary }}">
-                                    {{ $cleanSummary }}
-                                </div>
-                                @if(!empty($requirementsList) && count($requirementsList) > 0)
-                                <div class="work-tasks-mini-list">
-                                    @foreach(array_slice($requirementsList, 0, 2) as $reqItem)
-                                        @php
-                                            $rText = is_array($reqItem) ? ($reqItem['text'] ?? ($reqItem['task_name'] ?? 'Task')) : (string)$reqItem;
-                                            $rDone = is_array($reqItem) ? ($reqItem['done'] ?? true) : true;
-                                        @endphp
-                                        <span class="mini-task-pill {{ $rDone ? 'done' : 'pending' }}">
-                                            <i class="fas {{ $rDone ? 'fa-check' : 'fa-circle' }}"></i> {{ Str::limit($rText, 45) }}
-                                        </span>
-                                    @endforeach
-                                    @if(count($requirementsList) > 2)
-                                        <span class="mini-task-more">+{{ count($requirementsList) - 2 }} more</span>
-                                    @endif
-                                </div>
-                                @endif
-                            </td>
-                            <td data-export="{{ $tasksCount }} Tasks" class="text-center">
-                                @if($tasksCount > 0)
-                                    <span class="badge badge-light border px-2 py-1 font-weight-bold" style="font-size: 12px;">
-                                        <i class="fas fa-list-check text-primary"></i> {{ $tasksCount }} Tasks
-                                    </span>
+
+                            <td data-export="{{ $row['summary_desc'] }}" style="min-width: 320px;">
+                                @if(!empty($row['projects']) && count($row['projects']) > 0)
+                                    <div class="d-flex flex-column" style="gap: 6px;">
+                                        <div class="d-flex flex-wrap align-items-center" style="gap: 6px;">
+                                            @foreach($row['projects'] as $pItem)
+                                                @php
+                                                    $pName = $pItem['project_name'] ?? ($pItem['name'] ?? 'Project');
+                                                    $pTasks = $pItem['tasks'] ?? [];
+                                                    $pDoneCount = 0;
+                                                    foreach($pTasks as $pt) {
+                                                        if (is_array($pt) && (!empty($pt['is_completed']) || !empty($pt['completed']))) $pDoneCount++;
+                                                        elseif (!is_array($pt)) $pDoneCount++;
+                                                    }
+                                                @endphp
+                                                <div class="p-1.5 px-2.5 rounded border" style="background: #F8FAFC; border: 1px solid #E2E8F0 !important; border-radius: 8px;">
+                                                    <div class="d-flex align-items-center justify-content-between" style="gap: 10px;">
+                                                        <span class="font-weight-bold text-dark" style="font-size: 12px;">
+                                                            <i class="fas fa-folder text-primary mr-1" style="font-size: 11px;"></i> {{ $pName }}
+                                                        </span>
+                                                        <span class="badge border" style="font-size: 10px; font-weight: 700; background: #fff; color: #475467; padding: 2px 6px; border-radius: 6px;">
+                                                            {{ count($pTasks) }} {{ count($pTasks) === 1 ? 'task' : 'tasks' }} &bull; <span class="{{ $pDoneCount === count($pTasks) ? 'text-success' : 'text-primary' }}">{{ $pDoneCount }}/{{ count($pTasks) }}</span>
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                        @if(!empty($row['notes']))
+                                            <div class="mt-1 p-1.5 px-2 rounded" style="background: #FFFBEB; border: 1px solid #FEF3C7; color: #92400E; font-size: 11.5px; border-radius: 6px;">
+                                                <strong>Note:</strong> {{ $row['notes'] }}
+                                            </div>
+                                        @endif
+                                        @if(!empty($row['issues']) && count($row['issues']) > 0)
+                                            <div class="mt-1 p-1.5 px-2 rounded" style="background: #FEF2F2; border: 1px solid #FEE2E2; color: #991B1B; font-size: 11.5px; border-radius: 6px;">
+                                                <strong>Issue:</strong> {{ implode(', ', $row['issues']) }}
+                                            </div>
+                                        @endif
+                                    </div>
                                 @else
-                                    <span class="text-muted font-italic" style="font-size:12px;">None</span>
+                                    <div>
+                                        @if(!empty($row['title']))
+                                            <div class="mb-1.5">
+                                                <div class="p-1.5 px-2.5 rounded border d-inline-flex align-items-center" style="background: #F8FAFC; border: 1px solid #E2E8F0 !important; border-radius: 8px; gap: 8px;">
+                                                    <span class="font-weight-bold text-dark" style="font-size: 12px;">
+                                                        <i class="fas fa-folder text-primary mr-1" style="font-size: 11px;"></i> {{ $row['title'] }}
+                                                    </span>
+                                                    @if(!empty($row['structured_tasks']))
+                                                        <span class="badge border" style="font-size: 10px; font-weight: 700; background: #fff; color: #475467; padding: 2px 6px; border-radius: 6px;">
+                                                            {{ count($row['structured_tasks']) }} {{ count($row['structured_tasks']) === 1 ? 'task' : 'tasks' }}
+                                                        </span>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        @endif
+                                        <div class="work-summary-full-text">
+                                            @foreach($row['summary_paragraphs'] as $para)
+                                                @php
+                                                    $paraDisplay = $para;
+                                                    if (!empty($row['title'])) {
+                                                        $paraDisplay = preg_replace('/^' . preg_quote($row['title'], '/') . '\s*[-–:]\s*/i', '', $paraDisplay);
+                                                    }
+                                                @endphp
+                                                @if(trim($paraDisplay) !== '')
+                                                    <p class="mb-1" style="line-height: 1.5; color: #1E293B; font-size: 12.5px; font-weight: 500;">
+                                                        {{ $paraDisplay }}
+                                                    </p>
+                                                @endif
+                                            @endforeach
+                                        </div>
+                                        @if(!empty($row['notes']))
+                                            <div class="mt-1 p-1.5 px-2 rounded" style="background: #FFFBEB; border: 1px solid #FEF3C7; color: #92400E; font-size: 11.5px; border-radius: 6px;">
+                                                <strong>Note:</strong> {{ $row['notes'] }}
+                                            </div>
+                                        @endif
+                                    </div>
                                 @endif
                             </td>
+
+                            <td data-export="{{ $row['structured_tasks_text'] }}" style="min-width: 240px;">
+                                @if(!empty($row['projects']) && count($row['projects']) > 0)
+                                    <div class="structured-tasks-grouped d-flex flex-column" style="gap: 6px;">
+                                        @foreach($row['projects'] as $pItem)
+                                            @php
+                                                $pName = $pItem['project_name'] ?? ($pItem['name'] ?? 'Project');
+                                                $pTasks = $pItem['tasks'] ?? [];
+                                            @endphp
+                                            <div class="structured-project-group">
+                                                <div class="font-weight-bold text-dark mb-1" style="font-size: 11.5px; opacity: 0.9;">
+                                                    <i class="fas fa-folder text-primary mr-1" style="font-size: 10.5px;"></i> {{ $pName }}:
+                                                </div>
+                                                @foreach($pTasks as $pt)
+                                                    @php
+                                                        $ptName = is_array($pt) ? ($pt['task_name'] ?? ($pt['description'] ?? 'Task')) : $pt;
+                                                        $ptDone = is_array($pt) ? (!empty($pt['is_completed']) || !empty($pt['completed'])) : true;
+                                                    @endphp
+                                                    <div class="structured-task-item {{ $ptDone ? 'done' : 'pending' }} d-flex align-items-center pl-2 mb-1" style="line-height: 1.4; font-size: 12px; font-weight: 600;">
+                                                        <span class="task-tag font-weight-bold {{ $ptDone ? 'text-success' : 'text-warning' }}" style="font-size: 11px; margin-right: 6px; white-space: nowrap;">
+                                                            {{ $ptDone ? '[Done]' : '[Pending]' }}
+                                                        </span>
+                                                        <span class="text-dark">{{ $ptName }}</span>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <div class="structured-tasks-list">
+                                        @if(!empty($row['title']))
+                                            <div class="font-weight-bold text-dark mb-1" style="font-size: 11.5px; opacity: 0.9;">
+                                                <i class="fas fa-folder text-primary mr-1" style="font-size: 10.5px;"></i> {{ $row['title'] }}:
+                                            </div>
+                                        @endif
+                                        @foreach($row['structured_tasks'] as $tItem)
+                                            <div class="structured-task-item {{ $tItem['done'] ? 'done' : 'pending' }} d-flex align-items-center pl-2 mb-1" style="line-height: 1.4; font-size: 12px; font-weight: 600;">
+                                                <span class="task-tag font-weight-bold {{ $tItem['done'] ? 'text-success' : 'text-warning' }}" style="font-size: 11px; margin-right: 6px; white-space: nowrap;">
+                                                    {{ $tItem['done'] ? '[Done]' : '[Pending]' }}
+                                                </span>
+                                                <span class="text-dark">{{ $tItem['text'] }}</span>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </td>
+
                             <td class="text-right pr-4 no-export" style="white-space: nowrap;">
                                 <button type="button" class="btn-action-primary"
                                         data-work-log="{{ json_encode($logPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}"
@@ -1019,26 +1004,59 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
 $(function() {
-    // Initialize Select2 on filter panel
-    if ($.fn.select2) {
-        $('.select2-searchable').select2({
-            width: '100%',
-            minimumResultsForSearch: 8
-        });
+    // Initialize Select2 via global panel helper to preserve allowClear and standard styles
+    if (typeof window.initSearchableSelects === 'function') {
+        window.initSearchableSelects();
     }
 
-    // Month Selector Change Toggle
-    $('#hist_month_select').on('change', function() {
-        if ($(this).val() === 'custom') {
-            $('#hist_custom_dates_wrap').slideDown(180);
+    // Toggle Custom Date Fields based on Month Filter
+    $('#monthFilterSelect').on('change select2:select', function() {
+        var val = $(this).val();
+        if (val === 'custom') {
+            $('#singleDateWrap').slideUp(150);
+            $('#customFromWrap').slideDown(150);
+            $('#customToWrap').slideDown(150);
+            $('#filterDate').val('');
         } else {
-            $('#hist_custom_dates_wrap').slideUp(180);
-            $('#wr_hist_from').val('');
-            $('#wr_hist_to').val('');
+            $('#customFromWrap').slideUp(150);
+            $('#customToWrap').slideUp(150);
+            $('#singleDateWrap').slideDown(150);
+            $('#filterFromDate').val('');
+            $('#filterToDate').val('');
+        }
+    });
+
+    function extractYearMonth(str) {
+        if (!str) return null;
+        var parts = str.split(/[-/]/);
+        if (parts.length === 3) {
+            if (parts[0].length === 4) {
+                return { year: parts[0], month: parts[1].padStart(2, '0') };
+            } else if (parts[2].length === 4) {
+                return { year: parts[2], month: parts[1].padStart(2, '0') };
+            }
+        }
+        return null;
+    }
+
+    // Auto-sync Year & Month when single Date is chosen
+    $('#filterDate').on('change input', function() {
+        var dateVal = $(this).val();
+        if (dateVal) {
+            $('#filterFromDate').val('');
+            $('#filterToDate').val('');
+            var ym = extractYearMonth(dateVal);
+            if (ym) {
+                if ($('#yearFilterSelect option[value="' + ym.year + '"]').length > 0) {
+                    $('#yearFilterSelect').val(ym.year).trigger('change.select2');
+                }
+                if ($('#monthFilterSelect option[value="' + ym.month + '"]').length > 0) {
+                    $('#monthFilterSelect').val(ym.month).trigger('change.select2');
+                }
+            }
         }
     });
 
@@ -1060,13 +1078,33 @@ $(function() {
                 extend: 'csvHtml5', 
                 text: 'CSV', 
                 className: 'd-none', 
-                exportOptions: { columns: ':not(.no-export)' } 
+                exportOptions: { 
+                    columns: ':not(.no-export)',
+                    format: {
+                        body: function(data, row, column, node) {
+                            if (node && node.hasAttribute('data-export')) {
+                                return node.getAttribute('data-export');
+                            }
+                            return typeof data === 'string' ? data.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim() : data;
+                        }
+                    }
+                } 
             },
             { 
                 extend: 'excelHtml5', 
                 text: 'Excel', 
                 className: 'd-none', 
-                exportOptions: { columns: ':not(.no-export)' } 
+                exportOptions: { 
+                    columns: ':not(.no-export)',
+                    format: {
+                        body: function(data, row, column, node) {
+                            if (node && node.hasAttribute('data-export')) {
+                                return node.getAttribute('data-export');
+                            }
+                            return typeof data === 'string' ? data.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim() : data;
+                        }
+                    }
+                } 
             },
             { 
                 extend: 'pdfHtml5', 
@@ -1074,13 +1112,48 @@ $(function() {
                 className: 'd-none', 
                 orientation: 'landscape',
                 pageSize: 'A4',
-                exportOptions: { columns: ':not(.no-export)' }
+                exportOptions: { 
+                    columns: ':not(.no-export)',
+                    format: {
+                        body: function(data, row, column, node) {
+                            if (node && node.hasAttribute('data-export')) {
+                                return node.getAttribute('data-export');
+                            }
+                            return typeof data === 'string' ? data.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim() : data;
+                        }
+                    }
+                },
+                customize: function(doc) {
+                    doc.defaultStyle.fontSize = 8;
+                    doc.styles.tableHeader.fontSize = 9;
+                    doc.styles.tableHeader.fillColor = '#4B00E8';
+                    doc.styles.tableHeader.color = '#FFFFFF';
+                    doc.styles.tableHeader.alignment = 'left';
+                    doc.pageMargins = [15, 20, 15, 20];
+                    if (doc.content && doc.content[1] && doc.content[1].table) {
+                        doc.content[1].table.widths = ['5%', '13%', '9%', '12%', '11%', '26%', '24%'];
+                    }
+                }
             },
             { 
                 extend: 'print', 
                 text: 'Print', 
                 className: 'd-none',
-                exportOptions: { columns: ':not(.no-export)' }
+                exportOptions: { 
+                    columns: ':not(.no-export)',
+                    format: {
+                        body: function(data, row, column, node) {
+                            if (node && node.hasAttribute('data-export')) {
+                                return node.getAttribute('data-export').replace(/\n/g, '<br>');
+                            }
+                            return typeof data === 'string' ? data.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim() : data;
+                        }
+                    }
+                },
+                customize: function(win) {
+                    $(win.document.body).css('font-size', '11px');
+                    $(win.document.body).find('table').addClass('compact').css('font-size', 'inherit');
+                }
             }
         ]
     });

@@ -59,34 +59,80 @@
                 </div>
 
                 <div id="modal-content-container">
-                    <!-- SECTION 1: OVERVIEW CARD (Daily Progress Note) -->
-                    <div class="card border-0 mb-3 shadow-sm" style="border-radius: 16px; overflow: hidden; background: #fff;">
-                        <div class="card-body p-3">
-                            <div class="d-flex align-items-center gap-2 mb-2">
-                                <span style="width: 24px; height: 24px; border-radius: 6px; background: #F4F2FF; color: var(--orb-primary); display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">
-                                    <i class="fas fa-file-invoice"></i>
-                                </span>
-                                <span style="font-size: 9.5px; font-weight: 800; color: var(--orb-primary); letter-spacing: 0.08em; text-transform: uppercase;">Report Overview</span>
+                    <!-- MODE A: PROJECT-BASED WORK REPORT (NEW FORMAT) -->
+                    <div id="modal-section-projects" class="card border-0 mb-3 shadow-sm" style="border-radius: 16px; overflow: hidden; background: #fff;">
+                        <div class="card-body p-4">
+                            <!-- Header with Title & Today's Work Status Pill -->
+                            <div class="d-flex align-items-center justify-content-between flex-wrap pb-3 mb-3 border-bottom" style="gap: 12px; border-color: #F1F5F9 !important;">
+                                <div class="d-flex align-items-center" style="gap: 12px;">
+                                    <span style="width: 36px; height: 36px; border-radius: 10px; background: rgba(75, 0, 232, 0.08); color: var(--orb-primary, #4B00E8); display: inline-flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;">
+                                        <i class="fas fa-project-diagram"></i>
+                                    </span>
+                                    <div>
+                                        <span style="font-size: 10px; font-weight: 800; color: var(--orb-primary, #4B00E8); letter-spacing: 0.08em; text-transform: uppercase; display: block; margin-bottom: 4px;">Project & Module Wise Report</span>
+                                        <h5 id="modal-report-title" style="margin: 0; font-weight: 800; color: #0F172A; font-size: 16px; line-height: 1.35;">Work Report Submitted</h5>
+                                    </div>
+                                </div>
+                                <div id="modal-today-status-badge">
+                                    <!-- Dynamic Today's Work Status Pill -->
+                                </div>
                             </div>
-                            <h5 id="modal-report-title" style="margin: 0 0 8px 0; font-weight: 800; color: #101828; font-size: 14px;">Work Report Submitted</h5>
 
-                            <p id="modal-report-desc" style="font-size: 12.5px; line-height: 1.5; color: #475467; margin: 0; padding: 10px 14px; background: #F8FAFC; border-radius: 10px; border-left: 3px solid var(--orb-secondary);">
-                                -
-                            </p>
+                            <!-- Executive Statistics Badges -->
+                            <div class="d-flex align-items-center flex-wrap mb-4" style="gap: 10px;" id="modal-overview-stats">
+                                <span class="d-inline-flex align-items-center px-3 py-1.5 rounded-lg border text-dark" style="border-radius: 8px; font-size: 12px; font-weight: 700; background: #F8FAFC; border-color: #E2E8F0 !important;">
+                                    <i class="fas fa-folder text-primary mr-2" style="font-size: 12.5px;"></i> <span id="modal-stat-projects">1 Project</span>
+                                </span>
+                                <span class="d-inline-flex align-items-center px-3 py-1.5 rounded-lg border text-dark" style="border-radius: 8px; font-size: 12px; font-weight: 700; background: #F8FAFC; border-color: #E2E8F0 !important;">
+                                    <i class="fas fa-tasks text-info mr-2" style="font-size: 12.5px;"></i> <span id="modal-stat-tasks">0 Tasks</span>
+                                </span>
+                                <span class="d-inline-flex align-items-center px-3 py-1.5 rounded-lg border text-success" style="border-radius: 8px; font-size: 12px; font-weight: 700; background: #F0FDF4; border-color: #BBF7D0 !important;">
+                                    <i class="fas fa-check-circle mr-2" style="font-size: 12.5px;"></i> <span id="modal-stat-completed">0 Completed</span>
+                                </span>
+                            </div>
+
+                            <!-- Project-wise Structured Container (Rendered ONCE) -->
+                            <div id="modal-projects-cards-list" class="d-flex flex-column" style="gap: 16px;">
+                                <!-- Dynamically generated project & module cards -->
+                            </div>
                         </div>
                     </div>
 
-                    <!-- SECTION 2: TASK CHECKLIST -->
-                    <div class="card border-0 mb-3 shadow-sm" style="border-radius: 16px; overflow: hidden; background: #fff;">
-                        <div class="card-body p-3">
-                            <div class="d-flex align-items-center gap-2 mb-2.5">
-                                <span style="width: 24px; height: 24px; border-radius: 6px; background: #F4F2FF; color: var(--orb-primary); display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">
-                                    <i class="fas fa-tasks"></i>
-                                </span>
-                                <span style="font-size: 9.5px; font-weight: 800; color: var(--orb-primary); letter-spacing: 0.08em; text-transform: uppercase;">Task Checklist</span>
+                    <!-- MODE B: LEGACY WORK REPORT (OLD FORMAT) -->
+                    <div id="modal-section-legacy" class="d-none">
+                        <!-- Summary / Description Card -->
+                        <div class="card border-0 mb-3 shadow-sm" style="border-radius: 16px; overflow: hidden; background: #fff;">
+                            <div class="card-body p-3">
+                                <div class="d-flex align-items-center justify-content-between flex-wrap pb-2 mb-2.5 border-bottom" style="gap: 8px;">
+                                    <div class="d-flex align-items-center" style="gap: 8px;">
+                                        <span style="width: 28px; height: 28px; border-radius: 8px; background: rgba(75, 0, 232, 0.08); color: var(--orb-primary); display: inline-flex; align-items: center; justify-content: center; font-size: 13px;">
+                                            <i class="fas fa-file-alt"></i>
+                                        </span>
+                                        <div>
+                                            <span style="font-size: 9.5px; font-weight: 800; color: var(--orb-primary); letter-spacing: 0.08em; text-transform: uppercase; display: block;">Work Summary & Description</span>
+                                            <h5 id="modal-legacy-title" style="margin: 0; font-weight: 800; color: #101828; font-size: 14px;">Work Report Submitted</h5>
+                                        </div>
+                                    </div>
+                                    <div id="modal-legacy-status-badge"></div>
+                                </div>
+                                <div id="modal-legacy-desc-content" style="font-size: 12.5px; line-height: 1.6; color: #334155; margin: 0; padding: 12px 14px; background: #F8FAFC; border-radius: 10px; border-left: 3.5px solid var(--orb-primary, #4B00E8);">
+                                    -
+                                </div>
                             </div>
-                            <div id="modal-tasks-list" class="d-flex flex-column gap-1.5">
-                                <!-- Populated dynamically -->
+                        </div>
+
+                        <!-- Task Checklist Card (For Legacy Reports) -->
+                        <div class="card border-0 mb-3 shadow-sm" style="border-radius: 16px; overflow: hidden; background: #fff;">
+                            <div class="card-body p-3">
+                                <div class="d-flex align-items-center gap-2 mb-2.5">
+                                    <span style="width: 24px; height: 24px; border-radius: 6px; background: #F4F2FF; color: var(--orb-primary); display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">
+                                        <i class="fas fa-tasks"></i>
+                                    </span>
+                                    <span style="font-size: 9.5px; font-weight: 800; color: var(--orb-primary); letter-spacing: 0.08em; text-transform: uppercase;">Task Checklist</span>
+                                </div>
+                                <div id="modal-legacy-tasks-list" class="d-flex flex-column gap-1.5">
+                                    <!-- Populated dynamically -->
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -246,79 +292,202 @@
             const submittedEl = document.getElementById('modal-submitted-badge');
             if (submittedEl) submittedEl.innerText = log.submitted_time || '-';
 
-            // Title & Description
-            const titleEl = document.getElementById('modal-report-title');
-            if (titleEl) titleEl.innerText = log.title || 'Work Report Submitted';
+            // Today's Work Status Badge
+            const statusContainer = document.getElementById('modal-today-status-badge');
+            const rawStatus = (log.today_work_status || log.status || 'completed').toLowerCase();
+            if (statusContainer) {
+                let statusBg = '#EFF6FF';
+                let statusColor = '#1D4ED8';
+                let statusBorder = '#3B82F6';
+                let statusIcon = 'fas fa-spinner fa-spin';
+                let statusLabel = 'In Progress';
 
-            let descText = log.description || '';
-            if (descText.includes('☑') || descText.includes('☐')) {
-                const lines = descText.split('\n');
-                const cleanLines = lines.filter(l => !l.includes('☑') && !l.includes('☐') && !l.trim().startsWith('Project:'));
-                descText = cleanLines.join(' ').trim();
-                if (!descText) {
-                    descText = log.status ? ("Today's Work Status: " + log.status) : "Work report submitted with project tasks.";
-                }
-            }
-            const descEl = document.getElementById('modal-report-desc');
-            if (descEl) descEl.innerText = descText || 'No summary description provided.';
-
-            // Requirements / Tasks Checklist / Projects
-            const tasksList = document.getElementById('modal-tasks-list');
-            if (tasksList) {
-                tasksList.innerHTML = '';
-
-                if (log.projects && Array.isArray(log.projects) && log.projects.length > 0) {
-                    log.projects.forEach(proj => {
-                        const projBlock = document.createElement('div');
-                        projBlock.className = 'mb-3 p-2.5 rounded-lg border bg-white shadow-xs';
-                        projBlock.style.borderRadius = '12px';
-
-                        let projTasksHtml = '';
-                        if (proj.tasks && Array.isArray(proj.tasks)) {
-                            proj.tasks.forEach(task => {
-                                let isDone = true;
-                                let taskName = 'Task';
-
-                                if (typeof task === 'string') {
-                                    taskName = task;
-                                    isDone = true;
-                                } else if (typeof task === 'object' && task !== null) {
-                                    taskName = task.task_name || task.task || task.description || task.title || 'Task';
-                                    if (task.is_completed !== undefined) {
-                                        isDone = (task.is_completed === true || task.is_completed === 1 || task.is_completed === '1' || task.is_completed === 'true');
-                                    } else if (task.completed !== undefined) {
-                                        isDone = (task.completed === true || task.completed === 1 || task.completed === '1' || task.completed === 'true');
-                                    } else if (task.done !== undefined) {
-                                        isDone = (task.done === true || task.done === 1 || task.done === '1' || task.done === 'true');
-                                    } else {
-                                        const st = (task.status || 'completed').toLowerCase();
-                                        isDone = (st === 'completed' || st === 'done' || st === 'success');
-                                    }
-                                }
-
-                                projTasksHtml += `
-                                    <div class="d-flex justify-content-between align-items-center mb-1.5 p-2 rounded" style="border-radius: 8px; background: ${isDone ? '#F0FDF4' : '#F8FAFC'}; border: ${isDone ? '1px solid #BBF7D0' : '1.5px solid #E2E8F0'};">
-                                        <div style="font-size: 12.5px; font-weight: 700; color: ${isDone ? '#166534' : '#334155'};">
-                                            ${isDone ? '☑' : '☐'} ${escapeHtml(taskName)}
-                                        </div>
-                                        <span style="font-size: 9px; font-weight: 800; padding: 2px 8px; border-radius: 50px; ${isDone ? 'background: #DCFCE7; color: #166534;' : 'background: #FEF3C7; color: #D97706;'}">
-                                            ${isDone ? 'COMPLETED' : 'PENDING'}
-                                        </span>
-                                    </div>
-                                `;
-                            });
-                        }
-
-                        projBlock.innerHTML = `
-                            <div class="d-flex align-items-center mb-2 pb-1 border-bottom">
-                                <strong style="font-size: 13px; color: #1e1b4b;"><i class="fas fa-folder text-primary mr-1"></i> ${escapeHtml(proj.project_name || proj.name || 'Project')}</strong>
-                            </div>
-                            ${projTasksHtml || '<div class="text-muted small italic p-2">No tasks listed under this project</div>'}
-                        `;
-                        tasksList.appendChild(projBlock);
-                    });
+                if (rawStatus === 'completed' || rawStatus === 'done') {
+                    statusBg = '#DCFCE7';
+                    statusColor = '#15803D';
+                    statusBorder = '#16A34A';
+                    statusIcon = 'fas fa-check-circle';
+                    statusLabel = 'Completed';
+                } else if (rawStatus === 'testing') {
+                    statusBg = '#FDF4FF';
+                    statusColor = '#7E22CE';
+                    statusBorder = '#A855F7';
+                    statusIcon = 'fas fa-vial';
+                    statusLabel = 'Testing';
+                } else if (rawStatus === 'blocked') {
+                    statusBg = '#FEF2F2';
+                    statusColor = '#B91C1C';
+                    statusBorder = '#EF4444';
+                    statusIcon = 'fas fa-ban';
+                    statusLabel = 'Blocked';
                 } else {
-                    // Normalize requirements/tasks for legacy reports
+                    statusLabel = rawStatus.replace('_', ' ').toUpperCase();
+                }
+
+                statusContainer.innerHTML = `
+                    <span style="background: ${statusBg}; color: ${statusColor}; border: 1.5px solid ${statusBorder}; border-radius: 20px; padding: 3px 11px; font-size: 11px; font-weight: 800; display: inline-flex; align-items: center; gap: 4px;">
+                        <i class="${statusIcon}"></i> ${statusLabel}
+                    </span>
+                `;
+            }
+
+            // Calculate projects & tasks statistics
+            const projectsList = Array.isArray(log.projects) ? log.projects : [];
+            let totalTasks = 0;
+            let completedTasks = 0;
+
+            if (projectsList.length > 0) {
+                projectsList.forEach(p => {
+                    const tasks = Array.isArray(p.tasks) ? p.tasks : [];
+                    tasks.forEach(t => {
+                        totalTasks++;
+                        const isDone = typeof t === 'object' && t !== null 
+                            ? (t.is_completed === true || t.is_completed === 1 || t.is_completed === '1' || t.completed === true || t.completed === 1 || t.completed === '1')
+                            : true;
+                        if (isDone) completedTasks++;
+                    });
+                });
+            } else {
+                const reqs = Array.isArray(log.requirements) ? log.requirements : (Array.isArray(log.tasks) ? log.tasks : []);
+                totalTasks = reqs.length;
+                reqs.forEach(t => {
+                    const isDone = typeof t === 'object' && t !== null
+                        ? (t.done === true || t.done === 1 || t.is_completed === true || t.is_completed === 1 || t.completed === true || t.completed === 1)
+                        : true;
+                    if (isDone) completedTasks++;
+                });
+            }
+
+            const pendingTasks = totalTasks - completedTasks;
+            const statProjectsEl = document.getElementById('modal-stat-projects');
+            if (statProjectsEl) {
+                statProjectsEl.innerText = `${projectsList.length || 1} ${projectsList.length === 1 ? 'Project' : 'Projects'}`;
+            }
+            const statTasksEl = document.getElementById('modal-stat-tasks');
+            if (statTasksEl) {
+                statTasksEl.innerText = `${totalTasks} ${totalTasks === 1 ? 'Task' : 'Tasks'} Total`;
+            }
+            const statCompletedEl = document.getElementById('modal-stat-completed');
+            if (statCompletedEl) {
+                statCompletedEl.innerText = `${completedTasks} Completed${pendingTasks > 0 ? ', ' + pendingTasks + ' Pending' : ''}`;
+            }
+
+            // Section toggling: Mode A (Project-based) vs Mode B (Legacy)
+            const secProjects = document.getElementById('modal-section-projects');
+            const secLegacy = document.getElementById('modal-section-legacy');
+            const titleEl = document.getElementById('modal-report-title');
+
+            if (projectsList.length > 0) {
+                // Show Mode A (Projects), Hide Mode B (Legacy)
+                if (secProjects) secProjects.classList.remove('d-none');
+                if (secLegacy) secLegacy.classList.add('d-none');
+
+                // Update Project mode Title
+                if (titleEl) {
+                    if (projectsList.length > 1) {
+                        titleEl.innerText = `Daily Work Report (${projectsList.length} Projects)`;
+                    } else {
+                        titleEl.innerText = `${projectsList[0].project_name || projectsList[0].name || 'Project Work'}`;
+                    }
+                }
+
+                // Render Project Cards (ONCE ONLY)
+                const projCardsContainer = document.getElementById('modal-projects-cards-list');
+                if (projCardsContainer) {
+                    projCardsContainer.innerHTML = '';
+                    projectsList.forEach(proj => {
+                        const pName = proj.project_name || proj.name || 'Project';
+                        const pTasks = Array.isArray(proj.tasks) ? proj.tasks : [];
+                        let pDoneCount = 0;
+                        let tasksHtml = '';
+
+                        pTasks.forEach(task => {
+                            let isDone = true;
+                            let taskName = 'Task';
+
+                            if (typeof task === 'string') {
+                                taskName = task;
+                                isDone = true;
+                            } else if (typeof task === 'object' && task !== null) {
+                                taskName = task.task_name || task.task || task.description || task.title || 'Task';
+                                if (task.is_completed !== undefined) {
+                                    isDone = (task.is_completed === true || task.is_completed === 1 || task.is_completed === '1' || task.is_completed === 'true');
+                                } else if (task.completed !== undefined) {
+                                    isDone = (task.completed === true || task.completed === 1 || task.completed === '1' || task.completed === 'true');
+                                } else if (task.done !== undefined) {
+                                    isDone = (task.done === true || task.done === 1 || task.done === '1' || task.done === 'true');
+                                } else {
+                                    const st = (task.status || 'completed').toLowerCase();
+                                    isDone = (st === 'completed' || st === 'done' || st === 'success');
+                                }
+                            }
+
+                            if (isDone) pDoneCount++;
+
+                            tasksHtml += `
+                                <div class="d-flex justify-content-between align-items-center p-2.5 rounded" style="border-radius: 9px; background: ${isDone ? '#F0FDF4' : '#FFFBEB'}; border: 1px solid ${isDone ? '#BBF7D0' : '#FDE68A'}; gap: 14px;">
+                                    <div style="font-size: 12.5px; font-weight: 600; color: ${isDone ? '#15803D' : '#92400E'}; display: flex; align-items: flex-start; gap: 10px; line-height: 1.5; flex: 1;">
+                                        <i class="${isDone ? 'fas fa-check-circle text-success' : 'far fa-clock text-warning'}" style="font-size: 14px; margin-top: 3px; flex-shrink: 0;"></i>
+                                        <span style="word-break: break-word;">${escapeHtml(taskName)}</span>
+                                    </div>
+                                    <span style="font-size: 9px; font-weight: 800; padding: 3px 9px; border-radius: 50px; flex-shrink: 0; letter-spacing: 0.04em; ${isDone ? 'background: #DCFCE7; color: #166534; border: 1px solid #BBF7D0;' : 'background: #FEF3C7; color: #D97706; border: 1px solid #FDE68A;'}">
+                                        ${isDone ? 'COMPLETED' : 'PENDING'}
+                                    </span>
+                                </div>
+                            `;
+                        });
+
+                        const pCard = document.createElement('div');
+                        pCard.className = 'project-module-card p-3.5 rounded-lg border bg-white shadow-xs';
+                        pCard.style.cssText = 'border-radius: 14px; border: 1.5px solid #E2E8F0 !important; border-left: 4.5px solid var(--orb-primary, #4B00E8) !important;';
+                        pCard.innerHTML = `
+                            <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom" style="border-color: #F1F5F9 !important;">
+                                <div class="d-flex align-items-center" style="gap: 10px;">
+                                    <span style="width: 32px; height: 32px; border-radius: 8px; background: #EEF2FF; color: var(--orb-primary, #4B00E8); display: inline-flex; align-items: center; justify-content: center; font-size: 14px;">
+                                        <i class="fas fa-folder-open"></i>
+                                    </span>
+                                    <strong style="font-size: 14.5px; color: #0F172A; font-weight: 800;">${escapeHtml(pName)}</strong>
+                                </div>
+                                <span class="badge border" style="background: #F8FAFC; color: #475467; font-size: 11.5px; font-weight: 700; border-radius: 6px; padding: 4px 10px; border-color: #E2E8F0 !important;">
+                                    ${pTasks.length} ${pTasks.length === 1 ? 'task' : 'tasks'} &bull; <span class="${pDoneCount === pTasks.length ? 'text-success' : 'text-primary'} font-weight-bold">${pDoneCount}/${pTasks.length} Done</span>
+                                </span>
+                            </div>
+                            <div class="d-flex flex-column" style="gap: 8px;">
+                                ${tasksHtml || '<div class="text-muted small italic p-2">No tasks listed under this project</div>'}
+                            </div>
+                        `;
+                        projCardsContainer.appendChild(pCard);
+                    });
+                }
+            } else {
+                // Show Mode B (Legacy), Hide Mode A (Projects)
+                if (secProjects) secProjects.classList.add('d-none');
+                if (secLegacy) secLegacy.classList.remove('d-none');
+
+                // Legacy Title
+                const legTitleEl = document.getElementById('modal-legacy-title');
+                if (legTitleEl) legTitleEl.innerText = log.title || 'Work Report Submitted';
+
+                // Legacy Status Pill
+                const legStatusBadge = document.getElementById('modal-legacy-status-badge');
+                if (legStatusBadge && statusContainer) {
+                    legStatusBadge.innerHTML = statusContainer.innerHTML;
+                }
+
+                // Legacy Description
+                const legDescEl = document.getElementById('modal-legacy-desc-content');
+                let descText = log.description || log.work_summary || '';
+                if (descText.includes('☑') || descText.includes('☐')) {
+                    const lines = descText.split('\n');
+                    const cleanLines = lines.filter(l => !l.includes('☑') && !l.includes('☐') && !l.trim().startsWith('Project:'));
+                    descText = cleanLines.join(' ').trim();
+                }
+                if (legDescEl) legDescEl.innerText = descText || 'Work report submitted.';
+
+                // Legacy Tasks Checklist
+                const legTasksList = document.getElementById('modal-legacy-tasks-list');
+                if (legTasksList) {
+                    legTasksList.innerHTML = '';
                     const items = log.requirements || log.tasks || [];
                     if (Array.isArray(items) && items.length > 0) {
                         items.forEach(item => {
@@ -350,17 +519,18 @@
                             row.className = 'd-flex justify-content-between align-items-center gap-3 mb-1.5';
 
                             row.innerHTML = `
-                                <div style="font-size: 12.5px; font-weight: 700; color: ${isCompleted ? '#166534' : '#475467'};">
-                                    ${isCompleted ? '☑' : '☐'} ${escapeHtml(taskText)}
+                                <div style="font-size: 12.5px; font-weight: 700; color: ${isCompleted ? '#166534' : '#475467'}; display: flex; align-items: center;">
+                                    <i class="${isCompleted ? 'fas fa-check-square text-success' : 'far fa-square text-warning'} mr-2" style="font-size: 13px;"></i>
+                                    <span>${escapeHtml(taskText)}</span>
                                 </div>
                                 <span style="font-size: 8.5px; font-weight: 800; padding: 2px 6px; border-radius: 50px; ${isCompleted ? 'background: #DCFCE7; color: #166534;' : 'background: #F3F4F6; color: #6B7280;'}">
                                     ${isCompleted ? 'COMPLETED' : 'PENDING'}
                                 </span>
                             `;
-                            tasksList.appendChild(row);
+                            legTasksList.appendChild(row);
                         });
                     } else {
-                        tasksList.innerHTML = `
+                        legTasksList.innerHTML = `
                             <div class="text-center py-2.5 border rounded-lg bg-white text-muted" style="border-radius: 10px; font-style: italic; font-size: 11.5px;">
                                 <i class="fas fa-info-circle mr-1"></i> No checklist items.
                             </div>

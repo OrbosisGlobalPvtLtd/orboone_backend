@@ -1023,6 +1023,20 @@
                                 <span class="badge badge-light border font-weight-bold px-2.5 py-1 text-dark" style="border-radius: 6px; font-size: 11px;">
                                     {{ $daysText }}
                                 </span>
+                                @if(!empty($lr->is_half_day) || !empty($lr->half_day_type) || ($daysVal > 0 && $daysVal < 1))
+                                    <div class="mt-1">
+                                        <span class="badge badge-pill font-weight-bold" style="background: rgba(14, 165, 233, 0.12); color: #0284C7; border: 1px solid rgba(14, 165, 233, 0.28); font-size: 10px; padding: 2px 7px;">
+                                            <i class="far fa-clock mr-0.5"></i> {{ ($lr->half_day_type ?? '') === 'second_half' ? '2nd Half' : '1st Half' }}
+                                        </span>
+                                    </div>
+                                @endif
+                                @if(!empty($lr->sandwich_applied))
+                                    <div class="mt-0.5">
+                                        <span class="badge badge-pill font-weight-bold" style="background: #FEF3C7; color: #B45309; border: 1px solid #FCD34D; font-size: 10px; padding: 2px 7px;" title="Sandwich Policy Applied">
+                                            <i class="fas fa-layer-group mr-0.5"></i> Sandwich
+                                        </span>
+                                    </div>
+                                @endif
                             </td>
 
                             <!-- 7. Manager Approval -->
@@ -1332,6 +1346,13 @@
                                 <div class="font-weight-bold text-success mt-0.5" style="font-size: 12.5px; line-height: 1.2;">
                                     {{ $daysText }}
                                 </div>
+                                @if(!empty($lr->is_half_day) || !empty($lr->half_day_type) || ($daysVal > 0 && $daysVal < 1))
+                                    <div class="mt-1">
+                                        <span class="badge badge-pill font-weight-bold" style="background: rgba(14, 165, 233, 0.12); color: #0284C7; border: 1px solid rgba(14, 165, 233, 0.28); font-size: 9.5px; padding: 2px 6px;">
+                                            <i class="far fa-clock mr-0.5"></i> {{ ($lr->half_day_type ?? '') === 'second_half' ? 'Second Half (Afternoon)' : 'First Half (Morning)' }}
+                                        </span>
+                                    </div>
+                                @endif
                             </div>
                         </div>
 
@@ -1349,6 +1370,26 @@
                         </div>
 
                     </div>
+
+                    @if(!empty($lr->is_half_day) || !empty($lr->half_day_type) || ($daysVal > 0 && $daysVal < 1))
+                        <!-- Half Day Session Banner -->
+                        <div class="p-2.5 px-3 bg-white border rounded-lg mb-3 d-flex align-items-center justify-content-between" style="border-radius: 10px; border-color: #BAE6FD !important; background: linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%) !important;">
+                            <div class="d-flex align-items-center" style="gap: 10px;">
+                                <div style="width: 30px; height: 30px; border-radius: 8px; background: rgba(2, 132, 199, 0.15); color: #0284C7; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0;">
+                                    <i class="far fa-clock"></i>
+                                </div>
+                                <div>
+                                    <div class="font-weight-bold text-dark" style="font-size: 12px; line-height: 1.2;">Half Day Session</div>
+                                    <div class="text-muted font-weight-500" style="font-size: 11px;">
+                                        Applied for <strong class="text-primary">{{ ($lr->half_day_type ?? '') === 'second_half' ? 'Second Half (Afternoon Session)' : 'First Half (Morning Session)' }}</strong>
+                                    </div>
+                                </div>
+                            </div>
+                            <span class="badge font-weight-bold px-2.5 py-1" style="background: #0284C7; color: #FFF; font-size: 11px; border-radius: 6px;">
+                                {{ ($lr->half_day_type ?? '') === 'second_half' ? 'Second Half' : 'First Half' }}
+                            </span>
+                        </div>
+                    @endif
 
                     <!-- Reason -->
                     @if(!empty($lr->reason))

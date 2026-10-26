@@ -117,6 +117,9 @@ class EnterpriseAttendanceLeaveResolverS
                 } else {
                     $days['week_off_days'] += 1;
                 }
+            } elseif ($attendance->leave_request_id) {
+                // Approved leave date rows are the source of truth for PL/SL/LOP splits.
+                // Counting a half-day LOP attendance row here and again below doubles payroll LOP.
             } elseif ($attendance->is_half_day || str_contains($label, 'half')) {
                 $days['half_days'] += 1;
             } elseif ($attendance->is_lwp || str_contains($label, 'lwp')) {
@@ -191,20 +194,14 @@ class EnterpriseAttendanceLeaveResolverS
             return $blank;
         }
 
-        $row = DB::table('leave_request_dates')
-            ->join('leave_requests', 'leave_requests.id', '=', 'leave_request_dates.leave_request_id')
-            ->where('leave_request_dates.employee_id', $employee->id)
-            ->where('leave_requests.status', 'approved')
-            ->whereMonth('leave_request_dates.leave_date', $month)
-            ->whereYear('leave_request_dates.leave_date', $year)
-            ->selectRaw('SUM(leave_request_dates.paid_day) as paid, SUM(leave_request_dates.sick_day) as sick, SUM(leave_request_dates.comp_off_day) as comp, SUM(leave_request_dates.lwp_day) as lwp')
-            ->first();
+        $totals = app(\App\Services\HRMS\Leave\LeaveMonthlyBalanceService::class)
+            ->leaveTotalsForEmployeeMonth($employee, $year, $month);
 
         return [
-            'paid_leave_days' => (float) ($row->paid ?? 0),
-            'sick_leave_days' => (float) ($row->sick ?? 0),
-            'comp_off_days' => (float) ($row->comp ?? 0),
-            'lwp_days' => (float) ($row->lwp ?? 0),
+            'paid_leave_days' => (float) ($totals['paid_leave_days'] ?? 0),
+            'sick_leave_days' => (float) ($totals['sick_leave_days'] ?? 0),
+            'comp_off_days' => (float) ($totals['comp_off_days'] ?? 0),
+            'lwp_days' => (float) ($totals['lwp_days'] ?? 0),
         ];
     }
 

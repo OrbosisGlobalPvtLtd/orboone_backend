@@ -118,6 +118,37 @@
         box-shadow: 0 16px 28px rgba(16, 24, 40, .20);
     }
 
+    .leave-btn-gradient {
+        border: 0 !important;
+        border-radius: 14px;
+        background: linear-gradient(135deg, var(--leave-primary, #4B00E8), var(--leave-secondary, #FF5252)) !important;
+        color: #ffffff !important;
+        font-size: 13px;
+        font-weight: 850;
+        height: 40px;
+        padding: 0 18px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        box-shadow: 0 10px 24px rgba(75, 0, 232, 0.22);
+        transition: all .2s ease;
+        cursor: pointer;
+        text-decoration: none !important;
+    }
+
+    .leave-btn-gradient i {
+        color: #ffffff !important;
+    }
+
+    .leave-btn-gradient:hover,
+    .leave-btn-gradient:focus {
+        color: #ffffff !important;
+        transform: translateY(-1px);
+        box-shadow: 0 14px 28px rgba(75, 0, 232, 0.32);
+        filter: brightness(1.05);
+    }
+
     .leave-card {
         background: #fff;
         border: 1px solid var(--leave-border);
@@ -396,10 +427,6 @@
         padding: 9px 12px;
     }
 
-    .dataTables_wrapper .dt-buttons {
-        display: none !important;
-    }
-
     .dataTables_wrapper .dataTables_filter input,
     .dataTables_wrapper .dataTables_length select {
         border: 1px solid var(--leave-border);
@@ -658,13 +685,6 @@
                     Manage yearly allocation rules, monthly limits, sandwich policy, Nov/Dec usage cap and comp-off expiry behavior.
                 </div>
             </div>
-
-            <div class="leave-hero-actions">
-                <button type="button" class="leave-add-btn" data-toggle="modal" data-target="#createPolicyModal">
-                    <i class="fas fa-plus"></i>
-                    Add Policy
-                </button>
-            </div>
         </div>
     </div>
 
@@ -686,17 +706,9 @@
             </div>
 
             <div class="leave-action-wrap">
-                <button type="button" class="leave-light-btn" onclick="triggerLeaveExport('csv');">
-                    <i class="fas fa-file-csv"></i> CSV
-                </button>
-                <button type="button" class="leave-light-btn" onclick="triggerLeaveExport('excel');">
-                    <i class="fas fa-file-excel text-success"></i> Excel
-                </button>
-                <button type="button" class="leave-light-btn" onclick="triggerLeaveExport('pdf');">
-                    <i class="fas fa-file-pdf text-danger"></i> PDF
-                </button>
-                <button type="button" class="leave-light-btn" onclick="triggerLeaveExport('print');">
-                    <i class="fas fa-print"></i> Print
+                <button type="button" class="leave-btn-gradient" data-toggle="modal" data-target="#createPolicyModal">
+                    <i class="fas fa-plus"></i>
+                    Add Policy
                 </button>
             </div>
         </div>
@@ -840,16 +852,21 @@
     @php
     $policyFields = [
     'policy_name' => ['Policy Name', 'text', 'Example: Default Leave Policy', true],
-    'annual_total_leaves' => ['Annual Total Leaves', 'number', '25', false],
-    'annual_paid_leaves' => ['Annual Paid Leaves', 'number', '18', false],
-    'annual_sick_leaves' => ['Annual Sick Leaves', 'number', '7', false],
-    'monthly_leave_limit' => ['Monthly Leave Limit', 'number', '2', false],
-    'max_leave_at_once' => ['Max Leave At Once', 'number', '15', false],
-    'probation_leave_limit' => ['Probation Limit', 'number', '1', false],
-    'internship_leave_limit' => ['Internship Limit', 'number', '1', false],
-    'medical_certificate_after_days' => ['Medical Certificate After Days', 'number', '2', false],
-    'nov_dec_threshold_balance' => ['Nov/Dec Threshold Balance', 'number', '20', false],
-    'nov_dec_usage_percentage' => ['Nov/Dec Usage Percentage', 'number', '50', false],
+    'annual_total_leaves' => ['Annual Total Leaves', 'number', 'Enter policy value', true],
+    'annual_paid_leaves' => ['Annual Paid Leaves', 'number', 'Enter policy value', true],
+    'annual_sick_leaves' => ['Annual Sick Leaves', 'number', 'Enter policy value', true],
+    'monthly_leave_limit' => ['Monthly Leave Limit', 'number', 'Not used as a ledger usage cap', true],
+    'max_leave_at_once' => ['Max Leave At Once', 'number', 'Enter policy value', true],
+    'probation_leave_limit' => ['Probation Limit', 'number', 'Enter policy value', true],
+    'internship_leave_limit' => ['Internship Limit', 'number', 'Enter policy value', true],
+    'unpaid_intern_leave_limit' => ['Unpaid Internship Leave Limit', 'number', 'Enter policy value', true],
+    'request_unit' => ['Leave Request Unit', 'number', 'Enter policy value', true],
+    'lapse_grace_days' => ['Lapse Grace Days', 'number', 'Enter policy value', true],
+    'leave_lapse_month' => ['Leave Lapse Month (1-12)', 'number', 'Enter month', true],
+    'leave_lapse_day' => ['Leave Lapse Day (1-31)', 'number', 'Enter day', true],
+    'medical_certificate_after_days' => ['Medical Certificate After Days', 'number', 'Enter policy value', true],
+    'nov_dec_threshold_balance' => ['Nov/Dec Threshold Balance', 'number', 'Enter policy value', true],
+    'nov_dec_usage_percentage' => ['Nov/Dec Usage Percentage', 'number', 'Enter policy value', true],
     ];
 
     $policyRules = [
@@ -982,16 +999,6 @@
                                     @foreach($policyFields as $field => $meta)
                                     @php
                                     $defaultValue = '';
-                                    if ($field === 'annual_total_leaves') $defaultValue = 25;
-                                    if ($field === 'annual_paid_leaves') $defaultValue = 18;
-                                    if ($field === 'annual_sick_leaves') $defaultValue = 7;
-                                    if ($field === 'monthly_leave_limit') $defaultValue = 2;
-                                    if ($field === 'max_leave_at_once') $defaultValue = 15;
-                                    if ($field === 'probation_leave_limit') $defaultValue = 1;
-                                    if ($field === 'internship_leave_limit') $defaultValue = 1;
-                                    if ($field === 'medical_certificate_after_days') $defaultValue = 2;
-                                    if ($field === 'nov_dec_threshold_balance') $defaultValue = 20;
-                                    if ($field === 'nov_dec_usage_percentage') $defaultValue = 50;
                                     @endphp
 
                                     <div class="col-md-4">

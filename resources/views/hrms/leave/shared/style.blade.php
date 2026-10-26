@@ -130,6 +130,147 @@ body {
 .leave-btn-success{background:linear-gradient(135deg,#10b981,#059669);color:#fff!important;}
 .leave-btn-warning{background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff!important;}
 
+/* Universal Responsive Leave Metric Cards (Image 2 Design) */
+.leave-metric-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)) !important;
+    gap: 14px !important;
+    margin-bottom: 22px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+@media (max-width: 768px) {
+    .leave-metric-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+    }
+}
+
+@media (max-width: 420px) {
+    .leave-metric-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+.leave-metric-grid > .leave-metric,
+.leave-metric-grid .leave-metric,
+.leave-metric-card {
+    background: #FFFFFF !important;
+    border: 1px solid var(--orb-border, #E7EAF3) !important;
+    border-radius: 18px !important;
+    padding: 16px 16px 12px !important;
+    box-shadow: 0 10px 24px rgba(16, 24, 40, .055) !important;
+    position: relative !important;
+    overflow: hidden !important;
+    min-height: 96px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    transition: transform 0.22s ease, box-shadow 0.22s ease !important;
+}
+
+.leave-metric-grid > .leave-metric:hover,
+.leave-metric-grid .leave-metric:hover,
+.leave-metric-card:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 14px 30px rgba(16, 24, 40, .09) !important;
+}
+
+.leave-metric-grid > .leave-metric::after,
+.leave-metric-grid .leave-metric::after,
+.leave-metric-card::after {
+    content: "" !important;
+    position: absolute !important;
+    right: -22px !important;
+    top: -30px !important;
+    width: 86px !important;
+    height: 86px !important;
+    border-radius: 50% !important;
+    background: var(--metric-soft, #F4F2FF) !important;
+    pointer-events: none !important;
+    z-index: 0 !important;
+}
+
+/* Ensure table cell metrics are never polluted by card styles */
+.leave-table .leave-metric,
+table .leave-metric {
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    min-height: auto !important;
+    display: block !important;
+    position: static !important;
+    overflow: visible !important;
+    transform: none !important;
+}
+
+.leave-table .leave-metric::after,
+.leave-table .leave-metric::before,
+table .leave-metric::after,
+table .leave-metric::before {
+    display: none !important;
+    content: none !important;
+}
+
+.leave-metric-top {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
+    position: relative !important;
+    z-index: 1 !important;
+    width: 100% !important;
+}
+
+.leave-metric-icon {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 13px !important;
+    background: var(--metric-soft, #F4F2FF) !important;
+    color: var(--metric-color, var(--orb-primary, #4B00E8)) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 16px !important;
+    flex-shrink: 0 !important;
+}
+
+.leave-metric-value {
+    font-size: 26px !important;
+    font-weight: 950 !important;
+    color: #101828 !important;
+    line-height: 1 !important;
+    letter-spacing: -0.02em !important;
+    text-align: right !important;
+}
+
+.leave-metric-label {
+    font-size: 11px !important;
+    font-weight: 950 !important;
+    color: #475467 !important;
+    text-transform: uppercase !important;
+    margin-top: 14px !important;
+    position: relative !important;
+    z-index: 1 !important;
+    letter-spacing: 0.04em !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+.leave-metric-line {
+    position: relative !important;
+    height: 3px !important;
+    border-radius: 999px !important;
+    background: linear-gradient(90deg, var(--metric-color, var(--orb-primary, #4B00E8)), transparent) !important;
+    margin-top: 8px !important;
+    width: 100% !important;
+    z-index: 1 !important;
+}
+
 .leave-table-wrap{padding:16px;}
 .leave-table-responsive{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;}
 
@@ -505,5 +646,175 @@ body {
     background: #F1F5F9 !important;
     color: #475569 !important;
     border: 1px solid #E2E8F0 !important;
+}
+
+/* ==========================================================================
+   Vendor Pagination Theme (matches vendor/pagination/orbo.blade.php)
+   ========================================================================== */
+.orb-pagination-wrapper,
+.dataTables_wrapper .row:last-child {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    flex-wrap: wrap !important;
+    gap: 12px !important;
+    width: 100% !important;
+    padding: 12px 18px 14px !important;
+    background: #FFFFFF !important;
+    border-top: 1px solid #EEF2F6 !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    position: relative !important;
+    z-index: 5 !important;
+}
+
+.orb-pagination-info,
+.dataTables_wrapper .dataTables_info {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: var(--orb-muted, #6B7280) !important;
+    white-space: nowrap !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+.dataTables_wrapper .dataTables_paginate,
+.dataTables_paginate_box {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+.orb-pagination,
+.dataTables_paginate .pagination {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    list-style: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    flex-wrap: wrap !important;
+}
+
+.orb-page-item,
+.dataTables_paginate .pagination .page-item {
+    margin: 0 !important;
+    border: none !important;
+    background: transparent !important;
+}
+
+.orb-page-link,
+.dataTables_paginate .pagination .page-item .page-link,
+.dataTables_paginate .paginate_button {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 34px !important;
+    height: 34px !important;
+    padding: 0 12px !important;
+    border-radius: 9px !important;
+    border: 1px solid transparent !important;
+    background: transparent !important;
+    color: var(--orb-primary, #4B00E8) !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    text-decoration: none !important;
+    transition: all 0.18s ease !important;
+    cursor: pointer !important;
+    user-select: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+.orb-page-link:hover:not(.orb-page-dots),
+.dataTables_paginate .pagination .page-item:not(.active):not(.disabled) .page-link:hover,
+.dataTables_paginate .paginate_button:hover:not(.current):not(.disabled) {
+    background: var(--orb-soft, #F3EDFF) !important;
+    color: var(--orb-primary, #4B00E8) !important;
+    border-color: transparent !important;
+}
+
+.orb-page-item.active .orb-page-link,
+.dataTables_paginate .pagination .page-item.active .page-link,
+.dataTables_paginate .paginate_button.current,
+.dataTables_paginate .paginate_button.current:hover {
+    background: linear-gradient(135deg, var(--orb-primary, #4B00E8), var(--orb-secondary, #FF5252)) !important;
+    color: #FFFFFF !important;
+    border-radius: 9px !important;
+    font-weight: 800 !important;
+    min-width: 34px !important;
+    height: 34px !important;
+    box-shadow: 0 4px 14px rgba(75, 0, 232, 0.35) !important;
+    border: none !important;
+    cursor: default !important;
+}
+
+.orb-page-item.disabled .orb-page-link,
+.dataTables_paginate .pagination .page-item.disabled .page-link,
+.dataTables_paginate .paginate_button.disabled,
+.dataTables_paginate .paginate_button.disabled:hover {
+    color: #94A3B8 !important;
+    cursor: not-allowed !important;
+    background: transparent !important;
+    opacity: 0.6 !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+}
+
+.orb-page-dots,
+.dataTables_paginate .pagination .page-item.disabled .page-link:not(.orb-page-prev):not(.orb-page-next) {
+    border: none !important;
+    background: transparent !important;
+    min-width: 18px !important;
+    padding: 0 2px !important;
+    color: #94A3B8 !important;
+    font-weight: 800 !important;
+    letter-spacing: 1px !important;
+}
+
+@media (max-width: 576px) {
+    .orb-pagination-wrapper,
+    .dataTables_wrapper .row:last-child {
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 8px !important;
+        padding: 10px 4px !important;
+        text-align: center !important;
+    }
+    .orb-pagination-info,
+    .dataTables_wrapper .dataTables_info {
+        font-size: 11px !important;
+    }
+    .orb-pagination,
+    .dataTables_paginate .pagination {
+        flex-wrap: nowrap !important;
+        justify-content: center !important;
+        gap: 3px !important;
+        max-width: 100% !important;
+        overflow-x: auto !important;
+    }
+    .orb-page-link,
+    .dataTables_paginate .pagination .page-item .page-link,
+    .dataTables_paginate .paginate_button {
+        min-width: 28px !important;
+        height: 28px !important;
+        padding: 0 6px !important;
+        font-size: 11.5px !important;
+        border-radius: 7px !important;
+    }
+    .orb-page-item.active .orb-page-link,
+    .dataTables_paginate .pagination .page-item.active .page-link,
+    .dataTables_paginate .paginate_button.current {
+        min-width: 28px !important;
+        height: 28px !important;
+        border-radius: 7px !important;
+    }
+    .orb-page-dots {
+        min-width: 14px !important;
+        font-size: 11px !important;
+        padding: 0 1px !important;
+    }
 }
 </style>

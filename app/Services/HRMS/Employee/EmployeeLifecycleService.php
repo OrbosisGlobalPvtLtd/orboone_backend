@@ -343,6 +343,19 @@ class EmployeeLifecycleService
                 );
             }
 
+            $ledgerAllocation = \App\Models\HRMS\Leave\LeaveAllocationM::query()
+                ->where('employee_id', $employeeId)
+                ->where('year', $today->year)
+                ->first();
+            if ($ledgerAllocation && strtolower((string) $ledgerAllocation->employment_stage) === 'permanent') {
+                $ledgerAllocation->forceFill([
+                    'uses_ledger' => true,
+                    'ledger_effective_from' => null,
+                ])->save();
+                app(\App\Services\HRMS\Leave\MonthlyLeaveAccrualService::class)
+                    ->catchUpEmployee($fresh, $today, $actorId);
+            }
+
             if ($fresh->actual_salary !== null) {
                 app(EmployeeSalaryHistoryService::class)->syncPermanentActivation(
                     $employeeId,

@@ -25,11 +25,14 @@ class GenerateLeaveAllocations extends Command
                 ->find($this->option('employee_id'));
             $count = $employee ? 1 : 0;
             if ($employee) {
-                $allocationService->generateForEmployee($employee, $year);
+                $allocationService->generateSingle((int) $employee->id, $year);
             }
         } else {
             $summary = $allocationService->generateYearly($year);
             $this->info("Leave allocation batch for {$year}: processed {$summary['total_processed']}, allocated {$summary['successful_allocations']}, skipped {$summary['skipped']}, failed {$summary['failed']}, duration {$summary['duration_seconds']}s.");
+            foreach ($summary['skipped_employees'] as $skipped) {
+                $this->line('Skipped employee ' . $skipped['employee_id'] . ': ' . $skipped['reason']);
+            }
             if ($summary['failed_employee_ids']) {
                 $this->error('Failed employee IDs: ' . implode(', ', $summary['failed_employee_ids']));
             }

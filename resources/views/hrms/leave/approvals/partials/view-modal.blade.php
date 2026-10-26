@@ -85,16 +85,23 @@
                         </div>
                     </div>
 
-                    <!-- Duration -->
+                    <!-- Duration & Session -->
                     <div class="leave-info-tile">
                         <div style="width: 36px; height: 36px; border-radius: 8px; background: #ECFDF5; color: #10B981; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;">
                             <i class="far fa-clock"></i>
                         </div>
                         <div class="overflow-hidden" style="min-width: 0;">
-                            <div class="text-muted font-weight-bold uppercase" style="font-size: 9px; letter-spacing: 0.5px; color: #64748B;">DURATION</div>
+                            <div class="text-muted font-weight-bold uppercase" style="font-size: 9px; letter-spacing: 0.5px; color: #64748B;">DURATION &amp; SESSION</div>
                             <div class="font-weight-bold text-success mt-0.5" style="font-size: 12.5px; line-height: 1.2;">
                                 {{ $daysText }}
                             </div>
+                            @if(!empty($lr->is_half_day) || !empty($lr->half_day_type) || ($daysVal > 0 && $daysVal < 1))
+                                <div class="mt-1">
+                                    <span class="badge badge-pill font-weight-bold" style="background: rgba(14, 165, 233, 0.12); color: #0284C7; border: 1px solid rgba(14, 165, 233, 0.28); font-size: 9.5px; padding: 2px 6px;">
+                                        <i class="far fa-clock mr-0.5"></i> {{ ($lr->half_day_type ?? '') === 'second_half' ? 'Second Half (Afternoon)' : 'First Half (Morning)' }}
+                                    </span>
+                                </div>
+                            @endif
                         </div>
                     </div>
 
@@ -113,12 +120,81 @@
 
                 </div>
 
+                <!-- Sandwich & Half Day Detailed Explanation Banner -->
+                @if(!empty($lr->sandwich_applied) || !empty($lr->is_half_day))
+                    @php
+                        $calcDates = collect($lr->dates ?? []);
+                        $sandwichDateRows = $calcDates->where('is_sandwich_day', 1);
+                        $workingDateRows = $calcDates->where('is_sandwich_day', 0)->where('deduct_as_leave', 1);
+                        $workingDaysTotal = $workingDateRows->sum(fn($d) => (float)($d->paid_day + $d->sick_day + $d->comp_off_day + $d->lwp_day));
+                        if ($workingDaysTotal <= 0) {
+                            $workingDaysTotal = !empty($lr->is_half_day) ? 0.5 : (float)($lr->requested_days ?? 1);
+                        }
+                        $sandwichDaysTotal = $sandwichDateRows->sum(fn($d) => (float)($d->paid_day + $d->sick_day + $d->comp_off_day + $d->lwp_day));
+                        if ($sandwichDaysTotal <= 0 && !empty($lr->sandwich_applied)) {
+                            $sandwichDaysTotal = max(0, (float)($lr->deducted_days ?? 0) - $workingDaysTotal);
+                        }
+                    @endphp
+                    <div class="mb-3 p-3 rounded-lg border" style="background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%); border-color: #FDE68A !important; border-radius: 10px; box-shadow: 0 1px 3px rgba(217, 119, 6, 0.08);">
+                        <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap" style="gap: 6px;">
+                            <div class="d-flex align-items-center" style="gap: 6px;">
+                                <i class="fas fa-layer-group text-warning" style="font-size: 13px; color: #D97706 !important;"></i>
+                                <span class="font-weight-bold text-dark" style="font-size: 12px; letter-spacing: 0.3px;">
+                                    {{ !empty($lr->sandwich_applied) ? 'Sandwich Rule & Deduction Split' : 'Half Day Application Summary' }}
+                                </span>
+                            </div>
+                            @if(!empty($lr->is_half_day))
+                                <span class="badge badge-info font-weight-bold" style="background: #0284C7; color: #FFF; font-size: 10px; border-radius: 6px; padding: 3px 8px;">
+                                    <i class="far fa-clock mr-1"></i> {{ ($lr->half_day_type ?? '') === 'second_half' ? 'Second Half (Afternoon Session)' : 'First Half (Morning Session)' }}
+                                </span>
+                            @endif
+                        </div>
+
+                        <div class="d-flex align-items-center flex-wrap" style="gap: 12px; font-size: 12px; color: #92400E;">
+                            <div>
+                                <strong>Leave Applied:</strong>
+                                <span class="text-dark font-weight-bold">
+                                    {{ $workingDaysTotal }} {{ \Illuminate\Support\Str::plural('Day', $workingDaysTotal) }}
+                                    @if(!empty($lr->is_half_day))
+                                        ({{ ($lr->half_day_type ?? '') === 'second_half' ? '2nd Half' : '1st Half' }})
+                                    @endif
+                                </span>
+                            </div>
+                            @if(!empty($lr->sandwich_applied))
+                                <div>+</div>
+                                <div>
+                                    <strong>Sandwich Days:</strong>
+                                    <span class="text-danger font-weight-bold">{{ $sandwichDaysTotal }} {{ \Illuminate\Support\Str::plural('Day', $sandwichDaysTotal) }}</span>
+                                </div>
+                                <div>=</div>
+                            @else
+                                <div>&bull;</div>
+                            @endif
+                            <div>
+                                <strong>Total Deducted:</strong>
+                                <span class="text-success font-weight-bold" style="font-size: 13px;">{{ (float)($lr->deducted_days ?? $daysVal) }} {{ \Illuminate\Support\Str::plural('Day', (float)($lr->deducted_days ?? $daysVal)) }}</span>
+                            </div>
+                        </div>
+
+                        @if($sandwichDateRows->isNotEmpty())
+                            <div class="mt-2 pt-2 border-top small" style="border-color: rgba(217, 119, 6, 0.2) !important; font-size: 11px; color: #B45309;">
+                                <i class="fas fa-info-circle mr-1"></i> Non-working day(s) included under sandwich policy:
+                                <strong>{{ $sandwichDateRows->map(fn($d) => \Carbon\Carbon::parse($d->leave_date)->format('d M Y') . ($d->is_holiday ? ' (Holiday)' : ($d->is_weekoff ? ' (Week-off)' : '')))->implode(', ') }}</strong>.
+                            </div>
+                        @elseif(!empty($lr->sandwich_applied))
+                            <div class="mt-2 pt-2 border-top small" style="border-color: rgba(217, 119, 6, 0.2) !important; font-size: 11px; color: #B45309;">
+                                <i class="fas fa-info-circle mr-1"></i> Sandwich Policy applied between leave/holiday intervals (0.5 day deducted as per policy).
+                            </div>
+                        @endif
+                    </div>
+                @endif
+
                 <!-- Leave Quota & Paid vs LWP Balance Breakdown -->
                 <div class="mb-3 p-3 rounded-lg border bg-white" style="border-radius: 10px; border-color: #E2E8F0 !important; box-shadow: 0 1px 3px rgba(15,23,42,0.03);">
                     <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap" style="gap: 6px;">
                         <div class="d-flex align-items-center" style="gap: 6px;">
                             <i class="fas fa-calculator text-primary" style="font-size: 11px;"></i>
-                            <span class="text-muted font-weight-bold uppercase" style="font-size: 9.5px; letter-spacing: 0.5px; color: #475569;">LEAVE BALANCE & QUOTA BREAKDOWN</span>
+                            <span class="text-muted font-weight-bold uppercase" style="font-size: 9.5px; letter-spacing: 0.5px; color: #475569;">LEAVE BALANCE &amp; QUOTA BREAKDOWN</span>
                         </div>
                         @if((float)($lr->lwp_days ?? 0) > 0)
                             <span class="badge font-weight-bold px-2 py-0.5" style="border-radius: 6px; font-size: 9.5px; background: #FEF2F2; color: #DC2626; border: 1px solid #FCA5A5;">
@@ -160,19 +236,17 @@
                             </div>
                         </div>
 
-                        <!-- Current Month Remaining Paid Balance -->
+                        <!-- Current Available Paid Balance -->
                         <div class="leave-balance-tile">
                             <div style="width: 32px; height: 32px; border-radius: 8px; background: #EFF6FF; color: #2563EB; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0;">
                                 <i class="fas fa-calendar-check"></i>
                             </div>
                             <div class="overflow-hidden" style="min-width: 0;">
-                                <div class="text-muted font-weight-bold uppercase text-truncate" style="font-size: 8.5px; letter-spacing: 0.4px;">MONTH BALANCE</div>
+                                <div class="text-muted font-weight-bold uppercase text-truncate" style="font-size: 8.5px; letter-spacing: 0.4px;">AVAILABLE PAID</div>
                                 <div class="font-weight-bold text-primary text-truncate" style="font-size: 13px; line-height: 1.1;">
-                                    {{ (float)($lr->total_monthly_remaining_paid ?? $lr->paid_remaining ?? 0) }} {{ \Illuminate\Support\Str::plural('Day', (float)($lr->total_monthly_remaining_paid ?? $lr->paid_remaining ?? 0)) }}
+                                    {{ (float)($lr->paid_remaining ?? 0) }} {{ \Illuminate\Support\Str::plural('Day', (float)($lr->paid_remaining ?? 0)) }}
                                 </div>
-                                <div class="text-muted text-truncate" style="font-size: 9.5px;" title="Quota: {{ (float)($lr->monthly_quota ?? 2) }} / mo + {{ (float)($lr->monthly_carry_forward ?? 0) }} C/F">
-                                    {{ (float)($lr->monthly_quota ?? 2) }}/mo + {{ (float)($lr->monthly_carry_forward ?? 0) }} C/F
-                                </div>
+                                <div class="text-muted text-truncate" style="font-size: 9.5px;">Available balance when request was loaded</div>
                             </div>
                         </div>
 
@@ -200,6 +274,104 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Daily Schedule & Breakdown Table -->
+                @if(!empty($lr->dates) && count($lr->dates) > 0)
+                    <div class="mb-3 p-3 rounded-lg border bg-white" style="border-radius: 10px; border-color: #E2E8F0 !important; box-shadow: 0 1px 3px rgba(15,23,42,0.03);">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <div class="d-flex align-items-center" style="gap: 6px;">
+                                <i class="fas fa-calendar-alt text-primary" style="font-size: 11px;"></i>
+                                <span class="text-muted font-weight-bold uppercase" style="font-size: 9.5px; letter-spacing: 0.5px; color: #475569;">DAY-WISE CALCULATION AUDIT</span>
+                            </div>
+                            <span class="badge badge-light border text-muted font-weight-bold" style="font-size: 10px;">{{ count($lr->dates) }} Day(s) Breakdown</span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered mb-0" style="font-size: 11.5px;">
+                                <thead class="bg-light text-muted">
+                                    <tr>
+                                        <th style="font-weight: 700;">Date</th>
+                                        <th style="font-weight: 700;">Day</th>
+                                        <th style="font-weight: 700;">Classification</th>
+                                        <th style="font-weight: 700;">Session</th>
+                                        <th class="text-center" style="font-weight: 700;">Deduction</th>
+                                        <th style="font-weight: 700;">Quota Impact</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($lr->dates as $dt)
+                                        @php
+                                            $isSand = (bool)($dt->is_sandwich_day ?? false);
+                                            $isHol = (bool)($dt->is_holiday ?? false);
+                                            $isWoff = (bool)($dt->is_weekoff ?? false);
+                                            $dDed = (float)($dt->paid_day + $dt->sick_day + $dt->comp_off_day + $dt->lwp_day);
+                                            $qParts = [];
+                                            if ((float)$dt->paid_day > 0) $qParts[] = 'PL ' . (float)$dt->paid_day;
+                                            if ((float)$dt->sick_day > 0) $qParts[] = 'SL ' . (float)$dt->sick_day;
+                                            if ((float)$dt->comp_off_day > 0) $qParts[] = 'Comp ' . (float)$dt->comp_off_day;
+                                            if ((float)$dt->lwp_day > 0) $qParts[] = 'LWP ' . (float)$dt->lwp_day;
+                                        @endphp
+                                        <tr style="{{ $isSand ? 'background: #FFFBEB;' : '' }}">
+                                            <td class="font-weight-bold text-dark">
+                                                {{ \Carbon\Carbon::parse($dt->leave_date)->format('d M Y') }}
+                                            </td>
+                                            <td class="text-muted">{{ $dt->day_name }}</td>
+                                            <td>
+                                                @if($isSand)
+                                                    <span class="badge badge-warning font-weight-bold" style="background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D;">
+                                                        🥪 Sandwich {{ $isHol ? '(Holiday)' : ($isWoff ? '(Week-off)' : '') }}
+                                                    </span>
+                                                @elseif(!$dt->is_working_day)
+                                                    <span class="badge badge-light border text-muted">{{ $isHol ? 'Holiday' : ($isWoff ? 'Week-off' : 'Off-Day') }}</span>
+                                                @else
+                                                    <span class="badge badge-success font-weight-bold" style="background: #DCFCE7; color: #15803D;">Working Day</span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                @if(!empty($lr->is_half_day) && !$isSand)
+                                                    <span class="badge badge-info font-weight-bold" style="background: #E0F2FE; color: #0369A1;">
+                                                        {{ ($lr->half_day_type ?? '') === 'second_half' ? '2nd Half (PM)' : '1st Half (AM)' }}
+                                                    </span>
+                                                @elseif($isSand && !empty($lr->is_half_day))
+                                                    <span class="text-muted small">0.5 Day (Sandwich)</span>
+                                                @else
+                                                    <span class="text-muted small">Full Day</span>
+                                                @endif
+                                            </td>
+                                            <td class="text-center font-weight-bold {{ $dDed > 0 ? 'text-primary' : 'text-muted' }}">
+                                                {{ $dDed > 0 ? ($dDed . ' Day') : '0' }}
+                                            </td>
+                                            <td class="font-weight-bold text-dark small">
+                                                {{ !empty($qParts) ? implode(', ', $qParts) : '—' }}
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                @endif
+
+                <!-- Attached Supporting / Medical Document -->
+                @if(!empty($lr->attachment_path))
+                    <div class="mb-3 p-3 rounded-lg border bg-white" style="border-radius: 10px; border-color: #E2E8F0 !important; box-shadow: 0 1px 3px rgba(15,23,42,0.03);">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap" style="gap: 8px;">
+                            <div class="d-flex align-items-center" style="gap: 8px;">
+                                <div style="width: 34px; height: 34px; border-radius: 8px; background: rgba(75, 0, 232, 0.08); color: var(--orb-primary); display: flex; align-items: center; justify-content: center; font-size: 14px;">
+                                    <i class="fas fa-file-medical"></i>
+                                </div>
+                                <div>
+                                    <div class="text-muted font-weight-bold uppercase" style="font-size: 9px; letter-spacing: 0.4px;">ATTACHED SUPPORTING / MEDICAL DOCUMENT</div>
+                                    <div class="font-weight-bold text-dark" style="font-size: 12.5px;">Supporting File Attached</div>
+                                </div>
+                            </div>
+                            <a href="{{ route('leave-requests.attachment', $lr->id) }}" target="_blank" class="btn btn-sm btn-outline-primary font-weight-bold" style="border-radius: 8px; padding: 6px 14px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px;">
+                                <i class="fas fa-paperclip"></i>
+                                <span>View Document</span>
+                                <i class="fas fa-external-link-alt ml-0.5" style="font-size: 10px;"></i>
+                            </a>
+                        </div>
+                    </div>
+                @endif
 
                 <!-- Sleek Approval Pipeline Stage Tracker -->
                 <div class="leave-stage-pipeline-box mb-3">
@@ -362,7 +534,7 @@
                                 </div>
                                 <div class="p-2.5 rounded-lg bg-white" style="border: 1px solid #E2E8F0; border-left: 3px solid #F59E0B; border-radius: 8px;">
                                     <div class="d-flex align-items-center justify-content-between flex-wrap" style="gap: 4px;">
-                                        <strong class="text-dark font-weight-bold" style="font-size: 12.5px;">⏳ Manager Approval Pending</strong>
+                                        <strong class="text-dark font-weight-bold" style="font-size: 12.5px;"> Manager Approval Pending</strong>
                                         <span class="badge font-weight-bold" style="background: #FEF3C7; color: #92400E; font-size: 9.5px;">Pending Manager</span>
                                     </div>
                                     <div class="text-muted mt-0.5" style="font-size: 10.5px;">Pending Reporting Manager review</div>
@@ -518,8 +690,8 @@
                             </form>
                             @endif
                         @endif
-                    @elseif($stLower === 'approved' && ($isSuperAdminUser || $isHrAdminUser) && Route::has('leave-approvals.void'))
-                        <button type="button" class="btn btn-sm font-weight-bold px-3.5" style="border-radius: 8px; height: 38px; background: #FFF1F2; color: #E11D48; border: 1px solid #FECDD3; font-size: 12.5px;" onclick="$('#viewModal{{ $lr->id }}').modal('hide'); setTimeout(function(){ $('#voidModal{{ $lr->id }}').modal('show'); }, 350);">
+                    @elseif($stLower === 'approved' && (($isSuperAdminUser ?? false) || ($isHrAdminUser ?? false) || (auth()->check() && (in_array((int)(auth()->user()->system_role_id ?? auth()->user()->role_id ?? 0), [1, 2, 3], true) || (method_exists(auth()->user(), 'hasPermission') && (auth()->user()->hasPermission('leave.approvals.view_all') || auth()->user()->hasPermission('leave.approvals.approve')))))) && Route::has('leave-approvals.void'))
+                        <button type="button" class="btn btn-sm font-weight-bold px-3.5" style="border-radius: 8px; height: 38px; background: #FFF1F2; color: #E11D48; border: 1px solid #FECDD3; font-size: 12.5px;" onclick="var vm = $('#viewModal{{ $lr->id }}'); vm.one('hidden.bs.modal', function(){ $('#voidModal{{ $lr->id }}').modal('show'); }); vm.modal('hide');">
                             <i class="fas fa-ban mr-1"></i> Make Null & Void
                         </button>
                     @endif

@@ -42,17 +42,36 @@
                 </select>
             </div>
 
-            <div>
+            <div class="att-filter-year">
+                <label>Year</label>
+                <select name="year" id="yearFilterSelect" class="form-control select2-searchable">
+                    @php
+                        $currY = $filters['current_year'] ?? date('Y');
+                        $selY = $filters['selected_year'] ?? request('year', $currY);
+                    @endphp
+                    @foreach($filters['years'] ?? get_filter_years(1, 4) as $yVal => $yLbl)
+                        <option value="{{ $yVal }}" {{ (string) $selY === (string) $yVal ? 'selected' : '' }}>{{ $yLbl }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="att-filter-month">
                 <label>Month</label>
                 <select name="month" id="monthFilterSelect" class="form-control select2-searchable">
                     @php
-                        $currM = $filters['current_month'] ?? date('Y-m');
-                        $selM = $filters['selected_month'] ?? $currM;
+                        $currM = $filters['current_month'] ?? date('m');
+                        $selM = $filters['selected_month'] ?? request('month', $currM);
                         $isCustom = ($selM === 'custom' || (!request()->has('month') && (request()->filled('from') || request()->filled('to'))));
                     @endphp
-                    <option value="custom" {{ $isCustom ? 'selected' : '' }}>Custom Date Range</option>
-                    @foreach($filters['months'] ?? [] as $val => $lbl)
-                        <option value="{{ $val }}" {{ ($selM === $val && !$isCustom) ? 'selected' : '' }}>{{ $lbl }}</option>
+                    @foreach($filters['months'] ?? get_filter_months(true) as $val => $lbl)
+                        @if($val === 'custom')
+                            <option value="custom" {{ $isCustom ? 'selected' : '' }}>{{ $lbl }}</option>
+                        @else
+                            @php
+                                $isSel = !$isCustom && ((string) $selM === (string) $val || (is_numeric($selM) && is_numeric($val) && (int) $selM === (int) $val));
+                            @endphp
+                            <option value="{{ $val }}" {{ $isSel ? 'selected' : '' }}>{{ $lbl }}</option>
+                        @endif
                     @endforeach
                 </select>
             </div>

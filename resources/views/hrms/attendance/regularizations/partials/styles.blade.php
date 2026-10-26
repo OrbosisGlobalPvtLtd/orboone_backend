@@ -368,10 +368,11 @@ body {
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    padding: 14px 24px;
+    padding: 12px 20px;
     border-top: 1px solid #E7EAF3;
     border-bottom: 1px solid #E7EAF3;
     background: #fff;
+    flex-wrap: wrap;
 }
 
 .leave-dt-left {
@@ -383,34 +384,84 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
+    flex-wrap: wrap;
 }
 
 .dt-buttons {
-    display: flex !important;
+    display: inline-flex !important;
     gap: 8px;
+    flex-wrap: wrap;
 }
 
+.orbo-export-btn,
 .leave-export-btn {
-    height: 38px !important;
-    border-radius: 12px !important;
-    padding: 8px 16px !important;
-    font-size: 13px !important;
-    font-weight: 800 !important;
+    height: 34px !important;
+    border-radius: 9px !important;
+    padding: 5px 12px !important;
+    font-size: 12px !important;
+    font-weight: 750 !important;
     color: #344054 !important;
-    background: #fff !important;
-    border: 1px solid #E7EAF3 !important;
+    background: #ffffff !important;
+    border: 1px solid var(--orb-border, #E7EAF3) !important;
     display: inline-flex !important;
     align-items: center !important;
+    justify-content: center !important;
     gap: 6px !important;
-    box-shadow: 0 1px 2px rgba(16,24,40,0.05) !important;
+    box-shadow: 0 1px 2px rgba(16,24,40,0.04) !important;
     transition: all 0.2s ease !important;
+    text-decoration: none !important;
+    cursor: pointer !important;
+    white-space: nowrap !important;
     margin-bottom: 0 !important;
 }
 
+.orbo-export-btn:hover,
 .leave-export-btn:hover {
-    background: #F9F5FF !important;
-    color: var(--orb-primary) !important;
-    border-color: #D9CCFF !important;
+    background: #F8FAFC !important;
+    color: var(--orb-primary, #4B00E8) !important;
+    border-color: #CBD5E1 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.06) !important;
+}
+
+.orbo-export-btn .icon-csv, .leave-export-btn .icon-csv { color: #0284C7; font-size: 13px; }
+.orbo-export-btn .icon-excel, .leave-export-btn .icon-excel { color: #16A34A; font-size: 13px; }
+.orbo-export-btn .icon-pdf, .leave-export-btn .icon-pdf { color: #DC2626; font-size: 13px; }
+.orbo-export-btn .icon-print, .leave-export-btn .icon-print { color: var(--orb-primary, #4B00E8); font-size: 13px; }
+
+@media (max-width: 768px) {
+    .leave-dt-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+        padding: 12px 14px;
+    }
+    .leave-dt-left {
+        justify-content: space-between;
+        width: 100%;
+    }
+    .leave-dt-right {
+        width: 100%;
+    }
+    .dt-buttons {
+        width: 100%;
+        display: grid !important;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+    }
+    .orbo-export-btn,
+    .leave-export-btn {
+        width: 100% !important;
+        padding: 5px 6px !important;
+        font-size: 11px !important;
+        justify-content: center !important;
+    }
+}
+
+@media (max-width: 420px) {
+    .dt-buttons {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 
 .select2-dropdown-per-page {
@@ -473,6 +524,25 @@ body {
     width: 100%;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f8fafc;
+}
+
+.att-table-wrap::-webkit-scrollbar {
+    height: 7px;
+}
+
+.att-table-wrap::-webkit-scrollbar-track {
+    background: #f8fafc;
+}
+
+.att-table-wrap::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+.att-table-wrap::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
 }
 
 .att-table {
@@ -488,18 +558,48 @@ body {
     font-size: 11px !important;
     font-weight: 800 !important;
     text-transform: uppercase;
-    letter-spacing: 0.03em;
-    padding: 11px 12px !important;
+    letter-spacing: 0.04em;
+    padding: 9px 11px !important;
     border-top: none !important;
-    border-bottom: 1px solid #EAECF0 !important;
+    border-bottom: 1.5px solid #EAECF0 !important;
     white-space: nowrap;
     vertical-align: middle !important;
+    line-height: 1.2 !important;
+}
+
+table.dataTable thead .sorting,
+table.dataTable thead .sorting_asc,
+table.dataTable thead .sorting_desc {
+    cursor: pointer;
+    position: relative;
+    padding-right: 18px !important;
+}
+
+table.dataTable thead .sorting_asc,
+table.dataTable thead .sorting_desc {
+    color: var(--orb-primary) !important;
+}
+
+/* Ensure no ghost or duplicated blank header appears in table */
+.dataTables_scrollBody thead,
+.dataTables_scrollBody thead tr,
+.dataTables_scrollBody thead th {
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    line-height: 0 !important;
+    font-size: 0 !important;
+    visibility: hidden !important;
+    overflow: hidden !important;
 }
 
 .att-table tbody td {
     background: #fff;
     border-bottom: 1px solid #F2F4F7 !important;
-    padding: 10px 12px !important;
+    padding: 8px 12px !important;
     vertical-align: middle !important;
     font-size: 12.5px;
     color: var(--orb-text);

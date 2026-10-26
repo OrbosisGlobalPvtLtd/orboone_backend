@@ -52,27 +52,26 @@ class PayrollAttendanceSummaryService
             return $summary;
         }
 
+        if (Schema::hasTable('leave_monthly_balances')) {
+            app(\App\Services\HRMS\Leave\LeaveMonthlyBalanceService::class)
+                ->rebuildEmployeeThrough($employee, $year, $month);
+        }
+
         $attendances = AttendanceM::with('attendanceType')
             ->where('employee_id', $employee->id)
             ->whereMonth('attendance_date', $month)
             ->whereYear('attendance_date', $year)
             ->get();
 
-        $leaveRows = DB::table('leave_request_dates')
-            ->join('leave_requests', 'leave_requests.id', '=', 'leave_request_dates.leave_request_id')
-            ->where('leave_request_dates.employee_id', $employee->id)
-            ->where('leave_requests.status', 'approved')
-            ->whereMonth('leave_request_dates.leave_date', $month)
-            ->whereYear('leave_request_dates.leave_date', $year)
-            ->selectRaw('SUM(paid_day) as paid, SUM(sick_day) as sick, SUM(comp_off_day) as comp, SUM(lwp_day) as lwp')
-            ->first();
+        $leaveRows = app(\App\Services\HRMS\Leave\LeaveMonthlyBalanceService::class)
+            ->leaveTotalsForEmployeeMonth($employee, $year, $month);
 
         $present = 0;
         $holidayFromAtt = 0.0;
         $weekOff = 0;
         $absent = 0;
         $halfDays = 0;
-        $lwp = (float) ($leaveRows->lwp ?? 0);
+        $lwp = (float) ($leaveRows['lwp_days'] ?? 0);
 
         foreach ($attendances as $attendance) {
             $isCompOffWorked = $this->payableDayResolver->isCompOffWorkedDay($attendance);
@@ -98,7 +97,7 @@ class PayrollAttendanceSummaryService
                 if ($attendance->is_half_day) {
                     $halfDays++;
                 }
-                if ($attendance->is_lwp) {
+                if ($attendance->is_lwp && empty($attendance->leave_request_id)) {
                     $lwp += 1.0;
                 }
             }
@@ -117,9 +116,9 @@ class PayrollAttendanceSummaryService
         });
         $summary->fill([
             'present_days' => $present,
-            'paid_leave_days' => (float) ($leaveRows->paid ?? 0),
-            'sick_leave_days' => (float) ($leaveRows->sick ?? 0),
-            'comp_off_days' => (float) ($leaveRows->comp ?? 0),
+            'paid_leave_days' => (float) ($leaveRows['paid_leave_days'] ?? 0),
+            'sick_leave_days' => (float) ($leaveRows['sick_leave_days'] ?? 0),
+            'comp_off_days' => (float) ($leaveRows['comp_off_days'] ?? 0),
             'holiday_days' => $finalHolidays,
             'week_off_days' => $weekOff,
             'half_days' => $halfDays,
@@ -132,9 +131,9 @@ class PayrollAttendanceSummaryService
             'payable_days' => max(0, round(
                 $attendancePayableDays
                 + $missingHolidayDays
-                + (float) ($leaveRows->paid ?? 0)
-                + (float) ($leaveRows->sick ?? 0)
-                + (float) ($leaveRows->comp ?? 0),
+                + (float) ($leaveRows['paid_leave_days'] ?? 0)
+                + (float) ($leaveRows['sick_leave_days'] ?? 0)
+                + (float) ($leaveRows['comp_off_days'] ?? 0),
                 2
             )),
         ]);
@@ -162,14 +161,23 @@ class PayrollAttendanceSummaryService
 
     public function lock(int $month, int $year, int $userId, ?int $employeeId = null): int
     {
-        return MonthlyAttendanceSummaryM::where('month', $month)
+        $lockedAt = Carbon::now('Asia/Kolkata');
+        $query = MonthlyAttendanceSummaryM::where('month', $month)
             ->where('year', $year)
-            ->when($employeeId, fn ($query) => $query->where('employee_id', $employeeId))
-            ->update([
+            ->when($employeeId, fn ($query) => $query->where('employee_id', $employeeId));
+        $count = $query->update([
                 'is_locked' => true,
                 'locked_by_user_id' => $userId,
-                'locked_at' => Carbon::now('Asia/Kolkata'),
+                'locked_at' => $lockedAt,
             ]);
+
+        if (Schema::hasTable('leave_monthly_balances')) {
+            DB::table('leave_monthly_balances')->where('month', $month)->where('year', $year)
+                ->when($employeeId, fn ($monthly) => $monthly->where('employee_id', $employeeId))
+                ->update(['is_locked' => true, 'locked_at' => $lockedAt, 'locked_by_user_id' => $userId, 'updated_at' => now()]);
+        }
+
+        return $count;
     }
 
     public function unlock(int $month, int $year, ?int $employeeId = null): int
@@ -183,10 +191,18 @@ class PayrollAttendanceSummaryService
             throw ValidationException::withMessages(['summary' => 'No locked summary found for the selected period.']);
         }
 
-        return $query->update([
+        $count = $query->update([
             'is_locked' => false,
             'locked_by_user_id' => null,
             'locked_at' => null,
         ]);
+
+        if (Schema::hasTable('leave_monthly_balances')) {
+            DB::table('leave_monthly_balances')->where('month', $month)->where('year', $year)
+                ->when($employeeId, fn ($monthly) => $monthly->where('employee_id', $employeeId))
+                ->update(['is_locked' => false, 'locked_at' => null, 'locked_by_user_id' => null, 'updated_at' => now()]);
+        }
+
+        return $count;
     }
 }

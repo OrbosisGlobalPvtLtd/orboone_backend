@@ -15,6 +15,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Services\HRMS\Reporting\ReportingScopeS;
+use App\Services\HRMS\Leave\AutoExpireLeaveService;
+use Carbon\Carbon;
+use Illuminate\Validation\ValidationException;
 
 class LeaveApprovalC extends Controller
 {
@@ -22,7 +26,7 @@ class LeaveApprovalC extends Controller
 
     public function __construct(
         private LeaveApprovalService $approvalService,
-        private \App\Services\HRMS\Reporting\ReportingScopeS $scopeS
+        private ReportingScopeS $scopeS
     ) {
     }
 
@@ -35,7 +39,7 @@ class LeaveApprovalC extends Controller
             403
         );
 
-        // app(\App\Services\HRMS\Leave\AutoExpireLeaveService::class)->expirePastPendingRequests();
+        app(AutoExpireLeaveService::class)->expirePastPendingRequests();
 
         $supervisorEmpId = $this->scopeS->getOwnEmployeeId();
         $supervisedEmpIds = $this->scopeS->getActiveSupervisedEmployeeIds($supervisorEmpId);
@@ -66,8 +70,9 @@ class LeaveApprovalC extends Controller
             $query->where('e.reporting_manager_employee_id', $request->reporting_manager_id);
         }
 
-        if ($request->filled('status') && strtolower($request->status) !== 'all') {
-            $st = strtolower($request->status);
+        $status = $request->get('status', 'pending');
+        if (!empty($status) && strtolower($status) !== 'all') {
+            $st = strtolower($status);
             if ($st === 'pending') {
                 $query->where('leave_requests.status', 'pending');
             } elseif ($st === 'pending_manager') {
@@ -90,6 +95,61 @@ class LeaveApprovalC extends Controller
             $query->where('leave_requests.leave_type_id', $request->leave_type_id);
         }
 
+        $year = (int) ($request->year ?: Carbon::now('Asia/Kolkata')->year);
+        $currentMonth = (int) Carbon::now('Asia/Kolkata')->month;
+
+        if ($request->has('month')) {
+            $selectedMonth = (string) $request->month;
+        } else {
+            $selectedMonth = (string) $currentMonth;
+        }
+
+        $dateFilterClosure = null;
+        if ($selectedMonth !== 'all' && $selectedMonth !== '') {
+            $m = (int) $selectedMonth;
+            $monthStart = Carbon::createFromDate($year, $m, 1, 'Asia/Kolkata')->startOfMonth()->toDateString();
+            $monthEnd = Carbon::createFromDate($year, $m, 1, 'Asia/Kolkata')->endOfMonth()->toDateString();
+
+            $dateFilterClosure = function ($q) use ($monthStart, $monthEnd) {
+                $q->where(function ($sub) use ($monthStart, $monthEnd) {
+                    $sub->whereDate('leave_requests.start_date', '<=', $monthEnd)
+                        ->whereDate('leave_requests.end_date', '>=', $monthStart);
+                })->orWhereExists(function ($dq) use ($monthStart, $monthEnd) {
+                    $dq->select(DB::raw(1))
+                        ->from('leave_request_dates')
+                        ->whereColumn('leave_request_dates.leave_request_id', 'leave_requests.id')
+                        ->whereDate('leave_request_dates.leave_date', '>=', $monthStart)
+                        ->whereDate('leave_request_dates.leave_date', '<=', $monthEnd);
+                })->orWhere(function ($cq) use ($monthStart, $monthEnd) {
+                    $cq->whereDate('leave_requests.created_at', '>=', $monthStart)
+                       ->whereDate('leave_requests.created_at', '<=', $monthEnd);
+                });
+            };
+        } elseif ($year) {
+            $yearStart = Carbon::createFromDate($year, 1, 1, 'Asia/Kolkata')->startOfYear()->toDateString();
+            $yearEnd = Carbon::createFromDate($year, 12, 31, 'Asia/Kolkata')->endOfYear()->toDateString();
+
+            $dateFilterClosure = function ($q) use ($yearStart, $yearEnd) {
+                $q->where(function ($sub) use ($yearStart, $yearEnd) {
+                    $sub->whereDate('leave_requests.start_date', '<=', $yearEnd)
+                        ->whereDate('leave_requests.end_date', '>=', $yearStart);
+                })->orWhereExists(function ($dq) use ($yearStart, $yearEnd) {
+                    $dq->select(DB::raw(1))
+                        ->from('leave_request_dates')
+                        ->whereColumn('leave_request_dates.leave_request_id', 'leave_requests.id')
+                        ->whereDate('leave_request_dates.leave_date', '>=', $yearStart)
+                        ->whereDate('leave_request_dates.leave_date', '<=', $yearEnd);
+                })->orWhere(function ($cq) use ($yearStart, $yearEnd) {
+                    $cq->whereDate('leave_requests.created_at', '>=', $yearStart)
+                       ->whereDate('leave_requests.created_at', '<=', $yearEnd);
+                });
+            };
+        }
+
+        if ($dateFilterClosure !== null) {
+            $query->where($dateFilterClosure);
+        }
+
         if ($request->filled('start_date')) {
             $query->whereDate('leave_requests.end_date', '>=', $request->start_date);
         }
@@ -99,9 +159,13 @@ class LeaveApprovalC extends Controller
         }
 
         if ($request->filled('search')) {
+            $rawSearch = trim(str_replace('#', '', (string) $request->search));
             $search = '%' . trim($request->search) . '%';
-            $query->where(function ($q) use ($search) {
-                $q->where('eu.name', 'like', $search)
+            $query->where(function ($q) use ($search, $rawSearch) {
+                if (is_numeric($rawSearch)) {
+                    $q->orWhere('leave_requests.id', (int) $rawSearch);
+                }
+                $q->orWhere('eu.name', 'like', $search)
                     ->orWhere('e.employee_code', 'like', $search)
                     ->orWhere('lt.name', 'like', $search)
                     ->orWhere('d.name', 'like', $search)
@@ -135,19 +199,44 @@ class LeaveApprovalC extends Controller
             'la.total_allocated',
             'la.total_remaining',
             'la.total_used',
-            'la.monthly_quota',
-            'la.monthly_used_this_month',
-            'la.monthly_carry_forward',
-            'la.total_monthly_remaining_paid'
+            'la.paid_remaining'
         )
             ->orderByDesc('leave_requests.id')
             ->paginate(20)
             ->appends($request->query());
 
+        $lrIds = $leaveRequests->pluck('id')->filter()->all();
+        $dateRowsGrouped = !empty($lrIds)
+            ? DB::table('leave_request_dates')->whereIn('leave_request_id', $lrIds)->orderBy('leave_date')->get()->groupBy('leave_request_id')
+            : collect();
+
+        foreach ($leaveRequests as $item) {
+            $item->dates = $dateRowsGrouped->get($item->id, collect());
+        }
+
         // High-performance single aggregated query for summary metric counts
         $baseCountQuery = DB::table('leave_requests')
             ->join('employees_new as e', 'e.id', '=', 'leave_requests.employee_id');
         $baseCountQuery = $this->scopeS->scopeLeaveQuery($baseCountQuery, $supervisorEmpId);
+
+        if ($request->filled('employee_id')) {
+            $baseCountQuery->where('leave_requests.employee_id', $request->employee_id);
+        }
+        if ($request->filled('reporting_manager_id')) {
+            $baseCountQuery->where('e.reporting_manager_employee_id', $request->reporting_manager_id);
+        }
+        if ($request->filled('leave_type_id')) {
+            $baseCountQuery->where('leave_requests.leave_type_id', $request->leave_type_id);
+        }
+        if ($dateFilterClosure !== null) {
+            $baseCountQuery->where($dateFilterClosure);
+        }
+        if ($request->filled('start_date')) {
+            $baseCountQuery->whereDate('leave_requests.end_date', '>=', $request->start_date);
+        }
+        if ($request->filled('end_date')) {
+            $baseCountQuery->whereDate('leave_requests.start_date', '<=', $request->end_date);
+        }
 
         $counts = (clone $baseCountQuery)->selectRaw("
             COUNT(*) as total_all,
@@ -165,7 +254,7 @@ class LeaveApprovalC extends Controller
         $approvedLeaveCount = (int) ($counts->approved_count ?? 0);
         $rejectedLeaveCount = (int) ($counts->rejected_count ?? 0);
 
-        $user = auth()->user();
+        $user = Auth::user();
         $userRoleId = (int) ($user->system_role_id ?? $user->role_id ?? 0);
         $userRoleName = strtolower($user->role->name ?? '');
         $isSuperAdmin = method_exists($user, 'isSuperAdmin') ? $user->isSuperAdmin() : in_array($userRoleId, [1, 2], true);
@@ -210,14 +299,118 @@ class LeaveApprovalC extends Controller
             'isSuperAdmin',
             'canApprovePermission',
             'canRejectPermission',
-            'canViewTeamPermission'
+            'canViewTeamPermission',
+            'selectedMonth',
+            'year'
         ));
+    }
+
+    public function show(Request $request, int|string $id)
+    {
+        $id = (int) $id;
+        $lr = DB::table('leave_requests')
+            ->join('employees_new as e', 'e.id', '=', 'leave_requests.employee_id')
+            ->leftJoin('users as eu', 'eu.id', '=', 'e.user_id')
+            ->leftJoin('designations as d', 'd.id', '=', 'e.designation_id')
+            ->leftJoin('departments as dept', 'dept.id', '=', 'e.department_id')
+            ->leftJoin('leave_types as lt', 'lt.id', '=', 'leave_requests.leave_type_id')
+            ->leftJoin('users as mu', 'mu.id', '=', 'leave_requests.manager_approved_by')
+            ->leftJoin('users as hru', 'hru.id', '=', 'leave_requests.hr_approved_by')
+            ->leftJoin('employees_new as rm', 'rm.id', '=', 'e.reporting_manager_employee_id')
+            ->leftJoin('users as rmu', 'rmu.id', '=', 'rm.user_id')
+            ->leftJoin('users as reju', 'reju.id', '=', 'leave_requests.approved_by_user_id')
+            ->leftJoin('leave_allocations as la', function ($join) {
+                $join->on('la.employee_id', '=', 'leave_requests.employee_id')
+                    ->whereRaw('la.year = YEAR(leave_requests.start_date)');
+            })
+            ->where('leave_requests.id', $id)
+            ->select(
+                'leave_requests.*',
+                'e.reporting_manager_employee_id as current_reporting_manager_id',
+                DB::raw('COALESCE(eu.name, e.employee_code) as display_name'),
+                'e.employee_code',
+                'd.name as designation_name',
+                'dept.name as department_name',
+                'lt.name as leave_type_name',
+                'lt.code as leave_type_code',
+                'mu.name as manager_approver_name',
+                'hru.name as hr_approver_name',
+                'rmu.name as reporting_manager_name',
+                'reju.name as rejected_by_name',
+                'la.paid_allocated',
+                'la.paid_remaining',
+                'la.paid_used',
+                'la.sick_allocated',
+                'la.sick_remaining',
+                'la.sick_used',
+                'la.comp_off_allocated',
+                'la.comp_off_remaining',
+                'la.comp_off_used',
+                'la.lwp_used as total_lwp_used',
+                'la.total_allocated',
+                'la.total_remaining',
+                'la.total_used'
+            )
+            ->first();
+
+        if (! $lr) {
+            abort(404, 'Leave request not found.');
+        }
+
+        $user = Auth::user();
+        $userRoleId = (int) ($user->system_role_id ?? $user->role_id ?? 0);
+        $userRoleName = strtolower($user->role->name ?? '');
+        $isSuperAdmin = method_exists($user, 'isSuperAdmin') ? $user->isSuperAdmin() : in_array($userRoleId, [1, 2], true);
+        $isHrOrAdmin = $isSuperAdmin
+            || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin())
+            || (method_exists($user, 'isAdmin') && $user->isAdmin())
+            || in_array($userRoleId, [1, 2, 3], true)
+            || in_array($userRoleName, ['admin', 'super_admin', 'hr_admin', 'hr admin', 'hr'], true)
+            || $this->userHasPermission('leave.approvals.view_all')
+            || $this->userHasPermission('leave.allocation.view_all')
+            || $this->userHasPermission('leave.allocation.manage');
+
+        $emp = EmployeeM::where('user_id', $user->id)->first();
+        $isApplicant = $emp && (int) $emp->id === (int) $lr->employee_id;
+        $isManager = $emp && (int) $emp->id === (int) $lr->reporting_manager_employee_id;
+
+        abort_unless(
+            $isHrOrAdmin || $isApplicant || $isManager
+            || $this->userHasPermission('leave.approvals.view')
+            || $this->userHasPermission('leave.approvals.view_team')
+            || $this->userHasPermission('leave.history.view')
+            || $this->userHasPermission('leave.my_requests.view'),
+            403,
+            'You do not have permission to view this leave request.'
+        );
+
+        $dates = DB::table('leave_request_dates')
+            ->where('leave_request_id', $id)
+            ->orderBy('leave_date')
+            ->get();
+
+        $transactions = DB::table('leave_balance_transactions')
+            ->where('leave_request_id', $id)
+            ->orderBy('effective_date')
+            ->orderBy('id')
+            ->get();
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'request' => $lr,
+                'dates' => $dates,
+                'transactions' => $transactions,
+            ]);
+        }
+
+        return view('hrms.leave.approvals.show', compact('lr', 'dates', 'transactions'));
     }
 
     public function approve(ApproveLeaveRequestRequest $request, $id)
     {
         $referer = $request->header('referer') ?: route('reporting.leave');
-        $user = auth()->user();
+        $user = Auth::user();
         $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
         $isHrOrAdmin = $isSuperAdmin
             || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin())
@@ -226,7 +419,7 @@ class LeaveApprovalC extends Controller
             || in_array((int) ($user->system_role_id ?? $user->role_id ?? 0), [1, 2, 3], true);
 
         $supervisorEmpId = $this->scopeS->getOwnEmployeeId();
-        $isReportingManager = ! empty($supervisorEmpId) && \Illuminate\Support\Facades\DB::table('employees_new')->where('reporting_manager_employee_id', $supervisorEmpId)->exists();
+        $isReportingManager = ! empty($supervisorEmpId) && DB::table('employees_new')->where('reporting_manager_employee_id', $supervisorEmpId)->exists();
 
         abort_unless($isSuperAdmin || $isHrOrAdmin || $isReportingManager, 403);
 
@@ -256,7 +449,7 @@ class LeaveApprovalC extends Controller
             if ($isSuperAdmin || $isHrOrAdmin) {
                 if ($hasManager && ! $managerApproved) {
                     $leaveRequest->manager_approved_by = Auth::id();
-                    $leaveRequest->manager_approved_at = \Carbon\Carbon::now('Asia/Kolkata');
+                    $leaveRequest->manager_approved_at = Carbon::now('Asia/Kolkata');
                     $leaveRequest->manager_note = $isSuperAdmin ? 'Super Admin Override Approval' : 'HR Admin Direct Approval';
                     $leaveRequest->save();
                 }
@@ -276,7 +469,7 @@ class LeaveApprovalC extends Controller
             $this->approvalService->approve($leaveRequest, Auth::id(), $note);
 
             return redirect()->to($referer)->with('success', 'Leave request approved and attendance synced.');
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             $firstError = collect($e->errors())->flatten()->first() ?: 'Validation failed for leave approval.';
             return redirect()->to($referer)->with('error', $firstError);
         } catch (\Throwable $e) {
@@ -288,7 +481,7 @@ class LeaveApprovalC extends Controller
     public function reject(RejectLeaveRequestRequest $request, $id)
     {
         $referer = $request->header('referer') ?: route('reporting.leave');
-        $user = auth()->user();
+        $user = Auth::user();
         $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
         $isHrOrAdmin = $isSuperAdmin
             || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin())
@@ -297,7 +490,7 @@ class LeaveApprovalC extends Controller
             || in_array((int) ($user->system_role_id ?? $user->role_id ?? 0), [1, 2, 3], true);
 
         $supervisorEmpId = $this->scopeS->getOwnEmployeeId();
-        $isReportingManager = ! empty($supervisorEmpId) && \Illuminate\Support\Facades\DB::table('employees_new')->where('reporting_manager_employee_id', $supervisorEmpId)->exists();
+        $isReportingManager = ! empty($supervisorEmpId) && DB::table('employees_new')->where('reporting_manager_employee_id', $supervisorEmpId)->exists();
 
         abort_unless($isSuperAdmin || $isHrOrAdmin || $isReportingManager, 403);
 
@@ -311,7 +504,7 @@ class LeaveApprovalC extends Controller
             $this->approvalService->reject($leaveRequest, Auth::id(), $reason);
 
             return redirect()->to($referer)->with('success', 'Leave request rejected.');
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             $firstError = collect($e->errors())->flatten()->first() ?: 'Validation failed for leave rejection.';
             return redirect()->to($referer)->with('error', $firstError);
         } catch (\Throwable $e) {
@@ -323,7 +516,7 @@ class LeaveApprovalC extends Controller
     public function void(Request $request, $id)
     {
         $referer = $request->header('referer') ?: route('leave-approvals.index');
-        $user = auth()->user();
+        $user = Auth::user();
         $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
         $userRoleName = strtolower($user->role->name ?? '');
         $isHrOrAdmin = $isSuperAdmin
@@ -353,7 +546,7 @@ class LeaveApprovalC extends Controller
             $this->approvalService->voidLeave($leaveRequest, Auth::id(), $note);
 
             return redirect()->to($referer)->with('success', "Leave request #{$leaveRequest->id} has been marked as Null & Void. Leave balance has been refunded and attendance unlocked.");
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             $firstError = collect($e->errors())->flatten()->first() ?: 'Validation failed for marking leave Null & Void.';
             return redirect()->to($referer)->with('error', $firstError);
         } catch (\Throwable $e) {
@@ -364,7 +557,7 @@ class LeaveApprovalC extends Controller
 
     private function authorizeLeaveRequestForApproval(LeaveRequestM $leaveRequest): void
     {
-        $user = auth()->user();
+        $user = Auth::user();
         $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
         $isHrOrAdmin = $isSuperAdmin
             || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin())
@@ -393,7 +586,7 @@ class LeaveApprovalC extends Controller
 
     private function accesses()
     {
-        $roleId = auth()->user()->role_id ?? auth()->user()->system_role_id ?? null;
+        $roleId = Auth::user()->role_id ?? Auth::user()->system_role_id ?? null;
         return $roleId ? AccessM::where('role_id', $roleId)->get() : collect();
     }
 

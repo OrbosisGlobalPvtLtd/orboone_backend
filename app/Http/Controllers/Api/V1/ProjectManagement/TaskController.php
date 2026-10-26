@@ -8,6 +8,8 @@ use App\Models\HRMS\Employee\EmployeeM;
 use App\Models\Core\UserM as User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 
 class TaskController extends Controller
@@ -78,8 +80,8 @@ class TaskController extends Controller
             'title' => $task->title,
             'description' => $task->clean_description,
 
-            'due_date' => $task->due_date ? \Carbon\Carbon::parse($task->due_date)->format('Y-m-d') : null,
-            'formatted_due_date' => $task->due_date ? \Carbon\Carbon::parse($task->due_date)->format('M d, Y') : '-',
+            'due_date' => $task->due_date ? Carbon::parse($task->due_date)->format('Y-m-d') : null,
+            'formatted_due_date' => $task->due_date ? Carbon::parse($task->due_date)->format('M d, Y') : '-',
             'status' => $task->status,
             'is_overdue' => $task->is_overdue,
             'user_id' => $task->user_id,
@@ -225,7 +227,7 @@ class TaskController extends Controller
             app(NotificationS::class)->notifyUser(
                 $request->user_id,
                 'Task Assigned: ' . $task->title,
-                'You have been assigned a new task due on ' . \Carbon\Carbon::parse($task->due_date)->format('M d, Y') . '.',
+                'You have been assigned a new task due on ' . Carbon::parse($task->due_date)->format('M d, Y') . '.',
                 ['task_id' => $task->id, 'type' => 'task_assigned']
             );
         } catch (\Throwable $e) {}
@@ -422,7 +424,7 @@ class TaskController extends Controller
             'Comment Added',
             auth()->id(),
             auth()->user()->name,
-            'Added comment via mobile app: "' . \Illuminate\Support\Str::limit($request->comment, 40) . '"'
+            'Added comment via mobile app: "' . Str::limit($request->comment, 40) . '"'
         );
 
         $task->save();
@@ -461,7 +463,7 @@ class TaskController extends Controller
                 'completed'   => $allTasks->where('status', 'completed')->count(),
                 'verified'    => $allTasks->where('status', 'verified')->count(),
                 'closed'      => $allTasks->where('status', 'closed')->count(),
-                'due_today'   => $allTasks->filter(fn($t) => $t->due_date && \Carbon\Carbon::parse($t->due_date)->isToday() && !in_array($t->status, ['completed', 'verified', 'closed']))->count(),
+                'due_today'   => $allTasks->filter(fn($t) => $t->due_date && Carbon::parse($t->due_date)->isToday() && !in_array($t->status, ['completed', 'verified', 'closed']))->count(),
                 'overdue'     => $allTasks->filter(fn($t) => $t->is_overdue)->count(),
             ]
         ]);

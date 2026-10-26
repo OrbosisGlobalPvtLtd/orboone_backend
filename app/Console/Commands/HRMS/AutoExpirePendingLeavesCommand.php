@@ -19,7 +19,7 @@ class AutoExpirePendingLeavesCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Auto-expire any pending leave requests whose start dates have passed without approval or rejection.';
+    protected $description = 'Auto-expire any pending leave requests whose end dates have passed without approval or rejection.';
 
     /**
      * Execute the console command.

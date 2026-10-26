@@ -5,6 +5,7 @@ namespace App\Models\ProjectManagement;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Core\UserM as User;
+use Carbon\Carbon;
 
 class TaskmanagementModel extends Model
 {
@@ -199,7 +200,7 @@ class TaskmanagementModel extends Model
             return false;
         }
 
-        $dueDate = is_string($this->due_date) ? \Carbon\Carbon::parse($this->due_date) : $this->due_date;
+        $dueDate = is_string($this->due_date) ? Carbon::parse($this->due_date) : $this->due_date;
         return $dueDate->startOfDay()->isPast();
     }
 }

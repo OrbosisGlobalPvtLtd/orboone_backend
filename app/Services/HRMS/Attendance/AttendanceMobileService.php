@@ -424,13 +424,16 @@ class AttendanceMobileService
         $data['workCompleted'] = $workCompleted;
 
         $policyObj = $policy ?: ($empForPolicy ? $this->resolver->getPolicyForEmployee($empForPolicy, $dateForPolicy) : null);
-        $earlyOutHalfDayMins = (int) ($policyObj->early_out_half_day_minutes ?? 60);
+        $earlyOutGraceMins = (int) ($policyObj->early_out_grace_minutes ?? 60);
+        $earlyOutHalfDayMins = (int) ($policyObj->early_out_half_day_minutes ?? 90);
         $missedPunchAfterMins = (int) ($policyObj->missed_punch_after_minutes ?? 60);
         $targetOutVal = $targetOutTime ?: $this->resolver->timeString($policyObj->shift_end_time ?? '18:00:00');
         $shiftEndCarbon = $targetOutVal ? Carbon::parse($attendanceDate . ' ' . $targetOutVal, AttendanceRuleResolverService::TIMEZONE) : null;
-        $earlyOutCutoff = $shiftEndCarbon ? $shiftEndCarbon->copy()->subMinutes($earlyOutHalfDayMins)->format('H:i:s') : null;
-        $missedPunchCutoff = $shiftEndCarbon ? $shiftEndCarbon->copy()->addMinutes($missedPunchAfterMins)->format('H:i:s') : null;
+        $earlyOutCutoff = null;
+        $missedPunchCutoff = null;
 
+        $data['early_out_grace_minutes'] = $earlyOutGraceMins;
+        $data['earlyOutGraceMinutes'] = $earlyOutGraceMins;
         $data['early_out_half_day_minutes'] = $earlyOutHalfDayMins;
         $data['earlyOutHalfDayMinutes'] = $earlyOutHalfDayMins;
         $data['missed_punch_after_minutes'] = $missedPunchAfterMins;

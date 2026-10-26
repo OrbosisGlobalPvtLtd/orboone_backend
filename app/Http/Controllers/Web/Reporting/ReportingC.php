@@ -887,6 +887,9 @@ class ReportingC extends Controller
 
                     $daysVal = (float)($req->requested_days ?? $req->deducted_days ?? 1);
                     $daysStr = ($daysVal == floor($daysVal) ? number_format($daysVal, 0) : number_format($daysVal, 1)) . ' ' . Str::plural('Day', $daysVal);
+                    if (!empty($req->is_half_day) || !empty($req->half_day_type) || ($daysVal > 0 && $daysVal < 1)) {
+                        $daysStr .= ' (' . (($req->half_day_type ?? '') === 'second_half' ? '2nd Half' : '1st Half') . ')';
+                    }
 
                     $formattedData[] = [
                         'sr_no' => $idx + 1,
@@ -1419,6 +1422,9 @@ class ReportingC extends Controller
 
                 $daysVal = (float)($req->requested_days ?? $req->deducted_days ?? 1);
                 $daysStr = ($daysVal == floor($daysVal) ? number_format($daysVal, 0) : number_format($daysVal, 1)) . ' ' . Str::plural('Day', $daysVal);
+                if (!empty($req->is_half_day) || !empty($req->half_day_type) || ($daysVal > 0 && $daysVal < 1)) {
+                    $daysStr .= ' (' . (($req->half_day_type ?? '') === 'second_half' ? '2nd Half' : '1st Half') . ')';
+                }
 
                 fputcsv($handle, [
                     $index + 1,
@@ -1506,6 +1512,9 @@ class ReportingC extends Controller
 
             $daysVal = (float)($req->requested_days ?? $req->deducted_days ?? 1);
             $daysStr = ($daysVal == floor($daysVal) ? number_format($daysVal, 0) : number_format($daysVal, 1)) . ' ' . Str::plural('Day', $daysVal);
+            if (!empty($req->is_half_day) || !empty($req->half_day_type) || ($daysVal > 0 && $daysVal < 1)) {
+                $daysStr .= ' (' . (($req->half_day_type ?? '') === 'second_half' ? '2nd Half' : '1st Half') . ')';
+            }
 
             $output .= '<tr>
                 <td align="center">' . ($index + 1) . '</td>

@@ -233,7 +233,9 @@ class AttendanceRuleResolverService
             $policy->block_after_time = $overrideTiming->block_after_time ?? $explicitShiftTemplate?->block_after_time ?? $shiftTemplate?->block_after_time ?? $policy->half_day_after_time ?? $shiftTemplate?->shift_end_time;
             $policy->shift_end_time = $overrideTiming->shift_end_time ?? $explicitShiftTemplate?->shift_end_time ?? $shiftTemplate?->shift_end_time ?? '18:30:00';
             $policy->required_work_minutes = (int) ($overrideTiming->required_work_minutes ?? $explicitShiftTemplate?->required_work_minutes ?? $shiftTemplate?->required_work_minutes ?? 480);
-            $policy->half_day_min_minutes = (int) ($overrideTiming->half_day_min_minutes ?? $explicitShiftTemplate?->half_day_min_minutes ?? $shiftTemplate?->half_day_min_minutes ?? ($policy->required_work_minutes ? (int) ($policy->required_work_minutes / 2) : 240));
+            $policy->half_day_min_minutes = ! empty($overrideTiming->required_work_minutes)
+                ? (int) ($overrideTiming->half_day_min_minutes ?? (int) ($policy->required_work_minutes / 2))
+                : (int) ($overrideTiming->half_day_min_minutes ?? $explicitShiftTemplate?->half_day_min_minutes ?? $shiftTemplate?->half_day_min_minutes ?? ($policy->required_work_minutes ? (int) ($policy->required_work_minutes / 2) : 240));
             $policy->required_office_minutes = (int) ($overrideTiming->required_office_minutes ?? $explicitShiftTemplate?->required_office_minutes ?? $shiftTemplate?->required_office_minutes ?? $policy->required_work_minutes);
             $policy->lunch_break_minutes = (int) ($overrideTiming->lunch_minutes ?? $explicitShiftTemplate?->lunch_break_minutes ?? $explicitShiftTemplate?->break_minutes ?? $shiftTemplate?->lunch_break_minutes ?? $shiftTemplate?->break_minutes ?? 0);
             $policy->break_minutes = $policy->lunch_break_minutes;
@@ -778,7 +780,8 @@ class AttendanceRuleResolverService
                 $target = Carbon::parse($today . ' ' . $this->timeString($targetVal), self::TIMEZONE);
             } else {
                 $in = Carbon::parse($today . ' ' . $this->timeString($attendance->punch_in_time), self::TIMEZONE);
-                $target = $this->targetPunchOut($in, $policy);
+                $status = $attendance->attendance_status ?? ($attendance->is_half_day ? 'half_day' : 'present');
+                $target = $this->targetPunchOut($in, $policy, $status);
             }
             $remainingSeconds = max(0, $now->diffInSeconds($target, false));
         }
@@ -847,8 +850,9 @@ class AttendanceRuleResolverService
         $lateAfter = $this->timeOnDate($policy->late_after_time ?? null, $now);
         $warningAfter = $this->timeOnDate($policy->warning_after_time ?? null, $now);
         $halfDayAfter = $this->timeOnDate($policy->half_day_after_time ?? null, $now);
-        $blockAfter = $this->timeOnDate(($policy->block_after_time ?? null) ?: ($policy->half_day_after_time ?? null), $now);
         $shiftEnd = $this->timeOnDate($policy->shift_end_time ?? null, $now);
+        // Punch-in window closes strictly AFTER the shift ends. During the shift, punches (late or half-day) are permitted.
+        $blockAfter = $shiftEnd ?: $this->timeOnDate($policy->block_after_time ?? null, $now);
 
         $shiftType = strtolower((string) ($policy?->shift_type ?? 'fixed'));
         $isDynamicHours = $shiftType === 'dynamic_hours';
@@ -880,10 +884,60 @@ class AttendanceRuleResolverService
         ];
     }
 
+    /**
+     * Unified Punch-Out Classification for Orbosis HRMS.
+     * Let E = minutes punch-out is before target_punch_out_time.
+     *
+     * 1. E <= 60 -> Full Day (present), no violation, early_out_minutes = 0.
+     * 2. 60 < E <= 90 -> Full Day (present) + Early Logout (is_early_out = true, early_out_minutes = E).
+     * 3. 90 < E <= 300 -> Half Day only (half_day), is_early_out = false, early_out_minutes = 0.
+     * 4. E > 300 -> Absent/LWP (lwp), is_early_out = false, early_out_minutes = 0.
+     *
+     * Thresholds 60, 90, 300 are configurable in shift policy.
+     * Skips logic for flexible shifts and approved full-day leave.
+     */
+    public function classifyPunchOut(
+        Carbon|string $punchOut,
+        Carbon|string $targetPunchOut,
+        Carbon|string|null $punchIn = null,
+        ?object $policy = null,
+        bool $isFlexible = false,
+        bool $hasApprovedFullDayLeave = false,
+        ?string $date = null,
+        ?int $netMinutes = null,
+        array $options = []
+    ): array {
+        $baseDate = $date ? Carbon::parse($date, self::TIMEZONE)->toDateString() : '2026-01-01';
+        $out = $punchOut instanceof Carbon ? $punchOut->copy() : Carbon::parse($baseDate . ' ' . $this->timeString($punchOut), self::TIMEZONE);
+        $target = $targetPunchOut instanceof Carbon ? $targetPunchOut->copy() : Carbon::parse($baseDate . ' ' . $this->timeString($targetPunchOut), self::TIMEZONE);
+
+        if ($punchIn) {
+            $in = $punchIn instanceof Carbon ? $punchIn->copy() : Carbon::parse($baseDate . ' ' . $this->timeString($punchIn), self::TIMEZONE);
+            if ($target->lt($in)) {
+                $target->addDay();
+            }
+            if ($out->lt($in)) {
+                $out->addDay();
+            }
+            if ($netMinutes === null) {
+                $breakMinutes = (int) ($policy?->lunch_break_minutes ?? $policy?->break_minutes ?? 0);
+                $grossMinutes = (int) $in->diffInMinutes($out);
+                $netMinutes = max(0, $grossMinutes - $breakMinutes);
+            }
+        }
+
+        $opts = array_merge([
+            'is_flexible' => $isFlexible,
+            'has_approved_full_day_leave' => $hasApprovedFullDayLeave,
+        ], $options);
+
+        return AttendancePunchOutClassifier::classify($out, $target, $policy, $netMinutes, $opts);
+    }
+
     public function calculateWorkMinutes(Attendance $attendance, ?object $policy = null): array
     {
         if (! $attendance->punch_in_time || ! $attendance->punch_out_time) {
-            return ['gross_minutes' => 0, 'break_minutes' => 0, 'net_minutes' => 0, 'target_punch_out_time' => null, 'is_early_out' => false, 'early_out_minutes' => 0];
+            return ['gross_minutes' => 0, 'break_minutes' => 0, 'net_minutes' => 0, 'target_punch_out_time' => null, 'is_early_out' => false, 'early_out_minutes' => 0, 'classification' => null];
         }
 
         $policy = $policy ?: $this->policyForAttendance($attendance);
@@ -895,10 +949,20 @@ class AttendanceRuleResolverService
         }
 
         $isFlexible = ($policy?->shift_type ?? 'fixed') === 'flexible_part_time';
-        $breakMinutes = (int) ($policy?->lunch_break_minutes ?? $policy?->break_minutes ?? 0);
-        $grossMinutes = $in->diffInMinutes($out);
+        $isHalfDayPunch = (! $isFlexible && $policy && ! empty($policy->half_day_after_time))
+            ? $in->gte(Carbon::parse($date . ' ' . $this->timeString($policy->half_day_after_time), self::TIMEZONE))
+            : false;
 
-        $status = $attendance->attendance_status ?? ($attendance->is_half_day ? 'half_day' : 'present');
+        $hasApprovedHalfDay = (bool) ($attendance->leave_request_id !== null
+            || $attendance->half_day_reason === 'approved_half_day_leave'
+            || in_array(strtolower((string) $attendance->attendance_status), ['half_leave', 'first_half_leave', 'second_half_leave'], true));
+
+        $isPreExistingHalfDay = $hasApprovedHalfDay || $isHalfDayPunch;
+
+        $status = $isPreExistingHalfDay ? 'half_day' : ($attendance->attendance_status ?? 'present');
+        $breakMinutes = (int) ($policy?->lunch_break_minutes ?? $policy?->break_minutes ?? 0);
+        $grossMinutes = (int) $in->diffInMinutes($out);
+
         $target = $attendance->target_punch_out_time
             ? Carbon::parse($date . ' ' . $this->timeString($attendance->target_punch_out_time), self::TIMEZONE)
             : $this->targetPunchOut($in, $policy, $status);
@@ -906,16 +970,27 @@ class AttendanceRuleResolverService
             $target->addDay();
         }
 
-        $isEarlyOut = $out->lt($target);
-        $earlyOutMinutes = $isEarlyOut ? $out->diffInMinutes($target) : 0;
+        $netMinutes = max(0, $grossMinutes - $breakMinutes);
+        $classification = $this->classifyPunchOut(
+            $out,
+            $target,
+            $in,
+            $policy,
+            $isFlexible,
+            false,
+            $date,
+            $netMinutes,
+            ['is_half_day' => $isPreExistingHalfDay]
+        );
 
         return [
             'gross_minutes' => $grossMinutes,
             'break_minutes' => $breakMinutes,
-            'net_minutes' => max(0, $grossMinutes - $breakMinutes),
+            'net_minutes' => $netMinutes,
             'target_punch_out_time' => $target->format('H:i:s'),
-            'is_early_out' => $isEarlyOut,
-            'early_out_minutes' => $earlyOutMinutes,
+            'is_early_out' => $classification['is_early_out'],
+            'early_out_minutes' => $classification['early_out_minutes'],
+            'classification' => $classification,
         ];
     }
 
@@ -937,13 +1012,15 @@ class AttendanceRuleResolverService
         $effectiveHalfDayMin = $halfDay > 0 ? $halfDay : ($required > 0 ? (int)($required / 2) : 240);
         $effectiveAbsentBelow = $absentBelow;
 
-        $isPreExistingLwp = (bool) $attendance->is_lwp
-            || strtolower((string) $attendance->attendance_status) === 'lwp'
-            || ! empty($attendance->lwp_reason);
+        $isPreExistingHalfDay = (bool) ($attendance->leave_request_id !== null
+            || (bool) $attendance->is_half_day
+            || $attendance->half_day_reason === 'approved_half_day_leave'
+            || in_array(strtolower((string) $attendance->attendance_status), ['half_day', 'half_leave', 'first_half_leave', 'second_half_leave'], true));
 
-        $isPreExistingHalfDay = (bool) $attendance->is_half_day
-            || in_array(strtolower((string) $attendance->attendance_status), ['half_day', 'half_leave', 'first_half_leave', 'second_half_leave'], true)
-            || ! empty($attendance->half_day_reason);
+        $isPreExistingLwp = ! $isPreExistingHalfDay
+            && ((bool) $attendance->is_lwp
+            || strtolower((string) $attendance->attendance_status) === 'lwp'
+            || ! empty($attendance->lwp_reason));
 
         if ($isPreExistingLwp) {
             $code = 'lwp';
@@ -954,18 +1031,21 @@ class AttendanceRuleResolverService
             } else {
                 $code = 'half_day';
             }
+        } elseif (! $isDynamicOrFlexible) {
+            // Punch-out classification governs fixed shifts directly (net-minutes check does not override)
+            $code = $work['classification']['status'] ?? 'present';
+            if ($code === 'present' && $violationLimit > 0 && $violationCount >= $violationLimit) {
+                $code = 'half_day';
+            }
         } else {
-            // Standard Attendance Punch
+            // Standard Attendance Punch for flexible / dynamic shifts
             if ($effectiveAbsentBelow > 0 && $work['net_minutes'] < $effectiveAbsentBelow) {
                 $code = 'lwp';
-            } elseif ($isDynamicOrFlexible && $effectiveHalfDayMin > 0 && $work['net_minutes'] < $effectiveHalfDayMin) {
+            } elseif ($effectiveHalfDayMin > 0 && $work['net_minutes'] < $effectiveHalfDayMin) {
                 $code = 'lwp';
-            } elseif ($isDynamicOrFlexible && $required > 0 && $work['net_minutes'] < $required) {
-                $code = 'half_day';
-            } elseif (! $isDynamicOrFlexible && $violationLimit > 0 && $violationCount >= $violationLimit) {
+            } elseif ($required > 0 && $work['net_minutes'] < $required) {
                 $code = 'half_day';
             } else {
-                // Completed required work duration or at least half_day_min_minutes on fixed shift
                 $code = 'present';
             }
         }
@@ -1006,9 +1086,22 @@ class AttendanceRuleResolverService
             $halfDay = (int) ($required / 2);
         }
 
-        $isHalfDayLeave = in_array(strtolower($status), ['half_leave', 'first_half_leave', 'second_half_leave'], true);
-        $applicableWorkMinutes = ($isHalfDayLeave && $halfDay > 0) ? $halfDay : $required;
-        $breakMinutes = $isHalfDayLeave ? 0 : (int) ($policy?->lunch_break_minutes ?? $policy?->lunch_minutes ?? $policy?->break_minutes ?? 0);
+        $cleanStatus = strtolower(trim(str_replace([' ', '-'], '_', (string) $status)));
+        $isHalfDay = in_array($cleanStatus, [
+            'half_day',
+            'halfday',
+            'half_leave',
+            'first_half_leave',
+            'second_half_leave',
+            'first_half',
+            'second_half',
+            'first_half_day',
+            'second_half_day',
+            'half_day_leave',
+        ], true) || str_contains($cleanStatus, 'half');
+
+        $applicableWorkMinutes = ($isHalfDay && $halfDay > 0) ? $halfDay : $required;
+        $breakMinutes = (int) ($policy?->lunch_break_minutes ?? $policy?->lunch_minutes ?? $policy?->break_minutes ?? 0);
 
         return $punchIn->copy()->addMinutes($applicableWorkMinutes + $breakMinutes);
     }
@@ -1042,12 +1135,13 @@ class AttendanceRuleResolverService
             }
         }
 
-        $earlyOutHalfDayMins = (int) ($policy->early_out_half_day_minutes ?? 60);
+        $earlyOutGraceMins = (int) ($policy->early_out_grace_minutes ?? 60);
+        $earlyOutHalfDayMins = (int) ($policy->early_out_half_day_minutes ?? 90);
         $missedPunchAfterMins = (int) ($policy->missed_punch_after_minutes ?? 60);
 
         $shiftEndCarbon = $shiftEnd ? Carbon::parse('2026-01-01 ' . $shiftEnd, self::TIMEZONE) : null;
         $earlyOutHalfDayCutoff = $shiftEndCarbon ? $shiftEndCarbon->copy()->subMinutes($earlyOutHalfDayMins)->format('H:i:s') : null;
-        $missedPunchCutoff = $shiftEndCarbon ? $shiftEndCarbon->copy()->addMinutes($missedPunchAfterMins)->format('H:i:s') : null;
+        $missedPunchCutoff = null;
 
         return [
             'id' => $policy->id ?? null,
@@ -1083,10 +1177,13 @@ class AttendanceRuleResolverService
             'earlyOutHalfDayMinutes' => $earlyOutHalfDayMins,
             'missed_punch_after_minutes' => $missedPunchAfterMins,
             'missedPunchAfterMinutes' => $missedPunchAfterMins,
-            'early_out_half_day_cutoff' => $earlyOutHalfDayCutoff,
-            'earlyOutHalfDayCutoff' => $earlyOutHalfDayCutoff,
-            'missed_punch_cutoff' => $missedPunchCutoff,
-            'missedPunchCutoff' => $missedPunchCutoff,
+            'early_out_half_day_cutoff' => null,
+            'earlyOutHalfDayCutoff' => null,
+            'missed_punch_cutoff' => null,
+            'missedPunchCutoff' => null,
+
+            'early_out_grace_minutes' => $earlyOutGraceMins,
+            'earlyOutGraceMinutes' => $earlyOutGraceMins,
 
             'required_work_minutes' => $reqMins,
             'requiredWorkMinutes' => $reqMins,
@@ -1443,37 +1540,6 @@ class AttendanceRuleResolverService
                     'id' => $leaveReq->id,
                     'leave_request_id' => $leaveReq->id,
                     'leave_type' => $leaveReq->leave_type ?? 'leave',
-                    'is_half_day' => $isHalfDay,
-                    'leave_slot' => $slot,
-                    'half_day_type' => $slot,
-                    'status' => 'approved',
-                ];
-            }
-        }
-
-        if (Schema::hasTable('leave_applications')) {
-            $app = DB::table('leave_applications')
-                ->where('employee_id', $employee->id)
-                ->where('status', 'approved')
-                ->whereDate('start_date', '<=', $dateStr)
-                ->whereDate('end_date', '>=', $dateStr)
-                ->first();
-
-            if ($app) {
-                $isHalfDay = (bool) ($app->is_half_day ?? false)
-                    || ! empty($app->half_day_type)
-                    || ! empty($app->leave_slot)
-                    || ($app->type ?? '') === 'half_day';
-
-                $slot = $app->half_day_type
-                    ?? $app->leave_slot
-                    ?? $app->slot
-                    ?? ($isHalfDay ? 'first_half' : null);
-
-                return $this->leaveCache[$cacheKey] = [
-                    'id' => $app->id,
-                    'leave_application_id' => $app->id,
-                    'leave_type' => $app->type ?? $app->leave_type ?? 'leave',
                     'is_half_day' => $isHalfDay,
                     'leave_slot' => $slot,
                     'half_day_type' => $slot,

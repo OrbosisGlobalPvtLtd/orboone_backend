@@ -8,6 +8,8 @@ use App\Models\HRMS\Department\DepartmentM;
 use App\Models\HRMS\Leave\LeaveRequestM;
 use App\Models\HRMS\Leave\LeaveTypeM;
 use App\Models\Core\AccessM;
+use App\Models\Core\UserM;
+use App\Models\HRMS\Leave\HolidayM;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,19 +18,55 @@ class TeamLeaveCalendarC extends Controller
 {
     public function index(Request $request)
     {
-        // Check permission
+        /** @var UserM|null $user */
+        $user = Auth::user();
+        if (! $user) {
+            abort(401);
+        }
+
+        $isSuperAdmin = (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin())
+            || (method_exists($user, 'hasRole') && $user->hasRole('super_admin'));
+
+        $isHrOrAdmin = $isSuperAdmin
+            || ($user->roles()->whereIn('slug', ['super_admin', 'admin', 'hr_admin'])->exists());
+
+        $isTeamManager = false;
+        $userEmp = \Illuminate\Support\Facades\DB::table('employees_new')->where('user_id', $user->id)->first(['id']);
+        if ($userEmp) {
+            $teamScope = app(\App\Services\HRMS\Team\TeamManagementScopeS::class);
+            $isTeamManager = ! empty($teamScope->getTeamEmployeeIds($userEmp->id));
+        }
+
+        $userRoles = $user->roles ?? collect();
+        $isOnlyEmployee = $userRoles->isNotEmpty() && $userRoles->every(fn($r) => $r->slug === 'employee');
+
+        // Pure employees without managerial reportees are strictly forbidden
+        if ($isOnlyEmployee && ! $isTeamManager && ! $isHrOrAdmin) {
+            abort(403, 'Employees are not authorized to view the Team Leave Calendar.');
+        }
+
         abort_unless(
-            Auth::user()->hasPermission('leave.team_calendar.view')
-            || Auth::user()->hasPermission('leave.approvals.view')
-            || Auth::user()->hasPermission('leave.approvals.view_team')
-            || Auth::user()->hasPermission('leave.approvals.view_all'),
-            403
+            $isHrOrAdmin
+            || $isTeamManager
+            || $user->hasPermission('leave.team_calendar.view')
+            || $user->hasPermission('leave.approvals.view')
+            || $user->hasPermission('leave.approvals.view_team')
+            || $user->hasPermission('leave.approvals.view_all'),
+            403,
+            'You do not have permission to view the Team Leave Calendar.'
         );
 
-        $selectedMonth = (int) $request->input('month', today()->month);
-        $selectedYear = (int) $request->input('year', today()->year);
+        $selectedMonth = $request->filled('month') ? (int) $request->input('month') : today()->month;
+        $selectedYear = $request->filled('year') ? (int) $request->input('year') : today()->year;
 
-        $firstDayOfMonth = Carbon::create($selectedYear, $selectedMonth, 1);
+        if ($selectedMonth < 1 || $selectedMonth > 12) {
+            $selectedMonth = today()->month;
+        }
+        if ($selectedYear < 2000 || $selectedYear > 2100) {
+            $selectedYear = today()->year;
+        }
+
+        $firstDayOfMonth = Carbon::create($selectedYear, $selectedMonth, 1)->startOfDay();
         $startOfMonthDate = (clone $firstDayOfMonth)->startOfMonth();
         $endOfMonthDate = (clone $firstDayOfMonth)->endOfMonth();
 
@@ -47,13 +85,13 @@ class TeamLeaveCalendarC extends Controller
             ->count();
 
         $stats['approved_this_month'] = LeaveRequestM::where('status', 'approved')
-            ->whereMonth('start_date', today()->month)
-            ->whereYear('start_date', today()->year)
+            ->whereMonth('start_date', $selectedMonth)
+            ->whereYear('start_date', $selectedYear)
             ->count();
 
         $stats['lwp_this_month'] = LeaveRequestM::where('status', 'approved')
-            ->whereMonth('start_date', today()->month)
-            ->whereYear('start_date', today()->year)
+            ->whereMonth('start_date', $selectedMonth)
+            ->whereYear('start_date', $selectedYear)
             ->where(function($q) {
                 $q->where('lwp_days', '>', 0)
                   ->orWhereHas('leaveType', function($lt) {
@@ -69,7 +107,7 @@ class TeamLeaveCalendarC extends Controller
         $leaveTypes = LeaveTypeM::orderBy('name')->get();
 
         // 3. Fetch Leaves data with filters
-        $leavesQuery = LeaveRequestM::with(['employee.user', 'employee.department', 'leaveType', 'dates', 'approver'])
+        $leavesQuery = LeaveRequestM::with(['employee.user', 'employee.department', 'employee.designation', 'leaveType', 'dates', 'approver'])
             ->where(function($q) use ($startOfMonthDate, $endOfMonthDate) {
                 $q->whereDate('start_date', '<=', $endOfMonthDate)
                   ->whereDate('end_date', '>=', $startOfMonthDate);
@@ -88,10 +126,14 @@ class TeamLeaveCalendarC extends Controller
         }
         
         if ($request->filled('status')) {
-            $leavesQuery->where('status', $request->status);
+            if ($request->status === 'all') {
+                // Include all statuses
+            } else {
+                $leavesQuery->where('status', $request->status);
+            }
         } else {
-            // Default: hide rejected
-            $leavesQuery->where('status', '!=', 'rejected');
+            // Default: Active leaves only (approved & pending), exclude cancelled/void/rejected
+            $leavesQuery->whereIn('status', ['approved', 'pending']);
         }
 
         $leaves = $leavesQuery->latest()->get();
@@ -107,7 +149,7 @@ class TeamLeaveCalendarC extends Controller
         for ($i = $startOfWeekDay - 1; $i > 0; $i--) {
             $dayNum = $daysInPrevMonth - $i + 1;
             $cells[] = [
-                'date' => Carbon::create($prevMonthObj->year, $prevMonthObj->month, $dayNum),
+                'date' => Carbon::create($prevMonthObj->year, $prevMonthObj->month, $dayNum)->startOfDay(),
                 'is_current_month' => false,
             ];
         }
@@ -115,7 +157,7 @@ class TeamLeaveCalendarC extends Controller
         // Fill current month days
         for ($day = 1; $day <= $daysInMonth; $day++) {
             $cells[] = [
-                'date' => Carbon::create($selectedYear, $selectedMonth, $day),
+                'date' => Carbon::create($selectedYear, $selectedMonth, $day)->startOfDay(),
                 'is_current_month' => true,
             ];
         }
@@ -126,28 +168,44 @@ class TeamLeaveCalendarC extends Controller
         $nextMonthDaysToFill = (7 - ($totalCells % 7)) % 7;
         for ($day = 1; $day <= $nextMonthDaysToFill; $day++) {
             $cells[] = [
-                'date' => Carbon::create($nextMonthObj->year, $nextMonthObj->month, $day),
+                'date' => Carbon::create($nextMonthObj->year, $nextMonthObj->month, $day)->startOfDay(),
                 'is_current_month' => false,
             ];
         }
 
-        // 5. Map Leaves to Date Cells for quick access in UI
+        // 5. Fetch Holidays for displayed window
+        $firstGridDate = $cells[0]['date'];
+        $lastGridDate = $cells[count($cells) - 1]['date'];
+        $holidays = HolidayM::where('is_active', true)
+            ->whereDate('holiday_date', '>=', $firstGridDate)
+            ->whereDate('holiday_date', '<=', $lastGridDate)
+            ->get()
+            ->keyBy(function($h) {
+                return $h->holiday_date->format('Y-m-d');
+            });
+
+        // 6. Map Leaves & Holidays to Date Cells
         $calendarData = [];
         foreach ($cells as $cell) {
             $dateStr = $cell['date']->format('Y-m-d');
             $dateLeaves = [];
             foreach ($leaves as $leave) {
-                if ($cell['date']->between($leave->start_date, $leave->end_date)) {
+                $start = Carbon::parse($leave->start_date)->startOfDay();
+                $end = Carbon::parse($leave->end_date)->startOfDay();
+                if ($cell['date']->gte($start) && $cell['date']->lte($end)) {
                     $dateLeaves[] = $leave;
                 }
             }
             $calendarData[$dateStr] = [
                 'date' => $cell['date'],
                 'is_current_month' => $cell['is_current_month'],
-                'leaves' => $dateLeaves
+                'leaves' => $dateLeaves,
+                'holiday' => $holidays->get($dateStr)
             ];
         }
 
+        $prevMonthDate = (clone $firstDayOfMonth)->subMonth();
+        $nextMonthDate = (clone $firstDayOfMonth)->addMonth();
         $accesses = $this->accesses();
 
         return view('hrms.leave.calendar.index', compact(
@@ -160,13 +218,17 @@ class TeamLeaveCalendarC extends Controller
             'cells',
             'selectedMonth',
             'selectedYear',
+            'prevMonthDate',
+            'nextMonthDate',
             'accesses'
         ))->with('active', 'leave_management');
     }
 
     private function accesses()
     {
-        $roleId = auth()->user()->role_id ?? auth()->user()->system_role_id ?? null;
+        /** @var UserM|null $user */
+        $user = Auth::user();
+        $roleId = $user?->role_id ?? $user?->system_role_id ?? null;
         return $roleId ? AccessM::where('role_id', $roleId)->get() : collect();
     }
 }

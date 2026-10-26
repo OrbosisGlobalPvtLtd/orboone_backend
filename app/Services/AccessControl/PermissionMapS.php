@@ -207,6 +207,7 @@ class PermissionMapS
             'hrms.leave.balances.index' => ['leave.balance.view_all', 'leave.balance.view_team', 'leave.balance.view_own', 'leave.balance.view', 'leave_self.view_balance'],
             'employees-leave-request.summary' => ['leave.balance.view_all', 'leave.balance.view_team', 'leave.balance.view_own', 'leave.balance.view', 'leave_self.view_balance'],
             'hrms.holidays.index' => ['leave.holidays.manage', 'leave.team_calendar.view'],
+            'hrms.leave.team_calendar.index' => ['leave.team_calendar.view'],
             'projects.index' => ['projects.view_all', 'projects.my_projects.view', 'projects.delivery_head.view', 'projects.team_lead.view'],
             'projects.my' => ['projects.my_projects.view'],
             'projects.tasks.index' => ['projects.tasks.view', 'projects.view_all'],

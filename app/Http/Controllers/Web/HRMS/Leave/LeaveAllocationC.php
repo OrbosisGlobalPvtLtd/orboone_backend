@@ -10,10 +10,14 @@ use App\Models\HRMS\Leave\LeaveAllocationM;
 use App\Models\HRMS\Leave\LeavePolicyM;
 use App\Services\HRMS\Employee\EmployeeEligibilityS;
 use App\Services\HRMS\Leave\LeaveAllocationService;
+use App\Services\HRMS\Leave\LeaveBalanceService;
+use App\Services\HRMS\Leave\LeaveMonthlyBalanceService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class LeaveAllocationC extends Controller
 {
@@ -21,7 +25,8 @@ class LeaveAllocationC extends Controller
 
     public function __construct(
         private LeaveAllocationService $allocationService,
-        private EmployeeEligibilityS $eligibilityService
+        private EmployeeEligibilityS $eligibilityService,
+        private LeaveBalanceService $balanceService
     ) {
     }
 
@@ -109,6 +114,84 @@ class LeaveAllocationC extends Controller
             }
         }
 
+        $activeTab = in_array($request->query('tab'), ['monthly', 'transactions'], true) ? (string) $request->query('tab') : 'allocations';
+        $monthlyBalances = collect();
+        $transactions = collect();
+        $currentMonth = (int) now('Asia/Kolkata')->month;
+        $selectedMonth = $request->query('month');
+        if ($selectedMonth === null) {
+            $selectedMonth = (string) $currentMonth;
+        }
+
+        if ($activeTab === 'monthly') {
+            $monthlyQuery = app(LeaveMonthlyBalanceService::class)
+                ->queryForYear($year)
+                ->whereHas('employee');
+
+            if ($selectedMonth !== '' && $selectedMonth !== 'all') {
+                $monthlyQuery->where('leave_monthly_balances.month', (int) $selectedMonth);
+            }
+
+            if (! $canViewAllAllocations) {
+                $monthlyQuery->where('leave_monthly_balances.employee_id', $this->ownEmployeeId() ?: 0);
+            }
+            if ($request->filled('search')) {
+                $search = trim((string) $request->query('search'));
+                $monthlyQuery->whereHas('employee', function ($employeeQuery) use ($search): void {
+                    $employeeQuery->where('employee_code', 'like', "%{$search}%")
+                        ->orWhereHas('user', fn ($userQuery) => $userQuery->where('name', 'like', "%{$search}%"));
+                });
+            }
+            if ($request->filled('stage')) {
+                $monthlyQuery->where('leave_monthly_balances.employment_stage', strtolower(trim((string) $request->query('stage'))));
+            }
+            if ($request->filled('policy_id')) {
+                $monthlyQuery->where('leave_monthly_balances.policy_id', (int) $request->query('policy_id'));
+            } elseif ($request->filled('policy')) {
+                $policyName = trim((string) $request->query('policy'));
+                $monthlyQuery->whereHas('policy', fn ($policyQuery) => $policyQuery->where('policy_name', 'like', "%{$policyName}%"));
+            }
+
+            $monthlyQuery->join('employees_new', 'employees_new.id', '=', 'leave_monthly_balances.employee_id')
+                ->leftJoin('users', 'users.id', '=', 'employees_new.user_id')
+                ->orderByRaw("COALESCE(users.name, employees_new.employee_code) ASC")
+                ->orderBy('leave_monthly_balances.month')
+                ->select('leave_monthly_balances.*');
+
+            $monthlyBalances = $monthlyQuery->paginate(50)->withQueryString();
+        }
+        if ($activeTab === 'transactions') {
+            $transactionQuery = DB::table('leave_balance_transactions as t')
+                ->join('employees_new as e', 'e.id', '=', 't.employee_id')
+                ->leftJoin('users as eu', 'eu.id', '=', 'e.user_id')
+                ->leftJoin('users as cu', 'cu.id', '=', 't.created_by')
+                ->where('e.employment_status', 'active')
+                ->selectRaw("t.*, COALESCE(eu.name, e.employee_code) as employee_name, e.employee_code, COALESCE(cu.name, CASE WHEN t.created_by IS NULL THEN 'Scheduler' ELSE 'Unknown user' END) as actor_name")
+                ->orderByDesc('t.effective_date')->orderByDesc('t.id');
+            if (! $canViewAllAllocations) $transactionQuery->where('t.employee_id', $this->ownEmployeeId() ?: 0);
+
+            $txYear = $request->filled('year') ? (int) $request->query('year') : $year;
+            $transactionQuery->where('t.period_year', $txYear);
+
+            if ($selectedMonth !== '' && $selectedMonth !== 'all') {
+                $transactionQuery->where('t.period_month', (int) $selectedMonth);
+            }
+
+            foreach (['employee_id' => 't.employee_id', 'bucket' => 't.bucket', 'type' => 't.transaction_type', 'source' => 't.source'] as $input => $column) {
+                if ($request->filled($input)) $transactionQuery->where($column, $request->query($input));
+            }
+            if ($request->filled('employee_code')) {
+                $code = trim((string) $request->query('employee_code'));
+                $transactionQuery->where('e.employee_code', 'like', "%{$code}%");
+            }
+            if ($request->filled('search')) {
+                $needle = trim((string) $request->query('search'));
+                $transactionQuery->where(fn ($query) => $query->where('eu.name', 'like', "%{$needle}%")
+                    ->orWhere('e.employee_code', 'like', "%{$needle}%"));
+            }
+            $transactions = $transactionQuery->paginate(50)->withQueryString();
+        }
+
         // Server-side Default Sorting by Employee Name (A-Z)
         $allocationsQuery->select('leave_allocations.*')
             ->join('employees_new', 'employees_new.id', '=', 'leave_allocations.employee_id')
@@ -116,6 +199,10 @@ class LeaveAllocationC extends Controller
             ->orderByRaw("COALESCE(users.name, employees_new.employee_code) ASC");
 
         $allocations = $allocationsQuery->paginate(30)->withQueryString();
+        $ledgerDisplaySummaries = $this->balanceService->getAllocationDisplaySummaries(
+            $allocations->getCollection(),
+            Carbon::now('Asia/Kolkata')
+        );
 
         if ($canViewAllAllocations) {
             $employees = EmployeeM::activeApproved()
@@ -140,7 +227,7 @@ class LeaveAllocationC extends Controller
         $policies = LeavePolicyM::orderBy('policy_name')->get();
         $accesses = $this->accesses();
 
-        return view('hrms.leave.allocations.index', compact('allocations', 'employees', 'policies', 'year', 'accesses', 'canManageAllocations'))
+        return view('hrms.leave.allocations.index', compact('allocations', 'employees', 'policies', 'year', 'accesses', 'canManageAllocations', 'ledgerDisplaySummaries', 'activeTab', 'monthlyBalances', 'transactions', 'selectedMonth'))
             ->with('active', 'leave_management');
     }
 
@@ -170,15 +257,16 @@ class LeaveAllocationC extends Controller
                 'paid_allocated' => (float) $allocation->paid_allocated,
                 'sick_allocated' => (float) $allocation->sick_allocated,
                 'comp_off_allocated' => (float) ($allocation->comp_off_allocated ?? 0),
+                'comp_off_remaining' => (float) ($allocation->comp_off_remaining ?? 0),
                 'total_allocated' => (float) ($allocation->total_allocated ?? ($allocation->paid_allocated + $allocation->sick_allocated)),
                 'paid_used' => (float) ($allocation->paid_used ?? 0),
                 'sick_used' => (float) ($allocation->sick_used ?? 0),
                 'comp_off_used' => (float) ($allocation->comp_off_used ?? 0),
                 'lwp_used' => (float) ($allocation->lwp_used ?? 0),
-                'monthly_quota' => (float) ($allocation->monthly_quota ?? 0),
-                'monthly_carry_forward' => (float) ($allocation->monthly_carry_forward ?? 0),
-                'monthly_used_this_month' => (float) ($allocation->monthly_used_this_month ?? 0),
-                'total_monthly_remaining_paid' => (float) ($allocation->total_monthly_remaining_paid ?? 0),
+                'paid_remaining' => (string) ($allocation->paid_remaining ?? '0.00'),
+                'sick_remaining' => (string) ($allocation->sick_remaining ?? '0.00'),
+                'is_ledger_backed' => $allocation->isLedgerBacked(),
+                'adjustment_uuid' => (string) Str::uuid(),
                 'allocation_from_date' => $allocation->allocation_from_date ? Carbon::parse($allocation->allocation_from_date)->format('Y-m-d') : '',
                 'allocation_to_date' => $allocation->allocation_to_date ? Carbon::parse($allocation->allocation_to_date)->format('Y-m-d') : '',
                 'allocation_reason' => $allocation->allocation_reason ?? '',
@@ -196,8 +284,11 @@ class LeaveAllocationC extends Controller
         $year = (int) ($request->year ?: Carbon::now('Asia/Kolkata')->year);
         $summary = $this->allocationService->generateYearly($year, Auth::id());
 
-        return redirect()->route('leave-allocations.index', ['year' => $year])
-            ->with('success', "Leave allocations for {$year}: {$summary['successful_allocations']} allocated, {$summary['skipped']} skipped, {$summary['failed']} failed.");
+        $message = "Leave allocation run for {$year}: {$summary['successful_allocations']} processed, {$summary['skipped']} skipped, {$summary['failed']} failed.";
+        if (($summary['accrual_entries_posted'] ?? 0) > 0) {
+            $message .= " Monthly accrual entries posted: {$summary['accrual_entries_posted']}.";
+        }
+        return redirect()->route('leave-allocations.index', ['year' => $year])->with('success', $message);
     }
 
     public function allocateSingle(Request $request)
@@ -217,11 +308,16 @@ class LeaveAllocationC extends Controller
         $employeeId = (int) $validated['employee_id'];
 
         try {
-            $this->allocationService->generateSingle($employeeId, $year, Auth::id());
+            $allocation = $this->allocationService->generateSingle($employeeId, $year, Auth::id());
+            $message = "Leave allocation is ready for year {$year}.";
+            if ($allocation->isLedgerBacked()) {
+                $message .= ' Current balance: PL ' . number_format((float) $allocation->paid_remaining, 2)
+                    . ' days, SL ' . number_format((float) $allocation->sick_remaining, 2) . ' days.';
+            }
 
             return redirect()
                 ->route('leave-allocations.index', ['year' => $year])
-                ->with('success', "Leave allocation generated successfully for year {$year}.");
+                ->with('success', $message);
         } catch (\DomainException $e) {
             return redirect()
                 ->route('leave-allocations.index', ['year' => $year])
@@ -244,43 +340,63 @@ class LeaveAllocationC extends Controller
     {
         abort_unless($this->userHasPermission('leave.allocation.manage') || $this->canViewAll('leave.allocation.view_all'), 403);
 
+        $allocation = LeaveAllocationM::query()->findOrFail($id);
         $validated = $request->validate([
-            'year' => 'required|integer|min:2020|max:2099',
-            'policy_id' => 'nullable|exists:leave_policies,id',
-            'employment_stage' => 'required|string|max:50',
-            'paid_allocated' => 'required|numeric|min:0',
-            'sick_allocated' => 'required|numeric|min:0',
-            'comp_off_allocated' => 'nullable|numeric|min:0',
-            'paid_used' => 'nullable|numeric|min:0',
-            'sick_used' => 'nullable|numeric|min:0',
-            'comp_off_used' => 'nullable|numeric|min:0',
-            'lwp_used' => 'nullable|numeric|min:0',
-            'monthly_quota' => 'nullable|numeric|min:0',
-            'monthly_carry_forward' => 'nullable|numeric|min:0',
-            'monthly_used_this_month' => 'nullable|numeric|min:0',
-            'total_monthly_remaining_paid' => 'nullable|numeric|min:0',
-            'allocation_from_date' => 'nullable|date',
-            'allocation_to_date' => 'nullable|date',
-            'allocation_reason' => 'nullable|string|max:255',
-            'is_locked' => 'nullable',
+            'year' => ['nullable', 'integer', 'min:2020', 'max:2099'],
+            'employment_stage' => ['nullable', 'string', 'max:30'],
+            'policy_id' => ['nullable', 'integer', 'exists:leave_policies,id'],
+            'paid_allocated' => ['nullable', 'numeric', 'min:0'],
+            'sick_allocated' => ['nullable', 'numeric', 'min:0'],
+            'comp_off_allocated' => ['nullable', 'numeric', 'min:0'],
+            'paid_used' => ['nullable', 'numeric', 'min:0'],
+            'sick_used' => ['nullable', 'numeric', 'min:0'],
+            'comp_off_used' => ['nullable', 'numeric', 'min:0'],
+            'lwp_used' => ['nullable', 'numeric', 'min:0'],
+            'allocation_from_date' => ['nullable', 'date'],
+            'allocation_to_date' => ['nullable', 'date'],
+            'allocation_reason' => ['nullable', 'string', 'max:255'],
+            'adjustment_reason' => ['nullable', 'string', 'max:255'],
+            'comp_off_reason' => ['nullable', 'string', 'min:3', 'max:255'],
+            'is_locked' => ['nullable'],
+            'paid_remaining' => ['nullable', 'numeric', 'min:0'],
+            'sick_remaining' => ['nullable', 'numeric', 'min:0'],
+            'pl_target_edited' => ['nullable'],
+            'sl_target_edited' => ['nullable'],
+            'adjustment_uuid' => ['nullable', 'uuid'],
+            'comp_off_grant_uuid' => ['nullable', 'uuid'],
         ]);
+        $validated['is_locked'] = $request->boolean('is_locked');
 
-        $allocation = $this->allocationService->updateAllocation($id, $validated, Auth::id());
+        try {
+            $allocation = $this->allocationService->updateAllocation($id, $validated, Auth::id());
+        } catch (\DomainException $e) {
+            return back()->withInput()->with('error', $e->getMessage());
+        }
 
         return redirect()->route('leave-allocations.index', ['year' => $allocation->year])
             ->with('success', 'Leave allocation updated successfully.');
     }
 
-    public function destroy(int $id)
+    public function destroy(Request $request, int $id)
     {
         abort_unless($this->userHasPermission('leave.allocation.manage'), 403);
-
-        $allocation = LeaveAllocationM::findOrFail($id);
-        $year = $allocation->year;
-        $allocation->delete();
-
-        return redirect()->route('leave-allocations.index', ['year' => $year])
-            ->with('success', 'Leave allocation deleted successfully.');
+        $reason = trim((string) $request->input('reason'));
+        if ($reason === '') return back()->with('error', 'Enter a deletion reason.');
+        $allocation = LeaveAllocationM::query()->findOrFail($id);
+        if (DB::table('leave_balance_transactions')->where('leave_allocation_id', $id)->exists()) {
+            return back()->with('error', 'This allocation cannot be deleted because leave ledger transactions reference it.');
+        }
+        DB::transaction(function () use ($allocation, $reason): void {
+            $before = (float) ($allocation->total_remaining ?? 0);
+            \App\Models\HRMS\Leave\LeaveBalanceLogM::create([
+                'employee_id' => $allocation->employee_id, 'leave_allocation_id' => $allocation->id,
+                'action' => 'allocation_manual_delete', 'credit' => 0, 'debit' => max(0, $before),
+                'balance_before' => $before, 'balance_after' => 0, 'remarks' => $reason,
+                'created_by_user_id' => Auth::id(),
+            ]);
+            $allocation->delete();
+        });
+        return back()->with('success', 'Allocation deleted and recorded in the balance log.');
     }
 
     public function getBalance()
@@ -302,7 +418,6 @@ class LeaveAllocationC extends Controller
             $request->get('allocation_to_date'),
             $request->filled('employee_id') ? (int) $request->employee_id : null
         );
-
         return response()->json($preview);
     }
 }

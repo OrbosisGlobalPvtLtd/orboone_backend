@@ -1873,10 +1873,6 @@ class DashboardResolverS
         $lwp = 0;
         $sandwich_leave = 0;
 
-        if ($this->tableExists('leave_applications') && $this->columnExists('leave_applications', 'status')) {
-            $pending += DB::table('leave_applications')->whereRaw('LOWER(status) = ?', ['pending'])->count();
-        }
-
         if ($this->tableExists('leave_requests') && $this->columnExists('leave_requests', 'status')) {
             $pending += DB::table('leave_requests')->whereRaw('LOWER(status) = ?', ['pending'])->count();
 
@@ -2786,11 +2782,11 @@ class DashboardResolverS
 
     private function employeePendingLeaveCount($employeeId): int
     {
-        if (! $this->tableExists('leave_applications') || ! $employeeId) {
+        if (! $this->tableExists('leave_requests') || ! $employeeId) {
             return 0;
         }
 
-        return DB::table('leave_applications')
+        return DB::table('leave_requests')
             ->where('employee_id', $employeeId)
             ->whereRaw('LOWER(status) = ?', ['pending'])
             ->count();
@@ -3318,8 +3314,8 @@ class DashboardResolverS
         try {
             // 1. Pending Leaves
             $pendingLeaves = 0;
-            if ($this->tableExists('leave_applications') && $this->columnExists('leave_applications', 'status')) {
-                $pendingLeaves = DB::table('leave_applications')->whereRaw('LOWER(status) = ?', ['pending'])->count();
+            if ($this->tableExists('leave_requests') && $this->columnExists('leave_requests', 'status')) {
+                $pendingLeaves = DB::table('leave_requests')->whereRaw('LOWER(status) = ?', ['pending'])->count();
             }
             if ($pendingLeaves > 0) {
                 $actions[] = [

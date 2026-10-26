@@ -36,4 +36,9 @@ class CompOffM extends Model
     {
         return $this->belongsTo(UserM::class, 'approved_by_user_id');
     }
+
+    public function transactions()
+    {
+        return $this->hasMany(LeaveCompOffTransactionM::class, 'comp_off_id');
+    }
 }

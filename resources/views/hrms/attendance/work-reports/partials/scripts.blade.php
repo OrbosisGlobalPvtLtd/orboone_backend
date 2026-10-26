@@ -77,12 +77,9 @@
     }
 
     $(document).ready(function() {
-        // Initialize Select2 on Filter dropdowns
-        if (window.jQuery && $.fn.select2) {
-            $('.select2-searchable').select2({
-                width: '100%',
-                dropdownAutoWidth: true
-            });
+        // Initialize Select2 via global panel helper to preserve allowClear and standard styles
+        if (typeof window.initSearchableSelects === 'function') {
+            window.initSearchableSelects();
         }
 
         // Global length select initialization
@@ -94,12 +91,14 @@
         $('#monthFilterSelect').on('change select2:select', function() {
             var val = $(this).val();
             if (val === 'custom') {
+                $('#singleDateWrap').slideUp(150);
                 $('#customFromWrap').slideDown(150);
                 $('#customToWrap').slideDown(150);
                 $('#filterDate').val('');
             } else {
                 $('#customFromWrap').slideUp(150);
                 $('#customToWrap').slideUp(150);
+                $('#singleDateWrap').slideDown(150);
                 $('#fromDateInput, #filterFromDate').val('');
                 $('#toDateInput, #filterToDate').val('');
             }
@@ -112,16 +111,16 @@
             if (parts.length === 3) {
                 if (parts[0].length === 4) {
                     // YYYY-MM-DD
-                    return parts[0] + '-' + parts[1].padStart(2, '0');
+                    return { year: parts[0], month: parts[1].padStart(2, '0') };
                 } else if (parts[2].length === 4) {
                     // DD-MM-YYYY
-                    return parts[2] + '-' + parts[1].padStart(2, '0');
+                    return { year: parts[2], month: parts[1].padStart(2, '0') };
                 }
             }
             return null;
         }
 
-        // Mutual reset and auto-sync Month when single Date is chosen
+        // Mutual reset and auto-sync Year & Month when single Date is chosen
         $('#filterDate').on('change input', function() {
             var dateVal = $(this).val();
             if (dateVal) {
@@ -130,8 +129,11 @@
                 
                 var ym = extractYearMonth(dateVal);
                 if (ym) {
-                    if ($('#monthFilterSelect option[value="' + ym + '"]').length > 0) {
-                        $('#monthFilterSelect').val(ym).trigger('change.select2');
+                    if ($('#yearFilterSelect option[value="' + ym.year + '"]').length > 0) {
+                        $('#yearFilterSelect').val(ym.year).trigger('change.select2');
+                    }
+                    if ($('#monthFilterSelect option[value="' + ym.month + '"]').length > 0) {
+                        $('#monthFilterSelect').val(ym.month).trigger('change.select2');
                     }
                 }
             }
@@ -224,6 +226,17 @@
                                         return typeof data === 'string' ? data.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim() : data;
                                     }
                                 }
+                            },
+                            customize: function(doc) {
+                                doc.defaultStyle.fontSize = 8;
+                                doc.styles.tableHeader.fontSize = 9;
+                                doc.styles.tableHeader.fillColor = '#4B00E8';
+                                doc.styles.tableHeader.color = '#FFFFFF';
+                                doc.styles.tableHeader.alignment = 'left';
+                                doc.pageMargins = [15, 20, 15, 20];
+                                if (doc.content && doc.content[1] && doc.content[1].table) {
+                                    doc.content[1].table.widths = ['4%', '15%', '10%', '8%', '11%', '9%', '23%', '20%'];
+                                }
                             }
                         },
                         {
@@ -235,11 +248,15 @@
                                 format: {
                                     body: function(data, row, column, node) {
                                         if (node && node.hasAttribute('data-export')) {
-                                            return node.getAttribute('data-export');
+                                            return node.getAttribute('data-export').replace(/\n/g, '<br>');
                                         }
                                         return typeof data === 'string' ? data.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim() : data;
                                     }
                                 }
+                            },
+                            customize: function(win) {
+                                $(win.document.body).css('font-size', '11px');
+                                $(win.document.body).find('table').addClass('compact').css('font-size', 'inherit');
                             }
                         }
                     ]

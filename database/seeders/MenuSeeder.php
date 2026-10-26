@@ -63,7 +63,7 @@ class MenuSeeder extends Seeder
             // Primary Operations & Approvals
             ['id' => 31, 'name' => 'Leave Dashboard', 'route' => 'hrms.leave.dashboard', 'icon' => 'fas fa-chart-pie', 'module_key' => 'leave', 'permission_key' => 'leave.dashboard.view', 'parent_id' => 30, 'sort_order' => 1, 'is_active' => 1],
             ['id' => 33, 'name' => 'Leave Approvals', 'route' => 'leave-approvals.index', 'icon' => 'fas fa-check-double', 'module_key' => 'leave', 'permission_key' => 'leave.approvals.view_all', 'parent_id' => 30, 'sort_order' => 2, 'is_active' => 1],
-            ['id' => 146, 'name' => 'Team Leave Calendar', 'route' => 'hrms.leave.team_calendar.index', 'icon' => 'fas fa-calendar-week', 'module_key' => 'leave', 'permission_key' => null, 'parent_id' => 30, 'sort_order' => 3, 'is_active' => 1],
+            ['id' => 146, 'name' => 'Team Leave Calendar', 'route' => 'hrms.leave.team_calendar.index', 'icon' => 'fas fa-calendar-week', 'module_key' => 'leave', 'permission_key' => 'leave.team_calendar.view', 'parent_id' => 30, 'sort_order' => 3, 'is_active' => 1],
             // Requests & Balances
             ['id' => 32, 'name' => 'My Leave Requests', 'route' => 'leave-requests.index', 'icon' => 'fas fa-paper-plane', 'module_key' => 'my.leave', 'permission_key' => 'leave.my_requests.view', 'parent_id' => 30, 'sort_order' => 4, 'is_active' => 1],
             ['id' => 137, 'name' => 'Apply Leave', 'route' => 'leave-requests.create', 'icon' => 'fas fa-plus-circle', 'module_key' => 'employee.leave', 'permission_key' => null, 'parent_id' => 30, 'sort_order' => 5, 'is_active' => 1],

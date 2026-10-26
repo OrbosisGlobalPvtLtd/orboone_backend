@@ -363,6 +363,124 @@ class AttendanceRegularizationController extends ApiController
         ]);
     }
 
+    public function updateRegularizationRequest(int $id, Request $request)
+    {
+        $employee = EmployeeM::where('user_id', auth()->id())->first();
+        if (! $employee) {
+            return response()->json(['success' => false, 'status' => false, 'message' => 'Employee profile not found.', 'data' => null], 404);
+        }
+
+        $row = AttendanceRegularizationM::where('id', $id)
+            ->where('employee_id', $employee->id)
+            ->first();
+
+        if (! $row) {
+            return response()->json(['success' => false, 'status' => false, 'message' => 'Regularization request not found.', 'data' => null], 404);
+        }
+
+        if ($row->status !== 'pending') {
+            return response()->json(['success' => false, 'status' => false, 'message' => 'Only pending requests can be edited.', 'data' => null], 422);
+        }
+
+        $attendanceDate = $request->input('attendance_date')
+            ?? optional($row->attendance)->attendance_date
+            ?? ($row->requested_punch_in ? Carbon::parse($row->requested_punch_in)->toDateString() : null)
+            ?? ($row->requested_punch_out ? Carbon::parse($row->requested_punch_out)->toDateString() : null)
+            ?? Carbon::parse($row->created_at)->toDateString();
+
+        $rawPunchIn = $request->input('requested_punch_in') ?? $request->input('requested_punch_in_time');
+        $rawPunchOut = $request->input('requested_punch_out') ?? $request->input('requested_punch_out_time');
+
+        $normalizedPunchIn = $this->normalizePunchDateTime($rawPunchIn, $attendanceDate, 'requested_punch_in');
+        $normalizedPunchOut = $this->normalizePunchDateTime($rawPunchOut, $attendanceDate, 'requested_punch_out');
+
+        $request->merge([
+            'requested_punch_in' => $normalizedPunchIn,
+            'requested_punch_out' => $normalizedPunchOut,
+        ]);
+
+        $data = $request->validate([
+            'request_type' => 'required|string|in:' . implode(',', self::REQUEST_TYPES),
+            'requested_punch_in' => 'nullable|date',
+            'requested_punch_out' => 'nullable|date',
+            'requested_punch_in_time' => 'nullable|string',
+            'requested_punch_out_time' => 'nullable|string',
+            'reason' => 'required|string|min:5',
+            'attachment' => 'nullable|file|max:5120',
+        ]);
+
+        if ($data['request_type'] === 'regular_attendance' && (empty($data['requested_punch_in']) || empty($data['requested_punch_out']))) {
+            return response()->json(['success' => false, 'status' => false, 'message' => 'Both requested punch in and punch out times are required for Regular Attendance.', 'data' => null], 422);
+        }
+
+        if ($data['request_type'] === 'missed_punch_in' && empty($data['requested_punch_in'])) {
+            return response()->json(['success' => false, 'status' => false, 'message' => 'Requested punch in time is required for missed punch in.', 'data' => null], 422);
+        }
+
+        if ($data['request_type'] === 'missed_punch_out' && empty($data['requested_punch_out'])) {
+            return response()->json(['success' => false, 'status' => false, 'message' => 'Requested punch out time is required for missed punch out.', 'data' => null], 422);
+        }
+
+        if (in_array($data['request_type'], ['wrong_punch_time', 'early_logout_correction'], true) && empty($data['requested_punch_out']) && empty($data['requested_punch_in'])) {
+            return response()->json(['success' => false, 'status' => false, 'message' => 'Requested punch in/out time is required for this request type.', 'data' => null], 422);
+        }
+
+        $service = app(AttendanceRegularizationService::class);
+        try {
+            $service->validateRegularizationTimes(
+                employee: $employee,
+                attendanceDate: $attendanceDate,
+                requestType: $data['request_type'],
+                requestedPunchIn: $data['requested_punch_in'] ?? null,
+                requestedPunchOut: $data['requested_punch_out'] ?? null,
+                existingPunchIn: $row->existing_punch_in,
+                existingPunchOut: $row->existing_punch_out
+            );
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage() ?: 'Please select the correct Punch Out time. Punch Out must be later than Punch In.',
+                'errors' => $e->errors(),
+            ], 422);
+        }
+
+        $pendingExists = AttendanceRegularizationM::where('employee_id', $employee->id)
+            ->where('id', '!=', $row->id)
+            ->where('request_type', $data['request_type'])
+            ->where('status', 'pending')
+            ->when($attendanceDate, function ($q) use ($attendanceDate) {
+                $q->where(function ($sq) use ($attendanceDate) {
+                    $sq->whereHas('attendance', fn ($a) => $a->whereDate('attendance_date', $attendanceDate))
+                        ->orWhereDate('requested_punch_in', $attendanceDate)
+                        ->orWhereDate('requested_punch_out', $attendanceDate);
+                });
+            })
+            ->exists();
+        if ($pendingExists) {
+            return response()->json(['success' => false, 'status' => false, 'message' => 'Duplicate pending regularization request exists for same date and type.', 'data' => null], 422);
+        }
+
+        $payload = [
+            'request_type' => $data['request_type'],
+            'requested_punch_in' => $data['requested_punch_in'] ?? null,
+            'requested_punch_out' => $data['requested_punch_out'] ?? null,
+            'reason' => $data['reason'],
+        ];
+
+        if ($request->hasFile('attachment') && Schema::hasColumn('attendance_regularizations', 'attachment_path')) {
+            $payload['attachment_path'] = $request->file('attachment')->store('attendance/regularizations', 'public');
+        }
+
+        $row->update($payload);
+
+        return response()->json([
+            'success' => true,
+            'status' => true,
+            'message' => 'Regularization request updated successfully.',
+            'data' => new AttendanceRegularizationResource($row->fresh()),
+        ]);
+    }
+
     public function approveRegularization($id, Request $request)
     {
         if (! $this->canApproveRegularization()) {

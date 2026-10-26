@@ -321,14 +321,30 @@
             </div>
         @endif
 
-        {{-- Punch Blocked Warning Banner --}}
+        {{-- Punch Blocked Warning Banner with Regularization Action Button --}}
         @if ($isPunchBlocked)
-            <div class="alert alert-danger border-0 shadow-lg mb-4" style="border-radius: 20px; background: #fef2f2; border-left: 6px solid #ef4444 !important; padding: 22px;">
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-user-lock text-danger fa-3x mr-3"></i>
-                    <div>
-                        <h5 style="color: #991b1b; font-weight: 800; margin: 0 0 4px 0;">Punch In Blocked for Today</h5>
-                        <p class="mb-0 text-dark font-weight-bold">Your attendance punch-in is currently blocked by HR system for today. Please contact HR Administrator to request an unlock.</p>
+            <div class="card border-0 shadow-sm mb-4 mt-3" style="border-radius: 20px; background: linear-gradient(135deg, #fff5f5 0%, #ffeef0 100%); border: 1.5px solid #fecaca !important; box-shadow: 0 8px 24px rgba(239, 68, 68, 0.08) !important;">
+                <div class="card-body p-4 d-flex align-items-center justify-content-between flex-wrap gap-3">
+                    <div class="d-flex align-items-center">
+                        <div class="mr-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 54px; height: 54px; background: #fee2e2; color: #dc2626; border-radius: 16px; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);">
+                            <i class="fas fa-user-lock fa-2x"></i>
+                        </div>
+                        <div>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <h5 class="font-weight-bold mb-0" style="color: #991b1b; font-size: 16px;">Punch In Blocked for Today</h5>
+                                <span class="badge badge-danger px-2 py-1 ml-2" style="border-radius: 6px; font-size: 10px; font-weight: 800; letter-spacing: 0.5px;">ACTION REQUIRED</span>
+                            </div>
+                            <p class="mb-0 text-dark font-weight-bold" style="font-size: 13px; line-height: 1.5; color: #374151;">
+                                Aapka attendance punch-in block ho gaya hai. Isko unlock karne ke liye <strong>Regularization request</strong> send karein ya HR Administrator se contact karein.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 mt-2 mt-md-0 flex-wrap">
+                        @if (Route::has('hrms.attendance.regularizations.index'))
+                            <a href="{{ route('hrms.attendance.regularizations.index') }}" class="btn btn-danger font-weight-bold shadow-sm px-4 py-2" style="border-radius: 12px; font-size: 13px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: none; letter-spacing: 0.3px;">
+                                <i class="fas fa-file-signature mr-2"></i> Apply Regularization
+                            </a>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -425,7 +441,7 @@
                 @elseif (!$hasPunchedOut)
                     <h4 class="font-weight-bold text-dark mb-2">Punched In & Active Shift</h4>
                     <p class="text-muted mb-4">Submit your Daily Work Report (Summary, Completed & Pending Tasks) to Punch Out.</p>
-                    <button type="button" class="btn btn-danger btn-lg px-5 py-3 font-weight-bold shadow" data-toggle="modal" data-target="#webPunchOutModal" style="border-radius: 30px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: none;">
+                    <button type="button" class="btn btn-lg px-5 py-3 font-weight-bold shadow text-white" data-toggle="modal" data-target="#webPunchOutModal" style="border-radius: 30px; background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%) !important; color: #fff !important; border: none; box-shadow: 0 10px 25px rgba(239, 68, 68, 0.35) !important;">
                         <i class="fas fa-sign-out-alt fa-lg mr-2"></i> PUNCH OUT
                     </button>
                 @else
@@ -448,7 +464,7 @@
                         <i class="fas fa-fingerprint fa-lg mr-2"></i> PUNCH IN
                     </button>
                 @elseif (!$hasPunchedOut)
-                    <button type="button" class="btn btn-danger font-weight-bold px-4 py-3 shadow-lg d-flex align-items-center" data-toggle="modal" data-target="#webPunchOutModal" style="border-radius: 50px; font-size: 15px; font-weight: 900; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: 2px solid #ffffff; box-shadow: 0 12px 30px rgba(239, 68, 68, 0.45) !important;">
+                    <button type="button" class="btn font-weight-bold px-4 py-3 shadow-lg d-flex align-items-center text-white" data-toggle="modal" data-target="#webPunchOutModal" style="border-radius: 50px; font-size: 15px; font-weight: 900; background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%) !important; color: #fff !important; border: 2px solid #ffffff; box-shadow: 0 12px 30px rgba(239, 68, 68, 0.45) !important;">
                         <i class="fas fa-sign-out-alt fa-lg mr-2"></i> PUNCH OUT
                     </button>
                 @endif

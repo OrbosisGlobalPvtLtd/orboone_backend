@@ -738,18 +738,7 @@ class EmployeeC extends Controller
                 'Employee onboarding created'
             );
 
-            $allocationEffectiveDate = $lifecyclePayload['employee_stage'] === 'internship'
-                ? ($lifecyclePayload['internship_start_date'] ?: now()->toDateString())
-                : ($lifecyclePayload['employee_stage'] === 'probation'
-                    ? ($lifecyclePayload['probation_start_date'] ?: now()->toDateString())
-                    : ($request->confirmation_date ?: ($lifecyclePayload['joining_date'] ?: now()->toDateString())));
-
-            $this->lifecycleService->autoAllocateForStage(
-                (int) $employeeId,
-                $lifecyclePayload['employee_stage'],
-                $allocationEffectiveDate,
-                Auth::id()
-            );
+            // Leave allocation is deferred until HR approves the employee profile in approveProfile().
 
             DB::commit();
 
@@ -1048,7 +1037,7 @@ class EmployeeC extends Controller
                 ->where('id', $employee)
                 ->lockForUpdate()
                 ->first(['employee_stage', 'probation_status', 'probation_end_date', 'confirmation_effective_date']);
-            if (! $lockedLifecycleState
+            if (! $lockedLifecycleState 
                 || ($lockedLifecycleState->employee_stage ?? null) !== ($employeeData->employee_stage ?? null)
                 || ($lockedLifecycleState->probation_status ?? null) !== ($employeeData->probation_status ?? null)
                 || ($lockedLifecycleState->probation_end_date ?? null) !== ($employeeData->probation_end_date ?? null)
@@ -1199,7 +1188,12 @@ class EmployeeC extends Controller
 
            
             $empModel = EmployeeM::find($employee);
-            if ($empModel && ! $activationThroughLifecycle) {
+            $isProfileApproved = DB::table($this->profileTable)
+                ->where('employee_id', $employee)
+                ->where('profile_status', 'approved')
+                ->exists();
+
+            if ($empModel && $isProfileApproved && ! $activationThroughLifecycle) {
                 $allocationYear = (int) Carbon::now('Asia/Kolkata')->year;
                 $isPermanent = strtolower((string) $empModel->employee_stage) === 'permanent';
                 $currentAllocationExists = LeaveAllocationM::query()
@@ -1207,7 +1201,6 @@ class EmployeeC extends Controller
                     ->where('year', $allocationYear)
                     ->exists();
 
-                
                 if (! $isPermanent || ! $currentAllocationExists) {
                     $this->leaveAllocationService->generateForEmployee(
                         $empModel,
@@ -1996,12 +1989,21 @@ class EmployeeC extends Controller
         }
 
         
-        app(LeaveAllocationService::class)
-            ->generateForEmployee(
+        $stage = $this->leaveAllocationService->stageFor($employeeModel);
+
+        if ($stage === LeaveAllocationService::STAGE_PERMANENT) {
+            $this->leaveAllocationService->generateSingle(
+                (int) $employeeModel->id,
+                (int) now()->year,
+                Auth::id()
+            );
+        } else {
+            $this->leaveAllocationService->generateForEmployee(
                 $employeeModel,
                 (int) now()->year,
                 Auth::id()
             );
+        }
 
         
         DB::commit();

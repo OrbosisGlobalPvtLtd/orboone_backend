@@ -1,10 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\HRMS\Leave;
 
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Models\HRMS\Employee\EmployeeM;
+use App\Services\HRMS\Leave\LeavePolicyService;
+use Carbon\Carbon;
 
 class LeaveValidationService
 {
@@ -14,6 +20,19 @@ class LeaveValidationService
     public static function rules(array $data = []): array
     {
         $isHalfDay = filter_var($data['is_half_day'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $unitPolicy = app(LeaveUnitPolicy::class);
+        $employee = ! empty($data['employee_id'])
+            ? EmployeeM::query()->find((int) $data['employee_id'])
+            : Auth::user()->employee;
+        $effectivePolicy = null;
+        if ($employee) {
+            try {
+                $date = ! empty($data['start_date']) ? Carbon::parse($data['start_date'], 'Asia/Kolkata') : Carbon::now('Asia/Kolkata');
+                $effectivePolicy = app(LeavePolicyService::class)->requireForEmployee($employee, $date);
+            } catch (\Throwable) {
+                $effectivePolicy = null;
+            }
+        }
 
         return [
             'employee_id' => 'nullable|exists:employees_new,id',
@@ -29,6 +48,13 @@ class LeaveValidationService
             'reason' => 'required|string|max:2000',
             'attachment' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
             'emergency_leave' => 'nullable|boolean',
+            'requested_days' => ['nullable', 'numeric', function (string $attribute, mixed $value, \Closure $fail) use ($unitPolicy, $effectivePolicy): void {
+                if (! $effectivePolicy) {
+                    $fail('An active leave policy is required before applying for leave.');
+                } elseif (! $unitPolicy->isValidRequestAmount((string) $value, $effectivePolicy)) {
+                    $fail('Leave quantity must use the request unit configured in the effective leave policy.');
+                }
+            }],
         ];
     }
 

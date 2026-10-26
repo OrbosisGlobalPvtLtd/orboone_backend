@@ -24,119 +24,236 @@
                 <div class="modal-body p-4">
                     @php
                         $errorMsg = session('error') ?? session('danger') ?? (isset($errors) && $errors->any() ? $errors->first() : null);
-                        $isEarlyLogin = $errorMsg && (
-                            str_contains(strtolower($errorMsg), 'too early') || 
-                            str_contains(strtolower($errorMsg), 'early') || 
-                            str_contains(strtolower($errorMsg), 'window') || 
-                            str_contains(strtolower($errorMsg), 'available')
+                        
+                        // If record is actually blocked but no errorMsg set yet, provide helpful default text
+                        if (!$errorMsg && !empty($isPunchBlocked)) {
+                            $errorMsg = 'Your attendance punch-in is blocked for today because the shift cutoff window closed or an attendance policy violation occurred.';
+                        }
+
+                        $errLower = strtolower($errorMsg ?? '');
+
+                        // Contextual error categorizations
+                        $isWfhReq = str_contains($errLower, 'work from home') || str_contains($errLower, 'wfh');
+                        $isLocationErr = str_contains($errLower, 'premises') || str_contains($errLower, 'geofence') || str_contains($errLower, 'location') || str_contains($errLower, 'gps') || str_contains($errLower, 'outside');
+                        $isAlreadyPunched = str_contains($errLower, 'already recorded') || str_contains($errLower, 'already marked') || str_contains($errLower, 'already punched');
+                        $isHolidayWeekoff = str_contains($errLower, 'leave, holiday, or week off') || str_contains($errLower, 'holiday') || str_contains($errLower, 'week off') || str_contains($errLower, 'work request');
+                        $isOnLeave = str_contains($errLower, 'disabled during approved leave') || str_contains($errLower, 'approved leave');
+                        $isWebDisabled = str_contains($errLower, 'web attendance is disabled') || str_contains($errLower, 'mobile attendance is disabled') || str_contains($errLower, 'mobile app required');
+                        $isEligibilityErr = str_contains($errLower, 'not eligible') || str_contains($errLower, 'profile pending') || str_contains($errLower, 'complete your profile') || str_contains($errLower, 'employment has ended');
+                        $isEarlyLogin = !$isWfhReq && !$isLocationErr && (
+                            str_contains($errLower, 'too early') || 
+                            str_contains($errLower, 'early') || 
+                            str_contains($errLower, 'allowed from') ||
+                            str_contains($errLower, 'window opens')
                         );
-                        $isBlocked = !empty($isPunchBlocked) || ($errorMsg && !$isEarlyLogin && (
-                            str_contains(strtolower($errorMsg), 'closed') || 
-                            str_contains(strtolower($errorMsg), 'blocked') || 
-                            str_contains(strtolower($errorMsg), 'cutoff') || 
-                            str_contains(strtolower($errorMsg), 'late') || 
-                            str_contains(strtolower($errorMsg), 'lock') ||
-                            str_contains(strtolower($errorMsg), 'failed')
-                        ));
+                        $isRealBlocked = !empty($isPunchBlocked) || (
+                            !$isWfhReq && !$isLocationErr && !$isHolidayWeekoff && !$isOnLeave && !$isEarlyLogin && (
+                                str_contains($errLower, 'closed') || 
+                                str_contains($errLower, 'blocked') || 
+                                str_contains($errLower, 'cutoff') || 
+                                str_contains($errLower, 'punch_blocked')
+                            )
+                        );
+
+                        // Resolve Card Header, Badge, Icon, Colors, and Next Steps strictly based on cause
+                        if ($isEarlyLogin) {
+                            $cardTitle = 'Attendance Window Unavailable';
+                            $cardBadge = 'EARLY PUNCH';
+                            $badgeStyle = 'background: #f59e0b; color: #ffffff;';
+                            $cardIcon = 'fa-clock';
+                            $iconBg = '#f59e0b';
+                            $cardBg = 'linear-gradient(135deg, #fffbe6 0%, #fff7ed 100%)';
+                            $cardBorder = '#fde047';
+                            $titleColor = '#b45309';
+                            $nextSteps = [
+                                'Please wait until your shift punch-in window opens.',
+                                'Contact HR if your assigned shift timings have changed.'
+                            ];
+                        } elseif ($isWfhReq) {
+                            $cardTitle = 'Work From Home Approval Required';
+                            $cardBadge = 'WFH REQUIRED';
+                            $badgeStyle = 'background: #0284c7; color: #ffffff;';
+                            $cardIcon = 'fa-laptop-house';
+                            $iconBg = '#0284c7';
+                            $cardBg = 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)';
+                            $cardBorder = '#7dd3fc';
+                            $titleColor = '#0369a1';
+                            $nextSteps = [
+                                'Apply for Work From Home (WFH) for today\'s date and get approval before punching in.',
+                                'If you are working from office today, select Working From Office (WFO) to punch in.',
+                                'Contact your HR Manager or Administrator if you need assistance.'
+                            ];
+                        } elseif ($isLocationErr) {
+                            $cardTitle = 'Office Location Mismatch';
+                            $cardBadge = 'OUTSIDE PREMISES';
+                            $badgeStyle = 'background: #d97706; color: #ffffff;';
+                            $cardIcon = 'fa-map-marker-alt';
+                            $iconBg = '#d97706';
+                            $cardBg = 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)';
+                            $cardBorder = '#fcd34d';
+                            $titleColor = '#b45309';
+                            $nextSteps = [
+                                'Ensure your device GPS / Location services are enabled and allowed for this browser.',
+                                'Ensure you are connected to the official Office Wi-Fi network.',
+                                'If working remotely today, apply for Work From Home (WFH).'
+                            ];
+                        } elseif ($isAlreadyPunched) {
+                            $cardTitle = 'Attendance Already Recorded';
+                            $cardBadge = 'ALREADY MARKED';
+                            $badgeStyle = 'background: #16a34a; color: #ffffff;';
+                            $cardIcon = 'fa-check-circle';
+                            $iconBg = '#16a34a';
+                            $cardBg = 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)';
+                            $cardBorder = '#86efac';
+                            $titleColor = '#15803d';
+                            $nextSteps = [
+                                'Your punch-in for today has already been registered.',
+                                'You can punch out when your workday finishes.'
+                            ];
+                        } elseif ($isHolidayWeekoff) {
+                            $cardTitle = 'Holiday / Week-off Restriction';
+                            $cardBadge = 'WORK REQUEST REQUIRED';
+                            $badgeStyle = 'background: #7c3aed; color: #ffffff;';
+                            $cardIcon = 'fa-calendar-day';
+                            $iconBg = '#7c3aed';
+                            $cardBg = 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)';
+                            $cardBorder = '#d8b4fe';
+                            $titleColor = '#6d28d9';
+                            $nextSteps = [
+                                'Today is scheduled as a Holiday or Week-off.',
+                                'To punch and earn comp-off, apply for a Holiday / Week-off Work Request.'
+                            ];
+                        } elseif ($isOnLeave) {
+                            $cardTitle = 'Attendance Disabled (On Leave)';
+                            $cardBadge = 'ON LEAVE';
+                            $badgeStyle = 'background: #0284c7; color: #ffffff;';
+                            $cardIcon = 'fa-plane-departure';
+                            $iconBg = '#0284c7';
+                            $cardBg = 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)';
+                            $cardBorder = '#7dd3fc';
+                            $titleColor = '#0369a1';
+                            $nextSteps = [
+                                'You have an approved full-day leave recorded for today.',
+                                'If you need to attend office, please cancel your leave request first.'
+                            ];
+                        } elseif ($isWebDisabled) {
+                            $cardTitle = 'Web Attendance Restricted';
+                            $cardBadge = 'MOBILE APP REQUIRED';
+                            $badgeStyle = 'background: #475569; color: #ffffff;';
+                            $cardIcon = 'fa-mobile-alt';
+                            $iconBg = '#475569';
+                            $cardBg = 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)';
+                            $cardBorder = '#cbd5e1';
+                            $titleColor = '#334155';
+                            $nextSteps = [
+                                'Web attendance is not enabled for your account.',
+                                'Please mark attendance using the OrboOne Mobile App, or contact HR.'
+                            ];
+                        } elseif ($isEligibilityErr) {
+                            $cardTitle = 'Attendance Eligibility Notice';
+                            $cardBadge = 'ACTION REQUIRED';
+                            $badgeStyle = 'background: #e11d48; color: #ffffff;';
+                            $cardIcon = 'fa-id-card';
+                            $iconBg = '#e11d48';
+                            $cardBg = 'linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%)';
+                            $cardBorder = '#fecdd3';
+                            $titleColor = '#be123c';
+                            $nextSteps = [
+                                'Complete your employee profile details and submit for verification.',
+                                'Contact HR Operations if you need attendance eligibility activation.'
+                            ];
+                        } elseif ($isRealBlocked) {
+                            // STRICTLY ONLY WHEN ATTENDANCE IS GENUINELY BLOCKED
+                            $cardTitle = 'Attendance Punch Blocked';
+                            $cardBadge = 'PUNCH BLOCKED';
+                            $badgeStyle = 'background: #dc2626; color: #ffffff;';
+                            $cardIcon = 'fa-user-lock';
+                            $iconBg = '#dc2626';
+                            $cardBg = 'linear-gradient(135deg, #fff5f5 0%, #ffeef0 100%)';
+                            $cardBorder = '#fca5a5';
+                            $titleColor = '#991b1b';
+                            $nextSteps = [
+                                'Your punch-in has been blocked because the shift cutoff window closed or an attendance policy violation occurred.',
+                                'Submit an Attendance Regularization request to unlock.',
+                                'Contact your HR Administrator if you require assistance.'
+                            ];
+                        } else {
+                            // GENERAL OR UNKNOWN ATTENDANCE ISSUE (NEVER CALL THIS BLOCKED)
+                            $cardTitle = 'Unable to Mark Attendance';
+                            $cardBadge = 'ATTENDANCE NOTICE';
+                            $badgeStyle = 'background: #ea580c; color: #ffffff;';
+                            $cardIcon = 'fa-exclamation-triangle';
+                            $iconBg = '#ea580c';
+                            $cardBg = 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)';
+                            $cardBorder = '#fed7aa';
+                            $titleColor = '#c2410c';
+                            $nextSteps = [
+                                'Please review the notice details and try again.',
+                                'If the problem persists, contact your HR Administrator or IT Support.'
+                            ];
+                        }
                     @endphp
 
                     @if ($errorMsg)
-                        @if ($isEarlyLogin)
-                            <div class="card border-0 mb-3 shadow-xs" style="border-radius: 18px; background: linear-gradient(135deg, #fffbe6 0%, #fff7ed 100%); border: 1.5px solid #fde047 !important;">
-                                <div class="card-body p-3">
-                                    <div class="d-flex align-items-start mb-2">
-                                        <div class="mr-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px; background: #f59e0b; color: #ffffff; border-radius: 12px; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);">
-                                            <i class="fas fa-clock fa-lg"></i>
-                                        </div>
-                                        <div class="flex-grow-1">
-                                            <div class="d-flex align-items-center justify-content-between">
-                                                <h6 class="font-weight-bold m-0" style="font-size: 15px; color: #b45309;">
-                                                    Attendance Window Currently Unavailable
-                                                </h6>
-                                                <span class="badge px-2 py-1" style="border-radius: 6px; font-size: 10px; font-weight: 800; background: #f59e0b; color: #ffffff;">
-                                                    EARLY PUNCH
-                                                </span>
-                                            </div>
-                                            <p class="font-weight-bold mb-0 mt-1" style="font-size: 13px; line-height: 1.4; color: #78350f;">
-                                                {{ $errorMsg }}
-                                            </p>
-                                        </div>
+                        <div class="card border-0 mb-3 shadow-xs" style="border-radius: 18px; background: {{ $cardBg }}; border: 1.5px solid {{ $cardBorder }} !important;">
+                            <div class="card-body p-3">
+                                <div class="d-flex align-items-start mb-2">
+                                    <div class="mr-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px; background: {{ $iconBg }}; color: #ffffff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
+                                        <i class="fas {{ $cardIcon }} fa-lg"></i>
                                     </div>
-
-                                    <div class="d-flex align-items-center justify-content-end mt-3 gap-2">
-                                        <button type="button" onclick="$('#webPunchInFormInputs').slideToggle(); $('#webPunchInSubmitBtn').toggle();" class="btn btn-outline-warning btn-sm font-weight-bold px-3" style="border-radius: 10px; font-size: 11.5px; padding: 6px 12px; color: #b45309; border-color: #f59e0b;">
-                                            <i class="fas fa-redo mr-1"></i> Try Again / View Form
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        @else
-                            <div class="card border-0 mb-3 shadow-xs" style="border-radius: 18px; background: linear-gradient(135deg, #fff5f5 0%, #ffeef0 100%); border: 1.5px solid #fca5a5 !important;">
-                                <div class="card-body p-3">
-                                    <div class="d-flex align-items-start mb-2">
-                                        <div class="mr-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px; background: #ef4444; color: #ffffff; border-radius: 12px; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);">
-                                            <i class="fas fa-user-lock fa-lg"></i>
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-1">
+                                            <h6 class="font-weight-bold m-0" style="font-size: 15px; color: {{ $titleColor }};">
+                                                {{ $cardTitle }}
+                                            </h6>
+                                            <span class="badge px-2 py-1" style="border-radius: 6px; font-size: 10px; font-weight: 800; {{ $badgeStyle }}">
+                                                {{ $cardBadge }}
+                                            </span>
                                         </div>
-                                        <div class="flex-grow-1">
-                                            <div class="d-flex align-items-center justify-content-between">
-                                                <h6 class="font-weight-bold text-danger m-0" style="font-size: 15px;">
-                                                    Attendance Punch Blocked
-                                                </h6>
-                                                <span class="badge badge-danger px-2 py-1" style="border-radius: 6px; font-size: 10px; font-weight: 800;">
-                                                    NOT RECORDED
-                                                </span>
-                                            </div>
-                                            <p class="text-dark font-weight-bold mb-0 mt-1" style="font-size: 13px; line-height: 1.4;">
-                                                {{ $errorMsg }}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    @php
-                                        $isWfhError = str_contains(strtolower($errorMsg ?? ''), 'work from home') || str_contains(strtolower($errorMsg ?? ''), 'wfh');
-                                    @endphp
-
-                                    <div class="p-3 mt-2" style="background: rgba(255, 255, 255, 0.9); border-radius: 12px; border-left: 4px solid #ef4444; font-size: 12.5px; color: #334155; line-height: 1.5;">
-                                        <p class="font-weight-bold mb-1 text-danger" style="font-size: 12px;">
-                                            <i class="fas fa-info-circle mr-1"></i> Next Steps & Required Actions:
+                                        <p class="font-weight-bold mb-0 mt-1" style="font-size: 13px; line-height: 1.4; color: #1e293b;">
+                                            {{ $errorMsg }}
                                         </p>
-                                        <ul class="pl-3 mb-0" style="font-weight: 600; font-size: 12px; color: #475569;">
-                                            @if($isWfhError)
-                                                <li class="mb-1">Apply for <strong>Work From Home (WFH)</strong> for today's date and get approval before punching in.</li>
-                                                <li>Contact your <strong>HR Manager or Administrator</strong> if you need an immediate attendance unlock.</li>
-                                            @else
-                                                <li class="mb-1">Submit an <strong>Attendance Regularization</strong> request for your late entry or missed punch.</li>
-                                                <li>Contact your <strong>HR Manager or Administrator</strong> to request an attendance unlock.</li>
-                                            @endif
-                                        </ul>
-                                    </div>
-
-                                    <div class="d-flex align-items-center justify-content-between mt-3 gap-2 flex-wrap">
-                                        @if($isWfhError)
-                                            @if(Route::has('hrms.attendance.my-wfh.index'))
-                                            <a href="{{ route('hrms.attendance.my-wfh.index') }}" class="btn btn-primary btn-sm font-weight-bold text-white shadow-xs px-3" style="border-radius: 10px; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); border: none; font-size: 12px; padding: 7px 12px;">
-                                                <i class="fas fa-house-user mr-1"></i> Apply Work From Home
-                                            </a>
-                                            @elseif(Route::has('hrms.attendance.wfh.index'))
-                                            <a href="{{ route('hrms.attendance.wfh.index') }}" class="btn btn-primary btn-sm font-weight-bold text-white shadow-xs px-3" style="border-radius: 10px; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); border: none; font-size: 12px; padding: 7px 12px;">
-                                                <i class="fas fa-house-user mr-1"></i> Apply Work From Home
-                                            </a>
-                                            @endif
-                                        @else
-                                            @if(Route::has('hrms.attendance.regularizations.index'))
-                                            <a href="{{ route('hrms.attendance.regularizations.index') }}" class="btn btn-warning btn-sm font-weight-bold text-white shadow-xs px-3" style="border-radius: 10px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; font-size: 12px; padding: 7px 12px;">
-                                                <i class="fas fa-calendar-check mr-1"></i> Apply Regularization
-                                            </a>
-                                            @endif
-                                        @endif
-
-                                        <button type="button" onclick="$('#webPunchInFormInputs').slideToggle(); $('#webPunchInSubmitBtn').toggle();" class="btn btn-outline-secondary btn-sm font-weight-bold px-3" style="border-radius: 10px; font-size: 11.5px; padding: 6px 12px;">
-                                            <i class="fas fa-redo mr-1"></i> Try Again / View Form
-                                        </button>
                                     </div>
                                 </div>
+
+                                <div class="p-3 mt-2" style="background: rgba(255, 255, 255, 0.9); border-radius: 12px; border-left: 4px solid {{ $iconBg }}; font-size: 12px; color: #334155; line-height: 1.5;">
+                                    <p class="font-weight-bold mb-1" style="font-size: 12px; color: {{ $titleColor }};">
+                                        <i class="fas fa-info-circle mr-1"></i> Next Steps & Required Actions:
+                                    </p>
+                                    <ul class="pl-3 mb-0" style="font-weight: 600; font-size: 12px; color: #475569;">
+                                        @foreach ($nextSteps as $step)
+                                            <li class="mb-1">{{ $step }}</li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+
+                                <div class="d-flex align-items-center justify-content-between mt-3 gap-2 flex-wrap">
+                                    @if ($isWfhReq)
+                                        @if(Route::has('hrms.attendance.my-wfh.index'))
+                                            <a href="{{ route('hrms.attendance.my-wfh.index') }}" class="btn btn-primary btn-sm font-weight-bold text-white shadow-xs px-3" style="border-radius: 10px; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); border: none; font-size: 12px; padding: 7px 14px;">
+                                                <i class="fas fa-laptop-house mr-1"></i> Apply Work From Home
+                                            </a>
+                                        @elseif(Route::has('hrms.attendance.wfh.index'))
+                                            <a href="{{ route('hrms.attendance.wfh.index') }}" class="btn btn-primary btn-sm font-weight-bold text-white shadow-xs px-3" style="border-radius: 10px; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); border: none; font-size: 12px; padding: 7px 14px;">
+                                                <i class="fas fa-laptop-house mr-1"></i> Apply Work From Home
+                                            </a>
+                                        @endif
+                                    @elseif ($isHolidayWeekoff && Route::has('hrms.attendance.holiday_work.index'))
+                                        <a href="{{ route('hrms.attendance.holiday_work.index') }}" class="btn btn-primary btn-sm font-weight-bold text-white shadow-xs px-3" style="border-radius: 10px; background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); border: none; font-size: 12px; padding: 7px 14px;">
+                                            <i class="fas fa-calendar-plus mr-1"></i> Apply Holiday Work Request
+                                        </a>
+                                    @elseif ($isRealBlocked && Route::has('hrms.attendance.regularizations.index'))
+                                        <a href="{{ route('hrms.attendance.regularizations.index') }}" class="btn btn-danger btn-sm font-weight-bold text-white shadow-xs px-3" style="border-radius: 10px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: none; font-size: 12px; padding: 7px 14px;">
+                                            <i class="fas fa-file-signature mr-1"></i> Apply Regularization
+                                        </a>
+                                    @endif
+
+                                    <button type="button" onclick="$('#webPunchInFormInputs').slideToggle(); $('#webPunchInSubmitBtn').toggle();" class="btn btn-outline-secondary btn-sm font-weight-bold px-3 ml-auto" style="border-radius: 10px; font-size: 11.5px; padding: 6px 14px;">
+                                        <i class="fas fa-redo mr-1"></i> Try Again / View Form
+                                    </button>
+                                </div>
                             </div>
-                        @endif
+                        </div>
                     @endif
 
                     <div id="webPunchInFormInputs" style="{{ $errorMsg ? 'display: none;' : '' }}">
@@ -179,10 +296,10 @@
                 <input type="hidden" name="gps_status" id="punch_out_gps">
 
                 {{-- Modal Header --}}
-                <div class="modal-header p-4 text-white position-relative" style="background: linear-gradient(135deg, #7c3aed 0%, #db2777 100%) !important; border: none;">
+                <div class="modal-header p-4 text-white position-relative" style="background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%) !important; border: none;">
                     <div class="d-flex align-items-center w-100" style="padding-right: 30px;">
                         <div class="modal-header-icon mr-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 52px; height: 52px; background: rgba(255,255,255,0.2); border-radius: 16px; backdrop-filter: blur(8px);">
-                            <i class="fas fa-fingerprint fa-2x text-white"></i>
+                            <i class="fas fa-sign-out-alt fa-2x text-white"></i>
                         </div>
                         <div style="min-width: 0; flex: 1;">
                             <h4 class="font-weight-bold mb-1 text-white modal-title-text" style="font-size: 20px; letter-spacing: -0.3px;">Daily Task Update</h4>
@@ -248,6 +365,59 @@
                         }
                         textarea {
                             resize: none !important;
+                        }
+
+                        /* Task Status Toggle Buttons (Completed / Pending) */
+                        .task-status-toggle-btn {
+                            display: inline-flex;
+                            align-items: center;
+                            gap: 4px;
+                            padding: 3px 9px;
+                            font-size: 11px;
+                            font-weight: 800;
+                            border-radius: 6px;
+                            border: 1px solid #e2e8f0;
+                            background: #fff;
+                            color: #64748b;
+                            cursor: pointer;
+                            transition: all 0.15s ease;
+                            line-height: 1.2;
+                            user-select: none;
+                        }
+                        .task-status-toggle-btn:hover {
+                            border-color: #cbd5e1;
+                        }
+                        .task-status-toggle-btn.task-status-completed {
+                            border-color: rgba(22, 163, 74, 0.35);
+                            background: rgba(22, 163, 74, 0.04);
+                            color: #16a34a;
+                        }
+                        .task-status-toggle-btn.task-status-completed:hover {
+                            background: rgba(22, 163, 74, 0.08);
+                        }
+                        .task-status-toggle-btn.task-status-completed.active {
+                            background: rgba(22, 163, 74, 0.14) !important;
+                            border-color: #16a34a !important;
+                            color: #15803d !important;
+                            box-shadow: 0 0 0 1px #16a34a inset;
+                        }
+                        .task-status-toggle-btn.task-status-pending {
+                            border-color: rgba(234, 179, 8, 0.35);
+                            background: rgba(234, 179, 8, 0.04);
+                            color: #b45309;
+                        }
+                        .task-status-toggle-btn.task-status-pending:hover {
+                            background: rgba(234, 179, 8, 0.08);
+                        }
+                        .task-status-toggle-btn.task-status-pending.active {
+                            background: rgba(234, 179, 8, 0.14) !important;
+                            border-color: #eab308 !important;
+                            color: #92400e !important;
+                            box-shadow: 0 0 0 1px #eab308 inset;
+                        }
+                        .task-status-toggle-btn i.task-status-icon {
+                            font-size: 11.5px;
+                            line-height: 1;
                         }
 
                         /* Responsive status grid */
@@ -359,13 +529,49 @@
                                 margin: 0 !important;
                             }
                         }
+
+                        /* Project select & custom input layout */
+                        .project-input-group {
+                            display: flex !important;
+                            flex-direction: row !important;
+                            align-items: center !important;
+                            gap: 8px !important;
+                            width: 100% !important;
+                        }
+                        .project-input-group .select2-container {
+                            flex: 1 1 0% !important;
+                            min-width: 0 !important;
+                            width: 100% !important;
+                        }
+                        .project-input-group .custom-project-input {
+                            flex: 1 1 0% !important;
+                            min-width: 0 !important;
+                        }
+                        @media (max-width: 576px) {
+                            .project-input-group {
+                                flex-direction: column !important;
+                            }
+                            .project-input-group .select2-container,
+                            .project-input-group .custom-project-input {
+                                width: 100% !important;
+                                flex: none !important;
+                            }
+                        }
                     </style>
+
+                    <template id="projectSelectOptionsTpl">
+                        <option value="">-- Select Project --</option>
+                        @foreach($assignedProjects as $p)
+                            <option value="{{ $p->id }}">{{ $p->name }}</option>
+                        @endforeach
+                        <option value="custom">Custom</option>
+                    </template>
 
                     {{-- Today's Work Section --}}
                     <div class="orb-card-section mb-3 p-3 bg-white border shadow-xs" style="border-radius: 18px; border: 1px solid #e2e8f0;">
                         <div class="d-flex align-items-center justify-content-between mb-3">
                             <div class="d-flex align-items-center">
-                                <div class="mr-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 36px; height: 36px; background: #f3e8ff; border-radius: 10px; color: #7c3aed; font-weight: 800;">
+                                <div class="mr-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 36px; height: 36px; background: rgba(75, 0, 232, 0.08); border-radius: 10px; color: var(--orb-primary, #4B00E8); font-weight: 800;">
                                     <i class="fas fa-tasks"></i>
                                 </div>
                                 <div>
@@ -403,19 +609,18 @@
 
                                 <!-- Tasks Container for Project Block 0 -->
                                 <div class="tasks-container mt-2" id="tasksContainer_0">
-                                    <div class="tasks-header-wrap d-flex align-items-center justify-content-between flex-wrap mb-2" style="gap: 6px;">
-                                        <div class="d-flex align-items-center flex-wrap" style="gap: 4px;">
-                                            <label class="small font-weight-bold text-dark mb-0 mr-1">Tasks / Work Items <span class="text-danger">*</span></label>
-                                            <span class="badge badge-light border text-dark d-inline-flex align-items-center" style="font-size: 10px; padding: 2px 6px; border-radius: 6px; background-color: #f8fafc;">
-                                                <span style="display:inline-flex; align-items:center; justify-content:center; width:12px; height:12px; background:#16a34a; color:#fff; border-radius:3px; font-size:8.5px; font-weight:900; margin-right:4px;">✓</span> Done
-                                            </span>
-                                            <span class="badge badge-light border text-dark d-inline-flex align-items-center" style="font-size: 10px; padding: 2px 6px; border-radius: 6px; background-color: #f8fafc;">
-                                                <span style="display:inline-flex; align-items:center; justify-content:center; width:12px; height:12px; border:1.5px solid #eab308; background:#fffbeb; border-radius:3px; margin-right:4px;"></span> Pending
-                                            </span>
+                                    <div class="tasks-header-wrap d-flex align-items-center justify-content-between w-100 mb-2">
+                                        <label class="small font-weight-bold text-dark mb-0">Tasks / Work Items <span class="text-danger">*</span></label>
+                                        <div class="d-flex align-items-center ml-auto" style="gap: 6px;">
+                                            <button type="button" class="btn btn-xs task-status-toggle-btn task-status-completed" id="btnMarkCompleted_0" onclick="setAllTasksStatus(0, true)" title="Mark all tasks as Completed">
+                                                <i class="far fa-square task-status-icon mr-1" id="iconCompleted_0" style="font-size: 11.5px;"></i>
+                                                <span>Completed</span>
+                                            </button>
+                                            <button type="button" class="btn btn-xs task-status-toggle-btn task-status-pending active" id="btnMarkPending_0" onclick="setAllTasksStatus(0, false)" title="Mark all tasks as Pending">
+                                                <i class="fas fa-check-square task-status-icon mr-1" id="iconPending_0" style="font-size: 11.5px;"></i>
+                                                <span>Pending</span>
+                                            </button>
                                         </div>
-                                        <button type="button" class="btn btn-xs btn-link p-0 font-weight-bold ml-auto" onclick="toggleQuickTaskBox(0)" style="color: #7c3aed; font-size: 11.5px; text-decoration: none;">
-                                            <i class="fas fa-edit mr-1"></i> Quick Add Tasks
-                                        </button>
                                     </div>
 
                                     <!-- Quick Multi-line Task Input Box -->
@@ -429,7 +634,7 @@
                                         <textarea id="quickTaskInput_0" class="form-control form-control-sm mb-2" rows="3" placeholder="Enter tasks (one per line)...&#10;Task 1: Designed homepage layout&#10;Task 2: Fixed API authentication bug" style="font-size: 12.5px; border-radius: 8px; border: 1.5px solid #cbd5e1; resize: vertical !important; min-height: 80px; line-height: 1.5; padding: 8px 10px;"></textarea>
                                         <div class="d-flex justify-content-end" style="gap: 6px;">
                                             <button type="button" class="btn btn-xs btn-light border py-1 px-2" onclick="toggleQuickTaskBox(0)" style="font-size: 11.5px; border-radius: 6px;">Cancel</button>
-                                            <button type="button" class="btn btn-xs btn-primary py-1 px-2 font-weight-bold" onclick="processQuickTasks(0)" style="font-size: 11.5px; border-radius: 6px; background-color: #7c3aed; border-color: #7c3aed;">
+                                            <button type="button" class="btn btn-xs btn-primary py-1 px-2 font-weight-bold" onclick="processQuickTasks(0)" style="font-size: 11.5px; border-radius: 6px; background: linear-gradient(135deg, var(--orb-primary, #4B00E8) 0%, var(--orb-secondary, #FF5252) 100%) !important; border: none; color: #fff;">
                                                 <i class="fas fa-plus mr-1"></i> Add Tasks
                                             </button>
                                         </div>
@@ -445,20 +650,19 @@
                                         </div>
                                     </div>
 
-                                    <div class="align-items-center justify-content-between mt-2 pt-1 border-top" id="tasksFooterRow_0" style="display: flex;">
-                                        <div class="d-flex align-items-center">
-                                            <input type="checkbox" id="selectAllCheck_0" onchange="toggleSelectAllTasks(0, this.checked)" style="width: 17px; height: 17px; cursor: pointer; accent-color: #7c3aed; margin-right: 6px;" title="Mark All Completed">
-                                            <label for="selectAllCheck_0" class="small font-weight-bold text-dark mb-0 cursor-pointer" style="font-size: 12px; user-select: none;" id="selectAllLabel_0">Mark All Completed</label>
-                                        </div>
-                                        <button type="button" class="btn btn-sm btn-light border font-weight-bold add-task-btn" id="addTaskBtn_0" onclick="addTaskRow(0)" style="border-radius: 8px; color: #7c3aed;">
+                                    <div class="align-items-center justify-content-between mt-2 pt-2 border-top" id="tasksFooterRow_0" style="display: flex;">
+                                        <button type="button" class="btn btn-sm btn-link p-0 font-weight-bold add-task-btn" id="addTaskBtn_0" onclick="addTaskRow(0)" style="color: var(--orb-primary, #4B00E8) !important; text-decoration: none; font-size: 12.5px;">
                                             <i class="fas fa-plus mr-1"></i> Add Task
+                                        </button>
+                                        <button type="button" class="btn btn-xs font-weight-bold quick-add-tasks-btn" onclick="toggleQuickTaskBox(0)" style="border-radius: 8px; font-size: 11.5px; padding: 4px 10px; color: var(--orb-primary, #4B00E8); border: 1px solid rgba(75, 0, 232, 0.35); background: rgba(75, 0, 232, 0.05); text-decoration: none;">
+                                            <i class="fas fa-bolt mr-1" style="color: #eab308;"></i> Quick Add Tasks
                                         </button>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <button type="button" class="btn btn-sm btn-outline-primary font-weight-bold mt-1" onclick="addProjectBlock()" style="border-radius: 10px;">
+                        <button type="button" class="btn btn-sm btn-outline-primary font-weight-bold mt-1" onclick="addProjectBlock()" style="border-radius: 10px; color: var(--orb-primary, #4B00E8); border-color: var(--orb-primary, #4B00E8);">
                             <i class="fas fa-folder-plus mr-1"></i> Add Project
                         </button>
                     </div>
@@ -466,7 +670,7 @@
                     {{-- Single Overall Today's Work Status (After all projects, before blockers) --}}
                     <div class="orb-card-section mb-3 p-3 bg-white border shadow-xs" style="border-radius: 18px; border: 1px solid #e2e8f0;">
                         <div class="d-flex align-items-center mb-2">
-                            <div class="mr-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 36px; height: 36px; background: #f3e8ff; border-radius: 10px; color: #7c3aed; font-weight: 800;">
+                            <div class="mr-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 36px; height: 36px; background: rgba(75, 0, 232, 0.08); border-radius: 10px; color: var(--orb-primary, #4B00E8); font-weight: 800;">
                                 <i class="fas fa-sync-alt"></i>
                             </div>
                             <div>
@@ -495,7 +699,7 @@
                     <div class="orb-card-section mb-3 p-3 bg-white border shadow-xs" style="border-radius: 18px; border: 1px solid #e2e8f0;">
                         <div class="d-flex align-items-center justify-content-between cursor-pointer" onclick="toggleCollapsibleSection('issuesBlockersBox', 'issuesToggleIcon')" style="user-select: none;">
                             <div class="d-flex align-items-center">
-                                <div class="mr-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 36px; height: 36px; background: #f3e8ff; border-radius: 10px; color: #7c3aed; font-weight: 800;">
+                                <div class="mr-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 36px; height: 36px; background: rgba(75, 0, 232, 0.08); border-radius: 10px; color: var(--orb-primary, #4B00E8); font-weight: 800;">
                                     <i class="fas fa-bug"></i>
                                 </div>
                                 <div>
@@ -517,7 +721,7 @@
                     <div class="orb-card-section mb-3 p-3 bg-white border shadow-xs" style="border-radius: 18px; border: 1px solid #e2e8f0;">
                         <div class="d-flex align-items-center justify-content-between cursor-pointer" onclick="toggleCollapsibleSection('additionalNotesBox', 'notesToggleIcon')" style="user-select: none;">
                             <div class="d-flex align-items-center">
-                                <div class="mr-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 36px; height: 36px; background: #f3e8ff; border-radius: 10px; color: #7c3aed; font-weight: 800;">
+                                <div class="mr-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 36px; height: 36px; background: rgba(75, 0, 232, 0.08); border-radius: 10px; color: var(--orb-primary, #4B00E8); font-weight: 800;">
                                     <i class="fas fa-comment-alt"></i>
                                 </div>
                                 <div>
@@ -548,8 +752,8 @@
                 {{-- Modal Footer --}}
                 <div class="modal-footer p-3 border-0 bg-white shadow-lg d-flex align-items-center justify-content-between flex-wrap" style="border-top: 1px solid #f1f5f9 !important; gap: 8px;">
                     <button type="button" class="btn btn-light font-weight-bold px-4 punch-modal-cancel-btn" data-dismiss="modal" style="border-radius: 12px; height: 44px; min-width: 90px;">Cancel</button>
-                    <button type="submit" class="btn text-white font-weight-bold px-4 shadow-lg punch-modal-submit-btn" style="border-radius: 12px; height: 44px; background: linear-gradient(135deg, #7c3aed 0%, #db2777 100%) !important; border: none; font-size: 14px; flex: 1; min-width: 180px;">
-                        <i class="fas fa-paper-plane mr-2"></i> Submit & Punch Out
+                    <button type="submit" class="btn text-white font-weight-bold px-4 shadow-lg punch-modal-submit-btn" style="border-radius: 12px; height: 44px; background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%) !important; border: none; font-size: 14px; flex: 1; min-width: 180px; box-shadow: 0 8px 20px rgba(239, 68, 68, 0.35) !important;">
+                        <i class="fas fa-sign-out-alt mr-2"></i> Submit & Punch Out
                     </button>
                 </div>
             </form>
@@ -609,48 +813,87 @@
         });
     }
 
-    function toggleSelectAllTasks(projIdx, isChecked) {
+    function setAllTasksStatus(projIdx, isCompleted) {
         const container = document.getElementById(`taskRowsList_${projIdx}`);
         if (!container) return;
 
         const checkboxes = container.querySelectorAll('.task-checkbox');
         checkboxes.forEach(cb => {
-            cb.checked = isChecked;
+            cb.checked = isCompleted;
         });
 
-        const label = document.getElementById(`selectAllLabel_${projIdx}`);
-        if (label) {
-            label.textContent = isChecked ? 'Mark All Pending' : 'Mark All Completed';
+        syncTaskStatusPills(projIdx);
+    }
+
+    function syncTaskStatusPills(projIdx) {
+        const container = document.getElementById(`taskRowsList_${projIdx}`);
+        const completedBtn = document.getElementById(`btnMarkCompleted_${projIdx}`);
+        const pendingBtn = document.getElementById(`btnMarkPending_${projIdx}`);
+        const iconCompleted = document.getElementById(`iconCompleted_${projIdx}`);
+        const iconPending = document.getElementById(`iconPending_${projIdx}`);
+        if (!container) return;
+
+        const checkboxes = container.querySelectorAll('.task-checkbox');
+        if (checkboxes.length === 0) {
+            if (completedBtn) completedBtn.classList.remove('active');
+            if (pendingBtn) pendingBtn.classList.remove('active');
+            if (iconCompleted) iconCompleted.className = 'far fa-square task-status-icon mr-1';
+            if (iconPending) iconPending.className = 'far fa-square task-status-icon mr-1';
+            return;
+        }
+
+        let allCompleted = true;
+        let allPending = true;
+
+        checkboxes.forEach(cb => {
+            if (cb.checked) {
+                allPending = false;
+            } else {
+                allCompleted = false;
+            }
+        });
+
+        if (completedBtn) {
+            if (allCompleted) {
+                completedBtn.classList.add('active');
+            } else {
+                completedBtn.classList.remove('active');
+            }
+        }
+        if (iconCompleted) {
+            iconCompleted.className = (allCompleted ? 'fas fa-check-square' : 'far fa-square') + ' task-status-icon mr-1';
+        }
+
+        if (pendingBtn) {
+            if (allPending) {
+                pendingBtn.classList.add('active');
+            } else {
+                pendingBtn.classList.remove('active');
+            }
+        }
+        if (iconPending) {
+            iconPending.className = (allPending ? 'fas fa-check-square' : 'far fa-square') + ' task-status-icon mr-1';
         }
     }
 
     function syncSelectAllCheckbox(projIdx) {
-        const container = document.getElementById(`taskRowsList_${projIdx}`);
-        const selectAllCb = document.getElementById(`selectAllCheck_${projIdx}`);
-        const label = document.getElementById(`selectAllLabel_${projIdx}`);
-        if (!container || !selectAllCb) return;
+        syncTaskStatusPills(projIdx);
+    }
 
-        const checkboxes = container.querySelectorAll('.task-checkbox');
-        if (checkboxes.length === 0) return;
-
-        let allChecked = true;
-        checkboxes.forEach(cb => {
-            if (!cb.checked) allChecked = false;
-        });
-        selectAllCb.checked = allChecked;
-        if (label) {
-            label.textContent = allChecked ? 'Mark All Pending' : 'Mark All Completed';
-        }
+    function toggleSelectAllTasks(projIdx, isChecked) {
+        setAllTasksStatus(projIdx, isChecked);
     }
 
     function toggleCustomProjectInput(projIdx) {
-        const selectEl = document.querySelector(`select[name="projects[${projIdx}][project_id]"]`);
-        const customInput = document.getElementById(`customProjectInput_${projIdx}`);
+        const card = document.getElementById(`projectBlock_${projIdx}`);
+        const selectEl = card ? card.querySelector('select.project-select') : document.querySelector(`select[name="projects[${projIdx}][project_id]"]`);
+        const customInput = document.getElementById(`customProjectInput_${projIdx}`) || (card ? card.querySelector('.custom-project-input') : null);
         if (!selectEl || !customInput) return;
 
         if (selectEl.value === 'custom') {
             customInput.style.display = 'block';
             customInput.required = true;
+            setTimeout(() => customInput.focus(), 60);
         } else {
             customInput.style.display = 'none';
             customInput.required = false;
@@ -799,8 +1042,8 @@
         const pIdx = projectBlockIdx++;
         taskIdxCounter[pIdx] = 1;
 
-        const firstSelect = document.querySelector('select.project-select');
-        const optionsHtml = firstSelect ? firstSelect.innerHTML : '<option value="">-- Select Project --</option><option value="custom">Custom</option>';
+        const tpl = document.getElementById('projectSelectOptionsTpl');
+        const optionsHtml = tpl ? tpl.innerHTML.trim() : '<option value="">-- Select Project --</option><option value="custom">Custom</option>';
 
         const pDiv = document.createElement('div');
         pDiv.className = 'project-block-card p-3 mb-3 border rounded-lg bg-light';
@@ -828,19 +1071,18 @@
             </div>
 
             <div class="tasks-container mt-2" id="tasksContainer_${pIdx}">
-                <div class="tasks-header-wrap d-flex align-items-center justify-content-between flex-wrap mb-2" style="gap: 6px;">
-                    <div class="d-flex align-items-center flex-wrap" style="gap: 4px;">
-                        <label class="small font-weight-bold text-dark mb-0 mr-1">Tasks / Work Items <span class="text-danger">*</span></label>
-                        <span class="badge badge-light border text-dark d-inline-flex align-items-center" style="font-size: 10px; padding: 2px 6px; border-radius: 6px; background-color: #f8fafc;">
-                            <span style="display:inline-flex; align-items:center; justify-content:center; width:12px; height:12px; background:#16a34a; color:#fff; border-radius:3px; font-size:8.5px; font-weight:900; margin-right:4px;">✓</span> Done
-                        </span>
-                        <span class="badge badge-light border text-dark d-inline-flex align-items-center" style="font-size: 10px; padding: 2px 6px; border-radius: 6px; background-color: #f8fafc;">
-                            <span style="display:inline-flex; align-items:center; justify-content:center; width:12px; height:12px; border:1.5px solid #eab308; background:#fffbeb; border-radius:3px; margin-right:4px;"></span> Pending
-                        </span>
+                <div class="tasks-header-wrap d-flex align-items-center justify-content-between w-100 mb-2">
+                    <label class="small font-weight-bold text-dark mb-0">Tasks / Work Items <span class="text-danger">*</span></label>
+                    <div class="d-flex align-items-center ml-auto" style="gap: 6px;">
+                        <button type="button" class="btn btn-xs task-status-toggle-btn task-status-completed" id="btnMarkCompleted_${pIdx}" onclick="setAllTasksStatus(${pIdx}, true)" title="Mark all tasks as Completed">
+                            <i class="far fa-square task-status-icon mr-1" id="iconCompleted_${pIdx}" style="font-size: 11.5px;"></i>
+                            <span>Completed</span>
+                        </button>
+                        <button type="button" class="btn btn-xs task-status-toggle-btn task-status-pending active" id="btnMarkPending_${pIdx}" onclick="setAllTasksStatus(${pIdx}, false)" title="Mark all tasks as Pending">
+                            <i class="fas fa-check-square task-status-icon mr-1" id="iconPending_${pIdx}" style="font-size: 11.5px;"></i>
+                            <span>Pending</span>
+                        </button>
                     </div>
-                    <button type="button" class="btn btn-xs btn-link p-0 font-weight-bold ml-auto" onclick="toggleQuickTaskBox(${pIdx})" style="color: #7c3aed; font-size: 11.5px; text-decoration: none;">
-                        <i class="fas fa-edit mr-1"></i> Quick Add Tasks
-                    </button>
                 </div>
 
                 <!-- Quick Multi-line Task Input Box -->
@@ -854,7 +1096,7 @@
                     <textarea id="quickTaskInput_${pIdx}" class="form-control form-control-sm mb-2" rows="3" placeholder="Enter tasks (one per line)...&#10;Task 1: Designed homepage layout&#10;Task 2: Fixed API authentication bug" style="font-size: 12.5px; border-radius: 8px; border: 1.5px solid #cbd5e1; resize: vertical !important; min-height: 80px; line-height: 1.5; padding: 8px 10px;"></textarea>
                     <div class="d-flex justify-content-end" style="gap: 6px;">
                         <button type="button" class="btn btn-xs btn-light border py-1 px-2" onclick="toggleQuickTaskBox(${pIdx})" style="font-size: 11.5px; border-radius: 6px;">Cancel</button>
-                        <button type="button" class="btn btn-xs btn-primary py-1 px-2 font-weight-bold" onclick="processQuickTasks(${pIdx})" style="font-size: 11.5px; border-radius: 6px; background-color: #7c3aed; border-color: #7c3aed;">
+                        <button type="button" class="btn btn-xs btn-primary py-1 px-2 font-weight-bold" onclick="processQuickTasks(${pIdx})" style="font-size: 11.5px; border-radius: 6px; background: linear-gradient(135deg, var(--orb-primary, #4B00E8) 0%, var(--orb-secondary, #FF5252) 100%) !important; border: none; color: #fff;">
                             <i class="fas fa-plus mr-1"></i> Add Tasks
                         </button>
                     </div>
@@ -869,19 +1111,35 @@
                     </div>
                 </div>
 
-                <div class="d-flex align-items-center justify-content-between mt-2 pt-1 border-top" id="tasksFooterRow_${pIdx}">
-                    <div class="d-flex align-items-center">
-                        <input type="checkbox" id="selectAllCheck_${pIdx}" onchange="toggleSelectAllTasks(${pIdx}, this.checked)" style="width: 17px; height: 17px; cursor: pointer; accent-color: #7c3aed; margin-right: 6px;" title="Mark All Completed">
-                        <label for="selectAllCheck_${pIdx}" class="small font-weight-bold text-dark mb-0 cursor-pointer" style="font-size: 12px; user-select: none;" id="selectAllLabel_${pIdx}">Mark All Completed</label>
-                    </div>
-                    <button type="button" class="btn btn-sm btn-light border font-weight-bold add-task-btn" id="addTaskBtn_${pIdx}" onclick="addTaskRow(${pIdx})" style="border-radius: 8px; color: #7c3aed;">
+                <div class="d-flex align-items-center justify-content-between mt-2 pt-2 border-top" id="tasksFooterRow_${pIdx}">
+                    <button type="button" class="btn btn-sm btn-link p-0 font-weight-bold add-task-btn" id="addTaskBtn_${pIdx}" onclick="addTaskRow(${pIdx})" style="color: var(--orb-primary, #4B00E8) !important; text-decoration: none; font-size: 12.5px;">
                         <i class="fas fa-plus mr-1"></i> Add Task
+                    </button>
+                    <button type="button" class="btn btn-xs font-weight-bold quick-add-tasks-btn" onclick="toggleQuickTaskBox(${pIdx})" style="border-radius: 8px; font-size: 11.5px; padding: 4px 10px; color: var(--orb-primary, #4B00E8); border: 1px solid rgba(75, 0, 232, 0.35); background: rgba(75, 0, 232, 0.05); text-decoration: none;">
+                        <i class="fas fa-bolt mr-1" style="color: #eab308;"></i> Quick Add Tasks
                     </button>
                 </div>
             </div>
         `;
 
         container.appendChild(pDiv);
+        syncTaskStatusPills(pIdx);
+
+        // Bind direct change & select2 listeners for custom project toggle
+        if (window.jQuery) {
+            const $newSelect = $(pDiv).find('select.project-select');
+            $newSelect.on('change select2:select select2:clear', function() {
+                const val = $(this).val();
+                const $custInp = $(pDiv).find('.custom-project-input');
+                if (val === 'custom') {
+                    $custInp.show().css('display', 'block').prop('required', true);
+                    setTimeout(function() { $custInp.focus(); }, 60);
+                } else {
+                    $custInp.hide().css('display', 'none').prop('required', false).val('');
+                }
+            });
+        }
+
         if (window.initSearchableSelects) {
             window.initSearchableSelects(pDiv);
         }
@@ -1076,6 +1334,22 @@
         }
 
         if (window.jQuery) {
+            $(document).on('change select2:select select2:clear', 'select.project-select', function() {
+                const $select = $(this);
+                const $card = $select.closest('.project-block-card');
+                const $customInput = $card.find('.custom-project-input');
+                const val = $select.val();
+
+                if (val === 'custom') {
+                    $customInput.show().css('display', 'block').prop('required', true);
+                    setTimeout(function() { $customInput.focus(); }, 60);
+                } else {
+                    $customInput.hide().css('display', 'none').prop('required', false).val('');
+                }
+            });
+
+            syncTaskStatusPills(0);
+
             $('#webPunchInModal').on('shown.bs.modal', function() {
                 if (window.initSearchableSelects) {
                     window.initSearchableSelects(this);
@@ -1089,6 +1363,7 @@
                 if (window.initSearchableSelects) {
                     window.initSearchableSelects(this);
                 }
+                syncTaskStatusPills(0);
                 const modeInput = document.getElementById('punch_out_work_mode');
                 const mode = modeInput ? modeInput.value : 'wfo';
                 const statusEl = document.getElementById('locationStatusOut');

@@ -125,7 +125,37 @@
     .leave-add-btn:hover,
     .leave-import-btn:hover {
         transform: translateY(-1px);
-        text-decoration: none;
+    }
+
+    .leave-btn-gradient {
+        border: 0 !important;
+        border-radius: 14px;
+        background: linear-gradient(135deg, var(--leave-primary, #4B00E8), var(--leave-secondary, #FF5252)) !important;
+        color: #ffffff !important;
+        font-size: 13px;
+        font-weight: 850;
+        height: 40px;
+        padding: 0 18px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        box-shadow: 0 10px 24px rgba(75, 0, 232, 0.22);
+        transition: all .2s ease;
+        cursor: pointer;
+        text-decoration: none !important;
+    }
+
+    .leave-btn-gradient i {
+        color: #ffffff !important;
+    }
+
+    .leave-btn-gradient:hover,
+    .leave-btn-gradient:focus {
+        color: #ffffff !important;
+        transform: translateY(-1px);
+        box-shadow: 0 14px 28px rgba(75, 0, 232, 0.32);
+        filter: brightness(1.05);
     }
 
     .leave-summary-grid {
@@ -470,10 +500,6 @@
         padding: 9px 12px;
     }
 
-    .dataTables_wrapper .dt-buttons {
-        display: none !important;
-    }
-
     .dataTables_wrapper .dataTables_filter input,
     .dataTables_wrapper .dataTables_length select {
         border: 1px solid var(--leave-border);
@@ -737,52 +763,43 @@
                     Manage company holidays, public holidays, restricted holidays and working-day overrides for attendance and leave calculations.
                 </div>
             </div>
-
-            <div class="leave-hero-actions">
-                <button type="button" class="leave-import-btn">
-                    <i class="fas fa-file-import"></i>
-                    Import
-                </button>
-
-                <button type="button" class="leave-add-btn" data-toggle="modal" data-target="#createHolidayModal">
-                    <i class="fas fa-plus"></i>
-                    Add Holiday
-                </button>
-            </div>
         </div>
     </div>
 
     @include('hrms.leave.shared.flash')
 
-    <div class="leave-summary-grid">
-        <div class="summary-card summary-primary">
-            <div class="summary-icon">
-                <i class="fas fa-calendar-day"></i>
+    <div class="leave-metric-grid">
+        <div class="leave-metric" style="--metric-color:#4B00E8;--metric-soft:rgba(75, 0, 232, 0.08);">
+            <div class="leave-metric-top">
+                <div class="leave-metric-icon">
+                    <i class="fas fa-calendar-day"></i>
+                </div>
+                <div class="leave-metric-value">{{ $holidays->count() }}</div>
             </div>
-            <div class="summary-info">
-                <h4>{{ $holidays->count() }}</h4>
-                <p>Total Holidays</p>
-            </div>
+            <div class="leave-metric-label">Total Holidays</div>
+            <div class="leave-metric-line"></div>
         </div>
 
-        <div class="summary-card summary-success">
-            <div class="summary-icon">
-                <i class="fas fa-calendar-check"></i>
+        <div class="leave-metric" style="--metric-color:#10B981;--metric-soft:#ECFDF5;">
+            <div class="leave-metric-top">
+                <div class="leave-metric-icon">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+                <div class="leave-metric-value">{{ $holidays->where('is_working_day_override', 0)->count() }}</div>
             </div>
-            <div class="summary-info">
-                <h4>{{ $holidays->where('is_working_day_override', 0)->count() }}</h4>
-                <p>Days Off</p>
-            </div>
+            <div class="leave-metric-label">Days Off</div>
+            <div class="leave-metric-line"></div>
         </div>
 
-        <div class="summary-card summary-warning">
-            <div class="summary-icon">
-                <i class="fas fa-briefcase"></i>
+        <div class="leave-metric" style="--metric-color:#F59E0B;--metric-soft:#FFFBEB;">
+            <div class="leave-metric-top">
+                <div class="leave-metric-icon">
+                    <i class="fas fa-briefcase"></i>
+                </div>
+                <div class="leave-metric-value">{{ $holidays->where('is_working_day_override', 1)->count() }}</div>
             </div>
-            <div class="summary-info">
-                <h4>{{ $holidays->where('is_working_day_override', 1)->count() }}</h4>
-                <p>Working Overrides</p>
-            </div>
+            <div class="leave-metric-label">Working Overrides</div>
+            <div class="leave-metric-line"></div>
         </div>
     </div>
 
@@ -802,17 +819,9 @@
             </div>
 
             <div class="leave-action-wrap">
-                <button type="button" class="leave-light-btn" onclick="triggerLeaveExport('csv');">
-                    <i class="fas fa-file-csv"></i> CSV
-                </button>
-                <button type="button" class="leave-light-btn" onclick="triggerLeaveExport('excel');">
-                    <i class="fas fa-file-excel text-success"></i> Excel
-                </button>
-                <button type="button" class="leave-light-btn" onclick="triggerLeaveExport('pdf');">
-                    <i class="fas fa-file-pdf text-danger"></i> PDF
-                </button>
-                <button type="button" class="leave-light-btn" onclick="triggerLeaveExport('print');">
-                    <i class="fas fa-print"></i> Print
+                <button type="button" class="leave-btn-gradient" data-toggle="modal" data-target="#createHolidayModal">
+                    <i class="fas fa-plus"></i>
+                    Add Holiday
                 </button>
             </div>
         </div>

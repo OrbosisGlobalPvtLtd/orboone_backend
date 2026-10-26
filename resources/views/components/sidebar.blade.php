@@ -388,6 +388,19 @@ $isMenuActive = function($item) use ($active) {
             @forelse($parentMenus as $menu)
             @php
             $children = $menus->get($menu->id) ?? $menus->get((string)$menu->id) ?? $menus[$menu->id] ?? collect();
+
+            // Hide My WFH Requests for permanent WFH employees
+            $isCurrentWfh = isset($isPermanentWfh) ? $isPermanentWfh : (auth()->check() && in_array(strtolower(trim((string)(auth()->user()->employee?->work_mode ?? ''))), ['wfh', 'permanent_wfh', 'permanent wfh'], true));
+            if ($isCurrentWfh) {
+                $children = $children->reject(function ($c) {
+                    $r = strtolower(trim((string) ($c->route ?? '')));
+                    $n = strtolower(trim((string) ($c->name ?? '')));
+                    return in_array($r, ['hrms.attendance.my-wfh.index', 'attendances.my-wfh', 'attendance.my-wfh', 'my-wfh.index', 'wfh.my'], true)
+                        || str_contains($n, 'my wfh')
+                        || str_contains($r, 'my-wfh');
+                });
+            }
+
             $hasChildren = $children->count() > 0;
             $isParentMenu = $hasChildren || empty($menu->route);
 

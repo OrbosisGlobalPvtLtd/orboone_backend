@@ -650,11 +650,12 @@ if (!function_exists('formatWorkReportRow')) {
                         foreach ($p['tasks'] as $t) {
                             $tName = $t['task_name'] ?? ($t['description'] ?? ($t['task'] ?? ($t['title'] ?? 'Task')));
                             $tDone = (isset($t['is_completed']) ? ($t['is_completed'] == 1 || $t['is_completed'] === true || $t['is_completed'] === 'true') : (isset($t['completed']) ? ($t['completed'] == 1 || $t['completed'] === true || $t['completed'] === 'true') : true));
+                            $projPrefix = $pName ? "{$pName}: " : "";
                             $structuredTasks[] = [
                                 'text' => trim($tName),
                                 'done' => (bool)$tDone,
                                 'project' => $pName,
-                                'formatted' => ($tDone ? '[Done] ' : '[Pending] ') . trim($tName)
+                                'formatted' => ($tDone ? '[Done] ' : '[Pending] ') . $projPrefix . trim($tName)
                             ];
                         }
                     }
@@ -679,7 +680,14 @@ if (!function_exists('formatWorkReportRow')) {
                 }
             }
 
-            if (!$title) {
+            if (!empty($projectsList)) {
+                $projNames = array_values(array_filter(array_map(fn($p) => $p['project_name'] ?? ($p['name'] ?? null), $projectsList)));
+                if (count($projNames) === 1) {
+                    $title = $projNames[0];
+                } elseif (count($projNames) > 1) {
+                    $title = count($projNames) . ' Projects: ' . implode(', ', $projNames);
+                }
+            } elseif (!$title) {
                 $title = $tasks['title'] ?? ($tasks['task_name'] ?? null);
             }
 
@@ -687,63 +695,82 @@ if (!function_exists('formatWorkReportRow')) {
             $description = $tasks['description'] ?? ($tasks['today_work_description'] ?? null);
         }
 
-        if (!$description) {
-            $description = is_object($log) && isset($log->work_summary) ? $log->work_summary : (is_object($log) && isset($log->work_description) ? $log->work_description : null);
-        }
-
-        // Clean description lines & separate into distinct paragraphs
-        if ($description) {
-            $rawLines = explode("\n", str_replace(["\r\n", "\r"], "\n", $description));
+        if (!empty($projectsList)) {
             $cleanedParagraphs = [];
-            $currentParagraph = [];
-
-            foreach ($rawLines as $l) {
-                $trimmed = trim($l);
-                if (empty($trimmed)) {
-                    if (!empty($currentParagraph)) {
-                        $cleanedParagraphs[] = implode(' ', $currentParagraph);
-                        $currentParagraph = [];
-                    }
-                    continue;
+            foreach ($projectsList as $p) {
+                $pName = $p['project_name'] ?? ($p['name'] ?? 'Project');
+                $pTasks = $p['tasks'] ?? [];
+                $tCount = count($pTasks);
+                $doneCount = 0;
+                foreach ($pTasks as $pt) {
+                    if (is_array($pt) && (!empty($pt['is_completed']) || !empty($pt['completed']))) $doneCount++;
+                    elseif (!is_array($pt)) $doneCount++;
                 }
-
-                // Ignore boilerplate status/test markers
-                if (stripos($trimmed, 'Project:') === 0) continue;
-                if (stripos($trimmed, "Today's Work Status:") === 0 || stripos($trimmed, "Today Work Status:") === 0) continue;
-                if (stripos($trimmed, "Status") === 0 && in_array(strtolower($trimmed), ['status', 'status:', 'status :'])) continue;
-                if (in_array(strtolower($trimmed), ['completed', 'in-progress', 'in_progress', 'testing', 'done'])) continue;
-                if (stripos($trimmed, "Requirements") === 0) continue;
-                if (stripos($trimmed, "Test Status") === 0) continue;
-                if (stripos($trimmed, "Tested:") === 0) continue;
-                if (stripos($trimmed, "Completed:") === 0) continue;
-                if (stripos($trimmed, "Issues") === 0) continue;
-                if (stripos($trimmed, "Notes") === 0) continue;
-                if (in_array(strtolower($trimmed), ['none', 'no issues'])) continue;
-
-                // Strip leading checkboxes or bullet icons
-                if (preg_match('/^[☑🗹☐✓✔•\-*]\s*/u', $trimmed)) {
-                    $trimmed = preg_replace('/^[☑🗹☐✓✔•\-*]\s*/u', '', $trimmed);
-                }
-
-                if (!empty($trimmed)) {
-                    $currentParagraph[] = $trimmed;
-                }
+                $cleanedParagraphs[] = "{$pName} ({$tCount} " . ($tCount === 1 ? 'task' : 'tasks') . " • {$doneCount}/{$tCount} Done)";
             }
-            if (!empty($currentParagraph)) {
-                $cleanedParagraphs[] = implode(' ', $currentParagraph);
+            if (!empty($notes)) {
+                $cleanedParagraphs[] = "Note: " . $notes;
+            }
+            $description = implode("\n\n", $cleanedParagraphs);
+        } else {
+            if (!$description) {
+                $description = is_object($log) && isset($log->work_summary) ? $log->work_summary : (is_object($log) && isset($log->work_description) ? $log->work_description : null);
             }
 
-            if (count($cleanedParagraphs) > 0) {
-                // If the first line is the project title, merge it nicely with the next line or keep clean
-                if (!empty($title) && strtolower(trim($cleanedParagraphs[0])) === strtolower(trim($title))) {
-                    if (count($cleanedParagraphs) > 1) {
-                        $cleanedParagraphs[1] = "{$title} - {$cleanedParagraphs[1]}";
-                        array_shift($cleanedParagraphs);
+            // Clean description lines & separate into distinct paragraphs
+            if ($description) {
+                $rawLines = explode("\n", str_replace(["\r\n", "\r"], "\n", $description));
+                $cleanedParagraphs = [];
+                $currentParagraph = [];
+
+                foreach ($rawLines as $l) {
+                    $trimmed = trim($l);
+                    if (empty($trimmed)) {
+                        if (!empty($currentParagraph)) {
+                            $cleanedParagraphs[] = implode(' ', $currentParagraph);
+                            $currentParagraph = [];
+                        }
+                        continue;
                     }
-                } elseif (!empty($title) && stripos($cleanedParagraphs[0], $title) === false && count($cleanedParagraphs) <= 2) {
-                    $cleanedParagraphs[0] = "{$title} - {$cleanedParagraphs[0]}";
+
+                    // Ignore boilerplate status/test markers
+                    if (stripos($trimmed, 'Project:') === 0) continue;
+                    if (stripos($trimmed, "Today's Work Status:") === 0 || stripos($trimmed, "Today Work Status:") === 0) continue;
+                    if (stripos($trimmed, "Status") === 0 && in_array(strtolower($trimmed), ['status', 'status:', 'status :'])) continue;
+                    if (in_array(strtolower($trimmed), ['completed', 'in-progress', 'in_progress', 'testing', 'done'])) continue;
+                    if (stripos($trimmed, "Requirements") === 0) continue;
+                    if (stripos($trimmed, "Test Status") === 0) continue;
+                    if (stripos($trimmed, "Tested:") === 0) continue;
+                    if (stripos($trimmed, "Completed:") === 0) continue;
+                    if (stripos($trimmed, "Issues") === 0) continue;
+                    if (stripos($trimmed, "Notes") === 0) continue;
+                    if (in_array(strtolower($trimmed), ['none', 'no issues'])) continue;
+
+                    // Strip leading checkboxes or bullet icons
+                    if (preg_match('/^[☑🗹☐✓✔•\-*]\s*/u', $trimmed)) {
+                        $trimmed = preg_replace('/^[☑🗹☐✓✔•\-*]\s*/u', '', $trimmed);
+                    }
+
+                    if (!empty($trimmed)) {
+                        $currentParagraph[] = $trimmed;
+                    }
                 }
-                $description = implode("\n\n", $cleanedParagraphs);
+                if (!empty($currentParagraph)) {
+                    $cleanedParagraphs[] = implode(' ', $currentParagraph);
+                }
+
+                if (count($cleanedParagraphs) > 0) {
+                    // If the first line is the project title, merge it nicely with the next line or keep clean
+                    if (!empty($title) && strtolower(trim($cleanedParagraphs[0])) === strtolower(trim($title))) {
+                        if (count($cleanedParagraphs) > 1) {
+                            $cleanedParagraphs[1] = "{$title} - {$cleanedParagraphs[1]}";
+                            array_shift($cleanedParagraphs);
+                        }
+                    } elseif (!empty($title) && stripos($cleanedParagraphs[0], $title) === false && count($cleanedParagraphs) <= 2) {
+                        $cleanedParagraphs[0] = "{$title} - {$cleanedParagraphs[0]}";
+                    }
+                    $description = implode("\n\n", $cleanedParagraphs);
+                }
             }
         }
 
@@ -862,5 +889,50 @@ if (!function_exists('formatProbationDuration')) {
         }
 
         return '-';
+    }
+}
+
+
+if (!function_exists('get_filter_months')) {
+    /**
+     * Get months array for filter dropdowns.
+     *
+     * @param bool $withCustomRange Prepend 'custom' => 'Custom Date Range'
+     * @param bool $short Return short month name (e.g. Jan) instead of full (January)
+     * @return array<string, string>
+     */
+    function get_filter_months(bool $withCustomRange = true, bool $short = false): array
+    {
+        $months = [];
+        if ($withCustomRange) {
+            $months['custom'] = 'Custom Date Range';
+        }
+
+        for ($m = 1; $m <= 12; $m++) {
+            $key = str_pad((string) $m, 2, '0', STR_PAD_LEFT);
+            $months[$key] = \Carbon\Carbon::create(2000, $m, 1)->format($short ? 'M' : 'F');
+        }
+
+        return $months;
+    }
+}
+
+if (!function_exists('get_filter_years')) {
+    /**
+     * Get years array for filter dropdowns.
+     *
+     * @param int $futureCount Years ahead of current year
+     * @param int $pastCount Years behind current year
+     * @return array<string, string>
+     */
+    function get_filter_years(int $futureCount = 1, int $pastCount = 4): array
+    {
+        $years = [];
+        $currY = (int) now()->format('Y');
+        for ($y = $currY + $futureCount; $y >= $currY - $pastCount; $y--) {
+            $years[(string) $y] = (string) $y;
+        }
+
+        return $years;
     }
 }

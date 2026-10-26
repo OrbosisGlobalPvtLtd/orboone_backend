@@ -10,6 +10,7 @@ use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Http\RedirectResponse;
 
 class LoginC extends Controller
@@ -72,14 +73,14 @@ class LoginC extends Controller
         }
 
         // Update last login time if column exists
-        if (\Schema::hasColumn('users', 'last_login_at')) {
+        if (Schema::hasColumn('users', 'last_login_at')) {
             $user->update([
                 'last_login_at' => now(),
             ]);
         }
 
         // If explicit web access flag exists and user has no web access
-        if (\Schema::hasColumn('users', 'is_web_access') && !$user->is_web_access) {
+        if (Schema::hasColumn('users', 'is_web_access') && !$user->is_web_access) {
             Auth::logout();
             return redirect('/login')->with('fail', 'Web access is not enabled for your account.');
         }
@@ -133,7 +134,7 @@ class LoginC extends Controller
             return redirect('/login')->with('fail', 'Access denied. You do not have permission to login here.');
         }
 
-        $mustChangePassword = \Schema::hasColumn('users', 'must_change_password')
+        $mustChangePassword = Schema::hasColumn('users', 'must_change_password')
             ? (bool) ($user->must_change_password ?? false)
             : false;
 

@@ -57,7 +57,7 @@ class LeavePolicyCalculatorS
         }
 
         // Build dates including advanced sandwich checks
-        $dateRows = $this->sandwichLeaveService->buildDates($employee, $start, $end, $leaveType, $existingRequest?->id);
+        $dateRows = $this->sandwichLeaveService->buildDates($employee, $start, $end, $leaveType, $existingRequest?->id, $isHalfDay);
         $ledgerSplit = $this->usesLedgerForDates($employee, $dateRows);
         $stage = strtolower((string) $allocation->employment_stage);
         if ($stage === LeaveAllocationService::STAGE_PERMANENT && ! $ledgerSplit) {
@@ -67,23 +67,33 @@ class LeavePolicyCalculatorS
         }
         
         $requestedCalendarDays = $start->diffInDays($end) + 1;
-        $workingDays = 0;
-        $sandwichDays = 0;
+        $workingDaysCount = 0;
+        $sandwichDaysCount = 0;
+        $workingDaysDeducted = '0.000000';
+        $sandwichDaysDeducted = '0.000000';
         $weekendHolidayCounted = 0;
         $deductedDaysExact = '0.000000';
 
         foreach ($dateRows as $row) {
-            if ($row['is_working_day']) {
-                $workingDays++;
+            $unit = $isHalfDay ? '0.500000' : '1.000000';
+            if (! empty($row['is_working_day'])) {
+                $workingDaysCount++;
+                if (! empty($row['deduct_as_leave'])) {
+                    $workingDaysDeducted = bcadd($workingDaysDeducted, $unit, 6);
+                }
             }
-            if ($row['is_sandwich_day']) {
-                $sandwichDays++;
+            if (! empty($row['is_sandwich_day'])) {
+                $sandwichDaysCount++;
+                if (! empty($row['deduct_as_leave'])) {
+                    $sandwichDaysDeducted = bcadd($sandwichDaysDeducted, '1.000000', 6);
+                }
             }
-            if (($row['is_weekoff'] || $row['is_holiday']) && $row['deduct_as_leave']) {
+            if ((! empty($row['is_weekoff']) || ! empty($row['is_holiday'])) && ! empty($row['deduct_as_leave'])) {
                 $weekendHolidayCounted++;
             }
-            if ($row['deduct_as_leave']) {
-                $deductedDaysExact = bcadd($deductedDaysExact, $isHalfDay ? '0.500000' : '1.000000', 6);
+            if (! empty($row['deduct_as_leave'])) {
+                $dayUnit = ! empty($row['is_sandwich_day']) ? '1.000000' : $unit;
+                $deductedDaysExact = bcadd($deductedDaysExact, $dayUnit, 6);
             }
         }
 
@@ -104,7 +114,9 @@ class LeavePolicyCalculatorS
             throw ValidationException::withMessages(['end_date' => "Maximum leave at once is {$maxAtOnce} day(s)."]);
         }
 
-        $this->ensureNoDuplicateDates($employee, $dateRows, $existingRequest);
+        if (empty($payload['bypass_duplicate_validation'])) {
+            $this->ensureNoDuplicateDates($employee, $dateRows, $existingRequest);
+        }
         
         // Leave Advance Notice Validation
         $isSick = (bool) $leaveType->is_sick;
@@ -213,7 +225,7 @@ class LeavePolicyCalculatorS
 
         $sandwichDetails = [];
         $sandwichMessage = null;
-        if ($sandwichDays > 0) {
+        if ($sandwichDaysCount > 0) {
             foreach ($dateRows as $r) {
                 if (! empty($r['is_sandwich_day'])) {
                     $typeStr = ! empty($r['is_weekoff']) ? 'Week Off' : (! empty($r['is_holiday']) ? 'Holiday' : 'Non-Working Day');
@@ -228,7 +240,8 @@ class LeavePolicyCalculatorS
                 }
             }
             $dateFormattedList = implode(', ', array_column($sandwichDetails, 'formatted_date'));
-            $sandwichMessage = "Sandwich Policy Applied: {$sandwichDays} non-working day(s) ({$dateFormattedList}) falling between leave days are included as leave.";
+            $daysDisplay = $isHalfDay ? (float) $sandwichDaysDeducted : $sandwichDaysCount;
+            $sandwichMessage = "Sandwich Policy Applied: {$daysDisplay} non-working day(s) ({$dateFormattedList}) falling between leave days are included as leave.";
         }
 
         return [
@@ -236,12 +249,16 @@ class LeavePolicyCalculatorS
             'allocation' => $allocation,
             'dates' => $dateRows,
             'requested_calendar_days' => $requestedCalendarDays,
-            'working_days' => $workingDays,
-            'sandwich_days' => $sandwichDays,
+            'working_days' => $isHalfDay ? (float) $workingDaysDeducted : $workingDaysCount,
+            'sandwich_days' => $isHalfDay ? (float) $sandwichDaysDeducted : $sandwichDaysCount,
+            'working_days_count' => $workingDaysCount,
+            'sandwich_days_count' => $sandwichDaysCount,
+            'working_days_deducted' => (float) $workingDaysDeducted,
+            'sandwich_days_deducted' => (float) $sandwichDaysDeducted,
             'weekend_holiday_counted' => $weekendHolidayCounted,
             'requested_days' => $ledgerSplit ? $deductedDaysExact : (float) $deductedDaysExact,
             'deducted_days' => $ledgerSplit ? $deductedDaysExact : (float) $deductedDaysExact,
-            'sandwich_applied' => $sandwichDays > 0,
+            'sandwich_applied' => $sandwichDaysCount > 0,
             'sandwich_details' => $sandwichDetails,
             'sandwich_message' => $sandwichMessage,
             'paid_days' => $ledgerSplit ? $paid : (float) $paid,
@@ -588,7 +605,7 @@ class LeavePolicyCalculatorS
             ->join('leave_requests', 'leave_requests.id', '=', 'leave_request_dates.leave_request_id')
             ->where('leave_request_dates.employee_id', $employee->id)
             ->whereIn('leave_request_dates.leave_date', $dates)
-            ->whereNotIn('leave_requests.status', ['rejected', 'cancelled']);
+            ->whereNotIn('leave_requests.status', ['rejected', 'cancelled', 'void', 'expired']);
 
         if ($existingRequest) {
             $duplicate->where('leave_requests.id', '<>', $existingRequest->id);

@@ -595,14 +595,7 @@
                 <p class="set-subtitle">Review available, used, pending, LWP and allocated leave balances across active years.</p>
             </div>
             
-            <div class="d-flex align-items-center flex-wrap" style="gap: 12px;">
-                <a href="{{ route('leave-requests.index') }}" class="set-btn" style="background: rgba(255, 255, 255, 0.15) !important; color: #fff !important; border: 1px solid rgba(255, 255, 255, 0.25); box-shadow: none;">
-                    <i class="fas fa-history"></i> Leave History
-                </a>
-                <a href="{{ route('leave-requests.create') }}" class="set-btn" style="background: rgba(255, 255, 255, 0.25) !important; color: #fff !important; border: 1px solid rgba(255, 255, 255, 0.35); box-shadow: none;">
-                    <i class="fas fa-plus-circle"></i> Apply Leave
-                </a>
-            </div>
+            
         </div>
 
         @include('hrms.leave.shared.flash')
@@ -732,7 +725,23 @@
             </div>
             <div>
                 <form class="form-inline d-flex align-items-center flex-wrap" method="GET" action="" style="gap: 8px;">
-                    @if(!empty($canViewOthers) && isset($employees) && $employees->count() > 1)
+                    @if(!empty($isEmployeeRole))
+                        <div class="form-group mb-0">
+                            <select name="employee_id" class="form-control select2-searchable" style="height: 38px; border-radius: 10px; font-size: 13px; font-weight: 700; max-width: 240px;">
+                                @if(isset($employees) && $employees->isNotEmpty())
+                                    @foreach($employees as $emp)
+                                        <option value="{{ $emp->id }}" selected>
+                                            {{ $emp->user_name ?? $emp->display_name }} ({{ $emp->employee_code }})
+                                        </option>
+                                    @endforeach
+                                @elseif($targetEmployee)
+                                    <option value="{{ $targetEmployee->id }}" selected>
+                                        {{ $targetEmployee->user->name ?? $targetEmployee->display_name ?? 'My Profile' }} ({{ $targetEmployee->employee_code }})
+                                    </option>
+                                @endif
+                            </select>
+                        </div>
+                    @elseif(!empty($canViewOthers) && isset($employees) && $employees->count() > 1)
                         <div class="form-group mb-0">
                             <select name="employee_id" class="form-control select2-searchable" style="height: 38px; border-radius: 10px; font-size: 13px; font-weight: 700; max-width: 240px;">
                                 @foreach($employees as $emp)
@@ -749,7 +758,7 @@
                     <button type="submit" class="set-btn" style="height: 38px; border-radius: 10px; padding: 0 16px; font-size: 12px;">
                         <i class="fas fa-sync-alt"></i> Switch
                     </button>
-                    @if(request()->filled('employee_id') || request()->filled('year'))
+                    @if((empty($isEmployeeRole) && request()->filled('employee_id')) || request()->filled('year'))
                         <a href="{{ route('hrms.leave.balances.index') }}" class="btn btn-light" style="height: 38px; border-radius: 10px; padding: 0 12px; font-size: 12px; display: inline-flex; align-items: center;">
                             <i class="fas fa-times"></i>
                         </a>

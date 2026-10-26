@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\Storage;
 use App\Services\HRMS\Leave\LeaveValidationService;
 use Illuminate\Validation\ValidationException;
 use App\Services\HRMS\Notification\NotificationS;
+use App\Services\HRMS\Leave\AutoExpireLeaveService;
 
 class LeaveRequestC extends Controller
 {
@@ -70,9 +71,65 @@ class LeaveRequestC extends Controller
             abort(403, 'No employee profile linked to your account.');
         }
 
-        $query = LeaveRequestM::with(['leaveType', 'dates', 'employee.user', 'employee.department', 'employee.designation', 'approver'])
+        $year = (int) ($request->year ?: Carbon::now('Asia/Kolkata')->year);
+        $currentMonth = (int) Carbon::now('Asia/Kolkata')->month;
+
+        if ($request->has('month')) {
+            $selectedMonth = (string) $request->month;
+        } else {
+            $selectedMonth = (string) $currentMonth;
+        }
+
+        // Auto-expire past pending leaves whose end date has passed
+        app(AutoExpireLeaveService::class)->expirePastPendingRequests();
+
+        $query = LeaveRequestM::with([
+            'leaveType',
+            'dates',
+            'employee.user',
+            'employee.department',
+            'employee.designation',
+            'employee.reportingManager.user',
+            'approver',
+            'managerApprover',
+            'hrApprover'
+        ])
             ->when($request->status, fn ($q) => $q->where('status', $request->status))
             ->when($request->leave_type_id, fn ($q) => $q->where('leave_type_id', $request->leave_type_id));
+
+        if ($selectedMonth !== 'all' && $selectedMonth !== '') {
+            $m = (int) $selectedMonth;
+            $monthStart = Carbon::createFromDate($year, $m, 1, 'Asia/Kolkata')->startOfMonth()->toDateString();
+            $monthEnd = Carbon::createFromDate($year, $m, 1, 'Asia/Kolkata')->endOfMonth()->toDateString();
+
+            $query->where(function ($q) use ($monthStart, $monthEnd) {
+                $q->where(function ($sub) use ($monthStart, $monthEnd) {
+                    $sub->whereDate('start_date', '<=', $monthEnd)
+                        ->whereDate('end_date', '>=', $monthStart);
+                })->orWhereHas('dates', function ($dq) use ($monthStart, $monthEnd) {
+                    $dq->whereDate('leave_date', '>=', $monthStart)
+                       ->whereDate('leave_date', '<=', $monthEnd);
+                })->orWhere(function ($cq) use ($monthStart, $monthEnd) {
+                    $cq->whereDate('created_at', '>=', $monthStart)
+                       ->whereDate('created_at', '<=', $monthEnd);
+                });
+            });
+        } elseif ($year) {
+            $yearStart = Carbon::createFromDate($year, 1, 1, 'Asia/Kolkata')->startOfYear()->toDateString();
+            $yearEnd = Carbon::createFromDate($year, 12, 31, 'Asia/Kolkata')->endOfYear()->toDateString();
+            $query->where(function ($q) use ($yearStart, $yearEnd) {
+                $q->where(function ($sub) use ($yearStart, $yearEnd) {
+                    $sub->whereDate('start_date', '<=', $yearEnd)
+                        ->whereDate('end_date', '>=', $yearStart);
+                })->orWhereHas('dates', function ($dq) use ($yearStart, $yearEnd) {
+                    $dq->whereDate('leave_date', '>=', $yearStart)
+                        ->whereDate('leave_date', '<=', $yearEnd);
+                })->orWhere(function ($cq) use ($yearStart, $yearEnd) {
+                    $cq->whereDate('created_at', '>=', $yearStart)
+                       ->whereDate('created_at', '<=', $yearEnd);
+                });
+            });
+        }
 
         if ($isAdminOrHr && $request->filled('employee_id')) {
             $query->where('employee_id', $request->employee_id);
@@ -93,6 +150,41 @@ class LeaveRequestC extends Controller
         $perPage = (int) $request->input('per_page', 25);
         $requests = $perPage > 0 ? $query->latest()->paginate($perPage) : $query->latest()->paginate(1000);
 
+        // Enrich requests with allocation metrics and names for Leave Request Details view modal
+        $empIds = $requests->pluck('employee_id')->filter()->unique()->all();
+        $allocations = !empty($empIds)
+            ? DB::table('leave_allocations')
+                ->whereIn('employee_id', $empIds)
+                ->where('year', $year ?: Carbon::now('Asia/Kolkata')->year)
+                ->get()
+                ->keyBy('employee_id')
+            : collect();
+
+        foreach ($requests as $item) {
+            $emp = $item->employee;
+            $item->display_name = $emp?->user?->name ?? $emp?->employee_code ?? 'Employee';
+            $item->employee_code = $emp?->employee_code ?? '—';
+            $item->department_name = $emp?->department?->name ?? 'General';
+            $item->designation_name = $emp?->designation?->name ?? 'Employee';
+            $item->leave_type_name = $item->leaveType?->name ?? 'Leave';
+            $item->current_reporting_manager_id = $emp?->reporting_manager_employee_id;
+            $item->reporting_manager_name = $emp?->reportingManager?->user?->name ?? null;
+            $item->manager_approver_name = $item->managerApprover?->name ?? null;
+            $item->hr_approver_name = $item->hrApprover?->name ?? ($item->approver?->name ?? null);
+            $item->rejected_by_name = $item->approver?->name ?? null;
+
+            $la = $allocations->get($item->employee_id);
+            $item->paid_allocated = $la?->paid_allocated ?? 0;
+            $item->paid_remaining = $la?->paid_remaining ?? 0;
+            $item->paid_used = $la?->paid_used ?? 0;
+            $item->sick_allocated = $la?->sick_allocated ?? 0;
+            $item->sick_remaining = $la?->sick_remaining ?? 0;
+            $item->sick_used = $la?->sick_used ?? 0;
+            $item->comp_off_allocated = $la?->comp_off_allocated ?? 0;
+            $item->comp_off_remaining = $la?->comp_off_remaining ?? 0;
+            $item->comp_off_used = $la?->comp_off_used ?? 0;
+        }
+
         $balanceService = app(\App\Services\HRMS\Leave\LeaveBalanceService::class);
         $ledgerShape = $employee ? $balanceService->getApiBalanceShape($employee) : null;
         $allocation = $ledgerShape['allocation'] ?? ($employee ? $balanceService->allocationForRead($employee) : null);
@@ -102,8 +194,26 @@ class LeaveRequestC extends Controller
         $employees = $isAdminOrHr ? EmployeeM::where('is_active', true)->get()->sortBy(fn ($e) => strtolower($e->display_name))->values() : collect();
         $accesses = $this->accesses();
 
-        return view('hrms.leave.requests.index', compact('requests', 'allocation', 'leaveTypes', 'employee', 'employees', 'isAdminOrHr', 'accesses', 'centralBalance', 'ledgerFields'))
-            ->with('active', 'leave_management');
+        $isSuperAdminUser = $user->isSuperAdmin();
+        $isHrAdminUser = $isAdminOrHr;
+        $authEmpId = $employee?->id;
+
+        return view('hrms.leave.requests.index', compact(
+            'requests',
+            'allocation',
+            'leaveTypes',
+            'employee',
+            'employees',
+            'isAdminOrHr',
+            'accesses',
+            'centralBalance',
+            'ledgerFields',
+            'selectedMonth',
+            'year',
+            'isSuperAdminUser',
+            'isHrAdminUser',
+            'authEmpId'
+        ))->with('active', 'leave_management');
     }
 
     public function create()
@@ -202,6 +312,9 @@ class LeaveRequestC extends Controller
             $this->notifyLeaveApplied($leaveRequest);
 
             return redirect()->route('leave-requests.index')->with('success', 'Leave request submitted successfully.');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            if (! $requestPersisted && ! empty($attachmentPath)) Storage::disk('private')->delete($attachmentPath);
+            return back()->withInput()->withErrors($e->errors());
         } catch (\Throwable $e) {
             if (! $requestPersisted && ! empty($attachmentPath)) Storage::disk('private')->delete($attachmentPath);
             Log::error('Web leave request failed', ['error' => $e->getMessage()]);
@@ -286,9 +399,12 @@ class LeaveRequestC extends Controller
             $user = $this->currentUser();
             $isAdminOrHr = $this->isAdminOrHr($user);
 
-            $employee = $request->filled('employee_id') && $isAdminOrHr
+            $existingRequestId = $request->input('leave_request_id');
+            $existingRequest = $existingRequestId ? LeaveRequestM::find($existingRequestId) : null;
+
+            $employee = ($request->filled('employee_id') && $isAdminOrHr)
                 ? EmployeeM::find($request->employee_id)
-                : EmployeeM::where('user_id', Auth::id())->first();
+                : ($existingRequest ? $existingRequest->employee : EmployeeM::where('user_id', Auth::id())->first());
 
             if (! $employee) {
                 return response()->json(['success' => false, 'message' => 'Employee profile not found.'], 400);
@@ -316,9 +432,10 @@ class LeaveRequestC extends Controller
                 'emergency_leave' => $request->boolean('emergency_leave'),
                 'bypass_notice_period' => true,
                 'bypass_attachment_validation' => true,
+                'bypass_duplicate_validation' => true,
             ];
 
-            $calc = $this->calculationService->calculate($employee, $leaveType, $sanitized);
+            $calc = $this->calculationService->calculate($employee, $leaveType, $sanitized, $existingRequest);
             $ledgerBalances = app(\App\Services\HRMS\Leave\LeaveBalanceService::class)->getLedgerApiBalances($employee);
             $centralBalance = $ledgerBalances !== null
                 ? app(\App\Services\HRMS\Leave\LeaveBalanceService::class)->getCentralBalance($employee)
@@ -338,6 +455,25 @@ class LeaveRequestC extends Controller
                 }
             }
 
+            $hasDuplicate = false;
+            $calcDates = collect($calc['dates'] ?? [])
+                ->where('deduct_as_leave', true)
+                ->pluck('leave_date')
+                ->values()
+                ->all();
+            if (! empty($calcDates)) {
+                $dupQuery = DB::table('leave_request_dates')
+                    ->join('leave_requests', 'leave_requests.id', '=', 'leave_request_dates.leave_request_id')
+                    ->where('leave_request_dates.employee_id', $employee->id)
+                    ->whereIn('leave_request_dates.leave_date', $calcDates)
+                    ->whereNotIn('leave_requests.status', ['rejected', 'cancelled', 'void', 'expired']);
+                if ($existingRequest) {
+                    $dupQuery->where('leave_requests.id', '!=', $existingRequest->id);
+                }
+                $hasDuplicate = $dupQuery->exists();
+            }
+            $duplicateWarning = $hasDuplicate ? 'A non-cancelled leave request already exists for one or more selected dates.' : null;
+
             return response()->json([
                 'success' => true,
                 'data' => [
@@ -349,6 +485,7 @@ class LeaveRequestC extends Controller
                     'sandwich_details' => $calc['sandwich_details'] ?? [],
                     'sandwich_message' => $calc['sandwich_message'] ?? null,
                     'notice_warning' => $noticeWarning,
+                    'duplicate_warning' => $duplicateWarning,
                     'paid_days' => $calc['paid_days'],
                     'sick_days' => $calc['sick_days'],
                     'comp_off_days' => $calc['comp_off_days'],
@@ -356,6 +493,7 @@ class LeaveRequestC extends Controller
                     'pl_days' => $calc['paid_days'],
                     'sl_days' => $calc['sick_days'],
                     'lop_days' => $calc['lwp_days'],
+                    'requires_medical_certificate' => (bool) ($calc['requires_medical_certificate'] ?? false),
                     'leave_type_code' => $leaveType->code,
                     'is_comp_off' => (bool) $leaveType->is_comp_off,
                     'is_sick' => (bool) $leaveType->is_sick,
@@ -404,6 +542,33 @@ class LeaveRequestC extends Controller
             Log::error('Leave cancellation failed', ['leave_request_id' => $id, 'error' => $e->getMessage()]);
             return back()->with('error', $e->getMessage());
         }
+    }
+
+    public function attachment(int|string $id)
+    {
+        $user = $this->currentUser();
+        if (! $user) {
+            abort(401);
+        }
+
+        $leaveRequest = LeaveRequestM::findOrFail($id);
+        $isAdminOrHr = $this->isAdminOrHr($user);
+        $employee = EmployeeM::where('user_id', $user->id)->first();
+
+        if (! $isAdminOrHr && (! $employee || (int) $leaveRequest->employee_id !== (int) $employee->id)) {
+            abort(403, 'Unauthorized access to leave attachment.');
+        }
+
+        if (! $leaveRequest->attachment_path) {
+            abort(404, 'No attachment associated with this leave request.');
+        }
+
+        $stream = $this->resolver->secureFileStream($leaveRequest->attachment_path);
+        if (! $stream) {
+            abort(404, 'Attachment file not found on disk.');
+        }
+
+        return $stream;
     }
 
     private function storeAttachment(StoreLeaveRequestRequest $request): ?string

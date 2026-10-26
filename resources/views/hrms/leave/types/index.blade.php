@@ -123,11 +123,36 @@
         color: var(--leave-primary) !important;
     }
 
-    /* .leave-btn-primary:hover {
+    .leave-btn-gradient {
+        border: 0 !important;
+        border-radius: 14px;
+        background: linear-gradient(135deg, var(--leave-primary, #4B00E8), var(--leave-secondary, #FF5252)) !important;
+        color: #ffffff !important;
+        font-size: 13px;
+        font-weight: 850;
+        height: 40px;
+        padding: 0 18px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        box-shadow: 0 10px 24px rgba(75, 0, 232, 0.22);
+        transition: all .2s ease;
+        cursor: pointer;
+        text-decoration: none !important;
+    }
+
+    .leave-btn-gradient i {
+        color: #ffffff !important;
+    }
+
+    .leave-btn-gradient:hover,
+    .leave-btn-gradient:focus {
+        color: #ffffff !important;
         transform: translateY(-1px);
-        color: var(--leave-primary);
-        box-shadow: 0 16px 28px rgba(16, 24, 40, .20);
-    } */
+        box-shadow: 0 14px 28px rgba(75, 0, 232, 0.32);
+        filter: brightness(1.05);
+    }
 
     .leave-card {
         background: #fff;
@@ -443,10 +468,6 @@
         margin-bottom: 12px;
     }
 
-    .dataTables_wrapper .dt-buttons {
-        display: none !important;
-    }
-
     .dataTables_wrapper .dataTables_filter input,
     .dataTables_wrapper .dataTables_length select {
         border: 1px solid var(--leave-border);
@@ -692,13 +713,6 @@
                     Configure paid leave, sick leave, LWP and comp-off categories used across employee leave policies and payroll calculations.
                 </div>
             </div>
-
-            <div class="leave-hero-actions">
-                <button type="button" class="leave-btn-primary" data-toggle="modal" data-target="#createTypeModal">
-                    <i class="fas fa-plus"></i>
-                    Add Leave Type
-                </button>
-            </div>
         </div>
     </div>
 
@@ -720,17 +734,9 @@
             </div>
 
             <div class="leave-action-wrap">
-                <button type="button" class="leave-light-btn" onclick="triggerLeaveExport('csv');">
-                    <i class="fas fa-file-csv"></i> CSV
-                </button>
-                <button type="button" class="leave-light-btn" onclick="triggerLeaveExport('excel');">
-                    <i class="fas fa-file-excel text-success"></i> Excel
-                </button>
-                <button type="button" class="leave-light-btn" onclick="triggerLeaveExport('pdf');">
-                    <i class="fas fa-file-pdf text-danger"></i> PDF
-                </button>
-                <button type="button" class="leave-light-btn" onclick="triggerLeaveExport('print');">
-                    <i class="fas fa-print"></i> Print
+                <button type="button" class="leave-btn-gradient" data-toggle="modal" data-target="#createTypeModal">
+                    <i class="fas fa-plus"></i>
+                    Add Leave Type
                 </button>
             </div>
         </div>

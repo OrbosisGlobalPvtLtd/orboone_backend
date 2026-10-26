@@ -33,7 +33,7 @@ class LeavePolicyC extends Controller
         return back()->with('success', 'Leave policy saved successfully.');
     }
 
-    public function update(StoreLeavePolicyRequest $request, $id)
+    public function update(StoreLeavePolicyRequest $request, int $id)
     {
         $policy = LeavePolicyM::findOrFail($id);
         $old = $policy->toArray();
@@ -68,7 +68,8 @@ class LeavePolicyC extends Controller
 
     private function accesses()
     {
-        $roleId = auth()->user()->role_id ?? auth()->user()->system_role_id ?? null;
+        $user = Auth::user();
+        $roleId = $user->role_id ?? $user->system_role_id ?? null;
         return $roleId ? AccessM::where('role_id', $roleId)->get() : collect();
     }
 }

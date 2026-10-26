@@ -256,19 +256,19 @@
                     Leave Application #LR-{{ str_pad($lr->id, 4, '0', STR_PAD_LEFT) }}
                     @if($status === 'approved')
                         <span class="badge px-3 py-1 font-weight-bold" style="background: rgba(255,255,255,0.25); border:1px solid rgba(255,255,255,0.4); font-size:12px; border-radius:20px;">
-                            ✓ Approved
+                            Approved
                         </span>
                     @elseif($status === 'rejected')
                         <span class="badge px-3 py-1 font-weight-bold" style="background: #FEE2E2; color:#DC2626; font-size:12px; border-radius:20px;">
-                            ✕ Rejected
+                             Rejected
                         </span>
                     @elseif($status === 'void')
                         <span class="badge px-3 py-1 font-weight-bold" style="background: #F1F5F9; color:#475569; font-size:12px; border-radius:20px;">
-                            ⚪ Null & Void
+                             Null & Void
                         </span>
                     @else
                         <span class="badge px-3 py-1 font-weight-bold" style="background: #FEF3C7; color:#B45309; font-size:12px; border-radius:20px;">
-                            ⏳ Pending Approval
+                             Pending Approval
                         </span>
                     @endif
                 </h3>
@@ -380,6 +380,39 @@
                                     </span>
                                 </div>
                             </div>
+
+                            @if(!empty($lr->is_half_day))
+                            <div class="lr-info-item">
+                                <div class="label">Leave Session</div>
+                                <div class="value">
+                                    <span class="badge badge-info px-2.5 py-1 font-weight-bold" style="font-size: 11.5px; border-radius: 6px;">
+                                        <i class="far fa-clock mr-1"></i> Half Day ({{ ($lr->half_day_type ?? '') === 'second_half' ? 'Second Half - Afternoon Session' : 'First Half - Morning Session' }})
+                                    </span>
+                                </div>
+                            </div>
+                            @endif
+
+                            @if(!empty($lr->sandwich_applied))
+                            <div class="lr-info-item">
+                                <div class="label">Sandwich Policy</div>
+                                <div class="value">
+                                    <span class="badge badge-warning px-2.5 py-1 font-weight-bold text-dark" style="background:#FEF3C7; border:1px solid #FCD34D; font-size: 11.5px; border-radius: 6px;">
+                                        <i class="fas fa-layer-group mr-1"></i> Sandwich Policy Applied
+                                    </span>
+                                </div>
+                            </div>
+                            @endif
+
+                            @if(!empty($lr->attachment_path))
+                            <div class="lr-info-item">
+                                <div class="label">Attached Document</div>
+                                <div class="value">
+                                    <a href="{{ route('leave-requests.attachment', $lr->id) }}" target="_blank" class="btn btn-sm btn-outline-primary font-weight-bold" style="border-radius: 6px; padding: 4px 10px; font-size: 11.5px;">
+                                        <i class="fas fa-paperclip mr-1"></i> View Supporting Document
+                                    </a>
+                                </div>
+                            </div>
+                            @endif
 
                             <div class="lr-info-item">
                                 <div class="label">Reason / Notes</div>

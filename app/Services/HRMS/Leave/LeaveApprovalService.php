@@ -283,12 +283,15 @@ class LeaveApprovalService
     {
         try {
             $allocation = $this->allocationService->getOrGenerate($leaveRequest->employee, Carbon::parse($leaveRequest->start_date)->year, $userId);
-            if ($allocation->isLedgerBacked()) {
-                $debits = LeaveBalanceTransactionM::query()->where('leave_request_id', $leaveRequest->id)
-                    ->where('transaction_type', 'leave_debit')->orderBy('leave_allocation_id')->orderBy('id')->get();
-                $allocationIds = $debits->pluck('leave_allocation_id')->unique()->sort()->values();
-                LeaveAllocationM::query()->whereIn('id', $allocationIds)->orderBy('id')->lockForUpdate()->get();
-                foreach ($debits as $debit) $this->movementService->reverse((int) $debit->id, $userId, $action);
+            $debits = LeaveBalanceTransactionM::query()->where('leave_request_id', $leaveRequest->id)
+                ->where('transaction_type', 'leave_debit')->orderBy('leave_allocation_id')->orderBy('id')->get();
+
+            if ($allocation->isLedgerBacked() || $debits->isNotEmpty()) {
+                if ($debits->isNotEmpty()) {
+                    $allocationIds = $debits->pluck('leave_allocation_id')->unique()->sort()->values();
+                    LeaveAllocationM::query()->whereIn('id', $allocationIds)->orderBy('id')->lockForUpdate()->get();
+                    foreach ($debits as $debit) $this->movementService->reverse((int) $debit->id, $userId, $action);
+                }
                 $this->attendanceSyncService->reverseLeaveSync($leaveRequest, $userId);
                 DB::table('payroll_attendance_impacts')->where('leave_request_id', $leaveRequest->id)
                     ->where('is_processed_in_payroll', 0)->delete();
@@ -310,11 +313,7 @@ class LeaveApprovalService
                 }
                 return;
             }
-            if (strtolower((string) $allocation->employment_stage) === LeaveAllocationService::STAGE_PERMANENT) {
-                throw ValidationException::withMessages([
-                    'allocation' => 'Legacy permanent leave reversals are disabled. Reconcile this request through the new leave ledger.',
-                ]);
-            }
+
             if ($allocation->is_locked) {
                 throw ValidationException::withMessages(['allocation' => 'Leave allocation is locked and cannot be reversed.']);
             }
@@ -324,10 +323,10 @@ class LeaveApprovalService
             $allocation = $this->allocationService->adjustLegacyAllocation(
                 $allocation,
                 [
-                    'paid_used' => bcsub('0', (string) $leaveRequest->paid_days, 6),
-                    'sick_used' => bcsub('0', (string) $leaveRequest->sick_days, 6),
-                    'comp_off_used' => bcsub('0', (string) $leaveRequest->comp_off_days, 6),
-                    'lwp_used' => bcsub('0', (string) $leaveRequest->lwp_days, 6),
+                    'paid_used' => bcsub('0', (string) ($leaveRequest->paid_days ?? 0), 6),
+                    'sick_used' => bcsub('0', (string) ($leaveRequest->sick_days ?? 0), 6),
+                    'comp_off_used' => bcsub('0', (string) ($leaveRequest->comp_off_days ?? 0), 6),
+                    'lwp_used' => bcsub('0', (string) ($leaveRequest->lwp_days ?? 0), 6),
                 ],
                 $userId,
                 $action,
@@ -532,12 +531,14 @@ class LeaveApprovalService
         $title = match ($type) {
             'leave_manager_approved' => "Leave Approved by {$approverRole}",
             'leave_approved' => "Leave Approved by {$approverRole}",
+            'leave_voided' => "Leave Marked as Null & Void",
             default => "Leave Rejected by {$approverRole}",
         };
 
         $message = match ($type) {
             'leave_manager_approved' => "Your {$leaveType} leave from {$fromDate} to {$toDate} has been approved by your Manager.",
             'leave_approved' => "Your {$leaveType} leave from {$fromDate} to {$toDate} has been approved by {$approverRole}.",
+            'leave_voided' => "Your {$leaveType} leave from {$fromDate} to {$toDate} has been marked as Null & Void by {$approverRole}." . ($reason ? " Reason: {$reason}" : ""),
             default => "Your {$leaveType} leave from {$fromDate} to {$toDate} has been rejected by {$approverRole}." . ($reason ? " Reason: {$reason}" : ""),
         };
 

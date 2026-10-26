@@ -87,26 +87,31 @@
 
     /* Theme Cancel Button */
     .leave-btn-theme-cancel {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: #FFFFFF;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        background: #F8FAFC !important;
         color: #475569 !important;
-        border: 1.5px solid #E2E8F0;
-        border-radius: 12px;
-        height: 46px;
-        padding: 0 22px;
-        font-size: 13.5px;
-        font-weight: 700;
-        cursor: pointer;
-        transition: all 0.2s ease;
+        border: 1.5px solid #CBD5E1 !important;
+        border-radius: 12px !important;
+        height: 48px !important;
+        padding: 0 24px !important;
+        font-size: 14px !important;
+        font-weight: 700 !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
         text-decoration: none !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
     }
 
     .leave-btn-theme-cancel:hover {
-        background: #F8FAFC;
-        border-color: #CBD5E1;
-        color: #1E293B !important;
+        background: #E2E8F0 !important;
+        border-color: #94A3B8 !important;
+        color: #0F172A !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+        text-decoration: none !important;
     }
 
     /* Live Preview Side Card */
@@ -350,14 +355,10 @@
                                     <option value="" disabled {{ old('leave_type_id') !== null ? '' : 'selected' }}>Select leave type...</option>
                                     @foreach($leaveTypes as $type)
                                         @php
-                                            $isConfirmed = $employee ? (bool)$employee->is_permanent : true;
                                             $isDisabled = false;
                                             $suffix = '';
                                             
-                                            if (!$isConfirmed && !$type->is_lwp && !$isAdminOrHr) {
-                                                $isDisabled = true;
-                                                $suffix = ' (Confirmed employees only)';
-                                            } elseif ($type->is_comp_off && ($allocation->comp_off_remaining ?? 0) <= 0 && !$isAdminOrHr) {
+                                            if ($type->is_comp_off && ($allocation->comp_off_remaining ?? 0) <= 0 && !$isAdminOrHr) {
                                                 $isDisabled = true;
                                                 $suffix = ' (No balance available)';
                                             }
@@ -414,48 +415,76 @@
                                 </div>
                             </div>
 
-                            <!-- 4. Half Day Options (Only for Single Date) -->
-                            <div class="form-group mb-3" id="half_day_section">
-                                <div class="p-3" style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 14px;">
-                                    <div class="d-flex align-items-center flex-wrap" style="gap: 20px;">
-                                        <div class="custom-control custom-checkbox">
-                                            <input type="checkbox" class="custom-control-input" id="is_half_day" name="is_half_day" value="1" {{ old('is_half_day') ? 'checked' : '' }} onchange="toggleHalfDaySession(); triggerLivePreview();">
-                                            <label class="custom-control-label font-weight-bold text-dark" for="is_half_day" style="font-size: 13px; cursor: pointer;">
-                                                Half Day Leave
-                                            </label>
-                                        </div>
+                            <!-- 4 & 5. Half Day and Emergency Leave (2-Grid Layout) -->
+                            <div class="row">
+                                <!-- Half Day Option (Only for Single Date) -->
+                                <div class="col-md-6 col-12 mb-3" id="half_day_section">
+                                    <div class="p-3 h-100 d-flex flex-column justify-content-center" style="background: #F8FAFC; border: 1.5px solid #E2E8F0; border-radius: 14px; min-height: 56px;">
+                                        <div class="d-flex align-items-center flex-wrap" style="gap: 14px;">
+                                            <div class="custom-control custom-checkbox">
+                                                <input type="checkbox" class="custom-control-input" id="is_half_day" name="is_half_day" value="1" {{ old('is_half_day') ? 'checked' : '' }} onchange="toggleHalfDaySession(); triggerLivePreview();">
+                                                <label class="custom-control-label font-weight-bold text-dark" for="is_half_day" style="font-size: 13px; cursor: pointer;">
+                                                    Half Day Leave
+                                                </label>
+                                            </div>
 
-                                        <div id="half_day_type_container" style="{{ old('is_half_day') ? 'display: block;' : 'display: none;' }}">
-                                            <div class="d-flex align-items-center gap-2">
-                                                <span class="font-weight-bold text-muted small mr-2">Session:</span>
-                                                <div class="custom-control custom-radio custom-control-inline">
-                                                    <input type="radio" id="session_first" name="half_day_type" value="first_half" class="custom-control-input" {{ old('half_day_type', 'first_half') === 'first_half' ? 'checked' : '' }} onchange="triggerLivePreview()">
-                                                    <label class="custom-control-label font-weight-bold text-dark small" for="session_first" style="cursor: pointer;">First Half</label>
-                                                </div>
-                                                <div class="custom-control custom-radio custom-control-inline">
-                                                    <input type="radio" id="session_second" name="half_day_type" value="second_half" class="custom-control-input" {{ old('half_day_type') === 'second_half' ? 'checked' : '' }} onchange="triggerLivePreview()">
-                                                    <label class="custom-control-label font-weight-bold text-dark small" for="session_second" style="cursor: pointer;">Second Half</label>
+                                            <div id="half_day_type_container" style="{{ old('is_half_day') ? 'display: block;' : 'display: none;' }}">
+                                                <div class="d-flex align-items-center" style="gap: 8px;">
+                                                    <span class="font-weight-bold text-muted small mr-1">Session:</span>
+                                                    <div class="custom-control custom-radio custom-control-inline mr-2">
+                                                        <input type="radio" id="session_first" name="half_day_type" value="first_half" class="custom-control-input" {{ old('half_day_type', 'first_half') === 'first_half' ? 'checked' : '' }} onchange="triggerLivePreview()">
+                                                        <label class="custom-control-label font-weight-bold text-dark small" for="session_first" style="cursor: pointer;">1st Half</label>
+                                                    </div>
+                                                    <div class="custom-control custom-radio custom-control-inline mr-0">
+                                                        <input type="radio" id="session_second" name="half_day_type" value="second_half" class="custom-control-input" {{ old('half_day_type') === 'second_half' ? 'checked' : '' }} onchange="triggerLivePreview()">
+                                                        <label class="custom-control-label font-weight-bold text-dark small" for="session_second" style="cursor: pointer;">2nd Half</label>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <!-- 5. Emergency Leave -->
-                            <div class="form-group mb-3">
-                                <div class="custom-control custom-checkbox">
-                                    <input type="checkbox" class="custom-control-input" id="emergency_leave" name="emergency_leave" value="1" {{ old('emergency_leave') ? 'checked' : '' }}>
-                                    <label class="custom-control-label font-weight-bold text-dark" for="emergency_leave" style="font-size: 13px; cursor: pointer;">
-                                        Emergency Leave <small class="text-muted">(Check if applying due to urgent emergency)</small>
-                                    </label>
+                                <!-- Emergency Leave Option -->
+                                <div class="col-md-6 col-12 mb-3" id="emergency_leave_section">
+                                    <div class="p-3 h-100 d-flex align-items-center" style="background: #F8FAFC; border: 1.5px solid #E2E8F0; border-radius: 14px; min-height: 56px;">
+                                        <div class="custom-control custom-checkbox">
+                                            <input type="checkbox" class="custom-control-input" id="emergency_leave" name="emergency_leave" value="1" {{ old('emergency_leave') ? 'checked' : '' }}>
+                                            <label class="custom-control-label font-weight-bold text-dark mb-0" for="emergency_leave" style="font-size: 13px; cursor: pointer;">
+                                                Emergency Leave <small class="text-muted font-weight-normal">(Urgent)</small>
+                                            </label>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                            <!-- 6. Attachment -->
-                            <div class="form-group mb-3">
-                                <label class="font-weight-bold text-dark mb-1" style="font-size: 13px;">Attachment <small class="text-muted">(Optional)</small></label>
-                                <input type="file" name="attachment" class="form-control shadow-none" style="border-radius: 12px; height: 44px; padding: 8px 14px;">
+                            <!-- 6. Attachment / Medical Certificate -->
+                            <div class="form-group mb-3" id="attachmentGroup">
+                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                    <label class="font-weight-bold text-dark mb-0" id="attachmentLabel" style="font-size: 13px;">
+                                        Supporting Document / Attachment <small class="text-muted font-weight-normal" id="attachmentOptionalText">(Optional)</small>
+                                    </label>
+                                    <span id="medicalCertBadge" class="badge badge-danger font-weight-bold px-2 py-1" style="font-size: 11px; display: none; border-radius: 6px;">
+                                        <i class="fas fa-file-medical mr-1"></i> Medical Certificate Required
+                                    </span>
+                                </div>
+                                <input type="file" name="attachment" id="attachmentInput" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" class="form-control shadow-none @error('attachment') is-invalid @enderror" style="border-radius: 12px; height: 44px; padding: 8px 14px;">
+                                @error('attachment')
+                                    <div class="invalid-feedback d-block font-weight-bold">{{ $message }}</div>
+                                @enderror
+                                <small class="text-muted d-block mt-1" style="font-size: 11px;" id="attachmentHelpText">
+                                    Allowed file formats: PDF, JPG, PNG, DOC (Max: 5MB).
+                                </small>
+
+                                <!-- Medical Certificate Alert Notice -->
+                                <div id="medicalNoticeAlert" class="alert alert-danger border-0 shadow-sm p-3 mt-2 mb-0" style="border-radius: 12px; display: none; background: #FEF2F2; border-left: 4px solid #EF4444 !important;">
+                                    <div class="d-flex align-items-center text-danger font-weight-bold mb-1" style="font-size: 13px;">
+                                        <i class="fas fa-notes-medical mr-2" style="font-size: 15px;"></i> Medical Certificate Mandatory
+                                    </div>
+                                    <div class="text-danger small" style="font-size: 12px; line-height: 1.5;">
+                                        Policy requires a verified <strong>Medical Certificate / Doctor Prescription</strong> to be attached when taking <strong>more than 2 consecutive days of Sick Leave</strong>.
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- 7. Reason -->
@@ -473,12 +502,13 @@
                                         <span id="btnSubmitText">Submit Leave Request</span>
                                     </button>
                                     <a href="{{ route('leave-requests.index') }}" class="leave-btn-theme-cancel">
-                                        <i class="fas fa-times mr-1.5"></i> Cancel
+                                        <i class="fas fa-times text-muted mr-1"></i>
+                                        <span>Cancel</span>
                                     </a>
                                 </div>
                                 <div class="d-none d-md-flex align-items-center text-muted small font-weight-bold" style="font-size: 11.5px;">
                                     <i class="fas fa-shield-alt mr-1.5" style="color: var(--orb-primary, #4B00E8);"></i>
-                                    <span>HR Policy auto-verified</span>
+                                    <span>Policy auto-verified</span>
                                 </div>
                             </div>
                         </form>
@@ -528,7 +558,7 @@
                             <span id="calcLoadingBadge" class="calc-loading-pill" style="display: none;">
                                 <i class="fas fa-circle-notch fa-spin mr-1"></i> Calculating...
                             </span>
-                            <span class="badge-theme-policy">HR POLICY</span>
+                            <span class="badge-theme-policy">POLICY</span>
                         </div>
                     </div>
 
@@ -569,6 +599,22 @@
                             <div class="small text-muted mb-0" id="noticeWarningText"></div>
                         </div>
 
+                        <!-- 1c. Duplicate Date Warning Badge -->
+                        <div id="duplicateWarningBanner" class="alert alert-warning border-0 shadow-sm p-3 mb-3" style="border-radius: 12px; display: none; background: #FFF7ED; border-left: 4px solid #EA580C !important;">
+                            <div class="d-flex align-items-center gap-2 font-weight-bold text-dark mb-1" style="font-size: 13px; color: #9A3412;">
+                                <i class="fas fa-exclamation-circle text-warning mr-1"></i> Existing Request Notice
+                            </div>
+                            <div class="small text-muted mb-0" id="duplicateWarningText"></div>
+                        </div>
+
+                        <!-- 1d. Calculation Error Alert Badge -->
+                        <div id="calcErrorBanner" class="alert alert-danger border-0 shadow-sm p-3 mb-3" style="border-radius: 12px; display: none; background: #FEF2F2; border-left: 4px solid #EF4444 !important;">
+                            <div class="d-flex align-items-center gap-2 font-weight-bold text-danger mb-1" style="font-size: 13px;">
+                                <i class="fas fa-times-circle mr-1"></i> Calculation Alert
+                            </div>
+                            <div class="small text-danger mb-0" id="calcErrorText"></div>
+                        </div>
+
                         <!-- 2. Sandwich Rule Alert Badge -->
                         <div id="sandwichBadge" class="alert alert-warning border-0 shadow-sm p-3 mb-3" style="border-radius: 12px; display: none; background: #FEF3C7; border: 1px solid #FDE68A;">
                             <div class="d-flex align-items-center gap-2 font-weight-bold text-dark mb-1" style="font-size: 13px; color: #92400E;">
@@ -607,23 +653,18 @@
                         </div>
 
                         <!-- 4. LWP Spillover Notice Banner -->
-                        <div id="lwpNoticeBanner" class="alert alert-danger border-0 shadow-sm p-3 mb-3" style="border-radius: 12px; display: none;">
-                            <div class="d-flex align-items-center gap-2 font-weight-bold text-danger mb-1" style="font-size: 13px;">
-                                <i class="fas fa-exclamation-circle"></i> Monthly Quota Exceeded (LWP)
+                        <div id="lwpNoticeBanner" class="alert alert-danger border-0 shadow-sm p-3 mb-3" style="border-radius: 12px; display: none; background: #FEF2F2; border-left: 4px solid #EF4444 !important;">
+                            <div class="d-flex align-items-center gap-2 font-weight-bold text-danger mb-1" style="font-size: 13px;" id="lwpNoticeTitle">
+                                <i class="fas fa-exclamation-triangle mr-1"></i> Insufficient Leave Balance (LWP)
                             </div>
                             <div class="small text-danger" id="lwpNoticeText">
-                                Paid leave quota for this month is exhausted. Excess days will automatically be deducted as Leave Without Pay (LWP).
+                                You do not have sufficient balance for the selected leave type. The requested days will be applied as Leave Without Pay (LWP).
                             </div>
                         </div>
 
-                        <!-- 5. Quick Action Button inside summary card -->
-                        <div class="pt-3 border-top d-none d-lg-block">
-                            <button type="button" class="btn btn-block leave-btn-theme-submit" onclick="document.getElementById('btnSubmitLeave').click()">
-                                <i class="fas fa-paper-plane mr-2"></i> Submit Leave Request
-                            </button>
-                            <div class="d-flex align-items-center justify-content-center text-muted small font-weight-bold mt-2" style="font-size: 11px;">
-                                <i class="fas fa-check-circle text-success mr-1"></i> Verified against leave policy
-                            </div>
+                        <!-- 5. Verification Note inside summary card -->
+                        <div class="pt-3 border-top d-flex align-items-center justify-content-center text-muted small font-weight-bold" style="font-size: 11.5px;">
+                            <i class="fas fa-check-circle text-success mr-1.5"></i> Live Quota &amp; Policy Auto-Verified
                         </div>
                     </div>
                 </div>
@@ -663,6 +704,7 @@
         var startContainer = document.getElementById('start_date_container');
         var endContainer = document.getElementById('end_date_container');
         var halfDaySection = document.getElementById('half_day_section');
+        var emergencySection = document.getElementById('emergency_leave_section');
         var halfDayCheck = document.getElementById('is_half_day');
 
         if (mode === 'single') {
@@ -671,7 +713,8 @@
             singleContainer.style.display = 'block';
             startContainer.style.display = 'none';
             endContainer.style.display = 'none';
-            halfDaySection.style.display = 'block';
+            if (halfDaySection) halfDaySection.style.display = 'block';
+            if (emergencySection) emergencySection.className = 'col-md-6 col-12 mb-3';
 
             var startEl = document.getElementById('start_date');
             if (startEl && startEl.value) {
@@ -686,8 +729,9 @@
             endContainer.style.display = 'block';
             
             // Multiple Days -> DISABLE & HIDE Half Day Option
-            halfDaySection.style.display = 'none';
-            halfDayCheck.checked = false;
+            if (halfDaySection) halfDaySection.style.display = 'none';
+            if (emergencySection) emergencySection.className = 'col-12 mb-3';
+            if (halfDayCheck) halfDayCheck.checked = false;
             toggleHalfDaySession();
 
             var singleVal = document.getElementById('single_date_input').value;
@@ -860,8 +904,8 @@
 
                 // Day counts grid
                 document.getElementById('prev_cal_days').textContent = d.requested_calendar_days;
-                document.getElementById('prev_work_days').textContent = d.working_days;
-                document.getElementById('prev_sand_days').textContent = d.sandwich_days;
+                document.getElementById('prev_work_days').textContent = Number(d.working_days || 0).toString();
+                document.getElementById('prev_sand_days').textContent = Number(d.sandwich_days || 0).toString();
 
                 var sandPill = document.getElementById('prev_sand_pill');
                 if (sandPill) {
@@ -894,6 +938,20 @@
                     if (noticeBanner) noticeBanner.style.display = 'none';
                 }
 
+                // Duplicate Request warning badge
+                var dupBanner = document.getElementById('duplicateWarningBanner');
+                var dupMsgEl = document.getElementById('duplicateWarningText');
+                if (d.duplicate_warning) {
+                    if (dupBanner) dupBanner.style.display = 'block';
+                    if (dupMsgEl) dupMsgEl.textContent = d.duplicate_warning;
+                } else {
+                    if (dupBanner) dupBanner.style.display = 'none';
+                }
+
+                // Hide any calculation error
+                var calcErrBanner = document.getElementById('calcErrorBanner');
+                if (calcErrBanner) calcErrBanner.style.display = 'none';
+
                 // Sandwich rule badge
                 var sandwichBadge = document.getElementById('sandwichBadge');
                 var sandwichMsgEl = document.getElementById('sandwichBadgeMsg');
@@ -906,22 +964,68 @@
                     sandwichBadge.style.display = 'none';
                 }
 
-                // LWP Spillover Notice
+                // Medical certificate requirement for sick leave > 2 days
+                var isMedReq = !!d.requires_medical_certificate;
+                var medBadge = document.getElementById('medicalCertBadge');
+                var medAlert = document.getElementById('medicalNoticeAlert');
+                var attLabel = document.getElementById('attachmentLabel');
+                var attOptText = document.getElementById('attachmentOptionalText');
+                var attInput = document.getElementById('attachmentInput');
+
+                if (isMedReq) {
+                    if (medBadge) medBadge.style.display = 'inline-block';
+                    if (medAlert) medAlert.style.display = 'block';
+                    if (attOptText) attOptText.style.display = 'none';
+                    if (attLabel) attLabel.innerHTML = 'Medical Certificate <span class="text-danger">* (Required)</span>';
+                    if (attInput) {
+                        attInput.required = true;
+                        attInput.classList.add('border-danger');
+                    }
+                } else {
+                    if (medBadge) medBadge.style.display = 'none';
+                    if (medAlert) medAlert.style.display = 'none';
+                    if (attOptText) attOptText.style.display = 'inline';
+                    if (attLabel) attLabel.innerHTML = 'Supporting Document / Attachment <small class="text-muted font-weight-normal" id="attachmentOptionalText">(Optional)</small>';
+                    if (attInput) {
+                        attInput.required = false;
+                        attInput.classList.remove('border-danger', 'is-invalid');
+                    }
+                }
+
+                // LWP Notice
                 var lwpNoticeBanner = document.getElementById('lwpNoticeBanner');
+                var lwpNoticeTitle = document.getElementById('lwpNoticeTitle');
                 var lwpNoticeText = document.getElementById('lwpNoticeText');
                 if (d.lwp_days > 0) {
                     lwpNoticeBanner.style.display = 'block';
-                    lwpNoticeText.textContent = d.ledger_backed
-                        ? Number(d.lwp_days).toFixed(1) + ' day(s) exceed the available leave balances and will be LWP.'
-                        : 'Monthly paid leave quota is exceeded/exhausted. ' + Number(d.lwp_days).toFixed(1) + ' day(s) will automatically spill over and be deducted as LWP (Leave Without Pay).';
+                    if (lwpNoticeTitle) {
+                        lwpNoticeTitle.innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i> Insufficient Leave Balance (LWP)';
+                    }
+                    var lwpCount = Number(d.lwp_days).toFixed(1);
+                    lwpNoticeText.innerHTML = 'You do not have sufficient balance for the selected leave type. <strong>' + lwpCount + ' day(s)</strong> will be applied as <strong>Leave Without Pay (LWP)</strong>.';
                 } else {
                     lwpNoticeBanner.style.display = 'none';
                 }
+            } else if (res && !res.success) {
+                var calcErrBanner = document.getElementById('calcErrorBanner');
+                var calcErrText = document.getElementById('calcErrorText');
+                if (calcErrBanner && res.message) {
+                    calcErrBanner.style.display = 'block';
+                    if (calcErrText) calcErrText.textContent = res.message;
+                }
+                var dupBanner = document.getElementById('duplicateWarningBanner');
+                if (dupBanner) dupBanner.style.display = 'none';
             }
         })
         .catch(function(err) {
             if (err.name !== 'AbortError') {
                 console.warn('Preview calculation error:', err);
+                var calcErrBanner = document.getElementById('calcErrorBanner');
+                var calcErrText = document.getElementById('calcErrorText');
+                if (calcErrBanner) {
+                    calcErrBanner.style.display = 'block';
+                    if (calcErrText) calcErrText.textContent = 'Unable to calculate leave preview. Please verify selected dates.';
+                }
             }
         })
         .finally(function() {
@@ -937,12 +1041,40 @@
         setupFlatpickrHooks();
         setLeaveMode('single');
 
+        var attInput = document.getElementById('attachmentInput');
+        if (attInput) {
+            attInput.addEventListener('change', function() {
+                if (this.files && this.files.length > 0) {
+                    this.classList.remove('is-invalid', 'border-danger');
+                }
+            });
+        }
+
         var form = document.getElementById('applyLeaveForm');
         if (form) {
             form.addEventListener('submit', function(e) {
                 var mode = document.getElementById('leave_mode_input').value;
                 if (mode === 'single') {
                     syncSingleDate();
+                }
+
+                // Validate medical certificate if required
+                var attField = document.getElementById('attachmentInput');
+                if (attField && attField.required && (!attField.files || attField.files.length === 0)) {
+                    e.preventDefault();
+                    attField.classList.add('is-invalid', 'border-danger');
+                    attField.focus();
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Medical Certificate Required',
+                            text: 'Policy requires a verified Medical Certificate when taking more than 2 consecutive days of Sick Leave.',
+                            confirmButtonColor: '#4B00E8'
+                        });
+                    } else {
+                        alert('Medical Certificate is required for more than 2 consecutive days of Sick Leave. Please upload your document.');
+                    }
+                    return false;
                 }
 
                 var submitBtn = document.getElementById('btnSubmitLeave');

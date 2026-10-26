@@ -24,6 +24,7 @@ use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use App\Services\HRMS\Leave\LeavePolicyService;
 use App\Services\HRMS\Leave\LeaveValidationService;
+use App\Services\HRMS\Leave\WeekoffHolidayService;
 use App\Enums\LeaveBucket;
 use App\Services\HRMS\Employee\EmployeeEligibilityS;
 use App\Services\HRMS\Notification\NotificationS;
@@ -355,6 +356,7 @@ class LeaveApiC extends Controller
             array_merge($data, [
                 'bypass_notice_period' => true,
                 'bypass_attachment_validation' => true,
+                'bypass_duplicate_validation' => true,
             ])
         );
 
@@ -606,7 +608,7 @@ class LeaveApiC extends Controller
             ->where('leave_request_dates.employee_id', $employee->id)
             ->whereMonth('leave_request_dates.leave_date', $month)
             ->whereYear('leave_request_dates.leave_date', $year)
-            ->whereNotIn('leave_requests.status', ['rejected', 'cancelled'])
+            ->whereNotIn('leave_requests.status', ['rejected', 'cancelled', 'void'])
             ->select('leave_request_dates.*', 'leave_requests.status', 'leave_types.name as leave_type_name', 'leave_types.code as leave_type_code')
             ->orderBy('leave_request_dates.leave_date')
             ->get();
@@ -616,7 +618,81 @@ class LeaveApiC extends Controller
 
     public function teamCalendar(Request $request)
     {
-        return $this->calendar($request);
+        $request->validate([
+            'month' => 'nullable|integer|min:1|max:12',
+            'year' => 'nullable|integer|min:2020|max:2099',
+        ]);
+
+        $employee = $this->employee();
+        $month = (int) ($request->month ?: Carbon::now('Asia/Kolkata')->month);
+        $year = (int) ($request->year ?: Carbon::now('Asia/Kolkata')->year);
+
+        $startOfMonth = Carbon::create($year, $month, 1, 0, 0, 0, 'Asia/Kolkata');
+        $endOfMonth = $startOfMonth->copy()->endOfMonth();
+        $daysInMonth = $startOfMonth->daysInMonth;
+
+        $weekoffService = app(WeekoffHolidayService::class);
+
+        $holidays = HolidayM::where('is_active', true)
+            ->whereYear('holiday_date', $year)
+            ->whereMonth('holiday_date', $month)
+            ->orderBy('holiday_date')
+            ->get();
+        $holidaysByDate = $holidays->groupBy(fn ($h) => Carbon::parse($h->holiday_date)->toDateString());
+
+        $leaves = LeaveRequestM::with(['leaveType', 'employee.user'])
+            ->where(function ($q) use ($employee) {
+                $q->where('employee_id', $employee->id);
+                if ($employee->department_id) {
+                    $q->orWhereHas('employee', function ($eq) use ($employee) {
+                        $eq->where('department_id', $employee->department_id);
+                    });
+                }
+            })
+            ->whereNotIn('status', ['rejected', 'cancelled', 'void'])
+            ->whereDate('start_date', '<=', $endOfMonth->toDateString())
+            ->whereDate('end_date', '>=', $startOfMonth->toDateString())
+            ->get();
+
+        $days = [];
+        for ($day = 1; $day <= $daysInMonth; $day++) {
+            $curDate = Carbon::create($year, $month, $day, 0, 0, 0, 'Asia/Kolkata');
+            $dateStr = $curDate->toDateString();
+
+            $dayInfo = $weekoffService->dayInfo($curDate);
+            $dayHolidays = ($holidaysByDate->get($dateStr) ?? collect())->map(function ($h) {
+                return $this->formatHoliday($h);
+            })->values()->all();
+
+            $dayLeaves = [];
+            foreach ($leaves as $leave) {
+                $startDate = Carbon::parse($leave->start_date)->toDateString();
+                $endDate = Carbon::parse($leave->end_date)->toDateString();
+                if ($dateStr >= $startDate && $dateStr <= $endDate) {
+                    $dayLeaves[] = $this->formatLeaveRequest($leave);
+                }
+            }
+
+            $isHalfDay = false;
+            foreach ($dayLeaves as $dl) {
+                if (!empty($dl['is_half_day'])) {
+                    $isHalfDay = true;
+                    break;
+                }
+            }
+
+            $days[] = [
+                'date' => $dateStr,
+                'is_weekoff' => (bool) $dayInfo['is_weekoff'],
+                'is_holiday' => (bool) $dayInfo['is_holiday'] || count($dayHolidays) > 0,
+                'is_half_day' => $isHalfDay,
+                'is_working_day' => (bool) $dayInfo['is_working_day'],
+                'holidays' => $dayHolidays,
+                'leaves' => $dayLeaves,
+            ];
+        }
+
+        return $this->ok('Company calendar fetched successfully.', $days);
     }
 
     public function cancel(Request $request, $id)

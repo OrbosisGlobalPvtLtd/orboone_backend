@@ -24,6 +24,7 @@ Route::middleware(['auth', 'check.access'])->group(function () {
     Route::post('/leave-requests', [LeaveRequestC::class, 'store'])->middleware('permission:leave.my_requests.create|leave.my_requests.view|leave.approvals.view_all|leave.history.view')->name('leave-requests.store');
     Route::post('/leave-requests/preview', [LeaveRequestC::class, 'preview'])->middleware('permission:leave.my_requests.create|leave.my_requests.view|leave.approvals.view_all|leave.history.view')->name('leave-requests.preview');
     Route::put('/leave-requests/{id}', [LeaveRequestC::class, 'update'])->middleware('permission:leave.my_requests.create|leave.my_requests.view|leave.approvals.view_all|leave.history.view')->name('leave-requests.update');
+    Route::get('/leave-requests/{id}/attachment', [LeaveRequestC::class, 'attachment'])->name('leave-requests.attachment');
     Route::post('/leave-requests/{id}/cancel', [LeaveRequestC::class, 'cancel'])->middleware('permission:leave.my_requests.cancel|leave.my_requests.create|leave.my_requests.view|leave.approvals.view_all')->name('leave-requests.cancel');
 
     Route::get('/leave-approvals', [LeaveApprovalC::class, 'index'])->name('leave-approvals.index');
@@ -58,6 +59,7 @@ Route::middleware(['auth', 'check.access'])->group(function () {
 
     Route::get('/comp-offs', [CompOffC::class, 'index'])->middleware('permission:leave.comp_off.view_all|leave.comp_off.view_own|leave.comp_off.view|leave.comp_off.manage')->name('hrms.comp_offs.index');
     Route::post('/comp-offs/grant', [CompOffC::class, 'grantManual'])->middleware('permission:leave.comp_off.manage')->name('hrms.comp_offs.grant');
+    Route::put('/comp-offs/{id}', [CompOffC::class, 'update'])->middleware('permission:leave.comp_off.manage')->name('hrms.comp_offs.update');
     Route::post('/comp-offs/holiday-work/{id}/approve', [CompOffC::class, 'approveHolidayWork'])->middleware('permission:leave.comp_off.manage')->name('hrms.comp_offs.holiday_work.approve');
     Route::post('/comp-offs/expire', [CompOffC::class, 'expire'])->middleware('permission:leave.comp_off.manage')->name('hrms.comp_offs.expire');
 

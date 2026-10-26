@@ -978,6 +978,12 @@
     .empty-state {
         padding: 42px 18px;
         text-align: center;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
     }
 
     .empty-state i {
@@ -1047,19 +1053,18 @@
 
     /* Modern HRMS Tab Navigation Styles */
     .leave-tabs-nav-wrap {
-        padding: 10px 20px;
-        background: #F8FAFC;
-        border-bottom: 1px solid var(--leave-border);
+        padding: 14px 24px 8px;
+        background: transparent;
         display: flex;
         align-items: center;
-        justify-content: space-between;
+        justify-content: flex-start;
         gap: 12px;
         flex-wrap: wrap;
     }
 
     .leave-modern-tabs {
         display: flex;
-        gap: 8px;
+        gap: 10px;
         border: none;
         margin: 0;
         padding: 0;
@@ -1069,28 +1074,28 @@
     .leave-modern-tabs .nav-link {
         display: inline-flex;
         align-items: center;
-        padding: 8px 16px;
+        height: 38px;
+        padding: 0 16px;
         border-radius: 12px;
         font-size: 13px;
-        font-weight: 700;
-        color: #475467;
-        background: #FFFFFF;
-        border: 1px solid var(--leave-border);
+        font-weight: 750;
+        color: var(--leave-primary, #4B00E8);
+        background: #F4F2FF;
+        border: 1px solid rgba(75, 0, 232, 0.12);
         transition: all .2s cubic-bezier(0.4, 0, 0.2, 1);
         text-decoration: none;
         cursor: pointer;
-        box-shadow: 0 1px 2px rgba(16, 24, 40, .04);
     }
 
     .leave-modern-tabs .nav-link:hover {
         color: var(--leave-primary);
-        background: #F4F2FF;
-        border-color: rgba(75, 0, 232, .2);
+        background: #EDE9FE;
+        border-color: rgba(75, 0, 232, .25);
     }
 
     .leave-modern-tabs .nav-link.active {
         color: #FFFFFF !important;
-        background: linear-gradient(135deg, var(--leave-primary), var(--leave-secondary)) !important;
+        background: linear-gradient(135deg, var(--leave-primary, #4B00E8), var(--leave-secondary, #8600EE)) !important;
         border-color: transparent !important;
         box-shadow: 0 4px 14px rgba(75, 0, 232, .28);
     }
@@ -1100,8 +1105,8 @@
         font-weight: 800;
         padding: 2px 7px;
         border-radius: 999px;
-        background: #EAECF0;
-        color: #344054;
+        background: rgba(75, 0, 232, 0.1);
+        color: var(--leave-primary, #4B00E8);
         transition: all .2s ease;
     }
 
@@ -1199,5 +1204,373 @@
     .reason-approver-meta i {
         color: #10B981;
         font-size: 11px;
+    }
+
+    /* ==========================================================================
+       Leave Allocation Design System Integration
+       ========================================================================== */
+
+    .leave-view-tab {
+        border: 1px solid var(--leave-border, #E7EAF3) !important;
+        border-radius: 10px !important;
+        padding: 9px 16px !important;
+        color: var(--leave-text, #101828) !important;
+        background: #fff !important;
+        font-weight: 800 !important;
+        font-size: 13px !important;
+        text-decoration: none !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        cursor: pointer !important;
+        transition: all .2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        box-shadow: 0 1px 3px rgba(16, 24, 40, .05) !important;
+    }
+
+    .leave-view-tab:hover,
+    .leave-view-tab.active {
+        color: #fff !important;
+        border-color: transparent !important;
+        background: linear-gradient(135deg, var(--leave-primary, #4B00E8), #e94069) !important;
+        box-shadow: 0 7px 18px rgba(75, 0, 232, .22) !important;
+    }
+
+    .leave-view-tab .leave-tab-badge {
+        font-size: 11px !important;
+        font-weight: 800 !important;
+        padding: 2px 7px !important;
+        border-radius: 999px !important;
+        background: rgba(75, 0, 232, 0.1) !important;
+        color: var(--leave-primary, #4B00E8) !important;
+        transition: all .2s ease !important;
+    }
+
+    .leave-view-tab:hover .leave-tab-badge,
+    .leave-view-tab.active .leave-tab-badge {
+        background: rgba(255, 255, 255, .26) !important;
+        color: #FFFFFF !important;
+    }
+
+    /* ORB TABLE CARD - Shared Standard */
+    .orb-table-card {
+        background: #fff !important;
+        border: 1px solid var(--leave-border, #E7EAF3) !important;
+        border-radius: 24px !important;
+        box-shadow: var(--leave-shadow, 0 14px 35px rgba(16, 24, 40, .07)) !important;
+        overflow: hidden !important;
+        margin-bottom: 24px !important;
+    }
+
+    .orb-table-head {
+        padding: 18px 24px !important;
+        border-bottom: 1px solid var(--leave-border, #E7EAF3) !important;
+        background: #fff !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 16px !important;
+        flex-wrap: wrap !important;
+    }
+
+    .orb-table-title-wrap {
+        display: flex !important;
+        align-items: center !important;
+        gap: 14px !important;
+    }
+
+    .orb-table-icon {
+        width: 44px !important;
+        height: 44px !important;
+        border-radius: 14px !important;
+        background: var(--leave-soft, #F4F2FF) !important;
+        color: var(--leave-primary, #4B00E8) !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 18px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .orb-table-title-wrap h3 {
+        font-size: 17px !important;
+        font-weight: 850 !important;
+        color: var(--leave-text, #101828) !important;
+        margin: 0 !important;
+        letter-spacing: -0.02em !important;
+    }
+
+    .orb-table-title-wrap p {
+        font-size: 12px !important;
+        color: var(--leave-muted, #667085) !important;
+        margin: 2px 0 0 0 !important;
+    }
+
+    /* Attached Filters Toolbar */
+    .eo-filter-grid {
+        display: grid !important;
+        grid-template-columns: 2fr 1.2fr 1.2fr 1fr auto !important;
+        gap: 12px !important;
+        align-items: flex-end !important;
+        padding: 14px 20px !important;
+        background: #FAFAFB !important;
+        border-bottom: 1px solid var(--leave-border, #E7EAF3) !important;
+    }
+
+    .eo-filter-grid.no-employee {
+        grid-template-columns: 1.5fr 1.5fr 1fr auto !important;
+    }
+
+    @media (max-width: 1200px) {
+        .eo-filter-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .eo-filter-grid {
+            grid-template-columns: 1fr !important;
+        }
+    }
+
+    .eo-field {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 4px !important;
+        min-width: 0 !important;
+    }
+
+    .eo-field label {
+        font-size: 11px !important;
+        font-weight: 800 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.04em !important;
+        color: var(--leave-muted, #667085) !important;
+        margin: 0 !important;
+        white-space: nowrap !important;
+    }
+
+    .eo-control {
+        width: 100% !important;
+        height: 38px !important;
+        padding: 0 12px !important;
+        font-size: 12.5px !important;
+        font-weight: 600 !important;
+        color: var(--leave-text, #101828) !important;
+        background: #ffffff !important;
+        border: 1.5px solid var(--leave-border, #E7EAF3) !important;
+        border-radius: 10px !important;
+        outline: none !important;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+
+    .eo-control:focus {
+        border-color: var(--leave-primary, #4B00E8) !important;
+        box-shadow: 0 0 0 3px rgba(75, 0, 232, 0.12) !important;
+    }
+
+    .eo-field .select2-container {
+        width: 100% !important;
+    }
+
+    .eo-field .select2-container .select2-selection--single {
+        height: 38px !important;
+        border-radius: 10px !important;
+        border: 1.5px solid var(--leave-border, #E7EAF3) !important;
+        display: flex !important;
+        align-items: center !important;
+        background: #FFFFFF !important;
+        outline: none !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .eo-field .select2-container--open .select2-selection--single,
+    .eo-field .select2-container--focus .select2-selection--single {
+        border-color: var(--leave-primary, #4B00E8) !important;
+        box-shadow: 0 0 0 3px rgba(75, 0, 232, 0.12) !important;
+    }
+
+    .eo-field .select2-container .select2-selection--single .select2-selection__rendered {
+        line-height: 36px !important;
+        font-size: 12.5px !important;
+        color: var(--leave-text, #101828) !important;
+        font-weight: 600 !important;
+        padding-left: 12px !important;
+        padding-right: 24px !important;
+    }
+
+    .eo-field .select2-container .select2-selection--single .select2-selection__arrow {
+        height: 36px !important;
+        right: 8px !important;
+    }
+
+    .eo-filter-actions-col {
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: flex-end !important;
+    }
+
+    .eo-filter-actions-wrap {
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+    }
+
+    #btnFilterSubmit {
+        height: 38px !important;
+        padding: 0 18px !important;
+        font-size: 12.5px !important;
+        font-weight: 800 !important;
+        border-radius: 10px !important;
+        background: linear-gradient(135deg, var(--leave-primary, #4B00E8), var(--leave-secondary, #8600EE)) !important;
+        color: #ffffff !important;
+        border: none !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        cursor: pointer !important;
+        box-shadow: 0 4px 12px rgba(75, 0, 232, 0.25) !important;
+        transition: all 0.2s ease !important;
+        white-space: nowrap !important;
+    }
+
+    #btnFilterSubmit:hover {
+        transform: translateY(-1px) !important;
+        box-shadow: 0 6px 16px rgba(75, 0, 232, 0.35) !important;
+    }
+
+    #resetFilter {
+        height: 38px !important;
+        padding: 0 14px !important;
+        font-size: 12px !important;
+        font-weight: 800 !important;
+        border-radius: 10px !important;
+        background: #ffffff !important;
+        color: var(--leave-muted, #667085) !important;
+        border: 1.5px solid var(--leave-border, #E7EAF3) !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+        white-space: nowrap !important;
+    }
+
+    #resetFilter:hover {
+        background: #F4F5F7 !important;
+        color: var(--leave-text, #101828) !important;
+        border-color: #D0D5DD !important;
+    }
+
+    /* Employee & Avatar */
+    .leave-employee {
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+        min-width: 200px !important;
+    }
+
+    .leave-avatar {
+        width: 38px !important;
+        height: 38px !important;
+        border-radius: 12px !important;
+        background: linear-gradient(135deg, var(--leave-primary, #4B00E8), var(--leave-secondary, #8600EE)) !important;
+        color: #fff !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-weight: 900 !important;
+        font-size: 13px !important;
+        flex-shrink: 0 !important;
+        overflow: hidden !important;
+    }
+
+    .leave-avatar img {
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover !important;
+    }
+
+    .leave-employee-name {
+        font-weight: 800 !important;
+        color: var(--leave-text, #101828) !important;
+        line-height: 1.25 !important;
+        font-size: 13px !important;
+    }
+
+    .leave-employee-meta {
+        font-size: 11px !important;
+        color: var(--leave-muted, #667085) !important;
+        margin-top: 2px !important;
+        font-weight: 600 !important;
+    }
+
+    /* Metric & Breakdown Box */
+    .leave-metric {
+        font-size: 14px !important;
+        font-weight: 900 !important;
+        color: var(--leave-text, #101828) !important;
+        line-height: 1.2 !important;
+    }
+
+    .leave-metric.text-success {
+        color: #12B76A !important;
+    }
+
+    .leave-breakdown-box {
+        font-size: 11px !important;
+        color: var(--leave-muted, #667085) !important;
+        margin-top: 4px !important;
+        line-height: 1.4 !important;
+        white-space: nowrap !important;
+    }
+
+    .leave-breakdown-item {
+        display: inline-block !important;
+        padding: 2px 6px !important;
+        border-radius: 6px !important;
+        background: #F8F9FA !important;
+        border: 1px solid #E9ECEF !important;
+        margin-right: 2px !important;
+        margin-bottom: 2px !important;
+        font-size: 10px !important;
+        font-weight: 700 !important;
+        white-space: nowrap !important;
+    }
+
+    .leave-breakdown-item span {
+        color: var(--leave-text, #101828) !important;
+        font-weight: 900 !important;
+    }
+
+    .leave-btn {
+        height: 42px;
+        border-radius: 14px;
+        border: none;
+        background: linear-gradient(135deg, var(--leave-primary, #4B00E8), var(--leave-secondary, #8600EE));
+        color: #fff !important;
+        font-size: 13px;
+        font-weight: 800;
+        padding: 0 18px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        cursor: pointer;
+        transition: all .2s ease;
+        box-shadow: 0 4px 14px rgba(75, 0, 232, .25);
+        white-space: nowrap;
+        text-decoration: none !important;
+    }
+
+    .leave-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 18px rgba(75, 0, 232, .35);
+        color: #fff !important;
+    }
+
+    .orb-table-footer {
+        padding: 0 !important;
+        border: 0 !important;
+        background: #fff !important;
     }
 </style>

@@ -38,6 +38,84 @@
                     width: '100%'
                 });
             });
+
+            $('#editCompOffModal').on('shown.bs.modal', function () {
+                if (window.initOrboDatePickers) {
+                    window.initOrboDatePickers(this);
+                }
+                const pendingW = $(this).data('pendingWorkedDate');
+                const pendingE = $(this).data('pendingExpiryDate');
+                if (pendingW) {
+                    const wInput = document.getElementById('edit_worked_date');
+                    if (wInput && wInput._flatpickr) {
+                        wInput._flatpickr.setDate(pendingW, true);
+                    }
+                }
+                if (pendingE) {
+                    const eInput = document.getElementById('edit_expiry_date');
+                    if (eInput && eInput._flatpickr) {
+                        eInput._flatpickr.setDate(pendingE, true);
+                    }
+                }
+                if ($.fn.select2) {
+                    $('#edit_status').select2({
+                        dropdownParent: $('#editCompOffModal'),
+                        width: '100%',
+                        minimumResultsForSearch: Infinity
+                    });
+                }
+            });
+
+            // Edit Comp-Off button handler
+            $(document).on('click', '.btn-edit-comp-off', function (e) {
+                e.preventDefault();
+                const btn = $(this);
+                const id = btn.data('id');
+                const employee = btn.data('employee') || 'Employee';
+                const code = btn.data('code') || '';
+                const workedDate = btn.data('worked-date') || '';
+                const earnedDays = btn.data('earned-days') || '1.0';
+                const expiryDate = btn.data('expiry-date') || '';
+                let status = (btn.data('status') || 'earned').toLowerCase();
+                if (status === 'available') status = 'earned';
+                const remarks = btn.data('remarks') || '';
+                const updateUrl = btn.data('update-url') || '';
+
+                const initial = employee ? employee.trim().charAt(0).toUpperCase() : 'E';
+                $('#edit_employee_avatar').text(initial);
+                $('#edit_employee_name').text(employee);
+                $('#edit_employee_code').text(code || 'EMP');
+
+                $('#edit_comp_off_id').val(id);
+                $('#edit_earned_days').val(earnedDays);
+                $('#edit_status').val(status).trigger('change');
+                $('#edit_remarks').val(remarks);
+                $('#editCompOffForm').attr('action', updateUrl);
+
+                // Store and set date values on flatpickr / inputs
+                $('#editCompOffModal').data('pendingWorkedDate', workedDate);
+                $('#editCompOffModal').data('pendingExpiryDate', expiryDate);
+
+                const wInput = document.getElementById('edit_worked_date');
+                if (wInput) {
+                    if (wInput._flatpickr) {
+                        wInput._flatpickr.setDate(workedDate, true);
+                    } else {
+                        wInput.value = workedDate;
+                    }
+                }
+
+                const eInput = document.getElementById('edit_expiry_date');
+                if (eInput) {
+                    if (eInput._flatpickr) {
+                        eInput._flatpickr.setDate(expiryDate, true);
+                    } else {
+                        eInput.value = expiryDate;
+                    }
+                }
+
+                $('#editCompOffModal').modal('show');
+            });
         }
 
         // Tab state hash handling
@@ -49,10 +127,22 @@
         }
 
         if (window.jQuery) {
+            const defaultCardTitle = $('#compOffCardTitle').text().trim() || 'Compensatory Off Records';
+            const defaultCardSubtitle = $('#compOffCardSubtitle').text().trim() || 'Track employee earned, used, expired compensatory-off balances and expiry schedule.';
+
             $('a[data-toggle="pill"]').on('shown.bs.tab', function (e) {
                 const targetId = $(e.target).attr('href');
                 if (history.replaceState) {
                     history.replaceState(null, null, targetId.replace('tab-', ''));
+                }
+                if (targetId === '#tab-transactions') {
+                    $('#compOffCardTitle').text('Comp-Off Transactions');
+                    $('#compOffCardSubtitle').text('Read-only audit ledger of compensatory-off credits, debits, reversals and expiry movements.');
+                    $('#compOffCardIcon').removeClass('fa-calendar-check').addClass('fa-history');
+                } else {
+                    $('#compOffCardTitle').text(defaultCardTitle);
+                    $('#compOffCardSubtitle').text(defaultCardSubtitle);
+                    $('#compOffCardIcon').removeClass('fa-history').addClass('fa-calendar-check');
                 }
             });
         }

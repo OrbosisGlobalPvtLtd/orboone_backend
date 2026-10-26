@@ -20,7 +20,8 @@ class SandwichLeaveService
         Carbon|string $startDate, 
         Carbon|string $endDate, 
         ?LeaveTypeM $leaveType = null, 
-        ?int $excludeRequestId = null
+        ?int $excludeRequestId = null,
+        bool $isHalfDay = false
     ): array {
         $start = $startDate instanceof Carbon 
             ? $startDate->copy()->timezone('Asia/Kolkata')->startOfDay() 
@@ -58,15 +59,31 @@ class SandwichLeaveService
             $cursor->addDay();
         }
 
-        if (!$sandwichEnabled) {
+        // Rule: Sandwich does not apply if disabled, or if neither weekoff nor holiday is included.
+        // Rule: "A half day leave day is treated as PRESENT (the employee worked half the day).
+        //        A half day on either side breaks the sandwich, so no sandwich is applied.
+        //        A half day working day (even if the other half is leave) also does not trigger a sandwich."
+        // Hence, if the current application is a half-day leave, it CANNOT trigger or be part of any sandwich!
+        if (!$sandwichEnabled || $isHalfDay || (!$weekoffIncludedInSandwich && !$holidayIncludedInSandwich)) {
             return array_values($requestedRows);
         }
 
-        // Fetch existing qualifying leave dates (approved or pending)
-        $qualifyingLeaveDates = $this->getQualifyingLeaveDates($employee, $excludeRequestId);
+        // Fetch existing qualifying FULL DAY leave dates (approved or pending)
+        $qualifyingFullDayDates = $this->getQualifyingFullDayLeaveDates($employee, $excludeRequestId);
 
-        // Active leave set = requested dates + existing qualifying leave dates
-        $activeLeaveSet = array_flip(array_unique(array_merge($requestedDateStrs, $qualifyingLeaveDates)));
+        // Requested full day working dates
+        $requestedFullDayDates = [];
+        foreach ($requestedRows as $dStr => $row) {
+            if ($row['is_working_day']) {
+                $requestedFullDayDates[] = $dStr;
+            }
+        }
+
+        // Full-day leave set = requested full day dates + existing qualifying full-day leave dates
+        $fullDayLeaveSet = array_flip(array_unique(array_merge($requestedFullDayDates, $qualifyingFullDayDates)));
+
+        // Dates already deducted in existing approved/pending requests (so we don't re-deduct them as sandwich)
+        $alreadyDeductedDates = $this->getAlreadyDeductedDates($employee, $excludeRequestId);
 
         // Identify non-working blocks touching or enclosed by active leave set
         $sandwichRows = [];
@@ -91,11 +108,19 @@ class SandwichLeaveService
                 $leftWorkingDateStr = $block['left_working_date'];
                 $rightWorkingDateStr = $block['right_working_date'];
 
-                $leftHasLeave = isset($activeLeaveSet[$leftWorkingDateStr]);
-                $rightHasLeave = isset($activeLeaveSet[$rightWorkingDateStr]);
+                // Sandwich rule: FULL DAY leave must be present on the working day immediately before AND immediately after
+                $leftHasFullDayLeave = isset($fullDayLeaveSet[$leftWorkingDateStr]);
+                $rightHasFullDayLeave = isset($fullDayLeaveSet[$rightWorkingDateStr]);
 
-                if ($leftHasLeave && $rightHasLeave) {
+                if ($leftHasFullDayLeave && $rightHasFullDayLeave) {
+                    // Rule: "Consecutive off/holiday days (e.g., Sunday + Monday holiday) are treated as one block.
+                    // The sandwich applies to the entire block or not at all."
                     foreach ($block['dates'] as $nDateStr) {
+                        // Skip if date was already deducted in an existing approved request
+                        if (isset($alreadyDeductedDates[$nDateStr]) && !isset($requestedRows[$nDateStr])) {
+                            continue;
+                        }
+
                         $nDate = Carbon::parse($nDateStr, 'Asia/Kolkata');
                         $nInfo = $this->getDayInfo($nDate, $dateInfoMap);
 
@@ -147,12 +172,14 @@ class SandwichLeaveService
         return $dateInfoMap[$dateStr];
     }
 
-    private function getQualifyingLeaveDates(EmployeeM $employee, ?int $excludeRequestId): array
+    private function getQualifyingFullDayLeaveDates(EmployeeM $employee, ?int $excludeRequestId): array
     {
+        // Only FULL-DAY approved or pending leave requests qualify for sandwich triggers
         $datesFromDatesTable = DB::table('leave_request_dates')
             ->join('leave_requests', 'leave_requests.id', '=', 'leave_request_dates.leave_request_id')
             ->where('leave_request_dates.employee_id', $employee->id)
             ->whereIn('leave_requests.status', ['approved', 'pending'])
+            ->where('leave_requests.is_half_day', 0)
             ->where('leave_request_dates.deduct_as_leave', 1)
             ->when($excludeRequestId, fn($q) => $q->where('leave_requests.id', '<>', $excludeRequestId))
             ->pluck('leave_request_dates.leave_date')
@@ -163,6 +190,7 @@ class SandwichLeaveService
         $existingRequests = DB::table('leave_requests')
             ->where('employee_id', $employee->id)
             ->whereIn('status', ['approved', 'pending'])
+            ->where('is_half_day', 0)
             ->when($excludeRequestId, fn($q) => $q->where('id', '<>', $excludeRequestId))
             ->get(['start_date', 'end_date']);
 
@@ -179,6 +207,21 @@ class SandwichLeaveService
         }
 
         return array_values(array_unique(array_merge($datesFromDatesTable, $datesFromRequestsTable)));
+    }
+
+    private function getAlreadyDeductedDates(EmployeeM $employee, ?int $excludeRequestId): array
+    {
+        $dates = DB::table('leave_request_dates')
+            ->join('leave_requests', 'leave_requests.id', '=', 'leave_request_dates.leave_request_id')
+            ->where('leave_request_dates.employee_id', $employee->id)
+            ->whereIn('leave_requests.status', ['approved', 'pending'])
+            ->where('leave_request_dates.deduct_as_leave', 1)
+            ->when($excludeRequestId, fn($q) => $q->where('leave_requests.id', '<>', $excludeRequestId))
+            ->pluck('leave_request_dates.leave_date')
+            ->map(fn($d) => Carbon::parse($d, 'Asia/Kolkata')->toDateString())
+            ->toArray();
+
+        return array_flip($dates);
     }
 
     private function findContiguousNonWorkingBlock(Carbon $startDate, array &$dateInfoMap): array

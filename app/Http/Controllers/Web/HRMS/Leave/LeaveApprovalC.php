@@ -39,7 +39,7 @@ class LeaveApprovalC extends Controller
             403
         );
 
-        // app(AutoExpireLeaveService::class)->expirePastPendingRequests();
+        app(AutoExpireLeaveService::class)->expirePastPendingRequests();
 
         $supervisorEmpId = $this->scopeS->getOwnEmployeeId();
         $supervisedEmpIds = $this->scopeS->getActiveSupervisedEmployeeIds($supervisorEmpId);
@@ -93,6 +93,61 @@ class LeaveApprovalC extends Controller
 
         if ($request->filled('leave_type_id')) {
             $query->where('leave_requests.leave_type_id', $request->leave_type_id);
+        }
+
+        $year = (int) ($request->year ?: Carbon::now('Asia/Kolkata')->year);
+        $currentMonth = (int) Carbon::now('Asia/Kolkata')->month;
+
+        if ($request->has('month')) {
+            $selectedMonth = (string) $request->month;
+        } else {
+            $selectedMonth = (string) $currentMonth;
+        }
+
+        $dateFilterClosure = null;
+        if ($selectedMonth !== 'all' && $selectedMonth !== '') {
+            $m = (int) $selectedMonth;
+            $monthStart = Carbon::createFromDate($year, $m, 1, 'Asia/Kolkata')->startOfMonth()->toDateString();
+            $monthEnd = Carbon::createFromDate($year, $m, 1, 'Asia/Kolkata')->endOfMonth()->toDateString();
+
+            $dateFilterClosure = function ($q) use ($monthStart, $monthEnd) {
+                $q->where(function ($sub) use ($monthStart, $monthEnd) {
+                    $sub->whereDate('leave_requests.start_date', '<=', $monthEnd)
+                        ->whereDate('leave_requests.end_date', '>=', $monthStart);
+                })->orWhereExists(function ($dq) use ($monthStart, $monthEnd) {
+                    $dq->select(DB::raw(1))
+                        ->from('leave_request_dates')
+                        ->whereColumn('leave_request_dates.leave_request_id', 'leave_requests.id')
+                        ->whereDate('leave_request_dates.leave_date', '>=', $monthStart)
+                        ->whereDate('leave_request_dates.leave_date', '<=', $monthEnd);
+                })->orWhere(function ($cq) use ($monthStart, $monthEnd) {
+                    $cq->whereDate('leave_requests.created_at', '>=', $monthStart)
+                       ->whereDate('leave_requests.created_at', '<=', $monthEnd);
+                });
+            };
+        } elseif ($year) {
+            $yearStart = Carbon::createFromDate($year, 1, 1, 'Asia/Kolkata')->startOfYear()->toDateString();
+            $yearEnd = Carbon::createFromDate($year, 12, 31, 'Asia/Kolkata')->endOfYear()->toDateString();
+
+            $dateFilterClosure = function ($q) use ($yearStart, $yearEnd) {
+                $q->where(function ($sub) use ($yearStart, $yearEnd) {
+                    $sub->whereDate('leave_requests.start_date', '<=', $yearEnd)
+                        ->whereDate('leave_requests.end_date', '>=', $yearStart);
+                })->orWhereExists(function ($dq) use ($yearStart, $yearEnd) {
+                    $dq->select(DB::raw(1))
+                        ->from('leave_request_dates')
+                        ->whereColumn('leave_request_dates.leave_request_id', 'leave_requests.id')
+                        ->whereDate('leave_request_dates.leave_date', '>=', $yearStart)
+                        ->whereDate('leave_request_dates.leave_date', '<=', $yearEnd);
+                })->orWhere(function ($cq) use ($yearStart, $yearEnd) {
+                    $cq->whereDate('leave_requests.created_at', '>=', $yearStart)
+                       ->whereDate('leave_requests.created_at', '<=', $yearEnd);
+                });
+            };
+        }
+
+        if ($dateFilterClosure !== null) {
+            $query->where($dateFilterClosure);
         }
 
         if ($request->filled('start_date')) {
@@ -150,10 +205,38 @@ class LeaveApprovalC extends Controller
             ->paginate(20)
             ->appends($request->query());
 
+        $lrIds = $leaveRequests->pluck('id')->filter()->all();
+        $dateRowsGrouped = !empty($lrIds)
+            ? DB::table('leave_request_dates')->whereIn('leave_request_id', $lrIds)->orderBy('leave_date')->get()->groupBy('leave_request_id')
+            : collect();
+
+        foreach ($leaveRequests as $item) {
+            $item->dates = $dateRowsGrouped->get($item->id, collect());
+        }
+
         // High-performance single aggregated query for summary metric counts
         $baseCountQuery = DB::table('leave_requests')
             ->join('employees_new as e', 'e.id', '=', 'leave_requests.employee_id');
         $baseCountQuery = $this->scopeS->scopeLeaveQuery($baseCountQuery, $supervisorEmpId);
+
+        if ($request->filled('employee_id')) {
+            $baseCountQuery->where('leave_requests.employee_id', $request->employee_id);
+        }
+        if ($request->filled('reporting_manager_id')) {
+            $baseCountQuery->where('e.reporting_manager_employee_id', $request->reporting_manager_id);
+        }
+        if ($request->filled('leave_type_id')) {
+            $baseCountQuery->where('leave_requests.leave_type_id', $request->leave_type_id);
+        }
+        if ($dateFilterClosure !== null) {
+            $baseCountQuery->where($dateFilterClosure);
+        }
+        if ($request->filled('start_date')) {
+            $baseCountQuery->whereDate('leave_requests.end_date', '>=', $request->start_date);
+        }
+        if ($request->filled('end_date')) {
+            $baseCountQuery->whereDate('leave_requests.start_date', '<=', $request->end_date);
+        }
 
         $counts = (clone $baseCountQuery)->selectRaw("
             COUNT(*) as total_all,
@@ -171,7 +254,7 @@ class LeaveApprovalC extends Controller
         $approvedLeaveCount = (int) ($counts->approved_count ?? 0);
         $rejectedLeaveCount = (int) ($counts->rejected_count ?? 0);
 
-        $user = auth()->user();
+        $user = Auth::user();
         $userRoleId = (int) ($user->system_role_id ?? $user->role_id ?? 0);
         $userRoleName = strtolower($user->role->name ?? '');
         $isSuperAdmin = method_exists($user, 'isSuperAdmin') ? $user->isSuperAdmin() : in_array($userRoleId, [1, 2], true);
@@ -216,7 +299,9 @@ class LeaveApprovalC extends Controller
             'isSuperAdmin',
             'canApprovePermission',
             'canRejectPermission',
-            'canViewTeamPermission'
+            'canViewTeamPermission',
+            'selectedMonth',
+            'year'
         ));
     }
 
@@ -272,7 +357,7 @@ class LeaveApprovalC extends Controller
             abort(404, 'Leave request not found.');
         }
 
-        $user = auth()->user();
+        $user = Auth::user();
         $userRoleId = (int) ($user->system_role_id ?? $user->role_id ?? 0);
         $userRoleName = strtolower($user->role->name ?? '');
         $isSuperAdmin = method_exists($user, 'isSuperAdmin') ? $user->isSuperAdmin() : in_array($userRoleId, [1, 2], true);
@@ -325,7 +410,7 @@ class LeaveApprovalC extends Controller
     public function approve(ApproveLeaveRequestRequest $request, $id)
     {
         $referer = $request->header('referer') ?: route('reporting.leave');
-        $user = auth()->user();
+        $user = Auth::user();
         $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
         $isHrOrAdmin = $isSuperAdmin
             || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin())
@@ -396,7 +481,7 @@ class LeaveApprovalC extends Controller
     public function reject(RejectLeaveRequestRequest $request, $id)
     {
         $referer = $request->header('referer') ?: route('reporting.leave');
-        $user = auth()->user();
+        $user = Auth::user();
         $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
         $isHrOrAdmin = $isSuperAdmin
             || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin())
@@ -431,7 +516,7 @@ class LeaveApprovalC extends Controller
     public function void(Request $request, $id)
     {
         $referer = $request->header('referer') ?: route('leave-approvals.index');
-        $user = auth()->user();
+        $user = Auth::user();
         $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
         $userRoleName = strtolower($user->role->name ?? '');
         $isHrOrAdmin = $isSuperAdmin
@@ -472,7 +557,7 @@ class LeaveApprovalC extends Controller
 
     private function authorizeLeaveRequestForApproval(LeaveRequestM $leaveRequest): void
     {
-        $user = auth()->user();
+        $user = Auth::user();
         $isSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
         $isHrOrAdmin = $isSuperAdmin
             || (method_exists($user, 'isHrAdmin') && $user->isHrAdmin())
@@ -501,7 +586,7 @@ class LeaveApprovalC extends Controller
 
     private function accesses()
     {
-        $roleId = auth()->user()->role_id ?? auth()->user()->system_role_id ?? null;
+        $roleId = Auth::user()->role_id ?? Auth::user()->system_role_id ?? null;
         return $roleId ? AccessM::where('role_id', $roleId)->get() : collect();
     }
 

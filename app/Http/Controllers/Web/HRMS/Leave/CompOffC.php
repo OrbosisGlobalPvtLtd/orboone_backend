@@ -15,6 +15,7 @@ use App\Services\HRMS\Leave\LeaveAllocationService;
 use App\Services\HRMS\Leave\LeaveBalanceService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
@@ -94,7 +95,11 @@ class CompOffC extends Controller
 
         // 2. Status, Month & Year Filters
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            $statusFilter = strtolower((string) $request->status);
+            if ($statusFilter === 'available') {
+                $statusFilter = 'earned';
+            }
+            $query->where('status', $statusFilter);
         }
 
         if ($selectedMonth !== 'all' && $selectedMonth !== '') {
@@ -112,7 +117,7 @@ class CompOffC extends Controller
         }
 
         $perPage = (int) $request->get('per_page', 25);
-        if (!in_array($perPage, [10, 25, 50, 100], true)) {
+        if (! in_array($perPage, [10, 25, 50, 100], true)) {
             $perPage = 25;
         }
 
@@ -219,7 +224,10 @@ class CompOffC extends Controller
             'employee.user',
             'employee.department',
             'compOff',
-            'leaveRequest.leaveType'
+            'leaveRequest.leaveType',
+            'leaveRequest.approver',
+            'leaveRequest.hrApprover',
+            'creator',
         ]);
 
         if ($isEmployeeRole) {
@@ -285,6 +293,23 @@ class CompOffC extends Controller
                 $earnedAmt = 0.50;
             }
 
+            $adminName = optional($lot->approvedBy)->name;
+            if (! $adminName && $lot->approved_by_user_id) {
+                $u = \App\Models\Core\UserM::find($lot->approved_by_user_id);
+                $adminName = $u?->name;
+            }
+
+            $isHolidayWork = preg_match('/approved holiday\/weekoff/i', (string) $lot->remarks)
+                || preg_match('/holiday/i', (string) $lot->remarks);
+
+            if ($isHolidayWork) {
+                $creditActionBy = $adminName ? "Holiday Work ({$adminName})" : 'Holiday Work';
+            } elseif ($adminName) {
+                $creditActionBy = "Manual ({$adminName})";
+            } else {
+                $creditActionBy = 'Manual';
+            }
+
             $transactionItems->push((object) [
                 'id' => 'credit-' . $lot->id,
                 'comp_off_id' => $lot->id,
@@ -300,12 +325,19 @@ class CompOffC extends Controller
                 'expiry_date' => $lot->expiry_date ? $lot->expiry_date->format('d M Y') : 'N/A',
                 'description' => $lot->remarks ?: 'Comp-Off Earned / Granted',
                 'reference' => 'GRANT #' . $lot->id,
-                'action_by' => optional($lot->approvedBy)->name ?? 'HR Admin',
+                'action_by' => $creditActionBy,
                 'created_at' => $lot->created_at,
             ]);
 
             // If legacy lot has no direct LeaveCompOffTransactionM rows, but status is 'used'
             if ($lot->transactions->isEmpty() && strtolower((string) $lot->status) === 'used') {
+                $approverName = null;
+                if ($lot->used_against_leave_request_id) {
+                    $lr = \App\Models\HRMS\Leave\LeaveRequestM::with(['hrApprover', 'approver'])->find($lot->used_against_leave_request_id);
+                    $approverName = optional(optional($lr)->hrApprover)->name ?? optional(optional($lr)->approver)->name;
+                }
+                $debitActionBy = $approverName ? "Leave ({$approverName})" : 'Leave';
+
                 $transactionItems->push((object) [
                     'id' => 'legacy-used-' . $lot->id,
                     'comp_off_id' => $lot->id,
@@ -321,7 +353,7 @@ class CompOffC extends Controller
                     'expiry_date' => null,
                     'description' => 'Comp-off utilized against approved leave',
                     'reference' => $lot->used_against_leave_request_id ? 'LEAVE #' . $lot->used_against_leave_request_id : 'USAGE #' . $lot->id,
-                    'action_by' => 'System / Leave Approval',
+                    'action_by' => $debitActionBy,
                     'created_at' => $lot->updated_at,
                 ]);
             }
@@ -343,7 +375,7 @@ class CompOffC extends Controller
                     'expiry_date' => null,
                     'description' => 'Lapsed at end of validity period (' . ($lot->expiry_date ? $lot->expiry_date->format('d M Y') : '') . ')',
                     'reference' => 'EXP #' . $lot->id,
-                    'action_by' => 'System Auto-Expiry',
+                    'action_by' => 'System',
                     'created_at' => $lot->updated_at,
                 ]);
             }
@@ -352,7 +384,23 @@ class CompOffC extends Controller
         // 5b. Add Direct LeaveCompOffTransactionM rows (Debit & Reversal)
         foreach ($directTransactions as $dtx) {
             $isDebit = $dtx->transaction_type === 'debit';
+            $isReversal = $dtx->transaction_type === 'reversal';
             $amt = abs((float) $dtx->amount);
+
+            if ($isDebit) {
+                $lr = $dtx->leaveRequest;
+                $approverName = optional(optional($lr)->hrApprover)->name 
+                    ?? optional(optional($lr)->approver)->name 
+                    ?? optional($dtx->creator)->name;
+                $directActionBy = $approverName ? "Leave ({$approverName})" : 'Leave';
+            } elseif ($isReversal) {
+                $revUser = optional($dtx->creator)->name;
+                $directActionBy = $revUser ? "Reversal ({$revUser})" : 'Reversal';
+            } else {
+                $creator = optional($dtx->creator)->name;
+                $directActionBy = $creator ? "Manual ({$creator})" : 'Manual';
+            }
+
             $transactionItems->push((object) [
                 'id' => 'dtx-' . $dtx->id,
                 'comp_off_id' => $dtx->comp_off_id,
@@ -368,7 +416,7 @@ class CompOffC extends Controller
                 'expiry_date' => null,
                 'description' => $dtx->reason ?: ($dtx->leave_request_id ? 'Deducted for Leave Request #' . $dtx->leave_request_id : 'Comp-Off ledger movement'),
                 'reference' => $dtx->leave_request_id ? 'LEAVE #' . $dtx->leave_request_id : 'TX #' . $dtx->id,
-                'action_by' => 'HRMS System',
+                'action_by' => $directActionBy,
                 'created_at' => $dtx->created_at,
             ]);
         }
@@ -486,5 +534,54 @@ class CompOffC extends Controller
         $count = $this->compOffService->expireDue();
 
         return back()->with('success', "{$count} comp off record(s) expired.");
+    }
+
+    public function update(Request $request, $id)
+    {
+        $user = Auth::user();
+        abort_unless($user, 401);
+        $roleId = (int) ($user->system_role_id ?? $user->role_id ?? 0);
+        $roleName = strtolower($user->role->name ?? '');
+
+        $isExplicitAdmin = (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin())
+            || in_array($roleId, [1, 2, 3], true)
+            || in_array($roleName, ['super_admin', 'super admin', 'admin', 'hr_admin', 'hr admin', 'hr', 'human resources'], true);
+
+        $isEmployee = ($roleId === 7 || $roleName === 'employee' || (method_exists($user, 'isEmployee') && $user->isEmployee())) && ! $isExplicitAdmin;
+
+        abort_if($isEmployee, 403, 'Unauthorized action.');
+        abort_unless($isExplicitAdmin || $this->userHasPermission('leave.comp_off.manage'), 403, 'Unauthorized action.');
+
+        $compOff = CompOffM::with('employee')->findOrFail($id);
+
+        $validated = $request->validate([
+            'worked_date' => ['required', 'date'],
+            'earned_days' => ['required', 'numeric', 'min:0.5', 'max:5.0'],
+            'expiry_date' => ['required', 'date'],
+            'status' => ['required', 'string', 'in:earned,available,used,expired'],
+            'remarks' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $workedDate = Carbon::parse($validated['worked_date'], 'Asia/Kolkata');
+        $expiryDate = Carbon::parse($validated['expiry_date'], 'Asia/Kolkata');
+        $newStatus = strtolower($validated['status']) === 'available' ? 'earned' : strtolower($validated['status']);
+
+        $compOff->worked_date = $workedDate->toDateString();
+        $compOff->earned_days = $validated['earned_days'];
+        $compOff->expiry_date = $expiryDate->toDateString();
+        $compOff->status = $newStatus;
+        if ($request->has('remarks')) {
+            $compOff->remarks = trim((string) $validated['remarks']);
+        }
+        $compOff->save();
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Comp-off record updated successfully.',
+            ]);
+        }
+
+        return back()->with('success', 'Comp-off record updated successfully.');
     }
 }

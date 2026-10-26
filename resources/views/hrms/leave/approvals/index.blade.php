@@ -480,7 +480,7 @@
 .filter-form-grid {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
+    align-items: flex-end;
     gap: 10px;
     width: 100%;
 }
@@ -488,6 +488,9 @@
 .filter-item-wrap {
     flex: 1 1 150px;
     min-width: 135px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
 .filter-item-wrap.sm-wrap {
@@ -503,6 +506,14 @@
 .filter-item-wrap.lg-wrap {
     flex: 1.5 1 180px;
     min-width: 160px;
+}
+
+.filter-actions-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    align-self: flex-end;
+    margin-bottom: 0;
 }
 
 .filter-item-wrap .select2-container {
@@ -687,6 +698,8 @@
             </div>
         </div>
 
+        @include('hrms.leave.shared.flash')
+
         <!-- 6 Rich Interactive Metric Summary Cards Grid (Image 2 Design) -->
         <div class="leave-metric-grid">
             <!-- 1. All Requests -->
@@ -793,26 +806,7 @@
             <div class="p-3 border-bottom bg-white">
                 <form method="GET" action="{{ route('leave-approvals.index') }}" class="d-flex flex-column" style="gap: 12px;">
                     <div class="filter-form-grid">
-                        <!-- 1. Status / Approval Stage Filter -->
-                        <div class="filter-item-wrap">
-                            <label class="filter-item-lbl">
-                                <i class="fas fa-tasks text-primary"></i> Status
-                            </label>
-                            <select name="status" class="filter-control-sm select2-searchable">
-                                <option value="pending" {{ $curStatus === 'pending' ? 'selected' : '' }}> Total Pending</option>
-                                <option value="pending_manager" {{ $curStatus === 'pending_manager' ? 'selected' : '' }}> Pending Manager</option>
-                                <option value="pending_hr" {{ $curStatus === 'pending_hr' ? 'selected' : '' }}> Pending HR</option>
-                                <option value="approved" {{ $curStatus === 'approved' ? 'selected' : '' }}>Approved</option>
-                                <option value="rejected" {{ $curStatus === 'rejected' ? 'selected' : '' }}>Rejected</option>
-                                <option value="all" {{ $curStatus === 'all' ? 'selected' : '' }}>All Requests</option>
-                                <option value="void" {{ $curStatus === 'void' ? 'selected' : '' }}>Null & Void</option>
-                                <option value="expired" {{ $curStatus === 'expired' ? 'selected' : '' }}> Expired</option>
-                                <option value="cancelled" {{ $curStatus === 'cancelled' ? 'selected' : '' }}> Cancelled</option>
-                            </select>
-                        </div>
-
-
-                        <!-- 3. Employee Filter -->
+                        <!-- 1. Employee Filter -->
                         <div class="filter-item-wrap lg-wrap">
                             <label class="filter-item-lbl">
                                 <i class="fas fa-user text-primary"></i> Employee
@@ -826,6 +820,27 @@
                                 @endforeach
                             </select>
                         </div>
+                        <!-- 2. Status / Approval Stage Filter -->
+                        <div class="filter-item-wrap">
+                            <label class="filter-item-lbl">
+                                <i class="fas fa-tasks text-primary"></i> Status
+                            </label>
+                            <select name="status" class="filter-control-sm select2-searchable">
+                                <option value="all" {{ $curStatus === 'all' ? 'selected' : '' }}>All Requests</option>
+                                <option value="pending" {{ $curStatus === 'pending' ? 'selected' : '' }}> Total Pending</option>
+                                <option value="pending_manager" {{ $curStatus === 'pending_manager' ? 'selected' : '' }}> Pending Manager</option>
+                                <option value="pending_hr" {{ $curStatus === 'pending_hr' ? 'selected' : '' }}> Pending HR</option>
+                                <option value="approved" {{ $curStatus === 'approved' ? 'selected' : '' }}>Approved</option>
+                                <option value="rejected" {{ $curStatus === 'rejected' ? 'selected' : '' }}>Rejected</option>
+                                
+                                <option value="void" {{ $curStatus === 'void' ? 'selected' : '' }}>Null & Void</option>
+                                <option value="expired" {{ $curStatus === 'expired' ? 'selected' : '' }}> Expired</option>
+                                <option value="cancelled" {{ $curStatus === 'cancelled' ? 'selected' : '' }}> Cancelled</option>
+                            </select>
+                        </div>
+
+
+                        
 
                         <!-- 4. Reporting Manager Filter -->
                         @if(!empty($reportingManagers) && count($reportingManagers) > 0)
@@ -859,6 +874,39 @@
                             </select>
                         </div>
 
+                        <!-- Month Filter -->
+                        <div class="filter-item-wrap sm-wrap">
+                            <label class="filter-item-lbl">
+                                <i class="fas fa-calendar-alt text-primary"></i> Month
+                            </label>
+                            <select name="month" class="filter-control-sm select2-searchable" data-placeholder="Select Month">
+                                <option value="all" {{ ($selectedMonth ?? '') === 'all' ? 'selected' : '' }}>All Months</option>
+                                @foreach([
+                                    1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April',
+                                    5 => 'May', 6 => 'June', 7 => 'July', 8 => 'August',
+                                    9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December'
+                                ] as $mNum => $mName)
+                                    <option value="{{ $mNum }}" {{ (string)($selectedMonth ?? '') === (string)$mNum ? 'selected' : '' }}>
+                                        {{ $mName }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <!-- Year Filter -->
+                        <div class="filter-item-wrap sm-wrap">
+                            <label class="filter-item-lbl">
+                                <i class="fas fa-calendar text-primary"></i> Year
+                            </label>
+                            <select name="year" class="filter-control-sm select2-searchable" data-placeholder="Select Year">
+                                @php $selYear = (int) ($year ?? request('year', date('Y'))); @endphp
+                                @for($y = 2024; $y <= 2030; $y++)
+                                    <option value="{{ $y }}" {{ $selYear === $y ? 'selected' : '' }}>{{ $y }}</option>
+                                @endfor
+                            </select>
+                        </div>
+
+                        {{--
                         <!-- 6. Start Date (From) -->
                         <div class="filter-item-wrap date-wrap">
                             <label class="filter-item-lbl">
@@ -874,6 +922,7 @@
                             </label>
                             <x-form.date-picker name="end_date" id="approval_end_date" :value="request('end_date')" placeholder="dd-mm-yyyy" class="filter-control-sm" />
                         </div>
+                        --}}
 
                         <!-- 8. Search Input -->
                         <div class="filter-item-wrap lg-wrap">
@@ -904,6 +953,8 @@
                     || request()->filled('start_date')
                     || request()->filled('end_date')
                     || request()->filled('search')
+                    || (request()->filled('month') && request('month') !== 'all')
+                    || request()->filled('year')
                     || (request()->filled('status') && request('status') !== 'pending');
             @endphp
             @if($hasActiveFilters)
@@ -915,6 +966,18 @@
                         <span class="active-filter-badge">
                             Status: {{ ucwords(str_replace('_', ' ', request('status'))) }}
                             <a href="{{ route('leave-approvals.index', request()->except('status')) }}" title="Reset status filter">&times;</a>
+                        </span>
+                    @endif
+                    @if(request()->filled('month') && request('month') !== 'all')
+                        <span class="active-filter-badge">
+                            Month: {{ \Carbon\Carbon::createFromDate(null, (int) request('month'), 1)->format('F') }}
+                            <a href="{{ route('leave-approvals.index', array_merge(request()->except('month'), ['month' => 'all'])) }}" title="Reset month filter">&times;</a>
+                        </span>
+                    @endif
+                    @if(request()->filled('year'))
+                        <span class="active-filter-badge">
+                            Year: {{ request('year') }}
+                            <a href="{{ route('leave-approvals.index', request()->except('year')) }}" title="Reset year filter">&times;</a>
                         </span>
                     @endif
                     @if(request()->filled('employee_id'))
@@ -1040,10 +1103,17 @@
                             </td>
 
                             <!-- 4. Leave Type -->
-                            <td class="py-3 align-middle">
-                                <span class="badge font-weight-bold px-2.5 py-1 {{ $ltClass }}" style="border-radius: 6px; font-size: 11px;">
-                                    {{ $ltName }}
-                                </span>
+                            <td class="py-3 align-middle text-center">
+                                <div class="d-inline-flex flex-column align-items-center" style="gap: 3px;">
+                                    <span class="badge font-weight-bold px-2.5 py-1 {{ $ltClass }}" style="border-radius: 6px; font-size: 11px;">
+                                        {{ $ltName }}
+                                    </span>
+                                    @if(!empty($lr->attachment_path))
+                                        <a href="{{ route('leave-requests.attachment', $lr->id) }}" target="_blank" class="badge badge-pill font-weight-bold" style="background: rgba(75, 0, 232, 0.08); color: var(--orb-primary, #4B00E8); border: 1px solid rgba(75, 0, 232, 0.2); font-size: 9.5px; padding: 2px 7px; text-decoration: none;" title="View Attachment / Medical Document">
+                                            <i class="fas fa-paperclip mr-0.5"></i> Doc
+                                        </a>
+                                    @endif
+                                </div>
                             </td>
 
                             <!-- 5. Leave Period -->
@@ -1059,24 +1129,25 @@
                                 </div>
                             </td>
 
-                            <!-- 6. Days -->
+                            <!-- 6. Days & Deduction -->
                             <td class="py-3 align-middle text-center">
                                 <span class="badge badge-light border font-weight-bold px-2.5 py-1 text-dark" style="border-radius: 6px; font-size: 11px;">
                                     {{ $daysText }}
                                 </span>
-                                <!-- @if((float)($lr->lwp_days ?? 0) > 0)
+                                @if(!empty($lr->is_half_day))
                                     <div class="mt-1">
-                                        <span class="badge font-weight-bold px-1.5 py-0.5" style="font-size: 9.5px; background: #FEF2F2; color: #DC2626; border: 1px solid #FCA5A5;" title="{{ (float)$lr->lwp_days }} Day(s) Loss of Pay (LWP)">
-                                            {{ (float)$lr->lwp_days }} LWP
+                                        <span class="badge badge-pill font-weight-bold" style="background: rgba(14, 165, 233, 0.12); color: #0284C7; border: 1px solid rgba(14, 165, 233, 0.28); font-size: 10px; padding: 2px 7px;">
+                                            <i class="far fa-clock mr-0.5"></i> {{ ($lr->half_day_type ?? '') === 'second_half' ? '2nd Half' : '1st Half' }}
                                         </span>
                                     </div>
-                                @elseif((float)($lr->paid_days ?? 0) > 0)
-                                    <div class="mt-1">
-                                        <span class="badge font-weight-bold px-1.5 py-0.5" style="font-size: 9.5px; background: #ECFDF5; color: #15803D; border: 1px solid #86EFAC;" title="Salary Protected Paid Leave">
-                                            {{ (float)$lr->paid_days }} Paid
+                                @endif
+                                @if(!empty($lr->sandwich_applied))
+                                    <div class="mt-0.5">
+                                        <span class="badge badge-pill font-weight-bold" style="background: #FEF3C7; color: #B45309; border: 1px solid #FCD34D; font-size: 10px; padding: 2px 7px;" title="Sandwich Policy Applied">
+                                            <i class="fas fa-layer-group mr-0.5"></i> Sandwich
                                         </span>
                                     </div>
-                                @endif -->
+                                @endif
                             </td>
 
                             <!-- 7. Manager Approval -->
@@ -1182,7 +1253,7 @@
                                         </a>
 
                                         @if($stLower === 'approved' && ($isSuperAdminUser || $isHrAdminUser))
-                                            <a class="dropdown-item text-danger font-weight-bold" href="#" data-toggle="modal" data-target="#voidModal{{ $lr->id }}">
+                                            <a class="dropdown-item text-danger font-weight-bold" href="javascript:void(0)" data-toggle="modal" data-target="#voidModal{{ $lr->id }}">
                                                 <i class="fas fa-ban text-danger"></i> Make Null & Void
                                             </a>
                                         @endif

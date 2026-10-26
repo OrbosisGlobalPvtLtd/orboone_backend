@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models\HRMS\Leave;
 
 use App\Models\HRMS\Employee\EmployeeM;
+use App\Models\Core\UserM;
 use Illuminate\Database\Eloquent\Model;
 
 final class LeaveCompOffTransactionM extends Model
@@ -31,5 +32,15 @@ final class LeaveCompOffTransactionM extends Model
     public function leaveRequest()
     {
         return $this->belongsTo(LeaveRequestM::class, 'leave_request_id');
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(UserM::class, 'created_by');
+    }
+
+    public function approvedBy()
+    {
+        return $this->belongsTo(UserM::class, 'approved_by_user_id');
     }
 }

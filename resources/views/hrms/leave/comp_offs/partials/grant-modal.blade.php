@@ -45,9 +45,12 @@
                             </div>
                             <small class="d-block text-muted mt-2">The credit is recorded as a dated lot and expires at the end of its effective month.</small>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-light border" data-dismiss="modal">Cancel</button>
-                            <button type="submit" class="btn btn-primary" style="background:var(--leave-primary);border-color:var(--leave-primary);font-weight:800;">Grant Comp-Off</button>
+                        <div class="modal-footer" style="background: #F8FAFC; border-top: 1px solid #E2E8F0; padding: 14px 24px;">
+                            <button type="button" class="btn btn-light border font-weight-bold" data-dismiss="modal" style="border-radius: 10px; padding: 9px 20px; font-size: 13px; color: #475467; background: #fff;">Cancel</button>
+                            <button type="submit" class="btn font-weight-bold text-white d-inline-flex align-items-center" style="background: linear-gradient(135deg, var(--orb-primary, #4B00E8) 0%, var(--orb-secondary, #FF5252) 100%); border: none; border-radius: 10px; padding: 9px 24px; font-size: 13px; box-shadow: 0 4px 14px rgba(75, 0, 232, 0.25); transition: all 0.2s ease; gap: 7px;">
+                                <i class="fas fa-plus-circle"></i>
+                                <span>Grant Comp-Off</span>
+                            </button>
                         </div>
                     </form>
                 </div>

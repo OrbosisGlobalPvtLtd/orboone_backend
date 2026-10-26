@@ -243,6 +243,11 @@
         min-width: 150px;
     }
 
+    .att-filter-grid > div.att-filter-year {
+        flex: 0 1 120px;
+        min-width: 100px;
+    }
+
     .att-filter-grid > div.att-filter-actions-col {
         flex: 0 0 auto;
         min-width: auto;

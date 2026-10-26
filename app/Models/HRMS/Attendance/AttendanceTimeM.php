@@ -4,6 +4,7 @@ namespace App\Models\HRMS\Attendance;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Database\Factories\AttendanceTimeFactory;
 use App\Models\HRMS\Employee\EmployeeShiftTimingM;
 
 class AttendanceTimeM extends Model
@@ -12,7 +13,7 @@ class AttendanceTimeM extends Model
 
     protected static function newFactory()
     {
-        return \Database\Factories\AttendanceTimeFactory::new();
+        return AttendanceTimeFactory::new();
     }
 
     protected $table = 'attendance_times';

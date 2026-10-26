@@ -9,6 +9,7 @@ use App\Models\HRMS\Employee\EmployeeM;
 use App\Models\HRMS\Leave\LeaveAllocationM;
 use App\Models\HRMS\Leave\LeaveRequestDateM;
 use App\Models\HRMS\Leave\LeaveRequestM;
+use App\Models\HRMS\Attendance\AttendanceTimeM;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -118,24 +119,24 @@ class AttendanceSyncFromLeaveService
                 }
             }
 
-            $attendanceStatus = $isHalfDay ? ($isLwpHalfDay ? 'lwp' : 'half_day') : ($isFullDayLwp ? 'lwp' : 'leave');
-            $attendanceTypeId = $isHalfDay ? ($isLwpHalfDay ? $lwpTypeId : $halfDayTypeId) : ($isFullDayLwp ? $lwpTypeId : $leaveTypeId);
+            $attendanceStatus = $isHalfDay ? 'half_day' : ($isFullDayLwp ? 'lwp' : 'leave');
+            $attendanceTypeId = $isHalfDay ? $halfDayTypeId : ($isFullDayLwp ? $lwpTypeId : $leaveTypeId);
 
-            $attendance->fill([
+            $hasPunchedIn = !empty($attendance->punch_in_time);
+            $hasPunchedOut = !empty($attendance->punch_out_time);
+
+            $fillData = [
                 'user_id' => $leaveRequest->user_id,
                 'employee_id' => $leaveRequest->employee_id,
                 'attendance_type_id' => $attendanceTypeId,
                 'leave_request_id' => $leaveRequest->id,
                 'attendance_date' => $leaveDateStr,
                 'attendance_status' => $attendanceStatus,
-                'attendance_source' => 'leave_auto',
                 'is_lwp' => $isLwpHalfDay || $isFullDayLwp,
                 'lwp_reason' => $isLwpHalfDay ? 'Half day leave applied but paid leave balance unavailable.' : ($isFullDayLwp ? 'Leave applied but paid leave balance unavailable.' : null),
                 'is_half_day' => $isHalfDay,
                 'half_day_reason' => $isHalfDay ? ($isLwpHalfDay ? 'Half day leave applied but paid leave balance unavailable.' : 'Approved half-day leave') : null,
                 'remarks' => 'Approved Leave (' . ($leaveRequest->leaveType->name ?? 'Leave') . ')',
-                'total_work_minutes' => 0,
-                'gross_work_minutes' => 0,
                 'is_late' => false,
                 'late_minutes' => 0,
                 'is_early_out' => false,
@@ -144,9 +145,39 @@ class AttendanceSyncFromLeaveService
                 'is_missed_punch' => false,
                 'is_punch_blocked' => false,
                 'is_blocked' => false,
-            ]);
+            ];
 
+            if (! $hasPunchedIn) {
+                $fillData['attendance_source'] = 'leave_auto';
+                $fillData['total_work_minutes'] = 0;
+                $fillData['gross_work_minutes'] = 0;
+            } else {
+                if (empty($attendance->attendance_source) || $attendance->attendance_source === 'leave_reversed') {
+                    $fillData['attendance_source'] = 'web';
+                }
+
+                // If already punched in, recalculate target_punch_out_time for the approved half-day leave
+                $ruleResolver = app(AttendanceRuleResolverService::class);
+                $employee = $leaveRequest->employee ?: EmployeeM::find($leaveRequest->employee_id);
+                $shift = $employee 
+                    ? $ruleResolver->resolveShiftPolicy($employee, $leaveDateStr, $attendance->attendance_time_id)
+                    : ($attendance->attendanceTime ?: ($attendance->attendance_time_id ? AttendanceTimeM::find($attendance->attendance_time_id) : null));
+
+                $in = Carbon::parse($leaveDateStr . ' ' . $ruleResolver->timeString($attendance->punch_in_time), AttendanceRuleResolverService::TIMEZONE);
+                $targetOut = $ruleResolver->targetPunchOut($in, $shift, $attendanceStatus);
+                $fillData['target_punch_out_time'] = $targetOut->format('H:i:s');
+            }
+
+            $attendance->fill($fillData);
             $attendance->save();
+
+            if ($hasPunchedIn && $hasPunchedOut) {
+                try {
+                    app(AttendanceService::class)->calculateAttendanceStats($attendance);
+                } catch (\Throwable $e) {
+                    Log::warning('Could not recalculate attendance stats after leave sync: ' . $e->getMessage());
+                }
+            }
 
             AttendanceDailyStatusLogM::create([
                 'employee_id' => $leaveRequest->employee_id,
@@ -191,7 +222,28 @@ class AttendanceSyncFromLeaveService
             $attendance->lwp_reason = null;
             $attendance->is_half_day = false;
             $attendance->half_day_reason = null;
+
+            if ($hasPunched) {
+                $ruleResolver = app(AttendanceRuleResolverService::class);
+                $employee = $leaveRequest->employee ?: EmployeeM::find($leaveRequest->employee_id);
+                $attDateStr = Carbon::parse($attendance->attendance_date)->toDateString();
+                $shift = $attendance->attendanceTime 
+                    ?: ($attendance->attendance_time_id ? AttendanceTimeM::find($attendance->attendance_time_id) : null)
+                    ?: ($employee ? $ruleResolver->getPolicyForEmployee($employee, $attDateStr) : null);
+
+                $in = Carbon::parse($attDateStr . ' ' . $ruleResolver->timeString($attendance->punch_in_time), AttendanceRuleResolverService::TIMEZONE);
+                $attendance->target_punch_out_time = $ruleResolver->targetPunchOut($in, $shift, 'present')->format('H:i:s');
+            }
+
             $attendance->save();
+
+            if ($hasPunched && !empty($attendance->punch_out_time)) {
+                try {
+                    app(AttendanceService::class)->calculateAttendanceStats($attendance);
+                } catch (\Throwable $e) {
+                    Log::warning('Could not recalculate attendance stats after leave reversal: ' . $e->getMessage());
+                }
+            }
 
             AttendanceDailyStatusLogM::create([
                 'employee_id' => $attendance->employee_id,

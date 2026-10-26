@@ -65,6 +65,9 @@ class AttendanceViolationService
 
         if (!empty($month) && $month !== 'custom') {
             try {
+                if (!str_contains($month, '-') && !empty($filters['year'])) {
+                    $month = sprintf('%04d-%02d', (int) $filters['year'], (int) $month);
+                }
                 $mDate = Carbon::parse($month . '-01');
                 $mStart = $mDate->copy()->startOfMonth()->toDateString();
                 $mEnd = $mDate->copy()->endOfMonth()->toDateString();

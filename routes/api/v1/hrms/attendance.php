@@ -25,11 +25,15 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/regularize/my-requests', [AttendanceRegularizationController::class, 'myRegularizationRequests']);
             Route::get('/regularize/{id}', [AttendanceRegularizationController::class, 'showRegularizationRequest']);
             Route::post('/regularize/{id}/cancel', [AttendanceRegularizationController::class, 'cancelRegularizationRequest']);
+            Route::post('/regularize/{id}/update', [AttendanceRegularizationController::class, 'updateRegularizationRequest']);
+            Route::put('/regularize/{id}', [AttendanceRegularizationController::class, 'updateRegularizationRequest']);
             Route::get('/regularization/options', [AttendanceRegularizationController::class, 'getOptions']);
             Route::post('/regularization', [AttendanceRegularizationController::class, 'requestRegularization']);
             Route::get('/regularization/my-requests', [AttendanceRegularizationController::class, 'myRegularizationRequests']);
             Route::get('/regularization/{id}', [AttendanceRegularizationController::class, 'showRegularizationRequest']);
             Route::post('/regularization/{id}/cancel', [AttendanceRegularizationController::class, 'cancelRegularizationRequest']);
+            Route::post('/regularization/{id}/update', [AttendanceRegularizationController::class, 'updateRegularizationRequest']);
+            Route::put('/regularization/{id}', [AttendanceRegularizationController::class, 'updateRegularizationRequest']);
         });
         Route::get('/rules', [AttendanceController::class, 'rules']);
         Route::post('/unlock', [AttendanceController::class, 'unlock']);
@@ -48,11 +52,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/attendance/regularize/my-requests', [AttendanceRegularizationController::class, 'myRegularizationRequests']);
         Route::get('/attendance/regularize/{id}', [AttendanceRegularizationController::class, 'showRegularizationRequest']);
         Route::post('/attendance/regularize/{id}/cancel', [AttendanceRegularizationController::class, 'cancelRegularizationRequest']);
+        Route::post('/attendance/regularize/{id}/update', [AttendanceRegularizationController::class, 'updateRegularizationRequest']);
+        Route::put('/attendance/regularize/{id}', [AttendanceRegularizationController::class, 'updateRegularizationRequest']);
         Route::get('/attendance/regularization/options', [AttendanceRegularizationController::class, 'getOptions']);
         Route::post('/attendance/regularization', [AttendanceRegularizationController::class, 'requestRegularization']);
         Route::get('/attendance/regularization/my-requests', [AttendanceRegularizationController::class, 'myRegularizationRequests']);
         Route::get('/attendance/regularization/{id}', [AttendanceRegularizationController::class, 'showRegularizationRequest']);
         Route::post('/attendance/regularization/{id}/cancel', [AttendanceRegularizationController::class, 'cancelRegularizationRequest']);
+        Route::post('/attendance/regularization/{id}/update', [AttendanceRegularizationController::class, 'updateRegularizationRequest']);
+        Route::put('/attendance/regularization/{id}', [AttendanceRegularizationController::class, 'updateRegularizationRequest']);
 
         Route::post('/attendance/holiday-work', [HolidayWorkRequestController::class, 'store']);
         Route::get('/attendance/holiday-work/my-requests', [HolidayWorkRequestController::class, 'index']);

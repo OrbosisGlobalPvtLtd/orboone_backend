@@ -1,15 +1,23 @@
 @if(!empty($filters))
 @php
-    $currentMonthKey = now()->format('Y-m');
     $reqMonth = request('month');
+    $reqYear = request('year');
     $hasCustomDates = request()->filled('from') || request()->filled('from_date') || request()->filled('to') || request()->filled('to_date');
 
     if ($hasCustomDates || $reqMonth === 'custom') {
         $activeMonth = 'custom';
     } elseif ($reqMonth !== null) {
-        $activeMonth = $reqMonth;
+        $activeMonth = str_contains($reqMonth, '-') ? explode('-', $reqMonth)[1] : str_pad($reqMonth, 2, '0', STR_PAD_LEFT);
     } else {
-        $activeMonth = $currentMonthKey;
+        $activeMonth = now()->format('m');
+    }
+
+    if ($reqYear !== null) {
+        $activeYear = $reqYear;
+    } elseif ($reqMonth && str_contains($reqMonth, '-')) {
+        $activeYear = explode('-', $reqMonth)[0];
+    } else {
+        $activeYear = now()->format('Y');
     }
 @endphp
 
@@ -39,8 +47,8 @@
                                 $optionsList[$value] = $displayLabel;
                             }
                         @endphp
-                        <select name="{{ $filterName }}" id="{{ $filterName === 'month' ? 'filter_month' : 'filter_' . $filterName }}" class="form-control select2-searchable">
-                            @if($filterName !== 'month')
+                        <select name="{{ $filterName }}" id="{{ $filterName === 'month' ? 'filter_month' : ($filterName === 'year' ? 'filter_year' : 'filter_' . $filterName) }}" class="form-control select2-searchable" @if(in_array($filterName, ['month', 'year'])) data-allow-clear="false" @endif>
+                            @if(!in_array($filterName, ['month', 'year']))
                                 <option value="">All {{ $filterLabel }}</option>
                             @endif
                             @foreach($optionsList as $val => $lbl)
@@ -48,6 +56,8 @@
                                     $isSelected = false;
                                     if ($filterName === 'month') {
                                         $isSelected = ((string) $activeMonth === (string) $val);
+                                    } elseif ($filterName === 'year') {
+                                        $isSelected = ((string) $activeYear === (string) $val);
                                     } elseif ($filterName === 'employee_id') {
                                         if (request()->has('employee_id')) {
                                             $isSelected = ((string) request('employee_id') === (string) $val);
@@ -81,7 +91,7 @@
                 <button type="submit" class="btn text-white font-weight-bold shadow-sm" style="height: 42px; min-width: 105px; border-radius: 12px; background: linear-gradient(135deg, var(--orb-primary, #4B00E8) 0%, var(--orb-secondary, #FF5252) 100%); border: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px;">
                     <i class="fas fa-search"></i> Search
                 </button>
-                <a href="{{ url()->current() }}?month={{ now()->format('Y-m') }}" class="btn btn-light border font-weight-bold" style="height: 42px; width: 42px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Reset Filters">
+                <a href="{{ url()->current() }}?year={{ now()->format('Y') }}&month={{ now()->format('m') }}" class="btn btn-light border font-weight-bold" style="height: 42px; width: 42px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Reset Filters">
                     <i class="fas fa-undo"></i>
                 </a>
             </div>

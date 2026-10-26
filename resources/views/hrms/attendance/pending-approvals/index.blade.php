@@ -736,7 +736,7 @@
                             </select>
                         </div>
 
-                        <div class="att-filter-group">
+                        <div class="att-filter-group att-filter-date {{ $isCustomRange ? 'd-none' : '' }}">
                             <label><i class="fas fa-calendar-day text-primary mr-1"></i> Date</label>
                             <x-form.date-picker name="date" id="pending_date" :value="request('date')" placeholder="dd-mm-yyyy" class="form-control" />
                         </div>
@@ -1001,6 +1001,7 @@
 
         const monthYearSelect = document.getElementById('monthYearSelect');
         const customDateFilters = document.querySelectorAll('.custom-date-filter');
+        const dateFilterGroup = document.querySelector('.att-filter-date');
         const dateInput = document.getElementById('pending_date');
         const fromDateInput = document.getElementById('pending_from_date');
         const toDateInput = document.getElementById('pending_to_date');
@@ -1013,6 +1014,13 @@
                     el.classList.add('d-none');
                 }
             });
+            if (dateFilterGroup) {
+                if (show) {
+                    dateFilterGroup.classList.add('d-none');
+                } else {
+                    dateFilterGroup.classList.remove('d-none');
+                }
+            }
         }
 
         if (monthYearSelect) {
@@ -1020,6 +1028,7 @@
                 const val = $(this).val();
                 if (val === 'all' || val === 'custom') {
                     toggleCustomDateFilters(true);
+                    if (dateInput) dateInput.value = '';
                 } else {
                     toggleCustomDateFilters(false);
                     if (fromDateInput) fromDateInput.value = '';

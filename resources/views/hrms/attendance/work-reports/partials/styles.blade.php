@@ -1,7 +1,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap4.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap4.min.css">
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
 
 <style>
     :root {
@@ -287,10 +287,52 @@
     }
 
     .att-filter-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-        gap: 14px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
         align-items: flex-end;
+    }
+
+    .att-filter-grid .att-filter-col {
+        flex: 1 1 140px;
+        min-width: 125px;
+    }
+
+    .att-filter-grid .att-filter-employee {
+        flex: 1.5 1 175px;
+        min-width: 150px;
+    }
+
+    .att-filter-grid .att-filter-workmode {
+        flex: 1 1 125px;
+        min-width: 115px;
+    }
+
+    .att-filter-grid .att-filter-date {
+        flex: 1 1 135px;
+        min-width: 120px;
+    }
+
+    .att-filter-grid .att-filter-year {
+        flex: 0.8 1 100px;
+        min-width: 90px;
+        max-width: 120px;
+    }
+
+    .att-filter-grid .att-filter-month {
+        flex: 1.2 1 150px;
+        min-width: 135px;
+    }
+
+    .att-filter-grid .att-filter-from,
+    .att-filter-grid .att-filter-to {
+        flex: 1 1 135px;
+        min-width: 120px;
+    }
+
+    .att-filter-grid .att-filter-actions-col {
+        flex: 0 0 auto;
+        min-width: auto;
     }
 
     .att-filter-grid label {
@@ -304,11 +346,11 @@
     }
 
     .att-filter-grid .form-control {
-        height: 42px;
-        border-radius: 12px;
+        height: 38px;
+        border-radius: 10px;
         border: 1px solid var(--orb-border);
         background: #FFFFFF;
-        padding: 8px 14px;
+        padding: 6px 12px;
         font-size: 13px;
         font-weight: 600;
         color: var(--orb-text);
@@ -321,20 +363,6 @@
         box-shadow: 0 0 0 3px rgba(75, 0, 232, 0.1);
     }
 
-    .att-filter-panel .select2-container .select2-selection--single {
-        height: 42px !important;
-        border-radius: 12px !important;
-        border: 1px solid var(--orb-border) !important;
-        padding: 6px 12px !important;
-        display: flex !important;
-        align-items: center !important;
-        background: #FFFFFF !important;
-    }
-
-    .att-filter-panel .select2-container--default .select2-selection--single .select2-selection__arrow {
-        top: 8px !important;
-    }
-
     .att-filter-actions {
         display: flex;
         align-items: center;
@@ -342,12 +370,12 @@
     }
 
     .att-search-btn {
-        height: 42px;
-        border-radius: 12px;
+        height: 38px;
+        border-radius: 10px;
         background: linear-gradient(135deg, var(--orb-primary, #4B00E8) 0%, var(--orb-secondary, #6B11F4) 100%);
         color: #FFFFFF;
         border: none;
-        padding: 0 20px;
+        padding: 0 18px;
         font-size: 13px;
         font-weight: 800;
         display: inline-flex;
@@ -367,9 +395,9 @@
     }
 
     .att-reset-btn {
-        height: 42px;
-        width: 42px;
-        border-radius: 12px;
+        height: 38px;
+        width: 38px;
+        border-radius: 10px;
         background: #FFFFFF;
         border: 1px solid var(--orb-border);
         color: var(--orb-muted);

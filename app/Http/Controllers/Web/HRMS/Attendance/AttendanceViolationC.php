@@ -61,19 +61,44 @@ class AttendanceViolationC extends Controller
         $currentEmployeeId = $currentEmployee?->id;
 
         $now = Carbon::now(AttendanceViolationService::TIMEZONE);
+        $currentYear = $now->format('Y');
+        $currentMonth = $now->format('m');
         $currentMonthKey = $now->format('Y-m');
+
+        $yearInput = $request->input('year');
         $monthInput = $request->input('month');
         $fromDate = $request->input('from_date') ?: $request->input('from');
         $toDate = $request->input('to_date') ?: $request->input('to');
 
-        // If month is not provided or empty string and no custom date is specified, ALWAYS default to current month
-        if (empty($monthInput) && empty($fromDate) && empty($toDate)) {
-            $monthInput = $currentMonthKey;
+        // Handle legacy combined "YYYY-MM" format in month input if passed
+        if (!empty($monthInput) && str_contains($monthInput, '-')) {
+            $parts = explode('-', $monthInput, 2);
+            $yearInput = $parts[0];
+            $monthInput = $parts[1];
+        }
+
+        if (empty($yearInput)) {
+            $yearInput = $currentYear;
+        }
+
+        $isCustomRange = ($monthInput === 'custom' || (!empty($fromDate) || !empty($toDate)));
+
+        if ($isCustomRange) {
+            $monthInput = 'custom';
+            $monthKey = 'custom';
+        } else {
+            if (empty($monthInput)) {
+                $monthInput = $currentMonth;
+            } else {
+                $monthInput = str_pad((string) $monthInput, 2, '0', STR_PAD_LEFT);
+            }
+            $monthKey = sprintf('%04d-%02d', (int) $yearInput, (int) $monthInput);
         }
 
         // 1. Fetch Real-time Dashboard Summary Metrics with active filters and employee role scoping
         $summaryFilterParams = $request->all();
-        $summaryFilterParams['month'] = $monthInput;
+        $summaryFilterParams['year'] = $yearInput;
+        $summaryFilterParams['month'] = $monthKey;
         $summaryFilterParams['from'] = $fromDate;
         $summaryFilterParams['to'] = $toDate;
 
@@ -145,9 +170,9 @@ class AttendanceViolationC extends Controller
             $query->where('attendance_violations.type', $request->input('type'));
         }
 
-        if (!empty($monthInput) && $monthInput !== 'custom') {
+        if (!$isCustomRange && !empty($monthKey) && $monthKey !== 'custom') {
             try {
-                $monthDate = Carbon::parse($monthInput . '-01');
+                $monthDate = Carbon::parse($monthKey . '-01');
                 $mStart = $monthDate->copy()->startOfMonth()->toDateString();
                 $mEnd = $monthDate->copy()->endOfMonth()->toDateString();
                 $query->whereDate('attendance_violations.violation_date', '>=', $mStart)
@@ -155,7 +180,7 @@ class AttendanceViolationC extends Controller
             } catch (\Throwable $e) {
                 // Fallback ignore malformed month
             }
-        } elseif ($monthInput === 'custom' || (!empty($fromDate) || !empty($toDate))) {
+        } elseif ($isCustomRange) {
             if ($fromDate) {
                 try {
                     $parsedFrom = Carbon::parse($fromDate)->toDateString();
@@ -249,13 +274,9 @@ class AttendanceViolationC extends Controller
             'resolved' => 'Resolved',
         ];
 
-        // Month options (last 12 months)
-        $months = [];
-        $now = Carbon::now(AttendanceViolationService::TIMEZONE);
-        for ($i = 0; $i < 12; $i++) {
-            $m = (clone $now)->subMonths($i);
-            $months[$m->format('Y-m')] = $m->format('F Y');
-        }
+        // Year and Month options
+        $years = get_filter_years(1, 4);
+        $months = get_filter_months(true);
 
         $employeeOptions = [];
         if ($canViewAll) {
@@ -306,10 +327,13 @@ class AttendanceViolationC extends Controller
             'filters' => [
                 'types' => $types,
                 'penalty_statuses' => $penaltyStatuses,
+                'years' => $years,
                 'months' => $months,
                 'employee_options' => $employeeOptions,
+                'selected_year' => $yearInput,
                 'selected_month' => $monthInput,
-                'current_month' => $currentMonthKey,
+                'current_year' => $currentYear,
+                'current_month' => $currentMonth,
             ],
             'pageTitle' => $isEmployeeOnly ? 'My Attendance Violations' : 'Attendance Violations Audit Dashboard',
             'pageSubtitle' => $isEmployeeOnly ? 'Your personal attendance discipline, missed punch cycles, and penalty conversions.' : 'Enterprise audit overview of attendance discipline, missed punch cycles, and penalty conversions.',
@@ -344,8 +368,13 @@ class AttendanceViolationC extends Controller
         }
 
         $month = $request->input('month');
+        $year = $request->input('year');
         $fromDate = $request->input('from_date') ?: $request->input('from');
         $toDate = $request->input('to_date') ?: $request->input('to');
+
+        if ($month && $month !== 'custom' && !str_contains($month, '-') && $year) {
+            $month = sprintf('%04d-%02d', (int) $year, (int) $month);
+        }
 
         if (empty($month) && empty($fromDate) && empty($toDate)) {
             $month = Carbon::now(AttendanceViolationService::TIMEZONE)->format('Y-m');
@@ -414,10 +443,17 @@ class AttendanceViolationC extends Controller
         if ($request->filled('type')) {
             $query->where('attendance_violations.type', $request->input('type'));
         }
-        if ($request->filled('month')) {
-            $monthDate = Carbon::parse($request->input('month') . '-01');
-            $query->whereDate('attendance_violations.violation_date', '>=', $monthDate->copy()->startOfMonth()->toDateString())
-                  ->whereDate('attendance_violations.violation_date', '<=', $monthDate->copy()->endOfMonth()->toDateString());
+        $exportMonth = $request->input('month');
+        $exportYear = $request->input('year');
+        if ($exportMonth && $exportMonth !== 'custom') {
+            if (!str_contains($exportMonth, '-') && $exportYear) {
+                $exportMonth = sprintf('%04d-%02d', (int) $exportYear, (int) $exportMonth);
+            }
+            try {
+                $monthDate = Carbon::parse($exportMonth . '-01');
+                $query->whereDate('attendance_violations.violation_date', '>=', $monthDate->copy()->startOfMonth()->toDateString())
+                      ->whereDate('attendance_violations.violation_date', '<=', $monthDate->copy()->endOfMonth()->toDateString());
+            } catch (\Throwable $e) {}
         } else {
             if ($request->filled('from')) {
                 $query->whereDate('attendance_violations.violation_date', '>=', $request->input('from'));

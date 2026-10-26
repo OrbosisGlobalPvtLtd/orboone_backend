@@ -18,6 +18,18 @@ document.addEventListener('DOMContentLoaded', function () {
             $('[data-toggle="tooltip"]').tooltip();
         }
 
+        // Ensure Month and Year do not show the clear 'x' icon
+        $('#filter_year, #filter_month').each(function () {
+            if ($(this).hasClass('select2-hidden-accessible')) {
+                $(this).select2('destroy');
+            }
+            $(this).select2({
+                allowClear: false,
+                width: '100%',
+                minimumResultsForSearch: 7
+            });
+        });
+
         // Toggle Custom Date fields based on Month dropdown selection
         $(document).on('change', '#filter_month', function () {
             const val = $(this).val();
@@ -260,20 +272,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const table = $('#regularizationDataTable').DataTable({
             destroy: true,
-            ordering: false,
+            ordering: true,
+            order: [],
             responsive: false,
             autoWidth: false,
-            scrollX: true,
-            scrollCollapse: true,
+            scrollX: false,
+            scrollCollapse: false,
             paging: false,
             info: false,
             searching: false,
+            columnDefs: [
+                { orderable: false, targets: [4, 5, 6, 7, 8, 11] }
+            ],
             dom: 'rt',
             buttons: [
                 {
                     extend: 'csvHtml5',
-                    text: '<i class="fas fa-file-csv text-success"></i> CSV',
-                    className: 'leave-export-btn',
+                    text: '<i class="fas fa-file-csv icon-csv"></i> CSV',
+                    className: 'orbo-export-btn btn-export-csv',
                     title: '{{ branding_name() }} Attendance Regularizations',
                     exportOptions: {
                         columns: ':not(.no-export)',
@@ -282,8 +298,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 },
                 {
                     extend: 'excelHtml5',
-                    text: '<i class="fas fa-file-excel text-success"></i> Excel',
-                    className: 'leave-export-btn',
+                    text: '<i class="fas fa-file-excel icon-excel"></i> Excel',
+                    className: 'orbo-export-btn btn-export-excel',
                     title: '{{ branding_name() }} Attendance Regularizations',
                     exportOptions: {
                         columns: ':not(.no-export)',
@@ -292,8 +308,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 },
                 {
                     extend: 'pdfHtml5',
-                    text: '<i class="fas fa-file-pdf text-danger"></i> PDF',
-                    className: 'leave-export-btn',
+                    text: '<i class="fas fa-file-pdf icon-pdf"></i> PDF',
+                    className: 'orbo-export-btn btn-export-pdf',
                     orientation: 'landscape',
                     pageSize: 'A4',
                     title: '',
@@ -322,7 +338,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         let tableNode = doc.content.find(c => c.table);
                         if (tableNode && tableNode.table && tableNode.table.body && tableNode.table.body.length > 0) {
                             let colCount = tableNode.table.body[0].length;
-                            if (colCount === 9) {
+                            if (colCount === 11) {
+                                tableNode.table.widths = ['3%', '17%', '8%', '11%', '7%', '7%', '7%', '7%', '14%', '8%', '11%'];
+                            } else if (colCount === 9) {
                                 tableNode.table.widths = ['4%', '18%', '9%', '12%', '10%', '10%', '17%', '9%', '11%'];
                             } else {
                                 tableNode.table.widths = Array(colCount).fill('*');
@@ -344,8 +362,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 },
                 {
                     extend: 'print',
-                    text: '<i class="fas fa-print text-primary"></i> Print',
-                    className: 'leave-export-btn',
+                    text: '<i class="fas fa-print icon-print"></i> Print',
+                    className: 'orbo-export-btn btn-export-print',
                     title: '',
                     exportOptions: {
                         columns: ':not(.no-export)',

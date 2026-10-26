@@ -63,6 +63,10 @@ class AttendancePayableDayResolver
             return $this->row(0.0, 'unpaid', true, 'Punch blocked attendance is unresolved.');
         }
 
+        if ((bool) $attendance->is_half_day || $effective === 'half_day') {
+            return $this->row(0.5, 'partial_paid', false, 'Half day payable as 0.5.');
+        }
+
         if ((bool) $attendance->is_lwp || in_array($effective, ['lwp', 'absent'], true)) {
             return $this->row(0.0, 'unpaid', false, 'Unpaid attendance.');
         }
@@ -78,10 +82,6 @@ class AttendancePayableDayResolver
             }
 
             return $this->row(1.0, 'paid', false, 'Missed punch within monthly grace limit (Warning - No salary deduction).');
-        }
-
-        if ((bool) $attendance->is_half_day || $effective === 'half_day') {
-            return $this->row(0.5, 'partial_paid', false, 'Half day payable as 0.5.');
         }
 
         if (in_array($effective, ['present', 'holiday', 'week_off', 'leave'], true)) {

@@ -88,48 +88,41 @@ class WorkReportC extends Controller
             }
         }
 
-        // Build Month Dropdown Options (Last 12 Months)
-        $monthOptions = [];
-        $cursor = Carbon::now()->startOfMonth();
-        for ($i = 0; $i < 12; $i++) {
-            $val = $cursor->format('Y-m');
-            $monthOptions[$val] = $cursor->format('F Y');
-            $cursor->subMonth();
+        // Separate Year & Month filtering with backward compatibility
+        $currentYear = (int) Carbon::now()->format('Y');
+        $currentMonth = Carbon::now()->format('m');
+
+        $yearInput = $request->input('year');
+        $monthInput = $request->input('month');
+
+        // Backward compatibility if month was passed as "YYYY-MM"
+        if (is_string($monthInput) && strpos($monthInput, '-') !== false && $monthInput !== 'custom') {
+            $parts = explode('-', $monthInput);
+            if (count($parts) === 2) {
+                $yearInput = (int) $parts[0];
+                $monthInput = str_pad((string) $parts[1], 2, '0', STR_PAD_LEFT);
+            }
         }
 
+        $selectedYear = !empty($yearInput) ? (int) $yearInput : $currentYear;
+
         // Determine active month / single date / custom date filtering
-        $selectedMonth = $request->input('month');
         $hasSingleDate = $request->filled('date');
         $hasDateRange = $request->filled('from_date') || $request->filled('to_date');
-        $isCustomDate = ($selectedMonth === 'custom') || (! $request->has('month') && ! $hasSingleDate && $hasDateRange);
+        $isCustomDate = ($monthInput === 'custom') || (! $request->has('month') && ! $hasSingleDate && $hasDateRange);
 
         if ($hasSingleDate) {
             $query->whereDate('work_date', $request->date);
             try {
-                $selectedMonth = Carbon::parse($request->date)->format('Y-m');
+                $dCarbon = Carbon::parse($request->date);
+                $selectedYear = (int) $dCarbon->format('Y');
+                $selectedMonth = $dCarbon->format('m');
             } catch (\Throwable $e) {
-                $selectedMonth = Carbon::now()->format('Y-m');
-            }
-            if (! isset($monthOptions[$selectedMonth])) {
-                try {
-                    $monthOptions[$selectedMonth] = Carbon::createFromFormat('Y-m', $selectedMonth)->format('F Y');
-                } catch (\Throwable $e) {}
-            }
-        } elseif (! $isCustomDate && $selectedMonth && $selectedMonth !== 'all') {
-            try {
-                $mDate = Carbon::createFromFormat('Y-m', $selectedMonth);
-                $query->whereBetween('work_date', [
-                    $mDate->copy()->startOfMonth()->toDateString(),
-                    $mDate->copy()->endOfMonth()->toDateString()
-                ]);
-            } catch (\Throwable $e) {
-                $selectedMonth = Carbon::now()->format('Y-m');
-                $query->whereBetween('work_date', [
-                    Carbon::now()->startOfMonth()->toDateString(),
-                    Carbon::now()->endOfMonth()->toDateString()
-                ]);
+                $selectedMonth = $currentMonth;
             }
         } elseif ($isCustomDate) {
+            $monthInput = 'custom';
+            $selectedMonth = 'custom';
             if ($request->filled('from_date')) {
                 $query->whereDate('work_date', '>=', $request->from_date);
             }
@@ -137,11 +130,26 @@ class WorkReportC extends Controller
                 $query->whereDate('work_date', '<=', $request->to_date);
             }
         } else {
-            $selectedMonth = Carbon::now()->format('Y-m');
-            $query->whereBetween('work_date', [
-                Carbon::now()->startOfMonth()->toDateString(),
-                Carbon::now()->endOfMonth()->toDateString()
-            ]);
+            if (empty($monthInput)) {
+                $selectedMonth = $currentMonth;
+            } else {
+                $selectedMonth = str_pad((string) $monthInput, 2, '0', STR_PAD_LEFT);
+            }
+
+            try {
+                $mDate = Carbon::createFromDate($selectedYear, (int) $selectedMonth, 1);
+                $query->whereBetween('work_date', [
+                    $mDate->copy()->startOfMonth()->toDateString(),
+                    $mDate->copy()->endOfMonth()->toDateString()
+                ]);
+            } catch (\Throwable $e) {
+                $selectedYear = $currentYear;
+                $selectedMonth = $currentMonth;
+                $query->whereBetween('work_date', [
+                    Carbon::now()->startOfMonth()->toDateString(),
+                    Carbon::now()->endOfMonth()->toDateString()
+                ]);
+            }
         }
 
         // Apply additional request filters
@@ -290,9 +298,12 @@ class WorkReportC extends Controller
         $employees = $this->attendanceEmployees($isHrOrAdmin, $isManager, $teamEmpIds);
 
         $filters = [
-            'months' => $monthOptions,
-            'selected_month' => $hasSingleDate ? '' : $selectedMonth,
-            'current_month' => Carbon::now()->format('Y-m'),
+            'years' => get_filter_years(1, 4),
+            'selected_year' => (string) $selectedYear,
+            'current_year' => (string) $currentYear,
+            'months' => get_filter_months(true),
+            'selected_month' => $hasSingleDate ? '' : ($isCustomDate ? 'custom' : (string) $selectedMonth),
+            'current_month' => (string) $currentMonth,
             'is_custom' => $isCustomDate,
             'date' => $request->date,
             'from_date' => $request->from_date,
@@ -379,39 +390,77 @@ class WorkReportC extends Controller
             }
         }
 
-        $selectedMonth = $request->get('month');
-        $fromDate = $request->get('from_date');
-        $toDate = $request->get('to_date');
-        $workMode = $request->get('work_mode');
-        $perPage = $request->get('per_page', 25);
+        // Separate Year & Month filtering with backward compatibility
+        $currentYear = (int) Carbon::now()->format('Y');
+        $currentMonth = Carbon::now()->format('m');
 
-        // Default to current month if no specific dates or month passed
-        if (!$request->has('month') && !$fromDate && !$toDate) {
-            $selectedMonth = now()->format('Y-m');
+        $yearInput = $request->input('year');
+        $monthInput = $request->input('month');
+
+        // Backward compatibility if month was passed as "YYYY-MM"
+        if (is_string($monthInput) && strpos($monthInput, '-') !== false && $monthInput !== 'custom') {
+            $parts = explode('-', $monthInput);
+            if (count($parts) === 2) {
+                $yearInput = (int) $parts[0];
+                $monthInput = str_pad((string) $parts[1], 2, '0', STR_PAD_LEFT);
+            }
         }
+
+        $selectedYear = !empty($yearInput) ? (int) $yearInput : $currentYear;
+
+        // Determine active month / single date / custom date filtering
+        $hasSingleDate = $request->filled('date');
+        $hasDateRange = $request->filled('from_date') || $request->filled('to_date');
+        $isCustomDate = ($monthInput === 'custom') || (! $request->has('month') && ! $hasSingleDate && $hasDateRange);
 
         $query = WorkLog::with(['user', 'employee.department', 'employee.designation', 'attendance.attendanceTime'])
             ->where('employee_id', $employee->id);
 
         if ($request->filled('work_mode')) {
-            $query->whereHas('attendance', function ($q) use ($request) {
-                $q->where('work_mode', $request->work_mode);
+            $workMode = strtolower($request->work_mode);
+            $query->whereHas('attendance', function ($q) use ($workMode) {
+                $q->where('work_mode', $workMode);
             });
         }
 
-        if ($fromDate && $toDate) {
-            $query->whereBetween('work_date', [$fromDate, $toDate]);
-        } elseif ($fromDate) {
-            $query->whereDate('work_date', '>=', $fromDate);
-        } elseif ($toDate) {
-            $query->whereDate('work_date', '<=', $toDate);
-        } elseif ($selectedMonth && $selectedMonth !== 'all') {
+        if ($hasSingleDate) {
+            $query->whereDate('work_date', $request->date);
             try {
-                $dt = Carbon::createFromFormat('Y-m', $selectedMonth);
-                $query->whereYear('work_date', $dt->year)
-                      ->whereMonth('work_date', $dt->month);
-            } catch (\Exception $e) {
-                // fallback
+                $dCarbon = Carbon::parse($request->date);
+                $selectedYear = (int) $dCarbon->format('Y');
+                $selectedMonth = $dCarbon->format('m');
+            } catch (\Throwable $e) {
+                $selectedMonth = $currentMonth;
+            }
+        } elseif ($isCustomDate) {
+            $monthInput = 'custom';
+            $selectedMonth = 'custom';
+            if ($request->filled('from_date')) {
+                $query->whereDate('work_date', '>=', $request->from_date);
+            }
+            if ($request->filled('to_date')) {
+                $query->whereDate('work_date', '<=', $request->to_date);
+            }
+        } else {
+            if (empty($monthInput)) {
+                $selectedMonth = $currentMonth;
+            } else {
+                $selectedMonth = str_pad((string) $monthInput, 2, '0', STR_PAD_LEFT);
+            }
+
+            try {
+                $mDate = Carbon::createFromDate($selectedYear, (int) $selectedMonth, 1);
+                $query->whereBetween('work_date', [
+                    $mDate->copy()->startOfMonth()->toDateString(),
+                    $mDate->copy()->endOfMonth()->toDateString()
+                ]);
+            } catch (\Throwable $e) {
+                $selectedYear = $currentYear;
+                $selectedMonth = $currentMonth;
+                $query->whereBetween('work_date', [
+                    Carbon::now()->startOfMonth()->toDateString(),
+                    Carbon::now()->endOfMonth()->toDateString()
+                ]);
             }
         }
 
@@ -501,24 +550,20 @@ class WorkReportC extends Controller
         $completionRate = $totalTasks > 0 ? round(($completedTasks / $totalTasks) * 100, 1) : 100;
 
         $dateRangeLabel = 'All Historical Records';
-        if ($fromDate && $toDate) {
-            $dateRangeLabel = Carbon::parse($fromDate)->format('d M Y') . ' – ' . Carbon::parse($toDate)->format('d M Y');
-        } elseif ($fromDate) {
-            $dateRangeLabel = 'From ' . Carbon::parse($fromDate)->format('d M Y');
-        } elseif ($toDate) {
-            $dateRangeLabel = 'Until ' . Carbon::parse($toDate)->format('d M Y');
-        } elseif ($selectedMonth && $selectedMonth !== 'all') {
+        if ($hasSingleDate) {
+            $dateRangeLabel = Carbon::parse($request->date)->format('d M Y');
+        } elseif ($isCustomDate) {
+            if ($request->filled('from_date') && $request->filled('to_date')) {
+                $dateRangeLabel = Carbon::parse($request->from_date)->format('d M Y') . ' – ' . Carbon::parse($request->to_date)->format('d M Y');
+            } elseif ($request->filled('from_date')) {
+                $dateRangeLabel = 'From ' . Carbon::parse($request->from_date)->format('d M Y');
+            } elseif ($request->filled('to_date')) {
+                $dateRangeLabel = 'Until ' . Carbon::parse($request->to_date)->format('d M Y');
+            }
+        } else {
             try {
-                $dateRangeLabel = Carbon::createFromFormat('Y-m', $selectedMonth)->format('F Y');
-            } catch (\Exception $e) {
-                // fallback
-            }
-        } elseif ($statsLogs->isNotEmpty()) {
-            $minDate = $statsLogs->min('work_date');
-            $maxDate = $statsLogs->max('work_date');
-            if ($minDate && $maxDate) {
-                $dateRangeLabel = Carbon::parse($minDate)->format('d M Y') . ' – ' . Carbon::parse($maxDate)->format('d M Y');
-            }
+                $dateRangeLabel = Carbon::createFromDate($selectedYear, (int)$selectedMonth, 1)->format('F Y');
+            } catch (\Throwable $e) {}
         }
 
         $reportingManager = $employee->reportingManager;
@@ -547,12 +592,30 @@ class WorkReportC extends Controller
             'wfh_count' => $wfhCount,
             'issues_count' => $issuesCount,
             'date_range_label' => $dateRangeLabel,
+            'selected_year' => $selectedYear,
             'selected_month' => $selectedMonth,
-            'from_date' => $fromDate,
-            'to_date' => $toDate,
+            'from_date' => $request->from_date,
+            'to_date' => $request->to_date,
         ];
 
-        // Months for dropdown
+        // Filters array for view
+        $perPageParam = $request->input('per_page', 25);
+        $filters = [
+            'years' => get_filter_years(1, 4),
+            'selected_year' => (string) $selectedYear,
+            'current_year' => (string) $currentYear,
+            'months' => get_filter_months(true),
+            'selected_month' => $hasSingleDate ? '' : ($isCustomDate ? 'custom' : (string) $selectedMonth),
+            'current_month' => (string) $currentMonth,
+            'is_custom' => $isCustomDate,
+            'date' => $request->date,
+            'from_date' => $request->from_date,
+            'to_date' => $request->to_date,
+            'per_page' => $perPageParam,
+            'work_mode' => $request->work_mode,
+        ];
+
+        // Months for dropdown backward compatibility
         $availableMonths = [];
         $currentMonthObj = now()->startOfMonth();
         for ($i = 0; $i < 12; $i++) {
@@ -562,16 +625,16 @@ class WorkReportC extends Controller
 
         // Handle Pagination vs Print All
         $isPrint = $request->routeIs('*print*');
-        if ($isPrint || $perPage === 'all' || $perPage == -1) {
+        if ($isPrint || $perPageParam === 'all' || (int) $perPageParam === -1) {
             $workLogs = $query->orderByDesc('work_date')->orderByDesc('id')->get();
         } else {
-            $perPage = max(10, min(500, (int) $perPage));
+            $perPage = max(10, min(500, (int) $perPageParam));
             $workLogs = $query->orderByDesc('work_date')->orderByDesc('id')
                 ->paginate($perPage)
                 ->withQueryString();
         }
 
-        return view('hrms.attendance.work-reports.history', compact('employee', 'workLogs', 'summary', 'availableMonths', 'selectedMonth'));
+        return view('hrms.attendance.work-reports.history', compact('employee', 'workLogs', 'summary', 'filters', 'availableMonths', 'selectedMonth'));
     }
 
     public function printEmployeeHistory(int|string $employeeId, Request $request)

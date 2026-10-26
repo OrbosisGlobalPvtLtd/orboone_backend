@@ -95,13 +95,24 @@ class AttendanceRegularizationC extends Controller
         $fromDate = $request->input('from_date') ?: $request->input('from');
         $toDate = $request->input('to_date') ?: $request->input('to');
         $month = $request->input('month');
+        $year = $request->input('year');
 
-        // Default to current month if no filter params specified
-        if ($month === null && !$fromDate && !$toDate && !$request->has('reset')) {
-            $month = now()->format('Y-m');
+        // Backward compatibility if month contains '2026-10'
+        if ($month && str_contains($month, '-')) {
+            [$pYear, $pMonth] = explode('-', $month, 2);
+            $year = $pYear;
+            $month = $pMonth;
         }
 
-        if ($fromDate || $toDate) {
+        // Default to current month and year if no filter params specified
+        if ($month === null && !$year && !$fromDate && !$toDate && !$request->has('reset')) {
+            $month = now()->format('m');
+            $year = now()->format('Y');
+        } elseif (!$year && $month && $month !== 'all' && $month !== 'custom') {
+            $year = now()->format('Y');
+        }
+
+        if ($fromDate || $toDate || $month === 'custom') {
             if ($fromDate) {
                 $query->where(function ($q) use ($fromDate) {
                     $q->whereDate('attendances.attendance_date', '>=', $fromDate)
@@ -122,7 +133,9 @@ class AttendanceRegularizationC extends Controller
             }
         } elseif ($month && $month !== 'all' && $month !== 'custom') {
             try {
-                $monthDate = Carbon::parse($month . '-01');
+                $targetYear = ($year && $year !== 'all') ? $year : now()->format('Y');
+                $targetMonth = str_pad($month, 2, '0', STR_PAD_LEFT);
+                $monthDate = Carbon::parse("{$targetYear}-{$targetMonth}-01");
                 $startOfMonth = $monthDate->copy()->startOfMonth()->toDateString();
                 $endOfMonth = $monthDate->copy()->endOfMonth()->toDateString();
 
@@ -136,6 +149,16 @@ class AttendanceRegularizationC extends Controller
             } catch (\Exception $e) {
                 // Ignore parse errors
             }
+        } elseif ($year && $year !== 'all') {
+            $startOfYear = "{$year}-01-01";
+            $endOfYear = "{$year}-12-31";
+            $query->where(function ($q) use ($startOfYear, $endOfYear) {
+                $q->whereBetween('attendances.attendance_date', [$startOfYear, $endOfYear])
+                    ->orWhere(function ($sub) use ($startOfYear, $endOfYear) {
+                        $sub->whereNull('attendances.attendance_date')
+                            ->whereBetween(DB::raw('DATE(attendance_regularizations.created_at)'), [$startOfYear, $endOfYear]);
+                    });
+            });
         }
 
         $perPageInput = (string) $request->input('per_page', '25');
@@ -615,17 +638,11 @@ class AttendanceRegularizationC extends Controller
 
         $requestTypes = DB::table('attendance_regularizations')->whereNull('deleted_at')->whereNotNull('request_type')->distinct()->pluck('request_type', 'request_type')->toArray();
 
-        $months = [
-            'custom' => 'Custom Date Range',
-            'all' => 'All Months',
-        ];
-        for ($i = 0; $i < 24; $i++) {
-            $m = Carbon::now()->subMonths($i);
-            $key = $m->format('Y-m');
-            $months[$key] = $m->format('F Y') . ($i === 0 ? ' (Current)' : '');
-        }
+        $years = get_filter_years(1, 3);
+        $months = get_filter_months(true);
 
         $filters = [
+            ['name' => 'year', 'label' => 'Year', 'type' => 'select', 'options' => $years],
             ['name' => 'month', 'label' => 'Month', 'type' => 'select', 'options' => $months],
             ['name' => 'from', 'label' => 'From Date', 'type' => 'date'],
             ['name' => 'to', 'label' => 'To Date', 'type' => 'date'],
@@ -666,12 +683,22 @@ class AttendanceRegularizationC extends Controller
         $fromDate = $request->input('from_date') ?: $request->input('from');
         $toDate = $request->input('to_date') ?: $request->input('to');
         $month = $request->input('month');
+        $year = $request->input('year');
 
-        if ($month === null && !$fromDate && !$toDate && !$request->has('reset')) {
-            $month = now()->format('Y-m');
+        if ($month && str_contains($month, '-')) {
+            [$pYear, $pMonth] = explode('-', $month, 2);
+            $year = $pYear;
+            $month = $pMonth;
         }
 
-        if ($fromDate || $toDate) {
+        if ($month === null && !$year && !$fromDate && !$toDate && !$request->has('reset')) {
+            $month = now()->format('m');
+            $year = now()->format('Y');
+        } elseif (!$year && $month && $month !== 'all' && $month !== 'custom') {
+            $year = now()->format('Y');
+        }
+
+        if ($fromDate || $toDate || $month === 'custom') {
             if ($fromDate) {
                 $baseStatsQuery->where(function ($q) use ($fromDate) {
                     $q->whereDate('attendances.attendance_date', '>=', $fromDate)
@@ -692,7 +719,9 @@ class AttendanceRegularizationC extends Controller
             }
         } elseif ($month && $month !== 'all' && $month !== 'custom') {
             try {
-                $monthDate = Carbon::parse($month . '-01');
+                $targetYear = ($year && $year !== 'all') ? $year : now()->format('Y');
+                $targetMonth = str_pad($month, 2, '0', STR_PAD_LEFT);
+                $monthDate = Carbon::parse("{$targetYear}-{$targetMonth}-01");
                 $startOfMonth = $monthDate->copy()->startOfMonth()->toDateString();
                 $endOfMonth = $monthDate->copy()->endOfMonth()->toDateString();
 
@@ -706,6 +735,16 @@ class AttendanceRegularizationC extends Controller
             } catch (\Exception $e) {
                 // Ignore parse errors
             }
+        } elseif ($year && $year !== 'all') {
+            $startOfYear = "{$year}-01-01";
+            $endOfYear = "{$year}-12-31";
+            $baseStatsQuery->where(function ($q) use ($startOfYear, $endOfYear) {
+                $q->whereBetween('attendances.attendance_date', [$startOfYear, $endOfYear])
+                    ->orWhere(function ($sub) use ($startOfYear, $endOfYear) {
+                        $sub->whereNull('attendances.attendance_date')
+                            ->whereBetween(DB::raw('DATE(attendance_regularizations.created_at)'), [$startOfYear, $endOfYear]);
+                    });
+            });
         }
 
         $stats = [

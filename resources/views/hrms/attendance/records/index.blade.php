@@ -364,34 +364,97 @@
     }
 
     .att-filter-panel {
-        padding: 14px 18px;
+        padding: 12px 18px;
         border-bottom: 1px solid var(--orb-border);
         background: #fff;
     }
 
     .att-filter-grid {
-        display: grid;
-        grid-template-columns: repeat(6, minmax(0, 1fr));
-        gap: 12px;
+        display: flex;
+        align-items: flex-end;
+        gap: 8px;
+        flex-wrap: nowrap;
+        width: 100%;
+    }
+
+    .att-filter-group {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+
+    .att-filter-group.att-filter-employee {
+        flex: 1.5 1 145px;
+        min-width: 125px;
+    }
+
+    .att-filter-group.att-filter-year {
+        flex: 0.85 1 85px;
+        min-width: 80px;
+    }
+
+    .att-filter-group.att-filter-month {
+        flex: 1.05 1 105px;
+        min-width: 95px;
+    }
+
+    .att-filter-group.att-filter-date {
+        flex: 1 1 105px;
+        min-width: 95px;
+    }
+
+    .att-filter-group.custom-date-filter {
+        flex: 1 1 100px;
+        min-width: 90px;
+    }
+
+    .att-filter-group.att-filter-status {
+        flex: 0.9 1 90px;
+        min-width: 80px;
+    }
+
+    .att-filter-group.att-filter-shift {
+        flex: 0.9 1 90px;
+        min-width: 80px;
+    }
+
+    .att-filter-group.att-filter-workmode {
+        flex: 0.7 1 70px;
+        min-width: 65px;
+    }
+
+    .att-filter-group.att-filter-flags {
+        flex: 0.95 1 95px;
+        min-width: 85px;
+    }
+
+    .att-filter-group.att-filter-actions {
+        flex: 0 0 auto;
+        min-width: auto;
+        display: flex;
+        align-items: flex-end;
+        gap: 6px;
     }
 
     .att-filter-group label {
-        font-size: 10px;
-        font-weight: 950;
+        font-size: 9.5px;
+        font-weight: 850;
         text-transform: uppercase;
         color: #667085;
-        margin-bottom: 6px;
+        margin-bottom: 5px;
         display: block;
-        letter-spacing: .04em;
+        letter-spacing: .03em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .att-filter-group .form-control {
-        height: 42px;
-        border-radius: 12px;
+        height: 38px;
+        border-radius: 10px;
         border: 1px solid #E4E7EC;
-        font-size: 13px;
-        font-weight: 700;
-        padding: 0 12px;
+        font-size: 12.5px;
+        font-weight: 650;
+        padding: 0 10px;
         box-shadow: none !important;
         background: #fff;
     }
@@ -399,6 +462,60 @@
     .att-filter-group .form-control:focus {
         border-color: var(--orb-primary);
         box-shadow: 0 0 0 .15rem rgba(75, 0, 232, .10) !important;
+    }
+
+    /* Select2 Single Selection in Filter */
+    .att-filter-group .select2-container {
+        width: 100% !important;
+    }
+
+    .att-filter-group .select2-container .select2-selection--single {
+        position: relative !important;
+        height: 38px !important;
+        border-radius: 10px !important;
+        border: 1px solid #E4E7EC !important;
+        display: flex !important;
+        align-items: center !important;
+        background: #fff !important;
+    }
+
+    .att-filter-group .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 38px !important;
+        font-size: 12px !important;
+        font-weight: 650 !important;
+        color: #1D2939 !important;
+        padding-left: 10px !important;
+        padding-right: 28px !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        order: 1 !important;
+        flex: 1 1 auto !important;
+    }
+
+    .att-filter-group .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 36px !important;
+        right: 4px !important;
+    }
+
+    .att-filter-group .select2-container--default .select2-selection--single .select2-selection__clear {
+        position: absolute !important;
+        right: 20px !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        float: none !important;
+        margin: 0 !important;
+        font-size: 15px !important;
+        font-weight: 700 !important;
+        color: #94A3B8 !important;
+        cursor: pointer !important;
+        z-index: 2 !important;
+        line-height: 1 !important;
+        order: 2 !important;
+    }
+
+    .att-filter-group .select2-container--default .select2-selection--single .select2-selection__clear:hover {
+        color: #EF4444 !important;
     }
 
     .att-table-wrap {
@@ -813,8 +930,13 @@
             grid-template-columns: repeat(4, minmax(0, 1fr));
         }
 
+        .att-filter-panel {
+            overflow-x: auto;
+        }
+
         .att-filter-grid {
-            grid-template-columns: repeat(3, minmax(0, 1fr));
+            flex-wrap: nowrap;
+            min-width: 960px;
         }
     }
 
@@ -866,8 +988,28 @@
             justify-content: flex-start
         }
 
+        .att-filter-panel {
+            overflow-x: visible;
+        }
+
         .att-filter-grid {
-            grid-template-columns: 1fr
+            flex-direction: column;
+            align-items: stretch;
+            min-width: 0 !important;
+            gap: 10px;
+        }
+
+        .att-filter-group {
+            width: 100% !important;
+            min-width: 100% !important;
+        }
+
+        .att-filter-group.att-filter-actions {
+            width: 100% !important;
+        }
+
+        .att-filter-group.att-filter-actions button {
+            flex: 1;
         }
     }
 </style>
@@ -1007,20 +1149,18 @@
                     <div class="att-filter-grid">
 
                         @if(!$isMyAttendance)
-                        <div class="att-filter-group">
+                        <div class="att-filter-group att-filter-employee">
                             <label><i class="fas fa-user text-primary mr-1"></i> Employee</label>
-                            <select name="employee_id" class="form-control select2-searchable" id="employeeSelect">
-                                <option value="all" {{ ((string)($selectedEmployeeId ?? request('employee_id')) === 'all') ? 'selected' : '' }}> All Employees</option>
+                            <select name="employee_id" class="form-control select2-searchable" id="employeeSelect" data-allow-clear="false">
+                                <option value="all" {{ ((string)($selectedEmployeeId ?? request('employee_id')) === 'all') ? 'selected' : '' }}>All Employees</option>
                                 @foreach($employees as $emp)
                                 @php 
                                     $empId = optional($emp->employee)->id ?? $emp->id; 
                                     $empName = $emp->name ?? optional($emp->user)->name ?? 'Employee';
                                     $empCode = optional($emp->employee)->employee_code ?? $emp->employee_code ?? '';
-                                    $deptName = optional(optional($emp->employee)->department)->name ?? optional($emp->department)->name ?? '';
-                                    $isAuth = ($empId == ($currentEmployeeId ?? null));
                                 @endphp
                                 <option value="{{ $empId }}" {{ ((string)($selectedEmployeeId ?? request('employee_id')) === (string)$empId) ? 'selected' : '' }}>
-                                    {{ $empName }}{{ $empCode ? " ({$empCode})" : '' }}{{ $isAuth ? ' • [You]' : '' }}{{ $deptName ? " • {$deptName}" : '' }}
+                                    {{ $empName }}{{ $empCode ? " ({$empCode})" : '' }}
                                 </option>
                                 @endforeach
                             </select>
@@ -1028,47 +1168,43 @@
                         @endif
 
                         @php
-                            $hasRangeParam = request()->filled('from_date') || request()->filled('to_date');
-                            $monthParam = request('month_year');
+                            $hasRangeParam = request()->filled('from_date') || request()->filled('to_date') || request()->filled('from') || request()->filled('to');
                             $hasSingleDate = request()->filled('date');
+                            $isCustomRange = ($hasRangeParam && !$hasSingleDate) || request('month') === 'custom';
 
-                            
-                            $isCustomRange = ($monthParam === 'all' || $monthParam === 'custom' || ($hasRangeParam && !$hasSingleDate));
+                            $currentYearVal = (int) \Carbon\Carbon::now()->format('Y');
+                            $activeYear = ($selectedYear && $selectedYear !== 'all') ? $selectedYear : request('year', $currentYearVal);
 
-                            if ($isCustomRange) {
-                                $effectiveMonthYear = 'all';
-                            } elseif ($hasSingleDate) {
-                                try {
-                                    $effectiveMonthYear = \Carbon\Carbon::parse(request('date'))->format('Y-m');
-                                } catch (\Throwable $e) {
-                                    $effectiveMonthYear = ($selectedMonthYear && $selectedMonthYear !== 'all') ? $selectedMonthYear : \Carbon\Carbon::now()->format('Y-m');
-                                }
-                            } else {
-                                $effectiveMonthYear = ($selectedMonthYear && $selectedMonthYear !== 'all') ? $selectedMonthYear : \Carbon\Carbon::now()->format('Y-m');
-                            }
+                            $currentMonthVal = (int) \Carbon\Carbon::now()->format('m');
+                            $activeMonth = $isCustomRange ? 'custom' : (($selectedMonth && $selectedMonth !== 'all') ? $selectedMonth : request('month', $currentMonthVal));
                         @endphp
 
-                        <div class="att-filter-group">
-                            <label><i class="fas fa-calendar-alt text-primary mr-1"></i> Month</label>
-                            <select name="month_year" class="form-control select2-searchable" id="monthYearSelect">
-                                <option value="all" {{ ($isCustomRange || $effectiveMonthYear === 'all') ? 'selected' : '' }}>Custom Date Range</option>
-                                @php
-                                    $cursorDate = \Carbon\Carbon::now();
-                                    for ($m = 0; $m < 12; $m++) {
-                                        $val = $cursorDate->format('Y-m');
-                                        $label = $cursorDate->format('F Y');
-                                        if ($m === 0) {
-                                            $label .= ' (Current)';
-                                        }
-                                        $isSelected = (!$isCustomRange && $effectiveMonthYear === $val);
-                                        echo "<option value=\"{$val}\" " . ($isSelected ? 'selected' : '') . ">{$label}</option>";
-                                        $cursorDate->subMonth();
-                                    }
-                                @endphp
+                        {{-- SEPARATE YEAR DROPDOWN --}}
+                        <div class="att-filter-group att-filter-year">
+                            <label><i class="fas fa-calendar text-primary mr-1"></i> Year</label>
+                            <select name="year" class="form-control select2-searchable" id="yearSelect" data-allow-clear="false">
+                                @foreach(get_filter_years(1, 4) as $y)
+                                    <option value="{{ $y }}" {{ ((string)$activeYear === (string)$y) ? 'selected' : '' }}>
+                                        {{ $y }}
+                                    </option>
+                                @endforeach
                             </select>
                         </div>
 
-                        <div class="att-filter-group">
+                        {{-- SEPARATE MONTH DROPDOWN --}}
+                        <div class="att-filter-group att-filter-month">
+                            <label><i class="fas fa-calendar-alt text-primary mr-1"></i> Month</label>
+                            <select name="month" class="form-control select2-searchable" id="monthSelect" data-allow-clear="false">
+                                <option value="custom" {{ ($activeMonth === 'custom' || request('month') === 'custom') ? 'selected' : '' }}>Custom Date Range</option>
+                                @foreach(get_filter_months(false) as $num => $fullMonthName)
+                                    <option value="{{ $num }}" {{ ($activeMonth !== 'custom' && (string)(int)$activeMonth === (string)(int)$num) ? 'selected' : '' }}>
+                                        {{ $fullMonthName }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="att-filter-group att-filter-date {{ $isCustomRange ? 'd-none' : '' }}">
                             <label><i class="fas fa-calendar-day text-primary mr-1"></i> Date</label>
                             <x-form.date-picker name="date" id="record_date" :value="request('date')" placeholder="dd-mm-yyyy" class="form-control" />
                         </div>
@@ -1083,9 +1219,9 @@
                             <x-form.date-picker name="to_date" id="record_to_date" :value="request('to_date')" placeholder="dd-mm-yyyy" class="form-control" />
                         </div>
 
-                        <div class="att-filter-group">
+                        <div class="att-filter-group att-filter-status">
                             <label>Status</label>
-                            <select name="attendance_type_id" class="form-control select2-searchable">
+                            <select name="attendance_type_id" class="form-control select2-searchable" data-allow-clear="false">
                                 <option value="">All Status</option>
                                 @foreach($attendanceTypes as $type)
                                 <option value="{{ $type->id }}" {{ request('attendance_type_id') == $type->id ? 'selected' : '' }}>
@@ -1095,9 +1231,9 @@
                             </select>
                         </div>
 
-                        <div class="att-filter-group">
+                        <div class="att-filter-group att-filter-shift">
                             <label>Shift</label>
-                            <select name="attendance_time_id" class="form-control select2-searchable">
+                            <select name="attendance_time_id" class="form-control select2-searchable" data-allow-clear="false">
                                 <option value="">All Shifts</option>
                                 @foreach($attendanceTimes ?? [] as $shift)
                                 <option value="{{ $shift->id }}" {{ request('attendance_time_id') == $shift->id ? 'selected' : '' }}>
@@ -1107,18 +1243,18 @@
                             </select>
                         </div>
 
-                        <div class="att-filter-group">
+                        <div class="att-filter-group att-filter-workmode">
                             <label>Work Mode</label>
-                            <select name="work_mode" class="form-control select2-searchable">
+                            <select name="work_mode" class="form-control select2-searchable" data-allow-clear="false">
                                 <option value="">All</option>
                                 <option value="wfo" {{ request('work_mode') == 'wfo' ? 'selected' : '' }}>WFO</option>
                                 <option value="wfh" {{ request('work_mode') == 'wfh' ? 'selected' : '' }}>WFH</option>
                             </select>
                         </div>
 
-                        <div class="att-filter-group">
+                        <div class="att-filter-group att-filter-flags">
                             <label>Flags</label>
-                            <select name="flag" class="form-control select2-searchable">
+                            <select name="flag" class="form-control select2-searchable" data-allow-clear="false">
                                 <option value="">All Records</option>
                                 <option value="late" {{ request('flag') == 'late' ? 'selected' : '' }}>Late</option>
                                 <option value="early_out" {{ request('flag') == 'early_out' ? 'selected' : '' }}>Early Logout</option>
@@ -1128,11 +1264,11 @@
                             </select>
                         </div>
 
-                        <div class="att-filter-group d-flex align-items-end" style="gap: 8px;">
-                            <button type="submit" class="btn text-white font-weight-bold shadow-sm" style="height:43px; border-radius:14px; background:linear-gradient(135deg, var(--orb-primary, #4B00E8) 0%, var(--orb-secondary, #FF5252) 100%); border:none; flex:1; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
+                        <div class="att-filter-group att-filter-actions">
+                            <button type="submit" class="btn text-white font-weight-bold shadow-sm" style="height:38px; padding: 0 14px; border-radius:10px; background:linear-gradient(135deg, var(--orb-primary, #4B00E8) 0%, var(--orb-secondary, #FF5252) 100%); border:none; display:inline-flex; align-items:center; justify-content:center; gap:5px; font-size:12px; white-space:nowrap;">
                                 <i class="fas fa-search"></i> Search
                             </button>
-                            <a href="{{ $isMyAttendance ? route('hrms.attendance.my') : route('attendances.record') }}" class="btn btn-light" style="height:43px; width:43px; border-radius:14px; display:inline-flex; align-items:center; justify-content:center; font-weight:750; border:1px solid #E4E7EC; background:#fff; color:#344054; flex-shrink:0;" title="Reset Filters">
+                            <a href="{{ $isMyAttendance ? route('hrms.attendance.my') : route('attendances.record') }}" class="btn btn-light" style="height:38px; width:38px; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; font-weight:750; border:1px solid #E4E7EC; background:#fff; color:#344054; flex-shrink:0;" title="Reset Filters">
                                 <i class="fas fa-undo"></i>
                             </a>
                         </div>
@@ -1281,10 +1417,14 @@
                             || ((int)($attendance->late_minutes ?? 0) > 0)
                             || $violations->whereIn('type', ['late', 'late_login', 'late_mark'])->whereNotIn('status', ['resolved', 'regularized'])->isNotEmpty();
 
+                        // Display early only when attendance classification explicitly marked an
+                        // early logout. A punch-out before target can be a Half Day classification
+                        // and must not also show an Early flag or active early violation.
                         $isEarly = (bool) ($attendance->is_early_out ?? $attendance->early_leave_mark ?? false)
-                            || ((int)($attendance->early_out_minutes ?? 0) > 0)
-                            || ($punchOut && $attendance->target_punch_out_time && \Carbon\Carbon::parse($punchOut)->lt(\Carbon\Carbon::parse($attendance->target_punch_out_time)))
-                            || $violations->whereIn('type', ['early', 'early_out', 'early_logout', 'early_leave'])->whereNotIn('status', ['resolved', 'regularized'])->isNotEmpty();
+                            && (int) ($attendance->early_out_minutes ?? 0) > 0
+                            && ! (bool) ($attendance->is_half_day ?? false)
+                            && ! (bool) ($attendance->is_lwp ?? false)
+                            && ! in_array(strtolower((string) ($attendance->attendance_status ?? '')), ['half_day', 'lwp', 'absent'], true);
 
                         $isMissed = (bool) ($attendance->missed_punch ?? $attendance->is_missed_punch ?? false)
                             || in_array(strtolower((string)($attendance->attendance_status ?? '')), ['missed_punch', 'missed'], true)
@@ -1657,8 +1797,20 @@
         const dateInput = document.querySelector('input[name="date"]');
         const fromDateInput = document.querySelector('input[name="from_date"]');
         const toDateInput = document.querySelector('input[name="to_date"]');
-        const monthYearSelect = document.getElementById('monthYearSelect');
+        const monthSelect = document.getElementById('monthSelect') || document.getElementById('monthYearSelect');
         const customDateFilters = document.querySelectorAll('.custom-date-filter');
+        const dateFilterGroup = document.querySelector('.att-filter-date');
+
+        $('#yearSelect, #monthSelect').each(function () {
+            if ($(this).hasClass('select2-hidden-accessible')) {
+                $(this).select2('destroy');
+            }
+            $(this).select2({
+                allowClear: false,
+                width: '100%',
+                minimumResultsForSearch: 7
+            });
+        });
 
         function toggleCustomDateFilters(show) {
             customDateFilters.forEach(function(el) {
@@ -1668,19 +1820,26 @@
                     el.classList.add('d-none');
                 }
             });
+            if (dateFilterGroup) {
+                if (show) {
+                    dateFilterGroup.classList.add('d-none');
+                } else {
+                    dateFilterGroup.classList.remove('d-none');
+                }
+            }
         }
 
-        if (monthYearSelect) {
-            $(monthYearSelect).on('change', function() {
+        if (monthSelect) {
+            $(monthSelect).on('change', function() {
                 const val = $(this).val();
-                if (val === 'all' || val === 'custom') {
+                if (val === 'custom') {
                     toggleCustomDateFilters(true);
+                    if (dateInput) dateInput.value = '';
                 } else {
                     toggleCustomDateFilters(false);
                     if (fromDateInput) fromDateInput.value = '';
                     if (toDateInput) toDateInput.value = '';
                 }
-                // Month filter does not auto-submit; user submits via Search button
             });
         }
 

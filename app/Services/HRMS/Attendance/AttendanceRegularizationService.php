@@ -2,17 +2,19 @@
 
 namespace App\Services\HRMS\Attendance;
 
-use App\Models\HRMS\Attendance\AttendanceM as Attendance;
-use App\Models\HRMS\Attendance\AttendanceRegularizationM;
-use App\Models\HRMS\Employee\EmployeeM as Employee;
-use App\Services\HRMS\Payroll\PayrollCalculationService;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
-use App\Services\HRMS\Attendance\AttendanceStateResolverService;
-use App\Services\HRMS\Leave\CompOffService;
 use App\Models\HRMS\Attendance\AttendanceM;
+use App\Models\HRMS\Attendance\AttendanceM as Attendance;
+use App\Models\HRMS\Attendance\AttendanceRegularizationM;
+use App\Services\HRMS\Attendance\AttendanceStateResolverService;
+use App\Models\HRMS\Employee\EmployeeM as Employee;
+use App\Services\HRMS\Payroll\PayrollCalculationService;
+use App\Services\HRMS\Leave\CompOffService;
 
 class AttendanceRegularizationService
 {
@@ -23,11 +25,7 @@ class AttendanceRegularizationService
         private AttendanceService $attendanceService
     ) {}
 
-    /**
-     * Inspects employee attendance record, status, leaves, holidays, week-offs, payroll,
-     * and existing pending requests for a date, returning only valid regularization options.
-     */
-    public function getAvailableRegularizationTypes(Employee $employee, Carbon|string $date): array
+    public function getAvailableRegularizationTypes(Employee $employee, Carbon|string $date, ?int $excludeRegularizationId = null): array
     {
         $carbonDate = Carbon::parse($date, self::TIMEZONE);
         $dateStr = $carbonDate->toDateString();
@@ -141,10 +139,16 @@ class AttendanceRegularizationService
 
         // 4. Pending Regularization Check (Rule 1)
         $attendanceId = $attendance?->id;
-        $pendingExists = DB::table('attendance_regularizations')
+        $pendingQuery = DB::table('attendance_regularizations')
             ->where('employee_id', $employee->id)
             ->where('status', 'pending')
-            ->whereNull('deleted_at')
+            ->whereNull('deleted_at');
+
+        if ($excludeRegularizationId) {
+            $pendingQuery->where('id', '!=', $excludeRegularizationId);
+        }
+
+        $pendingExists = $pendingQuery
             ->where(function ($q) use ($dateStr, $attendanceId) {
                 if ($attendanceId) {
                     $q->where('attendance_id', $attendanceId);
@@ -405,7 +409,7 @@ class AttendanceRegularizationService
         $attendance->is_blocked = false;
         $attendance->is_punch_blocked = false;
         $attendance->is_admin_unlocked = true;
-        $attendance->unlocked_by = $approvedByUserId ?: auth()->id();
+        $attendance->unlocked_by = $approvedByUserId ?: Auth::id();
         $attendance->unlocked_at = now();
         $attendance->unlock_type = 'regularization_approval';
         $attendance->missed_punch_reason = null;
@@ -415,10 +419,20 @@ class AttendanceRegularizationService
         $attendance->is_locked = false;
 
         $presentType = DB::table('attendance_types')->where('code', 'present')->first();
+        $halfDayType = DB::table('attendance_types')->where('code', 'half_day')->first();
+
         if ($attendance->punch_in_time && ! $attendance->punch_out_time) {
-            $attendance->attendance_status = 'present';
-            if ($presentType) {
-                $attendance->attendance_type_id = $presentType->id;
+            if ((bool) $attendance->is_half_day || in_array(strtolower((string) $attendance->attendance_status), ['half_day', 'half_leave', 'first_half_leave', 'second_half_leave'], true)) {
+                $attendance->attendance_status = 'half_day';
+                $attendance->is_half_day = true;
+                if ($halfDayType) {
+                    $attendance->attendance_type_id = $halfDayType->id;
+                }
+            } else {
+                $attendance->attendance_status = 'present';
+                if ($presentType) {
+                    $attendance->attendance_type_id = $presentType->id;
+                }
             }
         } elseif (! $attendance->punch_in_time && ! $attendance->punch_out_time) {
             $attendance->attendance_status = 'unlocked';
@@ -453,6 +467,7 @@ class AttendanceRegularizationService
         if (! $shift) {
             $shift = $this->ruleResolver->getPolicyForEmployee($employee, $attDateStr);
         }
+        $punchInDate = null;
         if ($attendance->punch_in_time) {
             $punchInDate = Carbon::parse($attDateStr . ' ' . $this->ruleResolver->timeString($attendance->punch_in_time), self::TIMEZONE);
             $isLate = ! $attendance->is_late_exempted && $shift && $shift->late_after_time && $punchInDate->gt(Carbon::parse($attDateStr . ' ' . $shift->late_after_time, self::TIMEZONE));
@@ -479,9 +494,61 @@ class AttendanceRegularizationService
                 $punchOutDate->addDay();
             }
 
-            $isEarly = $punchOutDate->lt($targetDate);
-            $attendance->is_early_out = $isEarly;
-            $attendance->early_out_minutes = $isEarly ? $punchOutDate->diffInMinutes($targetDate) : 0;
+            $policy = $attendance->attendance_time_id
+                ? $this->ruleResolver->getPolicyFromAttendanceTimeId((int) $attendance->attendance_time_id, $employee, $attDateStr)
+                : $this->ruleResolver->getPolicyForEmployee($employee, $attDateStr);
+            $breakMinutes = (int) ($shift?->lunch_break_minutes ?? $shift?->break_minutes ?? 0);
+            $grossMinutes = $punchInDate ? (int) $punchInDate->diffInMinutes($punchOutDate) : 0;
+            $netMinutes = max(0, $grossMinutes - $breakMinutes);
+
+            $approvedLeave = $this->ruleResolver->getApprovedLeaveOnDate($employee, $attDateStr);
+            $hasApprovedFullDay = (bool) ($approvedLeave && ! ($approvedLeave['is_half_day'] ?? false) && empty($approvedLeave['half_day_type']));
+            $hasApprovedHalfDay = (bool) ($approvedLeave && ((bool) ($approvedLeave['is_half_day'] ?? false) || ! empty($approvedLeave['half_day_type'])));
+            $isFlexible = method_exists($shift, 'isDynamicShift') ? $shift->isDynamicShift() : false;
+
+            $isHalfDayPunch = false;
+            if ($punchInDate && ! $isFlexible && $shift && $shift->half_day_after_time) {
+                $halfDayAfter = Carbon::parse($attDateStr . ' ' . $this->ruleResolver->timeString($shift->half_day_after_time), self::TIMEZONE);
+                if ($punchInDate->gte($halfDayAfter)) {
+                    $isHalfDayPunch = true;
+                }
+            }
+
+            $isPreExistingHalfDay = $hasApprovedHalfDay
+                || $isHalfDayPunch
+                || (bool) $attendance->is_half_day
+                || in_array(strtolower((string) $attendance->attendance_status), ['half_day', 'half_leave', 'first_half_leave', 'second_half_leave'], true);
+
+            $classification = AttendancePunchOutClassifier::classify(
+                $punchOutDate,
+                $targetDate,
+                $policy ?: $shift,
+                $netMinutes,
+                [
+                    'is_flexible' => $isFlexible,
+                    'has_approved_full_day_leave' => $hasApprovedFullDay,
+                    'has_approved_half_day_leave' => $hasApprovedHalfDay,
+                    'is_half_day' => $isPreExistingHalfDay,
+                ]
+            );
+            $attendance->is_early_out = $classification['is_early_out'];
+            $attendance->early_out_minutes = $classification['early_out_minutes'];
+            $attendance->is_half_day = $classification['is_half_day'];
+            $attendance->is_lwp = $classification['is_lwp'];
+            $attendance->attendance_status = $classification['status'];
+            $matchedType = \App\Models\HRMS\Attendance\AttendanceTypeM::where('code', $classification['status'])->first();
+            if ($matchedType) {
+                $attendance->attendance_type_id = $matchedType->id;
+            }
+            if ($classification['reason']) {
+                if ($classification['is_half_day']) {
+                    $attendance->half_day_reason = $classification['reason'];
+                } elseif ($classification['is_lwp']) {
+                    $attendance->lwp_reason = $classification['reason'];
+                }
+            }
+// early out assigned above
+// early minutes assigned above
         }
 
         $attendance->save();
@@ -494,7 +561,7 @@ class AttendanceRegularizationService
         try {
             app(CompOffService::class)->reconcileForEmployeeAndDate($employee, $carbonAttDate);
         } catch (\Throwable $e) {
-            \Log::error('Comp-Off reconciliation failed during regularization approval: ' . $e->getMessage());
+            Log::error('Comp-Off reconciliation failed during regularization approval: ' . $e->getMessage());
         }
 
         // 4. Rebuild Monthly Attendance Summary
@@ -516,7 +583,7 @@ class AttendanceRegularizationService
         $regularization->update([
             'attendance_id' => $attendance->id,
             'status' => 'approved',
-            'approved_by_user_id' => $approvedByUserId ?: auth()->id(),
+            'approved_by_user_id' => $approvedByUserId ?: Auth::id(),
             'approved_at' => now(),
         ]);
 

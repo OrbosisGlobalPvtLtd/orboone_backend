@@ -74,7 +74,7 @@ class AttendanceContextResolverService
         }
 
         $effectiveRequiredWorkMinutes = $isHalfDayContext ? $halfDayMinMinutes : $requiredWorkMinutes;
-        $breakMinutes = $isHalfDayContext ? 0 : (int) ($policyObj?->lunch_break_minutes ?? $policyObj?->break_minutes ?? 0);
+        $breakMinutes = (int) ($policyObj?->lunch_break_minutes ?? $policyObj?->break_minutes ?? 0);
 
         // Calculate Work Durations if Punched In
         $completedWorkMinutes = 0;

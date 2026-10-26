@@ -89,8 +89,12 @@
 
                     $isLate = (bool) ($attendance->is_late ?? $attendance->late_mark ?? false);
                     $lateMinutes = (int) ($attendance->late_minutes ?? 0);
-                    $isEarly = (bool) ($attendance->is_early_out ?? $attendance->early_leave_mark ?? false);
-                    $earlyMinutes = (int) ($attendance->early_out_minutes ?? 0);
+                    $isEarly = (bool) ($attendance->is_early_out ?? $attendance->early_leave_mark ?? false)
+                        && (int) ($attendance->early_out_minutes ?? 0) > 0
+                        && ! (bool) ($attendance->is_half_day ?? false)
+                        && ! (bool) ($attendance->is_lwp ?? false)
+                        && ! in_array(strtolower((string) $statusCode), ['half_day', 'lwp', 'absent'], true);
+                    $earlyMinutes = $isEarly ? (int) ($attendance->early_out_minutes ?? 0) : 0;
                     $isBlocked = (bool) ($attendance->is_blocked ?? $attendance->is_punch_blocked ?? false);
                     $isMissed = (bool) ($attendance->missed_punch ?? $attendance->is_missed_punch ?? ($statusCode === 'missed_punch'));
                     $violationCount = (int) ($attendance->violation_count ?? 0);
@@ -641,7 +645,7 @@
                             </div>
                             <div class="col-md-4 mb-2">
                                 <span class="text-muted">Leave Duration:</span>
-                                <div class="font-weight-bold text-dark mt-1">{{ $attendance->leaveRequest->days_count ?? 1 }} Day(s) {{ $attendance->leaveRequest->is_half_day ? '('.ucwords($attendance->leaveRequest->half_day_session ?? 'Half Day').')' : '' }}</div>
+                                <div class="font-weight-bold text-dark mt-1">{{ $attendance->leaveRequest->days_count ?? 1 }} Day(s) {{ ($attendance->leaveRequest->is_half_day || !empty($attendance->leaveRequest->half_day_type)) ? '(' . (($attendance->leaveRequest->half_day_type ?? '') === 'second_half' ? 'Second Half' : 'First Half') . ')' : '' }}</div>
                             </div>
                             <div class="col-md-4 mb-2">
                                 <span class="text-muted">Paid / Unpaid:</span>

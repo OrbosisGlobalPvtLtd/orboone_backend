@@ -13,6 +13,7 @@ use App\Models\HRMS\Department\DepartmentM;
 use App\Models\HRMS\Employee\EmployeeM;
 use App\Models\HRMS\Employee\EmployeeShiftTimingM;
 use App\Services\HRMS\Attendance\AttendanceMobileService;
+use App\Services\HRMS\Attendance\AttendancePunchOutClassifier;
 use App\Services\HRMS\Attendance\AttendanceRuleResolverService;
 use App\Services\HRMS\Attendance\AttendanceService;
 use App\Services\HRMS\Employee\EmployeeShiftAssignmentService;
@@ -80,6 +81,7 @@ class AttendancesC extends Controller
             'workLogs',
             'unlockedBy',
             'hrApprovedBy',
+            'violations',
         ]);
     }
 
@@ -911,17 +913,41 @@ class AttendancesC extends Controller
         $singleDate = $request->input('date');
         $monthYear = $request->input('month_year');
         $month = $request->input('month');
+        $year = $request->input('year');
+
+        $now = Carbon::now($this->attendanceService->attendanceTimezone());
+        $currentYear = $now->format('Y');
+        $currentMonth = $now->format('m');
+        $currentMonthYear = $now->format('Y-m');
 
         $hasDateFilter = !empty($singleDate)
             || !empty($fromDate)
             || !empty($toDate)
             || (!empty($monthYear) && $monthYear !== 'all' && $monthYear !== 'custom')
-            || (!empty($month) && $month !== 'all' && $month !== 'custom');
+            || (!empty($month) && $month !== 'all' && $month !== 'custom')
+            || (!empty($year) && $year !== 'all');
 
-        $currentMonthYear = Carbon::now($this->attendanceService->attendanceTimezone())->format('Y-m');
-        $selectedMonthYear = $hasDateFilter
-            ? ($monthYear ?: '')
-            : $currentMonthYear;
+        $selectedYear = $request->input('year');
+        $selectedMonth = $request->input('month');
+
+        if (!$hasDateFilter) {
+            $selectedYear = $currentYear;
+            $selectedMonth = $currentMonth;
+            $selectedMonthYear = $currentMonthYear;
+        } else {
+            if (!empty($selectedYear) && !empty($selectedMonth) && $selectedYear !== 'all' && $selectedMonth !== 'all' && $selectedMonth !== 'custom') {
+                $selectedMonthYear = $selectedYear . '-' . str_pad($selectedMonth, 2, '0', STR_PAD_LEFT);
+            } elseif (!empty($monthYear) && $monthYear !== 'all' && $monthYear !== 'custom') {
+                $selectedMonthYear = $monthYear;
+                if (str_contains($monthYear, '-')) {
+                    $parts = explode('-', $monthYear);
+                    $selectedYear = $parts[0];
+                    $selectedMonth = $parts[1];
+                }
+            } else {
+                $selectedMonthYear = '';
+            }
+        }
 
         $isMyAttendance = request()->routeIs('hrms.attendance.my') || ($request->input('view_scope') === 'my');
 
@@ -930,8 +956,8 @@ class AttendancesC extends Controller
             $filterRequest = clone $request;
             $filterRequest->query->remove('employee_id');
             $filterRequest->query->remove('search');
-            if (! $hasDateFilter && $currentMonthYear) {
-                $filterRequest->merge(['month_year' => $currentMonthYear]);
+            if (! $hasDateFilter && $selectedYear && $selectedMonth) {
+                $filterRequest->merge(['year' => $selectedYear, 'month' => $selectedMonth]);
             }
 
             $query = $this->applyFilters($this->recordsQuery(), $filterRequest);
@@ -962,13 +988,12 @@ class AttendancesC extends Controller
                 $filterRequest->query->remove('employee_id');
             }
 
-            if (! $hasDateFilter && $currentMonthYear) {
-                $filterRequest->merge(['month_year' => $currentMonthYear]);
+            if (! $hasDateFilter && $selectedYear && $selectedMonth) {
+                $filterRequest->merge(['year' => $selectedYear, 'month' => $selectedMonth]);
             }
 
             $query = $this->scopeAttendanceQuery($this->applyFilters($this->recordsQuery(), $filterRequest), 'attendance.records.view_all', 'attendance.regularization.view_team');
         }
-
 
         $periodLabel = 'All Records';
         if ($filterRequest->filled('from_date') && $filterRequest->filled('to_date')) {
@@ -979,6 +1004,14 @@ class AttendancesC extends Controller
             $periodLabel = 'Up to ' . Carbon::parse($filterRequest->to_date)->format('d M Y');
         } elseif ($filterRequest->filled('date')) {
             $periodLabel = Carbon::parse($filterRequest->date)->format('d M Y');
+        } elseif ($filterRequest->filled('year') && $filterRequest->year !== 'all' && $filterRequest->filled('month') && $filterRequest->month !== 'all') {
+            try {
+                $periodLabel = Carbon::create((int) $filterRequest->year, (int) $filterRequest->month, 1)->format('F Y');
+            } catch (\Throwable $e) {
+                $periodLabel = $filterRequest->month . ' ' . $filterRequest->year;
+            }
+        } elseif ($filterRequest->filled('year') && $filterRequest->year !== 'all') {
+            $periodLabel = 'Year ' . $filterRequest->year;
         } elseif ($filterRequest->filled('month_year') && $filterRequest->month_year !== 'all') {
             try {
                 $periodLabel = Carbon::parse($filterRequest->month_year . '-01')->format('F Y');
@@ -989,7 +1022,7 @@ class AttendancesC extends Controller
             $periodLabel = Carbon::create((int) $filterRequest->year, (int) $filterRequest->month, 1)->format('F Y');
         }
 
-        return [$query, $filterRequest, $selectedEmployeeId, $selectedMonthYear, $periodLabel];
+        return [$query, $filterRequest, $selectedEmployeeId, $selectedMonthYear, $periodLabel, $selectedYear, $selectedMonth];
     }
 
     public function attendanceRecord(Request $request)
@@ -1014,7 +1047,7 @@ class AttendancesC extends Controller
         $currentEmployee = EmployeeM::where('user_id', Auth::id())->first();
         $currentEmployeeId = $currentEmployee ? $currentEmployee->id : ($this->ownEmployeeId() ?: null);
 
-        [$query, $filterRequest, $selectedEmployeeId, $selectedMonthYear, $periodLabel] = $this->resolveAttendanceRecordsQuery($request);
+        [$query, $filterRequest, $selectedEmployeeId, $selectedMonthYear, $periodLabel, $selectedYear, $selectedMonth] = $this->resolveAttendanceRecordsQuery($request);
 
         $statsRaw = (clone $query)->leftJoin('attendance_types', 'attendance_types.id', '=', 'attendances.attendance_type_id')
             ->selectRaw("
@@ -1060,6 +1093,8 @@ class AttendancesC extends Controller
             'selectedEmployeeId',
             'currentEmployeeId',
             'selectedMonthYear',
+            'selectedYear',
+            'selectedMonth',
             'stats'
         ));
     }
@@ -1253,6 +1288,35 @@ class AttendancesC extends Controller
 
         $halfDayMinMinutes = (int) ($shift?->half_day_min_minutes ?? (int)($requiredMinutes / 2));
 
+        $isHalfDayPunch = false;
+        if (! $isDynamicShift && $shift && $shift->half_day_after_time && $punchInTime) {
+            $halfDayAfterCarbon = Carbon::parse($attDateStr . ' ' . $shift->half_day_after_time, AttendanceRuleResolverService::TIMEZONE);
+            $punchInCarbon = Carbon::parse($attDateStr . ' ' . $punchInTime, AttendanceRuleResolverService::TIMEZONE);
+            if ($punchInCarbon->gte($halfDayAfterCarbon)) {
+                $isHalfDayPunch = true;
+            }
+        }
+
+        $approvedLeaveOnAttDate = $employee ? $ruleResolver->getApprovedLeaveOnDate($employee, $attDateStr) : null;
+        $hasApprovedHalfDayLeave = (bool) ($approvedLeaveOnAttDate && ((bool) ($approvedLeaveOnAttDate['is_half_day'] ?? false) || ! empty($approvedLeaveOnAttDate['half_day_type'])))
+            || $attendance->leave_request_id !== null
+            || $attendance->half_day_reason === 'approved_half_day_leave'
+            || in_array(strtolower((string) $attendance->attendance_status), ['half_leave', 'first_half_leave', 'second_half_leave'], true);
+
+        $isExplicitHalfDay = ($typeCode === 'half_day');
+
+        $isPreExistingHalfDay = $hasApprovedHalfDayLeave || $isExplicitHalfDay || $isHalfDayPunch;
+
+        if ($isPreExistingHalfDay && ! in_array($typeCode, ['leave', 'holiday', 'week_off', 'absent', 'lwp'], true)) {
+            $typeCode = 'half_day';
+            $updateData['is_half_day'] = true;
+            $updateData['attendance_status'] = 'half_day';
+            $halfDayType = AttendanceType::where('code', 'half_day')->first();
+            if ($halfDayType) {
+                $updateData['attendance_type_id'] = $halfDayType->id;
+            }
+        }
+
         // Recalculate target punch out & late / early stats
         if ($punchInTime) {
             $punchInCarbon = Carbon::parse($attDateStr . ' ' . $punchInTime, AttendanceRuleResolverService::TIMEZONE);
@@ -1291,41 +1355,75 @@ class AttendancesC extends Controller
                 if ($punchOutCarbon->lt($punchInCarbon)) {
                     $punchOutCarbon->addDay();
                 }
-                $isEarly = $punchOutCarbon->lt($targetCarbon);
-                $earlyMinutes = $isEarly ? (int) abs($punchOutCarbon->diffInMinutes($targetCarbon)) : 0;
+
+                $grossMinutes = (int) abs($punchInCarbon->diffInMinutes($punchOutCarbon));
+                $breakMinutes = (int) ($shift?->lunch_break_minutes ?? $shift?->break_minutes ?? 0);
+                $netMinutes = max(0, $grossMinutes - $breakMinutes);
+
+                $employeePolicy = $employee ? app(AttendanceRuleResolverService::class)->getPolicyForEmployee($employee, $attDateStr) : null;
+
+                $classification = AttendancePunchOutClassifier::classify(
+                    $punchOutCarbon,
+                    $targetCarbon,
+                    $employeePolicy ?: $shift,
+                    $netMinutes,
+                    [
+                        'is_flexible' => $isDynamicShift,
+                        'is_half_day' => $isPreExistingHalfDay,
+                    ]
+                );
+
+                $isEarly = $classification['is_early_out'];
+                $earlyMinutes = $classification['early_out_minutes'];
+                $updateData['is_half_day'] = $classification['is_half_day'];
+                $updateData['is_lwp'] = $classification['is_lwp'];
+                $updateData['attendance_status'] = $classification['status'];
+                if ($classification['reason']) {
+                    if ($classification['is_half_day']) {
+                        $updateData['half_day_reason'] = $classification['reason'];
+                    } elseif ($classification['is_lwp']) {
+                        $updateData['lwp_reason'] = $classification['reason'];
+                    }
+                } else {
+                    $updateData['half_day_reason'] = null;
+                    $updateData['lwp_reason'] = null;
+                }
+                $matchedType = AttendanceType::where('code', $classification['status'])->first();
+                if ($matchedType) {
+                    $updateData['attendance_type_id'] = $matchedType->id;
+                    $typeCode = $classification['status'];
+                }
             }
 
             $updateData['is_early_out'] = $isEarly;
             $updateData['early_out_minutes'] = $earlyMinutes;
+            $updateData['missed_punch'] = false;
+            $updateData['is_missed_punch'] = false;
+            $updateData['missed_punch_reason'] = null;
             $grossMinutes = (int) abs($punchInCarbon->diffInMinutes($punchOutCarbon));
             $breakMinutes = (int) ($shift?->lunch_break_minutes ?? $shift?->break_minutes ?? 0);
             $netMinutes = max(0, $grossMinutes - $breakMinutes);
 
-            $earlyOutHalfDayMins = (int) ($shift?->early_out_half_day_minutes ?? 60);
-            $halfDayCutoffCarbon = ! empty($updateData['target_punch_out_time'])
-                ? Carbon::parse($attDateStr . ' ' . $updateData['target_punch_out_time'], AttendanceRuleResolverService::TIMEZONE)->subMinutes($earlyOutHalfDayMins)
-                : null;
-            $isHalfDayByPunchOut = $halfDayCutoffCarbon ? $punchOutCarbon->lt($halfDayCutoffCarbon) : false;
-
-            // If user left status as half_day or absent from old state, but new timings satisfy full day or within early out grace window
-            if (in_array($typeCode, ['half_day', 'absent', 'lwp', 'missed_punch'], true) && ($netMinutes >= $requiredMinutes || (! $isHalfDayByPunchOut && ! $isDynamicShift && $netMinutes >= $halfDayMinMinutes))) {
-                $presentType = AttendanceType::where('code', 'present')->first();
-                if ($presentType) {
-                    $typeCode = 'present';
-                    $updateData['attendance_type_id'] = $presentType->id;
-                    $updateData['attendance_status'] = 'present';
-                    $updateData['is_half_day'] = false;
-                    $updateData['is_lwp'] = false;
-                    $updateData['half_day_reason'] = null;
-                }
-            } elseif (in_array($typeCode, ['absent', 'lwp'], true) && $netMinutes >= $halfDayMinMinutes) {
-                $halfDayType = AttendanceType::where('code', 'half_day')->first();
-                if ($halfDayType) {
-                    $typeCode = 'half_day';
-                    $updateData['attendance_type_id'] = $halfDayType->id;
-                    $updateData['attendance_status'] = 'half_day';
-                    $updateData['is_half_day'] = true;
-                    $updateData['is_lwp'] = false;
+            if ($isDynamicShift) {
+                if (in_array($typeCode, ['half_day', 'absent', 'lwp', 'missed_punch'], true) && $netMinutes >= $requiredMinutes) {
+                    $presentType = AttendanceType::where('code', 'present')->first();
+                    if ($presentType) {
+                        $typeCode = 'present';
+                        $updateData['attendance_type_id'] = $presentType->id;
+                        $updateData['attendance_status'] = 'present';
+                        $updateData['is_half_day'] = false;
+                        $updateData['is_lwp'] = false;
+                        $updateData['half_day_reason'] = null;
+                    }
+                } elseif (in_array($typeCode, ['absent', 'lwp'], true) && $netMinutes >= $halfDayMinMinutes) {
+                    $halfDayType = AttendanceType::where('code', 'half_day')->first();
+                    if ($halfDayType) {
+                        $typeCode = 'half_day';
+                        $updateData['attendance_type_id'] = $halfDayType->id;
+                        $updateData['attendance_status'] = 'half_day';
+                        $updateData['is_half_day'] = true;
+                        $updateData['is_lwp'] = false;
+                    }
                 }
             }
 
@@ -1383,6 +1481,12 @@ class AttendancesC extends Controller
 
         $this->attendanceService->syncAttendanceViolations($attendance);
         $this->attendanceService->rebuildEmployeeViolationCycles($attendance->employee_id, $attDateStr);
+
+        try {
+            app(\App\Services\HRMS\Leave\CompOffService::class)->reconcileForEmployeeAndDate($attendance->employee_id, $attDateStr);
+        } catch (\Throwable $e) {
+            Log::warning('Could not reconcile comp-off for edited attendance: ' . $e->getMessage());
+        }
 
         return back()->with('status', 'Attendance updated successfully.');
     }
@@ -2264,7 +2368,9 @@ class AttendancesC extends Controller
             'required_work_minutes' => 'nullable|integer|min:0',
             'half_day_min_minutes' => 'nullable|integer|min:0',
             'absent_below_minutes' => 'nullable|integer|min:0',
-            'early_out_half_day_minutes' => 'nullable|integer|min:0',
+            'lunch_break_minutes' => 'nullable|integer|min:0',
+            'early_out_grace_minutes' => 'nullable|integer|min:0|lt:early_out_half_day_minutes',
+            'early_out_half_day_minutes' => 'nullable|integer|min:1',
             'missed_punch_after_minutes' => 'nullable|integer|min:0',
             'allowed_missed_punches' => 'nullable|integer|min:0',
             'combined_violation_limit' => 'nullable|integer|min:0',
@@ -2278,6 +2384,9 @@ class AttendancesC extends Controller
             'wfh_enabled' => 'nullable|boolean',
             'regularization_enabled' => 'nullable|boolean',
             'is_active' => 'nullable|boolean',
+        ], [
+            'early_out_grace_minutes.lt' => 'Early Logout Grace must be less than the Early Logout limit (Half Day cutoff).',
+            'early_out_half_day_minutes.min' => 'Early Logout limit must be at least 1 minute.',
         ]);
 
         foreach (['punch_block_enabled', 'auto_block_enabled', 'auto_absent_enabled', 'wfh_enabled', 'regularization_enabled', 'is_active'] as $flag) {
@@ -2295,7 +2404,7 @@ class AttendancesC extends Controller
 
     private function orderAttendanceQuery(mixed $query, Request $request)
     {
-        if ($request->filled('from_date') || $request->filled('date') || $request->filled('to_date') || $request->filled('month')) {
+        if ($request->input('sort_order') === 'asc') {
             return $query->orderBy('attendance_date', 'asc')->orderBy('id', 'asc');
         }
         return $query->orderByDesc('attendance_date')->orderByDesc('id');

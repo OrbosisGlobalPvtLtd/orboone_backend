@@ -550,6 +550,299 @@
         transform: translateY(-1px) !important;
         box-shadow: 0 6px 18px rgba(75, 0, 232, .35) !important;
     }
+
+    /* VIEW SWITCH GROUP */
+    .view-switch-group {
+        display: inline-flex;
+        align-items: center;
+        background: #F1F5F9;
+        border-radius: 999px;
+        padding: 3px;
+        border: 1px solid var(--orb-border);
+    }
+
+    .view-toggle-btn {
+        border: none;
+        background: transparent;
+        padding: 7px 16px;
+        border-radius: 999px;
+        font-size: 12.5px;
+        font-weight: 750;
+        color: var(--orb-muted);
+        cursor: pointer;
+        transition: all .2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .view-toggle-btn.active {
+        background: #fff;
+        color: var(--orb-primary);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    /* POLICY TABLE CONTAINER */
+    .policy-table-container {
+        background: #fff;
+        border-radius: 20px;
+        border: 1px solid var(--orb-border);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.04);
+        margin-bottom: 24px;
+        overflow: hidden;
+    }
+
+    .policy-table-header-bar {
+        padding: 16px 22px;
+        border-bottom: 1px solid var(--orb-border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #FAFAFD;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .policy-table-header-title {
+        font-size: 15px;
+        font-weight: 900;
+        color: var(--orb-text);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .policy-table-scroll {
+        overflow-x: auto;
+        max-width: 100%;
+        position: relative;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .policy-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 12.5px;
+        white-space: nowrap;
+    }
+
+    .policy-table thead tr.group-header th {
+        background: #F8FAFC;
+        color: #334155;
+        font-weight: 850;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--orb-border);
+        border-right: 1px solid #E2E8F0;
+        text-align: center;
+    }
+
+    .policy-table thead tr.group-header th.gh-early {
+        background: #EFF6FF;
+        color: #1D4ED8;
+        border-bottom: 2px solid #93C5FD;
+    }
+
+    .policy-table thead tr.group-header th.gh-work {
+        background: #FAF5FF;
+        color: #6B21A8;
+        border-bottom: 2px solid #D8B4FE;
+    }
+
+    .policy-table thead tr.column-header th {
+        background: #FFFFFF;
+        color: #64748B;
+        font-weight: 750;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: .03em;
+        padding: 10px 12px;
+        border-bottom: 2px solid var(--orb-border);
+        border-right: 1px solid #F1F5F9;
+        text-align: center;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+
+    .policy-table thead tr.column-header th.th-highlight {
+        background: #F0FDF4;
+        color: #166534;
+    }
+
+    .policy-table thead tr.column-header th.th-early-grace {
+        background: #EFF6FF;
+        color: #1E40AF;
+        font-weight: 850;
+    }
+
+    .policy-table thead tr.column-header th.th-early-limit {
+        background: #FFFBEB;
+        color: #92400E;
+        font-weight: 850;
+    }
+
+    .policy-table tbody td {
+        padding: 11px 12px;
+        border-bottom: 1px solid #F1F5F9;
+        border-right: 1px solid #F8FAFC;
+        vertical-align: middle;
+        text-align: center;
+        color: #1E293B;
+        font-size: 12.5px;
+        background: #FFFFFF;
+    }
+
+    .policy-table tbody tr:hover td {
+        background: #FAF8FF !important;
+    }
+
+    .policy-table tbody tr:hover td.sticky-col-id,
+    .policy-table tbody tr:hover td.sticky-col-name,
+    .policy-table tbody tr:hover td.sticky-col-action {
+        background: #F6F2FF !important;
+    }
+
+    /* STICKY COLUMNS IN POLICY TABLE */
+    .sticky-col-id {
+        position: sticky;
+        left: 0;
+        z-index: 3;
+        background: #FFFFFF;
+        width: 50px;
+        min-width: 50px;
+        text-align: center !important;
+    }
+
+    .sticky-col-name {
+        position: sticky;
+        left: 50px;
+        z-index: 3;
+        background: #FFFFFF;
+        min-width: 230px;
+        max-width: 280px;
+        text-align: left !important;
+        box-shadow: 4px 0 8px rgba(0,0,0,0.03);
+    }
+
+    .policy-table thead th.sticky-col-id,
+    .policy-table thead th.sticky-col-name {
+        z-index: 5;
+        background: #F8FAFC !important;
+    }
+
+    .policy-table thead tr.column-header th.sticky-col-id,
+    .policy-table thead tr.column-header th.sticky-col-name {
+        background: #FFFFFF !important;
+    }
+
+    .sticky-col-action {
+        position: sticky;
+        right: 0;
+        z-index: 3;
+        background: #FFFFFF;
+        box-shadow: -4px 0 8px rgba(0,0,0,0.03);
+        text-align: center !important;
+        min-width: 100px;
+    }
+
+    .policy-table thead th.sticky-col-action {
+        z-index: 5;
+        background: #F8FAFC !important;
+    }
+
+    .policy-table thead tr.column-header th.sticky-col-action {
+        background: #FFFFFF !important;
+    }
+
+    /* BOOLEAN PILLS */
+    .badge-bool {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 750;
+    }
+
+    .badge-bool-yes {
+        background: #ECFDF5;
+        color: #059669;
+        border: 1px solid #A7F3D0;
+    }
+
+    .badge-bool-no {
+        background: #F8FAFC;
+        color: #94A3B8;
+        border: 1px solid #E2E8F0;
+    }
+
+    /* NUMERIC BADGES */
+    .badge-num {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 6px;
+        font-weight: 800;
+        font-size: 12px;
+    }
+
+    .badge-num-primary {
+        background: #EEF2FF;
+        color: #4F46E5;
+        border: 1px solid #C7D2FE;
+    }
+
+    .badge-num-grace {
+        background: #EFF6FF;
+        color: #1D4ED8;
+        border: 1px solid #BFDBFE;
+    }
+
+    .badge-num-amber {
+        background: #FFFBEB;
+        color: #D97706;
+        border: 1px solid #FDE68A;
+    }
+
+    .badge-num-rose {
+        background: #FFF1F2;
+        color: #E11D48;
+        border: 1px solid #FECDD3;
+    }
+
+    .badge-num-slate {
+        background: #F1F5F9;
+        color: #475569;
+        border: 1px solid #E2E8F0;
+    }
+
+    .policy-name-cell {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .policy-name-title {
+        font-size: 13.5px;
+        font-weight: 850;
+        color: var(--orb-text);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .policy-name-sub {
+        font-size: 11px;
+        color: var(--orb-muted);
+        white-space: normal;
+        max-width: 250px;
+        line-height: 1.25;
+    }
+
     /* RESPONSIVE MEDIA QUERIES FOR ALL SCREEN SIZES */
     @media(max-width: 1200px) {
         .stat-card-row {
@@ -754,7 +1047,7 @@
             </div>
         </div>
 
-        {{-- FILTER BAR --}}
+        {{-- FILTER BAR & VIEW SWITCHER --}}
         <div class="filter-bar">
             <div class="filter-pills" id="policyFilterPills">
                 <button type="button" class="filter-pill active" onclick="filterPolicies('all', this)">All Policies</button>
@@ -762,14 +1055,366 @@
                 <button type="button" class="filter-pill" onclick="filterPolicies('part_time', this)">Part Time</button>
                 <button type="button" class="filter-pill" onclick="filterPolicies('wfh', this)">WFH Enabled</button>
             </div>
-            <div class="search-box">
-                <i class="fas fa-search"></i>
-                <input type="text" id="policySearchInput" onkeyup="searchPolicies()" placeholder="Search policy name...">
+
+            <div class="d-flex align-items-center gap-3" style="gap: 12px; flex-wrap: wrap;">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="policySearchInput" onkeyup="searchPolicies()" placeholder="Search policy name or rules...">
+                </div>
+
+                {{-- VIEW TOGGLE: TABLE VIEW VS CARDS VIEW --}}
+                <div class="view-switch-group">
+                    <button type="button" class="view-toggle-btn active" id="btnTableView" onclick="switchView('table')">
+                        <i class="fas fa-table mr-1"></i> Table View
+                    </button>
+                    <button type="button" class="view-toggle-btn" id="btnCardView" onclick="switchView('cards')">
+                        <i class="fas fa-th-large mr-1"></i> Card View
+                    </button>
+                </div>
             </div>
         </div>
 
-        {{-- DYNAMIC POLICY CARDS GRID --}}
-        <div class="policy-grid" id="policyCardGrid">
+        {{-- COMPREHENSIVE TABLE VIEW (ALL POLICY COLUMNS IN TABLE FORMAT) --}}
+        <div class="policy-table-container" id="policyTableContainer">
+            <div class="policy-table-header-bar">
+                <div class="policy-table-header-title">
+                    <i class="fas fa-layer-group text-primary"></i>
+                    <span>All Attendance Policy Rules Matrix</span>
+                    
+                </div>
+               
+            </div>
+
+            <div class="policy-table-scroll">
+                <table class="policy-table" id="policyDataTable">
+                    <thead>
+                        {{-- SUPER GROUP HEADERS --}}
+                        <tr class="group-header">
+                            <th colspan="3" class="sticky-col-id" style="text-align: left; padding-left: 18px;">Policy Identification</th>
+                            <th colspan="5" class="gh-work">Working Hours & Thresholds</th>
+                            <th colspan="6" class="gh-early">Early Logout Governance (New Rule Engine)</th>
+                            <th colspan="6">Late Login Governance</th>
+                            <th colspan="3">Combined Violations</th>
+                            <th colspan="5">Missed Punch Rules</th>
+                            <th colspan="8">Punch Modes & Device Controls</th>
+                            <th colspan="7">Work From Home (WFH) Rules</th>
+                            <th colspan="3">Regularization Rules</th>
+                            <th colspan="1" class="sticky-col-action">Action</th>
+                        </tr>
+                        {{-- DETAILED SUB HEADERS --}}
+                        <tr class="column-header">
+                            {{-- Policy Info (Sticky Left) --}}
+                            <th class="sticky-col-id">#</th>
+                            <th class="sticky-col-name">Policy Name & Scope</th>
+                            <th>Status</th>
+
+                            {{-- Work Hours --}}
+                            <th>Req. Work Min</th>
+                            <th>Half Day Min</th>
+                            <th>Absent Below</th>
+                            <th>Half Day Rule</th>
+                            <th>Auto Absent</th>
+
+                            {{-- Early Logout (Highlighted) --}}
+                            <th>Early Out Rule</th>
+                            <th class="th-early-grace">Grace Mins (Full Day)</th>
+                            <th class="th-early-limit">Half Day Threshold</th>
+                            <th>Monthly Limit</th>
+                            <th>Violation Rule</th>
+                            <th>Violation Limit</th>
+
+                            {{-- Late Login --}}
+                            <th>Late Mark</th>
+                            <th>Late Limit</th>
+                            <th>Violation Rule</th>
+                            <th>Violation Limit</th>
+                            <th>Grace Late</th>
+                            <th>Late LWP After</th>
+
+                            {{-- Combined --}}
+                            <th>Combined Rule</th>
+                            <th>Combined Limit</th>
+                            <th>Combined Action</th>
+
+                            {{-- Missed Punch --}}
+                            <th>Allowed Missed</th>
+                            <th>After Minutes</th>
+                            <th>Action Type</th>
+                            <th>LWP After</th>
+                            <th>Auto LWP</th>
+
+                            {{-- Punch Controls --}}
+                            <th>Tracking</th>
+                            <th>Punch In Req.</th>
+                            <th>Punch Out Req.</th>
+                            <th>Web Punch</th>
+                            <th>Mobile Punch</th>
+                            <th>Mobile Only</th>
+                            <th>Web Disabled</th>
+                            <th>Punch Block</th>
+
+                            {{-- WFH Rules --}}
+                            <th>WFH Allowed</th>
+                            <th>Monthly Limit</th>
+                            <th>Mgr Approval</th>
+                            <th>Proof Req.</th>
+                            <th>Speed Test</th>
+                            <th>Net Issue LWP</th>
+                            <th>Power Issue LWP</th>
+
+                            {{-- Regularization --}}
+                            <th>Regularize</th>
+                            <th>Window Days</th>
+                            <th>Req. Approval</th>
+
+                            {{-- Action (Sticky Right) --}}
+                            <th class="sticky-col-action">Edit</th>
+                        </tr>
+                    </thead>
+                    <tbody id="policyTableBody">
+                        @forelse($attendancePolicies as $policy)
+                            @php
+                                $isPartTime = str_contains(strtolower($policy->policy_name), 'part time');
+                                $categoryTag = $isPartTime ? 'part_time' : 'full_time';
+                                $wfhTag = $policy->wfh_enabled ? 'wfh' : '';
+                            @endphp
+                            <tr class="policy-tr" data-category="{{ $categoryTag }} {{ $wfhTag }}" data-name="{{ strtolower($policy->policy_name) }}">
+                                {{-- Sticky ID --}}
+                                <td class="sticky-col-id font-weight-bold text-muted">#{{ $policy->id }}</td>
+
+                                {{-- Sticky Name --}}
+                                <td class="sticky-col-name">
+                                    <div class="policy-name-cell">
+                                        <div class="policy-name-title">
+                                            <span>{{ $policy->policy_name }}</span>
+                                            @if($isPartTime)
+                                                <span class="badge badge-light border text-primary" style="font-size: 10px;">Part Time</span>
+                                            @endif
+                                        </div>
+                                        <div class="policy-name-sub">{{ Str::limit($policy->description ?? 'Standard policy rule definitions.', 55) }}</div>
+                                    </div>
+                                </td>
+
+                                {{-- Status --}}
+                                <td>
+                                    <span class="status-badge {{ $policy->is_active ? 'status-active' : 'status-inactive' }}">
+                                        {{ $policy->is_active ? 'Active' : 'Inactive' }}
+                                    </span>
+                                </td>
+
+                                {{-- Work Hours --}}
+                                <td><span class="badge-num badge-num-primary">{{ $policy->required_work_minutes ?? 480 }}m</span></td>
+                                <td><span class="badge-num badge-num-slate">{{ $policy->half_day_min_minutes ?? 240 }}m</span></td>
+                                <td><span class="badge-num badge-num-rose">{{ $policy->absent_below_minutes ?? 120 }}m</span></td>
+                                <td>
+                                    <span class="badge-bool {{ ($policy->half_day_enabled ?? true) ? 'badge-bool-yes' : 'badge-bool-no' }}">
+                                        <i class="fas {{ ($policy->half_day_enabled ?? true) ? 'fa-check' : 'fa-times' }}"></i>
+                                        {{ ($policy->half_day_enabled ?? true) ? 'ON' : 'OFF' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge-bool {{ $policy->auto_absent_enabled ? 'badge-bool-yes' : 'badge-bool-no' }}">
+                                        <i class="fas {{ $policy->auto_absent_enabled ? 'fa-check' : 'fa-times' }}"></i>
+                                        {{ $policy->auto_absent_enabled ? 'ON' : 'OFF' }}
+                                    </span>
+                                </td>
+
+                                {{-- Early Logout (Highlighted New Rules) --}}
+                                <td>
+                                    <span class="badge-bool {{ ($policy->early_out_enabled ?? true) ? 'badge-bool-yes' : 'badge-bool-no' }}">
+                                        <i class="fas {{ ($policy->early_out_enabled ?? true) ? 'fa-check' : 'fa-times' }}"></i>
+                                        {{ ($policy->early_out_enabled ?? true) ? 'ON' : 'OFF' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge-num badge-num-grace" title="Punch out up to this many minutes early = Full Day, no violation">
+                                        <i class="fas fa-shield-alt mr-1"></i>{{ $policy->early_out_grace_minutes ?? 60 }} mins
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge-num badge-num-amber" title="Early minutes between grace and this = Early Logout. Above this = Half Day.">
+                                        <i class="fas fa-sign-out-alt mr-1"></i>{{ $policy->early_out_half_day_minutes ?? 90 }} mins
+                                    </span>
+                                </td>
+                                <td><span class="badge-num badge-num-slate">{{ $policy->early_out_limit ?? 2 }}/mo</span></td>
+                                <td>
+                                    <span class="badge-bool {{ ($policy->early_violation_enabled ?? true) ? 'badge-bool-yes' : 'badge-bool-no' }}">
+                                        <i class="fas {{ ($policy->early_violation_enabled ?? true) ? 'fa-check' : 'fa-times' }}"></i>
+                                        {{ ($policy->early_violation_enabled ?? true) ? 'ON' : 'OFF' }}
+                                    </span>
+                                </td>
+                                <td><span class="badge-num badge-num-slate">{{ $policy->early_violation_limit ?? 3 }}</span></td>
+
+                                {{-- Late Login --}}
+                                <td>
+                                    <span class="badge-bool {{ ($policy->late_mark_enabled ?? true) ? 'badge-bool-yes' : 'badge-bool-no' }}">
+                                        <i class="fas {{ ($policy->late_mark_enabled ?? true) ? 'fa-check' : 'fa-times' }}"></i>
+                                        {{ ($policy->late_mark_enabled ?? true) ? 'ON' : 'OFF' }}
+                                    </span>
+                                </td>
+                                <td><span class="badge-num badge-num-slate">{{ $policy->late_mark_limit ?? 2 }}/mo</span></td>
+                                <td>
+                                    <span class="badge-bool {{ ($policy->late_violation_enabled ?? true) ? 'badge-bool-yes' : 'badge-bool-no' }}">
+                                        <i class="fas {{ ($policy->late_violation_enabled ?? true) ? 'fa-check' : 'fa-times' }}"></i>
+                                        {{ ($policy->late_violation_enabled ?? true) ? 'ON' : 'OFF' }}
+                                    </span>
+                                </td>
+                                <td><span class="badge-num badge-num-slate">{{ $policy->late_violation_limit ?? 3 }}</span></td>
+                                <td><span class="badge-num badge-num-slate">{{ $policy->grace_late_allowed ?? 0 }}m</span></td>
+                                <td><span class="badge-num badge-num-rose">After {{ $policy->late_lwp_after ?? 3 }}</span></td>
+
+                                {{-- Combined Violations --}}
+                                <td>
+                                    <span class="badge-bool {{ ($policy->combined_violation_enabled ?? true) ? 'badge-bool-yes' : 'badge-bool-no' }}">
+                                        <i class="fas {{ ($policy->combined_violation_enabled ?? true) ? 'fa-check' : 'fa-times' }}"></i>
+                                        {{ ($policy->combined_violation_enabled ?? true) ? 'ON' : 'OFF' }}
+                                    </span>
+                                </td>
+                                <td><span class="badge-num badge-num-slate">{{ $policy->combined_violation_limit ?? 3 }}</span></td>
+                                <td><span class="badge badge-light border text-capitalize font-weight-bold">{{ str_replace('_', ' ', $policy->combined_violation_action ?? 'half_day') }}</span></td>
+
+                                {{-- Missed Punch --}}
+                                <td><span class="badge-num badge-num-slate">{{ $policy->allowed_missed_punches ?? 2 }}</span></td>
+                                <td><span class="badge-num badge-num-slate">{{ $policy->missed_punch_after_minutes ?? 60 }}m</span></td>
+                                <td><span class="badge badge-light border text-uppercase font-weight-bold">{{ $policy->missed_punch_action ?? 'lwp' }}</span></td>
+                                <td><span class="badge-num badge-num-rose">After {{ $policy->missed_punch_lwp_after ?? 3 }}</span></td>
+                                <td>
+                                    <span class="badge-bool {{ ($policy->auto_lwp_for_missed_punch ?? true) ? 'badge-bool-yes' : 'badge-bool-no' }}">
+                                        <i class="fas {{ ($policy->auto_lwp_for_missed_punch ?? true) ? 'fa-check' : 'fa-times' }}"></i>
+                                        {{ ($policy->auto_lwp_for_missed_punch ?? true) ? 'ON' : 'OFF' }}
+                                    </span>
+                                </td>
+
+                                {{-- Punch & Device Controls --}}
+                                <td>
+                                    <span class="badge-bool {{ ($policy->attendance_tracking_enabled ?? true) ? 'badge-bool-yes' : 'badge-bool-no' }}">
+                                        <i class="fas {{ ($policy->attendance_tracking_enabled ?? true) ? 'fa-check' : 'fa-times' }}"></i>
+                                        {{ ($policy->attendance_tracking_enabled ?? true) ? 'ON' : 'OFF' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge-bool {{ ($policy->punch_in_required ?? true) ? 'badge-bool-yes' : 'badge-bool-no' }}">
+                                        <i class="fas {{ ($policy->punch_in_required ?? true) ? 'fa-check' : 'fa-times' }}"></i>
+                                        {{ ($policy->punch_in_required ?? true) ? 'Yes' : 'No' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge-bool {{ ($policy->punch_out_required ?? true) ? 'badge-bool-yes' : 'badge-bool-no' }}">
+                                        <i class="fas {{ ($policy->punch_out_required ?? true) ? 'fa-check' : 'fa-times' }}"></i>
+                                        {{ ($policy->punch_out_required ?? true) ? 'Yes' : 'No' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge-bool {{ ($policy->allow_web_punch ?? true) ? 'badge-bool-yes' : 'badge-bool-no' }}">
+                                        <i class="fas {{ ($policy->allow_web_punch ?? true) ? 'fa-check' : 'fa-times' }}"></i>
+                                        {{ ($policy->allow_web_punch ?? true) ? 'Yes' : 'No' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge-bool {{ ($policy->allow_mobile_punch ?? true) ? 'badge-bool-yes' : 'badge-bool-no' }}">
+                                        <i class="fas {{ ($policy->allow_mobile_punch ?? true) ? 'fa-check' : 'fa-times' }}"></i>
+                                        {{ ($policy->allow_mobile_punch ?? true) ? 'Yes' : 'No' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge-bool {{ $policy->mobile_only_punch ? 'badge-bool-yes' : 'badge-bool-no' }}">
+                                        <i class="fas {{ $policy->mobile_only_punch ? 'fa-check' : 'fa-times' }}"></i>
+                                        {{ $policy->mobile_only_punch ? 'Yes' : 'No' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge-bool {{ $policy->web_punch_disabled ? 'badge-bool-yes' : 'badge-bool-no' }}">
+                                        <i class="fas {{ $policy->web_punch_disabled ? 'fa-check' : 'fa-times' }}"></i>
+                                        {{ $policy->web_punch_disabled ? 'Yes' : 'No' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge-bool {{ $policy->punch_block_enabled ? 'badge-bool-yes' : 'badge-bool-no' }}">
+                                        <i class="fas {{ $policy->punch_block_enabled ? 'fa-check' : 'fa-times' }}"></i>
+                                        {{ $policy->punch_block_enabled ? 'ON' : 'OFF' }}
+                                    </span>
+                                </td>
+
+                                {{-- WFH Rules --}}
+                                <td>
+                                    <span class="badge-bool {{ $policy->wfh_enabled ? 'badge-bool-yes' : 'badge-bool-no' }}">
+                                        <i class="fas {{ $policy->wfh_enabled ? 'fa-check' : 'fa-times' }}"></i>
+                                        {{ $policy->wfh_enabled ? 'Yes' : 'No' }}
+                                    </span>
+                                </td>
+                                <td><span class="badge-num badge-num-primary">{{ $policy->monthly_wfh_limit ?? 2 }}/mo</span></td>
+                                <td>
+                                    <span class="badge-bool {{ ($policy->manager_approval_required ?? true) ? 'badge-bool-yes' : 'badge-bool-no' }}">
+                                        <i class="fas {{ ($policy->manager_approval_required ?? true) ? 'fa-check' : 'fa-times' }}"></i>
+                                        {{ ($policy->manager_approval_required ?? true) ? 'Yes' : 'No' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge-bool {{ $policy->internet_proof_required ? 'badge-bool-yes' : 'badge-bool-no' }}">
+                                        <i class="fas {{ $policy->internet_proof_required ? 'fa-check' : 'fa-times' }}"></i>
+                                        {{ $policy->internet_proof_required ? 'Yes' : 'No' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge-bool {{ $policy->speed_test_required ? 'badge-bool-yes' : 'badge-bool-no' }}">
+                                        <i class="fas {{ $policy->speed_test_required ? 'fa-check' : 'fa-times' }}"></i>
+                                        {{ $policy->speed_test_required ? 'Yes' : 'No' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge-bool {{ $policy->internet_issue_lwp ? 'badge-bool-yes' : 'badge-bool-no' }}">
+                                        <i class="fas {{ $policy->internet_issue_lwp ? 'fa-check' : 'fa-times' }}"></i>
+                                        {{ $policy->internet_issue_lwp ? 'Yes' : 'No' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge-bool {{ $policy->electricity_issue_lwp ? 'badge-bool-yes' : 'badge-bool-no' }}">
+                                        <i class="fas {{ $policy->electricity_issue_lwp ? 'fa-check' : 'fa-times' }}"></i>
+                                        {{ $policy->electricity_issue_lwp ? 'Yes' : 'No' }}
+                                    </span>
+                                </td>
+
+                                {{-- Regularization --}}
+                                <td>
+                                    <span class="badge-bool {{ ($policy->regularization_enabled ?? true) ? 'badge-bool-yes' : 'badge-bool-no' }}">
+                                        <i class="fas {{ ($policy->regularization_enabled ?? true) ? 'fa-check' : 'fa-times' }}"></i>
+                                        {{ ($policy->regularization_enabled ?? true) ? 'Yes' : 'No' }}
+                                    </span>
+                                </td>
+                                <td><span class="badge-num badge-num-slate">{{ $policy->regularization_days ?? 7 }} days</span></td>
+                                <td>
+                                    <span class="badge-bool {{ ($policy->regularization_requires_approval ?? true) ? 'badge-bool-yes' : 'badge-bool-no' }}">
+                                        <i class="fas {{ ($policy->regularization_requires_approval ?? true) ? 'fa-check' : 'fa-times' }}"></i>
+                                        {{ ($policy->regularization_requires_approval ?? true) ? 'Yes' : 'No' }}
+                                    </span>
+                                </td>
+
+                                {{-- Sticky Action --}}
+                                <td class="sticky-col-action">
+                                    @if(auth()->user() && (auth()->user()->isAdmin() || auth()->user()->isSuperAdmin()))
+                                        <button type="button" class="btn btn-orb-edit px-3 py-1" style="font-size: 11.5px; border-radius: 999px;" data-toggle="modal" data-target="#editPolicyModal{{ $policy->id }}" data-bs-toggle="modal" data-bs-target="#editPolicyModal{{ $policy->id }}" onclick="$('#editPolicyModal{{ $policy->id }}').modal('show')">
+                                            <i class="fas fa-sliders-h mr-1"></i> Edit
+                                        </button>
+                                    @else
+                                        <span class="text-muted"><i class="fas fa-lock"></i></span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="47" class="text-center py-5 text-muted">
+                                    <i class="fas fa-folder-open fa-2x mb-2 d-block"></i>
+                                    No Attendance Policies Found in Database
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {{-- DYNAMIC POLICY CARDS GRID (ALTERNATIVE VIEW) --}}
+        <div class="policy-grid" id="policyCardGrid" style="display: none;">
             @forelse($attendancePolicies as $policy)
                 @php
                     $isPartTime = str_contains(strtolower($policy->policy_name), 'part time');
@@ -811,7 +1456,7 @@
                         {{-- DYNAMIC GOVERNANCE BADGES --}}
                         <div class="badge-section">
                             <span class="feature-pill pill-primary">
-                                <i class="fas fa-clock"></i> Early Out Half Day: {{ $policy->early_out_half_day_minutes ?? 60 }}m
+                                <i class="fas fa-clock"></i> Early Out Grace: {{ $policy->early_out_grace_minutes ?? 60 }}m &bull; Limit: {{ $policy->early_out_half_day_minutes ?? 90 }}m
                             </span>
                             <span class="feature-pill {{ $policy->punch_block_enabled ? 'pill-warning' : 'pill-secondary' }}">
                                 <i class="fas fa-lock"></i> Punch Block: {{ $policy->punch_block_enabled ? 'ON' : 'OFF' }}
@@ -835,15 +1480,148 @@
                             <i class="far fa-calendar-alt mr-1"></i> Updated {{ \Carbon\Carbon::parse($policy->updated_at)->diffForHumans() }}
                         </small>
                         @if(auth()->user() && (auth()->user()->isAdmin() || auth()->user()->isSuperAdmin()))
-                            <button class="btn btn-orb-edit" data-toggle="modal" data-target="#editPolicyModal{{ $policy->id }}">
+                            <button type="button" class="btn btn-orb-edit" data-toggle="modal" data-target="#editPolicyModal{{ $policy->id }}" data-bs-toggle="modal" data-bs-target="#editPolicyModal{{ $policy->id }}" onclick="$('#editPolicyModal{{ $policy->id }}').modal('show')">
                                 <i class="fas fa-sliders-h mr-1"></i> Edit Rules
                             </button>
                         @endif
                     </div>
                 </div>
+            @empty
+                <div class="col-12 text-center py-5">
+                    <i class="fas fa-folder-open text-muted fa-3x mb-3"></i>
+                    <h5 class="text-muted font-weight-bold">No Attendance Policies Found in Database</h5>
+                </div>
+            @endforelse
+        </div>
 
-                {{-- EDIT MODAL FOR DYNAMIC POLICY ROW (HRMS STANDARD UI) --}}
-                <div class="modal fade" id="editPolicyModal{{ $policy->id }}" tabindex="-1" role="dialog" aria-hidden="true">
+        {{-- CREATE NEW POLICY MODAL --}}
+        @if(auth()->user() && (auth()->user()->isAdmin() || auth()->user()->isSuperAdmin()))
+            <div class="modal fade" id="createPolicyModal" tabindex="-1" role="dialog" aria-hidden="true">
+                <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+                    <form method="POST" action="{{ route('attendance.policy_rules.store') }}" class="modal-content att-modal-content">
+                        @csrf
+                        
+                        <div class="modal-header att-modal-header">
+                            <div>
+                                <h5 class="att-modal-title"><i class="fas fa-plus-circle mr-2"></i> Create Attendance Policy</h5>
+                                <div class="att-modal-subtitle">Define new corporate attendance thresholds & governance rules</div>
+                            </div>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+
+                        <div class="modal-body att-modal-body">
+                            <div class="att-modal-section">
+                                <div class="att-modal-section-title"><i class="fas fa-tag"></i> Policy Details & Scope</div>
+                                <div class="row">
+                                    <div class="col-md-8 form-group">
+                                        <label>Policy Name <span class="text-danger">*</span></label>
+                                        <input type="text" name="policy_name" class="form-control" placeholder="e.g. Standard Corporate Policy" required>
+                                    </div>
+                                    <div class="col-md-4 form-group">
+                                        <label>Working Hours / Day</label>
+                                        <input type="number" step="0.5" name="working_hours_per_day" class="form-control" value="8">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="att-modal-section">
+                                <div class="att-modal-section-title"><i class="fas fa-clock"></i> Working Hours & Thresholds</div>
+                                <div class="row">
+                                    <div class="col-md-3 form-group">
+                                        <label>Req. Work Mins</label>
+                                        <input type="number" name="required_work_minutes" class="form-control" value="480">
+                                    </div>
+                                    <div class="col-md-3 form-group">
+                                        <label>Half Day Min Mins</label>
+                                        <input type="number" name="half_day_min_minutes" class="form-control" value="270">
+                                    </div>
+                                    <div class="col-md-3 form-group">
+                                        <label>Absent Below Mins</label>
+                                        <input type="number" name="absent_below_minutes" class="form-control" value="270">
+                                    </div>
+                                    <div class="col-md-3 form-group">
+                                        <label>Lunch Break Mins</label>
+                                        <input type="number" name="lunch_break_minutes" class="form-control" value="60">
+                                    </div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-md-6 form-group">
+                                        <label>Early Logout Grace (Minutes) - Full Day Free Grace</label>
+                                        <input type="number" name="early_out_grace_minutes" class="form-control" value="60" min="0">
+                                        <small class="text-muted d-block mt-1">Punch out up to this many minutes early = Full Day, no violation.</small>
+                                    </div>
+                                    <div class="col-md-6 form-group">
+                                        <label>Early Logout Limit (Minutes) - Above this = Half Day</label>
+                                        <input type="number" name="early_out_half_day_minutes" class="form-control" value="90" min="1">
+                                        <small class="text-muted d-block mt-1">Between grace and this limit = Early Logout. Above this limit = Half Day.</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="att-modal-section mb-0">
+                                <div class="att-modal-section-title"><i class="fas fa-user-shield"></i> Governance, Automations & Quotas</div>
+                                <div class="row">
+                                    <div class="col-md-4 form-group">
+                                        <label>Allowed Missed Punches</label>
+                                        <input type="number" name="allowed_missed_punches" class="form-control" value="2">
+                                    </div>
+                                    <div class="col-md-4 form-group">
+                                        <label>Violation Limit</label>
+                                        <input type="number" name="combined_violation_limit" class="form-control" value="3">
+                                    </div>
+                                    <div class="col-md-4 form-group">
+                                        <label>Monthly WFH Limit</label>
+                                        <input type="number" name="monthly_wfh_limit" class="form-control" value="2">
+                                    </div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-md-6 form-group">
+                                        <div class="custom-control custom-switch">
+                                            <input type="checkbox" class="custom-control-input" id="createAutoBlockSwitch" name="punch_block_enabled" value="1" checked>
+                                            <label class="custom-control-label font-weight-bold text-dark" for="createAutoBlockSwitch">Punch Block Enabled</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 form-group">
+                                        <div class="custom-control custom-switch">
+                                            <input type="checkbox" class="custom-control-input" id="createAutoAbsentSwitch" name="auto_absent_enabled" value="1" checked>
+                                            <label class="custom-control-label font-weight-bold text-dark" for="createAutoAbsentSwitch">Auto Absent Enabled</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-md-6 form-group mb-0">
+                                        <div class="custom-control custom-switch">
+                                            <input type="checkbox" class="custom-control-input" id="createWfhSwitch" name="wfh_enabled" value="1" checked>
+                                            <label class="custom-control-label font-weight-bold text-dark" for="createWfhSwitch">Allow Work From Home (WFH)</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 form-group mb-0">
+                                        <div class="custom-control custom-switch">
+                                            <input type="checkbox" class="custom-control-input" id="createActiveSwitch" name="is_active" value="1" checked>
+                                            <label class="custom-control-label font-weight-bold text-dark" for="createActiveSwitch">Policy Is Active</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="modal-footer att-modal-footer">
+                            <button type="button" class="btn btn-modal-cancel" data-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-modal-save">
+                                <i class="fas fa-plus-circle mr-1"></i> Create Policy
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        @endif
+
+        {{-- EDIT POLICY MODALS (OUTSIDE HIDDEN CONTAINER SO MODAL CAN OPEN FROM TABLE OR CARD) --}}
+        @if(auth()->user() && (auth()->user()->isAdmin() || auth()->user()->isSuperAdmin()))
+            @foreach($attendancePolicies as $policy)
+                <div class="modal fade" id="editPolicyModal{{ $policy->id }}" tabindex="-1" role="dialog" aria-labelledby="editPolicyModalLabel{{ $policy->id }}" aria-hidden="true">
                     <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
                         <form method="POST" action="{{ route('attendance.policy_rules.update', $policy->id) }}" class="modal-content att-modal-content">
                             @csrf
@@ -852,10 +1630,10 @@
                             {{-- MODAL HEADER --}}
                             <div class="modal-header att-modal-header">
                                 <div>
-                                    <h5 class="att-modal-title"><i class="fas fa-shield-alt mr-2"></i> Edit Attendance Policy</h5>
+                                    <h5 class="att-modal-title" id="editPolicyModalLabel{{ $policy->id }}"><i class="fas fa-shield-alt mr-2"></i> Edit Attendance Policy</h5>
                                     <div class="att-modal-subtitle">{{ $policy->policy_name }} &bull; Governance & Discipline Rules</div>
                                 </div>
-                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <button type="button" class="close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close">
                                     <span aria-hidden="true">&times;</span>
                                 </button>
                             </div>
@@ -901,6 +1679,18 @@
                                         <div class="col-md-3 form-group">
                                             <label>Lunch Break Mins</label>
                                             <input type="number" name="lunch_break_minutes" class="form-control" value="{{ $policy->lunch_break_minutes ?? 60 }}">
+                                        </div>
+                                    </div>
+                                    <div class="row mt-2">
+                                        <div class="col-md-6 form-group">
+                                            <label>Early Logout Grace (minutes) - free time before expected logout</label>
+                                            <input type="number" name="early_out_grace_minutes" class="form-control" value="{{ $policy->early_out_grace_minutes ?? 60 }}" min="0">
+                                            <small class="text-muted d-block mt-1">Punch out up to this many minutes before expected logout = Full Day, no violation.</small>
+                                        </div>
+                                        <div class="col-md-6 form-group">
+                                            <label>Early Logout limit (minutes) - above this = Half Day</label>
+                                            <input type="number" name="early_out_half_day_minutes" class="form-control" value="{{ $policy->early_out_half_day_minutes ?? 90 }}" min="1">
+                                            <small class="text-muted d-block mt-1">Between grace and this limit = Early Logout. Above this limit = Half Day.</small>
                                         </div>
                                     </div>
                                 </div>
@@ -962,7 +1752,7 @@
 
                             {{-- MODAL FOOTER --}}
                             <div class="modal-footer att-modal-footer">
-                                <button type="button" class="btn btn-modal-cancel" data-dismiss="modal">Cancel</button>
+                                <button type="button" class="btn btn-modal-cancel" data-dismiss="modal" data-bs-dismiss="modal">Cancel</button>
                                 <button type="submit" class="btn btn-modal-save">
                                     <i class="fas fa-check-circle mr-1"></i> Save Changes
                                 </button>
@@ -970,44 +1760,114 @@
                         </form>
                     </div>
                 </div>
-            @empty
-                <div class="col-12 text-center py-5">
-                    <i class="fas fa-folder-open text-muted fa-3x mb-3"></i>
-                    <h5 class="text-muted font-weight-bold">No Attendance Policies Found in Database</h5>
-                </div>
-            @endforelse
-        </div>
+            @endforeach
+        @endif
 
     </div>
 </div>
 
 <script>
+    function switchView(view) {
+        const tableView = document.getElementById('policyTableContainer');
+        const cardView = document.getElementById('policyCardGrid');
+        const btnTable = document.getElementById('btnTableView');
+        const btnCard = document.getElementById('btnCardView');
+
+        if (view === 'table') {
+            if (tableView) tableView.style.display = 'block';
+            if (cardView) cardView.style.display = 'none';
+            if (btnTable) btnTable.classList.add('active');
+            if (btnCard) btnCard.classList.remove('active');
+            try { localStorage.setItem('orb_policy_view', 'table'); } catch(e) {}
+        } else {
+            if (tableView) tableView.style.display = 'none';
+            if (cardView) cardView.style.display = 'grid';
+            if (btnCard) btnCard.classList.add('active');
+            if (btnTable) btnTable.classList.remove('active');
+            try { localStorage.setItem('orb_policy_view', 'cards'); } catch(e) {}
+        }
+    }
+
     function filterPolicies(category, element) {
         document.querySelectorAll('#policyFilterPills .filter-pill').forEach(el => el.classList.remove('active'));
-        element.classList.add('active');
+        if (element) element.classList.add('active');
 
-        const items = document.querySelectorAll('#policyCardGrid .policy-item');
-        items.forEach(item => {
-            const cat = item.getAttribute('data-category');
+        let visibleCount = 0;
+
+        // Filter Table rows
+        const rows = document.querySelectorAll('#policyTableBody tr.policy-tr');
+        rows.forEach(row => {
+            const cat = row.getAttribute('data-category') || '';
+            if (category === 'all' || cat.includes(category)) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        // Filter Cards
+        const cards = document.querySelectorAll('#policyCardGrid .policy-item');
+        cards.forEach(item => {
+            const cat = item.getAttribute('data-category') || '';
             if (category === 'all' || cat.includes(category)) {
                 item.style.display = 'flex';
             } else {
                 item.style.display = 'none';
             }
         });
+
+        const countBadge = document.getElementById('policyTableCount');
+        if (countBadge) {
+            countBadge.innerText = visibleCount + ' Policies';
+        }
     }
 
     function searchPolicies() {
-        const query = document.getElementById('policySearchInput').value.toLowerCase();
-        const items = document.querySelectorAll('#policyCardGrid .policy-item');
-        items.forEach(item => {
-            const name = item.getAttribute('data-name');
-            if (name.includes(query)) {
+        const query = (document.getElementById('policySearchInput').value || '').toLowerCase().trim();
+        let visibleCount = 0;
+
+        // Search Table rows
+        const rows = document.querySelectorAll('#policyTableBody tr.policy-tr');
+        rows.forEach(row => {
+            const name = (row.getAttribute('data-name') || '').toLowerCase();
+            const text = (row.innerText || '').toLowerCase();
+            if (query === '' || name.includes(query) || text.includes(query)) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        // Search Cards
+        const cards = document.querySelectorAll('#policyCardGrid .policy-item');
+        cards.forEach(item => {
+            const name = (item.getAttribute('data-name') || '').toLowerCase();
+            const text = (item.innerText || '').toLowerCase();
+            if (query === '' || name.includes(query) || text.includes(query)) {
                 item.style.display = 'flex';
             } else {
                 item.style.display = 'none';
             }
         });
+
+        const countBadge = document.getElementById('policyTableCount');
+        if (countBadge) {
+            countBadge.innerText = visibleCount + ' Policies';
+        }
     }
+
+    // Restore view preference
+    document.addEventListener('DOMContentLoaded', function() {
+        try {
+            const savedView = localStorage.getItem('orb_policy_view');
+            if (savedView === 'cards') {
+                switchView('cards');
+            } else {
+                switchView('table');
+            }
+        } catch(e) {}
+    });
 </script>
 @endsection

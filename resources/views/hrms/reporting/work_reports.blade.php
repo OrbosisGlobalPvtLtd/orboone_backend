@@ -22,7 +22,7 @@
 .rep-page {
     min-height: calc(100vh - 90px);
     background: var(--orb-bg);
-    padding: 14px 16px 36px;
+    padding: 16px 18px 40px;
     font-family: 'Outfit', sans-serif;
     color: var(--orb-text);
 }
@@ -36,10 +36,10 @@
 /* Signature Hero Header Banner */
 .rep-hero {
     background: linear-gradient(135deg, var(--orb-primary) 0%, var(--orb-secondary) 100%);
-    border-radius: 24px;
+    border-radius: 22px;
     padding: 22px 28px;
     margin-bottom: 20px;
-    box-shadow: 0 16px 40px rgba(75, 0, 232, 0.18);
+    box-shadow: 0 16px 36px rgba(75, 0, 232, 0.18);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -55,39 +55,39 @@
     position: absolute;
     right: -60px;
     top: -80px;
-    width: 300px;
-    height: 300px;
+    width: 280px;
+    height: 280px;
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.12);
     pointer-events: none;
 }
 
 .rep-hero-kicker {
-    font-size: 11.5px;
+    font-size: 11px;
     font-weight: 850;
     letter-spacing: .12em;
     text-transform: uppercase;
     opacity: .92;
-    margin-bottom: 6px;
+    margin-bottom: 5px;
     display: flex;
-    gap: 8px;
+    gap: 7px;
     align-items: center;
 }
 
 .rep-hero-title {
-    font-size: 26px;
+    font-size: 24px;
     font-weight: 900;
     margin: 0;
-    line-height: 1.15;
+    line-height: 1.2;
     color: #ffffff;
 }
 
 .rep-hero-subtitle {
-    font-size: 13.5px;
+    font-size: 13px;
     font-weight: 500;
-    margin-top: 6px;
+    margin-top: 5px;
     opacity: .92;
-    max-width: 800px;
+    max-width: 750px;
 }
 
 .rep-hero-right {
@@ -106,7 +106,7 @@
     -webkit-backdrop-filter: blur(8px) !important;
     border-radius: 999px !important;
     padding: 8px 18px !important;
-    font-size: 12.5px !important;
+    font-size: 12px !important;
     font-weight: 750 !important;
     display: inline-flex !important;
     align-items: center !important;
@@ -129,26 +129,20 @@
 /* 5 KPI Stat Summary Cards Grid */
 .team-metric-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-template-columns: repeat(5, 1fr);
     gap: 12px;
     margin-bottom: 20px;
-}
-
-@media (min-width: 1400px) {
-    .team-metric-grid {
-        grid-template-columns: repeat(5, 1fr);
-    }
 }
 
 .team-metric-card {
     background: #fff;
     border: 1px solid var(--orb-border);
-    border-radius: 18px;
-    padding: 14px 14px 10px;
-    box-shadow: 0 10px 24px rgba(16, 24, 40, .055);
+    border-radius: 16px;
+    padding: 14px 16px 12px;
+    box-shadow: 0 8px 22px rgba(16, 24, 40, .045);
     position: relative;
     overflow: hidden;
-    min-height: 92px;
+    min-height: 90px;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -160,10 +154,10 @@
 .team-metric-card:after {
     content: "";
     position: absolute;
-    right: -22px;
-    top: -30px;
-    width: 86px;
-    height: 86px;
+    right: -24px;
+    top: -28px;
+    width: 82px;
+    height: 82px;
     border-radius: 50%;
     background: var(--metric-soft, #F4F2FF);
     pointer-events: none;
@@ -179,19 +173,19 @@
 }
 
 .team-metric-icon {
-    width: 38px;
-    height: 38px;
-    border-radius: 12px;
+    width: 36px;
+    height: 36px;
+    border-radius: 11px;
     background: var(--metric-soft, #F4F2FF);
     color: var(--metric-color, var(--orb-primary));
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 16px;
+    font-size: 15px;
 }
 
 .team-metric-value {
-    font-size: 24px;
+    font-size: 23px;
     font-weight: 900;
     color: #101828;
     line-height: 1;
@@ -203,7 +197,7 @@
     font-weight: 850;
     color: #475467;
     text-transform: uppercase;
-    margin-top: 12px;
+    margin-top: 10px;
     position: relative;
     z-index: 1;
     white-space: nowrap;
@@ -236,7 +230,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
+    gap: 14px;
     flex-wrap: wrap;
 }
 
@@ -262,11 +256,11 @@
     font-size: 15px;
 }
 
-/* Horizontal Theme Filter Bar */
+/* Multi-Filter Bar with Separate Year and Month */
 .rep-filter-bar {
-    padding: 16px 18px 8px;
+    padding: 16px 18px 12px;
     background: #FFFFFF;
-    border-bottom: none;
+    border-bottom: 1px solid #F1F5F9;
 }
 
 .rep-filter-row {
@@ -288,9 +282,39 @@
     line-height: 1;
 }
 
+.rep-filter-col-year {
+    flex: 0 1 105px;
+    min-width: 95px;
+}
+
+.rep-filter-col-month {
+    flex: 1 1 145px;
+    min-width: 135px;
+}
+
+.rep-filter-col-date {
+    flex: 1 1 140px;
+    min-width: 130px;
+}
+
+.rep-filter-col-mode {
+    flex: 1 1 125px;
+    min-width: 115px;
+}
+
+.rep-filter-col-emp {
+    flex: 1.5 1 180px;
+    min-width: 165px;
+}
+
+.rep-filter-col-proj {
+    flex: 1.2 1 155px;
+    min-width: 140px;
+}
+
 .rep-filter-col-search {
-    flex: 1 1 240px;
-    min-width: 200px;
+    flex: 1.5 1 200px;
+    min-width: 175px;
 }
 
 .rep-search-input-wrap {
@@ -328,21 +352,6 @@
     outline: none;
 }
 
-.rep-filter-col-month {
-    flex: 1 1 170px;
-    min-width: 150px;
-}
-
-.rep-filter-col-mode {
-    flex: 1 1 135px;
-    min-width: 120px;
-}
-
-.rep-filter-col-date {
-    flex: 1 1 175px;
-    min-width: 155px;
-}
-
 .rep-date-control,
 .rep-date-control.orbo-date-picker-display,
 .orbo-date-picker,
@@ -378,30 +387,7 @@ input[data-date-picker]:focus {
     outline: none !important;
 }
 
-.rep-filter-col-emp {
-    flex: 1 1 210px;
-    min-width: 180px;
-}
-
-.rep-filter-col-proj {
-    flex: 1 1 180px;
-    min-width: 150px;
-}
-
-@media (max-width: 768px) {
-    .rep-filter-col-month,
-    .rep-filter-col-mode,
-    .rep-filter-col-date,
-    .rep-filter-col-emp,
-    .rep-filter-col-proj,
-    .rep-filter-col-search {
-        width: 100% !important;
-        flex: 1 1 100% !important;
-        max-width: 100% !important;
-    }
-}
-
-/* Select2 Standard Skin */
+/* Select2 Customization */
 .select2-container--default .select2-selection--single {
     height: 38px !important;
     border: 1px solid #CBD5E1 !important;
@@ -510,11 +496,11 @@ input[data-date-picker]:focus {
     border-color: #94A3B8;
 }
 
-/* Table Action Tools Bar (Show Entries + Export) */
+/* Table Toolbar: Show Entries + Export Group */
 .orb-table-tools-bar {
-    padding: 6px 18px 14px;
-    background: #FFFFFF;
-    border-bottom: none;
+    padding: 10px 18px;
+    background: #FAFBFC;
+    border-bottom: 1px solid var(--orb-border);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -584,7 +570,7 @@ input[data-date-picker]:focus {
 .orbo-export-btn .icon-pdf { color: #DC2626; }
 .orbo-export-btn .icon-print { color: #475569; }
 
-/* Table Section */
+/* Table Section Matching Orbo Attendance Work Reports Standard */
 .rep-table-wrap {
     width: 100%;
     overflow-x: auto;
@@ -593,138 +579,297 @@ input[data-date-picker]:focus {
 
 .rep-table {
     width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-    font-size: 12.5px;
+    border-collapse: collapse;
+    font-size: 13px;
     margin-bottom: 0;
     min-width: 1100px;
 }
 
 .rep-table thead th {
-    background: #F8FAFC;
-    color: #475569;
+    background: #FAFBFC;
+    color: #475467;
     font-size: 11px;
-    font-weight: 850;
+    font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    padding: 12px 14px;
-    border-top: 1px solid var(--orb-border);
+    letter-spacing: 0.06em;
+    padding: 13px 16px;
+    border-top: none;
     border-bottom: 1px solid var(--orb-border);
     white-space: nowrap;
     vertical-align: middle;
 }
 
 .rep-table tbody td {
-    padding: 12px 14px;
-    border-bottom: 1px solid #F1F5F9;
-    color: #0F172A;
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--orb-border);
+    color: var(--orb-text);
     vertical-align: middle;
-    font-size: 12.5px;
+    font-size: 13px;
+    background: #FFFFFF;
+    transition: background 0.15s ease;
 }
 
-.rep-table tbody tr:last-child td {
-    border-bottom: none;
+.rep-table tbody tr:hover td {
+    background: #F9FAFB !important;
 }
 
-.rep-table tbody tr:hover {
-    background: #FAFBFF;
+/* Employee Column with Passport Avatar */
+.table-emp-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
-/* Employee Details */
-.emp-name-text {
+.table-emp-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    background: #F4F2FF;
+    color: var(--orb-primary, #4B00E8);
     font-weight: 800;
-    color: #0F172A;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+    border: 1px solid rgba(75, 0, 232, 0.15);
+}
+
+.table-emp-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.table-emp-name {
+    font-weight: 800;
     font-size: 13.5px;
+    color: #101828;
     line-height: 1.25;
-    display: inline-block;
-    white-space: nowrap;
 }
 
-.emp-code-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 10.5px;
-    font-weight: 750;
-    color: #64748B;
-    background: #F1F5F9;
-    padding: 2px 7px;
-    border-radius: 6px;
-    white-space: nowrap;
+.table-emp-meta {
+    font-size: 11.5px;
+    color: var(--orb-muted);
+    font-weight: 600;
+    margin-top: 2px;
 }
 
-/* Scrollable Container Styling */
-.rep-summary-box {
-    max-height: 90px;
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: #CBD5E1 transparent;
-    padding-right: 4px;
-}
-.rep-summary-box::-webkit-scrollbar {
-    width: 4px;
-}
-.rep-summary-box::-webkit-scrollbar-thumb {
-    background: #CBD5E1;
-    border-radius: 4px;
-}
-
-/* Badge Pills */
+/* Badges */
 .badge-premium-pill {
-    padding: 3px 10px;
-    border-radius: 50px;
-    font-weight: 800;
     font-size: 11px;
+    font-weight: 800;
+    padding: 4px 10px;
+    border-radius: 50px;
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.03em;
     white-space: nowrap;
 }
-.badge-wfo { background: #ECFDF3; color: #027A48; border: 1px solid #D1FADF; }
-.badge-wfh { background: #EFF8FF; color: #175CD3; border: 1px solid #D1E9FF; }
+
+.badge-wfo { background: #ECFDF3; color: #027A48; border: 1px solid #A6F4C5; }
+.badge-wfh { background: #EFF8FF; color: #175CD3; border: 1px solid #B2DDFF; }
 
 .badge-gross-pill {
     background: #FEF7C3;
     color: #B54708;
-    border: 1px solid #FEF08A;
+    border: 1px solid #FEE4E2;
+    border-radius: 8px;
+    padding: 4px 10px;
+    font-size: 12px;
     font-weight: 800;
-    font-size: 11.5px;
-    padding: 3px 8px;
-    border-radius: 6px;
     display: inline-flex;
     align-items: center;
     gap: 4px;
     white-space: nowrap;
 }
 
-.structured-task-item {
-    font-size: 11.5px;
-    line-height: 1.45;
-    margin-bottom: 3px;
+/* Structured Tasks & Project Styling */
+.structured-project-group {
+    margin-bottom: 4px;
 }
 
-.btn-details-view {
-    height: 32px;
-    padding: 0 12px;
-    border-radius: 8px;
-    background: #F8FAFC;
-    border: 1px solid #CBD5E1;
-    color: #334155;
+.structured-task-item {
     font-size: 12px;
-    font-weight: 750;
+    font-weight: 600;
+    line-height: 1.4;
+    margin-bottom: 2px;
+}
+
+.structured-task-item .task-tag {
+    font-size: 11px;
+    margin-right: 5px;
+}
+
+/* Action Button Group */
+.action-btn-group {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+.btn-action-primary {
+    height: 34px;
+    padding: 0 12px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 800;
+    background: #F4F2FF;
+    color: var(--orb-primary, #4B00E8);
+    border: 1px solid rgba(75, 0, 232, 0.15);
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    transition: all 0.15s ease;
+    transition: all 0.2s ease;
+    text-decoration: none !important;
     cursor: pointer;
-    white-space: nowrap;
 }
 
-.btn-details-view:hover {
-    background: var(--orb-soft);
-    color: var(--orb-primary);
-    border-color: rgba(75, 0, 232, 0.3);
+.btn-action-primary:hover {
+    background: var(--orb-primary, #4B00E8);
+    color: #FFFFFF !important;
+    box-shadow: 0 4px 10px rgba(75, 0, 232, 0.25);
+}
+
+.btn-action-secondary {
+    height: 34px;
+    width: 34px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 800;
+    background: #FFFFFF;
+    color: #475467;
+    border: 1px solid #E7EAF3;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    text-decoration: none !important;
+}
+
+.btn-action-secondary:hover {
+    background: #F8FAFC;
+    color: var(--orb-primary, #4B00E8);
+    border-color: #D9CCFF;
+}
+
+/* Responsive Media Queries Across All Screen Sizes */
+@media (max-width: 1280px) {
+    .team-metric-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 991px) {
+    .rep-hero {
+        padding: 18px 20px;
+    }
+    .rep-hero-title {
+        font-size: 21px;
+    }
+    .team-metric-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .rep-filter-row {
+        gap: 10px;
+    }
+    .rep-filter-col-year,
+    .rep-filter-col-month,
+    .rep-filter-col-date,
+    .rep-filter-col-mode {
+        flex: 1 1 calc(50% - 10px);
+    }
+    .rep-filter-col-emp,
+    .rep-filter-col-proj,
+    .rep-filter-col-search {
+        flex: 1 1 100%;
+    }
+    .rep-filter-actions-right {
+        width: 100%;
+        margin-top: 6px;
+    }
+    .rep-search-btn, .rep-reset-btn {
+        flex: 1;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 768px) {
+    .rep-page {
+        padding: 12px 12px 30px;
+    }
+    .rep-hero {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 16px 18px;
+        border-radius: 18px;
+    }
+    .rep-hero-right {
+        width: 100%;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+    .rep-btn-glass {
+        padding: 6px 14px !important;
+        font-size: 11.5px !important;
+    }
+    .team-metric-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    .team-metric-card {
+        padding: 12px 14px 10px;
+    }
+    .team-metric-value {
+        font-size: 20px;
+    }
+    .rep-section-head {
+        padding: 14px 16px;
+    }
+    .rep-filter-bar {
+        padding: 14px 16px;
+    }
+    .rep-filter-row > div:not(.rep-filter-actions-right) {
+        width: 100% !important;
+        flex: 1 1 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+    }
+    .rep-filter-actions-right {
+        width: 100%;
+        justify-content: stretch;
+    }
+    .orb-table-tools-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+    .orb-table-length-box {
+        justify-content: space-between;
+    }
+    .orbo-export-group {
+        width: 100%;
+        display: flex;
+        justify-content: space-around;
+    }
+    .orbo-export-btn {
+        flex: 1;
+        justify-content: center;
+        padding: 6px 4px;
+        font-size: 11px;
+    }
+}
+
+@media (max-width: 480px) {
+    .team-metric-grid {
+        grid-template-columns: 1fr;
+    }
+    .rep-hero-title {
+        font-size: 19px;
+    }
 }
 </style>
 @endsection
@@ -733,7 +878,7 @@ input[data-date-picker]:focus {
 <div class="rep-page">
     <div class="rep-container">
 
-        <!-- 1. Header Hero Banner -->
+        <!-- 1. Signature Hero Header Banner -->
         <div class="rep-hero">
             <div>
                 <div class="rep-hero-kicker">
@@ -811,20 +956,17 @@ input[data-date-picker]:focus {
 
         <!-- 3. Main Attached Table Container Card -->
         @php
-            $todayDate = \Carbon\Carbon::today()->toDateString();
-            $yesterdayDate = \Carbon\Carbon::yesterday()->toDateString();
-            $currentDate = request('date');
-            $currentFromDate = request('from_date');
-            $currentToDate = request('to_date');
-            $currentMode = request('work_mode');
-            $currentEmpId = request('employee_id');
-            $currentProjId = request('project_id');
-            $currentSearch = request('search');
-            
-            $isCustomRange = (request('month') === 'custom' || (!empty($currentFromDate) || !empty($currentToDate)));
-            $currentMonth = $isCustomRange ? 'custom' : request('month', $stats['selected_month'] ?? date('Y-m'));
-            
-            $hasActiveFilters = !empty($currentDate) || !empty($currentFromDate) || !empty($currentToDate) || !empty($currentMode) || (!empty($currentMonth) && $currentMonth !== date('Y-m')) || !empty($currentEmpId) || !empty($currentProjId) || !empty($currentSearch);
+            $currDate = request('date');
+            $currFromDate = request('from_date');
+            $currToDate = request('to_date');
+            $currMode = request('work_mode');
+            $currEmpId = request('employee_id');
+            $currProjId = request('project_id');
+            $currSearch = request('search');
+
+            $activeYear = (string) ($selectedYear ?? request('year', date('Y')));
+            $activeMonth = (string) ($selectedMonth ?? request('month', date('m')));
+            $isCustomMode = ($isCustomDate ?? ($activeMonth === 'custom' || (!empty($currFromDate) || !empty($currToDate))));
         @endphp
 
         <div class="rep-card">
@@ -846,64 +988,77 @@ input[data-date-picker]:focus {
                 </div>
             </div>
 
-            <!-- Attached Filter Bar Form -->
+            <!-- Attached Multi-Filter Bar with Separate Year and Month -->
             <form method="GET" action="{{ route('reporting.work_reports') }}" id="workReportFilterForm">
                 <input type="hidden" name="per_page" id="filterPerPageHidden" value="{{ request('per_page', 25) }}">
 
                 <div class="rep-filter-bar">
                     <div class="rep-filter-row">
-                        <!-- 1. Month -->
-                        <div class="rep-filter-col-month">
-                            <label class="rep-filter-label" for="filterMonthSelect">
-                                <i class="far fa-calendar-alt text-muted mr-1"></i> Month
+                        <!-- 1. Year Filter (Separate) -->
+                        <div class="rep-filter-col-year" id="yearFilterWrap">
+                            <label class="rep-filter-label" for="filterYearSelect">
+                                <i class="fas fa-calendar text-muted mr-1"></i> Year
                             </label>
-                            <select name="month" id="filterMonthSelect" class="select2-filter select2-searchable">
-                                <option value="custom" {{ $currentMonth === 'custom' ? 'selected' : '' }}>Custom Date Range</option>
-                                @foreach($months as $mKey => $mLabel)
-                                    <option value="{{ $mKey }}" {{ ($currentMonth === $mKey) ? 'selected' : '' }}>
-                                        {{ $mLabel }}
-                                    </option>
+                            <select name="year" id="filterYearSelect" class="select2-filter select2-searchable">
+                                @foreach($filterYears as $yVal => $yLbl)
+                                    <option value="{{ $yVal }}" {{ (string) $activeYear === (string) $yVal ? 'selected' : '' }}>{{ $yLbl }}</option>
                                 @endforeach
                             </select>
                         </div>
 
-                        <!-- 2. Custom From Date (visible when Custom is chosen) -->
-                        <div id="customFromWrap" class="rep-filter-col-date" style="display: {{ $isCustomRange ? 'block' : 'none' }};">
-                            <label class="rep-filter-label" for="filterFromDate">
-                                <i class="fas fa-calendar-alt text-muted mr-1"></i> From Date
+                        <!-- 2. Month Filter (Separate) -->
+                        <div class="rep-filter-col-month" id="monthFilterWrap">
+                            <label class="rep-filter-label" for="filterMonthSelect">
+                                <i class="fas fa-calendar-alt text-muted mr-1"></i> Month
                             </label>
-                            <x-form.date-picker name="from_date" id="filterFromDate" :value="$currentFromDate" placeholder="dd-mm-yyyy" class="rep-date-control" />
+                            <select name="month" id="filterMonthSelect" class="select2-filter select2-searchable">
+                                
+                                <option value="custom" {{ $isCustomMode ? 'selected' : '' }}>Custom Date Range</option>
+                                @foreach($filterMonths as $mVal => $mLbl)
+                                    @if($mVal !== 'custom')
+                                        <option value="{{ $mVal }}" {{ (!$isCustomMode && (string)$activeMonth === (string)$mVal) ? 'selected' : '' }}>{{ $mLbl }}</option>
+                                    @endif
+                                @endforeach
+                            </select>
                         </div>
 
-                        <!-- 3. Custom To Date (visible when Custom is chosen) -->
-                        <div id="customToWrap" class="rep-filter-col-date" style="display: {{ $isCustomRange ? 'block' : 'none' }};">
-                            <label class="rep-filter-label" for="filterToDate">
-                                <i class="fas fa-calendar-alt text-muted mr-1"></i> To Date
-                            </label>
-                            <x-form.date-picker name="to_date" id="filterToDate" :value="$currentToDate" placeholder="dd-mm-yyyy" class="rep-date-control" />
-                        </div>
-
-                        <!-- 4. Single Work Date (Optional, visible when regular month is selected) -->
-                        <div id="singleDateWrap" class="rep-filter-col-date" style="display: {{ $isCustomRange ? 'none' : 'block' }};">
+                        <!-- 3. Single Work Date (Visible when regular month is selected) -->
+                        <div id="singleDateWrap" class="rep-filter-col-date" style="display: {{ $isCustomMode ? 'none' : 'block' }};">
                             <label class="rep-filter-label" for="filterDateInput">
                                 <i class="fas fa-calendar-day text-muted mr-1"></i> Work Date
                             </label>
-                            <x-form.date-picker name="date" id="filterDateInput" :value="$currentDate" placeholder="dd-mm-yyyy" class="rep-date-control" />
+                            <x-form.date-picker name="date" id="filterDateInput" :value="$currDate" placeholder="dd-mm-yyyy" class="rep-date-control" />
                         </div>
 
-                        <!-- 5. Work Mode -->
+                        <!-- 4. Custom From Date (Visible when Custom Range chosen) -->
+                        <div id="customFromWrap" class="rep-filter-col-date" style="display: {{ $isCustomMode ? 'block' : 'none' }};">
+                            <label class="rep-filter-label" for="filterFromDate">
+                                <i class="fas fa-calendar-alt text-muted mr-1"></i> From Date
+                            </label>
+                            <x-form.date-picker name="from_date" id="filterFromDate" :value="$currFromDate" placeholder="dd-mm-yyyy" class="rep-date-control" />
+                        </div>
+
+                        <!-- 5. Custom To Date (Visible when Custom Range chosen) -->
+                        <div id="customToWrap" class="rep-filter-col-date" style="display: {{ $isCustomMode ? 'block' : 'none' }};">
+                            <label class="rep-filter-label" for="filterToDate">
+                                <i class="fas fa-calendar-alt text-muted mr-1"></i> To Date
+                            </label>
+                            <x-form.date-picker name="to_date" id="filterToDate" :value="$currToDate" placeholder="dd-mm-yyyy" class="rep-date-control" />
+                        </div>
+
+                        <!-- 6. Work Mode -->
                         <div class="rep-filter-col-mode">
                             <label class="rep-filter-label" for="filterWorkMode">
                                 <i class="fas fa-building text-muted mr-1"></i> Work Mode
                             </label>
                             <select name="work_mode" id="filterWorkMode" class="select2-filter">
                                 <option value="">All Modes</option>
-                                <option value="wfo" {{ strtolower($currentMode) === 'wfo' ? 'selected' : '' }}>Office (WFO)</option>
-                                <option value="wfh" {{ strtolower($currentMode) === 'wfh' ? 'selected' : '' }}>Remote (WFH)</option>
+                                <option value="wfo" {{ strtolower($currMode) === 'wfo' ? 'selected' : '' }}>Office (WFO)</option>
+                                <option value="wfh" {{ strtolower($currMode) === 'wfh' ? 'selected' : '' }}>Remote (WFH)</option>
                             </select>
                         </div>
 
-                        <!-- 6. Employee (Select2) -->
+                        <!-- 7. Employee (Select2) -->
                         <div class="rep-filter-col-emp">
                             <label class="rep-filter-label" for="filterEmployeeSelect">
                                 <i class="far fa-user text-muted mr-1"></i> Employee
@@ -911,14 +1066,14 @@ input[data-date-picker]:focus {
                             <select name="employee_id" id="filterEmployeeSelect" class="select2-filter select2-searchable">
                                 <option value="">All Employees ({{ $teamEmployees->count() }})</option>
                                 @foreach($teamEmployees as $emp)
-                                    <option value="{{ $emp->id }}" {{ $currentEmpId == $emp->id ? 'selected' : '' }}>
+                                    <option value="{{ $emp->id }}" {{ (string)$currEmpId === (string)$emp->id ? 'selected' : '' }}>
                                         {{ $emp->display_name }} ({{ $emp->employee_code }}){{ $emp->designation ? ' • ' . $emp->designation->name : '' }}
                                     </option>
                                 @endforeach
                             </select>
                         </div>
 
-                        <!-- 7. Project (Select2) -->
+                        <!-- 8. Project (Select2) -->
                         <div class="rep-filter-col-proj">
                             <label class="rep-filter-label" for="filterProjectSelect">
                                 <i class="far fa-folder text-muted mr-1"></i> Project
@@ -926,25 +1081,25 @@ input[data-date-picker]:focus {
                             <select name="project_id" id="filterProjectSelect" class="select2-filter select2-searchable">
                                 <option value="">All Projects ({{ $teamProjects->count() }})</option>
                                 @foreach($teamProjects as $prj)
-                                    <option value="{{ $prj->id }}" {{ $currentProjId == $prj->id ? 'selected' : '' }}>
+                                    <option value="{{ $prj->id }}" {{ (string)$currProjId === (string)$prj->id ? 'selected' : '' }}>
                                         {{ $prj->name }}
                                     </option>
                                 @endforeach
                             </select>
                         </div>
 
-                        <!-- 8. Search Keyword -->
+                        <!-- 9. Search Keyword -->
                         <div class="rep-filter-col-search">
                             <label class="rep-filter-label">
                                 <i class="fas fa-search text-muted mr-1"></i> Search
                             </label>
                             <div class="rep-search-input-wrap">
                                 <i class="fas fa-search"></i>
-                                <input type="text" name="search" id="filter-search" class="rep-search-input" value="{{ $currentSearch }}" placeholder="Search name, task, keyword...">
+                                <input type="text" name="search" id="filter-search" class="rep-search-input" value="{{ $currSearch }}" placeholder="Search name, task, keyword...">
                             </div>
                         </div>
 
-                        <!-- 9. Action Buttons -->
+                        <!-- 10. Action Buttons -->
                         <div class="rep-filter-actions-right">
                             <button type="submit" class="rep-search-btn">
                                 <i class="fas fa-search"></i> Search
@@ -962,10 +1117,10 @@ input[data-date-picker]:focus {
                 <div class="orb-table-length-box">
                     <span>Show</span>
                     <select id="recordsPerPageSelect" class="table-per-page-select">
-                        <option value="10" {{ request('per_page', 25) == 10 ? 'selected' : '' }}>10</option>
-                        <option value="25" {{ request('per_page', 25) == 25 ? 'selected' : '' }}>25</option>
-                        <option value="50" {{ request('per_page', 25) == 50 ? 'selected' : '' }}>50</option>
-                        <option value="100" {{ request('per_page', 25) == 100 ? 'selected' : '' }}>100</option>
+                        <option value="10" {{ (int) request('per_page', 25) === 10 ? 'selected' : '' }}>10</option>
+                        <option value="25" {{ (int) request('per_page', 25) === 25 ? 'selected' : '' }}>25</option>
+                        <option value="50" {{ (int) request('per_page', 25) === 50 ? 'selected' : '' }}>50</option>
+                        <option value="100" {{ (int) request('per_page', 25) === 100 ? 'selected' : '' }}>100</option>
                     </select>
                     <span>entries</span>
                 </div>
@@ -985,26 +1140,27 @@ input[data-date-picker]:focus {
                 </div>
             </div>
 
-            <!-- Attached Table Section -->
+            <!-- Attached Table Section Matching Attendance Work Report Design -->
             <div class="rep-table-wrap">
                 <table class="rep-table" id="reportingWorkReportsTable">
                     <thead>
                         <tr>
-                            <th class="text-center" style="width: 45px; min-width: 45px;">#</th>
-                            <th style="min-width: 210px; width: 210px;">Employee</th>
-                            <th style="min-width: 120px; width: 120px;">Date</th>
-                            <th class="text-center" style="min-width: 85px; width: 85px;">Mode</th>
-                            <th style="min-width: 125px; width: 125px;">Shift Context</th>
-                            <th class="text-center" style="min-width: 110px; width: 110px;">Gross Work</th>
-                            <th style="min-width: 280px;">Work Summary Description</th>
-                            <th style="min-width: 220px;">Structured Tasks</th>
-                            <th class="text-center" style="width: 100px; min-width: 100px;">Action</th>
+                            <th class="text-center" style="width: 50px; min-width: 50px;">#</th>
+                            <th style="min-width: 220px;">Employee</th>
+                            <th style="min-width: 110px;">Date</th>
+                            <th class="text-center" style="min-width: 90px;">Mode</th>
+                            <th style="min-width: 125px;">Shift Context</th>
+                            <th class="text-center" style="min-width: 115px;">Gross Work</th>
+                            <th style="min-width: 320px; width: 34%;">Work Summary Description</th>
+                            <th style="min-width: 250px; width: 22%;">Structured Tasks</th>
+                            <th class="text-right pr-4" style="width: 110px; min-width: 110px;">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($workReports as $report)
                             @php
                                 $row = formatWorkReportRow($report);
+                                $empId = $report->employee_id ?: ($report->user_id ?: 0);
                                 $modeBadgeClass = $row['mode'] === 'WFH' ? 'badge-wfh' : 'badge-wfo';
 
                                 $logPayload = [
@@ -1012,8 +1168,8 @@ input[data-date-picker]:focus {
                                     'work_log_id' => $report->id,
                                     'employee_name' => $row['employee_name'],
                                     'employee_code' => $row['employee_code'],
-                                    'passport_photo_url' => resolveEmployeePassportPhoto($report),
-                                    'employee_initial' => resolveEmployeeInitials($report),
+                                    'passport_photo_url' => resolveEmployeePassportPhoto($report->employee ?? $report),
+                                    'employee_initial' => resolveEmployeeInitials($report->employee ?? $report),
                                     'department' => $row['department'],
                                     'designation' => $row['designation'],
                                     'work_date' => $row['date'],
@@ -1031,92 +1187,212 @@ input[data-date-picker]:focus {
                                     'issues' => $row['issues'] ?? [],
                                     'notes' => $row['notes'] ?? null,
                                 ];
+                                $startIdx = ($workReports->currentPage() - 1) * $workReports->perPage();
                             @endphp
                         <tr>
-                            <td class="text-center font-weight-bold text-muted" style="font-size: 11.5px;">
-                                {{ $loop->iteration + ($workReports->currentPage() - 1) * $workReports->perPage() }}
+                            <td class="text-center font-weight-bold text-muted" style="font-size: 12px;">
+                                {{ $startIdx + $loop->iteration }}
                             </td>
 
-                            <td style="min-width: 210px;">
+                            <td>
                                 <div style="display: flex; flex-direction: column; gap: 3px;">
-                                    <span class="emp-name-text">{{ $row['employee_name'] }}</span>
+                                    <span class="table-emp-name">{{ $row['employee_name'] }}</span>
                                     <div class="d-flex align-items-center flex-wrap" style="gap: 5px;">
                                         <span class="emp-code-badge"><i class="fas fa-id-badge"></i> {{ $row['employee_code'] }}</span>
                                         @if(!empty($row['designation']))
-                                            <span class="text-muted font-weight-semibold" style="font-size: 11px;">&bull; {{ $row['designation'] }}</span>
+                                            <span class="text-muted font-weight-semibold" style="font-size: 11.5px;">&bull; {{ $row['designation'] }}</span>
                                         @elseif(!empty($row['department']))
-                                            <span class="text-muted font-weight-semibold" style="font-size: 11px;">&bull; {{ $row['department'] }}</span>
+                                            <span class="text-muted font-weight-semibold" style="font-size: 11.5px;">&bull; {{ $row['department'] }}</span>
                                         @endif
                                     </div>
                                 </div>
                             </td>
 
-                            <td style="white-space: nowrap; min-width: 120px;">
-                                <div class="font-weight-bold text-dark" style="font-size: 13px;">{{ $row['date'] }}</div>
+                            <td>
+                                <div class="font-weight-bold text-dark" style="font-size: 13px; white-space: nowrap;">
+                                    {{ $row['date'] }}
+                                </div>
                                 @if($row['day_name'])
-                                    <div class="small text-muted font-weight-semibold" style="font-size: 11px;">{{ $row['day_name'] }}</div>
+                                    <div class="small text-muted font-weight-semibold">
+                                        {{ $row['day_name'] }}
+                                    </div>
                                 @endif
                             </td>
 
-                            <td class="text-center" style="white-space: nowrap; min-width: 85px;">
+                            <td class="text-center">
                                 <span class="badge-premium-pill {{ $modeBadgeClass }}">
                                     @if($row['mode'] === 'WFH')
-                                        <i class="fas fa-laptop-house"></i> WFH
+                                        <i class="fas fa-laptop-house mr-1"></i> WFH
                                     @else
-                                        <i class="fas fa-building"></i> WFO
+                                        <i class="fas fa-building mr-1"></i> WFO
                                     @endif
                                 </span>
                             </td>
 
-                            <td style="white-space: nowrap; min-width: 125px;">
+                            <td>
                                 <div class="font-weight-bold text-dark" style="font-size: 12.5px;">
                                     {{ $row['shift_context'] ?: 'General Shift' }}
                                 </div>
                             </td>
 
-                            <td class="text-center" style="white-space: nowrap; min-width: 110px;">
-                                <div class="badge-gross-pill">
+                            <td class="text-center">
+                                <div class="badge-gross-pill" style="white-space: nowrap;">
                                     <i class="fas fa-stopwatch mr-1"></i> {{ $row['gross_work'] ?: '0h 0m' }}
                                 </div>
                             </td>
 
-                            <td>
-                                <div class="rep-summary-box">
-                                    @forelse($row['summary_paragraphs'] as $para)
-                                        <p class="mb-1" style="line-height: 1.45; color: #1E293B; font-size: 12.5px; font-weight: 500;">
-                                            {{ $para }}
-                                        </p>
-                                    @empty
-                                        <span class="text-muted font-weight-normal" style="font-size: 11.5px;">—</span>
-                                    @endforelse
-                                </div>
-                            </td>
-
-                            <td>
-                                <div class="rep-summary-box">
-                                    @forelse($row['structured_tasks'] as $tItem)
-                                        <div class="structured-task-item" style="line-height: 1.4; margin-bottom: 3px; font-size: 11.5px; font-weight: 600;">
-                                            <span class="font-weight-bold {{ $tItem['done'] ? 'text-success' : 'text-warning' }}">{{ $tItem['done'] ? '✓' : '•' }}</span>
-                                            <span class="text-dark">{{ $tItem['text'] }}</span>
+                            <td style="min-width: 300px;">
+                                @if(!empty($row['projects']) && count($row['projects']) > 0)
+                                    <div class="d-flex flex-column" style="gap: 6px;">
+                                        <div class="d-flex flex-wrap align-items-center" style="gap: 6px;">
+                                            @foreach($row['projects'] as $pItem)
+                                                @php
+                                                    $pName = $pItem['project_name'] ?? ($pItem['name'] ?? 'Project');
+                                                    $pTasks = $pItem['tasks'] ?? [];
+                                                    $pDoneCount = 0;
+                                                    foreach($pTasks as $pt) {
+                                                        if (is_array($pt) && (!empty($pt['is_completed']) || !empty($pt['completed']))) $pDoneCount++;
+                                                        elseif (!is_array($pt)) $pDoneCount++;
+                                                    }
+                                                @endphp
+                                                <div class="p-1.5 px-2.5 rounded border" style="background: #F8FAFC; border: 1px solid #E2E8F0 !important; border-radius: 8px;">
+                                                    <div class="d-flex align-items-center justify-content-between" style="gap: 10px;">
+                                                        <span class="font-weight-bold text-dark" style="font-size: 12px;">
+                                                            <i class="fas fa-folder text-primary mr-1" style="font-size: 11px;"></i> {{ $pName }}
+                                                        </span>
+                                                        <span class="badge border" style="font-size: 10px; font-weight: 700; background: #fff; color: #475467; padding: 2px 6px; border-radius: 6px;">
+                                                            {{ count($pTasks) }} {{ count($pTasks) === 1 ? 'task' : 'tasks' }} &bull; <span class="{{ $pDoneCount === count($pTasks) ? 'text-success' : 'text-primary' }}">{{ $pDoneCount }}/{{ count($pTasks) }}</span>
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            @endforeach
                                         </div>
-                                    @empty
-                                        <span class="text-muted font-weight-normal" style="font-size: 11.5px;">—</span>
-                                    @endforelse
-                                </div>
+                                        @if(!empty($row['notes']))
+                                            <div class="mt-1 p-1.5 px-2 rounded" style="background: #FFFBEB; border: 1px solid #FEF3C7; color: #92400E; font-size: 11.5px; border-radius: 6px;">
+                                                <strong>Note:</strong> {{ $row['notes'] }}
+                                            </div>
+                                        @endif
+                                        @if(!empty($row['issues']) && count($row['issues']) > 0)
+                                            <div class="mt-1 p-1.5 px-2 rounded" style="background: #FEF2F2; border: 1px solid #FEE2E2; color: #991B1B; font-size: 11.5px; border-radius: 6px;">
+                                                <strong>Issue:</strong> {{ implode(', ', $row['issues']) }}
+                                            </div>
+                                        @endif
+                                    </div>
+                                @else
+                                    <div>
+                                        @if(!empty($row['title']))
+                                            <div class="mb-1.5">
+                                                <div class="p-1.5 px-2.5 rounded border d-inline-flex align-items-center" style="background: #F8FAFC; border: 1px solid #E2E8F0 !important; border-radius: 8px; gap: 8px;">
+                                                    <span class="font-weight-bold text-dark" style="font-size: 12px;">
+                                                        <i class="fas fa-folder text-primary mr-1" style="font-size: 11px;"></i> {{ $row['title'] }}
+                                                    </span>
+                                                    @if(!empty($row['structured_tasks']))
+                                                        <span class="badge border" style="font-size: 10px; font-weight: 700; background: #fff; color: #475467; padding: 2px 6px; border-radius: 6px;">
+                                                            {{ count($row['structured_tasks']) }} {{ count($row['structured_tasks']) === 1 ? 'task' : 'tasks' }}
+                                                        </span>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        @endif
+                                        <div class="work-summary-full-text">
+                                            @forelse($row['summary_paragraphs'] as $para)
+                                                @php
+                                                    $paraDisplay = $para;
+                                                    if (!empty($row['title'])) {
+                                                        $paraDisplay = preg_replace('/^' . preg_quote($row['title'], '/') . '\s*[-–:]\s*/i', '', $paraDisplay);
+                                                    }
+                                                @endphp
+                                                @if(trim($paraDisplay) !== '')
+                                                    <p class="mb-1" style="line-height: 1.45; color: #1E293B; font-size: 12.5px; font-weight: 500;">
+                                                        {{ $paraDisplay }}
+                                                    </p>
+                                                @endif
+                                            @empty
+                                                <span class="text-muted font-weight-normal" style="font-size: 11.5px;">—</span>
+                                            @endforelse
+                                        </div>
+                                        @if(!empty($row['notes']))
+                                            <div class="mt-1 p-1.5 px-2 rounded" style="background: #FFFBEB; border: 1px solid #FEF3C7; color: #92400E; font-size: 11.5px; border-radius: 6px;">
+                                                <strong>Note:</strong> {{ $row['notes'] }}
+                                            </div>
+                                        @endif
+                                    </div>
+                                @endif
                             </td>
 
-                            <td class="text-center" style="white-space: nowrap; width: 100px; min-width: 100px;">
-                                <button type="button" class="btn-details-view" data-work-log="{{ json_encode($logPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}" onclick="parseAndOpenWorkReport(this)">
-                                    <i class="fas fa-eye text-primary"></i> Details
-                                </button>
+                            <td style="min-width: 240px;">
+                                @if(!empty($row['projects']) && count($row['projects']) > 0)
+                                    <div class="structured-tasks-grouped d-flex flex-column" style="gap: 6px;">
+                                        @foreach($row['projects'] as $pItem)
+                                            @php
+                                                $pName = $pItem['project_name'] ?? ($pItem['name'] ?? 'Project');
+                                                $pTasks = $pItem['tasks'] ?? [];
+                                            @endphp
+                                            <div class="structured-project-group">
+                                                <div class="font-weight-bold text-dark mb-1" style="font-size: 11.5px; opacity: 0.9;">
+                                                    <i class="fas fa-folder text-primary mr-1" style="font-size: 10.5px;"></i> {{ $pName }}:
+                                                </div>
+                                                @foreach($pTasks as $pt)
+                                                    @php
+                                                        $ptName = is_array($pt) ? ($pt['task_name'] ?? ($pt['description'] ?? 'Task')) : $pt;
+                                                        $ptDone = is_array($pt) ? (!empty($pt['is_completed']) || !empty($pt['completed'])) : true;
+                                                    @endphp
+                                                    <div class="structured-task-item d-flex align-items-center pl-2 mb-1">
+                                                        <span class="task-tag font-weight-bold {{ $ptDone ? 'text-success' : 'text-warning' }}" style="font-size: 11px; white-space: nowrap;">
+                                                            {{ $ptDone ? '[Done]' : '[Pending]' }}
+                                                        </span>
+                                                        <span class="text-dark">{{ $ptName }}</span>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <div class="structured-tasks-list">
+                                        @if(!empty($row['title']))
+                                            <div class="font-weight-bold text-dark mb-1" style="font-size: 11.5px; opacity: 0.9;">
+                                                <i class="fas fa-folder text-primary mr-1" style="font-size: 10.5px;"></i> {{ $row['title'] }}:
+                                            </div>
+                                        @endif
+                                        @forelse($row['structured_tasks'] as $tItem)
+                                            <div class="structured-task-item d-flex align-items-center pl-2 mb-1">
+                                                <span class="task-tag font-weight-bold {{ $tItem['done'] ? 'text-success' : 'text-warning' }}" style="font-size: 11px; white-space: nowrap;">
+                                                    {{ $tItem['done'] ? '[Done]' : '[Pending]' }}
+                                                </span>
+                                                <span class="text-dark">{{ $tItem['text'] }}</span>
+                                            </div>
+                                        @empty
+                                            <span class="text-muted font-weight-normal" style="font-size: 11.5px;">—</span>
+                                        @endforelse
+                                    </div>
+                                @endif
+                            </td>
+
+                            <td class="text-right pr-4" style="white-space: nowrap;">
+                                <div class="action-btn-group">
+                                    <button type="button" class="btn-action-primary" 
+                                            data-work-log="{{ json_encode($logPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}" 
+                                            onclick="parseAndOpenWorkReport(this)"
+                                            title="View Full Report Details">
+                                        <i class="fas fa-eye"></i> Details
+                                    </button>
+                                    @if($empId && Route::has('hrms.attendance.work-reports.employee-history'))
+                                    <a href="{{ route('hrms.attendance.work-reports.employee-history', $empId) }}" 
+                                       target="_blank" 
+                                       class="btn-action-secondary" 
+                                       title="View Employee Work History">
+                                        <i class="fas fa-history"></i>
+                                    </a>
+                                    @endif
+                                </div>
                             </td>
                         </tr>
                         @empty
                         <tr>
                             <td colspan="9" class="text-center text-muted py-5">
-                                <i class="fas fa-file-signature fa-3x mb-3 text-muted" style="opacity: 0.4;"></i>
-                                <h5 class="font-weight-bold text-dark">No Daily Work Reports Found</h5>
-                                <p class="small mb-0">No work report submissions match the selected date or filters.</p>
+                                <i class="fas fa-clipboard-list fa-3x mb-3 text-muted" style="opacity: 0.35;"></i>
+                                <h5 class="font-weight-bold text-dark mb-1">No Daily Work Reports Found</h5>
+                                <p class="small mb-0 text-muted">Try adjusting your year, month, or search filters to see results.</p>
                             </td>
                         </tr>
                         @endforelse
@@ -1124,15 +1400,10 @@ input[data-date-picker]:focus {
                 </table>
             </div>
 
-            <!-- Attached Card Footer for Server Pagination -->
-            @if($workReports->hasPages())
-                <div class="card-footer bg-white border-top py-3 d-flex align-items-center justify-content-between flex-wrap" style="gap: 12px;">
-                    <div class="text-muted font-weight-bold small">
-                        Showing {{ $workReports->firstItem() ?? 0 }} to {{ $workReports->lastItem() ?? 0 }} of {{ $workReports->total() }} reports
-                    </div>
-                    <div>
-                        {{ $workReports->links() }}
-                    </div>
+            <!-- Server-Side Pagination using Orbo Theme Template -->
+            @if(method_exists($workReports, 'links'))
+                <div class="orb-table-footer p-0 border-0">
+                    {{ $workReports->appends(request()->query())->links('vendor.pagination.orbo') }}
                 </div>
             @endif
         </div>
@@ -1166,6 +1437,14 @@ input[data-date-picker]:focus {
             });
         }
 
+        // Handle Year Dropdown Change (auto submit form)
+        $('#filterYearSelect').on('change', function() {
+            var mVal = $('#filterMonthSelect').val();
+            if (mVal !== 'custom') {
+                document.getElementById('workReportFilterForm').submit();
+            }
+        });
+
         // Handle Month Dropdown Change (Custom Date Range toggle)
         $('#filterMonthSelect').on('change', function() {
             var val = $(this).val();
@@ -1189,7 +1468,7 @@ input[data-date-picker]:focus {
         $('#recordsPerPageSelect').on('change', function() {
             var perPage = $(this).val();
             $('#filterPerPageHidden').val(perPage);
-            $('#workReportFilterForm').submit();
+            document.getElementById('workReportFilterForm').submit();
         });
 
         // Helper to construct full export URL with all current filters

@@ -1042,31 +1042,71 @@ class ReportingC extends Controller
             }
         }
 
-        // 5. Month & Date Scope Handling
-        $months = [];
-        $currentDateObj = Carbon::now();
-        for ($i = 0; $i < 12; $i++) {
-            $mObj = $currentDateObj->copy()->subMonths($i);
-            $months[$mObj->format('Y-m')] = $mObj->format('F Y');
+        // 5. Month & Year Scope Handling
+        $filterYears = function_exists('get_filter_years') ? get_filter_years(1, 4) : [];
+        if (empty($filterYears)) {
+            $currY = (int) date('Y');
+            for ($y = $currY + 1; $y >= $currY - 4; $y--) {
+                $filterYears[(string)$y] = (string)$y;
+            }
         }
 
-        $selectedMonth = $request->input('month', date('Y-m'));
+        $filterMonths = function_exists('get_filter_months') ? get_filter_months(true) : [];
+        if (empty($filterMonths)) {
+            $filterMonths['custom'] = 'Custom Date Range';
+            for ($m = 1; $m <= 12; $m++) {
+                $key = str_pad((string)$m, 2, '0', STR_PAD_LEFT);
+                $filterMonths[$key] = Carbon::create(2000, $m, 1)->format('F');
+            }
+        }
 
-        // Apply Month / Date Filter
-        if ($request->filled('date')) {
+        $currentYear = (string) date('Y');
+        $currentMonth = (string) date('m');
+
+        $selectedYear = $request->input('year');
+        $selectedMonth = $request->input('month');
+
+        // Backward compatibility if month was passed as 'YYYY-MM'
+        if (!$selectedYear && $selectedMonth && str_contains($selectedMonth, '-')) {
+            $parts = explode('-', $selectedMonth);
+            if (count($parts) === 2 && is_numeric($parts[0])) {
+                $selectedYear = $parts[0];
+                $selectedMonth = $parts[1];
+            }
+        }
+
+        if (!$selectedYear) {
+            $selectedYear = $currentYear;
+        }
+
+        if ($selectedMonth === null) {
+            $selectedMonth = $currentMonth;
+        }
+
+        $hasSingleDate = $request->filled('date');
+        $isCustomDate = ($selectedMonth === 'custom' || (!$hasSingleDate && ($request->filled('from_date') || $request->filled('to_date'))));
+
+        // Apply Month / Year / Date Filters
+        if ($hasSingleDate) {
             $query->whereDate('attendance_work_logs.work_date', $request->date);
-        } elseif ($request->filled('from_date') || $request->filled('to_date')) {
+            try {
+                $pDate = Carbon::parse($request->date);
+                $selectedYear = $pDate->format('Y');
+                $selectedMonth = $pDate->format('m');
+            } catch (\Throwable $e) {}
+        } elseif ($isCustomDate) {
             if ($request->filled('from_date')) {
                 $query->whereDate('attendance_work_logs.work_date', '>=', $request->from_date);
             }
             if ($request->filled('to_date')) {
                 $query->whereDate('attendance_work_logs.work_date', '<=', $request->to_date);
             }
-        } elseif ($selectedMonth && $selectedMonth !== 'all' && $selectedMonth !== 'custom') {
-            $mParts = explode('-', $selectedMonth);
-            if (count($mParts) === 2) {
-                $query->whereYear('attendance_work_logs.work_date', $mParts[0])
-                      ->whereMonth('attendance_work_logs.work_date', $mParts[1]);
+        } else {
+            if ($selectedYear && $selectedYear !== 'all') {
+                $query->whereYear('attendance_work_logs.work_date', $selectedYear);
+            }
+            if ($selectedMonth && $selectedMonth !== 'all' && $selectedMonth !== 'custom') {
+                $query->whereMonth('attendance_work_logs.work_date', (int) $selectedMonth);
             }
         }
 
@@ -1093,6 +1133,41 @@ class ReportingC extends Controller
             });
         }
 
+        // Preload employee passport photos for fast rendering
+        try {
+            global $preloadedPassportPhotos;
+            if (!isset($preloadedPassportPhotos) || !is_array($preloadedPassportPhotos)) {
+                $preloadedPassportPhotos = [];
+            }
+            if (!empty($accessibleEmpIds)) {
+                $docs = DB::table('employee_documents_new')
+                    ->join('document_types', 'document_types.id', '=', 'employee_documents_new.document_type_id')
+                    ->whereIn('employee_documents_new.employee_id', $accessibleEmpIds)
+                    ->where(function ($q) {
+                        $q->where('document_types.name', 'Passport Size Photo')
+                            ->orWhere('document_types.code', 'passport_size_photo')
+                            ->orWhere('document_types.name', 'Passport Photo')
+                            ->orWhere('document_types.code', 'passport_photo')
+                            ->orWhere('document_types.name', 'Photo')
+                            ->orWhere('document_types.name', 'Passport')
+                            ->orWhere('document_types.name', 'like', '%Passport%Photo%')
+                            ->orWhere('document_types.name', 'like', '%Passport%Size%Photo%');
+                    })
+                    ->select('employee_documents_new.employee_id', 'employee_documents_new.file_path', 'employee_documents_new.verification_status')
+                    ->orderByRaw("CASE WHEN employee_documents_new.verification_status = 'verified' THEN 0 ELSE 1 END")
+                    ->orderBy('employee_documents_new.id', 'desc')
+                    ->get()
+                    ->groupBy('employee_id');
+
+                foreach ($docs as $eId => $docList) {
+                    $doc = $docList->first();
+                    if ($doc && $doc->file_path) {
+                        $preloadedPassportPhotos[$eId] = route('hrms.documents.file', ['path' => $doc->file_path]);
+                    }
+                }
+            }
+        } catch (\Throwable $e) {}
+
         // Summary Stats based on filtered query before pagination
         $statsBaseQuery = clone $query;
         $totalReportsCount = (clone $statsBaseQuery)->count();
@@ -1108,8 +1183,11 @@ class ReportingC extends Controller
             'wfo' => $wfoReportsCount,
             'wfh' => $wfhReportsCount,
             'gross_hours' => $totalGrossHours,
+            'selected_year' => $selectedYear,
             'selected_month' => $selectedMonth,
-            'months' => $months,
+            'filter_years' => $filterYears,
+            'filter_months' => $filterMonths,
+            'is_custom' => $isCustomDate,
         ];
 
         $perPage = (int) $request->input('per_page', 25);
@@ -1223,7 +1301,18 @@ class ReportingC extends Controller
             $teamProjects = $fallbackQuery->orderBy('name')->get();
         }
 
-        return view('hrms.reporting.work_reports', compact('workReports', 'teamEmployees', 'teamProjects', 'stats', 'months'));
+        return view('hrms.reporting.work_reports', compact(
+            'workReports',
+            'teamEmployees',
+            'teamProjects',
+            'stats',
+            'filterYears',
+            'filterMonths',
+            'selectedYear',
+            'selectedMonth',
+            'isCustomDate',
+            'hasSingleDate'
+        ));
     }
 
     /**

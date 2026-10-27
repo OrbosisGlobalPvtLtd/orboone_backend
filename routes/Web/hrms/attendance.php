@@ -6,7 +6,9 @@ use App\Http\Controllers\Web\HRMS\Attendance\AttendanceRegularizationC;
 use App\Http\Controllers\Web\HRMS\Attendance\AttendanceViolationC;
 use App\Http\Controllers\Web\HRMS\Attendance\HolidayWorkRequestC;
 use App\Http\Controllers\Web\HRMS\Attendance\MonthlyAttendanceSummaryC;
+use App\Http\Controllers\Web\HRMS\Attendance\MyHolidayWorkRequestC;
 use App\Http\Controllers\Web\HRMS\Attendance\WfhRequestC;
+use App\Http\Controllers\Web\HRMS\Attendance\WorkReportC;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -90,10 +92,12 @@ Route::middleware(['auth', 'check.access'])
         Route::delete('/holiday-work/{id}', [HolidayWorkRequestC::class, 'destroy'])->middleware('permission:attendance.holiday_work.view|attendance.holiday_work.manage')->name('holiday_work.destroy');
         Route::post('/holiday-work/{id}/approve', [HolidayWorkRequestC::class, 'approve'])->middleware('permission:attendance.holiday_work.manage|attendance.holiday_work.approve')->name('holiday_work.approve');
         Route::post('/holiday-work/{id}/reject', [HolidayWorkRequestC::class, 'reject'])->middleware('permission:attendance.holiday_work.manage|attendance.holiday_work.reject')->name('holiday_work.reject');
-        Route::get('/my-holiday-work', [\App\Http\Controllers\Web\HRMS\Attendance\MyHolidayWorkRequestC::class, 'index'])->name('my-holiday-work.index');
-        Route::post('/my-holiday-work', [\App\Http\Controllers\Web\HRMS\Attendance\MyHolidayWorkRequestC::class, 'store'])->name('my-holiday-work.store');
-        Route::put('/my-holiday-work/{id}', [\App\Http\Controllers\Web\HRMS\Attendance\MyHolidayWorkRequestC::class, 'update'])->name('my-holiday-work.update');
-        Route::post('/my-holiday-work/{id}/cancel', [\App\Http\Controllers\Web\HRMS\Attendance\MyHolidayWorkRequestC::class, 'cancel'])->name('my-holiday-work.cancel');
+        Route::controller(MyHolidayWorkRequestC::class)->prefix('my-holiday-work')->name('my-holiday-work.')->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::post('/', 'store')->name('store');
+            Route::put('/{id}', 'update')->name('update');
+            Route::post('/{id}/cancel', 'cancel')->name('cancel');
+        });
 
         Route::get('/monthly-summary', [MonthlyAttendanceSummaryC::class, 'index'])->middleware('permission:attendance.monthly_summary.view')->name('monthly_summary.index');
         Route::post('/monthly-summary/generate', [MonthlyAttendanceSummaryC::class, 'generate'])->middleware('permission:attendance.monthly_summary.view')->name('monthly_summary.generate');
@@ -110,11 +114,12 @@ Route::middleware(['auth', 'check.access'])
         Route::post('/policy-overrides', [AttendancePolicyOverrideC::class, 'store'])->middleware('permission:attendance.policy_overrides.manage')->name('policy_overrides.store');
         Route::put('/policy-overrides/{id}', [AttendancePolicyOverrideC::class, 'update'])->middleware('permission:attendance.policy_overrides.manage')->name('policy_overrides.update');
 
-        Route::get('/work-reports', [\App\Http\Controllers\Web\HRMS\Attendance\WorkReportC::class, 'index'])->middleware('permission:attendance.work_reports.view_all|attendance.work_reports.view_team|attendance.work_reports.view_own')->name('work-reports');
-        Route::get('/work-reports/employee/{employee}', [\App\Http\Controllers\Web\HRMS\Attendance\WorkReportC::class, 'employeeHistory'])->middleware('permission:attendance.work_reports.view_all|attendance.work_reports.view_team|attendance.work_reports.view_own')->name('work-reports.employee-history');
-        Route::get('/work-reports/employee/{employee}/print', [\App\Http\Controllers\Web\HRMS\Attendance\WorkReportC::class, 'printEmployeeHistory'])->middleware('permission:attendance.work_reports.view_all|attendance.work_reports.view_team|attendance.work_reports.view_own')->name('work-reports.employee-history.print');
-        Route::get('/work-reports/{id}/print-single', [\App\Http\Controllers\Web\HRMS\Attendance\WorkReportC::class, 'printSingleWorkReport'])->middleware('permission:attendance.work_reports.view_all|attendance.work_reports.view_team|attendance.work_reports.view_own')->name('work-reports.single.print');
-        Route::get('/my-work-reports', [\App\Http\Controllers\Web\HRMS\Attendance\WorkReportC::class, 'index'])->middleware('permission:attendance.work_reports.view_own')->name('my-work-reports');
+        Route::get('/work-reports', [WorkReportC::class, 'index'])->middleware('permission:attendance.work_reports.view_all|attendance.work_reports.view_team|attendance.work_reports.view_own')->name('work-reports');
+        Route::get('/work-reports/employee/{employee}', [WorkReportC::class, 'employeeHistory'])->middleware('permission:attendance.work_reports.view_all|attendance.work_reports.view_team|attendance.work_reports.view_own')->name('work-reports.employee-history');
+        Route::get('/work-reports/employee/{employee}/print', [WorkReportC::class, 'printEmployeeHistory'])->middleware('permission:attendance.work_reports.view_all|attendance.work_reports.view_team|attendance.work_reports.view_own')->name('work-reports.employee-history.print');
+        Route::get('/work-reports/{id}/print-single', [WorkReportC::class, 'printSingleWorkReport'])->middleware('permission:attendance.work_reports.view_all|attendance.work_reports.view_team|attendance.work_reports.view_own')->name('work-reports.single.print');
+        Route::get('/my-work-reports', [WorkReportC::class, 'index'])->middleware('permission:attendance.work_reports.view_own')->name('my-work-reports');
+        Route::redirect('/my_work_reports', '/hrms/attendance/my-work-reports', 301);
 
         Route::get('/wfh', [WfhRequestC::class, 'index'])->middleware('permission:attendance.wfh.view|attendance.wfh.own')->name('wfh.index');
         Route::post('/wfh/assign', [WfhRequestC::class, 'assign'])->middleware('permission:attendance.wfh.assign')->name('wfh.assign');

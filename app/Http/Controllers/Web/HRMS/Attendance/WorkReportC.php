@@ -57,7 +57,17 @@ class WorkReportC extends Controller
             'attendance.attendanceTime'
         ]);
 
-        $isMyWorkReportsRoute = request()->routeIs('hrms.attendance.my-work-reports') || request()->routeIs('my-work-reports');
+        $isMyWorkReportsRoute = request()->routeIs('hrms.attendance.my-work-reports')
+            || request()->routeIs('my-work-reports')
+            || request()->routeIs('*my-work-reports*')
+            || request()->routeIs('*my_work_reports*')
+            || request()->is('*my-work-reports*')
+            || request()->is('*my_work_reports*');
+
+        
+        if ($isMyWorkReportsRoute && ! $request->filled('employee_id') && $ownEmployeeId) {
+            $request->merge(['employee_id' => $ownEmployeeId]);
+        }
 
         if ($isEmployee) {
             // Strictly self only (for regular employees)
@@ -78,6 +88,8 @@ class WorkReportC extends Controller
             $allowedEmpIds = array_values(array_unique(array_filter(array_merge($teamEmpIds, array_filter([$ownEmployeeId])))));
             if ($request->filled('employee_id') && in_array((int) $request->employee_id, $allowedEmpIds, true)) {
                 $query->where('employee_id', $request->employee_id);
+            } elseif ($isMyWorkReportsRoute && $ownEmployeeId) {
+                $query->where('employee_id', $ownEmployeeId);
             } else {
                 $query->whereIn('employee_id', $allowedEmpIds);
             }
@@ -85,6 +97,8 @@ class WorkReportC extends Controller
             // Admin can view all or filter by selected employee
             if ($request->filled('employee_id')) {
                 $query->where('employee_id', $request->employee_id);
+            } elseif ($isMyWorkReportsRoute && $ownEmployeeId) {
+                $query->where('employee_id', $ownEmployeeId);
             }
         }
 
@@ -310,7 +324,7 @@ class WorkReportC extends Controller
             'to_date' => $request->to_date,
             'per_page' => $perPageParam,
             'work_mode' => $request->work_mode,
-            'employee_id' => $isEmployee ? $ownEmployeeId : $request->employee_id,
+            'employee_id' => $isEmployee ? $ownEmployeeId : ($request->input('employee_id') ?: ($isMyWorkReportsRoute ? $ownEmployeeId : null)),
             'search' => $request->search,
         ];
 

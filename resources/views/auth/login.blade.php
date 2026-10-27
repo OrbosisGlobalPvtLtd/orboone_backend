@@ -693,8 +693,8 @@
         }
 
         .desk-logo-box {
-            width: 180px;
-            height: 54px;
+            width: 195px;
+            height: 56px;
             display: flex;
             align-items: center;
             justify-content: flex-start;
@@ -702,7 +702,7 @@
 
         .desk-logo-box img {
             max-width: 100%;
-            /* max-height: 100%; */
+            max-height: 100%;
             object-fit: contain;
         }
 
@@ -776,9 +776,9 @@
 
         .desk-vector-img {
             width: 85%;
-            max-width: 380px;
+            max-width: 420px;
             height: auto;
-            max-height: clamp(140px, 24vh, 240px);
+            max-height: clamp(180px, 28vh, 270px);
             object-fit: contain;
             margin-bottom: -10px;
             transition: all 0.2s ease;
@@ -1375,8 +1375,8 @@
             }
 
             .desk-logo-box {
-                width: 130px;
-                height: 38px;
+                width: 170px;
+                height: 50px;
             }
 
             .desktop-title {
@@ -1394,7 +1394,8 @@
             }
 
             .desk-vector-img {
-                max-height: 110px;
+                max-height: 285px;
+                max-width: 340px;
             }
 
             .desktop-right {

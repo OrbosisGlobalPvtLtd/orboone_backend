@@ -327,29 +327,6 @@ class AttendanceRegularizationC extends Controller
             'hrms.attendance.regularizations.index'
         );
 
-        $hrEmail = config('hrms.emails.hr');
-        if ($hrEmail) {
-            $details = [
-                'Employee Name' => $employee?->display_name ?: 'Employee',
-                'Employee Code' => $employee?->employee_code ?: 'N/A',
-                'Attendance Date' => $attendanceDate,
-                'Request Type' => (string) $data['request_type'],
-                'Current Punch In' => (string) ($attendance?->punch_in_time ?: '-'),
-                'Current Punch Out' => (string) ($attendance?->punch_out_time ?: '-'),
-                'Requested Punch In' => (string) ($data['requested_punch_in'] ?: '-'),
-                'Requested Punch Out' => (string) ($data['requested_punch_out'] ?: '-'),
-                'Reason' => (string) $data['reason'],
-            ];
-
-            Mail::to($hrEmail)->queue(new HrWorkflowAlertMail(
-                subjectText: 'Attendance Regularization Request - ' . ($employee?->display_name ?: 'Employee'),
-                workflowTitle: 'Attendance Regularization Request',
-                details: $details,
-                actionUrl: route('hrms.attendance.regularizations.index'),
-                replyToEmail: $employee?->user?->email
-            ));
-        }
-
         return back()->with('success', 'Regularization request saved.');
     }
 

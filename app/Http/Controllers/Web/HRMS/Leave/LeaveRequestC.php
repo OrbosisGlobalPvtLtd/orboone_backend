@@ -615,30 +615,6 @@ class LeaveRequestC extends Controller
             ['leave_id' => $leaveRequest->id],
             $payload
         );
-
-        $hrEmail = config('hrms.emails.hr');
-        $employeeEmail = $leaveRequest->employee?->user?->email;
-        if ($hrEmail) {
-            $details = [
-                'Employee Name' => $employeeName,
-                'Employee Code' => $leaveRequest->employee?->employee_code ?: 'N/A',
-                'Department' => $leaveRequest->employee?->department?->name ?: 'N/A',
-                'Leave Type' => $leaveType,
-                'Start Date' => (string) $leaveRequest->start_date,
-                'End Date' => (string) $leaveRequest->end_date,
-                'Total Days' => (string) $leaveRequest->requested_days,
-                'Reason' => (string) ($leaveRequest->reason ?: '-'),
-                'Apply Date' => now()->toDateTimeString(),
-            ];
-
-            Mail::to($hrEmail)->queue(new HrWorkflowAlertMail(
-                subjectText: 'Leave Request Submitted - ' . $employeeName,
-                workflowTitle: 'New Leave Request',
-                details: $details,
-                actionUrl: route('leave-approvals.index', ['leave_id' => $leaveRequest->id]),
-                replyToEmail: $employeeEmail
-            ));
-        }
     }
 
     private function leaveAttachmentUrl(?string $path): string

@@ -538,7 +538,7 @@ class NotificationS
             $type = $payload['type'] ?? null;
 
             // 1. Centralized HR workflow emails sent to the collective HR inbox (hr@orbosis.com)
-            if (in_array($type, ['profile_submitted', 'employee_exit_initiated'], true)) {
+            if (in_array($type, ['employee_exit_initiated'], true)) {
                 $employeeId = data_get($payload, 'employee_id') ?? data_get($payloadData, 'employee_id');
                 if ($employeeId) {
                     $hrMailKey = 'hr_collective_mail:' . $type . ':' . $employeeId;
@@ -581,56 +581,6 @@ class NotificationS
                 return; 
             }
 
-            // 2. Custom Mailable for Holiday Work Requests
-            if (in_array($type, ['holiday_work_request_submitted', 'holiday_work_request_approved', 'holiday_work_request_rejected'], true)) {
-                $requestId = data_get($payload, 'request_id') ?? data_get($payloadData, 'request_id');
-                if ($requestId) {
-                    $holidayRequest = HolidayWorkRequestM::with(['employee.department'])->find($requestId);
-                    if ($holidayRequest) {
-                        $mailKey = 'holiday_work_mail:' . $type . ':' . $requestId . ':' . $userId;
-                        if (! Cache::add($mailKey, 1, now()->addMinutes(5))) {
-                            Log::info('Holiday work request email skipped (duplicate in cooldown window)', [
-                                'user_id' => $userId,
-                                'type' => $type,
-                                'request_id' => $requestId,
-                            ]);
-                            return;
-                        }
-
-                        $rejectionReason = data_get($payload, 'rejection_reason') ?? data_get($payloadData, 'rejection_reason');
-                        $reviewerName = data_get($payload, 'reviewer_name') ?? data_get($payloadData, 'reviewer_name');
-                        $actionUrl = data_get($payload, 'action_url') ?? data_get($payloadData, 'action_url');
-                        if (empty($actionUrl)) {
-                            try {
-                                $actionUrl = route('hrms.attendance.holiday_work.index');
-                            } catch (\Throwable $e) {
-                                $actionUrl = url('/hrms/attendance/holiday-work');
-                            }
-                        }
-                        
-                        Mail::to($user->email)->queue(
-                            (new HolidayWorkRequestMail(
-                                $holidayRequest,
-                                $type === 'holiday_work_request_submitted' ? 'submitted' : ($type === 'holiday_work_request_approved' ? 'approved' : 'rejected'),
-                                $actionUrl,
-                                $rejectionReason,
-                                $reviewerName
-                            ))->onQueue('default')
-                        );
-                        
-                        Log::info('Holiday work request email queued', [
-                            'user_id' => $userId,
-                            'type' => $type,
-                            'request_id' => $requestId,
-                            'queue_connection' => config('queue.default'),
-                            'queue_name' => 'default',
-                        ]);
-                        return;
-                    }
-                }
-            }
-
-            
             $details = [];
             if (! empty($payload['attachment_url'])) {
                 $details['Attachment'] = $payload['attachment_url'];

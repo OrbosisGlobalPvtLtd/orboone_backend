@@ -1943,18 +1943,8 @@ class LeaveAllocationService
 
     public function assertStageRequestAllowed(EmployeeM $employee, LeaveAllocationM $allocation, string $requestedDays): void
     {
-        if ($this->normalizeStage((string) $allocation->employment_stage) !== self::STAGE_INTERNSHIP
-            || ! $this->isUnpaidInternEmployee($employee)) {
-            return;
-        }
-
-        $policy = $this->resolvePolicyForAllocation($allocation);
-        $remaining = bcsub((string) $policy->unpaid_intern_leave_limit, (string) ($allocation->lwp_used ?? '0'), 6);
-        if (bccomp($requestedDays, $remaining, 6) > 0) {
-            throw ValidationException::withMessages([
-                'leave_type_id' => 'Stage entitlement exhausted for this unpaid internship.',
-            ]);
-        }
+        // Unpaid interns are allowed to apply leaves beyond the initial quota, which route into LWP (Leave Without Pay)
+        return;
     }
 
     public function isUnpaidIntern(

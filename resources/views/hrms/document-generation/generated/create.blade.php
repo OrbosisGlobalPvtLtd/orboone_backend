@@ -838,7 +838,7 @@
         $dbCompany = \Illuminate\Support\Facades\DB::table('company_settings')->first();
         $companyNameDefaultVal = $dbCompany?->company_name ?: (branding_name() === 'HRMS' || branding_name() === 'Default' ? 'Orbosis Global Pvt. Ltd.' : branding_name());
     @endphp
-    const COMPANY_NAME_DEFAULT = "{!! addslashes($companyNameDefaultVal) !!}";
+    const COMPANY_NAME_DEFAULT = @json($companyNameDefaultVal);
 
     // Map of form values for placeholder replacement in rich text fields
     function getFormValuesMap() {
@@ -909,28 +909,30 @@
     }
 
     // Employee structural data lookup map for automatic field pre-filling
-    const employeesMap = {
-        @foreach($employees as $emp)
-        "{{ $emp->id }}": {
-            "name": "{{ addslashes($emp->display_name) }}",
-            "employee_code": "{{ addslashes($emp->employee_code) }}",
-            "email": "{{ addslashes($emp->user?->email ?: $emp->email ?: '') }}",
-            "phone": "{{ addslashes($emp->mobile ?: $emp->profile?->mobile ?: '') }}",
-            "designation": "{{ addslashes($emp->designation?->name ?? '') }}",
-            "department": "{{ addslashes($emp->department?->name ?? '') }}",
-            "employment_type": "{{ addslashes($emp->employment_type ?? '') }}",
-            "joining_date": "{{ $emp->joining_date ? date('Y-m-d', strtotime($emp->joining_date)) : '' }}",
-            "salary": "{{ $emp->salaryStructure?->gross_salary ?? $emp->gross_salary ?? '' }}",
-            "location": "{{ addslashes($emp->profile?->work_location ?? 'Remote') }}",
-            "address": "{{ addslashes($emp->profile?->present_address ?: $emp->profile?->address ?: '') }}",
-            "city": "{{ addslashes($emp->profile?->city ?: $emp->profile?->present_city ?: '') }}",
-            "state": "{{ addslashes($emp->profile?->state ?? '') }}",
-            "country": "{{ addslashes($emp->profile?->country ?? '') }}",
-            "gender": "{{ addslashes($emp->gender ?: $emp->profile?->gender ?: '') }}",
-            "reporting_manager_name": "{{ addslashes($emp->reportingManager?->employee_name ?: $emp->reportingManager?->full_name ?: $emp->reportingManager?->display_name ?: '') }}"
-        },
-        @endforeach
-    };
+    @php
+        $preparedEmployeesMap = [];
+        foreach ($employees as $emp) {
+            $preparedEmployeesMap[(string) $emp->id] = [
+                'name' => (string) ($emp->display_name ?? ''),
+                'employee_code' => (string) ($emp->employee_code ?? ''),
+                'email' => (string) ($emp->user?->email ?: $emp->email ?: ''),
+                'phone' => (string) ($emp->mobile ?: $emp->profile?->mobile ?: ''),
+                'designation' => (string) ($emp->designation?->name ?? ''),
+                'department' => (string) ($emp->department?->name ?? ''),
+                'employment_type' => (string) ($emp->employment_type ?? ''),
+                'joining_date' => $emp->joining_date ? date('Y-m-d', strtotime($emp->joining_date)) : '',
+                'salary' => (string) ($emp->salaryStructure?->gross_salary ?? $emp->gross_salary ?? ''),
+                'location' => (string) ($emp->profile?->work_location ?? 'Remote'),
+                'address' => (string) ($emp->profile?->present_address ?: $emp->profile?->address ?: ''),
+                'city' => (string) ($emp->profile?->city ?: $emp->profile?->present_city ?: ''),
+                'state' => (string) ($emp->profile?->state ?? ''),
+                'country' => (string) ($emp->profile?->country ?? ''),
+                'gender' => (string) ($emp->gender ?: $emp->profile?->gender ?: ''),
+                'reporting_manager_name' => (string) ($emp->reportingManager?->employee_name ?: $emp->reportingManager?->full_name ?: $emp->reportingManager?->display_name ?: ''),
+            ];
+        }
+    @endphp
+    const employeesMap = @json($preparedEmployeesMap);
 
     // Evaluates conditional visibility fields dynamically
     function evaluateConditionalVisibility() {

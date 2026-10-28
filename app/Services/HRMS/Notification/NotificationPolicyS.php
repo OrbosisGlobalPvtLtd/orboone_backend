@@ -33,10 +33,6 @@ class NotificationPolicyS
             case 'payslip':
             case 'payslip_available':
             case 'enterprise_payslip_available':
-            case 'holiday_work_request_submitted':
-            case 'holiday_work_request_approved':
-            case 'holiday_work_request_rejected':
-            case 'profile_submitted':
             case 'profile_approved':
             case 'profile_rejected':
             case 'payroll_released':
@@ -46,13 +42,26 @@ class NotificationPolicyS
             case 'fnf_completed':
                 return true;
 
+            case 'profile_submitted':
+            case 'profile_updated':
+            case 'leave_applied':
+            case 'attendance_regularization_submitted':
+            case 'attendance_regularization_approved':
+            case 'attendance_regularization_rejected':
+            case 'holiday_work_request_submitted':
+            case 'holiday_work_request_approved':
+            case 'holiday_work_request_rejected':
+            case 'work_request_submitted':
+            case 'work_request_approved':
+            case 'work_request_rejected':
+            case 'probation_ending_reminder':
+            case 'internship_ending_reminder':
+                return false;
+
             case 'announcement':
             case 'announcement_published':
                 $priority = strtolower((string) ($context['priority'] ?? 'normal'));
                 return in_array($priority, ['urgent', 'important', 'high'], true);
-            case 'probation_ending_reminder':
-            case 'internship_ending_reminder':
-                return false;
 
             case 'leave_rejected':
                 // Calculate duration if not present

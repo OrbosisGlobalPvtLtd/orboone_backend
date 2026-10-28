@@ -100,7 +100,10 @@
                             <span class="badge badge-light border text-muted ledger-allocation-only ml-1" style="display:none; font-size:10px;">Policy Driven</span>
                         </label>
                         <input type="number" step="any" min="0" name="paid_allocated" id="edit_paid_allocated" class="leave-control w-100" required>
-                        <small class="text-muted" style="font-size: 10.5px;">Annual Sanctioned Paid Leaves</small>
+                        <div class="d-flex align-items-center justify-content-between mt-1">
+                            <small class="text-muted" style="font-size: 10.5px;">Annual Sanctioned Paid Leaves</small>
+                        </div>
+                        <div class="text-primary font-weight-bold ledger-allocation-only mt-1" id="edit_accrued_pl_info" style="display:none; font-size: 11px;"></div>
                     </div>
 
                     <div class="col-md-4 mb-3">
@@ -109,7 +112,10 @@
                             <span class="badge badge-light border text-muted ledger-allocation-only ml-1" style="display:none; font-size:10px;">Policy Driven</span>
                         </label>
                         <input type="number" step="any" min="0" name="sick_allocated" id="edit_sick_allocated" class="leave-control w-100" required>
-                        <small class="text-muted" style="font-size: 10.5px;">Annual Sanctioned Sick Leaves</small>
+                        <div class="d-flex align-items-center justify-content-between mt-1">
+                            <small class="text-muted" style="font-size: 10.5px;">Annual Sanctioned Sick Leaves</small>
+                        </div>
+                        <div class="text-primary font-weight-bold ledger-allocation-only mt-1" id="edit_accrued_sl_info" style="display:none; font-size: 11px;"></div>
                     </div>
 
                     <div class="col-md-4 mb-3">

@@ -165,7 +165,11 @@ class AttendanceService
         $policy = $this->ruleResolver->getPolicyForEmployee($employee, $now);
         $dayContext = $this->ruleResolver->getDayContext($employee, $now);
         $approvedLeave = $this->ruleResolver->getApprovedLeaveOnDate($employee, $today);
-        $isFullLeave = $approvedLeave && ! ($approvedLeave['is_half_day'] ?? false);
+        $isHalfDayLeave = (bool) ($approvedLeave['is_half_day'] ?? false);
+        $halfDayType = strtolower((string) ($approvedLeave['half_day_type'] ?? ''));
+        $isFirstHalfLeave = $isHalfDayLeave && in_array($halfDayType, ['first_half', 'first_half_day', 'first_half_leave'], true);
+        $isSecondHalfLeave = $isHalfDayLeave && in_array($halfDayType, ['second_half', 'second_half_day', 'second_half_leave'], true);
+        $isFullLeave = $approvedLeave && ! $isHalfDayLeave;
         $hasApprovedHolidayWork = HolidayWorkRequestM::where('employee_id', $employee->id)
             ->whereDate('worked_date', $today)
             ->where('status', 'approved')
@@ -217,8 +221,12 @@ class AttendanceService
 
         $time = $now->format('H:i:s');
         $blockAfter = $window['block_after'];
+        $isDynamicShift = $this->isDynamicShift($shift);
+
         $isBlocked = $enforceEmployeeRules
+            && ! $isDynamicShift
             && $window['is_blocked']
+            && ! $isHalfDayContext
             && ! $attendanceTypeId
             && ! $isUnlocked
             && ! $approvedLeave
@@ -267,8 +275,6 @@ class AttendanceService
 
         $isDynamicOrFlexible = $this->isDynamicShift($shift);
         $isHalfDayPunch = ($window['is_half_day_punch'] ?? false) && ! $isFirstHalfLeave;
-        $isLate = ! $isDynamicOrFlexible && ! $approvedLeave && ! optional($existing)->is_late_exempted && $this->isLatePunch($now, $shift);
-        $lateMinutes = $isLate ? $this->lateMinutes($now, $shift) : 0;
 
         $presentType = $this->attendanceType('present');
         $halfDayType = $this->attendanceType('half_day');
@@ -282,6 +288,10 @@ class AttendanceService
         if (empty($attendanceStatusForPunchIn)) {
             $attendanceStatusForPunchIn = 'present';
         }
+
+        $isHalfDayAttendance = $attendanceStatusForPunchIn === 'half_day' || $isHalfDayContext;
+        $isLate = ! $isHalfDayAttendance && ! $isDynamicOrFlexible && ! $approvedLeave && ! optional($existing)->is_late_exempted && $this->isLatePunch($now, $shift);
+        $lateMinutes = $isLate ? $this->lateMinutes($now, $shift) : 0;
 
         $attendanceTypeForPunchIn = $attendanceTypeId;
         if (! $attendanceTypeForPunchIn) {
@@ -965,9 +975,11 @@ class AttendanceService
             || $attendance->leave_request_id !== null
             || $attendance->half_day_reason === 'approved_half_day_leave'
             || in_array(strtolower((string) $attendance->attendance_status), ['half_leave', 'first_half_leave', 'second_half_leave'], true);
-        $isFlexible = $this->isDynamicShift($shift);
+        $isDynamic = $this->isDynamicShift($shift);
+        $shiftType = strtolower((string) ($shift?->shift_type ?? $shift?->type ?? ''));
+        $isFlexible = $isDynamic || in_array($shiftType, ['flexible_part_time', 'flexible'], true);
 
-        $isHalfDayPunch = (! $isFlexible && $shift && ! empty($shift->half_day_after_time))
+        $isHalfDayPunch = (! $isDynamic && $shift && ! empty($shift->half_day_after_time))
             ? $in->gte(Carbon::parse($date . ' ' . $this->ruleResolver->timeString($shift->half_day_after_time), $timezone))
             : false;
 
@@ -1013,15 +1025,15 @@ class AttendanceService
         $isEarly = ! $approvedLeaveOnAttDate && ! $isFlexible && $classification['is_early_out'];
         $earlyOutMinutes = $isEarly ? $classification['early_out_minutes'] : 0;
 
-        $isLate = ! $isFlexible && ! $approvedLeaveOnAttDate && ! (bool) $attendance->is_late_exempted && $this->isLatePunch($in, $shift);
-        $lateMinutes = $isLate ? $this->lateMinutes($in, $shift) : 0;
-
-        $violationCount = ($isFlexible || $approvedLeaveOnAttDate ? 0 : (int) $isLate) + (int) $isEarly;
-
         $typeCode = $classification['status'];
-        $isHalfDay = $classification['is_half_day'];
+        $isHalfDay = $classification['is_half_day'] || $typeCode === 'half_day' || $isHalfDayContext;
         $isLwp = $classification['is_lwp'];
         $punchOutReason = $classification['reason'];
+
+        $isLate = ! $isHalfDay && ! $isDynamic && ! $approvedLeaveOnAttDate && ! (bool) $attendance->is_late_exempted && $this->isLatePunch($in, $shift);
+        $lateMinutes = $isLate ? $this->lateMinutes($in, $shift) : 0;
+
+        $violationCount = ($isDynamic || $approvedLeaveOnAttDate || $isHalfDay ? 0 : (int) $isLate) + (int) $isEarly;
 
         $effectiveHalfDayMin = $halfDayMinutes > 0 ? $halfDayMinutes : ($requiredMinutes > 0 ? (int)($requiredMinutes / 2) : 240);
         $effectiveAbsentBelow = ($absentBelowMinutes > 0 && $absentBelowMinutes < $effectiveHalfDayMin)
@@ -2098,8 +2110,12 @@ class AttendanceService
         $lateViolationEnabled = $policy ? (bool) ($policy->late_violation_enabled ?? true) : true;
         $earlyViolationEnabled = $policy ? (bool) ($policy->early_violation_enabled ?? true) : true;
 
-        // 1. Late Login
-        if ($lateViolationEnabled && ($attendance->is_late || (int) $attendance->late_minutes > 0)) {
+        $isHalfDayAttendance = (bool) $attendance->is_half_day
+            || strtolower((string) $attendance->attendance_status) === 'half_day'
+            || optional($attendance->attendanceType)->code === 'half_day';
+
+        // 1. Late Login (only applies if attendance is NOT half day / leave)
+        if (! $isHalfDayAttendance && $lateViolationEnabled && ($attendance->is_late || (int) $attendance->late_minutes > 0)) {
             $resolver->recordOrSyncViolation($attendance, 'late_login', [
                 'minutes' => (int) $attendance->late_minutes,
                 'source' => $attendance->attendance_source ?: 'system',
@@ -2261,10 +2277,8 @@ class AttendanceService
 
         $type = strtolower((string) ($shift->shift_type ?? $shift->type ?? ''));
         $name = strtolower((string) ($shift->name ?? $shift->policy_name ?? ''));
-        return in_array($type, ['dynamic_hours', 'flexible_part_time', 'dynamic', 'flexible'], true)
+        return in_array($type, ['dynamic_hours', 'dynamic'], true)
             || str_contains($type, 'dynamic')
-            || str_contains($type, 'flexible')
-            || str_contains($name, 'dynamic')
-            || str_contains($name, 'flexible');
+            || str_contains($name, 'dynamic');
     }
 }

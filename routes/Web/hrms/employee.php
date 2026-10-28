@@ -95,7 +95,7 @@ Route::middleware(['auth', 'web.admin.access', 'module:hrms'])
                 ->name('update');
 
             Route::delete('/{employee}', [EmployeeC::class, 'destroy'])
-                ->middleware('permission:employees.update')
+                ->middleware('permission:employees.update|employees.delete|employees.edit')
                 ->name('destroy');
 
             Route::get('/{employee}/complete-profile', [EmployeeC::class, 'completeProfile'])

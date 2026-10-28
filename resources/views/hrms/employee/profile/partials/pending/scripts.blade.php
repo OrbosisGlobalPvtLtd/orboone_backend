@@ -28,8 +28,8 @@
             if (!data) return '-';
             let $el = $('<div>').html(data);
 
-            // Strip action buttons, avatars, scripts, styles
-            $el.find('.hrms-emp-avatar, .hrms-emp-avatar-fallback, .actions, .action-btn, .complete-switch, form, script, style').remove();
+            // Strip action buttons, avatars, dropdowns, scripts, styles
+            $el.find('.hrms-emp-avatar, .eo-avatar, .att-avatar, .leave-avatar, .hrms-emp-avatar-fallback, .eo-action-menu, .eo-actions-cell, .dropdown-menu, .actions, .action-btn, .complete-switch, form, script, style').remove();
 
             // Column 0: S.No
             if (column === 0) {
@@ -442,6 +442,7 @@
 
         // Dynamic event delegation for reject buttons
         $(document).on('click', '.reject-profile-btn', function() {
+            $('.eo-action-menu.show .dropdown-toggle').dropdown('hide');
             selectedRejectForm = document.getElementById(this.getAttribute('data-form-id'));
             if (rejectModal) {
                 rejectModal.style.display = 'flex';
@@ -492,5 +493,127 @@
                 if (e.target === rejectModal) closeReject();
             });
         }
+
+        // Permanent Delete handling
+        const deleteModal = document.getElementById('permanentDeleteModal');
+        const deleteForm = document.getElementById('permanentDeleteForm');
+        const deleteInput = document.getElementById('deleteConfirmInput');
+        const deleteError = document.getElementById('deleteConfirmError');
+
+        function closeDeleteModal() {
+            if (deleteModal) deleteModal.style.display = 'none';
+            if (deleteInput) deleteInput.value = '';
+            if (deleteError) deleteError.style.display = 'none';
+            if (deleteForm) deleteForm.action = '';
+            const btn = document.getElementById('confirmPermanentDeleteBtn');
+            if (btn) {
+                $(btn).prop('disabled', false).html('<i class="fas fa-trash-alt mr-1"></i> Permanently Delete');
+            }
+        }
+
+        $(document).on('click', '.btn-permanent-delete', function(e) {
+            e.preventDefault();
+            $('.eo-action-menu.show .dropdown-toggle').dropdown('hide');
+            const actionUrl = $(this).data('action');
+            const empName = $(this).data('name') || 'Employee';
+            const empCode = $(this).data('code') || '-';
+
+            $('#deleteEmpName').text(empName);
+            $('#deleteEmpCode').text(empCode);
+            if (deleteForm) deleteForm.action = actionUrl;
+            if (deleteInput) deleteInput.value = '';
+            if (deleteError) deleteError.style.display = 'none';
+            const btn = document.getElementById('confirmPermanentDeleteBtn');
+            if (btn) {
+                $(btn).prop('disabled', false).html('<i class="fas fa-trash-alt mr-1"></i> Permanently Delete');
+            }
+            if (deleteModal) {
+                deleteModal.style.display = 'flex';
+                setTimeout(() => {
+                    if (deleteInput) deleteInput.focus();
+                }, 100);
+            }
+        });
+
+        $('#cancelDeleteModal, #closeDeleteModalBtn').on('click', closeDeleteModal);
+
+        $('#confirmPermanentDeleteBtn').on('click', function(e) {
+            e.preventDefault();
+            const val = (deleteInput ? deleteInput.value : '').trim();
+            if (val !== 'DELETE EMPLOYEE') {
+                if (deleteError) deleteError.style.display = 'block';
+                if (deleteInput) deleteInput.focus();
+                return;
+            }
+            if (deleteError) deleteError.style.display = 'none';
+            if (deleteForm) {
+                $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Deleting...');
+                deleteForm.submit();
+            }
+        });
+
+        if (deleteModal) {
+            deleteModal.addEventListener('click', function(e) {
+                if (e.target === deleteModal) closeDeleteModal();
+            });
+        }
+
+        // Floating action dropdown (immune to table-responsive overflow clipping)
+        $(document).on('show.bs.dropdown', '.eo-action-menu', function() {
+            const $parent = $(this);
+            const $toggle = $parent.find('.dropdown-toggle');
+            const $menu = $parent.find('.dropdown-menu');
+            if ($toggle.length === 0 || $menu.length === 0) return;
+
+            $menu.addClass('eo-action-floating-menu');
+            $menu.data('parent-cell', $parent);
+            $('body').append($menu.detach());
+
+            function positionDropdown() {
+                const rect = $toggle[0].getBoundingClientRect();
+                const menuWidth = $menu.outerWidth() || 185;
+                const menuHeight = $menu.outerHeight() || 180;
+                const windowHeight = $(window).height();
+                const windowWidth = $(window).width();
+
+                let top = rect.bottom + 4;
+                let left = rect.right - menuWidth;
+
+                if (left < 10) left = 10;
+                if (left + menuWidth > windowWidth - 10) left = windowWidth - menuWidth - 10;
+
+                if (top + menuHeight > windowHeight - 10) {
+                    top = Math.max(10, rect.top - menuHeight - 4);
+                }
+
+                $menu.css({
+                    position: 'fixed',
+                    top: top + 'px',
+                    left: left + 'px',
+                    margin: '0',
+                    zIndex: 99999,
+                    display: 'block'
+                });
+            }
+
+            positionDropdown();
+        });
+
+        $(document).on('hide.bs.dropdown', '.eo-action-menu', function() {
+            const $parent = $(this);
+            $('body > .dropdown-menu.eo-action-floating-menu').each(function() {
+                const $menu = $(this);
+                if ($menu.data('parent-cell') && $menu.data('parent-cell')[0] === $parent[0]) {
+                    $menu.removeClass('eo-action-floating-menu');
+                    $menu.css({ display: '', position: '', top: '', left: '', zIndex: '', margin: '' });
+                    $parent.append($menu.detach());
+                }
+            });
+        });
+
+        // Close open floating dropdown on page or table scroll
+        $(window).add('.orb-table-wrap').on('scroll', function() {
+            $('.eo-action-menu.show .dropdown-toggle').dropdown('hide');
+        });
     });
 </script>

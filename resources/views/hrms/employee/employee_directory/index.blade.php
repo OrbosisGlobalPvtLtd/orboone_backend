@@ -321,27 +321,52 @@
         min-width: 240px;
     }
 
-    .eo-avatar {
-        width: 42px;
-        height: 42px;
-        border-radius: 15px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--orb-primary);
-        font-size: 14px;
-        font-weight: 950;
-        background: #F4F2FF;
-        border: 1px solid #EEE7FF;
-        overflow: hidden;
-        flex: 0 0 auto;
+    .eo-avatar,
+    .att-avatar,
+    .leave-avatar {
+        width: 38px !important;
+        height: 38px !important;
+        min-width: 38px !important;
+        max-width: 38px !important;
+        border-radius: 12px !important;
+        background: linear-gradient(135deg, var(--orb-primary, #4B00E8), var(--orb-secondary, #FF5252)) !important;
+        color: #ffffff !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-weight: 900 !important;
+        font-size: 14px !important;
+        flex-shrink: 0 !important;
+        overflow: hidden !important;
+        text-transform: uppercase !important;
+        box-shadow: 0 2px 8px rgba(75, 0, 232, 0.12) !important;
+        line-height: 1 !important;
+        position: relative !important;
     }
 
-    .eo-avatar img {
+    .eo-avatar img,
+    .att-avatar img,
+    .leave-avatar img {
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover !important;
+        display: block !important;
+        border-radius: inherit !important;
+    }
+
+    .eo-avatar span,
+    .att-avatar span,
+    .leave-avatar span {
         width: 100%;
         height: 100%;
-        object-fit: cover;
-        display: block;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #ffffff !important;
+        font-weight: 900 !important;
+        font-size: 14px !important;
+        text-transform: uppercase !important;
+        line-height: 1;
     }
 
     .eo-name {
@@ -983,7 +1008,7 @@
             let $el = $('<div>').html(data);
 
             // Strip action dropdowns, avatars, dots, scripts, styles
-            $el.find('.hrms-emp-avatar, .hrms-emp-avatar-fallback, .eo-action-menu, .eo-dot, script, style').remove();
+            $el.find('.hrms-emp-avatar, .eo-avatar, .att-avatar, .leave-avatar, .hrms-emp-avatar-fallback, .eo-action-menu, .eo-dot, script, style').remove();
 
             // Column 0: S.No
             if (column === 0) {

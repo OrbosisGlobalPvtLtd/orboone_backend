@@ -93,7 +93,7 @@
                     <th>Status</th>
                     <th class="text-center" style="width: 110px;">Approve</th>
                     <th style="width: 120px;">Updated</th>
-                    <th class="text-center" style="width: 110px;">Actions</th>
+                    <th class="text-center" style="width: 80px;">Actions</th>
                 </tr>
             </thead>
             <tbody></tbody>

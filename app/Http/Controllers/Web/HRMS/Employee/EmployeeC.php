@@ -329,9 +329,9 @@ class EmployeeC extends Controller
                     $passportPhotoUrl = resolveEmployeePassportPhoto($employee);
 
                     if ($passportPhotoUrl) {
-                        $avatar = '<span class="hrms-emp-avatar hrms-emp-avatar-sm mr-2"><img src="' . e($passportPhotoUrl) . '" alt="' . e($name) . '" class="hrms-emp-avatar-img" onerror="this.style.display=\'none\'; this.parentElement.querySelector(\'.hrms-emp-avatar-fallback\').classList.remove(\'is-hidden\'); this.parentElement.querySelector(\'.hrms-emp-avatar-fallback\').classList.add(\'is-visible\');"><span class="hrms-emp-avatar-fallback is-hidden">' . e($initial) . '</span></span>';
+                        $avatar = '<div class="att-avatar eo-avatar mr-2"><img src="' . e($passportPhotoUrl) . '" alt="' . e($name) . '" onerror="this.style.setProperty(\'display\', \'none\', \'important\'); this.nextElementSibling.style.setProperty(\'display\', \'inline-flex\', \'important\');"><span style="display: none !important;">' . e($initial) . '</span></div>';
                     } else {
-                        $avatar = '<span class="hrms-emp-avatar hrms-emp-avatar-sm mr-2"><span class="hrms-emp-avatar-fallback is-visible">' . e($initial) . '</span></span>';
+                        $avatar = '<div class="att-avatar eo-avatar mr-2"><span>' . e($initial) . '</span></div>';
                     }
 
                     $employmentType = ucfirst(str_replace('_', ' ', $employee->employment_type ?? '-'));
@@ -405,7 +405,13 @@ class EmployeeC extends Controller
                         </button>';
                     }
 
-                    if ($authUser && method_exists($authUser, 'isSuperAdmin') && $authUser->isSuperAdmin() && Route::has('hrms.employees.destroy')) {
+                    $canDelete = $authUser && (
+                        (method_exists($authUser, 'isSuperAdmin') && $authUser->isSuperAdmin())
+                        || (method_exists($authUser, 'isHrAdmin') && $authUser->isHrAdmin())
+                        || (method_exists($authUser, 'can') && ($authUser->can('employees.delete') || $authUser->can('employees.destroy')))
+                    );
+
+                    if ($canDelete && Route::has('hrms.employees.destroy')) {
                         $actions .= '
                         <form action="' . route('hrms.employees.destroy', $employee->id) . '" method="POST" style="margin:0;" onsubmit="var c=prompt(\'Type DELETE EMPLOYEE to permanently delete this wrong/test/duplicate employee.\'); if(c===null){return false;} this.querySelector(\'input[name=confirm_text]\').value=c; return c===\'DELETE EMPLOYEE\';">
                             ' . csrf_field() . '
@@ -1683,18 +1689,42 @@ class EmployeeC extends Controller
                         $approveHtml = '<span class="lock-badge"><i class="fas fa-clock"></i> Pending</span>';
                     }
 
-                    // Actions Cell
-                    $actionsHtml = '<div class="actions">';
+                    // Actions Cell (3-Dot Dropdown Menu)
+                    $actionsHtml = '<div class="eo-actions-cell eo-action-menu dropdown text-center">
+                    <button class="dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="Actions">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-right">';
+
                     if (Route::has('hrms.employees.profile.view')) {
-                        $actionsHtml .= '<a href="' . route('hrms.employees.profile.view', $emp->id) . '" class="action-btn action-view" title="View Profile"><i class="fas fa-eye"></i></a>';
+                        $actionsHtml .= '<a class="dropdown-item" href="' . route('hrms.employees.profile.view', $emp->id) . '">
+                            <i class="fas fa-eye text-primary"></i> View Profile
+                        </a>';
                     }
                     if (Route::has('hrms.employees.edit')) {
-                        $actionsHtml .= '<a href="' . route('hrms.employees.edit', $emp->id) . '" class="action-btn action-edit" title="Edit Onboarding"><i class="fas fa-edit"></i></a>';
+                        $actionsHtml .= '<a class="dropdown-item" href="' . route('hrms.employees.edit', $emp->id) . '">
+                            <i class="fas fa-edit text-warning"></i> Edit Onboarding
+                        </a>';
                     }
                     if ($status !== 'approved' && Route::has('hrms.employees.profile.reject')) {
-                        $actionsHtml .= '<button type="button" class="action-btn action-reject reject-profile-btn" title="Reject Profile" data-form-id="rejectForm' . $emp->id . '"><i class="fas fa-times"></i></button><form id="rejectForm' . $emp->id . '" action="' . route('hrms.employees.profile.reject', $emp->id) . '" method="POST" class="d-none">' . csrf_field() . '<input type="hidden" name="rejection_reason" class="reject-reason-input"></form>';
+                        $actionsHtml .= '<button type="button" class="dropdown-item text-danger reject-profile-btn" data-form-id="rejectForm' . $emp->id . '">
+                            <i class="fas fa-times text-danger"></i> Reject Profile
+                        </button><form id="rejectForm' . $emp->id . '" action="' . route('hrms.employees.profile.reject', $emp->id) . '" method="POST" class="d-none">' . csrf_field() . '<input type="hidden" name="rejection_reason" class="reject-reason-input"></form>';
                     }
-                    $actionsHtml .= '</div>';
+
+                    $authUser = Auth::user();
+                    $canDelete = $authUser && (
+                        (method_exists($authUser, 'isSuperAdmin') && $authUser->isSuperAdmin())
+                        || (method_exists($authUser, 'isHrAdmin') && $authUser->isHrAdmin())
+                        || (method_exists($authUser, 'can') && ($authUser->can('employees.delete') || $authUser->can('employees.destroy')))
+                    );
+                    if ($canDelete && Route::has('hrms.employees.destroy')) {
+                        $actionsHtml .= '<button type="button" class="dropdown-item text-danger btn-permanent-delete" data-id="' . $emp->id . '" data-name="' . e($name) . '" data-code="' . e($code) . '" data-action="' . route('hrms.employees.destroy', $emp->id) . '">
+                            <i class="fas fa-trash-alt text-danger"></i> Permanent Delete
+                        </button>';
+                    }
+
+                    $actionsHtml .= '</div></div>';
 
                     return [
                         's_no' => $start + $idx + 1,
@@ -2774,7 +2804,10 @@ class EmployeeC extends Controller
             abort_if((int) ($employeeData->user_id ?? 0) === (int) $actor->id, 403, 'Self-delete is not allowed.');
 
             $isSuperAdmin = method_exists($actor, 'isSuperAdmin') && $actor->isSuperAdmin();
-            abort_if(! $isSuperAdmin, 403, 'Only Super Admin can permanently delete employee.');
+            $canDelete = $isSuperAdmin
+                || (method_exists($actor, 'isHrAdmin') && $actor->isHrAdmin())
+                || (method_exists($actor, 'can') && ($actor->can('employees.delete') || $actor->can('employees.destroy')));
+            abort_if(! $canDelete, 403, 'Unauthorized. Only Super Admin or HR Admin can permanently delete employee.');
 
             $confirmation = (string) $request->input('confirm_text', '');
             abort_if(trim($confirmation) !== 'DELETE EMPLOYEE', 422, 'Typed confirmation mismatch.');
@@ -2790,10 +2823,24 @@ class EmployeeC extends Controller
                 (bool) $request->boolean('force_locked_records')
             );
 
-            return redirect()->route('hrms.employees.index')
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Employee permanently deleted successfully.',
+                    'delete_result' => $result,
+                ]);
+            }
+
+            return back()
                 ->with('success', 'Employee permanently deleted successfully.')
                 ->with('delete_result', $result);
         } catch (\Throwable $e) {
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 422);
+            }
             return back()->with('error', $e->getMessage());
         }
     }

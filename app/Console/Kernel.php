@@ -3,7 +3,6 @@
 namespace App\Console;
 
 use App\Console\Commands\AccrueMonthlyLeaveCommand;
-use App\Console\Commands\AttendanceAbsent;
 use App\Console\Commands\AttendanceBackfillShiftAssignments;
 use App\Console\Commands\AttendanceLeave;
 use App\Console\Commands\DispatchPermanentActivationNotifications;
@@ -33,7 +32,6 @@ class Kernel extends ConsoleKernel
      */
     protected $commands = [
         AccrueMonthlyLeaveCommand::class,
-        AttendanceAbsent::class,
         AttendanceLeave::class,
         AutoBlockMissedPunchIns::class,
         AutoCloseBlockedAttendance::class,
@@ -61,8 +59,7 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        $schedule->command('attendance:leave')->dailyAt('08:30');
-        $schedule->command('attendance:absent')->dailyAt('16:00');
+        $schedule->command('attendance:leave')->dailyAt('08:30')->timezone('Asia/Kolkata');
         $schedule->command('attendance:mark-holidays')->dailyAt('08:00')->timezone('Asia/Kolkata');
         $schedule->command('attendance:mark-weekoffs')->dailyAt('08:05')->timezone('Asia/Kolkata');
         $schedule->command('hrms:auto-block-missed-punchins')->everyMinute()->timezone('Asia/Kolkata')->withoutOverlapping();

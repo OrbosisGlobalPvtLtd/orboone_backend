@@ -243,6 +243,30 @@ class LeaveAllocationC extends Controller
 
         $allocation = LeaveAllocationM::with(['employee.user', 'employee.profile', 'policy'])->findOrFail($id);
 
+        $isLedgerBacked = $allocation->isLedgerBacked();
+        $paidAllocated = (float) $allocation->paid_allocated;
+        $sickAllocated = (float) $allocation->sick_allocated;
+        $totalAllocated = (float) ($allocation->total_allocated ?? ($paidAllocated + $sickAllocated));
+        $accruedPaid = (float) $allocation->paid_allocated;
+        $accruedSick = (float) $allocation->sick_allocated;
+        $accruedPeriod = Carbon::now('Asia/Kolkata')->format('M Y');
+
+        if ($isLedgerBacked) {
+            $summaries = $this->balanceService->getAllocationDisplaySummaries(
+                collect([$allocation]),
+                Carbon::now('Asia/Kolkata')
+            );
+            $summary = $summaries[$allocation->id] ?? null;
+            if ($summary) {
+                $paidAllocated = round((float) ($summary['year_end_pl'] ?? $paidAllocated), 2);
+                $sickAllocated = round((float) ($summary['year_end_sl'] ?? $sickAllocated), 2);
+                $totalAllocated = round((float) ($summary['year_end_total'] ?? ($paidAllocated + $sickAllocated)), 2);
+                $accruedPaid = round((float) ($summary['accrued_to_date_pl'] ?? $accruedPaid), 2);
+                $accruedSick = round((float) ($summary['accrued_to_date_sl'] ?? $accruedSick), 2);
+                $accruedPeriod = $summary['period_label'] ?? $accruedPeriod;
+            }
+        }
+
         return response()->json([
             'success' => true,
             'allocation' => [
@@ -254,18 +278,21 @@ class LeaveAllocationC extends Controller
                 'policy_name' => $allocation->policy?->policy_name ?? 'Default Policy',
                 'year' => (int) $allocation->year,
                 'employment_stage' => $allocation->employment_stage,
-                'paid_allocated' => (float) $allocation->paid_allocated,
-                'sick_allocated' => (float) $allocation->sick_allocated,
+                'paid_allocated' => $paidAllocated,
+                'sick_allocated' => $sickAllocated,
                 'comp_off_allocated' => (float) ($allocation->comp_off_allocated ?? 0),
                 'comp_off_remaining' => (float) ($allocation->comp_off_remaining ?? 0),
-                'total_allocated' => (float) ($allocation->total_allocated ?? ($allocation->paid_allocated + $allocation->sick_allocated)),
+                'total_allocated' => $totalAllocated,
+                'accrued_paid_to_date' => $accruedPaid,
+                'accrued_sick_to_date' => $accruedSick,
+                'accrued_period' => $accruedPeriod,
                 'paid_used' => (float) ($allocation->paid_used ?? 0),
                 'sick_used' => (float) ($allocation->sick_used ?? 0),
                 'comp_off_used' => (float) ($allocation->comp_off_used ?? 0),
                 'lwp_used' => (float) ($allocation->lwp_used ?? 0),
                 'paid_remaining' => (string) ($allocation->paid_remaining ?? '0.00'),
                 'sick_remaining' => (string) ($allocation->sick_remaining ?? '0.00'),
-                'is_ledger_backed' => $allocation->isLedgerBacked(),
+                'is_ledger_backed' => $isLedgerBacked,
                 'adjustment_uuid' => (string) Str::uuid(),
                 'allocation_from_date' => $allocation->allocation_from_date ? Carbon::parse($allocation->allocation_from_date)->format('Y-m-d') : '',
                 'allocation_to_date' => $allocation->allocation_to_date ? Carbon::parse($allocation->allocation_to_date)->format('Y-m-d') : '',

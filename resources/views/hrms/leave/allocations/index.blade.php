@@ -1629,6 +1629,16 @@
                     }
                     $('#edit_paid_allocated').val(a.paid_allocated);
                     $('#edit_sick_allocated').val(a.sick_allocated);
+
+                    if (isLedgerBacked && a.accrued_paid_to_date !== undefined) {
+                        var period = a.accrued_period || 'current month';
+                        $('#edit_accrued_pl_info').html('<i class="fas fa-history mr-1"></i> Accrued till ' + period + ': <strong>' + parseFloat(a.accrued_paid_to_date).toFixed(2) + '</strong> days').show();
+                        $('#edit_accrued_sl_info').html('<i class="fas fa-history mr-1"></i> Accrued till ' + period + ': <strong>' + parseFloat(a.accrued_sick_to_date).toFixed(2) + '</strong> days').show();
+                    } else {
+                        $('#edit_accrued_pl_info').hide().empty();
+                        $('#edit_accrued_sl_info').hide().empty();
+                    }
+
                     $('#edit_paid_remaining').val(a.paid_remaining);
                     $('#edit_sick_remaining').val(a.sick_remaining);
                     $('#edit_comp_off_allocated').val(a.comp_off_allocated);

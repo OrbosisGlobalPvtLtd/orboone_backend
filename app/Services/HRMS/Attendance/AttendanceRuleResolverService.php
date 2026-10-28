@@ -851,19 +851,18 @@ class AttendanceRuleResolverService
         $warningAfter = $this->timeOnDate($policy->warning_after_time ?? null, $now);
         $halfDayAfter = $this->timeOnDate($policy->half_day_after_time ?? null, $now);
         $shiftEnd = $this->timeOnDate($policy->shift_end_time ?? null, $now);
-        // Punch-in window closes strictly AFTER the shift ends. During the shift, punches (late or half-day) are permitted.
-        $blockAfter = $shiftEnd ?: $this->timeOnDate($policy->block_after_time ?? null, $now);
+        $blockAfter = $this->timeOnDate(($policy->block_after_time ?? null) ?: ($policy->half_day_after_time ?? null), $now);
 
         $shiftType = strtolower((string) ($policy?->shift_type ?? 'fixed'));
-        $isDynamicHours = $shiftType === 'dynamic_hours';
-        $isFlexible = $shiftType === 'flexible_part_time';
-        $isDynamicOrFlexible = $isDynamicHours || $isFlexible;
+        $policyName = strtolower((string) ($policy?->name ?? $policy?->policy_name ?? ''));
+        $isDynamicHours = $shiftType === 'dynamic_hours' || str_contains($shiftType, 'dynamic') || str_contains($policyName, 'dynamic');
+        $isFlexible = $shiftType === 'flexible_part_time' || str_contains($shiftType, 'flexible') || str_contains($policyName, 'flexible');
 
         $isBeforeEarlyLogin = ($earlyLoginFrom && ! $isDynamicHours) ? $now->lt($earlyLoginFrom) : false;
         $isAfterShiftEnd = ($shiftEnd && ! $isDynamicHours) ? $now->gt($shiftEnd) : false;
         $isBlocked = ($blockAfter && ! $isDynamicHours) ? $now->gt($blockAfter) : false;
 
-        $isHalfDayPunch = (! $isDynamicOrFlexible && $halfDayAfter)
+        $isHalfDayPunch = (! $isDynamicHours && $halfDayAfter)
             ? $now->gte($halfDayAfter)
             : false;
 
@@ -871,8 +870,8 @@ class AttendanceRuleResolverService
             'is_before_early_login' => $isBeforeEarlyLogin,
             'is_before_allowed_from' => $isBeforeEarlyLogin,
             'is_before_shift_start' => ($shiftStart && ! $isDynamicHours) ? $now->lt($shiftStart) : false,
-            'is_late' => ! $isDynamicOrFlexible && $lateAfter ? $now->gt($lateAfter) : false,
-            'is_warning' => ! $isDynamicOrFlexible && $warningAfter && $blockAfter ? $now->betweenIncluded($warningAfter, $blockAfter) : false,
+            'is_late' => ! $isDynamicHours && $lateAfter ? $now->gt($lateAfter) : false,
+            'is_warning' => ! $isDynamicHours && $warningAfter && $blockAfter ? $now->betweenIncluded($warningAfter, $blockAfter) : false,
             'is_half_day_punch' => $isHalfDayPunch,
             'is_blocked' => $isBlocked,
             'is_after_shift_end' => $isAfterShiftEnd,
@@ -1006,16 +1005,16 @@ class AttendanceRuleResolverService
         $required = (int) ($policy?->required_work_minutes ?? 0);
         $halfDay = (int) ($policy?->half_day_min_minutes ?? 0);
         $absentBelow = (int) ($policy?->absent_below_minutes ?? 0);
-        $violationLimit = $isDynamicOrFlexible ? 0 : (int) ($policy?->combined_violation_limit ?? 0);
-        $violationCount = $isDynamicOrFlexible ? 0 : ((int) $attendance->is_late + (int) $work['is_early_out']);
-
-        $effectiveHalfDayMin = $halfDay > 0 ? $halfDay : ($required > 0 ? (int)($required / 2) : 240);
-        $effectiveAbsentBelow = $absentBelow;
-
         $isPreExistingHalfDay = (bool) ($attendance->leave_request_id !== null
             || (bool) $attendance->is_half_day
             || $attendance->half_day_reason === 'approved_half_day_leave'
             || in_array(strtolower((string) $attendance->attendance_status), ['half_day', 'half_leave', 'first_half_leave', 'second_half_leave'], true));
+
+        $violationLimit = $isDynamicOrFlexible ? 0 : (int) ($policy?->combined_violation_limit ?? 0);
+        $violationCount = ($isDynamicOrFlexible || $isPreExistingHalfDay) ? 0 : ((int) $attendance->is_late + (int) $work['is_early_out']);
+
+        $effectiveHalfDayMin = $halfDay > 0 ? $halfDay : ($required > 0 ? (int)($required / 2) : 240);
+        $effectiveAbsentBelow = $absentBelow;
 
         $isPreExistingLwp = ! $isPreExistingHalfDay
             && ((bool) $attendance->is_lwp

@@ -249,7 +249,7 @@
             if (exportType === 'print') {
                 const printWindow = window.open('', '', 'height=700,width=950');
                 printWindow.document.write('<html><head><title>Shift Assignments</title>');
-                printWindow.document.write('<style>body{font-family:sans-serif;padding:20px;} table{width:100%;border-collapse:collapse;margin-top:14px;font-size:12px;} th,td{border:1px solid #ddd;padding:8px 10px;text-align:left;} th{background:#f8f9fa;font-weight:bold;} .badge{background:transparent!important;border:none!important;padding:0!important;font-weight:600;} .hrms-emp-avatar{display:none;}</style>');
+                printWindow.document.write('<style>body{font-family:sans-serif;padding:20px;} table{width:100%;border-collapse:collapse;margin-top:14px;font-size:12px;} th,td{border:1px solid #ddd;padding:8px 10px;text-align:left;} th{background:#f8f9fa;font-weight:bold;} .badge{background:transparent!important;border:none!important;padding:0!important;font-weight:600;} .hrms-emp-avatar, .att-avatar, .leave-avatar{display:none!important;}</style>');
                 printWindow.document.write('</head><body>');
                 printWindow.document.write('<h2 style="margin:0 0 4px 0;color:#101828;">Shift Assignments List</h2>');
                 printWindow.document.write('<p style="margin:0 0 16px 0;color:#667085;font-size:13px;">Generated on ' + new Date().toLocaleDateString() + '</p>');
@@ -271,7 +271,9 @@
                 for (let i = 0; i < rows.length; i++) {
                     let row = [], cols = rows[i].querySelectorAll('td, th');
                     for (let j = 0; j < cols.length - 1; j++) { // Omit actions
-                        let text = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, ' ').replace(/\s+/g, ' ').trim();
+                        let cloneCol = cols[j].cloneNode(true);
+                        cloneCol.querySelectorAll('.hrms-emp-avatar, .att-avatar, .leave-avatar, style, script').forEach(el => el.remove());
+                        let text = cloneCol.innerText.replace(/(\r\n|\n|\r)/gm, ' ').replace(/\s+/g, ' ').trim();
                         text = text.replace(/"/g, '""');
                         row.push('"' + text + '"');
                     }
@@ -317,7 +319,9 @@
                     if (tdCols.length > 1) {
                         const rowData = [];
                         for (let j = 0; j < tdCols.length - 1; j++) { // omit Actions
-                            let cellText = tdCols[j].innerText.replace(/(\r\n|\n|\r)/gm, ' ').replace(/\s+/g, ' ').trim();
+                            let cloneCol = tdCols[j].cloneNode(true);
+                            cloneCol.querySelectorAll('.hrms-emp-avatar, .att-avatar, .leave-avatar, style, script').forEach(el => el.remove());
+                            let cellText = cloneCol.innerText.replace(/(\r\n|\n|\r)/gm, ' ').replace(/\s+/g, ' ').trim();
                             rowData.push({
                                 text: cellText || '-',
                                 fontSize: 7.5,

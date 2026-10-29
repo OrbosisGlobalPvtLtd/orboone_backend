@@ -62,14 +62,14 @@
                 </td>
                 <td class="py-3 px-4">
                     <div class="att-emp">
-                        <span class="hrms-emp-avatar hrms-emp-avatar-sm mr-2">
+                        <div class="att-avatar mr-2">
                             @if($passportPhotoUrl)
-                                <img src="{{ $passportPhotoUrl }}" alt="{{ $employeeName }}" class="hrms-emp-avatar-img" onerror="this.style.display='none'; this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.remove('is-hidden'); this.parentElement.querySelector('.hrms-emp-avatar-fallback').classList.add('is-visible');">
-                                <span class="hrms-emp-avatar-fallback is-hidden">{{ $employeeInitial }}</span>
+                                <img src="{{ $passportPhotoUrl }}" alt="{{ $employeeName }}" onerror="this.style.setProperty('display', 'none', 'important'); this.nextElementSibling.style.setProperty('display', 'inline-flex', 'important');">
+                                <span style="display: none !important;">{{ $employeeInitial }}</span>
                             @else
-                                <span class="hrms-emp-avatar-fallback is-visible">{{ $employeeInitial }}</span>
+                                <span>{{ $employeeInitial }}</span>
                             @endif
-                        </span>
+                        </div>
                         <div>
                             <div class="att-emp-name">{{ $employeeName }}</div>
                             <div class="att-emp-code">{{ $emp->employee_code }}</div>

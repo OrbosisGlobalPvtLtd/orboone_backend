@@ -403,4 +403,54 @@
     [id^="editShiftModal"] .modal-body::-webkit-scrollbar-thumb:hover {
         background: #94A3B8;
     }
+
+    /* Employee Avatar Standard Badge (Matching Attendance & Leave Allocation) */
+    .att-emp {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+    }
+
+    .att-avatar {
+        width: 38px !important;
+        height: 38px !important;
+        min-width: 38px !important;
+        max-width: 38px !important;
+        border-radius: 12px !important;
+        background: linear-gradient(135deg, var(--orb-primary, #4B00E8), var(--orb-secondary, #FF5252)) !important;
+        color: #ffffff !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-weight: 900 !important;
+        font-size: 14px !important;
+        flex-shrink: 0 !important;
+        overflow: hidden !important;
+        text-transform: uppercase !important;
+        box-shadow: 0 2px 8px rgba(75, 0, 232, 0.12) !important;
+        line-height: 1 !important;
+        position: relative !important;
+    }
+
+    .att-avatar img {
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover !important;
+        display: block !important;
+        border-radius: inherit !important;
+    }
+
+    .att-avatar span {
+        width: 100%;
+        height: 100%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #ffffff !important;
+        font-weight: 900 !important;
+        font-size: 14px !important;
+        text-transform: uppercase !important;
+        line-height: 1;
+    }
 </style>

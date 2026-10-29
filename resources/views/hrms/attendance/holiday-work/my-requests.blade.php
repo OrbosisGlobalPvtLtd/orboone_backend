@@ -2,6 +2,28 @@
 
 @section('_head')
 @include('hrms.enterprise-payroll.partials.styles')
+<style>
+#editHolidayWorkModal .orbo-date-picker,
+#editHolidayWorkModal .orbo-date-picker-display,
+#editHolidayWorkModal input[data-date-picker] {
+    height: 42px !important;
+    border-radius: 10px !important;
+    padding-left: 12px !important;
+    padding-right: 38px !important;
+    background-color: #ffffff !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236366F1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 14px center !important;
+    background-size: 16px 16px !important;
+    cursor: pointer !important;
+}
+
+#editHolidayWorkModal .orbo-date-picker-display:focus {
+    border-color: var(--orb-primary, #4B00E8) !important;
+    box-shadow: 0 0 0 3px rgba(75, 0, 232, .1) !important;
+    outline: none !important;
+}
+</style>
 @endsection
 
 @section('_content')
@@ -157,84 +179,12 @@
 <!-- ==================================================
      APPLY HOLIDAY WORK REQUEST MODAL
      ================================================== -->
-<div class="modal fade" id="applyHolidayWorkModal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-md modal-dialog-centered" role="document">
-        <form method="POST" action="{{ route('hrms.attendance.my-holiday-work.store') }}" class="modal-content ep-form border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
-            @csrf
-            <div class="ep-modal-header" style="background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%); color: #fff; padding: 20px 24px;">
-                <h5 class="modal-title font-weight-bold text-white mb-1"><i class="fas fa-calendar-plus mr-2"></i> Apply Holiday Work Request</h5>
-                <p class="mb-0 text-white-50" style="font-size: 13px;">Submit details of holiday/weekoff work for HR approval.</p>
-                <button type="button" class="close text-white opacity-100" data-dismiss="modal" style="margin-top: -30px;"><span>&times;</span></button>
-            </div>
-            <div class="ep-modal-body" style="padding: 24px;">
-                <div class="row">
-                    <div class="col-md-6 col-12">
-                        <div class="ep-form-group mb-3">
-                            <label class="font-weight-bold text-dark mb-1" style="font-size: 13px;">Work Type <span class="text-danger">*</span></label>
-                            <select name="work_type" id="work_type" class="form-control shadow-none select2-modal-searchable" style="border-radius: 10px; height: 42px;" required>
-                                <option value="">Select Work Type</option>
-                                <option value="holiday_work" @selected(old('work_type') === 'holiday_work')>Holiday Work</option>
-                                <option value="weekoff_work" @selected(old('work_type') === 'weekoff_work')>Week-Off Work</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-6 col-12">
-                        <div class="ep-form-group mb-3">
-                            <label class="font-weight-bold text-dark mb-1" style="font-size: 13px;">Work Mode <span class="text-danger">*</span></label>
-                            <select name="work_mode" class="form-control shadow-none select2-modal-searchable" style="border-radius: 10px; height: 42px;" required>
-                                <option value="wfo" @selected(old('work_mode') === 'wfo')>WFO (Work From Office)</option>
-                                <option value="wfh" @selected(old('work_mode') === 'wfh')>WFH (Work From Home)</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="ep-form-group mb-3">
-                    <label class="font-weight-bold text-dark mb-1" style="font-size: 13px;">Worked Dates <span class="text-danger">*</span></label>
-                    <div id="worked-dates-container">
-                        @if(old('worked_dates') && is_array(old('worked_dates')))
-                            @foreach(old('worked_dates') as $index => $oldDate)
-                                <div class="worked-date-row d-flex align-items-center mb-2">
-                                    <input type="date" name="worked_dates[]" class="form-control shadow-none" required value="{{ $oldDate }}" style="flex: 1; border-radius: 10px; height: 42px; @if($index > 0) margin-right: 8px; @endif">
-                                    @if($index > 0)
-                                        <button type="button" class="btn btn-outline-danger remove-date-btn" style="height: 42px; width: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; padding: 0;" onclick="this.closest('.worked-date-row').remove();">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                    @endif
-                                </div>
-                            @endforeach
-                        @else
-                            <div class="worked-date-row d-flex align-items-center mb-2">
-                                <input type="date" name="worked_dates[]" class="form-control shadow-none" style="border-radius: 10px; height: 42px;" required value="{{ date('Y-m-d') }}">
-                            </div>
-                        @endif
-                    </div>
-                    <button type="button" id="add-date-btn" class="btn btn-sm btn-light border shadow-sm font-weight-bold text-primary mt-1" style="border-radius: 8px; padding: 6px 14px; font-size: 12px;">
-                        <i class="fas fa-plus-circle mr-1"></i> Add Date
-                    </button>
-                </div>
-
-                <!-- Hidden default work times -->
-                <input type="hidden" name="start_time" value="09:00">
-                <input type="hidden" name="end_time" value="18:00">
-
-                <div class="ep-form-group mb-3">
-                    <label class="font-weight-bold text-dark mb-1" style="font-size: 13px;">Reason / Work Summary <span class="text-danger">*</span></label>
-                    <textarea class="form-control shadow-none" name="reason" rows="3" style="border-radius: 10px;" required placeholder="Describe the reason or tasks completed...">{{ old('reason') }}</textarea>
-                </div>
-
-                <div class="ep-form-group mb-0">
-                    <label class="font-weight-bold text-dark mb-1" style="font-size: 13px;">Additional Notes</label>
-                    <textarea class="form-control shadow-none" name="notes" rows="2" style="border-radius: 10px;" placeholder="Any additional notes...">{{ old('notes') }}</textarea>
-                </div>
-            </div>
-            <div class="ep-modal-footer bg-light" style="padding: 16px 24px; border-top: 1px solid #E5E7EB;">
-                <button type="button" class="btn btn-light border font-weight-bold" data-dismiss="modal" style="border-radius: 10px; padding: 8px 18px;">Cancel</button>
-                <button class="btn btn-primary font-weight-bold border-0 shadow-sm" style="border-radius: 10px; padding: 8px 22px; background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);"><i class="fas fa-check mr-1"></i> Submit Request</button>
-            </div>
-        </form>
-    </div>
-</div>
+@include('hrms.attendance.holiday-work.partials.apply-work-modal', [
+    'modalId' => 'applyHolidayWorkModal',
+    'isAdmin' => false,
+    'action' => route('hrms.attendance.my-holiday-work.store'),
+    'currentEmployee' => $employee ?? auth()->user()?->employee,
+])
 
 <!-- ==================================================
      VIEW DETAILS MODAL
@@ -348,7 +298,7 @@
 
                 <div class="ep-form-group mb-3">
                     <label class="font-weight-bold text-dark mb-1" style="font-size: 13px;">Worked Date <span class="text-danger">*</span></label>
-                    <input type="text" data-date-picker name="worked_date" id="edit_worked_date" class="form-control shadow-none orbo-date-picker" placeholder="dd-mm-yyyy" style="border-radius: 10px; height: 42px;" required>
+                    <x-form.date-picker name="worked_date" id="edit_worked_date" required placeholder="dd-mm-yyyy" class="shadow-none" style="border-radius: 10px; height: 42px;" />
                 </div>
 
                 <div class="ep-form-group mb-3">
@@ -447,10 +397,16 @@
                 document.getElementById('editHolidayWorkForm').setAttribute('action', updateUrl);
                 document.getElementById('edit_work_type').value = row.work_type || 'holiday_work';
                 
-                // Parse date cleanly into YYYY-MM-DD format for HTML date input
+                // Parse date cleanly into YYYY-MM-DD format
                 var rawDate = (row.worked_date || '').toString();
                 var cleanDate = rawDate.split('T')[0].split(' ')[0];
-                document.getElementById('edit_worked_date').value = cleanDate;
+                var editDateInput = document.getElementById('edit_worked_date');
+                if (editDateInput) {
+                    editDateInput.value = cleanDate;
+                    if (editDateInput._flatpickr) {
+                        editDateInput._flatpickr.setDate(cleanDate, true);
+                    }
+                }
 
                 document.getElementById('edit_work_mode').value = (row.work_mode || 'wfo').toLowerCase();
                 document.getElementById('edit_reason').value = row.reason || '';
@@ -458,48 +414,6 @@
                 $('#editHolidayWorkModal').modal('show');
             });
         });
-
-        // Dynamic worked dates rows builder
-        var container = document.getElementById('worked-dates-container');
-        var addBtn = document.getElementById('add-date-btn');
-        if (addBtn && container) {
-            addBtn.addEventListener('click', function() {
-                var row = document.createElement('div');
-                row.className = 'worked-date-row d-flex align-items-center mb-2';
-                
-                var input = document.createElement('input');
-                input.type = 'date';
-                input.name = 'worked_dates[]';
-                input.className = 'form-control';
-                input.required = true;
-                input.style.flex = '1';
-                input.style.marginRight = '8px';
-                
-                var today = new Date();
-                var yyyy = today.getFullYear();
-                var mm = String(today.getMonth() + 1).padStart(2, '0');
-                var dd = String(today.getDate()).padStart(2, '0');
-                input.value = yyyy + '-' + mm + '-' + dd;
-                
-                var removeBtn = document.createElement('button');
-                removeBtn.type = 'button';
-                removeBtn.className = 'btn btn-outline-danger remove-date-btn';
-                removeBtn.style.height = 'calc(1.5em + .75rem + 2px)';
-                removeBtn.style.display = 'flex';
-                removeBtn.style.alignItems = 'center';
-                removeBtn.style.justifyContent = 'center';
-                removeBtn.style.padding = '0 12px';
-                removeBtn.innerHTML = '<i class="fas fa-times"></i>';
-                
-                removeBtn.addEventListener('click', function() {
-                    row.remove();
-                });
-                
-                row.appendChild(input);
-                row.appendChild(removeBtn);
-                container.appendChild(row);
-            });
-        }
 
         function strContains(str, search) {
             return str.toLowerCase().indexOf(search.toLowerCase()) !== -1;

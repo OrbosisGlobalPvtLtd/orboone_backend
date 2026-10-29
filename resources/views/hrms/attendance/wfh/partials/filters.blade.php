@@ -25,8 +25,20 @@
     <form method="GET" action="{{ route('hrms.attendance.wfh.index') }}" class="orb-filter-form" id="wfhFilterForm">
         <input type="hidden" name="per_page" value="{{ request('per_page', 25) }}">
         @php
-            $currentMonthKey = \Carbon\Carbon::now('Asia/Kolkata')->format('Y-m');
+            $currentYear = \Carbon\Carbon::now('Asia/Kolkata')->format('Y');
+            $currentMonth = \Carbon\Carbon::now('Asia/Kolkata')->format('m');
+            $reqYear = request('year');
             $reqMonth = request('month');
+
+            if ($reqMonth && str_contains($reqMonth, '-')) {
+                [$pYear, $pMonth] = explode('-', $reqMonth, 2);
+                $reqYear = $pYear;
+                $reqMonth = $pMonth;
+            }
+            if ($reqMonth && is_numeric($reqMonth)) {
+                $reqMonth = str_pad((string) ((int) $reqMonth), 2, '0', STR_PAD_LEFT);
+            }
+
             $hasCustomDates = request()->filled('from') || request()->filled('from_date') || request()->filled('to') || request()->filled('to_date');
 
             if ($hasCustomDates || $reqMonth === 'custom') {
@@ -34,8 +46,9 @@
             } elseif ($reqMonth !== null) {
                 $activeMonth = $reqMonth;
             } else {
-                $activeMonth = $currentMonthKey;
+                $activeMonth = $activeMonth ?? $currentMonth;
             }
+            $activeYear = $reqYear ?: ($activeYear ?? $currentYear);
 
             $empOptions = [
                 'all' => 'All Employees',
@@ -91,6 +104,30 @@
 
         <div class="orb-filter-item">
             <x-form.select 
+                name="year"
+                id="wfh_filter_year"
+                label="Year"
+                :options="$years ?? []"
+                :selected="$activeYear"
+                :searchable="true"
+                wrapper-class="mb-0"
+            />
+        </div>
+
+        <div class="orb-filter-item">
+            <x-form.select 
+                name="month"
+                id="wfh_filter_month"
+                label="Month"
+                :options="$monthOptions ?? []"
+                :selected="$activeMonth"
+                :searchable="true"
+                wrapper-class="mb-0"
+            />
+        </div>
+
+        <div class="orb-filter-item">
+            <x-form.select 
                 name="status"
                 label="Status"
                 :options="$statusOptions"
@@ -125,18 +162,6 @@
             />
         </div>
 
-        <div class="orb-filter-item">
-            <x-form.select 
-                name="month"
-                id="wfh_filter_month"
-                label="Month"
-                :options="$monthOptions ?? []"
-                :selected="$activeMonth"
-                :searchable="true"
-                wrapper-class="mb-0"
-            />
-        </div>
-
         <div class="orb-filter-item js-custom-date-field" style="{{ $activeMonth !== 'custom' ? 'display: none;' : '' }}">
             <div class="orb-form-group">
                 <label class="orb-form-label">Date From</label>
@@ -155,7 +180,7 @@
             <button type="submit" class="orb-btn orb-btn-search">
                 <i class="fas fa-search"></i> Search
             </button>
-            <a href="{{ route('hrms.attendance.wfh.index') }}?month={{ \Carbon\Carbon::now('Asia/Kolkata')->format('Y-m') }}" class="orb-btn orb-btn-reset" title="Reset Filters">
+            <a href="{{ route('hrms.attendance.wfh.index') }}?year={{ \Carbon\Carbon::now('Asia/Kolkata')->format('Y') }}&month={{ \Carbon\Carbon::now('Asia/Kolkata')->format('m') }}" class="orb-btn orb-btn-reset" title="Reset Filters">
                 <i class="fas fa-undo"></i> Reset
             </a>
         </div>

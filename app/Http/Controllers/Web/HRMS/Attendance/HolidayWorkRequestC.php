@@ -64,24 +64,92 @@ class HolidayWorkRequestC extends Controller
         $fromDate = $request->input('from_date') ?: $request->input('from');
         $toDate = $request->input('to_date') ?: $request->input('to');
         $month = $request->input('month');
+        $year = $request->input('year');
 
-        if ($month === null && !$fromDate && !$toDate && !$request->has('reset')) {
-            $month = now()->format('Y-m');
+        // Backward compatibility if month contains '2026-10'
+        if ($month && str_contains($month, '-')) {
+            [$pYear, $pMonth] = explode('-', $month, 2);
+            $year = $pYear;
+            $month = $pMonth;
         }
 
-        if ($fromDate || $toDate) {
+        // Default to current year & month if not specified and not a reset request
+        if ($month === null && !$year && !$fromDate && !$toDate && !$request->has('reset')) {
+            $month = now()->format('m');
+            $year = now()->format('Y');
+        } elseif (!$year && $month && $month !== 'all' && $month !== 'custom') {
+            $year = now()->format('Y');
+        }
+
+        if ($month && is_numeric($month)) {
+            $month = str_pad((string) ((int) $month), 2, '0', STR_PAD_LEFT);
+        }
+
+        if ($fromDate || $toDate || $month === 'custom') {
             if ($fromDate) {
-                $query->whereDate('holiday_work_requests.worked_date', '>=', $fromDate);
+                $query->where(function ($q) use ($fromDate) {
+                    $q->whereDate('holiday_work_requests.worked_date', '>=', $fromDate)
+                      ->orWhereDate('holiday_work_requests.created_at', '>=', $fromDate);
+                });
             }
             if ($toDate) {
-                $query->whereDate('holiday_work_requests.worked_date', '<=', $toDate);
+                $query->where(function ($q) use ($toDate) {
+                    $q->whereDate('holiday_work_requests.worked_date', '<=', $toDate)
+                      ->orWhereDate('holiday_work_requests.created_at', '<=', $toDate);
+                });
             }
         } elseif ($month && $month !== 'all' && $month !== 'custom') {
             try {
-                $monthDate = Carbon::parse($month . '-01');
-                $startOfMonth = $monthDate->copy()->startOfMonth()->toDateString();
-                $endOfMonth = $monthDate->copy()->endOfMonth()->toDateString();
-                $query->whereBetween('holiday_work_requests.worked_date', [$startOfMonth, $endOfMonth]);
+                $monthInt = (int) $month;
+                if ($year && $year !== 'all') {
+                    $targetYear = (int) $year;
+                    $monthDate = Carbon::create($targetYear, $monthInt, 1);
+                    $startOfMonth = $monthDate->copy()->startOfMonth()->toDateString();
+                    $endOfMonth = $monthDate->copy()->endOfMonth()->toDateString();
+
+                    $currentMonthStart = now()->startOfMonth()->toDateString();
+                    $isCurrentMonth = ($startOfMonth === $currentMonthStart);
+
+                    if ($isCurrentMonth) {
+                        // Current month selected: show requests worked in current month + requests applied in current month (including upcoming ones like Nov 1) + all future requests
+                        $query->where(function ($q) use ($startOfMonth) {
+                            $q->whereDate('holiday_work_requests.worked_date', '>=', $startOfMonth)
+                              ->orWhereDate('holiday_work_requests.created_at', '>=', $startOfMonth);
+                        });
+                    } else {
+                        // Specific month: show requests worked in that month OR requested in that month
+                        $query->where(function ($q) use ($startOfMonth, $endOfMonth) {
+                            $q->whereBetween('holiday_work_requests.worked_date', [$startOfMonth, $endOfMonth])
+                              ->orWhereBetween(DB::raw('DATE(holiday_work_requests.created_at)'), [$startOfMonth, $endOfMonth]);
+                        });
+                    }
+                } else {
+                    // Specific month, All years
+                    $query->where(function ($q) use ($monthInt) {
+                        $q->whereMonth('holiday_work_requests.worked_date', $monthInt)
+                          ->orWhereMonth('holiday_work_requests.created_at', $monthInt);
+                    });
+                }
+            } catch (\Exception $e) {
+                // Ignore parse errors
+            }
+        } elseif ($year && $year !== 'all') {
+            try {
+                $startOfYear = "{$year}-01-01";
+                $endOfYear = "{$year}-12-31";
+                $currentYear = now()->format('Y');
+
+                if ((string) $year === $currentYear) {
+                    $query->where(function ($q) use ($startOfYear) {
+                        $q->whereDate('holiday_work_requests.worked_date', '>=', $startOfYear)
+                          ->orWhereDate('holiday_work_requests.created_at', '>=', $startOfYear);
+                    });
+                } else {
+                    $query->where(function ($q) use ($startOfYear, $endOfYear) {
+                        $q->whereBetween('holiday_work_requests.worked_date', [$startOfYear, $endOfYear])
+                          ->orWhereBetween(DB::raw('DATE(holiday_work_requests.created_at)'), [$startOfYear, $endOfYear]);
+                    });
+                }
             } catch (\Exception $e) {
                 // Ignore parse errors
             }
@@ -123,10 +191,12 @@ class HolidayWorkRequestC extends Controller
         $ownEmployeeId = $scope['ownEmployeeId'];
 
         $rules = [
-            'worked_date' => 'required|date',
+            'worked_date' => 'nullable|date',
+            'worked_dates' => 'nullable|array',
             'work_type' => 'required|string|in:holiday_work,weekoff_work',
             'work_mode' => 'nullable|string|in:wfo,wfh,WFO,WFH',
             'reason' => 'required|string|max:1000',
+            'notes' => 'nullable|string|max:1000',
         ];
 
         if ($isHrOrAdmin) {
@@ -143,37 +213,50 @@ class HolidayWorkRequestC extends Controller
         $status = $isHrOrAdmin ? ($data['status'] ?? 'pending') : 'pending';
         $workMode = strtolower($data['work_mode'] ?? 'wfo');
 
-        // Prevent duplicate request for the same date if already pending or approved
-        $exists = HolidayWorkRequestM::where('employee_id', $targetEmployeeId)
-            ->whereDate('worked_date', $data['worked_date'])
-            ->whereIn('status', ['pending', 'approved'])
-            ->whereNull('deleted_at')
-            ->exists();
+        $dates = $request->input('worked_dates') ?: ($request->input('worked_date') ? [$request->input('worked_date')] : []);
+        $dates = array_filter(array_unique($dates));
 
-        if ($exists) {
-            return back()->withInput()->with('error', 'A request for this date already exists and is pending/approved.');
+        if (empty($dates)) {
+            return back()->withInput()->with('error', 'Please select at least one worked date.');
         }
 
-        $row = HolidayWorkRequestM::create([
-            'employee_id' => $targetEmployeeId,
-            'worked_date' => $data['worked_date'],
-            'work_type' => $data['work_type'],
-            'work_mode' => $workMode,
-            'reason' => $data['reason'],
-            'status' => $status,
-        ]);
+        $createdCount = 0;
+        foreach ($dates as $dateStr) {
+            $workedDate = Carbon::parse($dateStr)->toDateString();
 
-        if ($row->status === 'pending') {
-            try {
-                $employee = EmployeeM::find($row->employee_id);
-                if ($employee) {
-                    $notificationService = app(NotificationS::class);
-                    $employeeName = $employee->display_name;
-                    $workTypeLabel = str_contains(strtolower($row->work_type), 'weekoff') ? 'Weekoff' : 'Holiday';
-                    $formattedDate = Carbon::parse($row->worked_date)->format('d M Y');
-                    
-                    $title = "New Work Request Submitted";
-                    $message = "{$employeeName} submitted a {$workTypeLabel} work request for {$formattedDate}.";
+            // Prevent duplicate request for the same date if already pending or approved
+            $exists = HolidayWorkRequestM::where('employee_id', $targetEmployeeId)
+                ->whereDate('worked_date', $workedDate)
+                ->whereIn('status', ['pending', 'approved'])
+                ->whereNull('deleted_at')
+                ->exists();
+
+            if ($exists) {
+                continue;
+            }
+
+            $row = HolidayWorkRequestM::create([
+                'employee_id' => $targetEmployeeId,
+                'worked_date' => $workedDate,
+                'work_type' => $data['work_type'],
+                'work_mode' => $workMode,
+                'reason' => $data['reason'],
+                'notes' => $data['notes'] ?? null,
+                'status' => $status,
+            ]);
+            $createdCount++;
+
+            if ($row->status === 'pending') {
+                try {
+                    $employee = EmployeeM::find($row->employee_id);
+                    if ($employee) {
+                        $notificationService = app(NotificationS::class);
+                        $employeeName = $employee->display_name;
+                        $workTypeLabel = str_contains(strtolower($row->work_type), 'weekoff') ? 'Weekoff' : 'Holiday';
+                        $formattedDate = Carbon::parse($row->worked_date)->format('d M Y');
+                        
+                        $title = "New Work Request Submitted";
+                        $message = "{$employeeName} submitted a {$workTypeLabel} work request for {$formattedDate}.";
                         $actionUrl = route('hrms.attendance.holiday_work.index', [], false);
                         
                         $notificationService->notifyHrAndSuperAdmin(
@@ -197,8 +280,13 @@ class HolidayWorkRequestC extends Controller
                     Log::error("Failed to send web submission notification for request #{$row->id}: " . $e->getMessage());
                 }
             }
+        }
 
-            return back()->with('success', 'Holiday work request saved successfully.');
+        if ($createdCount === 0) {
+            return back()->withInput()->with('error', 'A request for the selected date(s) already exists and is pending/approved.');
+        }
+
+        return back()->with('success', 'Holiday work request saved successfully.');
         }
 
         public function update(Request $request, int|string $id)
@@ -415,46 +503,46 @@ class HolidayWorkRequestC extends Controller
 
         $request->delete();
 
-        return back()->with('success', 'Holiday work request deleted.');
-    }
+                return back()->with('success', 'Holiday work request deleted.');
+            }
 
-    private function resolveUserScope(): array
-    {
-        /** @var User|null $user */
-        $user = Auth::user();
-        $isEmployeeRole = $user && method_exists($user, 'hasRole') && $user->hasRole('employee') && ! $user->hasRole(['super_admin', 'super admin', 'admin', 'hr_admin', 'hr admin', 'hr', 'manager']);
-        $roleId = (int) ($user->system_role_id ?? $user->role_id ?? 0);
-        $roleName = strtolower($user->role->name ?? '');
-        $isSuperAdmin = (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) || in_array($roleId, [1, 2], true);
-        $isHrOrAdmin = ! $isEmployeeRole && ($isSuperAdmin || in_array($roleId, [1, 2, 3], true) || in_array($roleName, ['admin', 'super_admin', 'hr_admin', 'hr admin', 'hr', 'human resources'], true));
-        
-        $teamSubordinateIds = $this->teamEmployeeIds(false);
-        $isManager = ! $isHrOrAdmin && (! empty($teamSubordinateIds) || $this->userHasPermission('attendance.holiday_work.view_team') || (method_exists($user, 'hasRole') && $user->hasRole(['manager', 'lead', 'team_lead'])));
+            private function resolveUserScope(): array
+            {
+                /** @var User|null $user */
+                $user = Auth::user();
+                $isEmployeeRole = $user && method_exists($user, 'hasRole') && $user->hasRole('employee') && ! $user->hasRole(['super_admin', 'super admin', 'admin', 'hr_admin', 'hr admin', 'hr', 'manager']);
+                $roleId = (int) ($user->system_role_id ?? $user->role_id ?? 0);
+                $roleName = strtolower($user->role->name ?? '');
+                $isSuperAdmin = (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) || in_array($roleId, [1, 2], true);
+                $isHrOrAdmin = ! $isEmployeeRole && ($isSuperAdmin || in_array($roleId, [1, 2, 3], true) || in_array($roleName, ['admin', 'super_admin', 'hr_admin', 'hr admin', 'hr', 'human resources'], true));
+                
+                $teamSubordinateIds = $this->teamEmployeeIds(false);
+                $isManager = ! $isHrOrAdmin && (! empty($teamSubordinateIds) || $this->userHasPermission('attendance.holiday_work.view_team') || (method_exists($user, 'hasRole') && $user->hasRole(['manager', 'lead', 'team_lead'])));
 
-        $canApprove = ! $isEmployeeRole && ($isHrOrAdmin || $isManager || $this->userHasPermission('attendance.holiday_work.approve'));
-        $canReject = ! $isEmployeeRole && ($isHrOrAdmin || $isManager || $this->userHasPermission('attendance.holiday_work.reject'));
-        $currentEmployee = $this->currentEmployee();
-        $ownEmployeeId = $currentEmployee ? (int) $currentEmployee->id : null;
-        $isEmployee = $isEmployeeRole || (! $isHrOrAdmin && ! $isManager);
+                $canApprove = ! $isEmployeeRole && ($isHrOrAdmin || $isManager || $this->userHasPermission('attendance.holiday_work.approve'));
+                $canReject = ! $isEmployeeRole && ($isHrOrAdmin || $isManager || $this->userHasPermission('attendance.holiday_work.reject'));
+                $currentEmployee = $this->currentEmployee();
+                $ownEmployeeId = $currentEmployee ? (int) $currentEmployee->id : null;
+                $isEmployee = $isEmployeeRole || (! $isHrOrAdmin && ! $isManager);
 
-        return [
-            'user' => $user,
-            'isEmployeeRole' => $isEmployeeRole,
-            'isSuperAdmin' => $isSuperAdmin,
-            'isHrOrAdmin' => $isHrOrAdmin,
-            'canApprove' => $canApprove,
-            'canReject' => $canReject,
-            'isManager' => $isManager,
-            'currentEmployee' => $currentEmployee,
-            'ownEmployeeId' => $ownEmployeeId,
-            'isEmployee' => $isEmployee,
-        ];
-    }
+                return [
+                    'user' => $user,
+                    'isEmployeeRole' => $isEmployeeRole,
+                    'isSuperAdmin' => $isSuperAdmin,
+                    'isHrOrAdmin' => $isHrOrAdmin,
+                    'canApprove' => $canApprove,
+                    'canReject' => $canReject,
+                    'isManager' => $isManager,
+                    'currentEmployee' => $currentEmployee,
+                    'ownEmployeeId' => $ownEmployeeId,
+                    'isEmployee' => $isEmployee,
+                ];
+            }
 
-    private function pageData(
-        mixed $rows,
-        bool $isHrOrAdmin,
-        bool $isManager,
+            private function pageData(
+                mixed $rows,
+                bool $isHrOrAdmin,
+                bool $isManager,
         bool $isEmployee,
         bool $canApprove,
         bool $canReject,
@@ -479,15 +567,24 @@ class HolidayWorkRequestC extends Controller
             $createEmployees = $filterEmployees;
         }
 
+        $years = ['all' => 'All Years'] + get_filter_years(1, 4);
+
         $months = [
-            'custom' => 'Custom Date Range',
             'all' => 'All Months',
+            'custom' => 'Custom Date Range',
+            '01' => 'January',
+            '02' => 'February',
+            '03' => 'March',
+            '04' => 'April',
+            '05' => 'May',
+            '06' => 'June',
+            '07' => 'July',
+            '08' => 'August',
+            '09' => 'September',
+            '10' => 'October',
+            '11' => 'November',
+            '12' => 'December',
         ];
-        for ($i = 0; $i < 24; $i++) {
-            $m = Carbon::now()->subMonths($i);
-            $key = $m->format('Y-m');
-            $months[$key] = $m->format('F Y') . ($i === 0 ? ' (Current)' : '');
-        }
 
         $filters = [];
         $filters[] = [
@@ -498,7 +595,8 @@ class HolidayWorkRequestC extends Controller
             'placeholder' => 'All Employee',
         ];
 
-        $filters[] = ['name' => 'month', 'label' => 'Month', 'type' => 'select', 'options' => $months];
+        $filters[] = ['name' => 'year', 'label' => 'Year', 'type' => 'select', 'options' => $years, 'placeholder' => ''];
+        $filters[] = ['name' => 'month', 'label' => 'Month', 'type' => 'select', 'options' => $months, 'placeholder' => ''];
         $filters[] = ['name' => 'from', 'label' => 'From Date', 'type' => 'date'];
         $filters[] = ['name' => 'to', 'label' => 'To Date', 'type' => 'date'];
         $filters[] = ['name' => 'status', 'label' => 'Status', 'type' => 'select', 'options' => ['pending' => 'Pending', 'approved' => 'Approved', 'rejected' => 'Rejected', 'cancelled' => 'Cancelled']];
@@ -567,6 +665,9 @@ class HolidayWorkRequestC extends Controller
             'filters' => $filters,
             'formFields' => $formFields,
             'canCreate' => true,
+            'createModalView' => 'hrms.attendance.holiday-work.partials.apply-work-modal',
+            'createEmployees' => $createEmployees,
+            'currentEmployee' => $currentEmployee,
             'canEdit' => $isHrOrAdmin || $isEmployee,
             'canDelete' => $isHrOrAdmin || $isEmployee,
             'isHrOrAdmin' => $isHrOrAdmin,

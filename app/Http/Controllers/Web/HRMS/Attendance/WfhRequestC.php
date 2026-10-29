@@ -77,23 +77,39 @@ class WfhRequestC extends Controller
 
         $fromDate = $request->input('from_date') ?: $request->input('from');
         $toDate = $request->input('to_date') ?: $request->input('to');
-        $currentMonthKey = Carbon::now('Asia/Kolkata')->format('Y-m');
         $month = $request->input('month');
+        $year = $request->input('year');
 
-        // Default to current month if no filter params specified and not a reset request
-        if ($month === null && ! $fromDate && ! $toDate && ! $request->has('reset')) {
-            $month = $currentMonthKey;
-            $request->merge(['month' => $month]);
+        // Backward compatibility if month contains '2026-10'
+        if ($month && str_contains($month, '-')) {
+            [$pYear, $pMonth] = explode('-', $month, 2);
+            $year = $pYear;
+            $month = $pMonth;
         }
 
-        if ($fromDate || $toDate) {
+        // Default to current year & month if not specified and not a reset request
+        if ($month === null && !$year && !$fromDate && !$toDate && !$request->has('reset')) {
+            $month = Carbon::now('Asia/Kolkata')->format('m');
+            $year = Carbon::now('Asia/Kolkata')->format('Y');
+            $request->merge(['month' => $month, 'year' => $year]);
+        } elseif (!$year && $month && $month !== 'all' && $month !== 'custom') {
+            $year = Carbon::now('Asia/Kolkata')->format('Y');
+            $request->merge(['year' => $year]);
+        }
+
+        if ($month && is_numeric($month)) {
+            $month = str_pad((string) ((int) $month), 2, '0', STR_PAD_LEFT);
+        }
+
+        if ($fromDate || $toDate || $month === 'custom') {
             if ($fromDate) {
                 $query->where(function ($q) use ($fromDate) {
                     $q->whereDate('wfh_requests.to_date', '>=', $fromDate)
                       ->orWhere(function ($sub) use ($fromDate) {
                           $sub->whereNull('wfh_requests.to_date')
                               ->whereDate('wfh_requests.request_date', '>=', $fromDate);
-                      });
+                      })
+                      ->orWhereDate('wfh_requests.created_at', '>=', $fromDate);
                 });
             }
             if ($toDate) {
@@ -102,33 +118,80 @@ class WfhRequestC extends Controller
                       ->orWhere(function ($sub) use ($toDate) {
                           $sub->whereNull('wfh_requests.from_date')
                               ->whereDate('wfh_requests.request_date', '<=', $toDate);
-                      });
+                      })
+                      ->orWhereDate('wfh_requests.created_at', '<=', $toDate);
                 });
             }
         } elseif ($month && $month !== 'all' && $month !== 'custom') {
             try {
-                $monthDate = Carbon::parse($month . '-01');
-                $startOfMonth = $monthDate->copy()->startOfMonth()->toDateString();
-                $endOfMonth = $monthDate->copy()->endOfMonth()->toDateString();
+                $monthInt = (int) $month;
+                if ($year && $year !== 'all') {
+                    $targetYear = (int) $year;
+                    $monthDate = Carbon::create($targetYear, $monthInt, 1, 0, 0, 0, 'Asia/Kolkata');
+                    $startOfMonth = $monthDate->copy()->startOfMonth()->toDateString();
+                    $endOfMonth = $monthDate->copy()->endOfMonth()->toDateString();
 
-                if ($month === $currentMonthKey) {
-                    // Current month selected: show current month requests + all future applied requests
-                    $query->where(function ($q) use ($startOfMonth) {
-                        $q->whereDate('wfh_requests.to_date', '>=', $startOfMonth)
-                          ->orWhereDate('wfh_requests.from_date', '>=', $startOfMonth)
-                          ->orWhereDate('wfh_requests.request_date', '>=', $startOfMonth)
-                          ->orWhereDate('wfh_requests.created_at', '>=', $startOfMonth);
+                    $currentMonthStart = Carbon::now('Asia/Kolkata')->startOfMonth()->toDateString();
+                    $isCurrentMonth = ($startOfMonth === $currentMonthStart);
+
+                    if ($isCurrentMonth) {
+                        // Current month: Show all overlapping requests + requests applied in current month (even if for next month) + all future requests
+                        $query->where(function ($q) use ($startOfMonth) {
+                            $q->whereDate('wfh_requests.to_date', '>=', $startOfMonth)
+                              ->orWhereDate('wfh_requests.from_date', '>=', $startOfMonth)
+                              ->orWhereDate('wfh_requests.request_date', '>=', $startOfMonth)
+                              ->orWhereDate('wfh_requests.created_at', '>=', $startOfMonth);
+                        });
+                    } else {
+                        // Specific month: show requests overlapping that month OR requested in that month
+                        $query->where(function ($q) use ($startOfMonth, $endOfMonth) {
+                            $q->where(function ($sub) use ($startOfMonth, $endOfMonth) {
+                                $sub->whereDate('wfh_requests.from_date', '<=', $endOfMonth)
+                                    ->whereDate('wfh_requests.to_date', '>=', $startOfMonth);
+                            })->orWhere(function ($sub) use ($startOfMonth, $endOfMonth) {
+                                $sub->whereNull('wfh_requests.from_date')
+                                    ->whereBetween('wfh_requests.request_date', [$startOfMonth, $endOfMonth]);
+                            })->orWhere(function ($sub) use ($startOfMonth, $endOfMonth) {
+                                $sub->whereBetween(DB::raw('DATE(wfh_requests.created_at)'), [$startOfMonth, $endOfMonth]);
+                            });
+                        });
+                    }
+                } else {
+                    // Specific month, All years
+                    $query->where(function ($q) use ($monthInt) {
+                        $q->whereMonth('wfh_requests.from_date', $monthInt)
+                          ->orWhereMonth('wfh_requests.to_date', $monthInt)
+                          ->orWhereMonth('wfh_requests.request_date', $monthInt)
+                          ->orWhereMonth('wfh_requests.created_at', $monthInt);
+                    });
+                }
+            } catch (\Throwable $e) {
+                // Ignore parse errors
+            }
+        } elseif ($year && $year !== 'all') {
+            // All months, specific year
+            try {
+                $startOfYear = "{$year}-01-01";
+                $endOfYear = "{$year}-12-31";
+                $currentYear = Carbon::now('Asia/Kolkata')->format('Y');
+
+                if ((string) $year === $currentYear) {
+                    $query->where(function ($q) use ($startOfYear) {
+                        $q->whereDate('wfh_requests.to_date', '>=', $startOfYear)
+                          ->orWhereDate('wfh_requests.from_date', '>=', $startOfYear)
+                          ->orWhereDate('wfh_requests.request_date', '>=', $startOfYear)
+                          ->orWhereDate('wfh_requests.created_at', '>=', $startOfYear);
                     });
                 } else {
-                    $query->where(function ($q) use ($startOfMonth, $endOfMonth) {
-                        $q->where(function ($sub) use ($startOfMonth, $endOfMonth) {
-                            $sub->whereDate('wfh_requests.from_date', '<=', $endOfMonth)
-                                ->whereDate('wfh_requests.to_date', '>=', $startOfMonth);
-                        })->orWhere(function ($sub) use ($startOfMonth, $endOfMonth) {
+                    $query->where(function ($q) use ($startOfYear, $endOfYear) {
+                        $q->where(function ($sub) use ($startOfYear, $endOfYear) {
+                            $sub->whereDate('wfh_requests.from_date', '<=', $endOfYear)
+                                ->whereDate('wfh_requests.to_date', '>=', $startOfYear);
+                        })->orWhere(function ($sub) use ($startOfYear, $endOfYear) {
                             $sub->whereNull('wfh_requests.from_date')
-                                ->whereBetween('wfh_requests.request_date', [$startOfMonth, $endOfMonth]);
-                        })->orWhere(function ($sub) use ($startOfMonth, $endOfMonth) {
-                            $sub->whereBetween(DB::raw('DATE(wfh_requests.created_at)'), [$startOfMonth, $endOfMonth]);
+                                ->whereBetween('wfh_requests.request_date', [$startOfYear, $endOfYear]);
+                        })->orWhere(function ($sub) use ($startOfYear, $endOfYear) {
+                            $sub->whereBetween(DB::raw('DATE(wfh_requests.created_at)'), [$startOfYear, $endOfYear]);
                         });
                     });
                 }
@@ -257,21 +320,38 @@ class WfhRequestC extends Controller
             return $emp;
         });
 
+        $currentYear = (int) Carbon::now('Asia/Kolkata')->format('Y');
+        $years = [
+            'all' => 'All Years',
+        ];
+        for ($y = $currentYear - 3; $y <= $currentYear + 2; $y++) {
+            $years[(string) $y] = (string) $y;
+        }
+
         $monthOptions = [
             'all' => 'All Months',
             'custom' => 'Custom Date Range',
+            '01' => 'January',
+            '02' => 'February',
+            '03' => 'March',
+            '04' => 'April',
+            '05' => 'May',
+            '06' => 'June',
+            '07' => 'July',
+            '08' => 'August',
+            '09' => 'September',
+            '10' => 'October',
+            '11' => 'November',
+            '12' => 'December',
         ];
-        $cursorMonth = Carbon::now('Asia/Kolkata')->addMonths(2);
-        for ($i = 0; $i < 15; $i++) {
-            $m = $cursorMonth->copy()->subMonths($i);
-            $monthOptions[$m->format('Y-m')] = $m->format('F Y');
-        }
 
         return view('hrms.attendance.wfh.index', [
             'rows' => $rows,
             'employees' => $employees,
+            'years' => $years,
             'monthOptions' => $monthOptions,
-            'activeMonth' => $month ?? $currentMonthKey,
+            'activeYear' => $year ?? (string) $currentYear,
+            'activeMonth' => $month ?? Carbon::now('Asia/Kolkata')->format('m'),
             'departments' => DepartmentM::query()->orderBy('name')->get(['id', 'name']),
             'designations' => DesignationM::query()->orderBy('name')->get(['id', 'name']),
             'accesses' => $this->accesses(),

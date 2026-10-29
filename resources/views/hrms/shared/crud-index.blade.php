@@ -223,10 +223,16 @@
         line-height: 1;
     }
 
-    /* TABLE CARD */
     .orb-table-card .orb-card-body {
         padding: 0;
         overflow: hidden;
+    }
+
+    .orb-table-card:has(.dropdown-menu.show),
+    .orb-table-card.orb-dropdown-open,
+    .orb-table-card .orb-card-body:has(.dropdown-menu.show),
+    .orb-table-card .orb-card-body.orb-dropdown-open {
+        overflow: visible !important;
     }
 
     .orb-table-header {
@@ -568,6 +574,13 @@
         background: #fff !important;
     }
 
+    .crud-table-responsive:has(.dropdown-menu.show),
+    .orb-table-wrap:has(.dropdown-menu.show),
+    .crud-table-responsive.orb-dropdown-open,
+    .orb-table-wrap.orb-dropdown-open {
+        overflow: visible !important;
+    }
+
     .orb-table {
         width: 100% !important;
         min-width: 1050px;
@@ -781,15 +794,34 @@
     .dropdown-menu {
         border: 1px solid var(--orb-border);
         border-radius: 14px;
-        box-shadow: 0 18px 40px rgba(16, 24, 40, .12);
+        box-shadow: 0 18px 40px rgba(16, 24, 40, .16);
         padding: 8px;
+        min-width: 175px;
+        z-index: 1060 !important;
     }
 
     .dropdown-item {
         border-radius: 10px;
         font-size: 13px;
-        font-weight: 800;
+        font-weight: 700;
         padding: 9px 12px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: #334155;
+        transition: all 0.15s ease;
+    }
+
+    .dropdown-item:hover,
+    .dropdown-item:focus {
+        background: #F4F2FF;
+        color: var(--orb-primary);
+    }
+
+    .dropdown-item.text-danger:hover,
+    .dropdown-item.text-danger:focus {
+        background: #FEF2F2;
+        color: #DC2626 !important;
     }
 
     /* EMPTY */
@@ -1109,7 +1141,7 @@
         <div class="orb-hero-content">
             <div class="orb-hero-kicker">
                 <i class="fas fa-layer-group"></i>
-                HRMS Management
+                Attendance
             </div>
 
             <h1>{{ $pageTitle }}</h1>
@@ -1210,12 +1242,23 @@
                 $hasYearFilter = collect($filters)->contains('name', 'year');
                 $reqMonth = request('month');
                 $hasCustomDates = request()->filled('from') || request()->filled('from_date') || request()->filled('to') || request()->filled('to_date');
+
+                $monthFilterObj = collect($filters)->firstWhere('name', 'month');
+                $monthOptions = $monthFilterObj['options'] ?? [];
+                $curMonthPad = now()->format('m');
+                $curMonthNum = (string) now()->month;
+                $defaultMonthVal = isset($monthOptions[$curMonthPad]) ? $curMonthPad : (isset($monthOptions[$curMonthNum]) ? $curMonthNum : $curMonthPad);
+
                 if ($hasCustomDates || $reqMonth === 'custom') {
                     $activeMonth = 'custom';
                 } elseif ($reqMonth !== null) {
                     $activeMonth = $reqMonth;
+                    if (str_contains($activeMonth, '-')) {
+                        [$pYear, $pMonth] = explode('-', $activeMonth, 2);
+                        $activeMonth = $pMonth;
+                    }
                 } else {
-                    $activeMonth = $defaultMonth ?? ($hasYearFilter ? (string) now()->month : now()->format('Y-m'));
+                    $activeMonth = $defaultMonth ?? ($hasYearFilter ? $defaultMonthVal : now()->format('Y-m'));
                 }
             @endphp
             <div class="orb-filter">
@@ -1224,17 +1267,31 @@
                     @php
                         $filterName = $filter['name'] ?? '';
                         $isDateField = in_array($filterName, ['from', 'to', 'from_date', 'to_date']) || ($filter['type'] ?? '') === 'date';
+                        $isCustomDateField = $isDateField && $hasMonthFilter;
                     @endphp
 
-                    <div class="orb-filter-item {{ ($isDateField && $hasMonthFilter && !$hasYearFilter) ? 'js-custom-date-field' : '' }}" style="{{ ($isDateField && $hasMonthFilter && !$hasYearFilter && $activeMonth !== 'custom') ? 'display: none;' : '' }}">
+                    <div class="orb-filter-item {{ $isCustomDateField ? 'js-custom-date-field' : '' }}" style="{{ ($isCustomDateField && $activeMonth !== 'custom') ? 'display: none;' : '' }}">
 
                         @if(($filter['type'] ?? 'text') === 'select')
                         @php
                             $selectedVal = request($filter['name'], $filter['default'] ?? ($filter['value'] ?? null));
                             if ($filter['name'] === 'month') {
                                 $selectedVal = $activeMonth;
-                            } elseif ($filter['name'] === 'year' && ($selectedVal === null || $selectedVal === '')) {
-                                $selectedVal = (string) now()->year;
+                                if ($selectedVal !== null && $selectedVal !== 'all' && $selectedVal !== 'custom' && is_numeric($selectedVal)) {
+                                    $pad = str_pad((string) ((int) $selectedVal), 2, '0', STR_PAD_LEFT);
+                                    if (isset($filter['options'][$pad])) {
+                                        $selectedVal = $pad;
+                                    }
+                                }
+                            } elseif ($filter['name'] === 'year') {
+                                if ($selectedVal === null || $selectedVal === '') {
+                                    $reqMonthVal = request('month', '');
+                                    if (str_contains($reqMonthVal, '-')) {
+                                        $selectedVal = explode('-', $reqMonthVal)[0];
+                                    } else {
+                                        $selectedVal = (string) now()->year;
+                                    }
+                                }
                             }
                             $filterPlaceholder = $filter['placeholder'] ?? ($filter['name'] === 'employee_id' ? 'All Employee' : ($filter['name'] === 'month' || $filter['name'] === 'year' ? '' : 'All ' . ($filter['label'] ?? '')));
                         @endphp
@@ -1285,7 +1342,7 @@
                         @php
                             $resetQuery = [];
                             if ($hasMonthFilter) {
-                                $resetQuery['month'] = $hasYearFilter ? (string) now()->month : now()->format('Y-m');
+                                $resetQuery['month'] = $hasYearFilter ? $defaultMonthVal : now()->format('Y-m');
                             }
                             if ($hasYearFilter) {
                                 $resetQuery['year'] = (string) now()->year;
@@ -1428,9 +1485,9 @@
                                         $allowed = (array) $act['show_when_status'];
                                         $skipThis = !in_array($rowStatus, array_map('strtolower', $allowed), true);
                                     } elseif (in_array($actLabel, ['approve', 'accept'])) {
-                                        $skipThis = ($rowStatus === 'approved' || $rowStatus === 'rejected' || $rowStatus === 'cancelled');
+                                        $skipThis = ($rowStatus === 'approved' || $rowStatus === 'cancelled' || (!$userIsHrOrAdmin && $rowStatus === 'rejected'));
                                     } elseif (in_array($actLabel, ['reject', 'decline'])) {
-                                        $skipThis = ($rowStatus === 'rejected' || $rowStatus === 'approved' || $rowStatus === 'cancelled');
+                                        $skipThis = ($rowStatus === 'rejected' || $rowStatus === 'cancelled' || (!$userIsHrOrAdmin && $rowStatus === 'approved'));
                                     }
                                     if (!$skipThis) {
                                         $hasVisibleRowActions = true;
@@ -1446,7 +1503,10 @@
                                 <div class="dropdown">
                                     <button class="orb-action-btn"
                                         type="button"
-                                        data-toggle="dropdown">
+                                        data-toggle="dropdown"
+                                        data-boundary="window"
+                                        aria-haspopup="true"
+                                        aria-expanded="false">
                                         <i class="fas fa-ellipsis-v"></i>
                                     </button>
 
@@ -1482,9 +1542,9 @@
                                                     $allowedStatuses = (array) $action['show_when_status'];
                                                     $skipAction = !in_array($rowStatus, array_map('strtolower', $allowedStatuses), true);
                                                 } elseif (in_array($actionLabel, ['approve', 'accept'])) {
-                                                    $skipAction = ($rowStatus === 'approved' || $rowStatus === 'rejected' || $rowStatus === 'cancelled');
+                                                    $skipAction = ($rowStatus === 'approved' || $rowStatus === 'cancelled' || (!$userIsHrOrAdmin && $rowStatus === 'rejected'));
                                                 } elseif (in_array($actionLabel, ['reject', 'decline'])) {
-                                                    $skipAction = ($rowStatus === 'rejected' || $rowStatus === 'approved' || $rowStatus === 'cancelled');
+                                                    $skipAction = ($rowStatus === 'rejected' || $rowStatus === 'cancelled' || (!$userIsHrOrAdmin && $rowStatus === 'approved'));
                                                 }
                                             @endphp
 
@@ -1539,14 +1599,24 @@
     </div>
 
     @if(!empty($canCreate))
-    @include('hrms.shared.crud-modal', [
-    'modalId' => 'createModal',
-    'modalTitle' => 'Add '.$pageTitle,
-    'action' => route($storeRoute),
-    'method' => 'POST',
-    'fields' => $formFields,
-    'row' => null
-    ])
+    @if(!empty($createModalView))
+        @include($createModalView, [
+            'modalId' => $createModalId ?? 'createModal',
+            'isAdmin' => true,
+            'action' => route($storeRoute),
+            'employees' => $createEmployees ?? ($formFields[0]['options'] ?? []),
+            'currentEmployee' => $currentEmployee ?? null,
+        ])
+    @else
+        @include('hrms.shared.crud-modal', [
+        'modalId' => 'createModal',
+        'modalTitle' => 'Add '.$pageTitle,
+        'action' => route($storeRoute),
+        'method' => 'POST',
+        'fields' => $formFields,
+        'row' => null
+        ])
+    @endif
     @endif
 
     @if(!empty($canEdit))
@@ -1866,6 +1936,21 @@
                     });
                 });
             }
+        });
+
+        // Ensure action dropdown is never clipped inside responsive table wrapper or card
+        $(document).on('show.bs.dropdown', '.orb-table .dropdown', function () {
+            var $wrap = $(this).closest('.crud-table-responsive, .orb-table-wrap');
+            var $cardBody = $(this).closest('.orb-card-body');
+            var $card = $(this).closest('.orb-table-card');
+
+            $wrap.addClass('orb-dropdown-open');
+            $cardBody.addClass('orb-dropdown-open');
+            $card.addClass('orb-dropdown-open');
+        });
+
+        $(document).on('hide.bs.dropdown hidden.bs.dropdown', '.orb-table .dropdown', function () {
+            $('.orb-dropdown-open').removeClass('orb-dropdown-open');
         });
 
         // Toggle Custom Date fields based on Month dropdown selection

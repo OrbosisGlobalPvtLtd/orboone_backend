@@ -44,8 +44,9 @@ class ProcessLateMarks extends Command
                 continue;
             }
 
-            // Parse punch_in_time directly without prepending date (avoiding double date specification)
-            $punchIn = Carbon::parse($attendance->punch_in_time, $timezone);
+            // Safely normalize punch_in_time to time string before anchoring to $date
+            $punchInTime = Carbon::parse($attendance->punch_in_time)->format('H:i:s');
+            $punchIn = Carbon::parse($date . ' ' . $punchInTime, $timezone);
             $lateTimeStr = Carbon::parse($shift->late_after_time)->format('H:i:s');
             $lateTime = Carbon::parse($date . ' ' . $lateTimeStr, $timezone);
 

@@ -314,9 +314,14 @@ class EmployeeM extends Model
         return strtolower((string) ($this->work_mode ?? 'wfo')) === 'wfh';
     }
 
+    public function isHybrid(): bool
+    {
+        return strtolower((string) ($this->work_mode ?? 'wfo')) === 'hybrid';
+    }
+
     public function isWfo(): bool
     {
-        return strtolower((string) ($this->work_mode ?? 'wfo')) !== 'wfh';
+        return strtolower((string) ($this->work_mode ?? 'wfo')) === 'wfo';
     }
 
     public function getIsPermanentAttribute()

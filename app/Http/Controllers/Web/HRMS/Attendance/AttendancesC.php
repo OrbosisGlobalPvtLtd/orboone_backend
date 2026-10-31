@@ -1208,7 +1208,6 @@ class AttendancesC extends Controller
             'hr_approved_by' => Auth::id(),
             'hr_approved_at' => now(),
             'remarks' => $adminReason,
-            'status_reason' => $adminReason,
             'is_admin_unlocked' => true,
             'unlocked_by' => Auth::id(),
             'unlocked_at' => now(),
@@ -1252,7 +1251,6 @@ class AttendancesC extends Controller
         } elseif ($typeCode === 'absent') {
             $updateData['is_lwp'] = true;
             $updateData['is_half_day'] = false;
-            $updateData['status_reason'] = $adminReason;
             $updateData['lwp_reason'] = $adminReason;
         } elseif (in_array($typeCode, ['leave', 'holiday', 'week_off'], true)) {
             $updateData['is_lwp'] = false;

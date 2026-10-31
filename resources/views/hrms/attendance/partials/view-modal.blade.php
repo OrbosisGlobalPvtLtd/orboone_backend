@@ -58,7 +58,11 @@
                         $statusBg = '#F8F9FA';
                     }
 
-                    $attDateFormatted = $attendance->attendance_date ? \Carbon\Carbon::parse($attendance->attendance_date)->format('d M Y (l)') : '-';
+                    $attDateCarbon = $attendance->attendance_date ? \Carbon\Carbon::parse($attendance->attendance_date, 'Asia/Kolkata') : null;
+                    $dayName = $attDateCarbon ? $attDateCarbon->format('l') : '';
+                    $dateStrFormatted = $attDateCarbon ? $attDateCarbon->format('d M Y') : '-';
+                    $attDateFormatted = $attDateCarbon ? "{$dateStrFormatted} ({$dayName})" : '-';
+
                     $passportPhotoUrl = resolveEmployeePassportPhoto($attendance->employee ?? $attendance);
                     $employeeName = optional($attendance->user)->name ?? optional(optional($attendance->employee)->user)->name ?? 'Employee';
                     $employeeCode = optional($attendance->employee)->employee_code ?? 'EMP';
@@ -74,17 +78,45 @@
 
                     $gross = $attendance->gross_duration ?? (isset($attendance->gross_work_minutes) && $attendance->gross_work_minutes > 0 ? floor($attendance->gross_work_minutes / 60).'h '.($attendance->gross_work_minutes % 60).'m' : '-');
                     $net = $attendance->net_duration ?? (isset($attendance->total_work_minutes) && $attendance->total_work_minutes > 0 ? floor($attendance->total_work_minutes / 60).'h '.($attendance->total_work_minutes % 60).'m' : (isset($attendance->working_minutes) && $attendance->working_minutes > 0 ? floor($attendance->working_minutes / 60).'h '.($attendance->working_minutes % 60).'m' : '-'));
-                    $breakMinutes = (int) ($attendance->break_minutes ?? 0) + (int) ($attendance->lunch_break_minutes ?? 0);
+
+                    // Accurate Break Duration (avoid adding duplicate lunch_break_minutes + break_minutes)
+                    if (isset($attendance->gross_work_minutes) && isset($attendance->total_work_minutes) && (int) $attendance->gross_work_minutes > 0) {
+                        $breakMinutes = max(0, (int) $attendance->gross_work_minutes - (int) $attendance->total_work_minutes);
+                    } else {
+                        $breakMinutes = max((int) ($attendance->lunch_break_minutes ?? 0), (int) ($attendance->break_minutes ?? 0));
+                    }
                     $breakStr = $breakMinutes > 0 ? (floor($breakMinutes / 60).'h '.($breakMinutes % 60).'m') : '0m';
 
                     $modeCode = strtoupper($attendance->work_mode ?? 'WFO');
-                    $shiftName = optional($attendance->attendanceTime)->name ?? 'General Shift';
-                    $shiftStartTime = optional($attendance->attendanceTime)->shift_start_time ? \Carbon\Carbon::parse(optional($attendance->attendanceTime)->shift_start_time)->format('h:i A') : '10:00 AM';
-                    $shiftEndTime = optional($attendance->attendanceTime)->shift_end_time ? \Carbon\Carbon::parse(optional($attendance->attendanceTime)->shift_end_time)->format('h:i A') : '07:00 PM';
+
+                    // Resolve accurate employee shift timing from employee_shift_timings / shift policy
+                    $employeeObj = $attendance->employee ?: \App\Models\HRMS\Employee\EmployeeM::find($attendance->employee_id);
+                    $ruleResolver = app(\App\Services\HRMS\Attendance\AttendanceRuleResolverService::class);
+                    $resolvedShift = ($employeeObj && $attDateCarbon)
+                        ? $ruleResolver->resolveShiftPolicy($employeeObj, $attDateCarbon->toDateString(), $attendance->attendance_time_id)
+                        : null;
+
+                    $shiftName = $resolvedShift->name 
+                        ?? $resolvedShift->policy_name 
+                        ?? optional($attendance->attendanceTime)->name 
+                        ?? 'General Shift';
+
+                    $rawStartTime = $resolvedShift->shift_start_time 
+                        ?? optional($attendance->attendanceTime)->shift_start_time 
+                        ?? '10:00:00';
+
+                    $rawEndTime = $resolvedShift->shift_end_time 
+                        ?? optional($attendance->attendanceTime)->shift_end_time 
+                        ?? '19:00:00';
+
+                    $shiftStartTime = \Carbon\Carbon::parse($rawStartTime)->format('h:i A');
+                    $shiftEndTime = \Carbon\Carbon::parse($rawEndTime)->format('h:i A');
                     $shiftWindowStr = "{$shiftStartTime} - {$shiftEndTime}";
-                    $reqWorkMins = optional($attendance->attendanceTime)->required_work_minutes ?? 540;
+
+                    $reqWorkMins = (int) ($resolvedShift->required_work_minutes ?? optional($attendance->attendanceTime)->required_work_minutes ?? 480);
                     $reqHoursStr = floor($reqWorkMins / 60).'h '.($reqWorkMins % 60).'m';
-                    $halfDayMinMins = optional($attendance->attendanceTime)->half_day_min_minutes ?? 270;
+
+                    $halfDayMinMins = (int) ($resolvedShift->half_day_min_minutes ?? optional($attendance->attendanceTime)->half_day_min_minutes ?? ($reqWorkMins > 0 ? (int)($reqWorkMins / 2) : 240));
                     $halfDayHoursStr = floor($halfDayMinMins / 60).'h '.($halfDayMinMins % 60).'m';
 
                     $isLate = (bool) ($attendance->is_late ?? $attendance->late_mark ?? false);
@@ -143,10 +175,24 @@
                         || $attendance->attendance_source === 'regularization' 
                         || !empty($approvedReg));
 
+                    // Linked Leave Request Check
+                    $linkedLeave = $attendance->leaveRequest;
+                    $isHalfDayLeave = (bool) ($linkedLeave && ($linkedLeave->is_half_day || !empty($linkedLeave->half_day_type)));
+                    $isPaidLeave = (bool) ($linkedLeave && (optional($linkedLeave->leaveType)->is_paid ?? true));
+                    $isLeaveApproved = (bool) ($linkedLeave && in_array(strtolower($linkedLeave->status ?? ''), ['approved']));
+
+                    $isLeaveSynced = (bool) (
+                        !empty($attendance->leave_request_id)
+                        || $attendance->attendance_source === 'leave_sync'
+                        || $isLeaveApproved
+                        || ($statusLogsList && $statusLogsList->contains(fn($l) => $l->source === 'leave_auto' || str_contains(strtolower((string)$l->remarks), 'leave request')))
+                    );
+
                     $isEditedByAdmin = (bool) (
                         $attendance->attendance_source === 'admin_override' 
                         || $attendance->attendance_source === 'regularization'
                         || $isRegApproved
+                        || $isLeaveSynced
                         || $isUnlocked 
                         || !empty($attendance->unlocked_at) 
                         || !empty($attendance->hr_approved_at) 
@@ -166,6 +212,9 @@
                         if (str_contains(strtolower((string) $updateReason), 'auto marked absent') || str_contains(strtolower((string) $updateReason), 'never punched in')) {
                             $updateReason = $regReason ?: 'Attendance corrected via Approved Regularization.';
                         }
+                    } elseif ($isLeaveSynced) {
+                        $leaveTypeName = optional($linkedLeave?->leaveType)->name ?? 'Paid Leave';
+                        $updateReason = "Approved Leave ({$leaveTypeName})" . ($linkedLeave?->reason ? ": {$linkedLeave->reason}" : '');
                     } else {
                         $updateReason = $attendance->hr_approval_note 
                             ?: ($attendance->unlock_remarks 
@@ -180,7 +229,9 @@
                     $updatedBy = optional($attendance->hrApprovedBy)->name 
                         ?? optional($attendance->unlockedBy)->name 
                         ?? (optional($approvedReg?->approvedBy)->name 
-                        ?? (optional(optional($statusLogsList)->first())->createdBy->name ?? 'Administrator'));
+                        ?? (optional($linkedLeave?->approver)->name 
+                        ?? (optional($linkedLeave?->hrApprover)->name 
+                        ?? (optional(optional($statusLogsList)->first())->createdBy->name ?? 'System Leave Sync'))));
 
                     $updatedAtStr = $attendance->hr_approved_at 
                         ? \Carbon\Carbon::parse($attendance->hr_approved_at)->format('d M Y, h:i A')
@@ -188,17 +239,21 @@
                             ? \Carbon\Carbon::parse($attendance->unlocked_at)->format('d M Y, h:i A')
                             : ($approvedReg?->approved_at 
                                 ? \Carbon\Carbon::parse($approvedReg->approved_at)->format('d M Y, h:i A')
-                                : ($attendance->updated_at ? \Carbon\Carbon::parse($attendance->updated_at)->format('d M Y, h:i A') : '-')));
+                                : ($linkedLeave?->approved_at 
+                                    ? \Carbon\Carbon::parse($linkedLeave->approved_at)->format('d M Y, h:i A')
+                                    : ($attendance->updated_at ? \Carbon\Carbon::parse($attendance->updated_at)->format('d M Y, h:i A') : '-'))));
 
                     $updateCategory = match(strtolower($attendance->unlock_type ?? '')) {
                         'hr_manual_override', 'manual_override', 'manual_punch_in' => 'Admin Manual Override',
                         'biometric_sync' => 'Biometric Sync Correction',
                         'regularization_approval' => 'Regularization Approval',
-                        default => ($attendance->unlock_type 
-                            ? ucwords(str_replace('_', ' ', $attendance->unlock_type)) 
-                            : ($isRegApproved 
-                                ? 'Regularization Approval' 
-                                : ($attendance->attendance_source === 'admin_override' ? 'Admin Manual Override' : 'System Record')))
+                        default => ($isLeaveSynced
+                            ? 'Leave Approval Sync'
+                            : ($attendance->unlock_type 
+                                ? ucwords(str_replace('_', ' ', $attendance->unlock_type)) 
+                                : ($isRegApproved 
+                                    ? 'Regularization Approval' 
+                                    : ($attendance->attendance_source === 'admin_override' ? 'Admin Manual Override' : 'System Record'))))
                     };
 
                     $sourceLabel = match(strtolower($attendance->attendance_source ?? '')) {
@@ -207,10 +262,16 @@
                         'mobile', 'mobile_app' => 'Mobile App',
                         'web' => 'Web Portal',
                         'biometric' => 'Biometric Device',
-                        'leave_sync' => 'Leave Engine',
+                        'leave_sync', 'leave_auto' => 'Leave Engine',
                         'comp_off_work' => 'Comp-Off Work',
                         default => ($attendance->attendance_source ? ucwords(str_replace('_', ' ', $attendance->attendance_source)) : 'System Punch')
                     };
+
+                    // Check if Half Day Working is combined with an Approved Half Day Paid Leave
+                    $isHalfDayWorkWithPaidLeave = ($statusCode === 'half_day' || (bool)$attendance->is_half_day)
+                        && $isLeaveApproved
+                        && $isHalfDayLeave
+                        && $isPaidLeave;
                 @endphp
 
                 {{-- 1. EMPLOYEE & DATE HERO BANNER --}}
@@ -233,7 +294,11 @@
                                     <div class="text-muted mt-1" style="font-size: 12.5px; font-weight: 500; color: #475467; display: flex; align-items: center; flex-wrap: wrap;">
                                         <span class="mr-2"><i class="fas fa-briefcase text-muted mr-1"></i> {{ $designationName }}</span>
                                         <span class="text-muted mr-2" style="opacity: 0.5;">&bull;</span>
-                                        <span><i class="fas fa-building text-muted mr-1"></i> {{ $departmentName }}</span>
+                                        <span class="mr-2"><i class="fas fa-building text-muted mr-1"></i> {{ $departmentName }}</span>
+                                        <span class="text-muted mr-2" style="opacity: 0.5;">&bull;</span>
+                                        <span class="badge" style="background: #F4F3FF; color: #5925DC; border: 1px solid #D9D6FE; font-size: 11px; padding: 3px 8px; font-weight: 600; border-radius: 6px;">
+                                            <i class="fas fa-calendar-alt mr-1"></i> {{ $dayName }}, {{ $dateStrFormatted }}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -305,18 +370,33 @@
                 </div>
 
                 {{-- SHIFT WINDOW REFERENCE STRIP --}}
-                <div class="p-2 px-3 mb-3 rounded d-flex align-items-center justify-content-between flex-wrap shadow-sm" style="background: #ffffff; border: 1px solid #EAECF0; font-size: 12px; gap: 8px;">
-                    <div>
-                        <i class="fas fa-clock text-primary mr-1"></i> <strong>Shift Window:</strong> {{ $shiftName }} ({{ $shiftWindowStr }})
+                <div class="px-3 py-2 mb-3 rounded shadow-sm d-flex align-items-center justify-content-between flex-wrap" style="background: #ffffff; border: 1px solid #EAECF0; font-size: 11.5px; gap: 6px 10px; line-height: 1.4;">
+                    <div class="d-inline-flex align-items-center" style="gap: 5px;">
+                        <i class="fas fa-calendar-day text-primary"></i>
+                        <span><strong>Day:</strong> {{ $dayName }} ({{ $dateStrFormatted }})</span>
                     </div>
-                    <div class="d-flex align-items-center flex-wrap" style="gap: 12px;">
-                        <span><i class="fas fa-check-circle text-muted mr-1"></i> Full Day Requirement: <strong>{{ $reqHoursStr }}</strong></span>
-                        <span><i class="fas fa-adjust text-muted mr-1"></i> Half Day Threshold: <strong>{{ $halfDayHoursStr }}</strong></span>
+                    <span class="text-muted d-none d-lg-inline" style="opacity: 0.35;">|</span>
+                    <div class="d-inline-flex align-items-center" style="gap: 5px;">
+                        <i class="fas fa-clock text-primary"></i>
+                        <span><strong>Shift Window:</strong> {{ $shiftName }} ({{ $shiftWindowStr }})</span>
+                    </div>
+                    <span class="text-muted d-none d-lg-inline" style="opacity: 0.35;">|</span>
+                    <div class="d-inline-flex align-items-center" style="gap: 5px;">
+                        <i class="fas fa-check-circle text-muted"></i>
+                        <span><strong>Full Day Requirement:</strong> {{ $reqHoursStr }}</span>
+                    </div>
+                    <span class="text-muted d-none d-lg-inline" style="opacity: 0.35;">|</span>
+                    <div class="d-inline-flex align-items-center" style="gap: 5px;">
+                        <i class="fas fa-adjust text-muted"></i>
+                        <span><strong>Half Day Threshold:</strong> {{ $halfDayHoursStr }}</span>
                     </div>
                 </div>
 
                 {{-- 3. ⭐ PAYROLL & PAYABLE UNITS --}}
-                <div class="card border-0 mb-3 shadow-sm" style="border-radius: 16px; background: #ffffff; border: 1px solid #EAECF0; border-left: 5px solid {{ $payableDay >= 1.0 ? '#12B76A' : ($payableDay > 0 ? '#F79009' : '#D92D20') }} !important;">
+                @php
+                    $effectivePayableDay = $isHalfDayWorkWithPaidLeave ? 1.0 : $payableDay;
+                @endphp
+                <div class="card border-0 mb-3 shadow-sm" style="border-radius: 16px; background: #ffffff; border: 1px solid #EAECF0; border-left: 5px solid {{ $effectivePayableDay >= 1.0 ? '#12B76A' : ($effectivePayableDay > 0 ? '#F79009' : '#D92D20') }} !important;">
                     <div class="card-header bg-transparent border-bottom py-3 px-4 d-flex align-items-center justify-content-between flex-wrap" style="gap: 8px;">
                         <div class="font-weight-bold text-dark" style="font-size: 13.5px;">
                             <i class="fas fa-file-invoice-dollar text-primary mr-2"></i> Payroll & Payable Units
@@ -337,15 +417,17 @@
                         <div class="row align-items-center">
                             {{-- Payable Day Metric --}}
                             <div class="col-md-4 mb-2 mb-md-0">
-                                <div class="p-3 rounded text-center" style="background: {{ $payableDay >= 1.0 ? '#F6FEF9' : ($payableDay > 0 ? '#FFFAEB' : '#FEF3F2') }}; border: 1px solid {{ $payableDay >= 1.0 ? '#A6F4C7' : ($payableDay > 0 ? '#FEDF89' : '#FECDCA') }}; border-radius: 12px;">
-                                    <div class="text-muted font-weight-bold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">Payable Units</div>
-                                    <div class="font-weight-bold mt-1" style="font-size: 24px; color: {{ $payableDay >= 1.0 ? '#027A48' : ($payableDay > 0 ? '#B54708' : '#B42318') }};">
-                                        {{ number_format($payableDay, 1) }} Day
+                                <div class="p-3 rounded text-center" style="background: {{ $effectivePayableDay >= 1.0 ? '#F6FEF9' : ($effectivePayableDay > 0 ? '#FFFAEB' : '#FEF3F2') }}; border: 1px solid {{ $effectivePayableDay >= 1.0 ? '#A6F4C7' : ($effectivePayableDay > 0 ? '#FEDF89' : '#FECDCA') }}; border-radius: 12px;">
+                                    <div class="text-muted font-weight-bold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">Total Payable Units</div>
+                                    <div class="font-weight-bold mt-1" style="font-size: 24px; color: {{ $effectivePayableDay >= 1.0 ? '#027A48' : ($effectivePayableDay > 0 ? '#B54708' : '#B42318') }};">
+                                        {{ number_format($effectivePayableDay, 1) }} Day
                                     </div>
-                                    <div class="font-weight-bold mt-1" style="font-size: 11.5px; color: {{ $payableDay >= 1.0 ? '#027A48' : ($payableDay > 0 ? '#B54708' : '#B42318') }};">
-                                        @if($payableDay >= 1.0)
+                                    <div class="font-weight-bold mt-1" style="font-size: 11.5px; color: {{ $effectivePayableDay >= 1.0 ? '#027A48' : ($effectivePayableDay > 0 ? '#B54708' : '#B42318') }};">
+                                        @if($isHalfDayWorkWithPaidLeave)
+                                            <i class="fas fa-check-circle mr-1"></i> Full Paid (0.5 Work + 0.5 Leave)
+                                        @elseif($effectivePayableDay >= 1.0)
                                             <i class="fas fa-check-circle mr-1"></i> Full Paid (1.0 Payable Unit)
-                                        @elseif($payableDay > 0)
+                                        @elseif($effectivePayableDay > 0)
                                             <i class="fas fa-adjust mr-1"></i> Half Day (0.5 Payable Unit)
                                         @else
                                             <i class="fas fa-times-circle mr-1"></i> Unpaid / LWP (0.0 Payable Unit)
@@ -357,9 +439,17 @@
                             {{-- Payroll Impact Explanation --}}
                             <div class="col-md-8">
                                 <div class="p-3 rounded h-100" style="background: #F9FAFB; border: 1px solid #EAECF0; border-radius: 12px; font-size: 12.5px;">
-                                    <div class="text-muted font-weight-bold text-uppercase mb-1" style="font-size: 10.5px; letter-spacing: 0.3px;">Payroll Calculation Policy:</div>
+                                    <div class="text-muted font-weight-bold text-uppercase mb-2" style="font-size: 10.5px; letter-spacing: 0.3px;">Payroll Calculation Policy:</div>
                                     <div class="text-dark font-weight-bold" style="line-height: 1.45;">
-                                        @if($statusCode === 'missed_punch' || $isMissed)
+                                        @if($isHalfDayWorkWithPaidLeave)
+                                            <div class="p-2 px-3 rounded d-inline-flex align-items-center mb-2" style="background: #ECFDF3; border: 1px solid #A6F4C7; color: #027A48; font-weight: 700; font-size: 12px; gap: 8px;">
+                                                <i class="fas fa-check-circle" style="font-size: 13px;"></i>
+                                                <span>0.5 Office Work + 0.5 Paid Leave = 1.0 Total Payable Day</span>
+                                            </div>
+                                            <div class="text-dark font-weight-normal" style="font-size: 12px; line-height: 1.5;">
+                                                Office Working (0.5 Day) + Approved Paid Leave (#{{ $linkedLeave->id }} &bull; {{ optional($linkedLeave->leaveType)->name ?? 'Paid Leave' }} - 0.5 Day). Total <strong>1.0 Payable Day</strong> (No Salary Deduction).
+                                            </div>
+                                        @elseif($statusCode === 'missed_punch' || $isMissed)
                                             @if($approvedReg)
                                                 Missed punch regularized and approved. Calculated as <strong>1.0 Payable Day (Full Paid)</strong>.
                                             @else
@@ -515,11 +605,13 @@
 
                 {{-- 5. ⭐ ADMINISTRATIVE OVERRIDE & EDIT AUDIT --}}
                 @if($isEditedByAdmin)
-                <div class="card border-0 mb-3 shadow-sm" style="border-radius: 16px; background: #ffffff; border-left: 5px solid {{ $isRegApproved ? '#12B76A' : 'var(--orb-primary, #4B00E8)' }} !important; border: 1px solid #EAECF0;">
+                <div class="card border-0 mb-3 shadow-sm" style="border-radius: 16px; background: #ffffff; border-left: 5px solid {{ $isRegApproved ? '#12B76A' : ($isLeaveSynced ? '#175CD3' : 'var(--orb-primary, #4B00E8)') }} !important; border: 1px solid #EAECF0;">
                     <div class="card-header bg-transparent border-bottom py-3 px-4 d-flex align-items-center justify-content-between flex-wrap" style="gap: 8px;">
                         <div class="font-weight-bold text-dark" style="font-size: 13.5px;">
                             @if($isRegApproved)
                                 <i class="fas fa-calendar-check text-success mr-2"></i> Attendance Regularization & Modification Audit
+                            @elseif($isLeaveSynced)
+                                <i class="fas fa-calendar-alt text-primary mr-2"></i> Leave Approval & Attendance Sync Audit
                             @else
                                 <i class="fas fa-user-edit text-primary mr-2"></i> Administrative Override & Modification Audit
                             @endif
@@ -527,6 +619,10 @@
                         @if($isRegApproved)
                             <span class="badge" style="background: #ECFDF3; color: #027A48; border: 1px solid #A6F4C5; font-size: 11px; padding: 4px 10px; border-radius: 6px; font-weight: 700;">
                                 <i class="fas fa-calendar-check mr-1"></i> REGULARIZATION APPROVED
+                            </span>
+                        @elseif($isLeaveSynced)
+                            <span class="badge" style="background: #EFF8FF; color: #175CD3; border: 1px solid #B2DDFF; font-size: 11px; padding: 4px 10px; border-radius: 6px; font-weight: 700;">
+                                <i class="fas fa-calendar-check mr-1"></i> LEAVE APPROVED & SYNCED
                             </span>
                         @else
                             <span class="badge" style="background: #F4F2FF; color: #4B00E8; border: 1px solid #D9D6FE; font-size: 11px; padding: 4px 10px; border-radius: 6px; font-weight: 700;">
@@ -539,7 +635,7 @@
                             <div class="col-md-4 mb-2">
                                 <span class="text-muted font-weight-bold" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px;">Modified By:</span>
                                 <div class="font-weight-bold text-dark mt-1">
-                                    <i class="fas fa-user-shield {{ $isRegApproved ? 'text-success' : 'text-primary' }} mr-1"></i> {{ $updatedBy }}
+                                    <i class="fas fa-user-shield {{ $isRegApproved ? 'text-success' : ($isLeaveSynced ? 'text-info' : 'text-primary') }} mr-1"></i> {{ $updatedBy }}
                                 </div>
                             </div>
                             <div class="col-md-4 mb-2">
@@ -551,15 +647,15 @@
                             <div class="col-md-4 mb-2">
                                 <span class="text-muted font-weight-bold" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px;">Modification Type:</span>
                                 <div class="font-weight-bold text-dark mt-1">
-                                    <span class="badge {{ $isRegApproved ? 'bg-success text-white' : 'bg-light text-dark border' }}">{{ $updateCategory }}</span>
+                                    <span class="badge {{ $isRegApproved ? 'bg-success text-white' : ($isLeaveSynced ? 'text-white' : 'bg-light text-dark border') }}" style="{{ $isLeaveSynced ? 'background: #175CD3;' : '' }}">{{ $updateCategory }}</span>
                                 </div>
                             </div>
                             
                             {{-- Reason for Manual Edit --}}
                             <div class="col-12 mt-2">
                                 <div class="p-3 rounded" style="background: #F9FAFB; border: 1px solid #EAECF0; border-radius: 10px;">
-                                    <div class="{{ $isRegApproved ? 'text-success' : 'text-primary' }} font-weight-bold text-uppercase" style="font-size: 10.5px; letter-spacing: 0.3px;">
-                                        <i class="fas fa-comment-dots mr-1"></i> Reason for Modification / Remarks:
+                                    <div class="{{ $isRegApproved ? 'text-success' : ($isLeaveSynced ? 'text-primary' : 'text-primary') }} font-weight-bold text-uppercase" style="font-size: 10.5px; letter-spacing: 0.3px;">
+                                        <i class="fas fa-comment-dots mr-1"></i> {{ $isLeaveSynced ? 'Leave Approval / Sync Remarks:' : 'Reason for Modification / Remarks:' }}
                                     </div>
                                     <div class="text-dark font-weight-bold mt-1" style="font-size: 13px; line-height: 1.45;">
                                         {{ $updateReason ?: 'Attendance record modified.' }}

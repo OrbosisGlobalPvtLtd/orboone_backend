@@ -424,7 +424,6 @@ class AttendanceRegularizationService
         $attendance->hr_approval_note = $regReasonText;
         $attendance->unlock_remarks = $regReasonText;
         $attendance->remarks = $regReasonText;
-        $attendance->status_reason = null;
         $attendance->is_lwp = false;
         $attendance->lwp_reason = null;
         $attendance->half_day_reason = null;

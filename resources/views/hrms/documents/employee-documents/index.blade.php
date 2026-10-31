@@ -252,56 +252,65 @@
     }
 
     #employeeExportButtons .dt-buttons {
-        display: flex !important;
+        display: inline-flex !important;
         align-items: center !important;
         gap: 6px !important;
         flex-wrap: wrap !important;
+        margin: 0 !important;
     }
 
     #employeeExportButtons .dt-button,
     #employeeExportButtons .btn {
-        border-radius: 8px !important;
+        height: 32px !important;
+        min-height: 32px !important;
+        padding: 0 12px !important;
+        border-radius: 9px !important;
+        border: 1px solid var(--orb-border, #E7EAF3) !important;
+        background: #FFFFFF !important;
+        color: var(--orb-text, #101828) !important;
+        font-size: 12px !important;
         font-weight: 800 !important;
-        font-size: 11.5px !important;
-        padding: 6px 12px !important;
         display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
-        gap: 5px !important;
-        box-shadow: none !important;
-        border: 1px solid transparent !important;
+        gap: 6px !important;
+        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04) !important;
+        transition: all 0.2s ease !important;
+        cursor: pointer !important;
+        white-space: nowrap !important;
+        margin: 0 !important;
         text-transform: none !important;
+    }
+
+    #employeeExportButtons .dt-button:hover,
+    #employeeExportButtons .btn:hover {
+        background: var(--orb-soft, #F4F2FF) !important;
+        color: var(--orb-primary, #4B00E8) !important;
+        border-color: rgba(75, 0, 232, 0.25) !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 4px 10px rgba(75, 0, 232, 0.1) !important;
+    }
+
+    .filter-btn-reset {
+        background: #FFFFFF !important;
+        border: 1px solid #E2E8F0 !important;
+        color: #64748B !important;
         transition: all 0.2s ease !important;
     }
 
-    #employeeExportButtons .buttons-excel {
-        background-color: #10B981 !important;
-        border-color: #10B981 !important;
-        color: #FFFFFF !important;
+    .filter-btn-reset i {
+        color: #64748B !important;
+        transition: all 0.2s ease !important;
     }
 
-    #employeeExportButtons .buttons-csv {
-        background-color: #0EA5E9 !important;
-        border-color: #0EA5E9 !important;
-        color: #FFFFFF !important;
+    .filter-btn-reset:hover {
+        background: #F8FAFC !important;
+        border-color: rgba(75, 0, 232, 0.3) !important;
+        color: var(--orb-primary, #4B00E8) !important;
     }
 
-    #employeeExportButtons .buttons-print {
-        background-color: #64748B !important;
-        border-color: #64748B !important;
-        color: #FFFFFF !important;
-    }
-
-    #employeeExportButtons .buttons-pdf {
-        background-color: #EF4444 !important;
-        border-color: #EF4444 !important;
-        color: #FFFFFF !important;
-    }
-
-    #employeeExportButtons .btn:hover {
-        opacity: 0.9 !important;
-        color: #FFFFFF !important;
-        transform: translateY(-1px) !important;
+    .filter-btn-reset:hover i {
+        color: var(--orb-primary, #4B00E8) !important;
     }
 
     /* Table Responsive Wrapper & Specific Column Width Rules */
@@ -758,7 +767,7 @@
 
                     <div>
                         <label class="font-weight-bold text-muted mb-1" style="font-size: 11px;">Department</label>
-                        <select name="department_id" id="filterDepartment" class="form-control bg-white" style="font-size: 13px; height: 38px; border-radius: 8px;">
+                        <select name="department_id" id="filterDepartment" class="form-control select2-searchable bg-white" style="font-size: 13px; height: 38px; border-radius: 8px; width: 100%;">
                             <option value="">All Departments</option>
                             @foreach($departments as $dept)
                             <option value="{{ $dept->id }}" {{ (string) request('department_id') === (string) $dept->id ? 'selected' : '' }}>{{ $dept->name }}</option>
@@ -768,7 +777,7 @@
 
                     <div>
                         <label class="font-weight-bold text-muted mb-1" style="font-size: 11px;">Stage</label>
-                        <select name="employee_stage" id="filterEmployeeStage" class="form-control bg-white" style="font-size: 13px; height: 38px; border-radius: 8px;">
+                        <select name="employee_stage" id="filterEmployeeStage" class="form-control select2-searchable bg-white" style="font-size: 13px; height: 38px; border-radius: 8px; width: 100%;">
                             <option value="">All Stages</option>
                             <option value="internship" {{ request('employee_stage') == 'internship' ? 'selected' : '' }}>Internship</option>
                             <option value="probation" {{ request('employee_stage') == 'probation' ? 'selected' : '' }}>Probation</option>
@@ -779,7 +788,7 @@
 
                     <div>
                         <label class="font-weight-bold text-muted mb-1" style="font-size: 11px;">Profile Status</label>
-                        <select name="profile_status" id="filterProfileStatus" class="form-control bg-white" style="font-size: 13px; height: 38px; border-radius: 8px;">
+                        <select name="profile_status" id="filterProfileStatus" class="form-control select2-searchable bg-white" style="font-size: 13px; height: 38px; border-radius: 8px; width: 100%;">
                             <option value="">All Profiles</option>
                             <option value="pending" {{ request('profile_status') == 'pending' ? 'selected' : '' }}>Pending</option>
                             <option value="submitted" {{ request('profile_status') == 'submitted' ? 'selected' : '' }}>Submitted</option>
@@ -790,7 +799,7 @@
 
                     <div>
                         <label class="font-weight-bold text-muted mb-1" style="font-size: 11px;">Compliance Status</label>
-                        <select name="compliance_status" id="filterStatus" class="form-control bg-white" style="font-size: 13px; height: 38px; border-radius: 8px;">
+                        <select name="compliance_status" id="filterStatus" class="form-control select2-searchable bg-white" style="font-size: 13px; height: 38px; border-radius: 8px; width: 100%;">
                             <option value="">All Statuses</option>
                             <option value="compliant" {{ request('compliance_status') == 'compliant' ? 'selected' : '' }}>Fully Compliant</option>
                             <option value="non_compliant" {{ request('compliance_status') == 'non_compliant' ? 'selected' : '' }}>Non-Compliant</option>
@@ -805,7 +814,7 @@
                         <button type="submit" class="btn text-white font-weight-bold shadow-sm" style="font-size: 12px; height: 38px; border-radius: 8px; background: linear-gradient(135deg, var(--orb-primary, #4B00E8) 0%, var(--orb-secondary, #FF5252) 100%); border: none; flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 4px;">
                             <i class="fas fa-search"></i> Search
                         </button>
-                        <a href="{{ route('documents.compliance.index') }}" class="btn btn-dark font-weight-bold d-flex align-items-center justify-content-center transition-all" style="font-size: 12px; height: 38px; width: 38px; border-radius: 8px; flex-shrink: 0;" title="Reset Filters">
+                        <a href="{{ route('documents.compliance.index') }}" class="btn font-weight-bold d-flex align-items-center justify-content-center transition-all filter-btn-reset" style="font-size: 12px; height: 38px; width: 38px; border-radius: 8px; flex-shrink: 0;" title="Reset Filters">
                             <i class="fas fa-undo"></i>
                         </a>
                     </div>
@@ -816,16 +825,18 @@
         <div class="card-body p-0">
             <!-- DataTable Toolbar -->
             <div class="dm-table-toolbar-row px-4 py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <div class="d-flex align-items-center gap-2">
-                    <span class="text-muted font-weight-bold" style="font-size: 12px;">Show</span>
-                    <select name="per_page" id="filterPerPage" form="complianceFilterForm" class="form-control form-control-sm bg-light" style="width: 80px; font-size: 12px; height: 32px; border-radius: 6px;">
-                        <option value="10" {{ (string)request('per_page', 10) === '10' ? 'selected' : '' }}>10</option>
-                        <option value="25" {{ (string)request('per_page', 25) === '25' ? 'selected' : '' }}>25</option>
-                        <option value="50" {{ (string)request('per_page', 50) === '50' ? 'selected' : '' }}>50</option>
-                        <option value="100" {{ (string)request('per_page', 100) === '100' ? 'selected' : '' }}>100</option>
-                        <option value="all" {{ request('per_page') === 'all' ? 'selected' : '' }}>All</option>
-                    </select>
-                    <span class="text-muted font-weight-bold" style="font-size: 12px;">entries</span>
+                <div class="d-flex align-items-center">
+                    <label class="eo-entries-label mb-0 d-flex align-items-center font-weight-bold text-muted" style="font-size: 13px; gap: 8px;">
+                        <span>Show</span>
+                        <select name="per_page" id="filterPerPage" form="complianceFilterForm" class="table-per-page-select orb-per-page-select" style="width: 75px;" onchange="document.getElementById('complianceFilterForm').submit();">
+                            <option value="10" {{ (string)request('per_page', 10) === '10' ? 'selected' : '' }}>10</option>
+                            <option value="25" {{ (string)request('per_page', 25) === '25' ? 'selected' : '' }}>25</option>
+                            <option value="50" {{ (string)request('per_page', 50) === '50' ? 'selected' : '' }}>50</option>
+                            <option value="100" {{ (string)request('per_page', 100) === '100' ? 'selected' : '' }}>100</option>
+                            <option value="all" {{ request('per_page') === 'all' ? 'selected' : '' }}>All</option>
+                        </select>
+                        <span>entries</span>
+                    </label>
                 </div>
                 <div id="employeeExportButtons"></div>
             </div>
@@ -936,13 +947,8 @@
             </div>
 
             <!-- Footer with Info & Pagination -->
-            <div class="dm-table-footer-row px-4 py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <div class="text-muted font-weight-medium" style="font-size: 12px;">
-                    Showing {{ $employees->firstItem() ?? 0 }} to {{ $employees->lastItem() ?? 0 }} of {{ $employees->total() }} entries
-                </div>
-                <div>
-                    {{ $employees->links() }}
-                </div>
+            <div class="dm-table-footer-row px-4 py-2">
+                {{ $employees->appends(request()->query())->links('vendor.pagination.orbo') }}
             </div>
         </div>
     </div>
@@ -984,7 +990,7 @@
             dom: "<'d-none'B><'row'<'col-12'tr>>",
             buttons: [{
                     extend: 'excelHtml5',
-                    text: '<i class="fas fa-file-excel mr-1"></i> Excel',
+                    text: '<i class="fas fa-file-excel mr-1 text-success"></i> Excel',
                     title: 'Employee Compliance Overview',
                     className: 'btn btn-sm buttons-excel font-weight-bold',
                     exportOptions: {
@@ -998,7 +1004,7 @@
                 },
                 {
                     extend: 'csvHtml5',
-                    text: '<i class="fas fa-file-csv mr-1"></i> CSV',
+                    text: '<i class="fas fa-file-csv mr-1 text-info"></i> CSV',
                     title: 'Employee Compliance Overview',
                     className: 'btn btn-sm buttons-csv font-weight-bold',
                     exportOptions: {
@@ -1012,7 +1018,7 @@
                 },
                 {
                     extend: 'print',
-                    text: '<i class="fas fa-print mr-1"></i> Print',
+                    text: '<i class="fas fa-print mr-1 text-secondary"></i> Print',
                     title: 'Employee Compliance Overview',
                     className: 'btn btn-sm buttons-print font-weight-bold',
                     autoPrint: true,
@@ -1081,7 +1087,7 @@
                 },
                 {
                     extend: 'pdfHtml5',
-                    text: '<i class="fas fa-file-pdf mr-1"></i> PDF',
+                    text: '<i class="fas fa-file-pdf mr-1 text-danger"></i> PDF',
                     title: 'Employee Compliance Overview',
                     className: 'btn btn-sm buttons-pdf font-weight-bold',
                     orientation: 'landscape',

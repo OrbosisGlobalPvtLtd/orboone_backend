@@ -164,6 +164,9 @@ class AttendanceMobileService
         } elseif ($isPermanentWfh) {
             $todayWorkMode = 'wfh';
             $workModeLabel = 'Working From Home (Permanent)';
+        } elseif ($employee && $employee->isHybrid()) {
+            $todayWorkMode = 'hybrid';
+            $workModeLabel = 'Hybrid Mode (WFO / WFH)';
         } elseif ($wfhApproved) {
             $todayWorkMode = 'wfh';
             $workModeLabel = 'Working From Home';
@@ -172,6 +175,7 @@ class AttendanceMobileService
         $payload['today_work_mode'] = $todayWorkMode;
         $payload['work_mode_label'] = $workModeLabel;
         $payload['is_permanent_wfh'] = $isPermanentWfh;
+        $payload['is_hybrid'] = (bool) ($employee && $employee->isHybrid());
         $payload['show_wfh_module'] = ! $isPermanentWfh;
         $payload['can_use_web_attendance'] = $employee->canUseWebAttendance();
         $payload['can_use_mobile_attendance'] = $employee->canUseMobileAttendance();

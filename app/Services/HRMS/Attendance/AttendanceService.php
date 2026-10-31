@@ -137,7 +137,8 @@ class AttendanceService
             $workMode = 'wfo';
         } else {
             // Requested WFH
-            if ($employeeWorkMode !== 'wfh' && ! $isUnlocked) {
+            // WFH and Hybrid employees can punch WFH directly; permanent WFO employees require an approved WFH request
+            if (! in_array($employeeWorkMode, ['wfh', 'hybrid'], true) && ! $isUnlocked) {
                 // Check if employee has an approved Holiday / Week-off Work Request with WFH mode for today
                 $hasApprovedHolidayWfh = HolidayWorkRequestM::where('employee_id', $employee->id)
                     ->whereDate('worked_date', $today)

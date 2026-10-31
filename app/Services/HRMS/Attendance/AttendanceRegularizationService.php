@@ -13,6 +13,7 @@ use App\Models\HRMS\Attendance\AttendanceM as Attendance;
 use App\Models\HRMS\Attendance\AttendanceRegularizationM;
 use App\Services\HRMS\Attendance\AttendanceStateResolverService;
 use App\Models\HRMS\Employee\EmployeeM as Employee;
+use App\Models\HRMS\Attendance\AttendanceDailyStatusLogM;
 use App\Services\HRMS\Payroll\PayrollCalculationService;
 use App\Services\HRMS\Leave\CompOffService;
 
@@ -403,15 +404,32 @@ class AttendanceRegularizationService
 
         $attDateStr = $carbonAttDate->toDateString();
 
+        $approverId = $approvedByUserId ?: Auth::id();
+        $oldStatus = $attendance->attendance_status ?: 'absent';
+
         // Step 2: Clear temporary flags and set admin unlock
         $attendance->missed_punch = false;
         $attendance->is_missed_punch = false;
         $attendance->is_blocked = false;
         $attendance->is_punch_blocked = false;
         $attendance->is_admin_unlocked = true;
-        $attendance->unlocked_by = $approvedByUserId ?: Auth::id();
+        $attendance->unlocked_by = $approverId;
         $attendance->unlocked_at = now();
         $attendance->unlock_type = 'regularization_approval';
+        $attendance->hr_approved_by = $approverId;
+        $attendance->hr_approved_at = now();
+
+        $regReasonText = $regularization->admin_remarks 
+            ?: ($regularization->reason ? 'Regularization: ' . $regularization->reason : 'Approved via Regularization Request');
+        $attendance->hr_approval_note = $regReasonText;
+        $attendance->unlock_remarks = $regReasonText;
+        $attendance->remarks = $regReasonText;
+        $attendance->status_reason = null;
+        $attendance->is_lwp = false;
+        $attendance->lwp_reason = null;
+        $attendance->half_day_reason = null;
+        $attendance->auto_block_reason = null;
+        $attendance->auto_blocked_at = null;
         $attendance->missed_punch_reason = null;
         $attendance->pending_hr_reason = null;
         $attendance->blocked_reason = null;
@@ -552,6 +570,23 @@ class AttendanceRegularizationService
         }
 
         $attendance->save();
+
+        if (Schema::hasTable('attendance_daily_status_logs')) {
+            try {
+                AttendanceDailyStatusLogM::create([
+                    'employee_id' => $employee->id,
+                    'attendance_id' => $attendance->id,
+                    'status_date' => $attDateStr,
+                    'old_status' => strtoupper($oldStatus),
+                    'new_status' => strtoupper($attendance->attendance_status ?? 'PRESENT'),
+                    'source' => 'regularization_approval',
+                    'remarks' => $regReasonText,
+                    'created_by_user_id' => $approverId,
+                ]);
+            } catch (\Throwable $e) {
+                Log::warning('Failed to log attendance_daily_status_logs for regularization: ' . $e->getMessage());
+            }
+        }
 
         // Step 6: Execute AttendanceService::calculateAttendanceStats() and rebuild violation cycles
         $attendanceService->calculateAttendanceStats($attendance);

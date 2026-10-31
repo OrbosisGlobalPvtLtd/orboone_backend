@@ -131,43 +131,79 @@
                     $isProcessedInPayroll = (bool) ($attendance->payroll_processed ?? false);
                     $payrollProcessedAt = $attendance->payroll_processed_at ? \Carbon\Carbon::parse($attendance->payroll_processed_at)->format('d M Y, h:i A') : null;
 
+                    $violationsList = $attendance->violations ?? collect([]);
+                    $regList = $attendance->regularizations ?? collect([]);
+                    $statusLogsList = $attendance->statusLogs ?? collect([]);
+                    $payrollImpactsList = $attendance->payrollImpacts ?? collect([]);
+                    $approvedReg = $regList->where('status', 'approved')->first();
+                    $pendingReg = $regList->where('status', 'pending')->first();
+
                     // ================= ATTENDANCE EDIT & AUDIT REASON =================
+                    $isRegApproved = ($attendance->unlock_type === 'regularization_approval' 
+                        || $attendance->attendance_source === 'regularization' 
+                        || !empty($approvedReg));
+
                     $isEditedByAdmin = (bool) (
                         $attendance->attendance_source === 'admin_override' 
+                        || $attendance->attendance_source === 'regularization'
+                        || $isRegApproved
                         || $isUnlocked 
                         || !empty($attendance->unlocked_at) 
                         || !empty($attendance->hr_approved_at) 
-                        || (!empty($attendance->statusLogs) && $attendance->statusLogs->count() > 0)
+                        || (!empty($statusLogsList) && $statusLogsList->count() > 0)
                     );
 
-                    $updateReason = $attendance->hr_approval_note 
-                        ?: ($attendance->unlock_remarks 
-                        ?: ($attendance->status_reason 
-                        ?: ($attendance->remarks 
-                        ?: ($attendance->half_day_reason 
-                        ?: ($attendance->lwp_reason 
-                        ?: ($attendance->missed_punch_reason 
-                        ?: ($attendance->blocked_reason ?: null)))))));
+                    $regReason = !empty($approvedReg) 
+                        ? ($approvedReg->admin_remarks ?: ($approvedReg->reason ? $approvedReg->reason : 'Approved via Regularization Request')) 
+                        : null;
+
+                    if ($isRegApproved) {
+                        $updateReason = $attendance->hr_approval_note 
+                            ?: ($attendance->unlock_remarks 
+                            ?: ($regReason 
+                            ?: ($attendance->remarks ?: 'Approved via Regularization Request')));
+
+                        if (str_contains(strtolower((string) $updateReason), 'auto marked absent') || str_contains(strtolower((string) $updateReason), 'never punched in')) {
+                            $updateReason = $regReason ?: 'Attendance corrected via Approved Regularization.';
+                        }
+                    } else {
+                        $updateReason = $attendance->hr_approval_note 
+                            ?: ($attendance->unlock_remarks 
+                            ?: ($attendance->status_reason 
+                            ?: ($attendance->remarks 
+                            ?: ($attendance->half_day_reason 
+                            ?: ($attendance->lwp_reason 
+                            ?: ($attendance->missed_punch_reason 
+                            ?: ($attendance->blocked_reason ?: null)))))));
+                    }
 
                     $updatedBy = optional($attendance->hrApprovedBy)->name 
                         ?? optional($attendance->unlockedBy)->name 
-                        ?? (optional(optional($attendance->statusLogs)->first())->createdBy->name ?? 'Administrator');
+                        ?? (optional($approvedReg?->approvedBy)->name 
+                        ?? (optional(optional($statusLogsList)->first())->createdBy->name ?? 'Administrator'));
 
                     $updatedAtStr = $attendance->hr_approved_at 
                         ? \Carbon\Carbon::parse($attendance->hr_approved_at)->format('d M Y, h:i A')
                         : ($attendance->unlocked_at 
                             ? \Carbon\Carbon::parse($attendance->unlocked_at)->format('d M Y, h:i A')
-                            : ($attendance->updated_at ? \Carbon\Carbon::parse($attendance->updated_at)->format('d M Y, h:i A') : '-'));
+                            : ($approvedReg?->approved_at 
+                                ? \Carbon\Carbon::parse($approvedReg->approved_at)->format('d M Y, h:i A')
+                                : ($attendance->updated_at ? \Carbon\Carbon::parse($attendance->updated_at)->format('d M Y, h:i A') : '-')));
 
                     $updateCategory = match(strtolower($attendance->unlock_type ?? '')) {
                         'hr_manual_override', 'manual_override', 'manual_punch_in' => 'Admin Manual Override',
                         'biometric_sync' => 'Biometric Sync Correction',
                         'regularization_approval' => 'Regularization Approval',
-                        default => ($attendance->unlock_type ? ucwords(str_replace('_', ' ', $attendance->unlock_type)) : ($attendance->attendance_source === 'admin_override' ? 'Admin Manual Override' : 'System Record'))
+                        default => ($attendance->unlock_type 
+                            ? ucwords(str_replace('_', ' ', $attendance->unlock_type)) 
+                            : ($isRegApproved 
+                                ? 'Regularization Approval' 
+                                : ($attendance->attendance_source === 'admin_override' ? 'Admin Manual Override' : 'System Record')))
                     };
 
                     $sourceLabel = match(strtolower($attendance->attendance_source ?? '')) {
                         'admin_override' => 'Admin Override',
+                        'regularization' => 'Regularization',
                         'mobile', 'mobile_app' => 'Mobile App',
                         'web' => 'Web Portal',
                         'biometric' => 'Biometric Device',
@@ -175,13 +211,6 @@
                         'comp_off_work' => 'Comp-Off Work',
                         default => ($attendance->attendance_source ? ucwords(str_replace('_', ' ', $attendance->attendance_source)) : 'System Punch')
                     };
-
-                    $violationsList = $attendance->violations ?? collect([]);
-                    $regList = $attendance->regularizations ?? collect([]);
-                    $statusLogsList = $attendance->statusLogs ?? collect([]);
-                    $payrollImpactsList = $attendance->payrollImpacts ?? collect([]);
-                    $approvedReg = $regList->where('status', 'approved')->first();
-                    $pendingReg = $regList->where('status', 'pending')->first();
                 @endphp
 
                 {{-- 1. EMPLOYEE & DATE HERO BANNER --}}
@@ -486,21 +515,31 @@
 
                 {{-- 5. ⭐ ADMINISTRATIVE OVERRIDE & EDIT AUDIT --}}
                 @if($isEditedByAdmin)
-                <div class="card border-0 mb-3 shadow-sm" style="border-radius: 16px; background: #ffffff; border-left: 5px solid var(--orb-primary, #4B00E8) !important; border: 1px solid #EAECF0;">
+                <div class="card border-0 mb-3 shadow-sm" style="border-radius: 16px; background: #ffffff; border-left: 5px solid {{ $isRegApproved ? '#12B76A' : 'var(--orb-primary, #4B00E8)' }} !important; border: 1px solid #EAECF0;">
                     <div class="card-header bg-transparent border-bottom py-3 px-4 d-flex align-items-center justify-content-between flex-wrap" style="gap: 8px;">
                         <div class="font-weight-bold text-dark" style="font-size: 13.5px;">
-                            <i class="fas fa-user-edit text-primary mr-2"></i> Administrative Override & Modification Audit
+                            @if($isRegApproved)
+                                <i class="fas fa-calendar-check text-success mr-2"></i> Attendance Regularization & Modification Audit
+                            @else
+                                <i class="fas fa-user-edit text-primary mr-2"></i> Administrative Override & Modification Audit
+                            @endif
                         </div>
-                        <span class="badge" style="background: #F4F2FF; color: #4B00E8; border: 1px solid #D9D6FE; font-size: 11px; padding: 4px 10px; border-radius: 6px; font-weight: 700;">
-                            <i class="fas fa-pen mr-1"></i> MANUALLY MODIFIED
-                        </span>
+                        @if($isRegApproved)
+                            <span class="badge" style="background: #ECFDF3; color: #027A48; border: 1px solid #A6F4C5; font-size: 11px; padding: 4px 10px; border-radius: 6px; font-weight: 700;">
+                                <i class="fas fa-calendar-check mr-1"></i> REGULARIZATION APPROVED
+                            </span>
+                        @else
+                            <span class="badge" style="background: #F4F2FF; color: #4B00E8; border: 1px solid #D9D6FE; font-size: 11px; padding: 4px 10px; border-radius: 6px; font-weight: 700;">
+                                <i class="fas fa-pen mr-1"></i> MANUALLY MODIFIED
+                            </span>
+                        @endif
                     </div>
                     <div class="card-body p-3 px-4">
                         <div class="row" style="font-size: 12.5px;">
                             <div class="col-md-4 mb-2">
                                 <span class="text-muted font-weight-bold" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px;">Modified By:</span>
                                 <div class="font-weight-bold text-dark mt-1">
-                                    <i class="fas fa-user-shield text-primary mr-1"></i> {{ $updatedBy }}
+                                    <i class="fas fa-user-shield {{ $isRegApproved ? 'text-success' : 'text-primary' }} mr-1"></i> {{ $updatedBy }}
                                 </div>
                             </div>
                             <div class="col-md-4 mb-2">
@@ -512,18 +551,18 @@
                             <div class="col-md-4 mb-2">
                                 <span class="text-muted font-weight-bold" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px;">Modification Type:</span>
                                 <div class="font-weight-bold text-dark mt-1">
-                                    <span class="badge bg-light text-dark border">{{ $updateCategory }}</span>
+                                    <span class="badge {{ $isRegApproved ? 'bg-success text-white' : 'bg-light text-dark border' }}">{{ $updateCategory }}</span>
                                 </div>
                             </div>
                             
                             {{-- Reason for Manual Edit --}}
                             <div class="col-12 mt-2">
                                 <div class="p-3 rounded" style="background: #F9FAFB; border: 1px solid #EAECF0; border-radius: 10px;">
-                                    <div class="text-primary font-weight-bold text-uppercase" style="font-size: 10.5px; letter-spacing: 0.3px;">
+                                    <div class="{{ $isRegApproved ? 'text-success' : 'text-primary' }} font-weight-bold text-uppercase" style="font-size: 10.5px; letter-spacing: 0.3px;">
                                         <i class="fas fa-comment-dots mr-1"></i> Reason for Modification / Remarks:
                                     </div>
                                     <div class="text-dark font-weight-bold mt-1" style="font-size: 13px; line-height: 1.45;">
-                                        {{ $updateReason ?: 'Attendance record manually modified by administrator.' }}
+                                        {{ $updateReason ?: 'Attendance record modified.' }}
                                     </div>
                                 </div>
                             </div>
@@ -598,7 +637,7 @@
                         <div class="row">
                             <div class="col-md-4 mb-2">
                                 <span class="text-muted">Regularization Type:</span>
-                                <div class="font-weight-bold text-dark mt-1">{{ ucwords(str_replace('_', ' ', $firstReg->regularization_type ?? 'General Regularization')) }}</div>
+                                <div class="font-weight-bold text-dark mt-1">{{ ucwords(str_replace('_', ' ', $firstReg->request_type ?? ($firstReg->regularization_type ?? 'Regular Attendance'))) }}</div>
                             </div>
                             <div class="col-md-4 mb-2">
                                 <span class="text-muted">Requested Timings:</span>

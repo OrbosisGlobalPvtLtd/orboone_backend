@@ -1,4 +1,4 @@
-@extends('layouts.admin', ['accesses' => $accesses, 'active' => 'document-management'])
+@extends('layouts.panel', ['accesses' => $accesses, 'active' => 'document-management'])
 
 @section('page_title', 'Company Documents & Policies')
 
@@ -88,80 +88,67 @@
         display: flex;
         align-items: center;
         gap: 12px;
-        flex-wrap: wrap;
         position: relative;
         z-index: 2;
+        flex-shrink: 0;
     }
 
-    .header-search-wrap {
-        position: relative;
-        width: 250px;
-        height: 40px;
-    }
-
-    .header-search-input {
-        width: 100%;
-        height: 40px;
-        border-radius: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        background: rgba(255, 255, 255, 0.16);
-        padding-left: 36px;
-        padding-right: 14px;
-        color: #fff;
-        font-size: 13px;
-        font-weight: 600;
-        outline: none;
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        transition: all 0.2s ease;
-        box-sizing: border-box;
-    }
-
-    .header-search-input::placeholder {
-        color: rgba(255, 255, 255, 0.8);
-    }
-
-    .header-search-input:focus {
-        border-color: rgba(255, 255, 255, 0.7);
-        background: rgba(255, 255, 255, 0.24);
-        box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.18);
-    }
-
-    .header-search-icon {
-        position: absolute;
-        left: 12px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: rgba(255, 255, 255, 0.85);
-        font-size: 13px;
-        pointer-events: none;
-    }
-
-    .btn-hero-action {
-        height: 40px;
-        border-radius: 12px;
-        padding: 0 18px;
-        font-size: 13px;
-        font-weight: 800;
-        background: #ffffff;
-        color: var(--orb-primary, #4B00E8);
-        border: none;
+    /* Glass Card Upload Button */
+    .btn-hero-glass {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 8px;
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+        gap: 10px;
+        height: 44px;
+        padding: 0 20px;
+        border-radius: 14px;
+        font-size: 13.5px;
+        font-weight: 800;
+        letter-spacing: 0.2px;
+        color: #ffffff !important;
+        background: rgba(255, 255, 255, 0.16);
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.4);
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         white-space: nowrap;
         text-decoration: none !important;
+        outline: none;
+        user-select: none;
     }
 
-    .btn-hero-action:hover {
-        background: #F8FAFC;
-        transform: translateY(-1px);
-        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
-        color: var(--orb-primary, #4B00E8);
+    .btn-hero-glass .btn-icon-bubble {
+        width: 26px;
+        height: 26px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.22);
+        border: 1px solid rgba(255, 255, 255, 0.32);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11.5px;
+        color: #ffffff;
+        transition: all 0.25s ease;
+    }
+
+    .btn-hero-glass:hover {
+        background: rgba(255, 255, 255, 0.28);
+        border-color: rgba(255, 255, 255, 0.6);
+        color: #ffffff !important;
+        transform: translateY(-2px);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+    }
+
+    .btn-hero-glass:hover .btn-icon-bubble {
+        background: rgba(255, 255, 255, 0.38);
+        transform: rotate(90deg);
+    }
+
+    .btn-hero-glass:active {
+        transform: translateY(0);
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
     }
 
     /* Category Filter Pills */
@@ -326,18 +313,34 @@
         opacity: 0.75;
     }
 
-    /* Responsive Queries */
+    /* Comprehensive Responsive Queries */
+    @media (max-width: 991px) {
+        .policies-page {
+            padding: 18px 16px 30px;
+        }
+
+        .policies-hero {
+            padding: 22px 24px;
+            border-radius: 18px;
+        }
+
+        .policies-grid {
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 16px;
+        }
+    }
+
     @media (max-width: 768px) {
         .policies-page {
-            padding: 14px 10px 30px;
+            padding: 14px 12px 28px;
         }
 
         .policies-hero {
             flex-direction: column;
-            align-items: stretch;
-            justify-content: flex-start;
-            padding: 18px 16px;
-            gap: 12px;
+            align-items: flex-start;
+            padding: 20px 18px;
+            gap: 16px;
+            border-radius: 16px;
         }
 
         .policies-hero-info {
@@ -346,23 +349,70 @@
         }
 
         .policies-actions {
-            flex-direction: column;
             width: 100%;
-            gap: 10px;
         }
 
-        .header-search-wrap {
+        .btn-hero-glass {
             width: 100%;
-            max-width: 100%;
+            height: 44px;
+            justify-content: center;
         }
 
-        .btn-hero-action {
-            width: 100%;
+        .policy-filter-bar {
+            gap: 6px;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+        }
+
+        .policy-filter-pill {
+            padding: 6px 12px;
+            font-size: 11.5px;
+            flex-shrink: 0;
+        }
+
+        .policies-grid {
+            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+            gap: 14px;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .policies-page {
+            padding: 10px 8px 24px;
+        }
+
+        .policies-hero {
+            padding: 18px 16px;
+            border-radius: 16px;
+            margin-bottom: 16px;
+        }
+
+        .policies-title {
+            font-size: 20px;
+        }
+
+        .policies-subtitle {
+            font-size: 12px;
+            line-height: 1.4;
         }
 
         .policies-grid {
             grid-template-columns: 1fr;
-            gap: 14px;
+            gap: 12px;
+        }
+
+        .policy-card {
+            padding: 16px;
+            border-radius: 16px;
+        }
+
+        .modal-dialog {
+            margin: 12px auto;
+            max-width: calc(100% - 24px);
+        }
+
+        .modal-content {
+            border-radius: 18px !important;
         }
     }
 </style>
@@ -387,15 +437,10 @@
             </div>
             
             <div class="policies-actions">
-                <!-- Search Box -->
-                <div class="header-search-wrap">
-                    <i class="fas fa-search header-search-icon"></i>
-                    <input type="text" id="policySearchInput" class="header-search-input" placeholder="Search documents & policies...">
-                </div>
-                
                 @if($isAdmin)
-                    <button class="btn-hero-action" data-toggle="modal" data-target="#addPolicyModal">
-                        <i class="fas fa-plus-circle"></i> Upload Document / Policy
+                    <button class="btn-hero-glass" data-toggle="modal" data-target="#addPolicyModal">
+                        <span class="btn-icon-bubble"><i class="fas fa-plus"></i></span>
+                        <span>Upload Document / Policy</span>
                     </button>
                 @endif
             </div>
@@ -481,7 +526,7 @@
                     </div>
                     <div class="form-group mb-3">
                         <label class="set-label font-weight-bold" for="policy_category" style="font-size: 13px; color: #1E293B;">Category <span class="text-danger">*</span></label>
-                        <select name="category" id="policy_category" class="form-control" required style="height: 42px; border-radius: 10px; border: 1px solid #E2E8F0; font-size: 13.5px;">
+                        <select name="category" id="policy_category" class="select2-searchable" required style="width: 100%;">
                             <option value="HR Policy">HR Policy</option>
                             <option value="IT Policy">IT Policy</option>
                             <option value="Finance">Finance</option>

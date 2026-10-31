@@ -148,12 +148,98 @@
         color: var(--dm-text) !important;
     }
 
+    .btn-orbo-theme {
+        background: linear-gradient(135deg, var(--orb-primary, #4B00E8) 0%, var(--orb-secondary, #FF5252) 100%) !important;
+        color: #fff !important;
+        border: none !important;
+        border-radius: 12px !important;
+        padding: 10px 20px !important;
+        font-weight: 800 !important;
+        font-size: 13px !important;
+        box-shadow: 0 8px 20px rgba(75, 0, 232, 0.22) !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        transition: all 0.2s ease !important;
+        white-space: nowrap !important;
+        cursor: pointer !important;
+        text-decoration: none !important;
+    }
+
+    .btn-orbo-theme:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 12px 26px rgba(75, 0, 232, 0.32) !important;
+        color: #fff !important;
+        text-decoration: none !important;
+    }
+
+    .btn-orbo-theme:active {
+        transform: translateY(0) !important;
+    }
+
+    @media (max-width: 991px) {
+        .dm-hero {
+            padding: 24px 28px !important;
+            border-radius: 20px !important;
+        }
+
+        .dm-hero h1 {
+            font-size: 22px !important;
+        }
+
+        .dm-table-header {
+            padding: 18px 20px !important;
+        }
+    }
+
     @media (max-width: 768px) {
         .doc-ext-grid {
             grid-template-columns: repeat(3, 1fr);
         }
         .doc-check-row {
             grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 767px) {
+        .dm-hero {
+            padding: 20px !important;
+            border-radius: 18px !important;
+        }
+
+        .dm-hero h1 {
+            font-size: 19px !important;
+        }
+
+        .dm-hero p {
+            font-size: 12px !important;
+        }
+
+        .dm-table-header {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 14px !important;
+            padding: 16px !important;
+        }
+
+        .dm-table-head-right {
+            width: 100% !important;
+        }
+
+        .dm-table-head-right .btn-orbo-theme {
+            width: 100% !important;
+            justify-content: center !important;
+        }
+
+        .dm-table thead th {
+            padding: 12px 14px !important;
+            font-size: 10px !important;
+            white-space: nowrap !important;
+        }
+
+        .dm-table tbody td {
+            padding: 12px 14px !important;
+            white-space: nowrap !important;
         }
     }
 </style>
@@ -173,11 +259,6 @@ $extensionOptions = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'];
             </div>
             <h1>Document Types Configuration</h1>
             <p>Define global document parameters, verification scopes, size upload constraints, and policy compliance workflows.</p>
-        </div>
-        <div class="dm-hero-actions">
-            <button type="button" class="dm-btn dm-btn-primary" data-toggle="modal" data-target="#createDocumentTypeModal">
-                <i class="fas fa-plus"></i> Add Document Type
-            </button>
         </div>
     </div>
 
@@ -215,12 +296,18 @@ $extensionOptions = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'];
                     <p class="dm-table-subtitle">Review file upload rules, mandatory status, expiry date constraints, and scopes.</p>
                 </div>
             </div>
+            <div class="dm-table-head-right">
+                <button type="button" class="btn-orbo-theme" data-toggle="modal" data-target="#createDocumentTypeModal">
+                    <i class="fas fa-plus"></i> Add Document Type
+                </button>
+            </div>
         </div>
 
         <div class="dm-table-wrap">
             <table class="table dm-table">
                 <thead>
                     <tr>
+                        <th width="70">S.No</th>
                         <th>Name / Code</th>
                         <th>Scope</th>
                         <th>Applies To</th>
@@ -241,6 +328,12 @@ $extensionOptions = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'];
                     @endphp
 
                     <tr>
+                        <td>
+                            <span class="d-inline-flex align-items-center justify-content-center"
+                                style="width: 32px; height: 32px; border-radius: 10px; background: var(--dm-soft); color: var(--dm-primary); font-weight: 800; font-size: 12px;">
+                                {{ $loop->iteration }}
+                            </span>
+                        </td>
                         <td>
                             <div style="font-weight: 800; color: var(--dm-text); font-size: 14px;">{{ $type->name }}</div>
                             <span class="d-inline-flex" style="font-size: 11px; color: var(--dm-muted); background: #F1F5F9; border: 1px solid var(--dm-border); border-radius: 6px; padding: 2px 6px; margin-top: 4px; font-family: monospace;">
@@ -340,8 +433,16 @@ $extensionOptions = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'];
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="8" class="text-center text-muted py-5">
-                            No document types configured yet.
+                        <td colspan="9" class="text-center py-5">
+                            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px;">
+                                <div style="width: 72px; height: 72px; border-radius: 20px; background: rgba(75, 0, 232, 0.06); color: var(--dm-primary); display: flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 14px; box-shadow: 0 8px 24px rgba(75, 0, 232, 0.08);">
+                                    <i class="fas fa-folder-open"></i>
+                                </div>
+                                <h5 style="font-weight: 800; font-size: 16px; color: var(--dm-text); margin-bottom: 6px;">No Document Types Found</h5>
+                                <p style="font-size: 13px; color: var(--dm-muted); margin: 0; max-width: 440px; line-height: 1.5; font-weight: 500;">
+                                    There are currently no document types configured. Click "Add Document Type" to create one.
+                                </p>
+                            </div>
                         </td>
                     </tr>
                     @endforelse

@@ -1481,6 +1481,9 @@
 
                             <td>
                                 @php
+                                    $hasApprovedReg = optional($attendance->regularizations)->where('status', 'approved')->first();
+                                    $isRegApproved = ($attendance->unlock_type === 'regularization_approval' || $attendance->attendance_source === 'regularization' || !empty($hasApprovedReg));
+
                                     $reasonText = match ($typeCode) {
                                         'lwp' => $attendance->lwp_reason ?: ($attendance->status_reason ?: ($attendance->remarks ?: ($attendance->half_day_reason ?: null))),
                                         'half_day' => $attendance->half_day_reason ?: ($attendance->status_reason ?: ($attendance->remarks ?: ($attendance->lwp_reason ?: null))),
@@ -1498,6 +1501,14 @@
                                             ?: ($attendance->unlock_remarks 
                                             ?: ($attendance->approval_remarks ?: null)))))))),
                                     };
+
+                                    if ($isRegApproved) {
+                                        if (empty($reasonText) || str_contains(strtolower((string) $reasonText), 'auto marked absent') || str_contains(strtolower((string) $reasonText), 'never punched in')) {
+                                            $reasonText = $attendance->hr_approval_note 
+                                                ?: ($attendance->unlock_remarks 
+                                                ?: (!empty($hasApprovedReg) ? ($hasApprovedReg->reason ? 'Regularization: ' . $hasApprovedReg->reason : 'Approved via Regularization') : 'Regularization Approved'));
+                                        }
+                                    }
                                 @endphp
                                 @if(!empty($reasonText))
                                     <div style="min-width: 180px; max-width: 340px; font-size: 12px; color: #344054; font-weight: 500; line-height: 1.45; white-space: normal; word-break: break-word;" title="{{ $reasonText }}">

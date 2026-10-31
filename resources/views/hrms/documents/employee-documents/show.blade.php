@@ -55,6 +55,83 @@
         align-items: end;
     }
 
+    .dm-upload-row .select2-container {
+        width: 100% !important;
+    }
+
+    .dm-upload-row .select2-container--default .select2-selection--single {
+        height: 46px !important;
+        border-radius: 10px !important;
+        border: 1px solid #e5e7eb !important;
+        background: #fff !important;
+        display: flex !important;
+        align-items: center !important;
+        padding: 0 14px !important;
+        box-shadow: none !important;
+        transition: .2s ease !important;
+    }
+
+    .dm-upload-row .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 44px !important;
+        padding-left: 0 !important;
+        padding-right: 24px !important;
+        font-size: 13px !important;
+        font-weight: 700 !important;
+        color: var(--dm-text) !important;
+    }
+
+    .dm-upload-row .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 44px !important;
+        right: 12px !important;
+    }
+
+    .dm-upload-row .select2-container--default.select2-container--open .select2-selection--single,
+    .dm-upload-row .select2-container--default.select2-container--focus .select2-selection--single {
+        border-color: var(--dm-primary) !important;
+        box-shadow: 0 0 0 3px rgba(75, 0, 232, 0.1) !important;
+        outline: none !important;
+    }
+
+    .dm-upload-row .orbo-date-picker,
+    .dm-upload-row .orbo-date-picker-display,
+    .dm-upload-row .flatpickr-input,
+    .dm-upload-row input[data-date-picker] {
+        height: 46px !important;
+        border-radius: 10px !important;
+        border: 1px solid #e5e7eb !important;
+        font-size: 13px !important;
+        font-weight: 700 !important;
+        background-color: #fff !important;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%234B00E8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E") !important;
+        background-repeat: no-repeat !important;
+        background-position: right 14px center !important;
+        background-size: 16px 16px !important;
+        color: var(--dm-text) !important;
+        padding: 0 40px 0 14px !important;
+        cursor: pointer !important;
+        transition: .2s ease !important;
+    }
+
+    .dm-upload-row .orbo-date-picker:focus,
+    .dm-upload-row .orbo-date-picker-display:focus,
+    .dm-upload-row .flatpickr-input:focus,
+    .dm-upload-row input[data-date-picker]:focus {
+        border-color: var(--dm-primary) !important;
+        box-shadow: 0 0 0 3px rgba(75, 0, 232, 0.1) !important;
+        outline: none !important;
+    }
+
+    .dm-upload-row #uploadSubmitBtn {
+        height: 46px !important;
+        border-radius: 10px !important;
+        font-weight: 800 !important;
+        font-size: 13px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 8px !important;
+    }
+
     .dm-line-upload {
         height: 46px;
         width: 100%;
@@ -140,6 +217,135 @@
         gap: 8px;
         flex-wrap: wrap;
     }
+
+    .dm-card-body {
+        padding: 24px;
+    }
+
+    /* Full Responsive Design for All Screen Sizes */
+    @media (max-width: 991px) {
+        .dm-hero {
+            padding: 24px 28px !important;
+            border-radius: 20px !important;
+        }
+
+        .dm-hero h1 {
+            font-size: 22px !important;
+        }
+
+        .dm-table-header {
+            padding: 18px 20px !important;
+        }
+    }
+
+    @media (max-width: 767px) {
+        .dm-hero {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 16px !important;
+            padding: 20px !important;
+            border-radius: 18px !important;
+        }
+
+        .dm-hero h1 {
+            font-size: 19px !important;
+        }
+
+        .dm-hero p {
+            font-size: 12px !important;
+        }
+
+        .dm-hero-actions {
+            width: 100% !important;
+        }
+
+        .dm-hero-actions .dm-btn {
+            width: 100% !important;
+            justify-content: center !important;
+        }
+
+        .dm-metrics-grid {
+            margin: 0 -4px !important;
+        }
+
+        .dm-metrics-grid [class*="col-"] {
+            padding: 0 4px !important;
+        }
+
+        .dm-metric-card {
+            padding: 12px 12px !important;
+            gap: 10px !important;
+            border-radius: 14px !important;
+        }
+
+        .dm-metric-icon {
+            width: 36px !important;
+            height: 36px !important;
+            font-size: 14px !important;
+            border-radius: 10px !important;
+        }
+
+        .dm-metric-value {
+            font-size: 18px !important;
+        }
+
+        .dm-metric-label {
+            font-size: 10px !important;
+            letter-spacing: 0.02em !important;
+        }
+
+        .dm-card-body {
+            padding: 16px !important;
+        }
+
+        .dm-table-header {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 12px !important;
+            padding: 16px !important;
+        }
+
+        .dm-header-actions {
+            width: 100% !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+        }
+
+        .dm-header-actions form {
+            flex: 1 !important;
+        }
+
+        .dm-header-verify-btn,
+        .dm-header-edit-btn {
+            width: 100% !important;
+            justify-content: center !important;
+            padding: 9px 14px !important;
+            font-size: 12px !important;
+            border-radius: 10px !important;
+        }
+
+        .dm-table thead th {
+            padding: 12px 14px !important;
+            font-size: 10px !important;
+            white-space: nowrap !important;
+        }
+
+        .dm-table tbody td {
+            padding: 12px 14px !important;
+            white-space: nowrap !important;
+        }
+
+        .dm-action-stack {
+            flex-wrap: nowrap !important;
+        }
+    }
+
+    @media (max-width: 575px) {
+        .dm-upload-row {
+            align-items: stretch !important;
+        }
+    }
 </style>
 @endsection
 
@@ -194,7 +400,7 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
     @endif
 
     <div class="row dm-metrics-grid">
-        <div class="col-xl-3 col-lg-3 col-md-6 col-12 mb-3">
+        <div class="col-xl-3 col-lg-3 col-md-6 col-6 mb-3">
             <div class="dm-metric-card border-bottom-primary">
                 <div class="dm-metric-icon dm-icon-primary"><i class="fas fa-folder"></i></div>
                 <div class="dm-metric-content">
@@ -204,7 +410,7 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
             </div>
         </div>
 
-        <div class="col-xl-3 col-lg-3 col-md-6 col-12 mb-3">
+        <div class="col-xl-3 col-lg-3 col-md-6 col-6 mb-3">
             <div class="dm-metric-card border-bottom-info">
                 <div class="dm-metric-icon dm-icon-info"><i class="fas fa-cloud-upload-alt"></i></div>
                 <div class="dm-metric-content">
@@ -214,7 +420,7 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
             </div>
         </div>
 
-        <div class="col-xl-3 col-lg-3 col-md-6 col-12 mb-3">
+        <div class="col-xl-3 col-lg-3 col-md-6 col-6 mb-3">
             <div class="dm-metric-card border-bottom-success">
                 <div class="dm-metric-icon dm-icon-success"><i class="fas fa-check-circle"></i></div>
                 <div class="dm-metric-content">
@@ -224,7 +430,7 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
             </div>
         </div>
 
-        <div class="col-xl-3 col-lg-3 col-md-6 col-12 mb-3">
+        <div class="col-xl-3 col-lg-3 col-md-6 col-6 mb-3">
             <div class="dm-metric-card border-bottom-warning">
                 <div class="dm-metric-icon dm-icon-warning"><i class="fas fa-hourglass-half"></i></div>
                 <div class="dm-metric-content">
@@ -246,7 +452,7 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
             </div>
         </div>
 
-        <div style="padding: 24px;">
+        <div class="dm-card-body">
             <form action="{{ route('documents.employee.store', $employee->id) }}"
                 method="POST"
                 enctype="multipart/form-data"
@@ -257,7 +463,7 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
                     <div class="col-xl-4 col-lg-4 col-md-6 col-12 mb-3">
                         <div class="dm-form-group">
                             <label>Document Type</label>
-                            <select name="document_type_id" id="documentTypeSelect" class="form-control" required>
+                            <select name="document_type_id" id="documentTypeSelect" class="form-control select2-searchable" data-placeholder="Select Missing Document" required style="width: 100%;">
                                 <option value="">Select Missing Document</option>
 
                                 @foreach($missingTypes as $type)
@@ -273,7 +479,8 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
                                     data-mode="edit"
                                     data-file="{{ $doc->file_original_name ?? $doc->title ?? 'Current document' }}"
                                     data-expiry="{{ $doc->expiry_date ? \Carbon\Carbon::parse($doc->expiry_date)->format('Y-m-d') : '' }}"
-                                    style="display:none;">
+                                    style="display:none;"
+                                    hidden>
                                     {{ $type->name }} - Re-upload
                                 </option>
                                 @endif
@@ -304,7 +511,7 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
                     <div class="col-xl-3 col-lg-3 col-md-6 col-12 mb-3">
                         <div class="dm-form-group">
                             <label>Expiry Date</label>
-                            <input type="date" name="expiry_date" id="expiryDateInput" class="form-control">
+                            <x-form.date-picker name="expiry_date" id="expiryDateInput" placeholder="dd-mm-yyyy" />
                         </div>
                     </div>
 
@@ -341,9 +548,11 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
                 </form>
                 @endif
 
+                @if($uploadedDocs > 0)
                 <button type="button" class="dm-header-edit-btn" id="toggleChecklistEdit">
                     <i class="fas fa-pen-to-square mr-1"></i> Edit
                 </button>
+                @endif
             </div>
         </div>
 
@@ -468,6 +677,22 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
                     </tr>
                     @endif
                     @endforeach
+
+                    @if($uploadedDocs === 0)
+                    <tr>
+                        <td colspan="5" class="text-center py-5">
+                            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px;">
+                                <div style="width: 72px; height: 72px; border-radius: 20px; background: rgba(75, 0, 232, 0.06); color: var(--dm-primary); display: flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 14px; box-shadow: 0 8px 24px rgba(75, 0, 232, 0.08);">
+                                    <i class="fas fa-folder-open"></i>
+                                </div>
+                                <h5 style="font-weight: 800; font-size: 16px; color: var(--dm-text); margin-bottom: 6px;">No Documents Uploaded Yet</h5>
+                                <p style="font-size: 13px; color: var(--dm-muted); margin: 0; max-width: 440px; line-height: 1.5; font-weight: 500;">
+                                    This employee has not uploaded any documents yet. You can select a missing document type from the upload form above to upload on their behalf.
+                                </p>
+                            </div>
+                        </td>
+                    </tr>
+                    @endif
                 </tbody>
             </table>
         </div>
@@ -523,6 +748,20 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
 
     let autoSubmitAfterPick = false;
 
+    function setExpiryDate(dateStr) {
+        const input = document.getElementById('expiryDateInput');
+        if (!input) return;
+        if (input._flatpickr) {
+            if (dateStr) {
+                input._flatpickr.setDate(dateStr, true);
+            } else {
+                input._flatpickr.clear();
+            }
+        } else {
+            input.value = dateStr || '';
+        }
+    }
+
     function resetUploadCard() {
         autoSubmitAfterPick = false;
         fileNameBox.textContent = 'Choose document';
@@ -531,9 +770,22 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
         uploadSubmitBtn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Upload';
         uploadSubmitBtn.style.display = '';
 
-        Array.from(typeSelect.options).forEach(function(option) {
-            if (option.dataset.mode === 'edit') option.style.display = 'none';
-        });
+        if (typeSelect) {
+            Array.from(typeSelect.options).forEach(function(option) {
+                if (option.dataset.mode === 'edit') {
+                    option.style.display = 'none';
+                    option.hidden = true;
+                }
+            });
+
+            if (window.jQuery && $(typeSelect).data('select2')) {
+                $(typeSelect).val('').trigger('change');
+            } else {
+                typeSelect.value = '';
+            }
+        }
+
+        setExpiryDate('');
     }
 
     fileInput?.addEventListener('change', function() {
@@ -565,13 +817,25 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
             const expiry = this.dataset.expiry || '';
 
             Array.from(typeSelect.options).forEach(function(option) {
-                if (option.dataset.mode === 'edit' && option.value === typeId) {
-                    option.style.display = '';
+                if (option.dataset.mode === 'edit') {
+                    if (option.value === typeId) {
+                        option.style.display = '';
+                        option.hidden = false;
+                    } else {
+                        option.style.display = 'none';
+                        option.hidden = true;
+                    }
                 }
             });
 
-            typeSelect.value = typeId;
-            expiryInput.value = expiry;
+            if (window.jQuery && $(typeSelect).data('select2')) {
+                $(typeSelect).val(typeId).trigger('change');
+            } else {
+                typeSelect.value = typeId;
+            }
+
+            setExpiryDate(expiry);
+
             fileNameBox.textContent = fileName;
             uploadTitle.textContent = 'Re-upload Document';
             uploadSubtitle.textContent = 'Select a replacement file. File choose karte hi document automatically upload ho jayega.';
@@ -611,5 +875,21 @@ $missingTypes = $documentTypes->filter(fn($type) => ! $documents->get($type->id)
             btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Rejecting...';
         }
     });
+
+    if (window.jQuery && $.fn.select2) {
+        $('#documentTypeSelect').select2({
+            placeholder: 'Select Missing Document',
+            allowClear: false,
+            width: '100%',
+            templateResult: function(data) {
+                if (!data.id) return data.text;
+                const el = data.element;
+                if (el && (el.style.display === 'none' || el.hidden)) {
+                    return null;
+                }
+                return data.text;
+            }
+        });
+    }
 </script>
 @endsection

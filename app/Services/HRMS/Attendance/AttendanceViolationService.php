@@ -207,7 +207,10 @@ class AttendanceViolationService
             ];
         }
 
-        if (isset($violation->policy_action) && $violation->policy_action === 'resolved') {
+        $isResolved = (isset($violation->policy_action) && $violation->policy_action === 'resolved')
+            || (isset($violation->status) && $violation->status === 'resolved');
+
+        if ($isResolved) {
             return [
                 'label' => 'Resolved',
                 'badge' => 'orb-badge-success',

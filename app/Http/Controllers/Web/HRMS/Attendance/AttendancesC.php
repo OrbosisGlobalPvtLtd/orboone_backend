@@ -16,6 +16,7 @@ use App\Services\HRMS\Attendance\AttendanceMobileService;
 use App\Services\HRMS\Attendance\AttendancePunchOutClassifier;
 use App\Services\HRMS\Attendance\AttendanceRuleResolverService;
 use App\Services\HRMS\Attendance\AttendanceService;
+use App\Services\HRMS\Attendance\AttendanceSyncFromLeaveService;
 use App\Services\HRMS\Employee\EmployeeShiftAssignmentService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -40,14 +41,40 @@ class AttendancesC extends Controller
 
     private AttendanceService $attendanceService;
     private AttendanceMobileService $mobileService;
+    private AttendanceSyncFromLeaveService $leaveSyncService;
 
     public function __construct(
         AttendanceService $attendanceService,
-        AttendanceMobileService $mobileService
+        AttendanceMobileService $mobileService,
+        AttendanceSyncFromLeaveService $leaveSyncService
     ) {
         $this->middleware('auth');
         $this->attendanceService = $attendanceService;
         $this->mobileService = $mobileService;
+        $this->leaveSyncService = $leaveSyncService;
+    }
+
+    /**
+     * Optimized lazy-sync: ensures approved leaves within target range are reflected in attendances.
+     */
+    private function lazySyncApprovedLeaves(?string $singleDate = null, ?string $fromDate = null, ?string $toDate = null, ?string $month = null, ?string $year = null): void
+    {
+        if (!empty($singleDate)) {
+            $this->leaveSyncService->syncMissingApprovedLeaves($singleDate, $singleDate);
+        } elseif (!empty($fromDate) && !empty($toDate)) {
+            $this->leaveSyncService->syncMissingApprovedLeaves($fromDate, $toDate);
+        } elseif (!empty($month) && str_contains($month, '-')) {
+            $parts = explode('-', $month);
+            if (count($parts) === 2) {
+                $startM = Carbon::createFromDate((int) $parts[0], (int) $parts[1], 1)->startOfMonth()->toDateString();
+                $endM = Carbon::createFromDate((int) $parts[0], (int) $parts[1], 1)->endOfMonth()->toDateString();
+                $this->leaveSyncService->syncMissingApprovedLeaves($startM, $endM);
+            }
+        } elseif (!empty($year) && !empty($month) && $year !== 'all' && $month !== 'all' && $month !== 'custom') {
+            $startM = Carbon::createFromDate((int) $year, (int) $month, 1)->startOfMonth()->toDateString();
+            $endM = Carbon::createFromDate((int) $year, (int) $month, 1)->endOfMonth()->toDateString();
+            $this->leaveSyncService->syncMissingApprovedLeaves($startM, $endM);
+        }
     }
 
     private function baseQuery()
@@ -398,6 +425,9 @@ class AttendancesC extends Controller
             $selectedMonth = now()->format('Y-m');
             $request->merge(['month' => $selectedMonth]);
         }
+
+        // Lightweight lazy-sync: ensure any approved leaves for the target range are present
+        $this->lazySyncApprovedLeaves($request->input('date'), $fromDate, $toDate, $selectedMonth);
 
         $query = $this->scopeAttendanceQuery($this->applyFilters($this->baseQuery(), $request), 'attendance.records.view_all');
 
@@ -948,6 +978,9 @@ class AttendancesC extends Controller
                 $selectedMonthYear = '';
             }
         }
+
+        // Lightweight lazy-sync for target range/month
+        $this->lazySyncApprovedLeaves($singleDate, $fromDate, $toDate, $selectedMonth, $selectedYear);
 
         $isMyAttendance = request()->routeIs('hrms.attendance.my') || ($request->input('view_scope') === 'my');
 
@@ -1770,6 +1803,9 @@ class AttendancesC extends Controller
 
         $month = (int) ($request->month ?: now()->month);
         $year = (int) ($request->year ?: now()->year);
+
+        // Lightweight lazy-sync: ensure approved leaves for the report month are present
+        $this->lazySyncApprovedLeaves(null, null, null, (string) $month, (string) $year);
 
         $query = $this->scopeAttendanceQuery($this->baseQuery(), 'attendance.monthly_report.view_all', 'attendance.monthly_report.view_team')
             ->whereMonth('attendance_date', $month)

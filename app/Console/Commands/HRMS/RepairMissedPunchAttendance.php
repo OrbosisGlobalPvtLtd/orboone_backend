@@ -101,7 +101,9 @@ class RepairMissedPunchAttendance extends Command
                     $allowedMissedPunches = 2;
                 }
 
-                $isWarning = $rank <= $allowedMissedPunches;
+                $cycleSize = max(1, $allowedMissedPunches + 1);
+                $cyclePos = (($rank - 1) % $cycleSize) + 1;
+                $isWarning = $cyclePos <= $allowedMissedPunches;
                 $expectedStatus = $isWarning ? 'missed_punch' : 'lwp';
                 $expectedTypeId = $isWarning ? $missedPunchType->id : $lwpType->id;
                 $expectedIsLwp = ! $isWarning;
@@ -122,14 +124,15 @@ class RepairMissedPunchAttendance extends Command
                     $affectedEmployees[$employee->id] = $employee;
 
                     $this->line(sprintf(
-                        '[%s] %s (Emp #%d) | Date: %s | AttID: %d | Rank: #%d (Allowed: %d) | Current: [%s, LWP: %d] => Target: [%s, LWP: %d]',
+                        '[%s] %s (Emp #%d) | Date: %s | AttID: %d | Rank: #%d (Cycle Pos: %d/%d) | Current: [%s, LWP: %d] => Target: [%s, LWP: %d]',
                         $dryRun ? 'WOULD REPAIR' : 'REPAIRING',
                         $empName,
                         $employee->id,
                         $attDateStr,
                         $attendance->id,
                         $rank,
-                        $allowedMissedPunches,
+                        $cyclePos,
+                        $cycleSize,
                         $currentStatus,
                         $currentIsLwp ? 1 : 0,
                         $expectedStatus,
@@ -138,8 +141,8 @@ class RepairMissedPunchAttendance extends Command
 
                     if (! $dryRun) {
                         $reason = $isWarning
-                            ? "Missed punch warning {$rank} of {$allowedMissedPunches}. No deduction applied."
-                            : "LWP applied because monthly Missed Punch violations reached policy limit. Missed Punch Count : {$rank}";
+                            ? "Missed punch warning {$cyclePos} of {$allowedMissedPunches}. No deduction applied."
+                            : "LWP applied because monthly Missed Punch violations reached policy limit. Missed Punch Count : {$cycleSize}";
 
                         $attendance->updateQuietly([
                             'attendance_status' => $expectedStatus,

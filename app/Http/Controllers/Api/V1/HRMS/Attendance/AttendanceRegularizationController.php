@@ -580,6 +580,8 @@ class AttendanceRegularizationController extends ApiController
                     $attDate = Carbon::parse($attendance->attendance_date, AttendanceRegularizationService::TIMEZONE);
                     $missedCount = AttendanceViolationM::where('employee_id', $attendance->employee_id)
                         ->where('type', 'missed_punch')
+                        ->where('is_consumed', false)
+                        ->whereNotIn('status', ['resolved', 'converted'])
                         ->whereYear('violation_date', $attDate->year)
                         ->whereMonth('violation_date', $attDate->month)
                         ->count();

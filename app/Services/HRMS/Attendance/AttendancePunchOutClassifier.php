@@ -116,11 +116,13 @@ class AttendancePunchOutClassifier
         }
 
         if ($isHalfDayContext) {
-            $absentBelow = is_array($policy)
-                ? (int) ($policy['absent_below_minutes'] ?? 0)
-                : (int) ($policy?->absent_below_minutes ?? 0);
+            $halfDayMin = is_array($policy)
+                ? (int) ($policy['half_day_min_minutes'] ?? 0)
+                : (int) ($policy?->half_day_min_minutes ?? 0);
 
-            if ($netMinutes !== null && $absentBelow > 0 && $netMinutes < $absentBelow) {
+            // In half-day context, employee must complete at least half-day minimum minutes (e.g. 240 mins).
+            // If worked minutes are below halfDayMin, it is LWP (insufficient worked minutes).
+            if ($netMinutes !== null && $halfDayMin > 0 && $netMinutes < $halfDayMin) {
                 return [
                     'status' => 'lwp',
                     'status_code' => 'lwp',

@@ -5,6 +5,7 @@ namespace App\Services\HRMS\Attendance;
 use App\Models\HRMS\Attendance\AttendanceM;
 use App\Models\HRMS\Attendance\MonthlyAttendanceSummaryM;
 use App\Models\HRMS\Employee\EmployeeM;
+use App\Services\HRMS\Attendance\AttendanceSyncFromLeaveService;
 use App\Services\HRMS\Employee\EmployeeEligibilityS;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -15,12 +16,17 @@ class PayrollAttendanceSummaryService
 {
     public function __construct(
         private AttendancePayableDayResolver $payableDayResolver,
-        private EmployeeEligibilityS $eligibilityService
+        private EmployeeEligibilityS $eligibilityService,
+        private AttendanceSyncFromLeaveService $leaveSyncService
     ) {
     }
 
     public function generate(int $month, int $year, ?int $employeeId = null): int
     {
+        $startOfMonth = Carbon::createFromDate($year, $month, 1)->startOfMonth()->toDateString();
+        $endOfMonth = Carbon::createFromDate($year, $month, 1)->endOfMonth()->toDateString();
+        $this->leaveSyncService->syncMissingApprovedLeaves($startOfMonth, $endOfMonth);
+
         $employees = EmployeeM::query()
             ->when($employeeId, fn ($query) => $query->where('id', $employeeId))
             ->where(function ($query) {

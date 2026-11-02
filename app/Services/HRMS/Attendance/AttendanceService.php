@@ -127,8 +127,8 @@ class AttendanceService
         }
 
         if ($requestedWorkMode === 'wfo') {
-            // Any employee selecting WFO must pass Office Geofence Validation (unless unlocked by HR regularization)
-            if ($enforceEmployeeRules && ! $isUnlocked) {
+            // Any employee selecting WFO must pass Office Geofence Validation
+            if ($enforceEmployeeRules) {
                 $locationValidation = $this->validateWfoOfficeLocation($meta);
                 if (($locationValidation['status'] ?? null) === 'error') {
                     return $locationValidation;
@@ -1437,27 +1437,74 @@ class AttendanceService
                 continue;
             }
 
-            // Check if this attendance is within the allowed monthly grace limit
+            // If the record is already marked as missed_punch (warning), keep it as warning and never convert to LWP
+            if ($attendance->attendance_status === 'missed_punch') {
+                continue;
+            }
+
+            // Check if this attendance violation was already marked as a warning
+            $violation = AttendanceViolationM::where('attendance_id', $attendance->id)
+                ->where('type', 'missed_punch')
+                ->first();
+
+            if ($violation && ($violation->policy_action === 'warning' || str_contains($violation->remarks ?? '', 'warning 1') || str_contains($violation->remarks ?? '', 'warning 2'))) {
+                $missedType = $this->attendanceType('missed_punch');
+                if ($missedType) {
+                    $attendance->fill([
+                        'attendance_status' => 'missed_punch',
+                        'attendance_type_id' => $missedType->id,
+                        'is_lwp' => false,
+                        'lwp_reason' => null,
+                        'remarks' => 'Missed punch-out. Regularization required.',
+                    ])->save();
+                }
+                continue;
+            }
+
+            // Check if this attendance is within the allowed monthly grace limit chronologically
             $employee = $attendance->employee ?: Employee::find($attendance->employee_id);
             $policy = $employee ? $this->ruleResolver->resolveShiftPolicy($employee, (string) $attendance->attendance_date, $attendance->attendance_time_id) : null;
             $allowedMissedPunches = (int) ($policy->allowed_missed_punches ?? 2);
             if ($allowedMissedPunches <= 0 && isset($policy->missed_punch_lwp_after) && (int)$policy->missed_punch_lwp_after > 1) {
                 $allowedMissedPunches = (int)$policy->missed_punch_lwp_after - 1;
             }
+            if ($allowedMissedPunches <= 0) {
+                $allowedMissedPunches = 2;
+            }
 
             $attDate = Carbon::parse($attendance->attendance_date, $timezone);
-            $monthlyMissedCount = AttendanceViolationM::where('employee_id', $attendance->employee_id)
+            // Count chronological missed punches up to this attendance date only
+            $priorMissedCount = AttendanceViolationM::where('employee_id', $attendance->employee_id)
                 ->where('type', 'missed_punch')
                 ->whereYear('violation_date', $attDate->year)
                 ->whereMonth('violation_date', $attDate->month)
+                ->where(function ($q) use ($attDate, $violation) {
+                    $q->whereDate('violation_date', '<', $attDate->toDateString());
+                    if ($violation) {
+                        $q->orWhere(function ($q2) use ($attDate, $violation) {
+                            $q2->whereDate('violation_date', $attDate->toDateString())
+                               ->where('id', '<=', $violation->id);
+                        });
+                    }
+                })
                 ->count();
 
             // If within allowed grace limit (e.g. Warning 1 or 2), preserve missed punch warning and do NOT force LWP.
-            if ($allowedMissedPunches >= 0 && $monthlyMissedCount <= $allowedMissedPunches) {
+            if ($priorMissedCount <= $allowedMissedPunches) {
+                $missedType = $this->attendanceType('missed_punch');
+                if ($missedType && $attendance->attendance_status !== 'missed_punch') {
+                    $attendance->fill([
+                        'attendance_status' => 'missed_punch',
+                        'attendance_type_id' => $missedType->id,
+                        'is_lwp' => false,
+                        'lwp_reason' => null,
+                        'remarks' => 'Missed punch-out. Regularization required.',
+                    ])->save();
+                }
                 continue;
             }
 
-            $reason = "Missed punch grace limit exceeded ({$monthlyMissedCount}/{$allowedMissedPunches}) and regularization not submitted within grace period.";
+            $reason = "Missed punch grace limit exceeded ({$priorMissedCount}/{$allowedMissedPunches}) and regularization not submitted within grace period.";
             $attendance->fill([
                 'attendance_status' => 'lwp',
                 'attendance_type_id' => $lwpType->id,

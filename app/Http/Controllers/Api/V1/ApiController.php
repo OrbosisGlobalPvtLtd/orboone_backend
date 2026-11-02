@@ -10,23 +10,19 @@ use App\Models\HRMS\Document\EmployeeDocumentM as EmployeeDocumentModal;
 use App\Models\HRMS\Employee\EmployeeM as Employee;
 use App\Services\HRMS\Storage\HrmsFileResolverS;
 use App\Services\HRMS\Storage\HrmsStoragePathS;
-use App\Services\Shared\AttendanceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 
 class ApiController extends Controller
 {
-    protected $attendanceService;
     private HrmsStoragePathS $paths;
     private HrmsFileResolverS $resolver;
 
     public function __construct(
-        AttendanceService $attendanceService,
         HrmsStoragePathS $paths,
         HrmsFileResolverS $resolver
     ) {
-        $this->attendanceService = $attendanceService;
         $this->paths = $paths;
         $this->resolver = $resolver;
     }

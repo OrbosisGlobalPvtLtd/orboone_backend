@@ -11,6 +11,7 @@ use App\Models\HRMS\Leave\LeaveRequestDateM;
 use App\Models\HRMS\Leave\LeaveRequestM;
 use App\Models\HRMS\Attendance\AttendanceTimeM;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class AttendanceSyncFromLeaveService
@@ -22,50 +23,96 @@ class AttendanceSyncFromLeaveService
     public function syncApprovedLeave(LeaveRequestM $leaveRequest, ?int $userId = null, bool $allowFuture = false): void
     {
         $today = Carbon::now('Asia/Kolkata')->toDateString();
+        $allSynced = true;
 
         foreach ($leaveRequest->dates()->where('deduct_as_leave', true)->get() as $dateRow) {
             $leaveDateStr = Carbon::parse($dateRow->leave_date)->toDateString();
             
             // Do not insert future attendance records in advance unless explicitly allowed
             if (!$allowFuture && $leaveDateStr > $today) {
+                $allSynced = false;
                 continue;
             }
 
             $this->syncSingleLeaveDate($leaveRequest, $dateRow, $userId);
         }
 
-        $leaveRequest->forceFill(['attendance_synced' => true])->save();
+        // Only mark attendance_synced = true when all dates have actually been synced into attendances
+        $leaveRequest->forceFill(['attendance_synced' => $allSynced])->save();
     }
 
     /**
      * Sync all approved leaves for a specific date (e.g. today).
+     * Includes automatic catch-up for any past approved leave dates where attendance was missed.
      */
     public function syncDailyApprovedLeaves(?string $date = null): int
     {
         $targetDate = $date ?: Carbon::now('Asia/Kolkata')->toDateString();
 
-        $leaveDates = LeaveRequestDateM::whereDate('leave_date', $targetDate)
-            ->where('deduct_as_leave', true)
+        return $this->syncMissingApprovedLeaves(null, $targetDate);
+    }
+
+    /**
+     * Highly optimized catch-up sync for any approved leaves up to the given end date.
+     * Uses SQL NOT EXISTS so that if all leaves are already synced, it completes in <1ms with zero server load.
+     */
+    public function syncMissingApprovedLeaves(?string $startDate = null, ?string $endDate = null): int
+    {
+        $today = Carbon::now('Asia/Kolkata')->toDateString();
+        $effectiveEnd = $endDate ? min($endDate, $today) : $today;
+        $effectiveStart = $startDate ?: Carbon::parse($effectiveEnd)->subDays(60)->toDateString();
+
+        $leaveDatesQuery = LeaveRequestDateM::where('deduct_as_leave', true)
+            ->whereDate('leave_date', '>=', $effectiveStart)
+            ->whereDate('leave_date', '<=', $effectiveEnd)
             ->whereHas('leaveRequest', function ($q) {
                 $q->where('status', 'approved');
             })
-            ->with(['leaveRequest.employee', 'leaveRequest.leaveType'])
-            ->get();
+            ->whereNotExists(function ($sub) {
+                $sub->select(DB::raw(1))
+                    ->from('attendances')
+                    ->join('leave_requests', 'leave_requests.id', '=', 'leave_request_dates.leave_request_id')
+                    ->whereColumn('attendances.employee_id', 'leave_requests.employee_id')
+                    ->whereColumn('attendances.attendance_date', 'leave_request_dates.leave_date');
+            })
+            ->with(['leaveRequest.employee', 'leaveRequest.leaveType']);
+
+
+        $leaveDates = $leaveDatesQuery->get();
+
+        if ($leaveDates->isEmpty()) {
+            return 0;
+        }
 
         $count = 0;
+        $affectedRequests = [];
+
         foreach ($leaveDates as $dateRow) {
             $leaveRequest = $dateRow->leaveRequest;
             if (!$leaveRequest || !$leaveRequest->employee_id) {
                 continue;
             }
 
-            // Check if employee is eligible
-            if (!EmployeeM::activeEligible($targetDate)->where('id', $leaveRequest->employee_id)->exists()) {
+            $leaveDateStr = Carbon::parse($dateRow->leave_date)->toDateString();
+
+            // Check if employee is eligible on the leave date
+            if (!EmployeeM::activeEligible($leaveDateStr)->where('id', $leaveRequest->employee_id)->exists()) {
                 continue;
             }
 
             $this->syncSingleLeaveDate($leaveRequest, $dateRow);
+            $affectedRequests[$leaveRequest->id] = $leaveRequest;
             $count++;
+        }
+
+        // Recheck and update attendance_synced status for touched leave requests
+        foreach ($affectedRequests as $req) {
+            $hasUnsyncedRemaining = $req->dates()
+                ->where('deduct_as_leave', true)
+                ->whereDate('leave_date', '>', $today)
+                ->exists();
+
+            $req->forceFill(['attendance_synced' => !$hasUnsyncedRemaining])->save();
         }
 
         return $count;

@@ -408,7 +408,7 @@ table .leave-metric::before {
 }
 
 .leave-modal-body{
-    padding:26px !important;
+    /* padding:26px !important; */
     background:#F6F7FB !important;
 }
 

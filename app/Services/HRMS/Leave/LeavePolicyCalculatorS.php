@@ -109,10 +109,7 @@ class LeavePolicyCalculatorS
         }
         $this->allocationService->assertStageRequestAllowed($employee, $allocation, $stageRequestAmount);
 
-        $maxAtOnce = $leaveType->max_days_per_request ?: $policy->max_leave_at_once;
-        if ($maxAtOnce && bccomp($deductedDaysExact, (string) $maxAtOnce, 6) > 0) {
-            throw ValidationException::withMessages(['end_date' => "Maximum leave at once is {$maxAtOnce} day(s)."]);
-        }
+
 
         if (empty($payload['bypass_duplicate_validation'])) {
             $this->ensureNoDuplicateDates($employee, $dateRows, $existingRequest);
@@ -149,13 +146,16 @@ class LeavePolicyCalculatorS
 
         // Split days into categories
         $compOffUsageAllocations = [];
+        $novDecMeta = [];
         if ($ledgerSplit) {
             [$paid, $sick, $compOff, $lwp, $dateRows, $compOffUsageAllocations] = $this->splitLedgerDates(
                 $employee,
                 $leaveType,
                 $dateRows,
                 $isHalfDay,
-                $lockCompOffCredits
+                $lockCompOffCredits,
+                $existingRequest?->id,
+                $novDecMeta
             );
         } else {
         [$paid, $sick, $compOff, $lwp] = $this->splitDays(
@@ -165,7 +165,8 @@ class LeavePolicyCalculatorS
             $allocation,
             $start,
             $dateRows,
-            $deductedDaysExact
+            $deductedDaysExact,
+            $novDecMeta
         );
 
         $dateRows = $this->applySplitToDates(
@@ -244,6 +245,29 @@ class LeavePolicyCalculatorS
             $sandwichMessage = "Sandwich Policy Applied: {$daysDisplay} non-working day(s) ({$dateFormattedList}) falling between leave days are included as leave.";
         }
 
+        if ($novDecMeta !== []) {
+            $novDecPaidInReq = '0.000000';
+            $otherPaidInReq = '0.000000';
+            $novDecLwpInReq = '0.000000';
+            foreach ($dateRows as $r) {
+                if (! empty($r['deduct_as_leave'])) {
+                    $m = (int) Carbon::parse($r['leave_date'], 'Asia/Kolkata')->month;
+                    $p = bcadd((string)($r['paid_day'] ?? 0), (string)($r['sick_day'] ?? 0), 6);
+                    $l = (string)($r['lwp_day'] ?? 0);
+                    if (in_array($m, [11, 12], true)) {
+                        $novDecPaidInReq = bcadd($novDecPaidInReq, $p, 6);
+                        $novDecLwpInReq = bcadd($novDecLwpInReq, $l, 6);
+                    } else {
+                        $otherPaidInReq = bcadd($otherPaidInReq, $p, 6);
+                    }
+                }
+            }
+            $novDecMeta['request_nov_dec_paid'] = (float) $novDecPaidInReq;
+            $novDecMeta['request_other_months_paid'] = (float) $otherPaidInReq;
+            $novDecMeta['request_nov_dec_lwp'] = (float) $novDecLwpInReq;
+            $novDecMeta['cap_exceeded'] = ! empty($novDecMeta['cap_exceeded']);
+        }
+
         return [
             'policy' => $policy,
             'allocation' => $allocation,
@@ -269,6 +293,7 @@ class LeavePolicyCalculatorS
             'rejection_reason' => null,
             'balance_after_split' => $balanceAfterSplit,
             '_comp_off_usage_allocations' => $compOffUsageAllocations,
+            'nov_dec_rule' => $novDecMeta !== [] ? $novDecMeta : null,
         ];
     }
 
@@ -313,13 +338,17 @@ class LeavePolicyCalculatorS
         LeaveTypeM $leaveType,
         array $dateRows,
         bool $isHalfDay,
-        bool $lockCompOffCredits = false
+        bool $lockCompOffCredits = false,
+        ?int $existingRequestId = null,
+        array &$novDecMeta = []
     ): array
     {
         $selected = $leaveType->is_lwp || $leaveType->is_comp_off ? null : LeaveBucket::fromLeaveType($leaveType);
         $totals = ['PL' => '0.000000', 'SL' => '0.000000', 'COMP' => '0.000000', 'LOP' => '0.000000'];
         $balances = [];
         $compOffUsageAllocations = [];
+        $novDecCapacities = [];
+        $novDecExceededDates = [];
 
         if ($leaveType->is_lwp) {
             foreach ($dateRows as &$row) {
@@ -347,15 +376,37 @@ class LeavePolicyCalculatorS
                 if (! array_key_exists($year, $balances)) {
                     $balances[$year] = $this->loadYearBalances($employee, $year, $date);
                 }
+                $isNovDecDate = in_array((int) $date->month, [11, 12], true);
+                if ($isNovDecDate && ! array_key_exists($year, $novDecCapacities)) {
+                    $novDecCapacities[$year] = $this->getNovDecQuotaForYear($employee, $year, $existingRequestId, $preNovDeductedInCurrentRequest ?? '0.000000');
+                }
+                $novDecRule = $novDecCapacities[$year] ?? ['active' => false];
                 $unit = $isHalfDay ? '0.500000' : '1.000000';
                 $compOffPlan = $compOffUsageAllocations[$date->toDateString()] ?? ['amount' => '0.000000', 'slices' => [], 'available_after' => '0.000000'];
                 $takeComp = (string) $compOffPlan['amount'];
                 $shortfall = bcsub($unit, $takeComp, 6);
+
+                $effPL = $balances[$year]['PL'];
+                $effSL = $balances[$year]['SL'];
+                if ($isNovDecDate && ! empty($novDecRule['active'])) {
+                    if (empty($novDecMeta)) {
+                        $novDecMeta = $novDecRule;
+                    }
+                    $cap = $novDecCapacities[$year]['allowed_remaining'];
+                    $usableCap = $this->unitPolicy->usable($cap, $this->policyForEmployee($employee, $date));
+                    $effPL = $this->minDecimal($effPL, $usableCap);
+                    $remCapForSL = bcsub($usableCap, $effPL, 6);
+                    if (bccomp($remCapForSL, '0', 6) < 0) {
+                        $remCapForSL = '0.000000';
+                    }
+                    $effSL = $this->minDecimal($effSL, $remCapForSL);
+                }
+
                 $paidSplit = $this->paidLeaveSplitter->split(
                     LeaveBucket::PL,
                     $shortfall,
-                    $balances[$year]['PL'],
-                    $balances[$year]['SL'],
+                    $effPL,
+                    $effSL,
                     $this->policyForEmployee($employee, $date),
                     false,
                     true
@@ -363,6 +414,17 @@ class LeavePolicyCalculatorS
                 $split = ['pl' => $paidSplit['pl'], 'sl' => $paidSplit['sl'], 'lop' => $paidSplit['lop']];
                 $balances[$year]['PL'] = bcsub($balances[$year]['PL'], $split['pl'], 6);
                 $balances[$year]['SL'] = bcsub($balances[$year]['SL'], $split['sl'], 6);
+
+                if ($isNovDecDate && ! empty($novDecRule['active'])) {
+                    $usedInNovDec = bcadd($split['pl'], $split['sl'], 6);
+                    $novDecCapacities[$year]['allowed_remaining'] = bcsub($novDecCapacities[$year]['allowed_remaining'], $usedInNovDec, 6);
+                    if (bccomp($novDecCapacities[$year]['allowed_remaining'], '0', 6) < 0) {
+                        $novDecCapacities[$year]['allowed_remaining'] = '0.000000';
+                    }
+                } else {
+                    $preNovDeductedInCurrentRequest = bcadd($preNovDeductedInCurrentRequest, bcadd($split['pl'], $split['sl'], 6), 6);
+                }
+
                 $row['paid_day'] = $split['pl'];
                 $row['sick_day'] = $split['sl'];
                 $row['comp_off_day'] = $takeComp;
@@ -395,6 +457,7 @@ class LeavePolicyCalculatorS
             $initialSplits = [];
             $shortfalls = [];
             $unit = $isHalfDay ? '0.500000' : '1.000000';
+            $preNovDeductedInCurrentRequest = '0.000000';
 
             foreach ($dateRows as $idx => $row) {
                 if (! $row['deduct_as_leave']) continue;
@@ -403,10 +466,55 @@ class LeavePolicyCalculatorS
                 if (! array_key_exists($year, $balances)) {
                     $balances[$year] = $this->loadYearBalances($employee, $year, $date);
                 }
+                $isNovDecDate = in_array((int) $date->month, [11, 12], true);
+                if ($isNovDecDate && ! array_key_exists($year, $novDecCapacities)) {
+                    $novDecCapacities[$year] = $this->getNovDecQuotaForYear($employee, $year, $existingRequestId, $preNovDeductedInCurrentRequest);
+                }
+                $novDecRule = $novDecCapacities[$year] ?? ['active' => false];
                 $datePolicy = $this->policyForEmployee($employee, $date);
-                $split = $this->paidLeaveSplitter->split($selected, $unit, $balances[$year]['PL'], $balances[$year]['SL'], $datePolicy);
+
+                $effPL = $balances[$year]['PL'];
+                $effSL = $balances[$year]['SL'];
+                if ($isNovDecDate && ! empty($novDecRule['active'])) {
+                    if (empty($novDecMeta)) {
+                        $novDecMeta = $novDecRule;
+                    }
+                    $cap = $novDecCapacities[$year]['allowed_remaining'];
+                    $usableCap = $this->unitPolicy->usable($cap, $datePolicy);
+                    if ($selected === LeaveBucket::PL) {
+                        $effPL = $this->minDecimal($effPL, $usableCap);
+                        $remCapForSL = bcsub($usableCap, $effPL, 6);
+                        if (bccomp($remCapForSL, '0', 6) < 0) {
+                            $remCapForSL = '0.000000';
+                        }
+                        $effSL = $this->minDecimal($effSL, $remCapForSL);
+                    } else {
+                        $effSL = $this->minDecimal($effSL, $usableCap);
+                        $remCapForPL = bcsub($usableCap, $effSL, 6);
+                        if (bccomp($remCapForPL, '0', 6) < 0) {
+                            $remCapForPL = '0.000000';
+                        }
+                        $effPL = $this->minDecimal($effPL, $remCapForPL);
+                    }
+                }
+
+                $split = $this->paidLeaveSplitter->split($selected, $unit, $effPL, $effSL, $datePolicy);
                 $balances[$year]['PL'] = bcsub($balances[$year]['PL'], $split['pl'], 6);
                 $balances[$year]['SL'] = bcsub($balances[$year]['SL'], $split['sl'], 6);
+
+                if ($isNovDecDate && ! empty($novDecRule['active'])) {
+                    $usedInNovDec = bcadd($split['pl'], $split['sl'], 6);
+                    $novDecCapacities[$year]['allowed_remaining'] = bcsub($novDecCapacities[$year]['allowed_remaining'], $usedInNovDec, 6);
+                    if (bccomp($novDecCapacities[$year]['allowed_remaining'], '0', 6) < 0) {
+                        $novDecCapacities[$year]['allowed_remaining'] = '0.000000';
+                    }
+                    if (bccomp($split['lop'], '0', 6) > 0 && bccomp($cap, $unit, 6) < 0) {
+                        $novDecExceededDates[$date->toDateString()] = true;
+                    }
+                } else {
+                    $preNovDeductedInCurrentRequest = bcadd($preNovDeductedInCurrentRequest, bcadd($split['pl'], $split['sl'], 6), 6);
+                }
+
                 $initialSplits[$idx] = $split;
 
                 $dateKey = $date->toDateString();
@@ -472,7 +580,10 @@ class LeavePolicyCalculatorS
                     }
                 }
 
-                if (bccomp($finalLop, '0', 6) > 0) {
+                if (! empty($novDecExceededDates[$dateKey])) {
+                    $novDecRemark = 'Converted to LWP: Exceeded 50% November & December leave utilization cap';
+                    $row['remarks'] = ($row['remarks'] ?? '') !== '' ? $row['remarks'] . '; ' . $novDecRemark : $novDecRemark;
+                } elseif (bccomp($finalLop, '0', 6) > 0) {
                     $row['remarks'] = ($row['remarks'] ?? '') !== ''
                         ? $row['remarks'] . '; Excess converted to LWP due to insufficient balance'
                         : 'Converted to LWP due to insufficient balance';
@@ -490,7 +601,140 @@ class LeavePolicyCalculatorS
             static fn (array $plan): bool => bccomp((string) ($plan['amount'] ?? '0'), '0', 6) > 0
         );
 
+        if ($novDecMeta !== []) {
+            $novDecMeta['cap_exceeded'] = count($novDecExceededDates) > 0;
+            $novDecMeta['exceeded_dates_count'] = count($novDecExceededDates);
+        }
+
         return [$totals['PL'], $totals['SL'], $totals['COMP'], $totals['LOP'], $dateRows, $compOffUsageAllocations];
+    }
+
+    private function getNovDecQuotaForYear(EmployeeM $employee, int $year, ?int $existingRequestId, string $preNovDeductedInCurrentReq = '0.000000'): array
+    {
+        try {
+            $policy = $this->policyForEmployee($employee, Carbon::create($year, 11, 1, 0, 0, 0, 'Asia/Kolkata'));
+        } catch (\Throwable $e) {
+            return ['active' => false];
+        }
+
+        if (! ($policy->nov_dec_half_usage_enabled ?? true)) {
+            return ['active' => false];
+        }
+
+        $allocation = null;
+        try {
+            $allocation = $this->allocationService->getOrGenerate($employee, $year, Auth::id() ?: 1);
+        } catch (\Throwable $e) {
+            $allocation = LeaveAllocationM::query()->where('employee_id', $employee->id)->where('year', $year)->first();
+        }
+
+        if (! $allocation) {
+            return ['active' => false];
+        }
+
+        // Case 2: Annual Balance Based (Nov + Dec Combined Pool)
+        $annualAllocated = null;
+        try {
+            $fromDate = Carbon::create($year, 1, 1, 0, 0, 0, 'Asia/Kolkata');
+            $toDate = Carbon::create($year, 12, 31, 23, 59, 59, 'Asia/Kolkata');
+            $stage = $employee->employee_stage ?: $employee->employment_type ?: 'permanent';
+            $entitlement = $this->allocationService->calculateEntitlement($policy, (string) $stage, $fromDate, $toDate);
+            if ($entitlement && (float) $entitlement->totalAllocated > 0) {
+                $annualAllocated = (string) $entitlement->totalAllocated;
+            }
+        } catch (\Throwable $e) {
+            $annualAllocated = null;
+        }
+
+        if ($annualAllocated === null) {
+            $snapshot = $allocation->isLedgerBacked() ? $this->balanceService->getLedgerSnapshot($allocation) : null;
+            $plAvail = $snapshot['PL']['available'] ?? (string)($allocation->paid_remaining ?? '0');
+            $slAvail = $snapshot['SL']['available'] ?? (string)($allocation->sick_remaining ?? '0');
+            $annualAllocated = bcadd((string) $plAvail, (string) $slAvail, 6);
+        }
+
+        $preNovApprovedUsed = '0.000000';
+        $alreadyUsedInNovDec = '0.000000';
+        try {
+            $ledgerStats = null;
+            if (! empty($allocation->id)) {
+                $ledgerStats = DB::table('leave_balance_transactions')
+                    ->where('leave_allocation_id', $allocation->id)
+                    ->whereIn('transaction_type', ['leave_debit', 'reversal'])
+                    ->when($existingRequestId, fn($q) => $q->where(fn($sub) => $sub->whereNull('leave_request_id')->orWhere('leave_request_id', '!=', $existingRequestId)))
+                    ->selectRaw("
+                        SUM(CASE WHEN MONTH(effective_date) NOT IN (11, 12) THEN amount ELSE 0 END) as pre_nov_sum,
+                        SUM(CASE WHEN MONTH(effective_date) IN (11, 12) THEN amount ELSE 0 END) as nov_dec_sum,
+                        COUNT(*) as count_tx
+                    ")
+                    ->first();
+            }
+
+            if ($ledgerStats && (int) $ledgerStats->count_tx > 0) {
+                $preNovApprovedUsed = (string) abs((float) ($ledgerStats->pre_nov_sum ?? 0));
+                $alreadyUsedInNovDec = (string) abs((float) ($ledgerStats->nov_dec_sum ?? 0));
+            } elseif (! empty($employee->id)) {
+                $requestStats = DB::table('leave_request_dates')
+                    ->join('leave_requests', 'leave_requests.id', '=', 'leave_request_dates.leave_request_id')
+                    ->where('leave_request_dates.employee_id', $employee->id)
+                    ->whereYear('leave_request_dates.leave_date', $year)
+                    ->where('leave_request_dates.deduct_as_leave', true)
+                    ->whereIn('leave_requests.status', ['approved'])
+                    ->when($existingRequestId, fn($q) => $q->where('leave_requests.id', '!=', $existingRequestId))
+                    ->selectRaw("
+                        SUM(CASE WHEN MONTH(leave_request_dates.leave_date) NOT IN (11, 12) THEN leave_request_dates.paid_day + leave_request_dates.sick_day ELSE 0 END) as pre_nov_req,
+                        SUM(CASE WHEN MONTH(leave_request_dates.leave_date) IN (11, 12) THEN leave_request_dates.paid_day + leave_request_dates.sick_day ELSE 0 END) as nov_dec_req
+                    ")
+                    ->first();
+
+                if ($requestStats) {
+                    $preNovApprovedUsed = (string) ((float) ($requestStats->pre_nov_req ?? 0));
+                    $alreadyUsedInNovDec = (string) ((float) ($requestStats->nov_dec_req ?? 0));
+                }
+            }
+        } catch (\Throwable $e) {
+            $preNovApprovedUsed = '0.000000';
+            $alreadyUsedInNovDec = '0.000000';
+        }
+
+        $totalAvail = bcsub(bcsub($annualAllocated, $preNovApprovedUsed, 6), $preNovDeductedInCurrentReq, 6);
+        if (bccomp($totalAvail, '0', 6) < 0) {
+            $totalAvail = '0.000000';
+        }
+
+        $threshold = (string) ($policy->nov_dec_half_usage_threshold ?? $policy->nov_dec_full_balance_threshold ?? $policy->nov_dec_threshold_balance ?? '10.000000');
+        $usagePct = (string) ($policy->nov_dec_half_usage_percentage ?? $policy->nov_dec_usage_percentage ?? '50.000000');
+
+        if (bccomp($totalAvail, $threshold, 6) <= 0) {
+            return [
+                'active' => false,
+                'total_remaining' => (float) $totalAvail,
+                'threshold' => (float) $threshold,
+            ];
+        }
+
+        $allowedTotal = bcdiv(bcmul($totalAvail, $usagePct, 6), '100', 6);
+
+        $remainingNovDecCap = bcsub($allowedTotal, $alreadyUsedInNovDec, 6);
+        if (bccomp($remainingNovDecCap, '0', 6) < 0) {
+            $remainingNovDecCap = '0.000000';
+        }
+
+        $lapsedLeaves = bcsub($totalAvail, $allowedTotal, 6);
+
+        return [
+            'active' => true,
+            'threshold' => (float) $threshold,
+            'usage_percentage' => (float) $usagePct,
+            'total_remaining' => (float) $totalAvail,
+            'allowed_limit' => (float) $allowedTotal,
+            'already_used' => (float) $alreadyUsedInNovDec,
+            'allowed_remaining' => $remainingNovDecCap,
+            'initial_allowed_remaining' => (float) $remainingNovDecCap,
+            'lapsed_leaves' => (float) $lapsedLeaves,
+            'annual_allocated' => (float) $annualAllocated,
+            'message' => "November & December Rule Active: Your annual balance entering November is " . number_format((float)$totalAvail, 2) . " days (> " . (int)$threshold . " days). Only 50% (" . number_format((float)$allowedTotal, 2) . " days) can be used across Nov & Dec combined. " . ((float)$alreadyUsedInNovDec > 0 ? "You already used " . number_format((float)$alreadyUsedInNovDec, 2) . " days, leaving " . number_format((float)$remainingNovDecCap, 2) . " days available. " : "") . "The remaining " . number_format((float)$lapsedLeaves, 2) . " leaves will lapse on 31st December.",
+        ];
     }
 
     private function splitDays(
@@ -500,7 +744,8 @@ class LeavePolicyCalculatorS
         LeaveAllocationM $allocation, 
         Carbon $start, 
         array $dateRows, 
-        string $deductedDays
+        string $deductedDays,
+        array &$novDecMeta = []
     ): array
     {
         $paid = '0.000000';
@@ -531,6 +776,19 @@ class LeavePolicyCalculatorS
                 $paidCapacity = $this->minDecimal($paidCapacity, $allowed);
                 $sickCapacity = $this->minDecimal($sickCapacity, $allowed);
                 $compCapacity = $this->minDecimal($compCapacity, $allowed);
+
+                $lapsed = bcsub($remaining, $allowed, 2);
+                $novDecMeta = [
+                    'active' => true,
+                    'threshold' => (float) $threshold,
+                    'usage_percentage' => (float) $usagePct,
+                    'total_remaining' => (float) $remaining,
+                    'allowed_limit' => (float) $allowed,
+                    'already_used' => 0.0,
+                    'allowed_remaining' => (float) $allowed,
+                    'lapsed_leaves' => (float) $lapsed,
+                    'message' => "November & December Rule Active: Your total remaining balance is " . number_format((float)$remaining, 2) . " days (> " . (int)$threshold . " days). Only 50% (" . number_format((float)$allowed, 2) . " days) can be used across Nov & Dec. The remaining " . number_format((float)$lapsed, 2) . " leaves will lapse at year end.",
+                ];
             }
         }
 

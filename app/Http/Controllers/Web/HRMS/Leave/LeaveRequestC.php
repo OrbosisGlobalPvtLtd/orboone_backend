@@ -512,6 +512,7 @@ class LeaveRequestC extends Controller
                     ],
                     ...($ledgerBalances ?? []),
                     'balance_after_split' => $calc['balance_after_split'] ?? [],
+                    'nov_dec_rule' => $calc['nov_dec_rule'] ?? null,
                 ],
             ]);
         } catch (ValidationException $e) {

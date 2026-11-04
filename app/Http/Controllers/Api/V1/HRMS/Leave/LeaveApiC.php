@@ -207,7 +207,7 @@ class LeaveApiC extends Controller
                 'monthly_used_this_month' => (float) $lb['monthly_used_this_month'],
                 'total_monthly_remaining_paid' => (float) $lb['total_monthly_remaining_paid'],
                 'total_remaining_paid' => (float) $lb['total_remaining_paid'],
-                'total_leave_balance' => $ledgerShape ? (float) $ledgerShape['fields']['year_end_total_remaining'] : (float) ($lb['total_remaining_paid'] + $lb['total_remaining_sick'] + $lb['total_remaining_comp_off']),
+                'total_leave_balance' => $ledgerShape ? (float) $ledgerShape['fields']['total_available'] : (float) ($lb['total_remaining_paid'] + $lb['total_remaining_sick'] + $lb['total_remaining_comp_off']),
                 'annual_remaining' => $ledgerShape ? (float) $ledgerShape['fields']['year_end_total_remaining'] : (float) ($allocation->total_remaining ?? 0),
                 'annual_quota' => $ledgerShape ? (float) $ledgerShape['fields']['year_end_total'] : (float) ($allocation->total_allocated ?? 0),
                 'paid_leave' => (float) $lb['total_remaining_paid'],

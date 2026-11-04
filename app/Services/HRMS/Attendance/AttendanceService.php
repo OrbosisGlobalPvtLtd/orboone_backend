@@ -1053,8 +1053,8 @@ class AttendanceService
             $isLwp = true;
             $isHalfDay = false;
         } elseif ($hasApprovedHalfDayLeave || $isPreExistingHalfDay || $isPenaltyHalfDay) {
-            // Already marked Half Day via Step 2 Half Day Punch Window, Approved Half-Day Leave, or Violation Penalty
-            if ($effectiveAbsentBelow > 0 && $netMinutes < $effectiveAbsentBelow) {
+            // In half-day context, employee must work at least the half-day minimum minutes (e.g. 240 mins)
+            if ($effectiveHalfDayMin > 0 && $netMinutes < $effectiveHalfDayMin) {
                 $typeCode = 'lwp';
                 $isLwp = true;
                 $isHalfDay = false;
@@ -1473,9 +1473,10 @@ class AttendanceService
             }
 
             $attDate = Carbon::parse($attendance->attendance_date, $timezone);
-            // Count chronological missed punches up to this attendance date only
-            $priorMissedCount = AttendanceViolationM::where('employee_id', $attendance->employee_id)
+            // Count chronological missed punches up to this attendance date to determine position in the cycle
+            $chronologicalMissedCount = AttendanceViolationM::where('employee_id', $attendance->employee_id)
                 ->where('type', 'missed_punch')
+                ->whereNotIn('status', ['resolved'])
                 ->whereYear('violation_date', $attDate->year)
                 ->whereMonth('violation_date', $attDate->month)
                 ->where(function ($q) use ($attDate, $violation) {
@@ -1489,8 +1490,12 @@ class AttendanceService
                 })
                 ->count();
 
-            // If within allowed grace limit (e.g. Warning 1 or 2), preserve missed punch warning and do NOT force LWP.
-            if ($priorMissedCount <= $allowedMissedPunches) {
+            $cycleSize = max(1, $allowedMissedPunches + 1);
+            $cyclePosition = $chronologicalMissedCount > 0 ? ((($chronologicalMissedCount - 1) % $cycleSize) + 1) : 1;
+            $isWarning = $cyclePosition <= $allowedMissedPunches;
+
+            // If within allowed grace limit for this cycle (e.g. Warning 1 or 2), preserve missed punch warning and do NOT force LWP.
+            if ($isWarning) {
                 $missedType = $this->attendanceType('missed_punch');
                 if ($missedType && $attendance->attendance_status !== 'missed_punch') {
                     $attendance->fill([
@@ -1498,13 +1503,13 @@ class AttendanceService
                         'attendance_type_id' => $missedType->id,
                         'is_lwp' => false,
                         'lwp_reason' => null,
-                        'remarks' => 'Missed punch-out. Regularization required.',
+                        'remarks' => "Missed punch warning {$cyclePosition} of {$allowedMissedPunches}. Regularization required.",
                     ])->save();
                 }
                 continue;
             }
 
-            $reason = "Missed punch grace limit exceeded ({$priorMissedCount}/{$allowedMissedPunches}) and regularization not submitted within grace period.";
+            $reason = "LWP applied because monthly Missed Punch violations reached policy limit. Missed Punch Count : {$cycleSize}";
             $attendance->fill([
                 'attendance_status' => 'lwp',
                 'attendance_type_id' => $lwpType->id,
@@ -2158,9 +2163,14 @@ class AttendanceService
         $lateViolationEnabled = $policy ? (bool) ($policy->late_violation_enabled ?? true) : true;
         $earlyViolationEnabled = $policy ? (bool) ($policy->early_violation_enabled ?? true) : true;
 
-        $isHalfDayAttendance = (bool) $attendance->is_half_day
+        $isPenaltyHalfDay = (bool) $attendance->is_half_day
+            && (str_contains((string) $attendance->half_day_reason, 'violations completed')
+                || str_contains((string) $attendance->half_day_reason, 'Attendance Discipline')
+                || str_contains((string) $attendance->half_day_reason, 'violation'));
+
+        $isHalfDayAttendance = ! $isPenaltyHalfDay && ((bool) $attendance->is_half_day
             || strtolower((string) $attendance->attendance_status) === 'half_day'
-            || optional($attendance->attendanceType)->code === 'half_day';
+            || optional($attendance->attendanceType)->code === 'half_day');
 
         // 1. Late Login (only applies if attendance is NOT half day / leave)
         if (! $isHalfDayAttendance && $lateViolationEnabled && ($attendance->is_late || (int) $attendance->late_minutes > 0)) {

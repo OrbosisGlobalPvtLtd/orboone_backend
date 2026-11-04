@@ -374,7 +374,9 @@ class AttendanceViolationResolverService
                 $targetAttendanceMissed = $lastMissedViolation ? ($lastMissedViolation->attendance ?: Attendance::find($lastMissedViolation->attendance_id)) : $triggerAttendance;
 
                 if ($targetAttendanceMissed) {
-                    $reason = "{$missedPunchLimit} missed punch violations completed.";
+                    $reason = $missedPunchAction === 'half_day'
+                        ? "Half Day applied because monthly Missed Punch violations reached policy limit. Missed Punch Count : {$missedPunchLimit}"
+                        : "LWP applied because monthly Missed Punch violations reached policy limit. Missed Punch Count : {$missedPunchLimit}";
 
                     if ($missedPunchAction === 'half_day') {
                         $targetAttendanceMissed->update([
@@ -461,7 +463,7 @@ class AttendanceViolationResolverService
         $cycleMonth = $this->resolveCycleMonth($date);
         $policy = $this->ruleResolver->getPolicyForEmployee($employee, $date);
 
-        $disciplineLimit = $policy ? (int) ($policy->combined_violation_limit ?? 2) : 2;
+        $disciplineLimit = $policy ? (int) ($policy->combined_violation_limit ?? 3) : 3;
         $missedPunchLimit = $policy ? (int) ($policy->missed_punch_lwp_after ?? 3) : 3;
 
         $disciplineActiveCount = (int) AttendanceViolationM::where('employee_id', $employee->id)

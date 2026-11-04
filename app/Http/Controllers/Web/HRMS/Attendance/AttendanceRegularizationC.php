@@ -440,6 +440,8 @@ class AttendanceRegularizationC extends Controller
                 $attDate = Carbon::parse($attendance->attendance_date, AttendanceRegularizationService::TIMEZONE);
                 $missedCount = AttendanceViolationM::where('employee_id', $attendance->employee_id)
                     ->where('type', 'missed_punch')
+                    ->where('is_consumed', false)
+                    ->whereNotIn('status', ['resolved', 'converted'])
                     ->whereYear('violation_date', $attDate->year)
                     ->whereMonth('violation_date', $attDate->month)
                     ->count();
@@ -453,8 +455,9 @@ class AttendanceRegularizationC extends Controller
                         $attendance->attendance_type_id = $lwpType->id;
                     }
                     $attendance->is_lwp = true;
-                    $attendance->lwp_reason = 'Monthly missed punch grace limit exceeded. Regularization rejected.';
-                    $attendance->remarks = 'Monthly missed punch grace limit exceeded. Regularization rejected.';
+                    $reason = "LWP applied because monthly Missed Punch violations reached policy limit. Missed Punch Count : {$missedCount}";
+                    $attendance->lwp_reason = $reason;
+                    $attendance->remarks = $reason;
                 } else {
                     $attendance->remarks = 'Regularization rejected: ' . $note;
                 }

@@ -525,7 +525,12 @@
                             <span class="font-weight-bold text-dark" style="font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.04em;">
                                 <i class="fas fa-wallet mr-1" style="color: var(--orb-primary, #4B00E8);"></i> Available Balance
                             </span>
-                            <span class="badge badge-light border text-muted small font-weight-bold" style="font-size: 10px;">{{ date('Y') }}</span>
+                            <div class="d-flex align-items-center" style="gap: 5px;">
+                                <span id="novDecCapPill" class="badge badge-pill font-weight-bold" style="display:none; font-size: 10px; background: #EDE9FE; color: #6D28D9; border: 1px solid #DDD6FE; padding: 2px 7px;" title="November & December 50% Rule">
+                                    <i class="fas fa-snowflake mr-0.5"></i> Nov/Dec Cap: <span id="novDecCapPillValue">0.0</span> Max
+                                </span>
+                                <span class="badge badge-light border text-muted small font-weight-bold" style="font-size: 10px;">{{ date('Y') }}</span>
+                            </div>
                         </div>
                         <div class="d-flex align-items-center justify-content-between text-center" style="gap: 8px;">
                             <div class="flex-fill p-2 rounded" style="background: #FFFFFF; border: 1px solid #E2E8F0;">
@@ -613,6 +618,23 @@
                                 <i class="fas fa-times-circle mr-1"></i> Calculation Alert
                             </div>
                             <div class="small text-danger mb-0" id="calcErrorText"></div>
+                        </div>
+
+                        <!-- 1e. November & December Policy Alert Banner (Only shown when 50% cap is exceeded) -->
+                        <div id="novDecAlertBanner" class="alert border-0 shadow-sm p-3 mb-3" style="border-radius: 12px; display: none; background: #F5F3FF; border-left: 4px solid #7C3AED !important;">
+                            <div class="d-flex align-items-center justify-content-between mb-1.5">
+                                <div class="font-weight-bold" style="font-size: 13px; color: #5B21B6;">
+                                    <i class="fas fa-snowflake mr-1" style="color: #7C3AED;"></i> Nov & Dec 50% Leave Cap Applied
+                                </div>
+                                <span class="badge badge-pill text-white font-weight-bold" style="font-size: 10px; background: #7C3AED; padding: 3px 8px;">Cap Exceeded &rarr; LWP</span>
+                            </div>
+                            <div class="small mb-2" style="color: #4C1D95; line-height: 1.45;" id="novDecAlertMessage"></div>
+                            <div class="d-flex align-items-center justify-content-between pt-2 border-top" style="border-color: #DDD6FE !important; font-size: 11px;">
+                                <div>Nov/Dec Paid: <strong class="text-success" id="novDecPaidVal">0.0 Days</strong></div>
+                                <div>Converted to LWP: <strong class="text-warning" style="color: #D97706 !important;" id="novDecLwpVal">0.0 Days</strong></div>
+                                <div>Will Lapse: <strong class="text-danger" id="novDecLapsed">0.0 Days</strong></div>
+                            </div>
+                            <div id="novDecSubNote" class="mt-2 pt-2 border-top small" style="border-color: #DDD6FE !important; color: #5B21B6; display: none; font-size: 11px;"></div>
                         </div>
 
                         <!-- 2. Sandwich Rule Alert Badge -->
@@ -952,6 +974,63 @@
                 var calcErrBanner = document.getElementById('calcErrorBanner');
                 if (calcErrBanner) calcErrBanner.style.display = 'none';
 
+                // Nov & Dec 50% Cap Rule Banner
+                var novDecBanner = document.getElementById('novDecAlertBanner');
+                var novDecMsg = document.getElementById('novDecAlertMessage');
+                var novDecBanner = document.getElementById('novDecAlertBanner');
+                var novDecMsg = document.getElementById('novDecAlertMessage');
+                var novDecPaidEl = document.getElementById('novDecPaidVal');
+                var novDecLwpEl = document.getElementById('novDecLwpVal');
+                var novDecLapsed = document.getElementById('novDecLapsed');
+                var novDecPill = document.getElementById('novDecCapPill');
+                var novDecPillVal = document.getElementById('novDecCapPillValue');
+
+                // Header pill for subtle cap context
+                if (d.nov_dec_rule && d.nov_dec_rule.active && novDecPill) {
+                    novDecPill.style.display = 'inline-block';
+                    var remCap = Number(d.nov_dec_rule.allowed_remaining !== undefined ? d.nov_dec_rule.allowed_remaining : d.nov_dec_rule.allowed_limit);
+                    if (novDecPillVal) novDecPillVal.textContent = remCap.toFixed(2);
+                } else if (novDecPill) {
+                    novDecPill.style.display = 'none';
+                }
+
+                // Nov & Dec Banner: ONLY show when employee requests more leaves than the 50% cap allows
+                var isCapExceeded = !!(d.nov_dec_rule && d.nov_dec_rule.active && d.nov_dec_rule.cap_exceeded);
+                if (isCapExceeded) {
+                    if (novDecBanner) novDecBanner.style.display = 'block';
+                    var novDecPaid = Number(d.nov_dec_rule.request_nov_dec_paid || 0);
+                    var novDecLwp = Number(d.nov_dec_rule.request_nov_dec_lwp || 0);
+                    var allowedCap = Number(d.nov_dec_rule.allowed_limit || 0);
+                    var totalBal = Number(d.nov_dec_rule.total_remaining || 0);
+                    var lapsedLeaves = Number(d.nov_dec_rule.lapsed_leaves || 0);
+                    var usedAlready = Number(d.nov_dec_rule.already_used || 0);
+                    var remCap = Number(d.nov_dec_rule.allowed_remaining !== undefined ? d.nov_dec_rule.allowed_remaining : (allowedCap - usedAlready));
+
+                    if (novDecMsg) {
+                        var usedText = usedAlready > 0 ? ' (Used: <strong>' + usedAlready.toFixed(2) + ' days</strong>, Available: <strong>' + remCap.toFixed(2) + ' days</strong>)' : '';
+                        novDecMsg.innerHTML = 'Under company policy, maximum <strong>50% (' + allowedCap.toFixed(2) + ' days)</strong> of your annual balance (' + totalBal.toFixed(2) + ' days) can be paid across Nov & Dec combined' + usedText + '. ' +
+                            'Because you applied beyond this limit, <strong>' + novDecPaid.toFixed(2) + ' day(s)</strong> are deducted as Paid Leave, and the excess <strong>' + novDecLwp.toFixed(2) + ' day(s)</strong> are converted to <strong>Leave Without Pay (LWP)</strong>.';
+                    }
+                    if (novDecPaidEl) novDecPaidEl.textContent = novDecPaid.toFixed(2) + ' Days';
+                    if (novDecLwpEl) novDecLwpEl.textContent = novDecLwp.toFixed(2) + ' Days';
+                    if (novDecLapsed) novDecLapsed.textContent = lapsedLeaves.toFixed(2) + ' Days';
+
+                    var novDecSubNote = document.getElementById('novDecSubNote');
+                    if (novDecSubNote) {
+                        var otherPaid = Number(d.nov_dec_rule.request_other_months_paid || 0);
+                        if (otherPaid > 0) {
+                            novDecSubNote.style.display = 'block';
+                            novDecSubNote.innerHTML = '<i class="fas fa-info-circle mr-1"></i> Pre-November Days: <strong>' + otherPaid.toFixed(2) + ' Day(s)</strong> paid in October (not subject to Nov/Dec cap).';
+                        } else {
+                            novDecSubNote.style.display = 'none';
+                        }
+                    }
+                } else {
+                    if (novDecBanner) novDecBanner.style.display = 'none';
+                    var novDecSubNote = document.getElementById('novDecSubNote');
+                    if (novDecSubNote) novDecSubNote.style.display = 'none';
+                }
+
                 // Sandwich rule badge
                 var sandwichBadge = document.getElementById('sandwichBadge');
                 var sandwichMsgEl = document.getElementById('sandwichBadgeMsg');
@@ -998,11 +1077,18 @@
                 var lwpNoticeText = document.getElementById('lwpNoticeText');
                 if (d.lwp_days > 0) {
                     lwpNoticeBanner.style.display = 'block';
-                    if (lwpNoticeTitle) {
-                        lwpNoticeTitle.innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i> Insufficient Leave Balance (LWP)';
-                    }
                     var lwpCount = Number(d.lwp_days).toFixed(1);
-                    lwpNoticeText.innerHTML = 'You do not have sufficient balance for the selected leave type. <strong>' + lwpCount + ' day(s)</strong> will be applied as <strong>Leave Without Pay (LWP)</strong>.';
+                    if (d.nov_dec_rule && d.nov_dec_rule.active && Number(d.paid_days || 0) >= Number(d.nov_dec_rule.allowed_limit || 0)) {
+                        if (lwpNoticeTitle) {
+                            lwpNoticeTitle.innerHTML = '<i class="fas fa-snowflake mr-1" style="color:#7C3AED;"></i> Nov & Dec 50% Leave Cap Reached (LWP)';
+                        }
+                        lwpNoticeText.innerHTML = 'You have reached the <strong>50% November & December leave cap (' + Number(d.nov_dec_rule.allowed_limit).toFixed(1) + ' days)</strong>. <strong>' + lwpCount + ' day(s)</strong> are converted to <strong>Leave Without Pay (LWP)</strong> as per company policy.';
+                    } else {
+                        if (lwpNoticeTitle) {
+                            lwpNoticeTitle.innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i> Insufficient Leave Balance (LWP)';
+                        }
+                        lwpNoticeText.innerHTML = 'You do not have sufficient balance for the selected leave type. <strong>' + lwpCount + ' day(s)</strong> will be applied as <strong>Leave Without Pay (LWP)</strong>.';
+                    }
                 } else {
                     lwpNoticeBanner.style.display = 'none';
                 }
@@ -1015,6 +1101,10 @@
                 }
                 var dupBanner = document.getElementById('duplicateWarningBanner');
                 if (dupBanner) dupBanner.style.display = 'none';
+                var novDecBanner = document.getElementById('novDecAlertBanner');
+                if (novDecBanner) novDecBanner.style.display = 'none';
+                var novDecPill = document.getElementById('novDecCapPill');
+                if (novDecPill) novDecPill.style.display = 'none';
             }
         })
         .catch(function(err) {

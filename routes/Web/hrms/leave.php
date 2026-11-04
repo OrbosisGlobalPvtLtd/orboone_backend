@@ -55,6 +55,8 @@ Route::middleware(['auth', 'check.access'])->group(function () {
 
     Route::get('/holidays', [HolidayC::class, 'index'])->middleware('permission:leave.holidays.manage')->name('hrms.holidays.index');
     Route::post('/holidays', [HolidayC::class, 'store'])->middleware('permission:leave.holidays.manage')->name('hrms.holidays.store');
+    Route::post('/holidays/clone-year', [HolidayC::class, 'cloneYear'])->middleware('permission:leave.holidays.manage')->name('hrms.holidays.clone_year');
+    Route::put('/holidays/{id}', [HolidayC::class, 'update'])->middleware('permission:leave.holidays.manage')->name('hrms.holidays.update');
     Route::delete('/holidays/{id}', [HolidayC::class, 'destroy'])->middleware('permission:leave.holidays.manage')->name('hrms.holidays.destroy');
 
     Route::get('/comp-offs', [CompOffC::class, 'index'])->middleware('permission:leave.comp_off.view_all|leave.comp_off.view_own|leave.comp_off.view|leave.comp_off.manage')->name('hrms.comp_offs.index');

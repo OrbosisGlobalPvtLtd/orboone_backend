@@ -242,11 +242,21 @@ class LeaveRequestC extends Controller
             )
             : null;
 
+        $isUnpaidIntern = $employee && $this->isUnpaidInternEmployee($employee);
+
         $leaveTypes = LeaveTypeM::where('is_active', true)->orderBy('name')->get();
+        if ($isUnpaidIntern && ! $isAdminOrHr) {
+            // For unpaid interns, allow "Leave" and "Sick Leave" (PL excluded)
+            $leaveTypes = $leaveTypes->filter(fn ($t) => in_array($t->code, ['leave', 'sick_leave'], true))->values();
+        } elseif (! $isAdminOrHr) {
+            // For regular employees, exclude the special unpaid intern "Leave" type
+            $leaveTypes = $leaveTypes->reject(fn ($t) => $t->code === 'leave')->values();
+        }
+
         $employees = $isAdminOrHr ? EmployeeM::where('is_active', true)->get()->sortBy(fn ($e) => strtolower($e->display_name))->values() : collect();
         $accesses = $this->accesses();
 
-        return view('hrms.leave.requests.create', compact('leaveTypes', 'employee', 'employees', 'isAdminOrHr', 'accesses', 'allocation'))
+        return view('hrms.leave.requests.create', compact('leaveTypes', 'employee', 'employees', 'isAdminOrHr', 'accesses', 'allocation', 'isUnpaidIntern'))
             ->with('active', 'leave_management');
     }
 
@@ -271,6 +281,17 @@ class LeaveRequestC extends Controller
             }
 
             $leaveType = LeaveTypeM::findOrFail($request->leave_type_id);
+
+            // Policy: Unpaid interns can only apply for "Leave" or "Sick Leave", and cannot apply for Paid Leave (PL)
+            if ($this->isUnpaidInternEmployee($employee)) {
+                if (! in_array($leaveType->code, ['leave', 'sick_leave'], true)) {
+                    return back()->withInput()->with('error', 'Only "Leave" and "Sick Leave" types are available for unpaid interns.');
+                }
+                if ($this->isPaidLeaveType($leaveType)) {
+                    return back()->withInput()->with('error', 'Paid Leave (PL) cannot be granted to unpaid interns.');
+                }
+            }
+
             $sanitized = LeaveValidationService::sanitizePayload($request->validated());
             $leaveRequest = DB::transaction(function () use ($request, $employee, $leaveType, $sanitized, &$attachmentPath) {
             $attachmentPath = $this->storeAttachment($request);
@@ -342,6 +363,18 @@ class LeaveRequestC extends Controller
             $rules = LeaveValidationService::rules($request->all());
             $rules['reason'] = 'required|string|max:1000';
             $request->validate($rules, LeaveValidationService::messages());
+
+            // Policy: Unpaid interns can only use "Leave" or "Sick Leave", and cannot use Paid Leave (PL)
+            $updatingLeaveType = LeaveTypeM::find((int) $request->leave_type_id);
+            if ($updatingLeaveType && $this->isUnpaidInternEmployee($employee)) {
+                if (! in_array($updatingLeaveType->code, ['leave', 'sick_leave'], true)) {
+                    return back()->withInput()->with('error', 'Only "Leave" and "Sick Leave" types are available for unpaid interns.');
+                }
+                if ($this->isPaidLeaveType($updatingLeaveType)) {
+                    return back()->withInput()->with('error', 'Paid Leave (PL) cannot be granted to unpaid interns.');
+                }
+            }
+
             $sanitized = [
                 'leave_type_id' => (int) $request->leave_type_id,
                 'start_date' => (string) $request->start_date,
@@ -414,6 +447,25 @@ class LeaveRequestC extends Controller
             $leaveType = LeaveTypeM::find($leaveTypeId);
             if (! $leaveType) {
                 return response()->json(['success' => false, 'message' => 'Invalid leave type.'], 400);
+            }
+
+            // Policy check: Unpaid interns can only preview/apply "Leave" and "Sick Leave" types
+            $isUnpaidIntern = $this->isUnpaidInternEmployee($employee);
+
+            if ($isUnpaidIntern) {
+                if (! in_array($leaveType->code, ['leave', 'sick_leave'], true)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Only "Leave" and "Sick Leave" types are available for unpaid interns.',
+                    ], 422);
+                }
+
+                if ($this->isPaidLeaveType($leaveType)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Paid Leave (PL) cannot be granted to unpaid interns.',
+                    ], 422);
+                }
             }
 
             $startDate = (string) $request->input('start_date');
@@ -644,23 +696,45 @@ class LeaveRequestC extends Controller
             return false;
         }
 
+        // Admin / HR bypass — always eligible
         if ($this->isAdminOrHr($user)) {
             return true;
         }
 
-        $employee->loadMissing(['department', 'designation']);
-        $deptName = strtolower($employee->department?->name ?? '');
-        $desigName = strtolower($employee->designation?->name ?? '');
-        $roleName = strtolower($user->role?->name ?? '');
+        // Stage-based check: internship stage employees are always eligible
+        $stage = strtolower($employee->employee_stage ?? '');
+        if (str_contains($stage, 'intern')) {
+            return true;
+        }
 
-        $keywords = ['dev', 'engineering', 'qa', 'testing', 'software', 'tech', 'developer', 'qa engineer', 'ui/ux', 'intern'];
-        foreach ($keywords as $kw) {
-            if (str_contains($deptName, $kw) || str_contains($desigName, $kw) || str_contains($roleName, $kw)) {
-                return true;
-            }
+        // Legacy fallback: if stage not set, check employment_type column
+        if (empty($stage) && strtolower($employee->employment_type ?? '') === 'intern') {
+            return true;
+        }
+
+        // All other active employees (probation, permanent, contract, full_time) are eligible
+        $blockedStages = ['exited', 'resigned'];
+        if (! in_array($stage, $blockedStages, true)) {
+            return true;
         }
 
         return false;
+    }
+
+    private function isUnpaidInternEmployee(EmployeeM $employee): bool
+    {
+        $stage = strtolower(trim((string) ($employee->employee_stage ?: $employee->employment_type)));
+
+        return in_array($stage, ['internship', 'intern'], true)
+            && (int) ($employee->is_paid_intern ?? 1) === 0;
+    }
+
+    private function isPaidLeaveType(LeaveTypeM $leaveType): bool
+    {
+        return (bool) $leaveType->is_paid
+            && ! (bool) $leaveType->is_sick
+            && ! (bool) $leaveType->is_lwp
+            && ! (bool) $leaveType->is_comp_off;
     }
 
     private function accesses()

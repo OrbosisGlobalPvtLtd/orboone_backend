@@ -9,6 +9,7 @@ use App\Models\HRMS\Employee\EmployeeM;
 use App\Services\HRMS\Notification\NotificationS;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -362,70 +363,75 @@ class WfhRequestService
                 $createPayload['assigned_at'] = now();
             }
 
-            DB::transaction(function () use (
-                $exists,
-                $createPayload,
-                $source,
-                $actorId,
-                $employee,
-                $from,
-                $to,
-                $batchId,
-                $payload,
-                &$created,
-                &$skipped,
-                &$convertedAttendance
-            ) {
-                if (! $exists) {
-                    $record = WfhRequestM::create($createPayload);
-                    if ($source === 'manager_assigned') {
-                        $record->manager_approved_by = $actorId;
-                        $record->manager_approved_at = now();
-                        $record->save();
+            try {
+                DB::transaction(function () use (
+                    $exists,
+                    $createPayload,
+                    $source,
+                    $actorId,
+                    $employee,
+                    $from,
+                    $to,
+                    $batchId,
+                    $payload,
+                    &$created,
+                    &$skipped,
+                    &$convertedAttendance
+                ) {
+                    if (! $exists) {
+                        $record = WfhRequestM::create($createPayload);
+                        if ($source === 'manager_assigned') {
+                            $record->manager_approved_by = $actorId;
+                            $record->manager_approved_at = now();
+                            $record->save();
+                        }
+                        $created++;
+                    } else {
+                        $skipped++;
                     }
-                    $created++;
-                } else {
-                    $skipped++;
-                }
 
-                // Synchronize existing attendance records in the assigned range
-                $period = CarbonPeriod::create($from, $to);
-                $assignReason = trim((string) ($payload['reason'] ?? 'Company assigned WFH'));
-                $formattedReason = $assignReason;
+                    // Synchronize existing attendance records in the assigned range
+                    $period = CarbonPeriod::create($from, $to);
+                    $assignReason = trim((string) ($payload['reason'] ?? 'Company assigned WFH'));
+                    $formattedReason = $assignReason;
 
-                foreach ($period as $dateObj) {
-                    $dateStr = $dateObj->toDateString();
-                    $existingAttendance = AttendanceM::where('employee_id', $employee->id)
-                        ->whereDate('attendance_date', $dateStr)
-                        ->first();
+                    foreach ($period as $dateObj) {
+                        $dateStr = $dateObj->toDateString();
+                        $existingAttendance = AttendanceM::where('employee_id', $employee->id)
+                            ->whereDate('attendance_date', $dateStr)
+                            ->first();
 
-                    if ($existingAttendance) {
-                        $oldMode = strtolower((string) ($existingAttendance->work_mode ?? 'wfo'));
-                        if ($oldMode !== 'wfh') {
-                            $existingAttendance->work_mode = 'wfh';
-                            $existingAttendance->hr_approval_note = $formattedReason;
-                            $existingAttendance->remarks = $formattedReason;
-                            $existingAttendance->hr_approved_by = $actorId;
-                            $existingAttendance->hr_approved_at = now();
-                            $existingAttendance->save();
-                            $convertedAttendance++;
+                        if ($existingAttendance) {
+                            $oldMode = strtolower((string) ($existingAttendance->work_mode ?? 'wfo'));
+                            if ($oldMode !== 'wfh') {
+                                $existingAttendance->work_mode = 'wfh';
+                                $existingAttendance->hr_approval_note = $formattedReason;
+                                $existingAttendance->remarks = $formattedReason;
+                                $existingAttendance->hr_approved_by = $actorId;
+                                $existingAttendance->hr_approved_at = now();
+                                $existingAttendance->save();
+                                $convertedAttendance++;
 
-                            if (Schema::hasTable('attendance_daily_status_logs')) {
-                                AttendanceDailyStatusLogM::create([
-                                    'employee_id' => $employee->id,
-                                    'attendance_id' => $existingAttendance->id,
-                                    'status_date' => $dateStr,
-                                    'old_status' => strtoupper($oldMode),
-                                    'new_status' => 'WFH',
-                                    'source' => 'company_wfh_assignment',
-                                    'remarks' => $formattedReason,
-                                    'created_by_user_id' => $actorId,
-                                ]);
+                                if (Schema::hasTable('attendance_daily_status_logs')) {
+                                    AttendanceDailyStatusLogM::create([
+                                        'employee_id' => $employee->id,
+                                        'attendance_id' => $existingAttendance->id,
+                                        'status_date' => $dateStr,
+                                        'old_status' => strtoupper($oldMode),
+                                        'new_status' => 'WFH',
+                                        'source' => 'company_wfh_assignment',
+                                        'remarks' => $formattedReason,
+                                        'created_by_user_id' => $actorId,
+                                    ]);
+                                }
                             }
                         }
                     }
-                }
-            });
+                });
+            } catch (UniqueConstraintViolationException $e) {
+                Log::warning("WFH assignment skipped duplicate entry for employee {$employee->id}: " . $e->getMessage());
+                $skipped++;
+            }
 
             // Send Notification to Employee
             try {

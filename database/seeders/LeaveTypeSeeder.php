@@ -16,6 +16,7 @@ class LeaveTypeSeeder extends Seeder
             ['name' => 'Sick Leave', 'code' => 'sick_leave', 'is_paid' => 1, 'is_sick' => 1, 'is_lwp' => 0, 'is_comp_off' => 0, 'color' => '#F79009', 'applicable_after_confirmation' => 1],
             ['name' => 'Comp Off', 'code' => 'comp_off', 'is_paid' => 1, 'is_sick' => 0, 'is_lwp' => 0, 'is_comp_off' => 1, 'color' => '#4B00E8', 'applicable_after_confirmation' => 0],
             ['name' => 'Leave Without Pay', 'code' => 'lwp', 'is_paid' => 0, 'is_sick' => 0, 'is_lwp' => 1, 'is_comp_off' => 0, 'color' => '#D92D20', 'applicable_after_confirmation' => 0],
+            ['name' => 'Leave', 'code' => 'leave', 'is_paid' => 0, 'is_sick' => 0, 'is_lwp' => 1, 'is_comp_off' => 0, 'color' => '#7C3AED', 'applicable_after_confirmation' => 0],
         ];
 
         foreach ($types as $type) {

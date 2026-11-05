@@ -352,7 +352,7 @@ class CompOffService
 
                     $allocation = $this->allocationService->getOrGenerate($employee, $workedDate->year, $approvedByUserId);
                     if (! $allocation->isLedgerBacked()) {
-                        $this->allocationService->adjustLegacyAllocation(
+                        $this->allocationService->adjustStageAllocation(
                             $allocation,
                             ['comp_off_allocated' => number_format($targetEarnedDays, 6, '.', '')],
                             $approvedByUserId,
@@ -394,7 +394,7 @@ class CompOffService
 
                         $allocation = $this->allocationService->getOrGenerate($employee, $workedDate->year, $approvedByUserId);
                         if (! $allocation->isLedgerBacked()) {
-                            $this->allocationService->adjustLegacyAllocation(
+                            $this->allocationService->adjustStageAllocation(
                                 $allocation,
                                 ['comp_off_allocated' => number_format($diff, 6, '.', '')],
                                 $approvedByUserId,
@@ -441,7 +441,7 @@ class CompOffService
                     if ($currentEarned > 0) {
                         $allocation = $this->allocationService->getOrGenerate($employee, $workedDate->year, $approvedByUserId);
                         if (! $allocation->isLedgerBacked()) {
-                            $this->allocationService->adjustLegacyAllocation(
+                            $this->allocationService->adjustStageAllocation(
                                 $allocation,
                                 ['comp_off_allocated' => number_format(-$currentEarned, 6, '.', '')],
                                 $approvedByUserId,
@@ -533,7 +533,7 @@ class CompOffService
                 if ($employee && $earnedDays > 0) {
                     $allocation = $this->allocationService->getOrGenerate($employee, $workedDate->year);
                     if (! $allocation->isLedgerBacked()) {
-                        $this->allocationService->adjustLegacyAllocation(
+                        $this->allocationService->adjustStageAllocation(
                             $allocation,
                             ['comp_off_allocated' => number_format(-$earnedDays, 6, '.', '')],
                             $request->approved_by_user_id ? (int) $request->approved_by_user_id : null,
@@ -626,12 +626,37 @@ class CompOffService
             ->update(['status' => 'expired', 'updated_at' => now()]);
         $employees = EmployeeM::query()->whereIn('id', $due->pluck('employee_id')->unique())->get()->keyBy('id');
         foreach ($expiredByAllocation as $item) {
-            $this->applyAllocationSnapshotDeltas(
-                LeaveAllocationM::query()->where('employee_id', $item['employee_id'])->where('year', $item['year'])->first(),
-                '0.000000',
-                '0.000000',
-                bcsub('0.000000', $item['amount'], 6)
-            );
+            $allocation = LeaveAllocationM::query()->where('employee_id', $item['employee_id'])->where('year', $item['year'])->first();
+            if (! $allocation) {
+                continue;
+            }
+
+            $amountToDeduct = (string) $item['amount'];
+            if (bccomp($amountToDeduct, '0.000000', 6) <= 0) {
+                continue;
+            }
+
+            if (! $allocation->isLedgerBacked()) {
+                $currentAllocated = (string) ($allocation->comp_off_allocated ?? '0.000000');
+                $deductFromAllocated = bccomp($currentAllocated, $amountToDeduct, 6) < 0 ? $currentAllocated : $amountToDeduct;
+
+                if (bccomp($deductFromAllocated, '0.000000', 6) > 0) {
+                    $this->allocationService->adjustStageAllocation(
+                        $allocation,
+                        ['comp_off_allocated' => bcsub('0.000000', $deductFromAllocated, 6)],
+                        null,
+                        'comp_off_expired',
+                        "Comp-off expired ({$deductFromAllocated} days)"
+                    );
+                }
+            } else {
+                $this->applyAllocationSnapshotDeltas(
+                    $allocation,
+                    bcsub('0.000000', $amountToDeduct, 6),
+                    '0.000000',
+                    bcsub('0.000000', $amountToDeduct, 6)
+                );
+            }
         }
         foreach ($due->groupBy(fn (CompOffM $item): string => $item->employee_id . ':' . Carbon::parse($item->worked_date)->format('Y-m')) as $period) {
             $first = $period->first();

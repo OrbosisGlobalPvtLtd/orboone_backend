@@ -1467,7 +1467,7 @@ class LeaveAllocationService
     }
 
     /** Apply audited counter changes to a non-ledger allocation under its row lock. */
-    public function adjustLegacyAllocation(
+    public function adjustStageAllocation(
         LeaveAllocationM $allocation,
         array $deltas,
         ?int $actorId,
@@ -1480,7 +1480,7 @@ class LeaveAllocationService
         foreach ($deltas as $column => $delta) {
             if (! in_array($column, $allowed, true) || ! is_string($delta)
                 || ! preg_match('/^-?\d+(?:\.\d{1,6})?$/', $delta)) {
-                throw new DomainException("Invalid legacy leave balance delta for {$column}.");
+                throw new DomainException("Invalid stage leave balance delta for {$column}.");
             }
         }
 
@@ -1523,6 +1523,21 @@ class LeaveAllocationService
 
             return $locked->fresh();
         });
+    }
+
+    /**
+     * Backward-compatible alias for adjustStageAllocation.
+     */
+    public function adjustLegacyAllocation(
+        LeaveAllocationM $allocation,
+        array $deltas,
+        ?int $actorId,
+        string $action,
+        string $reason,
+        ?int $requestId = null,
+        ?int $leaveTypeId = null
+    ): LeaveAllocationM {
+        return $this->adjustStageAllocation($allocation, $deltas, $actorId, $action, $reason, $requestId, $leaveTypeId);
     }
 
     /*

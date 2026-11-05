@@ -48,6 +48,14 @@ class LeaveApiC extends Controller
         $ledgerFields = $ledgerShape['fields'] ?? null;
         $types = LeaveTypeM::where('is_active', true)->orderBy('name')->get();
 
+        // For unpaid interns, ONLY "Leave" and "Sick Leave" types are shown (PL is excluded).
+        // Other employees (permanent, probation, paid interns) see regular leave types (excluding 'leave').
+        if ($this->isUnpaidIntern($employee)) {
+            $types = $types->filter(fn (LeaveTypeM $type) => in_array($type->code, ['leave', 'sick_leave'], true))->values();
+        } else {
+            $types = $types->reject(fn (LeaveTypeM $type) => $type->code === 'leave')->values();
+        }
+
         $availPl = $ledgerFields ? (float) ($ledgerFields['available_pl'] ?? 0) : 0.0;
         $availSl = $ledgerFields ? (float) ($ledgerFields['available_sl'] ?? 0) : 0.0;
         $availComp = $ledgerFields ? (float) ($ledgerFields['available_comp_off'] ?? 0) : 0.0;
@@ -350,6 +358,7 @@ class LeaveApiC extends Controller
 
         $employee = $this->employee();
         $leaveType = LeaveTypeM::findOrFail($data['leave_type_id']);
+        $this->assertLeaveTypeAllowedForEmployee($employee, $leaveType);
         $calculation = $this->calculationService->calculate(
             $employee,
             $leaveType,
@@ -382,6 +391,7 @@ class LeaveApiC extends Controller
             }
 
             $leaveType = LeaveTypeM::findOrFail($data['leave_type_id']);
+            $this->assertLeaveTypeAllowedForEmployee($employee, $leaveType);
             $attachmentPath = $this->storeAttachment($request);
             $calculation = $this->calculationService->calculate($employee, $leaveType, array_merge($data, ['attachment_path' => $attachmentPath]));
 
@@ -716,6 +726,7 @@ class LeaveApiC extends Controller
         $data = LeaveValidationService::validate($request->all());
 
         $leaveType = LeaveTypeM::findOrFail($data['leave_type_id']);
+        $this->assertLeaveTypeAllowedForEmployee($employee, $leaveType);
         $attachmentPath = $request->hasFile('attachment') ? $this->storeAttachment($request) : $leaveRequest->attachment_path;
 
         $calculation = $this->calculationService->calculate($employee, $leaveType, array_merge($data, ['attachment_path' => $attachmentPath]), $leaveRequest);
@@ -756,6 +767,39 @@ class LeaveApiC extends Controller
         abort_if(! $employee, 404, 'Employee profile not found.');
 
         return $employee;
+    }
+
+    private function isUnpaidIntern(EmployeeM $employee): bool
+    {
+        $stage = strtolower(trim((string) ($employee->employee_stage ?: $employee->employment_type)));
+
+        return in_array($stage, ['internship', 'intern'], true)
+            && (int) ($employee->is_paid_intern ?? 1) === 0;
+    }
+
+    private function isPaidLeaveType(LeaveTypeM $leaveType): bool
+    {
+        return (bool) $leaveType->is_paid
+            && ! (bool) $leaveType->is_sick
+            && ! (bool) $leaveType->is_lwp
+            && ! (bool) $leaveType->is_comp_off;
+    }
+
+    private function assertLeaveTypeAllowedForEmployee(EmployeeM $employee, LeaveTypeM $leaveType): void
+    {
+        if ($this->isUnpaidIntern($employee)) {
+            if (! in_array($leaveType->code, ['leave', 'sick_leave'], true)) {
+                throw ValidationException::withMessages([
+                    'leave_type_id' => 'Only "Leave" and "Sick Leave" types are available for unpaid interns.',
+                ]);
+            }
+
+            if ($this->isPaidLeaveType($leaveType)) {
+                throw ValidationException::withMessages([
+                    'leave_type_id' => 'Paid Leave (PL) is not available to unpaid interns.',
+                ]);
+            }
+        }
     }
 
     private function canViewAllLeaveDetails($user): bool

@@ -365,7 +365,7 @@
                                             
                                             $isSelected = old('leave_type_id') !== null 
                                                 ? old('leave_type_id') == $type->id 
-                                                : ($type->code === 'paid_leave');
+                                                : (($isUnpaidIntern ?? false) ? ($type->code === 'leave' || $loop->first) : ($type->code === 'paid_leave'));
                                         @endphp
                                         <option value="{{ $type->id }}" 
                                             {{ $isDisabled ? 'disabled' : '' }} 
@@ -374,7 +374,14 @@
                                         </option>
                                     @endforeach
                                 </select>
-                                <small class="form-text text-muted">Leave is applied in 0.5-day units. Select the PL or SL leave type; the selected balance is used first.</small>
+                                {{-- @if($isUnpaidIntern ?? false)
+                                    <div class="alert alert-info py-2 px-3 mt-2 mb-0" style="border-radius:10px; font-size:12.5px;">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        <strong>Unpaid Intern:</strong> 1 leave is allowed during the internship period. Additional leaves will be recorded in HRMS and require HR Admin approval.
+                                    </div>
+                                @else
+                                    <small class="form-text text-muted">Leave is applied in 0.5-day units. Select the PL or SL leave type; the selected balance is used first.</small>
+                                @endif --}}
                             </div>
 
                             <!-- 3. Dates Selection (Orbo Date Picker) -->
@@ -532,6 +539,14 @@
                                 <span class="badge badge-light border text-muted small font-weight-bold" style="font-size: 10px;">{{ date('Y') }}</span>
                             </div>
                         </div>
+                        @if($isUnpaidIntern ?? false)
+                        <div class="d-flex align-items-center justify-content-between text-center" style="gap: 8px;">
+                            <div class="flex-fill p-2 rounded" style="background: #FFFFFF; border: 1px solid #E2E8F0;">
+                                <div class="small text-muted font-weight-bold" style="font-size: 10px;">Leave</div>
+                                <div class="font-weight-bold text-dark" style="font-size: 14px;" id="disp_leave_balance">{{ number_format($allocation->total_remaining ?? ($allocation->total_allocated ?? 1), 1) }}</div>
+                            </div>
+                        </div>
+                        @else
                         <div class="d-flex align-items-center justify-content-between text-center" style="gap: 8px;">
                             <div class="flex-fill p-2 rounded" style="background: #FFFFFF; border: 1px solid #E2E8F0;">
                                 <div class="small text-muted font-weight-bold" style="font-size: 10px;">Paid (PL)</div>
@@ -546,6 +561,7 @@
                                 <div class="font-weight-bold text-dark" style="font-size: 14px;" id="disp_comp_balance">{{ number_format($allocation->comp_off_remaining ?? 0, 1) }}</div>
                             </div>
                         </div>
+                        @endif
                     </div>
 
                     <!-- Live Calculation Header -->
@@ -885,6 +901,10 @@
 
                 // Update available balance strip if returned
                 if (d.current_balance) {
+                    var leaveBal = document.getElementById('disp_leave_balance');
+                    if (leaveBal && d.current_balance.total_remaining !== undefined) {
+                        leaveBal.textContent = Number(d.current_balance.total_remaining).toFixed(1);
+                    }
                     var plBal = document.getElementById('disp_pl_balance');
                     var slBal = document.getElementById('disp_sl_balance');
                     var compBal = document.getElementById('disp_comp_balance');
@@ -1075,15 +1095,21 @@
                 var lwpNoticeBanner = document.getElementById('lwpNoticeBanner');
                 var lwpNoticeTitle = document.getElementById('lwpNoticeTitle');
                 var lwpNoticeText = document.getElementById('lwpNoticeText');
+                var isUnpaidEmp = {{ ($isUnpaidIntern ?? false) ? 'true' : 'false' }};
                 if (d.lwp_days > 0) {
-                    lwpNoticeBanner.style.display = 'block';
-                    var lwpCount = Number(d.lwp_days).toFixed(1);
-                    if (d.nov_dec_rule && d.nov_dec_rule.active && Number(d.paid_days || 0) >= Number(d.nov_dec_rule.allowed_limit || 0)) {
+                    if (isUnpaidEmp && (d.leave_type_code === 'leave' || d.leave_type_code === 'sick_leave')) {
+                        // For unpaid interns, leaves are recorded without false "insufficient balance" warning
+                        lwpNoticeBanner.style.display = 'none';
+                    } else if (d.nov_dec_rule && d.nov_dec_rule.active && Number(d.paid_days || 0) >= Number(d.nov_dec_rule.allowed_limit || 0)) {
+                        lwpNoticeBanner.style.display = 'block';
+                        var lwpCount = Number(d.lwp_days).toFixed(1);
                         if (lwpNoticeTitle) {
                             lwpNoticeTitle.innerHTML = '<i class="fas fa-snowflake mr-1" style="color:#7C3AED;"></i> Nov & Dec 50% Leave Cap Reached (LWP)';
                         }
                         lwpNoticeText.innerHTML = 'You have reached the <strong>50% November & December leave cap (' + Number(d.nov_dec_rule.allowed_limit).toFixed(1) + ' days)</strong>. <strong>' + lwpCount + ' day(s)</strong> are converted to <strong>Leave Without Pay (LWP)</strong> as per company policy.';
                     } else {
+                        lwpNoticeBanner.style.display = 'block';
+                        var lwpCount = Number(d.lwp_days).toFixed(1);
                         if (lwpNoticeTitle) {
                             lwpNoticeTitle.innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i> Insufficient Leave Balance (LWP)';
                         }

@@ -137,7 +137,7 @@ class LeaveApprovalService
                     $approvedByUserId
                 );
             } else {
-                $allocation = $this->allocationService->adjustLegacyAllocation(
+                $allocation = $this->allocationService->adjustStageAllocation(
                     $allocation,
                     [
                         'paid_used' => (string) $calculation['paid_days'],
@@ -320,7 +320,7 @@ class LeaveApprovalService
 
             $this->attendanceSyncService->reverseLeaveSync($leaveRequest, $userId);
 
-            $allocation = $this->allocationService->adjustLegacyAllocation(
+            $allocation = $this->allocationService->adjustStageAllocation(
                 $allocation,
                 [
                     'paid_used' => bcsub('0', (string) ($leaveRequest->paid_days ?? 0), 6),

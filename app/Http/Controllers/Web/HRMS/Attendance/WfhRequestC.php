@@ -583,13 +583,45 @@ class WfhRequestC extends Controller
             $this->actorSource()
         );
 
-        $msg = "Company-assigned WFH processed. Created: {$result['created']}, Skipped duplicates: {$result['skipped']}";
-        if (! empty($result['converted_attendance'])) {
-            $msg .= ", Converted active attendance: {$result['converted_attendance']}";
-        }
-        $msg .= ".";
+        $created = (int) ($result['created'] ?? 0);
+        $skipped = (int) ($result['skipped'] ?? 0);
+        $converted = (int) ($result['converted_attendance'] ?? 0);
+        $scope = (string) ($payload['assignment_scope'] ?? 'single');
 
-        return back()->with('success', $msg);
+        if ($created === 0 && $skipped > 0) {
+            $msg = $scope === 'single'
+                ? 'Selected employee already has an active or approved WFH request for the selected date(s). No new request was created.'
+                : "No new WFH assigned. All {$skipped} selected employee(s) already have an active or approved WFH for the selected date(s).";
+
+            if ($converted > 0) {
+                $msg .= " (Converted {$converted} active attendance record(s) to WFH).";
+            }
+
+            return back()->with('warning', $msg);
+        }
+
+        if ($created > 0 && $skipped > 0) {
+            $msg = "Company WFH assigned successfully to {$created} employee(s). {$skipped} employee(s) were skipped as they already have active/approved WFH for this date.";
+            if ($converted > 0) {
+                $msg .= " Converted {$converted} active attendance record(s) to WFH.";
+            }
+
+            return back()->with('success', $msg);
+        }
+
+        if ($created > 0) {
+            $msg = $scope === 'single'
+                ? 'Company WFH has been assigned and approved successfully.'
+                : "Company WFH assigned and approved successfully for {$created} employee(s).";
+
+            if ($converted > 0) {
+                $msg .= " Converted {$converted} active attendance record(s) to WFH.";
+            }
+
+            return back()->with('success', $msg);
+        }
+
+        return back()->with('info', 'No employees were processed.');
     }
 
     public function myWfh(Request $request)

@@ -5,6 +5,7 @@ namespace App\Models\HRMS\Payroll;
 use App\Models\HRMS\Employee\EmployeeM as Employee;
 use App\Models\HRMS\Attendance\MonthlyAttendanceSummaryM as MonthlyAttendanceSummary;
 use App\Models\HRMS\Payroll\PayslipM as Payslip;
+use App\Models\HRMS\EnterprisePayroll\EnterpriseSalaryStructureM;
 use Illuminate\Database\Eloquent\Model;
 
 class PayrollM extends Model
@@ -12,7 +13,7 @@ class PayrollM extends Model
     protected $table = 'payrolls';
     protected $fillable = [
         'employee_id',
-        'salary_structure_id',
+        'enterprise_salary_structure_id',
         'monthly_attendance_summary_id',
         'month',
         'year',
@@ -79,7 +80,7 @@ class PayrollM extends Model
 
     public function salaryStructure()
     {
-        return $this->belongsTo(SalaryStructureM::class, 'salary_structure_id');
+        return $this->belongsTo(EnterpriseSalaryStructureM::class, 'enterprise_salary_structure_id');
     }
 
     public function attendanceSummary()

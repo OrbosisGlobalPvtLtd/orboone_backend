@@ -4,8 +4,6 @@ namespace App\Services\HRMS\EnterprisePayroll;
 
 use App\Models\HRMS\EnterprisePayroll\EnterprisePayrollPolicyM;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 class EnterprisePayrollPolicyS
 {
@@ -29,15 +27,14 @@ class EnterprisePayrollPolicyS
             'salary_day_basis' => 'working_days',
             'working_day_mode' => 'exclude_weekoffs',
             'custom_fixed_days' => null,
-            'professional_tax_enabled' => true,
-            'professional_tax_amount' => 200,
+            'proration_method' => 'calendar_26',
+            'salary_day_base' => 26,
+            'professional_tax_enabled' => false,
             'pf_enabled' => false,
             'pf_percentage' => 0,
             'esi_enabled' => false,
             'esi_percentage' => 0,
             'tds_enabled' => false,
-            'tds_percentage' => 0,
-            'tds_source' => 'policy',
             'allow_negative_salary' => false,
             'payroll_lock_after_generation' => false,
             'include_weekoff_in_payable' => true,
@@ -112,9 +109,12 @@ class EnterprisePayrollPolicyS
     {
         $weekOffDays = (float) ($attendance['week_off_days'] ?? 0);
         $holidayDays = (float) ($attendance['holiday_days'] ?? 0);
+        $basePresentDays = (float) ($attendance['actual_present_days'] ?? $attendance['present_days'] ?? 0);
+        $remainingMpDays = (float) ($attendance['remaining_mp_days'] ?? 0);
 
         return round(
-            ((float) ($attendance['present_days'] ?? 0))
+            $basePresentDays
+            + $remainingMpDays
             + ((float) ($attendance['paid_leave_days'] ?? 0) * (float) $policy->paid_leave_payable_ratio)
             + ((float) ($attendance['sick_leave_days'] ?? 0) * (float) $policy->paid_leave_payable_ratio)
             + ((float) ($attendance['comp_off_days'] ?? 0) * (float) $policy->paid_leave_payable_ratio)
@@ -129,25 +129,28 @@ class EnterprisePayrollPolicyS
 
     public function snapshot(EnterprisePayrollPolicyM $policy, int $month, int $year, float $policyWorkingDays, float $perDaySalary): array
     {
-        $tdsSource = $this->tdsSource($policy);
-
         return [
             'policy_name' => $policy->policy_name,
             'salary_day_basis' => $policy->salary_day_basis,
             'working_day_mode' => $policy->working_day_mode,
             'custom_fixed_days' => $policy->custom_fixed_days,
             'calendar_days' => $this->calendarDays($month, $year),
+            'proration_method' => $policy->proration_method ?? 'calendar_26',
+            'salary_day_base' => (int) ($policy->salary_day_base ?? 26),
             'policy_working_days' => $policyWorkingDays,
             'per_day_salary' => $perDaySalary,
             'professional_tax_enabled' => (bool) $policy->professional_tax_enabled,
-            'professional_tax_amount' => (float) $policy->professional_tax_amount,
+            'professional_tax_requires_employee_eligibility' => true,
             'pf_enabled' => (bool) $policy->pf_enabled,
             'pf_percentage' => (float) $policy->pf_percentage,
+            'pf_wage_ceiling' => $policy->pf_wage_ceiling === null ? null : (float) $policy->pf_wage_ceiling,
+            'pf_wage_basis' => $policy->pf_wage_basis ?? 'basic',
             'esi_enabled' => (bool) $policy->esi_enabled,
             'esi_percentage' => (float) $policy->esi_percentage,
+            'esi_wage_ceiling' => $policy->esi_wage_ceiling === null ? null : (float) $policy->esi_wage_ceiling,
+            'esi_wage_basis' => $policy->esi_wage_basis ?? 'gross',
             'tds_enabled' => (bool) $policy->tds_enabled,
-            'tds_percentage' => (float) $policy->tds_percentage,
-            'tds_source' => $tdsSource,
+            'tds_method' => 'verified_employee_profile_and_effective_tax_brackets',
             'payable_ratios' => [
                 'half_day_payable_ratio' => (float) $policy->half_day_payable_ratio,
                 'absent_payable_ratio' => (float) $policy->absent_payable_ratio,
@@ -169,22 +172,4 @@ class EnterprisePayrollPolicyS
         ];
     }
 
-    public function tdsSource(EnterprisePayrollPolicyM $policy): string
-    {
-        $inline = (string) ($policy->tds_source ?? '');
-        if (in_array($inline, ['policy', 'salary_structure'], true)) {
-            return $inline;
-        }
-
-        if (Schema::hasTable('settings')) {
-            $fromSettings = (string) DB::table('settings')
-                ->whereIn('key', ['enterprise_payroll_tds_source', 'tds_source'])
-                ->value('value');
-            if (in_array($fromSettings, ['policy', 'salary_structure'], true)) {
-                return $fromSettings;
-            }
-        }
-
-        return 'policy';
-    }
 }

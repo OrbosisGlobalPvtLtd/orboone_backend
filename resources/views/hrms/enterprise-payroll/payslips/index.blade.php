@@ -32,12 +32,17 @@
         </div>
 
         <!-- Attached Filters -->
+        @php
+            $currentDate = \Carbon\Carbon::now('Asia/Kolkata');
+            $activeMonth = $selectedMonth ?? (request()->has('month') ? request('month') : (string) $currentDate->month);
+            $activeYear = $selectedYear ?? (request()->has('year') ? request('year') : (string) $currentDate->year);
+        @endphp
         <div class="ep-card-filters">
             <form method="GET" action="{{ $self ? route('enterprise-payroll.self.payslips') : route('enterprise-payroll.payslips.index') }}" class="row align-items-end ep-form" id="filterForm">
                 @if(!$self)
                 <div class="col-md-3 mb-2 mb-md-0">
                     <label>Employee</label>
-                    <select name="employee_id" class="form-control" onchange="this.form.submit()">
+                    <select name="employee_id" class="form-control select2-searchable" onchange="this.form.submit()">
                         <option value="">All Employees</option>
                         @foreach($employees ?? [] as $employee)
                             <option value="{{ $employee->id }}" {{ request('employee_id') == $employee->id ? 'selected' : '' }}>{{ $employee->display_name }}</option>
@@ -47,16 +52,16 @@
                 @endif
                 <div class="col-md-3 mb-2 mb-md-0">
                     <label>Month</label>
-                    <select name="month" class="form-control" onchange="this.form.submit()">
-                        <option value="">All Months</option>
+                    <select name="month" class="form-control select2-searchable" onchange="this.form.submit()">
+                        <option value="" {{ ($activeMonth === '' || $activeMonth === null) ? 'selected' : '' }}>All Months</option>
                         @for($i=1; $i<=12; $i++)
-                            <option value="{{ $i }}" {{ request('month') == $i ? 'selected' : '' }}>{{ \Carbon\Carbon::create()->month($i)->format('F') }}</option>
+                            <option value="{{ $i }}" {{ (string)$activeMonth === (string)$i ? 'selected' : '' }}>{{ \Carbon\Carbon::create(2000, $i, 1)->format('F') }}</option>
                         @endfor
                     </select>
                 </div>
                 <div class="col-md-3 mb-2 mb-md-0">
                     <label>Year</label>
-                    <input type="number" name="year" class="form-control" value="{{ request('year') }}" onkeyup="if(event.keyCode === 13) this.form.submit()" placeholder="Year">
+                    <input type="number" name="year" class="form-control" value="{{ $activeYear }}" onchange="this.form.submit()" onkeyup="if(event.keyCode === 13) this.form.submit()" placeholder="Year">
                 </div>
                 <div class="col-md-3 text-right">
                     <a href="{{ $self ? route('enterprise-payroll.self.payslips') : route('enterprise-payroll.payslips.index') }}" class="ep-btn ep-btn-light w-100"><i class="fas fa-sync-alt"></i> Reset</a>
@@ -119,6 +124,10 @@
     if (window.jQuery && $.fn.DataTable) {
         $('.js-orb-datatable').each(function() {
             var $table = $(this);
+            var $wrap = $table.closest('.ep-table-wrap');
+            if ($wrap.length) {
+                $wrap.addClass('ep-table-dt-active').css({ 'overflow-x': 'visible', 'overflow': 'visible' });
+            }
             $table.DataTable({
                 pageLength: 25,
                 order: [],
@@ -130,7 +139,7 @@
                     emptyTable: 'No payslips found.',
                     zeroRecords: 'No matching records found.'
                 },
-                dom: '<"crud-dt-toolbar"<"crud-dt-left"l><"crud-dt-right"B>>rt<"orb-table-footer"ip>',
+                dom: '<"crud-dt-toolbar"<"crud-dt-left"l><"crud-dt-right"B>><"ep-table-scroll"rt><"orb-table-footer"ip>',
                 buttons: [
                     { extend: 'csvHtml5', text: '<i class="fas fa-file-csv text-muted"></i> CSV', className: 'crud-export-btn' },
                     { extend: 'excelHtml5', text: '<i class="fas fa-file-excel text-success"></i> Excel', className: 'crud-export-btn' },

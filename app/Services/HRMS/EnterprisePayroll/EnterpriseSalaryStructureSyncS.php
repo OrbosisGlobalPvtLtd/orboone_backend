@@ -60,7 +60,7 @@ class EnterpriseSalaryStructureSyncS
 
 
                 if (Carbon::parse($activeStructure->effective_from, 'Asia/Kolkata')->toDateString() === $effectiveDate) {
-                    $breakdown = $this->calculateBreakdown($monthlyCtc);
+                    $breakdown = $this->calculateBreakdown($monthlyCtc, $effectiveDate, $employee->company_id ?? null);
 
                     DB::table('enterprise_salary_structures')
                         ->where('id', $activeStructure->id)
@@ -73,6 +73,7 @@ class EnterpriseSalaryStructureSyncS
                             'hra_annual' => round($breakdown['hra'] * 12, 2),
                             'special_allowance_monthly' => $breakdown['special_allowance'],
                             'special_allowance_annual' => round($breakdown['special_allowance'] * 12, 2),
+                            'component_rules_snapshot' => $breakdown['component_rules_snapshot'],
                             'professional_tax_monthly' => $breakdown['professional_tax'],
                             'stage' => $stage,
                             'source' => $source,
@@ -97,7 +98,7 @@ class EnterpriseSalaryStructureSyncS
             }
 
             // Calculate breakdowns
-            $breakdown = $this->calculateBreakdown($monthlyCtc);
+            $breakdown = $this->calculateBreakdown($monthlyCtc, $effectiveDate, $employee->company_id ?? null);
 
             // Close old active structure
             if ($activeStructure) {
@@ -127,6 +128,7 @@ class EnterpriseSalaryStructureSyncS
 
                 'special_allowance_monthly' => $breakdown['special_allowance'],
                 'special_allowance_annual' => round($breakdown['special_allowance'] * 12, 2),
+                'component_rules_snapshot' => $breakdown['component_rules_snapshot'],
 
                 'professional_tax_monthly' => $breakdown['professional_tax'],
 
@@ -179,7 +181,7 @@ class EnterpriseSalaryStructureSyncS
     /**
      * Calculate basic breakdown logic.
      */
-    private function calculateBreakdown(float $monthlyCtc): array
+    private function calculateBreakdown(float $monthlyCtc, ?string $effectiveDate = null, ?int $companyId = null): array
     {
         if ($monthlyCtc <= 0) {
             return [
@@ -191,26 +193,15 @@ class EnterpriseSalaryStructureSyncS
             ];
         }
 
-        $basic = round($monthlyCtc * 0.50, 2);
-        $hra = round($basic * 0.50, 2);
-        $pt = $monthlyCtc >= 15000 ? 200.00 : 0.00;
-
-        $specialAllowance = round($monthlyCtc - ($basic + $hra), 2);
-
-        if ($specialAllowance < 0) {
-            $specialAllowance = 0;
-            $hra = $monthlyCtc - $basic;
-            if ($hra < 0) {
-                $hra = 0;
-                $basic = $monthlyCtc;
-            }
-        }
+        $policyId = app(EnterprisePayrollPolicyS::class)->getActivePolicy($companyId)->id;
+        $components = app(EnterpriseSalaryComponentRulesS::class)->breakdown($monthlyCtc, $policyId, $effectiveDate);
 
         return [
-            'basic' => $basic,
-            'hra' => $hra,
-            'special_allowance' => $specialAllowance,
-            'professional_tax' => $pt,
+            'basic' => $components['basic'],
+            'hra' => $components['hra'],
+            'special_allowance' => $components['special_allowance'],
+            'component_rules_snapshot' => json_encode($components['percentages']),
+            'professional_tax' => 0.0,
             'tds' => 0,
         ];
     }

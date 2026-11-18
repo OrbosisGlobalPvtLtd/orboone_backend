@@ -210,6 +210,25 @@
         margin: 0 !important;
     }
 
+    /* When DataTable is active, outer wrapper must NOT scroll so toolbar and pagination stay 100% fixed card width */
+    .ep-table-wrap:has(.dataTables_wrapper),
+    .ep-table-wrap:has(.ep-table-scroll),
+    .ep-table-wrap.ep-table-dt-active {
+        overflow-x: visible !important;
+        overflow-y: visible !important;
+        overflow: visible !important;
+    }
+
+    /* Isolated scroll area wrapping ONLY the table element - horizontal scrollbar stays strictly under the rows */
+    .ep-table-scroll {
+        width: 100% !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        background: #fff !important;
+        margin: 0 !important;
+    }
+
     .ep-table {
         width: 100% !important;
         margin: 0 !important;
@@ -315,6 +334,8 @@
     /* MODALS & POPUPS */
     .modal {
         z-index: 30000 !important;
+        overflow-y: hidden !important;
+        overflow-x: hidden !important;
     }
 
     .modal-backdrop {
@@ -322,18 +343,54 @@
     }
 
     .modal-dialog {
-        margin-top: 3rem !important;
+        max-height: calc(100vh - 40px) !important;
+        margin: 20px auto !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    .modal-dialog.modal-dialog-centered,
+    .modal-dialog-centered {
+        min-height: calc(100% - 40px) !important;
+        margin-top: auto !important;
+        margin-bottom: auto !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    .modal-dialog-scrollable {
+        max-height: calc(100vh - 40px) !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    .modal-dialog-scrollable.modal-dialog-centered {
+        margin-top: auto !important;
+        margin-bottom: auto !important;
+    }
+    .modal-dialog .modal-content,
+    .modal-dialog-scrollable .modal-content,
+    .ep-modal-content-scrollable {
+        max-height: calc(100vh - 50px) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+        border-radius: 24px !important;
+        width: 100% !important;
     }
 
     .ep-modal-header {
         background: linear-gradient(135deg, var(--ep-primary), var(--ep-secondary)) !important;
         color: #fff !important;
-        padding: 22px 26px !important;
+        padding: 20px 26px !important;
         border-radius: 24px 24px 0 0 !important;
         border: none !important;
         display: flex !important;
         align-items: center !important;
         justify-content: space-between !important;
+        flex-shrink: 0 !important;
+        position: relative !important;
+        z-index: 10 !important;
     }
 
     .ep-modal-header .modal-title {
@@ -364,10 +421,17 @@
         background: transparent !important;
     }
 
-    .ep-modal-body {
+    .ep-modal-body,
+    .modal-dialog-scrollable .ep-modal-body,
+    .ep-modal-content-scrollable .ep-modal-body {
         background: #F6F7FB !important;
-        padding: 26px !important;
-        border-radius: 0 0 24px 24px !important;
+        padding: 24px 26px !important;
+        border-radius: 0 !important;
+        flex: 1 1 auto !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        max-height: calc(100vh - 190px) !important;
+        overscroll-behavior: contain !important;
     }
 
     .ep-section-card {
@@ -398,11 +462,36 @@
         color: var(--ep-primary) !important;
     }
 
-    .ep-modal-footer {
+    .ep-modal-footer,
+    .modal-dialog-scrollable .ep-modal-footer,
+    .ep-modal-content-scrollable .ep-modal-footer {
         background: #fff !important;
         border-top: 1px solid var(--ep-border) !important;
         padding: 16px 26px !important;
         border-radius: 0 0 24px 24px !important;
+        flex-shrink: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-end !important;
+        gap: 10px !important;
+        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05) !important;
+        position: relative !important;
+        z-index: 10 !important;
+    }
+
+    .ep-modal-body::-webkit-scrollbar {
+        width: 6px;
+    }
+    .ep-modal-body::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 4px;
+    }
+    .ep-modal-body::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+    }
+    .ep-modal-body::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
     }
 
     /* COMPACT FILTERS & SEARCH ROW */
@@ -570,6 +659,9 @@
         background: #fff !important;
         border-bottom: 1px solid var(--ep-border) !important;
         box-sizing: border-box !important;
+        position: sticky !important;
+        left: 0 !important;
+        z-index: 4 !important;
     }
 
     .crud-dt-left {
@@ -650,20 +742,337 @@
         outline: none !important;
     }
 
+    .dataTables_wrapper {
+        position: relative !important;
+        clear: both !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
     .dataTables_wrapper .dataTables_filter {
         display: none !important;
     }
 
-    .orb-table-footer, .dataTables_wrapper .row:last-child {
+    /* ==========================================================================
+       ORBO PAGINATION THEME (VENDOR & DATATABLES) FOR ENTERPRISE PAYROLL
+       ========================================================================== */
+    .orb-pagination-wrapper,
+    .orb-table-footer,
+    .dataTables_wrapper .row:last-child {
         display: flex !important;
         align-items: center !important;
         justify-content: space-between !important;
-        gap: 10px !important;
-        margin: 0 !important;
+        flex-wrap: nowrap !important;
+        gap: 12px !important;
+        width: 100% !important;
+        min-height: 58px !important;
+        height: auto !important;
+        max-height: none !important;
         padding: 12px 18px 14px !important;
-        border-top: 1px solid var(--ep-border) !important;
-        background: #fff !important;
+        background: #FFFFFF !important;
+        border-top: 1px solid var(--ep-border, #EEF2F6) !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
+        position: relative !important;
+        z-index: 5 !important;
+        overflow-y: hidden !important;
+        overflow-x: auto !important;
+        scrollbar-width: none !important;
+        -ms-overflow-style: none !important;
+    }
+
+    .orb-pagination-wrapper::-webkit-scrollbar,
+    .orb-table-footer::-webkit-scrollbar,
+    .dataTables_wrapper .row:last-child::-webkit-scrollbar {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+    }
+
+    .dataTables_wrapper .row:last-child > [class*="col-"] {
+        padding: 0 !important;
+        width: auto !important;
+        max-width: none !important;
+        flex: 0 0 auto !important;
+    }
+
+    .orb-pagination-info,
+    .dataTables_wrapper .dataTables_info {
+        padding: 0 !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        color: var(--ep-muted, #6B7280) !important;
+        white-space: nowrap !important;
+        margin: 0 !important;
+        flex-shrink: 0 !important;
+        line-height: normal !important;
+    }
+
+    .dataTables_wrapper .dataTables_paginate {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: flex-end !important;
+        flex-shrink: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        height: auto !important;
+        overflow-y: hidden !important;
+        overflow-x: auto !important;
+        scrollbar-width: none !important;
+        -ms-overflow-style: none !important;
+    }
+
+    .dataTables_wrapper .dataTables_paginate::-webkit-scrollbar {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+    }
+
+    .orb-pagination,
+    .dataTables_wrapper .dataTables_paginate ul.pagination {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        list-style: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        flex-wrap: nowrap !important;
+        border: none !important;
+        height: 36px !important;
+        max-height: 36px !important;
+        overflow-y: hidden !important;
+        overflow-x: auto !important;
+        scrollbar-width: none !important;
+        -ms-overflow-style: none !important;
+    }
+
+    .orb-pagination::-webkit-scrollbar,
+    .dataTables_wrapper .dataTables_paginate ul.pagination::-webkit-scrollbar {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+    }
+
+    /* Reset double padding & borders inherited from global stylesheets */
+    .ep-page .dataTables_wrapper .dataTables_paginate .paginate_button,
+    .dataTables_wrapper .dataTables_paginate ul.pagination li.paginate_button,
+    .dataTables_wrapper .dataTables_paginate ul.pagination li.page-item,
+    .orb-page-item {
+        margin: 0 2px !important;
+        padding: 0 !important;
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        height: 34px !important;
+        min-height: 34px !important;
+        max-height: 34px !important;
+        line-height: normal !important;
         overflow: visible !important;
+        box-sizing: border-box !important;
+    }
+
+    .ep-page .dataTables_wrapper .dataTables_paginate li.paginate_button:hover,
+    .ep-page .dataTables_wrapper .dataTables_paginate li.paginate_button:active,
+    .ep-page .dataTables_wrapper .dataTables_paginate li.paginate_button:focus,
+    .ep-page .dataTables_wrapper .dataTables_paginate li.paginate_button.current {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+    .orb-page-link,
+    .dataTables_wrapper .dataTables_paginate a.paginate_button,
+    .dataTables_wrapper .dataTables_paginate ul.pagination li.page-item .page-link,
+    .dataTables_wrapper .dataTables_paginate ul.pagination li.page-item a.page-link,
+    .dataTables_wrapper .dataTables_paginate ul.pagination li.page-item span.page-link {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        min-width: 34px !important;
+        height: 34px !important;
+        line-height: 32px !important;
+        padding: 0 12px !important;
+        border-radius: 9px !important;
+        border: 1px solid transparent !important;
+        background: transparent !important;
+        color: var(--ep-primary, #4B00E8) !important;
+        font-size: 13px !important;
+        font-weight: 700 !important;
+        text-decoration: none !important;
+        transition: all 0.18s ease !important;
+        cursor: pointer !important;
+        user-select: none !important;
+        box-shadow: none !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+        white-space: nowrap !important;
+    }
+
+    .orb-page-link:hover:not(.orb-page-dots),
+    .dataTables_wrapper .dataTables_paginate a.paginate_button:hover:not(.disabled):not(.current),
+    .dataTables_wrapper .dataTables_paginate ul.pagination li.page-item:not(.active):not(.disabled) .page-link:hover,
+    .dataTables_wrapper .dataTables_paginate ul.pagination li.page-item:not(.active):not(.disabled) a.page-link:hover {
+        background: var(--ep-soft, #F3EDFF) !important;
+        color: var(--ep-primary, #4B00E8) !important;
+        border-color: transparent !important;
+    }
+
+    .orb-page-item.active .orb-page-link,
+    .dataTables_wrapper .dataTables_paginate a.paginate_button.current,
+    .dataTables_wrapper .dataTables_paginate a.paginate_button.current:hover,
+    .dataTables_wrapper .dataTables_paginate ul.pagination li.page-item.active .page-link,
+    .dataTables_wrapper .dataTables_paginate ul.pagination li.page-item.active a.page-link,
+    .dataTables_wrapper .dataTables_paginate ul.pagination li.page-item.active span.page-link {
+        background: linear-gradient(135deg, var(--ep-primary, #4B00E8), var(--ep-secondary, #FF5252)) !important;
+        color: #FFFFFF !important;
+        border-radius: 9px !important;
+        font-weight: 800 !important;
+        min-width: 34px !important;
+        height: 34px !important;
+        line-height: 34px !important;
+        box-shadow: 0 4px 14px rgba(75, 0, 232, 0.35) !important;
+        border: none !important;
+    }
+
+    .orb-page-item.disabled .orb-page-link,
+    .dataTables_wrapper .dataTables_paginate a.paginate_button.disabled,
+    .dataTables_wrapper .dataTables_paginate a.paginate_button.disabled:hover,
+    .dataTables_wrapper .dataTables_paginate a.paginate_button.disabled:active,
+    .dataTables_wrapper .dataTables_paginate ul.pagination li.page-item.disabled .page-link,
+    .dataTables_wrapper .dataTables_paginate ul.pagination li.page-item.disabled a.page-link,
+    .dataTables_wrapper .dataTables_paginate ul.pagination li.page-item.disabled span.page-link {
+        color: #94A3B8 !important;
+        cursor: not-allowed !important;
+        background: transparent !important;
+        opacity: 0.6 !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+    .orb-page-dots,
+    .dataTables_wrapper .dataTables_paginate .ellipsis,
+    .dataTables_wrapper .dataTables_paginate ul.pagination li.page-item.disabled span.page-link.orb-page-dots {
+        border: none !important;
+        background: transparent !important;
+        min-width: 18px !important;
+        padding: 0 2px !important;
+        color: #94A3B8 !important;
+        font-weight: 800 !important;
+        letter-spacing: 1px !important;
+    }
+
+    @media (max-width: 576px) {
+        .orb-pagination-wrapper,
+        .orb-table-footer,
+        .dataTables_wrapper .row:last-child {
+            flex-direction: column !important;
+            align-items: center !important;
+            gap: 8px !important;
+            padding: 10px 4px !important;
+            text-align: center !important;
+            overflow-y: hidden !important;
+            overflow-x: auto !important;
+        }
+        .orb-pagination-info,
+        .dataTables_wrapper .dataTables_info {
+            font-size: 11px !important;
+            white-space: nowrap !important;
+        }
+        .dataTables_wrapper .dataTables_paginate,
+        .orb-pagination,
+        .dataTables_wrapper .dataTables_paginate ul.pagination {
+            flex-wrap: nowrap !important;
+            justify-content: center !important;
+            gap: 3px !important;
+            max-width: 100% !important;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
+        }
+        .orb-page-link,
+        .dataTables_wrapper .dataTables_paginate a.paginate_button,
+        .dataTables_wrapper .dataTables_paginate ul.pagination li.page-item .page-link {
+            min-width: 28px !important;
+            height: 28px !important;
+            line-height: 26px !important;
+            padding: 0 6px !important;
+            font-size: 11.5px !important;
+            border-radius: 7px !important;
+        }
+        .orb-page-item.active .orb-page-link,
+        .dataTables_wrapper .dataTables_paginate a.paginate_button.current,
+        .dataTables_wrapper .dataTables_paginate ul.pagination li.page-item.active .page-link {
+            min-width: 28px !important;
+            height: 28px !important;
+            line-height: 28px !important;
+            border-radius: 7px !important;
+        }
+    }
+
+    /* ==========================================================================
+       ORBO CUSTOM THEME DATE PICKER INPUTS & CALENDAR POPUP
+       ========================================================================== */
+    .orbo-date-picker,
+    .orbo-date-picker-display,
+    .flatpickr-input.orbo-date-picker-display,
+    input[data-date-picker] {
+        height: 40px !important;
+        border-radius: 10px !important;
+        border: 1px solid var(--ep-border, #CBD5E1) !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        padding: 0 36px 0 12px !important;
+        background-color: #ffffff !important;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236366F1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E") !important;
+        background-repeat: no-repeat !important;
+        background-position: right 14px center !important;
+        background-size: 16px 16px !important;
+        color: var(--ep-text, #101828) !important;
+        cursor: pointer !important;
+        box-sizing: border-box !important;
+        transition: all 0.2s ease !important;
+        width: 100% !important;
+    }
+
+    .orbo-date-picker:focus,
+    .orbo-date-picker-display:focus,
+    .flatpickr-input.orbo-date-picker-display:focus,
+    input[data-date-picker]:focus {
+        border-color: var(--ep-primary, #4B00E8) !important;
+        box-shadow: 0 0 0 3px rgba(75, 0, 232, 0.12) !important;
+        outline: none !important;
+    }
+
+    /* Flatpickr Calendar Container with Orbo Theme */
+    .flatpickr-calendar.orbo-date-picker-calendar {
+        border: 1px solid var(--ep-border, #E7EAF3) !important;
+        border-radius: 16px !important;
+        box-shadow: 0 16px 40px rgba(16, 24, 40, 0.14) !important;
+        overflow: hidden !important;
+        background: #ffffff !important;
+        font-family: inherit !important;
+        box-sizing: border-box !important;
+        z-index: 999999 !important;
+    }
+
+    .flatpickr-calendar.orbo-date-picker-calendar .flatpickr-day.selected,
+    .flatpickr-calendar.orbo-date-picker-calendar .flatpickr-day.startRange,
+    .flatpickr-calendar.orbo-date-picker-calendar .flatpickr-day.endRange {
+        background: linear-gradient(135deg, var(--ep-primary, #4B00E8), var(--ep-secondary, #FF5252)) !important;
+        color: #ffffff !important;
+        border: none !important;
+        font-weight: 700 !important;
+        border-radius: 8px !important;
+    }
+
+    .flatpickr-calendar.orbo-date-picker-calendar .flatpickr-day:hover:not(.selected) {
+        background: var(--ep-soft, #F3EDFF) !important;
+        color: var(--ep-primary, #4B00E8) !important;
+        border-radius: 8px !important;
     }
 
     /* MODAL DESIGN SYSTEM */

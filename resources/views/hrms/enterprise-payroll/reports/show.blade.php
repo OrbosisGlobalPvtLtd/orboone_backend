@@ -11,7 +11,7 @@
     @section('_content')
     <div class="ep-page">
         <div class="ep-hero">
-            <div><div class="ep-kicker"><i class="fas fa-chart-line"></i> Report</div><h1>{{ $title }}</h1><p>Filtered for {{ \Carbon\Carbon::create()->month($month)->format('F') }} {{ $year }}.</p></div>
+            <div><div class="ep-kicker"><i class="fas fa-chart-line"></i> Report</div><h1>{{ $title }}</h1><p>Filtered for {{ $month ? \Carbon\Carbon::create()->month($month)->format('F') . ' ' . $year : 'All Months ' . $year }}.</p></div>
             <div><a href="{{ route('enterprise-payroll.reports.index') }}" class="ep-btn ep-btn-light"><i class="fas fa-arrow-left"></i> Back to Reports</a></div>
         </div>
         <div class="ep-card">
@@ -21,7 +21,7 @@
                     <div class="ep-icon-box"><i class="fas fa-chart-line"></i></div>
                     <div>
                         <h5 class="ep-table-title">{{ $title }}</h5>
-                        <p class="ep-table-subtitle">Dynamic report data for {{ \Carbon\Carbon::create()->month($month)->format('F') }} {{ $year }}.</p>
+                        <p class="ep-table-subtitle">Dynamic report data for {{ $month ? \Carbon\Carbon::create()->month($month)->format('F') . ' ' . $year : 'All Months ' . $year }}.</p>
                     </div>
                 </div>
                 <div class="ep-hero-actions d-flex align-items-center gap-2">
@@ -34,8 +34,8 @@
                 <form method="GET" class="row align-items-end ep-form" id="filterForm">
                     <div class="col-md-5 mb-2 mb-md-0">
                         <label>Month</label>
-                        <select name="month" class="form-control" onchange="this.form.submit()">
-                            <option value="">All Months</option>
+                        <select name="month" class="form-control  select2-searchable" onchange="this.form.submit()">
+                            <option value="" {{ $month === null ? 'selected' : '' }}>All Months</option>
                             @for($i=1; $i<=12; $i++)
                                 <option value="{{ $i }}" {{ $month == $i ? 'selected' : '' }}>{{ \Carbon\Carbon::create()->month($i)->format('F') }}</option>
                             @endfor
@@ -85,6 +85,24 @@
                                     <th>Type</th>
                                     <th>Title</th>
                                     <th class="text-right">Amount</th>
+                                    <th>Status</th>
+                                </tr>
+                            @elseif($type === 'deduction' || $type === 'lwp-deduction')
+                                <tr>
+                                    <th>S.No.</th>
+                                    <th>Employee</th>
+                                    <th>Code</th>
+                                    <th>Month</th>
+                                    <th class="text-right">Gross Salary</th>
+                                    <th>LWP Days</th>
+                                    <th class="text-right">LWP Ded</th>
+                                    <th>Half Days</th>
+                                    <th class="text-right">Half Day Ded</th>
+                                    <th>Absent Days</th>
+                                    <th class="text-right">Absent Ded</th>
+                                    <th class="text-right">PT</th>
+                                    <th class="text-right">Total Ded</th>
+                                    <th class="text-right">Net Salary</th>
                                     <th>Status</th>
                                 </tr>
                             @else
@@ -143,6 +161,24 @@
                                             <td class="text-right font-weight-bold text-primary">₹{{ number_format((float) $row->amount, 2) }}</td>
                                             <td>@include('hrms.enterprise-payroll.partials.status-badge', ['status' => $row->status])</td>
                                         </tr>
+                                    @elseif($type === 'deduction' || $type === 'lwp-deduction')
+                                        <tr>
+                                            <td>{{ $loop->iteration }}</td>
+                                            <td>{{ optional($row->employee)->display_name }}</td>
+                                            <td>{{ optional($row->employee)->employee_code ?? '-' }}</td>
+                                            <td>{{ \Carbon\Carbon::create()->month($row->month ?? ($month ?: 1))->format('F') }} {{ $row->year ?? $year }}</td>
+                                            <td class="text-right">₹{{ number_format((float) ($row->gross_salary ?? 0), 2) }}</td>
+                                            <td>{{ $row->lwp_days ?? 0 }}</td>
+                                            <td class="text-right text-danger">₹{{ number_format((float) ($row->lwp_deduction ?? 0), 2) }}</td>
+                                            <td>{{ $row->half_days ?? 0 }}</td>
+                                            <td class="text-right text-danger">₹{{ number_format((float) ($row->half_day_deduction ?? 0), 2) }}</td>
+                                            <td>{{ $row->absent_days ?? 0 }}</td>
+                                            <td class="text-right text-danger">₹{{ number_format((float) ($row->absent_deduction ?? 0), 2) }}</td>
+                                            <td class="text-right text-danger">₹{{ number_format((float) ($row->professional_tax ?? 0), 2) }}</td>
+                                            <td class="text-right font-weight-bold text-danger">₹{{ number_format((float) ($row->total_deductions ?? 0), 2) }}</td>
+                                            <td class="text-right font-weight-bold text-primary">₹{{ number_format((float) ($row->net_salary ?? 0), 2) }}</td>
+                                            <td>@include('hrms.enterprise-payroll.partials.status-badge', ['status' => $row->status ?? 'unknown'])</td>
+                                        </tr>
                                     @else
                                         <tr>
                                             <td>{{ $loop->iteration }}</td>
@@ -191,7 +227,12 @@
     if (window.jQuery && $.fn.DataTable) {
         $(document).ready(function() {
             if (!$.fn.DataTable.isDataTable('.js-orb-datatable')) {
-                var table = $('.js-orb-datatable').DataTable({
+                var $table = $('.js-orb-datatable');
+                var $wrap = $table.closest('.ep-table-wrap');
+                if ($wrap.length) {
+                    $wrap.addClass('ep-table-dt-active').css({ 'overflow-x': 'visible', 'overflow': 'visible' });
+                }
+                var table = $table.DataTable({
                     scrollX: true,
                     scrollCollapse: true,
                     pageLength: 25,

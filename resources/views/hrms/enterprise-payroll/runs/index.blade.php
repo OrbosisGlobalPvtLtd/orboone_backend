@@ -23,7 +23,7 @@
                     @csrf
                     <div class="col-md-3 mb-3">
                         <label>Month</label>
-                        <select name="month" class="form-control" required>
+                        <select name="month" class="form-control select2-searchable" required>
                             @for($i=1; $i<=12; $i++)
                                 <option value="{{ $i }}" {{ now('Asia/Kolkata')->month == $i ? 'selected' : '' }}>{{ \Carbon\Carbon::create()->month($i)->format('F') }}</option>
                             @endfor
@@ -32,7 +32,7 @@
                     <div class="col-md-3 mb-3"><label>Year</label><input type="number" min="2020" name="year" value="{{ now('Asia/Kolkata')->year }}" class="form-control" required></div>
                     <div class="col-md-3 mb-3">
                         <label>Employee (Optional)</label>
-                        <select name="employee_id" class="form-control">
+                        <select name="employee_id" class="form-control select2-searchable">
                             <option value="">All Employees</option>
                             @foreach($employees ?? [] as $emp)
                                 <option value="{{ $emp->id }}">{{ $emp->display_name }} ({{ $emp->employee_code }})</option>
@@ -65,7 +65,7 @@
             <form method="GET" action="{{ route('enterprise-payroll.runs.index') }}" class="row align-items-end ep-form" id="filterForm">
                 <div class="col-md-3 mb-2 mb-md-0">
                     <label>Month</label>
-                    <select name="month" class="form-control" onchange="this.form.submit()">
+                    <select name="month" class="form-control select2-searchable" onchange="this.form.submit()">
                         <option value="">All Months</option>
                         @for($i=1; $i<=12; $i++)
                             <option value="{{ $i }}" {{ request('month') == $i ? 'selected' : '' }}>{{ \Carbon\Carbon::create()->month($i)->format('F') }}</option>
@@ -78,7 +78,7 @@
                 </div>
                 <div class="col-md-3 mb-2 mb-md-0">
                     <label>Status</label>
-                    <select name="status" class="form-control" onchange="this.form.submit()">
+                    <select name="status" class="form-control select2-searchable" onchange="this.form.submit()">
                         <option value="">All Status</option>
                         <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
                         <option value="processed" {{ request('status') == 'processed' ? 'selected' : '' }}>Processed</option>
@@ -139,6 +139,10 @@
     if (window.jQuery && $.fn.DataTable) {
         $('.js-orb-datatable').each(function() {
             var $table = $(this);
+            var $wrap = $table.closest('.ep-table-wrap');
+            if ($wrap.length) {
+                $wrap.addClass('ep-table-dt-active').css({ 'overflow-x': 'visible', 'overflow': 'visible' });
+            }
             $table.DataTable({
                 pageLength: 25,
                 order: [],
@@ -150,7 +154,7 @@
                     emptyTable: 'No payroll runs found.',
                     zeroRecords: 'No matching records found.'
                 },
-                dom: '<"crud-dt-toolbar"<"crud-dt-left"l><"crud-dt-right"B>>rt<"orb-table-footer"ip>',
+                dom: '<"crud-dt-toolbar"<"crud-dt-left"l><"crud-dt-right"B>><"ep-table-scroll"rt><"orb-table-footer"ip>',
                 buttons: [
                     { extend: 'csvHtml5', text: '<i class="fas fa-file-csv text-muted"></i> CSV', className: 'crud-export-btn' },
                     { extend: 'excelHtml5', text: '<i class="fas fa-file-excel text-success"></i> Excel', className: 'crud-export-btn' },

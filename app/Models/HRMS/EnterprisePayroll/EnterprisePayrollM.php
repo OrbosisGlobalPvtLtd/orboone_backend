@@ -25,6 +25,8 @@ class EnterprisePayrollM extends Model
         'lwp_days' => 'decimal:2',
         'absent_days' => 'decimal:2',
         'payable_days' => 'decimal:2',
+        'salary_days' => 'decimal:4',
+        'earned_base_gross' => 'decimal:2',
         'annual_ctc' => 'decimal:2',
         'monthly_ctc' => 'decimal:2',
         'per_day_salary' => 'decimal:4',
@@ -69,5 +71,25 @@ class EnterprisePayrollM extends Model
     public function payslip()
     {
         return $this->hasOne(EnterprisePayslipM::class, 'payroll_id');
+    }
+
+    public function getMissedPunchDeductionAttribute(): float
+    {
+        return (float) ($this->calculation_snapshot['missed_punch_deduction'] ?? 0);
+    }
+
+    public function getEarlyOutDeductionAttribute(): float
+    {
+        return (float) ($this->calculation_snapshot['early_out_deduction'] ?? 0);
+    }
+
+    public function bonuses()
+    {
+        return $this->hasMany(EnterpriseBonusIncentiveM::class, 'paid_in_payroll_id');
+    }
+
+    public function reimbursements()
+    {
+        return $this->hasMany(EnterpriseReimbursementM::class, 'paid_in_payroll_id');
     }
 }

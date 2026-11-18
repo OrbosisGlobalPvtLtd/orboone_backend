@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Web\HRMS\Concerns\HrmsCrudPage;
 use App\Models\HRMS\EnterprisePayroll\EnterpriseSalaryStructureHistoryM;
 use App\Models\HRMS\EnterprisePayroll\EnterpriseSalaryStructureM;
+use App\Models\HRMS\Employee\EmployeeM;
+use App\Services\HRMS\EnterprisePayroll\EnterprisePayrollPolicyS;
+use App\Services\HRMS\EnterprisePayroll\EnterpriseSalaryComponentRulesS;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,8 +17,16 @@ class SalaryStructureC extends Controller
 {
     use HrmsCrudPage;
 
+    public function __construct(
+        private EnterpriseSalaryComponentRulesS $componentRules,
+        private EnterprisePayrollPolicyS $policyService
+    ) {
+    }
+
     public function index(Request $request)
     {
+        $defaultPolicy = $this->policyService->getActivePolicy();
+        $componentRulePreview = $this->componentRules->breakdown(10000, $defaultPolicy->id ? (int) $defaultPolicy->id : null)['percentages'];
         $query = $this->employeeJoinedQuery('enterprise_salary_structures');
 
         if ($request->filled('employee_id')) {
@@ -39,6 +50,7 @@ class SalaryStructureC extends Controller
             'rows' => $rows,
             'employees' => $this->employeeOptions(),
             'canManage' => $this->userHasPermission('enterprise_salary_structure.manage'),
+            'componentRulePreview' => $componentRulePreview,
         ]);
     }
 
@@ -105,29 +117,31 @@ class SalaryStructureC extends Controller
             'effective_to' => ['nullable', 'date', 'after_or_equal:effective_from'],
             'annual_ctc' => ['required', 'numeric', 'min:0'],
             'monthly_ctc' => ['nullable', 'numeric', 'min:0'],
-            'basic_annual' => ['nullable', 'numeric', 'min:0'],
-            'basic_monthly' => ['nullable', 'numeric', 'min:0'],
-            'hra_annual' => ['nullable', 'numeric', 'min:0'],
-            'hra_monthly' => ['nullable', 'numeric', 'min:0'],
-            'special_allowance_annual' => ['nullable', 'numeric', 'min:0'],
-            'special_allowance_monthly' => ['nullable', 'numeric', 'min:0'],
-            'professional_tax_monthly' => ['nullable', 'numeric', 'min:0'],
-            'tds_annual' => ['nullable', 'numeric', 'min:0'],
-            'tds_monthly' => ['nullable', 'numeric', 'min:0'],
             'other_deduction_monthly' => ['nullable', 'numeric', 'min:0'],
             'status' => ['required', 'in:active,inactive'],
             'remarks' => ['nullable', 'string'],
         ]);
 
-        $data['monthly_ctc'] = $data['monthly_ctc'] ?: round(((float) $data['annual_ctc']) / 12, 2);
-        foreach (['basic', 'hra', 'special_allowance', 'tds'] as $component) {
+        $data['monthly_ctc'] = round((float) ($data['monthly_ctc'] ?: ((float) $data['annual_ctc'] / 12)), 2);
+        $data['annual_ctc'] = round($data['monthly_ctc'] * 12, 2);
+        $employee = EmployeeM::query()->findOrFail((int) $data['employee_id']);
+        $policy = $this->policyService->getActivePolicy($employee->company_id ?? null);
+        $components = $this->componentRules->breakdown(
+            (float) $data['monthly_ctc'],
+            $policy->id ? (int) $policy->id : null,
+            $data['effective_from']
+        );
+        foreach (['basic', 'hra', 'special_allowance'] as $component) {
             $annualKey = "{$component}_annual";
             $monthlyKey = "{$component}_monthly";
-            $data[$annualKey] = (float) ($data[$annualKey] ?? 0);
-            $data[$monthlyKey] = (float) ($data[$monthlyKey] ?? ($data[$annualKey] / 12));
+            $data[$monthlyKey] = $components[$component];
+            $data[$annualKey] = round($components[$component] * 12, 2);
         }
 
-        $data['professional_tax_monthly'] = (float) ($data['professional_tax_monthly'] ?? 0);
+        $data['professional_tax_monthly'] = 0.0;
+        $data['tds_annual'] = 0.0;
+        $data['tds_monthly'] = 0.0;
+        $data['component_rules_snapshot'] = $components['percentages'];
         $data['other_deduction_monthly'] = (float) ($data['other_deduction_monthly'] ?? 0);
 
         return $data;

@@ -27,26 +27,34 @@ class ReportC extends Controller
     {
         abort_unless(array_key_exists($type, $this->reportTypes()), 404);
 
-        $month = (int) ($request->input('month') ?: now('Asia/Kolkata')->month);
-        $year = (int) ($request->input('year') ?: now('Asia/Kolkata')->year);
+        $latestPayroll = EnterprisePayrollM::orderByDesc('year')->orderByDesc('month')->first();
+        $defaultMonth = $latestPayroll?->month ?: now('Asia/Kolkata')->month;
+        $defaultYear = $latestPayroll?->year ?: now('Asia/Kolkata')->year;
+
+        $hasMonthParam = $request->has('month');
+        $month = $hasMonthParam 
+            ? ($request->input('month') !== '' ? (int) $request->input('month') : null)
+            : (int) $defaultMonth;
+
+        $year = (int) ($request->input('year') ?: $defaultYear);
 
         $rows = match ($type) {
-            'monthly-payroll', 'deduction', 'summary', 'lwp-deduction', 'attendance-impact' => EnterprisePayrollM::with('employee.user')
-                ->where('month', $month)
+            'monthly-payroll', 'deduction', 'summary', 'lwp-deduction', 'attendance-impact' => EnterprisePayrollM::with(['employee.user', 'employee.department'])
+                ->when($month !== null, fn($q) => $q->where('month', $month))
                 ->where('year', $year)
                 ->orderByDesc('net_salary')
                 ->get(),
-            'reimbursement' => EnterpriseReimbursementM::with('employee.user')
-                ->whereMonth('claim_date', $month)
+            'reimbursement' => EnterpriseReimbursementM::with(['employee.user', 'employee.department'])
+                ->when($month !== null, fn($q) => $q->whereMonth('claim_date', $month))
                 ->whereYear('claim_date', $year)
                 ->latest()
                 ->get(),
-            'bonus-incentive' => EnterpriseBonusIncentiveM::with('employee.user')
-                ->where('month', $month)
+            'bonus-incentive' => EnterpriseBonusIncentiveM::with(['employee.user', 'employee.department'])
+                ->when($month !== null, fn($q) => $q->where('month', $month))
                 ->where('year', $year)
                 ->latest()
                 ->get(),
-            'employee-salary' => EnterpriseSalaryStructureM::with('employee.user')
+            'employee-salary' => EnterpriseSalaryStructureM::with(['employee.user', 'employee.department'])
                 ->where('status', 'active')
                 ->latest()
                 ->get(),

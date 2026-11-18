@@ -37,7 +37,7 @@
                 @if(!$self)
                 <div class="col-md-3 mb-2 mb-md-0">
                     <label>Employee</label>
-                    <select name="employee_id" class="form-control" onchange="this.form.submit()">
+                    <select name="employee_id" class="form-control select2-searchable" onchange="this.form.submit()">
                         <option value="">All Employees</option>
                         @foreach($employees ?? [] as $employee)
                         <option value="{{ $employee->id }}" {{ request('employee_id') == $employee->id ? 'selected' : '' }}>{{ $employee->display_name }}</option>
@@ -47,7 +47,7 @@
                 @endif
                 <div class="col-md-3 mb-2 mb-md-0">
                     <label>Status</label>
-                    <select name="status" class="form-control" onchange="this.form.submit()">
+                    <select name="status" class="form-control select2-searchable" onchange="this.form.submit()">
                         <option value="">All Status</option>
                         <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
                         <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Approved</option>
@@ -57,11 +57,11 @@
                 </div>
                 <div class="col-md-2 mb-2 mb-md-0">
                     <label>Date From</label>
-                    <input type="date" name="from_date" class="form-control" value="{{ request('from_date') }}" onchange="this.form.submit()">
+                    <x-form.date-picker name="from_date" :value="request('from_date')" placeholder="dd-mm-yyyy" onchange="this.form.submit()" />
                 </div>
                 <div class="col-md-2 mb-2 mb-md-0">
                     <label>Date To</label>
-                    <input type="date" name="to_date" class="form-control" value="{{ request('to_date') }}" onchange="this.form.submit()">
+                    <x-form.date-picker name="to_date" :value="request('to_date')" placeholder="dd-mm-yyyy" onchange="this.form.submit()" />
                 </div>
                 <div class="col-md-2 text-right">
                     <a href="{{ $self ? route('enterprise-payroll.self.reimbursements') : route('enterprise-payroll.reimbursements.index') }}" class="ep-btn ep-btn-light w-100"><i class="fas fa-sync-alt"></i> Reset</a>
@@ -113,45 +113,60 @@
     </div>
 
     <div class="modal fade" id="reimbursementModal" tabindex="-1">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <form method="POST" enctype="multipart/form-data" action="{{ route('enterprise-payroll.reimbursements.store') }}" class="modal-content ep-form border-0 shadow-lg">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <form method="POST" enctype="multipart/form-data" action="{{ route('enterprise-payroll.reimbursements.store') }}" class="modal-content ep-form ep-modal-content-scrollable border-0 shadow-lg">
                 @csrf
                 <div class="ep-modal-header">
-                    <h5 class="modal-title">Add Reimbursement</h5>
-                    <p>Submit and manage employee reimbursement claims.</p>
+                    <div>
+                        <h5 class="modal-title">Add Reimbursement</h5>
+                        <p>Submit and manage employee reimbursement claims.</p>
+                    </div>
                     <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
                 </div>
                 <div class="ep-modal-body">
                     <div class="ep-section-card mb-3">
                         <div class="ep-section-title"><i class="fas fa-receipt"></i> Claim Details</div>
                         <div class="row">
-                            @if($canManage)<div class="col-md-6 mb-3">
-                                <div class="ep-form-group"><label>Employee</label><select name="employee_id" class="form-control" required>
+                            @if($canManage)
+                            <div class="col-md-6 mb-3">
+                                <div class="ep-form-group"><label>Employee</label><select name="employee_id" class="form-control select2-searchable" required>
                                         <option value="">Select</option>@foreach($employees as $employee)<option value="{{ $employee->id }}">{{ $employee->display_name }}</option>@endforeach
                                     </select></div>
-                            </div>@endif
+                            </div>
+                            @endif
                             <div class="col-md-{{ $canManage ? '6' : '12' }} mb-3">
-                                <div class="ep-form-group"><label>Title</label><input name="title" class="form-control" required></div>
+                                <div class="ep-form-group"><label>Title</label><input name="title" class="form-control" placeholder="e.g. Client Travel / Internet Expense" required></div>
                             </div>
-                            <div class="col-md-4 mb-3 mb-md-0">
-                                <div class="ep-form-group"><label>Claim Date</label><input type="date" name="claim_date" value="{{ now('Asia/Kolkata')->toDateString() }}" class="form-control" required></div>
+                            <div class="col-md-{{ $canManage ? '3' : '6' }} col-12 mb-3">
+                                <div class="ep-form-group"><label>Claim Date</label><x-form.date-picker name="claim_date" :value="now('Asia/Kolkata')->toDateString()" placeholder="dd-mm-yyyy" required="required" /></div>
                             </div>
-                            <div class="col-md-4 mb-3 mb-md-0">
-                                <div class="ep-form-group"><label>Amount</label><input type="number" step="0.01" name="amount" class="form-control" required></div>
+                            <div class="col-md-{{ $canManage ? '3' : '6' }} col-12 mb-3">
+                                <div class="ep-form-group"><label>Claimed Amount</label><input type="number" step="0.01" name="amount" class="form-control" placeholder="0.00" required></div>
                             </div>
-                            @if($canManage)<div class="col-md-4">
-                                <div class="ep-form-group"><label>Approved Amount</label><input type="number" step="0.01" name="approved_amount" class="form-control"></div>
-                            </div>@endif
+                            @if($canManage)
+                            <div class="col-md-3 col-12 mb-3">
+                                <div class="ep-form-group"><label>Approved Amount</label><input type="number" step="0.01" name="approved_amount" class="form-control" placeholder="Leave blank for full"></div>
+                            </div>
+                            <div class="col-md-3 col-12 mb-3">
+                                <div class="ep-form-group">
+                                    <label>Status</label>
+                                    <select name="status" class="form-control select2-searchable" required>
+                                        <option value="approved" selected>Approved (Ready for Payroll)</option>
+                                        <option value="pending">Pending</option>
+                                    </select>
+                                </div>
+                            </div>
+                            @endif
                         </div>
                     </div>
                     <div class="ep-section-card mb-0">
                         <div class="ep-section-title"><i class="fas fa-paperclip"></i> Attachment & Notes</div>
                         <div class="row">
                             <div class="col-md-12 mb-3">
-                                <div class="ep-form-group"><label>Attachment</label><input type="file" name="attachment" class="form-control p-1"></div>
+                                <div class="ep-form-group"><label>Attachment (Receipt/Bill)</label><input type="file" name="attachment" class="form-control p-1"></div>
                             </div>
                             <div class="col-md-12">
-                                <div class="ep-form-group"><label>Remarks</label><input name="remarks" class="form-control"></div>
+                                <div class="ep-form-group"><label>Remarks</label><input name="remarks" class="form-control" placeholder="Add remarks or justification"></div>
                             </div>
                         </div>
                     </div>
@@ -171,6 +186,10 @@
     if (window.jQuery && $.fn.DataTable) {
         $('.js-orb-datatable').each(function() {
             var $table = $(this);
+            var $wrap = $table.closest('.ep-table-wrap');
+            if ($wrap.length) {
+                $wrap.addClass('ep-table-dt-active').css({ 'overflow-x': 'visible', 'overflow': 'visible' });
+            }
             $table.DataTable({
                 pageLength: 25,
                 order: [],
@@ -185,7 +204,7 @@
                     emptyTable: 'No reimbursement claims found.',
                     zeroRecords: 'No matching records found.'
                 },
-                dom: '<"crud-dt-toolbar"<"crud-dt-left"l><"crud-dt-right"B>>rt<"orb-table-footer"ip>',
+                dom: '<"crud-dt-toolbar"<"crud-dt-left"l><"crud-dt-right"B>><"ep-table-scroll"rt><"orb-table-footer"ip>',
                 buttons: [{
                         extend: 'csvHtml5',
                         text: '<i class="fas fa-file-csv text-muted"></i> CSV',

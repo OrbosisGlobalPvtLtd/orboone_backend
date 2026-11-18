@@ -29,6 +29,17 @@ class PayslipC extends Controller
 
     public function index(Request $request)
     {
+        $currentDate = Carbon::now('Asia/Kolkata');
+        $defaultYear = (string) $currentDate->year;
+        $defaultMonth = (string) (
+            EnterprisePayslipM::where('year', (int) $defaultYear)->where('month', (int) $currentDate->month)->exists()
+                ? $currentDate->month
+                : (EnterprisePayslipM::where('year', (int) $defaultYear)->max('month') ?: $currentDate->month)
+        );
+
+        $selectedYear = $request->has('year') ? $request->input('year') : $defaultYear;
+        $selectedMonth = $request->has('month') ? $request->input('month') : $defaultMonth;
+
         $query = EnterprisePayslipM::with('employee.user', 'payroll')->latest();
         if (! $this->userHasPermission('enterprise_payslip.generate')) {
             $employeeId = $this->ownEmployeeId();
@@ -40,12 +51,12 @@ class PayslipC extends Controller
             }
         }
 
-        if ($request->filled('month')) {
-            $query->where('month', $request->input('month'));
+        if ($selectedMonth !== null && $selectedMonth !== '') {
+            $query->where('month', (int) $selectedMonth);
         }
 
-        if ($request->filled('year')) {
-            $query->where('year', $request->input('year'));
+        if ($selectedYear !== null && $selectedYear !== '') {
+            $query->where('year', (int) $selectedYear);
         }
 
         return view('hrms.enterprise-payroll.payslips.index', [
@@ -54,6 +65,8 @@ class PayslipC extends Controller
             'payslips' => $query->get(),
             'employees' => $this->employeeOptions(),
             'self' => false,
+            'selectedMonth' => $selectedMonth,
+            'selectedYear' => $selectedYear,
         ]);
     }
 
@@ -62,16 +75,27 @@ class PayslipC extends Controller
         $employeeId = $this->ownEmployeeId();
         abort_if(! $employeeId, 403);
 
+        $currentDate = Carbon::now('Asia/Kolkata');
+        $defaultYear = (string) $currentDate->year;
+        $defaultMonth = (string) (
+            EnterprisePayslipM::where('employee_id', $employeeId)->where('year', (int) $defaultYear)->where('month', (int) $currentDate->month)->exists()
+                ? $currentDate->month
+                : (EnterprisePayslipM::where('employee_id', $employeeId)->where('year', (int) $defaultYear)->max('month') ?: $currentDate->month)
+        );
+
+        $selectedYear = $request->has('year') ? $request->input('year') : $defaultYear;
+        $selectedMonth = $request->has('month') ? $request->input('month') : $defaultMonth;
+
         $query = EnterprisePayslipM::with('employee.user', 'payroll')
             ->where('employee_id', $employeeId)
             ->where('is_visible_to_employee', 1);
 
-        if ($request->filled('month')) {
-            $query->where('month', $request->input('month'));
+        if ($selectedMonth !== null && $selectedMonth !== '') {
+            $query->where('month', (int) $selectedMonth);
         }
 
-        if ($request->filled('year')) {
-            $query->where('year', $request->input('year'));
+        if ($selectedYear !== null && $selectedYear !== '') {
+            $query->where('year', (int) $selectedYear);
         }
 
         return view('hrms.enterprise-payroll.payslips.index', [
@@ -80,6 +104,8 @@ class PayslipC extends Controller
             'payslips' => $query->latest()->get(),
             'employees' => collect(),
             'self' => true,
+            'selectedMonth' => $selectedMonth,
+            'selectedYear' => $selectedYear,
         ]);
     }
 
@@ -139,11 +165,14 @@ class PayslipC extends Controller
         $monthName = Carbon::create($payroll->year, $payroll->month, 1)->format('F');
         $payslipNo = sprintf('ORB-EP-%04d-%02d-%05d', $payroll->year, $payroll->month, $payroll->employee_id);
 
+        $activeHr = \App\Models\HRMS\Employee\EmployeeM::currentActiveHrManager();
+
         return view('hrms.enterprise-payroll.payslips.pdf', [
             'payroll' => $payroll,
             'employee' => $payroll->employee,
             'monthName' => $monthName,
             'payslipNo' => $payslipNo,
+            'activeHr' => $activeHr,
             'isPreview' => true,
         ]);
     }
@@ -184,6 +213,9 @@ class PayslipC extends Controller
         return response()->file($resolved['absolute'], [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="' . basename($resolved['absolute']) . '"',
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
         ]);
     }
 

@@ -26,6 +26,7 @@ class EnterpriseSalaryStructureM extends Model
         'tds_annual' => 'decimal:2',
         'tds_monthly' => 'decimal:2',
         'other_deduction_monthly' => 'decimal:2',
+        'component_rules_snapshot' => 'array',
         'approved_at' => 'datetime',
     ];
 
@@ -37,5 +38,15 @@ class EnterpriseSalaryStructureM extends Model
     public function histories()
     {
         return $this->hasMany(EnterpriseSalaryStructureHistoryM::class, 'salary_structure_id');
+    }
+
+    public function getGrossSalaryAttribute(): float
+    {
+        return round((float) $this->basic_monthly + (float) $this->hra_monthly + (float) $this->special_allowance_monthly, 2);
+    }
+
+    public function getAnnualGrossSalaryAttribute(): float
+    {
+        return round($this->gross_salary * 12, 2);
     }
 }

@@ -40,11 +40,14 @@ class EnterprisePayslipService
 
         Storage::disk('private')->makeDirectory($directory);
 
+        $activeHr = \App\Models\HRMS\Employee\EmployeeM::currentActiveHrManager();
+
         $pdf = Pdf::loadView('hrms.enterprise-payroll.payslips.pdf', [
             'payroll' => $payroll,
             'employee' => $payroll->employee,
             'monthName' => $monthName,
             'payslipNo' => $payslipNo,
+            'activeHr' => $activeHr,
         ])->setPaper('a4');
 
         Storage::disk('private')->put($path, $pdf->output());

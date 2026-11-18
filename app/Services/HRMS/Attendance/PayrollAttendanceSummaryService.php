@@ -80,11 +80,11 @@ class PayrollAttendanceSummaryService
         $lwp = (float) ($leaveRows['lwp_days'] ?? 0);
 
         foreach ($attendances as $attendance) {
-            $isCompOffWorked = $this->payableDayResolver->isCompOffWorkedDay($attendance);
+            $compOffType = $this->payableDayResolver->compOffWorkedDayType($attendance);
             $code = strtolower((string) optional($attendance->attendanceType)->code);
 
-            if ($isCompOffWorked) {
-                if ($code === 'holiday') {
+            if ($compOffType !== null) {
+                if ($compOffType === 'holiday') {
                     $holidayFromAtt += 1.0;
                 } else {
                     $weekOff += 1;
@@ -97,11 +97,17 @@ class PayrollAttendanceSummaryService
                 } elseif ($code === 'week_off') {
                     $weekOff++;
                 } elseif ($code === 'absent') {
-                    $absent++;
+                    if (! $attendance->is_lwp) {
+                        $absent++;
+                    }
                 }
 
                 if ($attendance->is_half_day) {
-                    $halfDays++;
+                    if (!empty($attendance->leave_request_id)) {
+                        $present += 0.5;
+                    } else {
+                        $halfDays++;
+                    }
                 }
                 if ($attendance->is_lwp && empty($attendance->leave_request_id)) {
                     $lwp += 1.0;
@@ -116,6 +122,9 @@ class PayrollAttendanceSummaryService
         $attendancePayableDays = $attendances->filter(function (AttendanceM $attendance) {
             $code = strtolower((string) optional($attendance->attendanceType)->code);
             $status = strtolower((string) ($attendance->attendance_status ?? ''));
+            if ($attendance->is_half_day || in_array('half_day', [$code, $status], true)) {
+                return true;
+            }
             return !in_array($code, ['leave'], true) && !in_array($status, ['leave'], true) && empty($attendance->leave_request_id);
         })->sum(function (AttendanceM $attendance) {
             return (float) $this->payableDayResolver->resolve($attendance)['payable_day'];

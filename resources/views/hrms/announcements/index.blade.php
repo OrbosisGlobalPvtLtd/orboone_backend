@@ -549,13 +549,13 @@
             <p class="ann-subtitle">Publish HR notices, holidays, policies, emergency alerts and employee updates.</p>
         </div>
         <div class="d-flex align-items-center gap-2 flex-wrap">
-            @if($permissions['canPrint'])
+            @if($permissions['canPrint'] ?? false)
             <a href="{{ route('announcements.print') }}" target="_blank" class="ann-hero-btn ann-hero-btn-outline">
                 <i class="fas fa-print"></i> Print Records
             </a>
             @endif
 
-            @if($permissions['canCreate'] || $permissions['canManage'])
+            @if(($permissions['canCreate'] ?? false) || ($permissions['canManage'] ?? false))
             <button type="button" class="ann-hero-btn" data-toggle="modal" data-target="#announcementModal" data-bs-toggle="modal" data-bs-target="#announcementModal">
                 <i class="fas fa-plus"></i> Publish Announcement
             </button>
@@ -984,7 +984,7 @@
                             </a>
                         `;
 
-                        @if($permissions['canUpdate'] || $permissions['canManage'])
+                        @if(($permissions['canUpdate'] ?? false) || ($permissions['canManage'] ?? false))
                         html += `
                             <button type="button"
                                     class="btn btn-sm btn-soft editBtn"
@@ -995,7 +995,7 @@
                         `;
                         @endif
 
-                        @if($permissions['canToggle'] || $permissions['canManage'])
+                        @if(($permissions['canToggle'] ?? false) || ($permissions['canManage'] ?? false))
                         html += `
                             <button type="button"
                                     class="btn btn-sm btn-soft toggleBtn"
@@ -1006,7 +1006,7 @@
                         `;
                         @endif
 
-                        @if($permissions['canDelete'] || $permissions['canManage'])
+                        @if(($permissions['canDelete'] ?? false) || ($permissions['canManage'] ?? false))
                         html += `
                             <button type="button"
                                     class="btn btn-sm btn-soft text-danger deleteBtn"

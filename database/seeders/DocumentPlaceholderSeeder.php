@@ -29,6 +29,7 @@ class DocumentPlaceholderSeeder extends Seeder
             ['placeholder_key' => 'employee_code', 'label' => 'Employee Code', 'group_name' => 'Employee', 'source_type' => 'employee', 'source_table' => 'employees_new', 'source_column' => 'employee_code', 'resolver_key' => 'employee_code'],
             ['placeholder_key' => 'discontinue_date', 'label' => 'Discontinue Date', 'group_name' => 'Document', 'source_type' => 'document', 'source_table' => null, 'source_column' => null, 'resolver_key' => 'discontinue_date'],
             ['placeholder_key' => 'discontinue_reason', 'label' => 'Discontinue Reason', 'group_name' => 'Content Block', 'source_type' => 'manual', 'source_table' => null, 'source_column' => null, 'resolver_key' => 'discontinue_reason'],
+            ['placeholder_key' => 'performance_appreciation_clause', 'label' => 'Performance & Appreciation Clause', 'group_name' => 'Content Block', 'source_type' => 'manual', 'source_table' => null, 'source_column' => null, 'resolver_key' => 'performance_appreciation_clause'],
             ['placeholder_key' => 'handover_clause', 'label' => 'Handover Clause', 'group_name' => 'Content Block', 'source_type' => 'manual', 'source_table' => null, 'source_column' => null, 'resolver_key' => 'handover_clause'],
 
             // Company Group
@@ -136,7 +137,7 @@ class DocumentPlaceholderSeeder extends Seeder
             ],
             'discontinuing_letter' => [
                 'employee_name', 'employee_code', 'issue_date', 'discontinue_date', 'hr_manager_name', 'company_name',
-                'discontinue_reason', 'handover_clause'
+                'discontinue_reason', 'performance_appreciation_clause', 'handover_clause'
             ],
         ];
 

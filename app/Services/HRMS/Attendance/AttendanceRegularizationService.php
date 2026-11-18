@@ -109,15 +109,7 @@ class AttendanceRegularizationService
             });
 
         $payrollProcessedQuery = false;
-        if (Schema::hasTable('payrolls')) {
-            $payrollProcessedQuery = DB::table('payrolls')
-                ->where('employee_id', $employee->id)
-                ->where('month', $month)
-                ->where('year', $year)
-                ->whereIn('status', ['processed', 'locked', 'finalized', 'paid', 'approved'])
-                ->exists();
-        }
-        if (! $payrollProcessedQuery && Schema::hasTable('enterprise_payrolls')) {
+        if (Schema::hasTable('enterprise_payrolls')) {
             $payrollProcessedQuery = DB::table('enterprise_payrolls')
                 ->where('employee_id', $employee->id)
                 ->where('month', $month)

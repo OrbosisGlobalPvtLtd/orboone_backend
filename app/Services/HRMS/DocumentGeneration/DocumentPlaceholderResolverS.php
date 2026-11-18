@@ -133,7 +133,8 @@ class DocumentPlaceholderResolverS
 
         // 3. Resolve Authority Settings
         $authorizedSignatory = (string) ($generatedBy?->name ?? 'Authorized Signatory');
-        $hrManagerName = 'HR Admin';
+        $activeHr = \App\Models\HRMS\Employee\EmployeeM::currentActiveHrManager();
+        $hrManagerName = (string) ($activeHr?->display_name ?? $activeHr?->user?->name ?? 'Vanshika Dhunna');
         $ceoName = 'Prabhat Agarwal (CEO)';
         $projectManagerName = '';
 
@@ -153,7 +154,17 @@ class DocumentPlaceholderResolverS
         }
 
         $annualGross = $monthlyGross * 12;
-        $basicMonthly = $monthlyGross * 0.50;
+        $defaultBreakdown = ['basic' => round($monthlyGross * 0.50, 2), 'hra' => round($monthlyGross * 0.20, 2), 'special_allowance' => round($monthlyGross * 0.30, 2)];
+        if (class_exists(\App\Services\HRMS\EnterprisePayroll\EnterpriseSalaryComponentRulesS::class)) {
+            try {
+                $calcBreakdown = app(\App\Services\HRMS\EnterprisePayroll\EnterpriseSalaryComponentRulesS::class)->breakdown($monthlyGross);
+                if (!empty($calcBreakdown)) {
+                    $defaultBreakdown = $calcBreakdown;
+                }
+            } catch (\Throwable $e) {}
+        }
+
+        $basicMonthly = (float) ($defaultBreakdown['basic'] ?? ($monthlyGross * 0.50));
         if (isset($manualFields['basic_salary']) && is_numeric($manualFields['basic_salary'])) {
             $basicMonthly = (float) $manualFields['basic_salary'];
         } elseif (isset($manualFields['basic_monthly']) && is_numeric($manualFields['basic_monthly'])) {
@@ -161,7 +172,7 @@ class DocumentPlaceholderResolverS
         }
         $basicAnnual = $basicMonthly * 12;
 
-        $hraMonthly = $monthlyGross * 0.20;
+        $hraMonthly = (float) ($defaultBreakdown['hra'] ?? ($monthlyGross * 0.20));
         if (isset($manualFields['hra']) && is_numeric($manualFields['hra'])) {
             $hraMonthly = (float) $manualFields['hra'];
         } elseif (isset($manualFields['hra_monthly']) && is_numeric($manualFields['hra_monthly'])) {
@@ -183,7 +194,7 @@ class DocumentPlaceholderResolverS
         }
 
         // Allowances = Gross Salary - (Basic + HRA + Conveyance)
-        $specialAllowanceMonthly = max(0.0, $monthlyGross - ($basicMonthly + $hraMonthly + $conveyanceMonthly));
+        $specialAllowanceMonthly = (float) ($defaultBreakdown['special_allowance'] ?? max(0.0, $monthlyGross - ($basicMonthly + $hraMonthly + $conveyanceMonthly)));
         if (isset($manualFields['allowances']) && is_numeric($manualFields['allowances'])) {
             $specialAllowanceMonthly = (float) $manualFields['allowances'];
         } elseif (isset($manualFields['allowance_monthly']) && is_numeric($manualFields['allowance_monthly'])) {

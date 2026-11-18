@@ -163,12 +163,23 @@ class EmployeeC extends Controller
         }
 
         $baseQuery
-            ->where($employeeTable . '.employment_status', 'active')
             ->where($profileTable . '.is_profile_completed', 1)
             ->where($profileTable . '.profile_status', 'approved');
 
-        if (Schema::hasColumn($employeeTable, 'is_active')) {
-            $baseQuery->where($employeeTable . '.is_active', 1);
+        if (Schema::hasColumn($employeeTable, 'employment_status')) {
+            $baseQuery->whereNotIn(DB::raw("LOWER(TRIM(COALESCE({$employeeTable}.employment_status, '')))"), ['exited', 'terminated', 'absconded']);
+        }
+
+        if (Schema::hasTable('employee_exit_processes')) {
+            $baseQuery->whereNotExists(function ($sub) use ($employeeTable) {
+                $sub->select(DB::raw(1))
+                    ->from('employee_exit_processes')
+                    ->whereColumn('employee_exit_processes.employee_id', $employeeTable . '.id')
+                    ->where(function ($eq) {
+                        $eq->where('employee_exit_processes.status', 'exit_completed')
+                            ->orWhere('employee_exit_processes.final_status', 'completed');
+                    });
+            });
         }
 
         $baseQuery->select(
@@ -221,19 +232,46 @@ class EmployeeC extends Controller
                     $query->where($employeeTable . '.employment_type', $request->employment_type);
                 }
 
-                if ($request->filled('status')) {
-                    $status = $request->status;
+                $statusParam = $request->input('status');
+                $status = strtolower(trim((string) $statusParam));
 
-                    if (in_array($status, ['probation', 'internship', 'permanent'], true)) {
-                        $query->where($employeeTable . '.employee_stage', $status);
-                    } elseif ($status === 'notice') {
-                        if (Schema::hasColumn($employeeTable, 'notice_status')) {
-                            $query->where($employeeTable . '.notice_status', 'active');
-                        } else {
-                            $query->whereNotNull($employeeTable . '.relieving_date');
+                if ($status === 'active') {
+                    $query->where($employeeTable . '.employment_status', 'active');
+                    if (Schema::hasColumn($employeeTable, 'is_active')) {
+                        $query->where($employeeTable . '.is_active', 1);
+                    }
+                } elseif ($status === 'inactive') {
+                    $query->where(function ($q) use ($employeeTable) {
+                        $q->where($employeeTable . '.employment_status', 'inactive');
+                        if (Schema::hasColumn($employeeTable, 'is_active')) {
+                            $q->orWhere($employeeTable . '.is_active', 0);
                         }
-                    } else {
-                        $query->where($employeeTable . '.employment_status', $status);
+                    });
+                } elseif (in_array($status, ['probation', 'internship', 'permanent'], true)) {
+                    $query->where($employeeTable . '.employment_status', 'active')
+                        ->where($employeeTable . '.employee_stage', $status);
+                    if (Schema::hasColumn($employeeTable, 'is_active')) {
+                        $query->where($employeeTable . '.is_active', 1);
+                    }
+                } elseif ($status === 'notice' || $status === 'notice_period') {
+                    $query->where(function ($q) use ($employeeTable) {
+                        $q->where($employeeTable . '.employment_status', 'notice_period');
+                        if (Schema::hasColumn($employeeTable, 'notice_status')) {
+                            $q->orWhere($employeeTable . '.notice_status', 'active');
+                        } else {
+                            $q->orWhereNotNull($employeeTable . '.relieving_date');
+                        }
+                    });
+                    if (Schema::hasColumn($employeeTable, 'is_active')) {
+                        $query->where($employeeTable . '.is_active', 1);
+                    }
+                } elseif ($status !== '' && $status !== 'all') {
+                    $query->where($employeeTable . '.employment_status', $status);
+                } elseif (! $request->has('status')) {
+                    // Default to active employees when status filter parameter is omitted
+                    $query->where($employeeTable . '.employment_status', 'active');
+                    if (Schema::hasColumn($employeeTable, 'is_active')) {
+                        $query->where($employeeTable . '.is_active', 1);
                     }
                 }
 
@@ -337,7 +375,12 @@ class EmployeeC extends Controller
                     $employmentType = ucfirst(str_replace('_', ' ', $employee->employment_type ?? '-'));
                     $workMode = strtoupper($employee->work_mode ?? 'WFO');
                     $stage = ucfirst(str_replace('_', ' ', $employee->employee_stage ?? 'Active'));
-                    $status = ucfirst(str_replace('_', ' ', $employee->employment_status ?? 'Active'));
+                    $rawStatus = trim((string) ($employee->employment_status ?? ''));
+                    if ($rawStatus !== '') {
+                        $status = ucfirst(str_replace('_', ' ', $rawStatus));
+                    } else {
+                        $status = ((int) ($employee->is_active ?? 1) === 0) ? 'Inactive' : 'Active';
+                    }
 
                     $verifiedDocs = (int) ($employee->verified_documents_count ?? 0);
                     $pendingDocs = (int) ($employee->pending_documents_count ?? 0);
@@ -491,7 +534,8 @@ class EmployeeC extends Controller
             }
         }
 
-        $employees = $baseQuery
+        $employees = (clone $baseQuery)
+            ->where($employeeTable . '.employment_status', 'active')
             ->orderByDesc($employeeTable . '.id')
             ->paginate(15);
 
@@ -1055,7 +1099,7 @@ class EmployeeC extends Controller
                 'name' => $request->name,
                 'email' => $request->email,
                 'system_role_id' => $request->system_role_id,
-                'is_active' => $request->employment_status === 'active' ? 1 : 0,
+                'is_active' => in_array($request->employment_status, ['active', 'notice_period'], true) ? 1 : 0,
                 'updated_at' => now(),
             ];
 
@@ -1138,7 +1182,7 @@ class EmployeeC extends Controller
                 'internship_end_date' => $lifecyclePayload['internship_end_date'],
                 'is_paid_intern' => $request->has('is_paid_intern') && $request->is_paid_intern !== null ? $request->is_paid_intern : ($lifecyclePayload['is_paid_intern'] ?? $employeeData->is_paid_intern),
                 'actual_salary' => $request->filled('actual_salary') ? $request->actual_salary : ($lifecyclePayload['actual_salary'] ?: $employeeData->actual_salary),
-                'is_active' => $request->employment_status === 'active' ? 1 : 0,
+                'is_active' => in_array($request->employment_status, ['active', 'notice_period'], true) ? 1 : 0,
                 'updated_by' => Auth::id(),
                 'updated_at' => now(),
             ];

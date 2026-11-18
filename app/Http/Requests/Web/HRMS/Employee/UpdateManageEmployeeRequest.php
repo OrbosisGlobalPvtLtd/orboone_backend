@@ -38,7 +38,7 @@ class UpdateManageEmployeeRequest extends FormRequest
             'employee_stage' => ['nullable', Rule::in(['probation', 'internship', 'permanent'])],
             'work_mode' => ['required', Rule::in(['wfo', 'wfh', 'hybrid'])],
             'work_schedule_type' => ['nullable', Rule::in(['full_day', 'part_day', 'hourly', 'shift_based', 'general', 'general_shift', 'wfh', 'wfh_shift', 'part_time', 'part_time_shift', 'part_time_morning', 'part_time_evening', 'half_day', 'half_day_shift', 'half_day_morning', 'half_day_evening', 'flexible_part_time', 'dynamic_hours'])],
-            'employment_status' => ['required', Rule::in(['active', 'resigned', 'terminated', 'inactive'])],
+            'employment_status' => ['required', Rule::in(['active', 'inactive', 'notice_period', 'exited', 'terminated', 'absconded', 'suspended'])],
 
             'joining_date' => ['nullable', 'date'],
             'relieving_date' => ['nullable', 'date'],

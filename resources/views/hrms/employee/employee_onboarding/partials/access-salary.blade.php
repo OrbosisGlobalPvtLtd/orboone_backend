@@ -42,9 +42,12 @@
                     placeholder="Select Status"
                     :options="[
                         'active' => 'Active',
-                        'resigned' => 'Resigned',
+                        'inactive' => 'Inactive',
+                        'notice_period' => 'Notice Period',
+                        'exited' => 'Exited',
                         'terminated' => 'Terminated',
-                        'inactive' => 'Inactive'
+                        'absconded' => 'Absconded',
+                        'suspended' => 'Suspended'
                     ]"
                     :selected="$statusVal" 
                     :searchable="true" 

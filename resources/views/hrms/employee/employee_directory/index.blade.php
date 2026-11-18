@@ -911,8 +911,10 @@
                             'probation' => 'Probation',
                             'internship' => 'Internship',
                             'notice' => 'Notice',
-                            'inactive' => 'Inactive'
+                            'inactive' => 'Inactive',
+                            'all' => 'All Status'
                         ]"
+                        :selected="'active'"
                         placeholder="All Status"
                         :searchable="true"
                         wrapper-class="eo-field mb-0"
@@ -1168,12 +1170,12 @@
 
             type = (type || label || '').toString().toLowerCase();
 
-            if (type.includes('active') || type.includes('approved') || type.includes('verified') || type.includes('present')) {
-                cls = 'eo-pill-active';
-            } else if (type.includes('pending') || type.includes('probation') || type.includes('submitted')) {
-                cls = 'eo-pill-pending';
-            } else if (type.includes('reject') || type.includes('inactive') || type.includes('exit') || type.includes('missing')) {
+            if (type.includes('reject') || type.includes('inactive') || type.includes('exit') || type.includes('missing') || type.includes('terminated') || type.includes('absconded')) {
                 cls = 'eo-pill-danger';
+            } else if (type.includes('pending') || type.includes('probation') || type.includes('submitted') || type.includes('notice')) {
+                cls = 'eo-pill-pending';
+            } else if (type.includes('active') || type.includes('approved') || type.includes('verified') || type.includes('present')) {
+                cls = 'eo-pill-active';
             } else if (type.includes('wfh')) {
                 cls = 'eo-pill-wfh';
             } else if (type.includes('wfo')) {
@@ -1493,7 +1495,7 @@
             $('#filterDepartment').val('').trigger('change');
             $('#filterWorkMode').val('').trigger('change');
             $('#filterEmploymentType').val('').trigger('change');
-            $('#filterStatus').val('').trigger('change');
+            $('#filterStatus').val('active').trigger('change');
 
             table.search('');
             table.page('first').draw('page');

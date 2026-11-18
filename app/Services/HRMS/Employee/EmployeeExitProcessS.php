@@ -460,7 +460,7 @@ class EmployeeExitProcessS
                 if (Schema::hasColumn($this->employeeTable, 'employment_status')) {
                     $empStatus = match ($exitType) {
                         'termination' => 'terminated',
-                        'discontinued' => 'discontinued',
+                        'discontinued' => 'exited',
                         'absconding' => 'absconded',
                         default => null,
                     };
@@ -872,12 +872,6 @@ class EmployeeExitProcessS
                 ->whereNotIn('status', ['paid', 'approved', 'completed'])
                 ->count();
         }
-        if (Schema::hasTable('payrolls')) {
-            $summary['payroll_pending'] += DB::table('payrolls')
-                ->where('employee_id', $employeeId)
-                ->whereNotIn('status', ['paid', 'approved', 'completed'])
-                ->count();
-        }
 
         if (Schema::hasTable('generated_documents')) {
             $summary['documents_count'] = DB::table('generated_documents')
@@ -1010,19 +1004,9 @@ class EmployeeExitProcessS
             }
         }
 
-        // 5. Enterprise Payrolls / Payrolls
+        // 5. Enterprise payroll is the single payroll source.
         if (Schema::hasTable('enterprise_payrolls')) {
             $counts = DB::table('enterprise_payrolls')
-                ->select('employee_id', DB::raw('count(*) as aggregate'))
-                ->whereIn('employee_id', $employeeIds)
-                ->whereNotIn('status', ['paid', 'approved', 'completed'])
-                ->groupBy('employee_id')
-                ->pluck('aggregate', 'employee_id');
-            foreach ($counts as $eId => $cnt) {
-                if (isset($results[$eId])) $results[$eId]['payroll_pending'] += (int) $cnt;
-            }
-        } elseif (Schema::hasTable('payrolls')) {
-            $counts = DB::table('payrolls')
                 ->select('employee_id', DB::raw('count(*) as aggregate'))
                 ->whereIn('employee_id', $employeeIds)
                 ->whereNotIn('status', ['paid', 'approved', 'completed'])

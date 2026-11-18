@@ -58,19 +58,41 @@ class BonusIncentiveC extends Controller
             'amount' => ['required', 'numeric', 'min:0'],
             'month' => ['required', 'integer', 'between:1,12'],
             'year' => ['required', 'integer', 'min:2020'],
+            'status' => ['nullable', 'in:pending,approved'],
             'remarks' => ['nullable', 'string'],
         ]);
 
-        EnterpriseBonusIncentiveM::create($data + ['status' => 'pending']);
+        $status = $request->input('status', 'approved');
+        $approvedBy = null;
+        $approvedAt = null;
 
-        return back()->with('success', 'Bonus or incentive entry saved.');
+        if ($status === 'approved') {
+            $approvedBy = $this->actorId();
+            $approvedAt = Carbon::now('Asia/Kolkata');
+        }
+
+        EnterpriseBonusIncentiveM::create(array_merge($data, [
+            'status' => $status,
+            'approved_by_user_id' => $approvedBy,
+            'approved_at' => $approvedAt,
+        ]));
+
+        return back()->with('success', $status === 'approved' ? 'Bonus or incentive created and approved for payroll.' : 'Bonus or incentive entry saved as pending.');
     }
 
     public function update(Request $request, int $bonusIncentive)
     {
         $record = EnterpriseBonusIncentiveM::findOrFail($bonusIncentive);
         abort_if($record->status === 'paid', 403, 'Paid bonus/incentive cannot be edited.');
-        $record->update($request->only(['title', 'target_range', 'target_amount', 'achievement_amount', 'amount', 'remarks']));
+        $fields = $request->only(['title', 'target_range', 'target_amount', 'achievement_amount', 'amount', 'remarks']);
+        if ($request->filled('status') && in_array($request->input('status'), ['pending', 'approved', 'rejected'])) {
+            $fields['status'] = $request->input('status');
+            if ($fields['status'] === 'approved') {
+                $fields['approved_by_user_id'] = $this->actorId();
+                $fields['approved_at'] = Carbon::now('Asia/Kolkata');
+            }
+        }
+        $record->update($fields);
 
         return back()->with('success', 'Bonus or incentive updated.');
     }

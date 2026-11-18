@@ -3,7 +3,6 @@
 namespace App\Models\HRMS\EnterprisePayroll;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\DB;
 
 class EnterprisePayrollPolicyM extends Model
 {
@@ -25,6 +24,8 @@ class EnterprisePayrollPolicyM extends Model
         'pf_percentage' => 'decimal:2',
         'esi_percentage' => 'decimal:2',
         'tds_percentage' => 'decimal:2',
+        'pf_wage_ceiling' => 'decimal:2',
+        'esi_wage_ceiling' => 'decimal:2',
         'half_day_payable_ratio' => 'decimal:2',
         'absent_payable_ratio' => 'decimal:2',
         'lwp_payable_ratio' => 'decimal:2',
@@ -33,28 +34,5 @@ class EnterprisePayrollPolicyM extends Model
         'holiday_payable_ratio' => 'decimal:2',
     ];
 
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::saving(function ($model) {
-            if (array_key_exists('tds_source', $model->attributes)) {
-                $tdsSource = $model->attributes['tds_source'];
-                unset($model->attributes['tds_source']);
-
-                DB::table('settings')->updateOrInsert(
-                    ['key' => 'enterprise_payroll_tds_source'],
-                    ['value' => $tdsSource, 'updated_at' => now()]
-                );
-            }
-        });
-    }
-
-    public function getTdsSourceAttribute()
-    {
-        return DB::table('settings')
-            ->where('key', 'enterprise_payroll_tds_source')
-            ->value('value') ?: 'policy';
-    }
 }
 

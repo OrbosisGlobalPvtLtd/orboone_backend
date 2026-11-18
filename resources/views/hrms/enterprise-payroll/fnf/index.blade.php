@@ -38,7 +38,7 @@
             <form method="GET" action="{{ route('enterprise-payroll.fnf.index') }}" class="row align-items-end ep-form" id="filterForm">
                 <div class="col-md-3 mb-2 mb-md-0">
                     <label>Employee</label>
-                    <select name="employee_id" class="form-control" onchange="this.form.submit()">
+                    <select name="employee_id" class="form-control select2-searchable" onchange="this.form.submit()">
                         <option value="">All Employees</option>
                         @foreach($employees ?? [] as $employee)
                         <option value="{{ $employee->id }}" {{ request('employee_id') == $employee->id ? 'selected' : '' }}>{{ $employee->display_name }}</option>
@@ -47,7 +47,7 @@
                 </div>
                 <div class="col-md-3 mb-2 mb-md-0">
                     <label>Status</label>
-                    <select name="status" class="form-control" onchange="this.form.submit()">
+                    <select name="status" class="form-control select2-searchable" onchange="this.form.submit()">
                         <option value="">All Status</option>
                         <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
                         <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Approved</option>
@@ -56,7 +56,7 @@
                 </div>
                 <div class="col-md-2 mb-2 mb-md-0">
                     <label>Month</label>
-                    <select name="month" class="form-control" onchange="this.form.submit()">
+                    <select name="month" class="form-control select2-searchable" onchange="this.form.submit()">
                         <option value="">All Months</option>
                         @for($i=1; $i<=12; $i++)
                             <option value="{{ $i }}" {{ request('month') == $i ? 'selected' : '' }}>{{ \Carbon\Carbon::create()->month($i)->format('F') }}</option>
@@ -122,8 +122,8 @@
 
     @if($canManage)
     <div class="modal fade" id="fnfModal" tabindex="-1">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <form method="POST" action="{{ route('enterprise-payroll.fnf.store') }}" class="modal-content ep-form border-0 shadow-lg">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <form method="POST" action="{{ route('enterprise-payroll.fnf.store') }}" class="modal-content ep-form ep-modal-content-scrollable border-0 shadow-lg">
                 @csrf
                 <div class="ep-modal-header">
                     <h5 class="modal-title">Add FNF Settlement</h5>
@@ -135,14 +135,14 @@
                         <div class="ep-section-title"><i class="fas fa-user-tie"></i> Employee & Period</div>
                         <div class="row">
                             <div class="col-md-3 mb-3">
-                                <div class="ep-form-group"><label>Employee</label><select name="employee_id" class="form-control" required>
+                                <div class="ep-form-group"><label>Employee</label><select name="employee_id" class="form-control select2-searchable" required>
                                         <option value="">Select</option>@foreach($employees as $employee)<option value="{{ $employee->id }}">{{ $employee->display_name }}</option>@endforeach
                                     </select></div>
                             </div>
                             <div class="col-md-3 mb-3">
                                 <div class="ep-form-group">
                                     <label>Month</label>
-                                    <select name="settlement_month" class="form-control" required>
+                                    <select name="settlement_month" class="form-control select2-searchable" required>
                                         @for($i=1; $i<=12; $i++)
                                             <option value="{{ $i }}" {{ now('Asia/Kolkata')->month == $i ? 'selected' : '' }}>{{ \Carbon\Carbon::create()->month($i)->format('F') }}</option>
                                             @endfor
@@ -199,6 +199,10 @@
     if (window.jQuery && $.fn.DataTable) {
         $('.js-orb-datatable').each(function() {
             var $table = $(this);
+            var $wrap = $table.closest('.ep-table-wrap');
+            if ($wrap.length) {
+                $wrap.addClass('ep-table-dt-active').css({ 'overflow-x': 'visible', 'overflow': 'visible' });
+            }
             $table.DataTable({
                 pageLength: 25,
                 order: [],
@@ -213,7 +217,7 @@
                     emptyTable: 'No FNF settlements found.',
                     zeroRecords: 'No matching records found.'
                 },
-                dom: '<"crud-dt-toolbar"<"crud-dt-left"l><"crud-dt-right"B>>rt<"orb-table-footer"ip>',
+                dom: '<"crud-dt-toolbar"<"crud-dt-left"l><"crud-dt-right"B>><"ep-table-scroll"rt><"orb-table-footer"ip>',
                 buttons: [{
                         extend: 'csvHtml5',
                         text: '<i class="fas fa-file-csv text-muted"></i> CSV',

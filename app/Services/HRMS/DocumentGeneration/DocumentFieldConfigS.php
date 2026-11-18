@@ -115,6 +115,7 @@ class DocumentFieldConfigS
 
                     // Paragraphs / Clauses
                     ['name' => 'discontinue_reason', 'label' => 'Discontinue Regret Reason', 'type' => 'textarea', 'required' => false, 'default' => "After careful review of the Company's current business requirements and financial position, we regret to inform you that the Company has decided to discontinue your employment with the Company effective {discontinue_date}.", 'section' => 'paragraphs'],
+                    ['name' => 'performance_appreciation_clause', 'label' => 'Performance & Appreciation Clause', 'type' => 'textarea', 'required' => false, 'default' => "This decision has been made solely due to organizational and financial considerations and does not reflect your performance, commitment, or contributions during your tenure with the Company. We sincerely appreciate the efforts and professionalism you have demonstrated while working with us.", 'section' => 'paragraphs'],
                     ['name' => 'handover_clause', 'label' => 'Handover & Final Settlement Clause', 'type' => 'textarea', 'required' => false, 'default' => "You are requested to complete all handover formalities and return any Company assets, documents, or access credentials in your possession on or before your last working day. The Company will process your final settlement and any applicable dues in accordance with Company policy and applicable laws.", 'section' => 'paragraphs'],
                 ]
             ],

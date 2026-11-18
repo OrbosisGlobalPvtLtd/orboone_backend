@@ -9,6 +9,7 @@ use App\Http\Controllers\Web\HRMS\EnterprisePayroll\ReimbursementC;
 use App\Http\Controllers\Web\HRMS\EnterprisePayroll\ReportC;
 use App\Http\Controllers\Web\HRMS\EnterprisePayroll\FnfSettlementC;
 use App\Http\Controllers\Web\HRMS\EnterprisePayroll\PolicyC;
+use App\Http\Controllers\Web\HRMS\EnterprisePayroll\StatutoryConfigC;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('enterprise-payroll')->middleware(['auth', 'check.access'])->name('enterprise-payroll.')->group(function () {
@@ -139,6 +140,28 @@ Route::prefix('enterprise-payroll')->middleware(['auth', 'check.access'])->name(
     Route::post('/policies', [PolicyC::class, 'update'])
         ->middleware('permission:enterprise_payroll.policy.update')
         ->name('policies.update');
+    Route::post('/policies/pt-slabs', [PolicyC::class, 'updatePtSlabs'])
+        ->middleware('permission:enterprise_payroll.policy.update')
+        ->name('policies.pt-slabs.update');
+
+    Route::get('/statutory', [StatutoryConfigC::class, 'index'])
+        ->middleware('permission:enterprise_payroll.policy.view')
+        ->name('statutory.index');
+    Route::post('/statutory/employee', [StatutoryConfigC::class, 'saveEmployeeEligibility'])
+        ->middleware('permission:enterprise_payroll.policy.update')
+        ->name('statutory.employee');
+    Route::post('/statutory/salary-components', [StatutoryConfigC::class, 'saveSalaryComponentRules'])
+        ->middleware('permission:enterprise_payroll.policy.update')
+        ->name('statutory.salary-components');
+    Route::post('/statutory/tax-profile', [StatutoryConfigC::class, 'saveTaxProfile'])
+        ->middleware('permission:enterprise_payroll.policy.update')
+        ->name('statutory.tax-profile');
+    Route::post('/statutory/income-tax-rules', [StatutoryConfigC::class, 'saveIncomeTaxRules'])
+        ->middleware('permission:enterprise_payroll.policy.update')
+        ->name('statutory.income-tax-rules');
+    Route::post('/statutory/professional-tax-slabs', [StatutoryConfigC::class, 'saveProfessionalTaxSlabs'])
+        ->middleware('permission:enterprise_payroll.policy.update')
+        ->name('statutory.professional-tax-slabs');
 });
 
 Route::any('enterprise payroll/{any?}', function ($any = null) {

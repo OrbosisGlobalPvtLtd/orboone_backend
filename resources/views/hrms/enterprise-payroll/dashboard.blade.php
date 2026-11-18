@@ -374,6 +374,10 @@
     if (window.jQuery && $.fn.DataTable) {
         $('.js-orb-datatable').each(function() {
             var $table = $(this);
+            var $wrap = $table.closest('.ep-table-wrap');
+            if ($wrap.length) {
+                $wrap.addClass('ep-table-dt-active').css({ 'overflow-x': 'visible', 'overflow': 'visible' });
+            }
             $table.DataTable({
                 pageLength: 10,
                 order: [],
@@ -385,7 +389,7 @@
                     emptyTable: 'No payroll runs yet.',
                     zeroRecords: 'No matching records found.'
                 },
-                dom: '<"crud-dt-toolbar"<"crud-dt-left"l><"crud-dt-right"B>>rt<"orb-table-footer"ip>',
+                dom: '<"crud-dt-toolbar"<"crud-dt-left"l><"crud-dt-right"B>><"ep-table-scroll"rt><"orb-table-footer"ip>',
                 buttons: [
                     { extend: 'csvHtml5', text: '<i class="fas fa-file-csv text-muted"></i> CSV', className: 'crud-export-btn' },
                     { extend: 'excelHtml5', text: '<i class="fas fa-file-excel text-success"></i> Excel', className: 'crud-export-btn' },

@@ -21,11 +21,10 @@ use App\Models\HRMS\Payroll\PayslipM as Payslip;
 use App\Models\HRMS\Payroll\ClaimM as Claim;
 use App\Models\HRMS\Payroll\FnFM as FnF;
 use App\Models\HRMS\Payroll\PayrollAdjustmentM as PayrollAdjustment;
-use App\Models\HRMS\Payroll\SalaryStructureM as SalaryStructure;
+use App\Models\HRMS\EnterprisePayroll\EnterpriseSalaryStructureM;
 use App\Models\HRMS\Employee\AssetAllocationM as AssetAllocation;
 use App\Models\HRMS\Leave\LeaveAllocationM as LeaveAllocation;
 use App\Models\HRMS\Leave\LeaveRequestM as LeaveRequest;
-use App\Models\HRMS\Payroll\StatutorySettingM as StatutorySetting;
 use App\Models\HRMS\Document\EmployeeDocumentM;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -286,7 +285,10 @@ class EmployeeM extends Model
 
     public function salaryStructure()
     {
-        return $this->belongsTo(SalaryStructure::class, 'salary_structure_id');
+        return $this->hasOne(EnterpriseSalaryStructureM::class, 'employee_id')
+            ->where('status', 'active')
+            ->orderByDesc('effective_from')
+            ->orderByDesc('id');
     }
 
     public function assetAllocations()
@@ -302,11 +304,6 @@ class EmployeeM extends Model
     public function leaveRequests()
     {
         return $this->hasMany(LeaveRequest::class, 'employee_id');
-    }
-
-    public function statutory()
-    {
-        return StatutorySetting::query()->first();
     }
 
     public function isPermanentWfh(): bool
@@ -402,6 +399,66 @@ class EmployeeM extends Model
     public function scopeContracts($query)
     {
         return $query->where('employment_type', 'contract');
+    }
+
+    /**
+     * Scope a query to only include active HR Managers / Authorized HR Signatories.
+     */
+    public function scopeActiveHrManager($query)
+    {
+        return $query->active()
+            ->whereHas('designation', function ($q) {
+                $q->whereIn('name', ['HR Manager', 'Head of HR', 'Human Resource Manager'])
+                  ->orWhere('name', 'like', '%HR Manager%')
+                  ->orWhere('name', 'like', '%Head of HR%');
+            });
+    }
+
+    protected static ?self $activeHrManagerCache = null;
+    protected static bool $activeHrManagerResolved = false;
+
+    /**
+     * Flush in-memory cache for active HR manager (useful during tests or after HR updates).
+     */
+    public static function flushActiveHrManagerCache(): void
+    {
+        static::$activeHrManagerCache = null;
+        static::$activeHrManagerResolved = false;
+    }
+
+    /**
+     * Get the current active HR Manager / Authorized HR Signatory for company documents and payroll.
+     * Implements in-memory static caching to prevent duplicate database roundtrips during bulk payslip/document rendering.
+     */
+    public static function currentActiveHrManager(): ?self
+    {
+        if (static::$activeHrManagerResolved) {
+            return static::$activeHrManagerCache;
+        }
+
+        static::$activeHrManagerResolved = true;
+
+        try {
+            static::$activeHrManagerCache = static::with(['user', 'designation', 'department'])
+                ->activeHrManager()
+                ->latest('id')
+                ->first();
+
+            if (! static::$activeHrManagerCache) {
+                static::$activeHrManagerCache = static::with(['user', 'designation', 'department'])
+                    ->active()
+                    ->whereHas('department', function ($q) {
+                        $q->where('name', 'Human Resources')
+                          ->orWhere('name', 'like', '%HR%');
+                    })
+                    ->orderByDesc('designation_id')
+                    ->first();
+            }
+        } catch (\Throwable $e) {
+            static::$activeHrManagerCache = null;
+        }
+
+        return static::$activeHrManagerCache;
     }
 
     public function getCount()

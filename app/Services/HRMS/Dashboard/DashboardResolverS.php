@@ -1931,7 +1931,7 @@ class DashboardResolverS
             'claims_pending' => $this->tableExists('claims') && $this->columnExists('claims', 'status')
                 ? DB::table('claims')->whereRaw('LOWER(status) = ?', ['pending'])->count()
                 : 0,
-            'salary_structures' => $this->tableExists('salary_structures') ? DB::table('salary_structures')->count() : 0,
+            'salary_structures' => $this->tableExists('enterprise_salary_structures') ? DB::table('enterprise_salary_structures')->count() : 0,
             'gross_payroll' => $gross_payroll,
             'net_payroll' => $net_payroll,
             'total_deductions' => $total_deductions,

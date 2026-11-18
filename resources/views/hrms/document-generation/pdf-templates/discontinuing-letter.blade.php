@@ -16,7 +16,7 @@ $hrManagerName = $hr_manager_name ?? 'Vanshika Dhunna';
 $signatoryDesignation = $signatory_designation ?? 'HR Manager';
 
 $resolveParagraph = function($text) use ($companyName, $discontinueDate) {
-if (empty($text)) return '';
+if (empty($text) || trim($text) === '') return '';
 $safeText = e($text);
 $replace = [
 '{company_name}' => '<strong>' . e($companyName) . '</strong>',
@@ -47,9 +47,15 @@ return str_ireplace(array_keys($replace), array_values($replace), $safeText);
         {!! nl2br($resolveParagraph($discontinue_reason ?? "After careful review of the Company's current business requirements and financial position, we regret to inform you that the Company has decided to discontinue your employment with the Company effective {discontinue_date}.")) !!}
     </p>
 
+    @php
+        $appreciationText = $performance_appreciation_clause ?? $appreciation_clause ?? "This decision has been made solely due to organizational and financial considerations and does not reflect your performance, commitment, or contributions during your tenure with the Company. We sincerely appreciate the efforts and professionalism you have demonstrated while working with us.";
+        $resolvedAppreciation = $resolveParagraph($appreciationText);
+    @endphp
+    @if(!empty(trim(strip_tags($resolvedAppreciation))))
     <p class="text-justify" style="font-size:13px; line-height:1.8; margin-bottom:18px;">
-        This decision has been made solely due to organizational and financial considerations and does not reflect your performance, commitment, or contributions during your tenure with the Company. We sincerely appreciate the efforts and professionalism you have demonstrated while working with us.
+        {!! nl2br($resolvedAppreciation) !!}
     </p>
+    @endif
 
     <p class="text-justify" style="font-size:13px; line-height:1.8; margin-bottom:18px;">
         {!! nl2br($resolveParagraph($handover_clause ?? "You are requested to complete all handover formalities and return any Company assets, documents, or access credentials in your possession on or before your last working day. The Company will process your final settlement and any applicable dues in accordance with Company policy and applicable laws.")) !!}

@@ -42,6 +42,7 @@ class AnnouncementsC extends Controller
             'print' => $user->hasPermission('announcements.print') || $user->hasPermission('announcements.manage'),
             'export' => $user->hasPermission('announcements.export') || $user->hasPermission('announcements.manage'),
             'toggle' => $user->hasPermission('announcements.publish') || $user->hasPermission('announcements.manage'),
+            'manage' => $user->hasPermission('announcements.manage'),
 
             'canCreate' => $user->hasPermission('announcements.create') || $user->hasPermission('announcements.manage'),
             'canEdit' => $user->hasPermission('announcements.edit') || $user->hasPermission('announcements.manage'),
@@ -51,6 +52,7 @@ class AnnouncementsC extends Controller
             'canPrint' => $user->hasPermission('announcements.print') || $user->hasPermission('announcements.manage'),
             'canExport' => $user->hasPermission('announcements.export') || $user->hasPermission('announcements.manage'),
             'canToggle' => $user->hasPermission('announcements.publish') || $user->hasPermission('announcements.manage'),
+            'canManage' => $user->hasPermission('announcements.manage'),
         ];
 
         if ((int) $request->input('ajax_table') === 1) {

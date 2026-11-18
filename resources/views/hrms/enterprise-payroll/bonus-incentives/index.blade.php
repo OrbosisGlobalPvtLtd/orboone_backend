@@ -38,7 +38,7 @@
             <form method="GET" action="{{ route('enterprise-payroll.bonus-incentives.index') }}" class="row align-items-end ep-form" id="filterForm">
                 <div class="col-md-3 mb-2 mb-md-0">
                     <label>Employee</label>
-                    <select name="employee_id" class="form-control" onchange="this.form.submit()">
+                    <select name="employee_id" class="form-control select2-searchable" onchange="this.form.submit()">
                         <option value="">All Employees</option>
                         @foreach($employees ?? [] as $employee)
                         <option value="{{ $employee->id }}" {{ request('employee_id') == $employee->id ? 'selected' : '' }}>{{ $employee->display_name }}</option>
@@ -47,7 +47,7 @@
                 </div>
                 <div class="col-md-2 mb-2 mb-md-0">
                     <label>Type</label>
-                    <select name="type" class="form-control" onchange="this.form.submit()">
+                    <select name="type" class="form-control select2-searchable" onchange="this.form.submit()">
                         <option value="">All Types</option>
                         <option value="bonus" {{ request('type') == 'bonus' ? 'selected' : '' }}>Bonus</option>
                         <option value="incentive" {{ request('type') == 'incentive' ? 'selected' : '' }}>Incentive</option>
@@ -55,7 +55,7 @@
                 </div>
                 <div class="col-md-2 mb-2 mb-md-0">
                     <label>Month</label>
-                    <select name="month" class="form-control" onchange="this.form.submit()">
+                    <select name="month" class="form-control select2-searchable" onchange="this.form.submit()">
                         <option value="">All Months</option>
                         @for($i=1; $i<=12; $i++)
                             <option value="{{ $i }}" {{ request('month') == $i ? 'selected' : '' }}>{{ \Carbon\Carbon::create()->month($i)->format('F') }}</option>
@@ -121,12 +121,14 @@
 
     @if($canManage)
     <div class="modal fade" id="bonusModal" tabindex="-1">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <form method="POST" action="{{ route('enterprise-payroll.bonus-incentives.store') }}" class="modal-content ep-form border-0 shadow-lg">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <form method="POST" action="{{ route('enterprise-payroll.bonus-incentives.store') }}" class="modal-content ep-form ep-modal-content-scrollable border-0 shadow-lg">
                 @csrf
                 <div class="ep-modal-header">
-                    <h5 class="modal-title">Add Bonus/Incentive</h5>
-                    <p>Approve monthly bonus and incentive entries.</p>
+                    <div>
+                        <h5 class="modal-title">Add Bonus/Incentive</h5>
+                        <p>Create and approve monthly bonus and incentive entries.</p>
+                    </div>
                     <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
                 </div>
                 <div class="ep-modal-body">
@@ -134,48 +136,57 @@
                         <div class="ep-section-title"><i class="fas fa-gift"></i> Employee & Incentive Details</div>
                         <div class="row">
                             <div class="col-xl-3 col-lg-3 col-md-6 col-12 mb-3">
-                                <div class="ep-form-group"><label>Employee</label><select name="employee_id" class="form-control" required>
+                                <div class="ep-form-group"><label>Employee</label><select name="employee_id" class="form-control select2-searchable" required>
                                         <option value="">Select</option>@foreach($employees as $employee)<option value="{{ $employee->id }}">{{ $employee->display_name }}</option>@endforeach
                                     </select></div>
                             </div>
                             <div class="col-xl-3 col-lg-3 col-md-6 col-12 mb-3">
-                                <div class="ep-form-group"><label>Type</label><select name="type" class="form-control">
+                                <div class="ep-form-group"><label>Type</label><select name="type" class="form-control select2-searchable">
                                         <option value="bonus">Bonus</option>
                                         <option value="incentive">Incentive</option>
                                     </select></div>
                             </div>
                             <div class="col-xl-3 col-lg-3 col-md-6 col-12 mb-3">
-                                <div class="ep-form-group"><label>Title</label><input name="title" class="form-control" required></div>
+                                <div class="ep-form-group"><label>Title</label><input name="title" class="form-control" placeholder="e.g. Diwali Bonus / Sales Incentive" required></div>
                             </div>
                             <div class="col-xl-3 col-lg-3 col-md-6 col-12 mb-3">
-                                <div class="ep-form-group"><label>Quarterly Target</label><select name="target_range" class="form-control">@for($i=1;$i<=10;$i++)<option value="{{ $i }} Lac">{{ $i }} Lac</option>@endfor</select></div>
+                                <div class="ep-form-group"><label>Quarterly Target</label><select name="target_range" class="form-control select2-searchable">@for($i=1;$i<=10;$i++)<option value="{{ $i }} Lac">{{ $i }} Lac</option>@endfor</select></div>
                             </div>
                         </div>
                     </div>
                     <div class="ep-section-card mb-3">
                         <div class="ep-section-title"><i class="fas fa-coins"></i> Target & Amount</div>
                         <div class="row">
-                            <div class="col-xl-3 col-lg-3 col-md-6 col-12 mb-3">
-                                <div class="ep-form-group"><label>Target Amount</label><input type="number" step="0.01" name="target_amount" class="form-control"></div>
+                            <div class="col-md-4 col-12 mb-3">
+                                <div class="ep-form-group"><label>Target Amount</label><input type="number" step="0.01" name="target_amount" class="form-control" placeholder="0.00"></div>
                             </div>
-                            <div class="col-xl-3 col-lg-3 col-md-6 col-12 mb-3">
-                                <div class="ep-form-group"><label>Achievement Amount</label><input type="number" step="0.01" name="achievement_amount" class="form-control"></div>
+                            <div class="col-md-4 col-12 mb-3">
+                                <div class="ep-form-group"><label>Achievement Amount</label><input type="number" step="0.01" name="achievement_amount" class="form-control" placeholder="0.00"></div>
                             </div>
-                            <div class="col-xl-3 col-lg-3 col-md-6 col-12 mb-3">
-                                <div class="ep-form-group"><label>Approved Amount</label><input type="number" step="0.01" name="amount" class="form-control" required></div>
+                            <div class="col-md-4 col-12 mb-3">
+                                <div class="ep-form-group"><label>Approved Amount</label><input type="number" step="0.01" name="amount" class="form-control" placeholder="0.00" required></div>
                             </div>
-                            <div class="col-xl-3 col-lg-3 col-md-6 col-12 mb-3">
+                            <div class="col-md-4 col-12 mb-3">
                                 <div class="ep-form-group">
                                     <label>Month</label>
-                                    <select name="month" class="form-control" required>
+                                    <select name="month" class="form-control select2-searchable" required>
                                         @for($i=1; $i<=12; $i++)
                                             <option value="{{ $i }}" {{ now('Asia/Kolkata')->month == $i ? 'selected' : '' }}>{{ \Carbon\Carbon::create()->month($i)->format('F') }}</option>
-                                            @endfor
+                                        @endfor
                                     </select>
                                 </div>
                             </div>
-                            <div class="col-xl-3 col-lg-3 col-md-6 col-12 mb-3">
-                                <div class="ep-form-group"><label>Year</label><input type="number" min="2020" name="year" value="{{ now('Asia/Kolkata')->year }}" class="form-control" style="min-width: 120px;" required></div>
+                            <div class="col-md-4 col-12 mb-3">
+                                <div class="ep-form-group"><label>Year</label><input type="number" min="2020" name="year" value="{{ now('Asia/Kolkata')->year }}" class="form-control" required></div>
+                            </div>
+                            <div class="col-md-4 col-12 mb-3">
+                                <div class="ep-form-group">
+                                    <label>Status</label>
+                                    <select name="status" class="form-control select2-searchable" required>
+                                        <option value="approved" selected>Approved (Ready for Payroll)</option>
+                                        <option value="pending">Pending</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -183,7 +194,7 @@
                         <div class="ep-section-title"><i class="fas fa-sticky-note"></i> Notes</div>
                         <div class="row">
                             <div class="col-md-12">
-                                <div class="ep-form-group"><label>Remarks</label><input name="remarks" class="form-control"></div>
+                                <div class="ep-form-group"><label>Remarks</label><input name="remarks" class="form-control" placeholder="Add remarks or justification"></div>
                             </div>
                         </div>
                     </div>
@@ -204,6 +215,10 @@
     if (window.jQuery && $.fn.DataTable) {
         $('.js-orb-datatable').each(function() {
             var $table = $(this);
+            var $wrap = $table.closest('.ep-table-wrap');
+            if ($wrap.length) {
+                $wrap.addClass('ep-table-dt-active').css({ 'overflow-x': 'visible', 'overflow': 'visible' });
+            }
             $table.DataTable({
                 pageLength: 25,
                 order: [],
@@ -218,7 +233,7 @@
                     emptyTable: 'No bonus or incentive entries found.',
                     zeroRecords: 'No matching records found.'
                 },
-                dom: '<"crud-dt-toolbar"<"crud-dt-left"l><"crud-dt-right"B>>rt<"orb-table-footer"ip>',
+                dom: '<"crud-dt-toolbar"<"crud-dt-left"l><"crud-dt-right"B>><"ep-table-scroll"rt><"orb-table-footer"ip>',
                 buttons: [{
                         extend: 'csvHtml5',
                         text: '<i class="fas fa-file-csv text-muted"></i> CSV',

@@ -89,7 +89,8 @@ class ReimbursementC extends Controller
 
     public function store(Request $request)
     {
-        $employeeId = $this->userHasPermission('enterprise_reimbursement.manage')
+        $isManager = $this->userHasPermission('enterprise_reimbursement.manage');
+        $employeeId = $isManager
             ? $request->input('employee_id')
             : $this->ownEmployeeId();
 
@@ -99,6 +100,7 @@ class ReimbursementC extends Controller
             'claim_date' => ['required', 'date'],
             'amount' => ['required', 'numeric', 'min:0'],
             'approved_amount' => ['nullable', 'numeric', 'min:0'],
+            'status' => ['nullable', 'in:pending,approved'],
             'attachment' => ['nullable', 'file', 'max:5120'],
             'remarks' => ['nullable', 'string'],
         ]);
@@ -110,18 +112,38 @@ class ReimbursementC extends Controller
             $attachmentPath = $request->file('attachment')->store($this->paths->employeePayroll((int) $employeeId, 'reimbursements'), 'private');
         }
 
+        $status = 'pending';
+        $approvedAmount = 0;
+        $approvedBy = null;
+        $approvedAt = null;
+
+        if ($isManager) {
+            $status = $request->input('status', 'approved');
+            if ($status === 'approved') {
+                $approvedAmount = !empty($data['approved_amount']) && (float)$data['approved_amount'] > 0
+                    ? (float)$data['approved_amount']
+                    : (float)$data['amount'];
+                $approvedBy = $this->actorId();
+                $approvedAt = Carbon::now('Asia/Kolkata');
+            } elseif (!empty($data['approved_amount'])) {
+                $approvedAmount = (float)$data['approved_amount'];
+            }
+        }
+
         EnterpriseReimbursementM::create([
             'employee_id' => $employeeId,
             'title' => $data['title'],
             'claim_date' => $data['claim_date'],
             'amount' => $data['amount'],
-            'approved_amount' => $data['approved_amount'] ?? 0,
+            'approved_amount' => $approvedAmount,
             'attachment_path' => $attachmentPath,
-            'status' => 'pending',
+            'status' => $status,
+            'approved_by_user_id' => $approvedBy,
+            'approved_at' => $approvedAt,
             'remarks' => $data['remarks'] ?? null,
         ]);
 
-        return back()->with('success', 'Reimbursement submitted.');
+        return back()->with('success', $status === 'approved' ? 'Reimbursement created and approved for payroll.' : 'Reimbursement submitted.');
     }
 
     public function update(Request $request, int $reimbursement)

@@ -106,9 +106,12 @@
                                         placeholder="Select Status"
                                         :options="[
                                             'active' => 'Active',
-                                            'resigned' => 'Resigned',
+                                            'inactive' => 'Inactive',
+                                            'notice_period' => 'Notice Period',
+                                            'exited' => 'Exited',
                                             'terminated' => 'Terminated',
-                                            'inactive' => 'Inactive'
+                                            'absconded' => 'Absconded',
+                                            'suspended' => 'Suspended'
                                         ]"
                                         :selected="old('employment_status', $employeeData->employment_status)" 
                                         :searchable="true" 

@@ -16,32 +16,51 @@ class AttendancePayableDayResolver
 
     public function isCompOffWorkedDay(AttendanceM $attendance): bool
     {
+        return $this->compOffWorkedDayType($attendance) !== null;
+    }
+
+    public function compOffWorkedDayType(AttendanceM $attendance): ?string
+    {
         if (strtolower((string) $attendance->attendance_source) === 'comp_off_work') {
-            return true;
+            $code = strtolower((string) optional($attendance->attendanceType)->code);
+            return str_contains($code, 'holiday') ? 'holiday' : 'week_off';
         }
 
         if (!$attendance->employee_id || !$attendance->attendance_date) {
-            return false;
+            return null;
         }
 
         $dateStr = Carbon::parse($attendance->attendance_date)->toDateString();
 
         $employee = $attendance->employee ?: EmployeeM::find($attendance->employee_id);
         if (!$employee) {
-            return false;
+            return null;
+        }
+
+        $workRequest = DB::table('holiday_work_requests')
+            ->where('employee_id', $attendance->employee_id)
+            ->whereDate('worked_date', $dateStr)
+            ->whereIn('status', ['approved', 'completed'])
+            ->whereNull('deleted_at')
+            ->first();
+
+        if (!$workRequest) {
+            return null;
+        }
+
+        if (($workRequest->work_type ?? '') === 'holiday_work') {
+            return 'holiday';
+        }
+        if (($workRequest->work_type ?? '') === 'weekoff_work') {
+            return 'week_off';
         }
 
         $dayContext = $this->ruleResolver->getDayContext($employee, $dateStr);
-        if (!($dayContext['is_holiday'] || $dayContext['is_weekoff'])) {
-            return false;
+        if (!empty($dayContext['holiday_name']) || ($dayContext['is_holiday'] ?? false)) {
+            return 'holiday';
         }
 
-        return DB::table('holiday_work_requests')
-            ->where('employee_id', $attendance->employee_id)
-            ->whereDate('worked_date', $dateStr)
-            ->where('status', 'approved')
-            ->whereNull('deleted_at')
-            ->exists();
+        return 'week_off';
     }
 
     public function resolve(AttendanceM $attendance): array
